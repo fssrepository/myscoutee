@@ -1,0 +1,96 @@
+<section
+  class="global-identity"
+  [class.global-identity--loading]="loading()"
+  [attr.aria-busy]="busy()"
+>
+  @if (loading()) {
+    <div class="global-identity__loading" role="status">
+      <app-indicator kind="load-ring" state="loading"></app-indicator>
+      <span>{{ 'global.identity.loading' | i18n }}</span>
+    </div>
+  } @else {
+    @if (status(); as identity) {
+      <article
+        class="global-identity__status"
+        [attr.data-palette]="statePalette(identity.state)"
+      >
+        <mat-icon>{{ stateIcon(identity.state) }}</mat-icon>
+        <span>
+          <small>{{ 'global.identity.status' | i18n }}</small>
+          <strong>{{ stateLabel(identity.state) | i18n }}</strong>
+        </span>
+        @if (identity.rotationRequired) {
+          <b>{{ 'global.identity.rotation.required' | i18n }}</b>
+        }
+      </article>
+
+      <article class="global-identity__privacy">
+        <header>
+          <mat-icon>privacy_tip</mat-icon>
+          <strong>{{ 'global.identity.privacy.title' | i18n }}</strong>
+        </header>
+        <p>{{ 'global.identity.privacy.description' | i18n }}</p>
+        <ul>
+          <li>{{ 'global.identity.privacy.sent' | i18n }}</li>
+          <li>{{ 'global.identity.privacy.history' | i18n }}</li>
+          <li>{{ 'global.identity.privacy.limit' | i18n }}</li>
+        </ul>
+      </article>
+
+      @if (identity.linked || identity.activeFromPeriod || identity.inactiveFromPeriod) {
+        <dl class="global-identity__metadata">
+          @if (identity.activeFromPeriod) {
+            <div>
+              <dt>{{ 'global.identity.active.from' | i18n }}</dt>
+              <dd>{{ identity.activeFromPeriod }}</dd>
+            </div>
+          }
+          @if (identity.inactiveFromPeriod) {
+            <div>
+              <dt>{{ 'global.identity.inactive.from' | i18n }}</dt>
+              <dd>{{ identity.inactiveFromPeriod }}</dd>
+            </div>
+          }
+          @if (identity.verifiedAt) {
+            <div>
+              <dt>{{ 'global.identity.verified.at' | i18n }}</dt>
+              <dd>{{ formatTimestamp(identity.verifiedAt) }}</dd>
+            </div>
+          }
+          @if (identity.updatedAt) {
+            <div>
+              <dt>{{ 'global.identity.updated.at' | i18n }}</dt>
+              <dd>{{ formatTimestamp(identity.updatedAt) }}</dd>
+            </div>
+          }
+        </dl>
+      }
+
+      @if (showConsent()) {
+        <app-form-flow
+          class="global-identity__consent"
+          [model]="consentFlowModel()"
+          [ngModel]="consentForm"
+          [disabled]="busy()"
+          (ngModelChange)="onConsentValueChange($event)"
+        ></app-form-flow>
+      }
+    }
+
+    @if (error(); as errorKey) {
+      <p class="global-identity__error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ errorKey | i18n }}</span>
+      </p>
+    }
+
+    <div class="global-identity__actions">
+      <app-menu
+        class="global-identity__action-menu"
+        kind="inline"
+        [items]="actionItems()"
+        (itemSelect)="onAction($event)"
+      ></app-menu>
+    </div>
+  }
+</section>

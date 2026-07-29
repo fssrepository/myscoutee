@@ -14,6 +14,7 @@ export interface LinkInputConfig {
   label?: string | null;
   placeholder?: string | null;
   required?: boolean | null;
+  maxLength?: number | null;
   panelMode?: AppMenuPanelMode | null;
   availableUrls?: readonly (string | LinkInputAvailableUrl)[] | null;
   availableUrlsAriaLabel?: string | null;
@@ -89,6 +90,11 @@ export class LinkInputComponent implements ControlValueAccessor {
 
   protected required(): boolean {
     return this.config.required === true;
+  }
+
+  protected maxLength(): number | null {
+    const value = Math.trunc(Number(this.config.maxLength));
+    return Number.isFinite(value) && value > 0 ? value : null;
   }
 
   protected inputDisabled(): boolean {

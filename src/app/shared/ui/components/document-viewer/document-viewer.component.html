@@ -86,13 +86,9 @@
         <header class="document-viewer-head" [ngClass]="headerPaletteClass()">
           @if (showBrand()) {
             <a class="document-viewer-brand" href="/">
-              <img
-                [src]="deploymentBranding().logoUrl"
-                [alt]="deploymentBranding().productName"
-                width="40"
-                height="40"
-              />
-              <span>{{ deploymentBranding().productName }}</span>
+              <app-deployment-brand
+                [branding]="deploymentBranding()"
+              ></app-deployment-brand>
             </a>
           }
           <div class="document-viewer-head-row">

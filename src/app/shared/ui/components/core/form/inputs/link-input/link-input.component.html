@@ -17,6 +17,7 @@
       [disabled]="inputDisabled()"
       [placeholder]="placeholder()"
       [required]="required()"
+      [attr.maxlength]="maxLength()"
       inputmode="url"
       spellcheck="false"
       (ngModelChange)="onInput($event)"

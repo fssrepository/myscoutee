@@ -156,10 +156,10 @@
   height: 100%;
   min-height: 0;
   padding: 1rem;
-  border: 1px dashed rgba(67, 96, 134, 0.22);
+  border: 1px dashed var(--deployment-card-border, rgba(67, 96, 134, 0.22));
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(250, 252, 255, 0.96) 0%, rgba(241, 246, 255, 0.92) 100%);
-  color: rgba(35, 56, 84, 0.82);
+  background: var(--deployment-card-background, linear-gradient(180deg, rgba(250, 252, 255, 0.96) 0%, rgba(241, 246, 255, 0.92) 100%));
+  color: var(--deployment-text-main, rgba(35, 56, 84, 0.82));
   text-align: center;
 }
 
@@ -175,7 +175,7 @@
 
 .smart-list__fullscreen-empty p {
   font-size: 0.8rem;
-  color: rgba(56, 77, 104, 0.74);
+  color: var(--deployment-text-muted, rgba(56, 77, 104, 0.74));
 }
 
 .smart-list--list.smart-list--card-grid,

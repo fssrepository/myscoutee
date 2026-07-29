@@ -2,12 +2,9 @@
   <main class="operator-home" [attr.aria-busy]="loading()">
     <header class="operator-home-header">
       <a class="operator-brand" [attr.aria-label]="deploymentBranding().productName">
-        <img
-          class="operator-brand-mark"
-          [src]="deploymentBranding().logoUrl"
-          [alt]="deploymentBranding().productName"
-        />
-        <span class="operator-brand-text">{{ deploymentBranding().productName }}</span>
+        <app-deployment-brand
+          [branding]="deploymentBranding()"
+        ></app-deployment-brand>
       </a>
       <div class="operator-home-heading">{{ 'operator' | i18n }}</div>
     </header>
@@ -44,15 +41,25 @@
         </header>
 
         <app-smart-list
+          #leaderboardSmartList
           class="operator-leaderboard__list"
           [config]="leaderboardConfig"
           [loadPage]="loadLeaderboardPage"
           [query]="leaderboardQuery()"
           [itemTemplate]="leaderboardRowTemplate"
+          (itemSelect)="openLeaderboardDeployments($event)"
         ></app-smart-list>
 
-        <ng-template #leaderboardRowTemplate let-entry>
-          <single-row [row]="leaderboardRow(entry)"></single-row>
+        <ng-template
+          #leaderboardRowTemplate
+          let-entry
+          let-selectItem="selectItem"
+        >
+          <single-row
+            [row]="leaderboardRow(entry)"
+            [ariaLabel]="leaderboardRowAriaLabel(entry)"
+            (rowClick)="selectItem($event)"
+          ></single-row>
         </ng-template>
       </section>
     }

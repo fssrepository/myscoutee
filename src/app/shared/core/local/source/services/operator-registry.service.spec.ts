@@ -42,6 +42,7 @@ describe('LocalOperatorRegistryService', () => {
       registryBaseUrl: 'https://registry.myscoutee.invalid',
       expectedRegistryScope: 'demo:primary'
     });
+    const deploymentCode = registered.status.enrollment?.deploymentCode ?? '';
     const explicitClaim = await service.claimShare({
       legalName: 'Demo Operator s.r.o.',
       registrationNumber: '51 234 567',
@@ -54,23 +55,6 @@ describe('LocalOperatorRegistryService', () => {
       authorityAttested: true
     });
     const ledgerBeforeGrouping = (await repository.read())?.ledger;
-    const token = await service.issueGroupingToken();
-    const tokenSource = await repository.read();
-    expect(tokenSource).not.toBeNull();
-    await repository.write({
-      ...tokenSource!,
-      groupingTokens: tokenSource!.groupingTokens.map(item =>
-        item.token === token.clientToken
-          ? {
-              ...item,
-              operatorGroupId: 'operator-group-campus'
-            }
-          : item
-      )
-    });
-    const groupedClaim = await service.linkOperatorGroup({
-      clientToken: token.clientToken
-    });
     const community = await service.loadCommunityStatus();
     const revenue = await service.loadRevenue();
     const leaderboard = await service.leaderboardPage({
@@ -79,21 +63,66 @@ describe('LocalOperatorRegistryService', () => {
       sort: 'share',
       direction: 'desc'
     });
+    const groupedOperator = leaderboard.items.find(
+      item => item.group === 'CLAIMED' && item.deploymentCount === 2
+    );
+    const firstDeploymentPage = await service.leaderboardDeploymentPage(
+      groupedOperator?.operatorGroupId ?? '',
+      {
+        page: 0,
+        pageSize: 1
+      }
+    );
+    const secondDeploymentPage = await service.leaderboardDeploymentPage(
+      groupedOperator?.operatorGroupId ?? '',
+      {
+        page: 1,
+        pageSize: 1,
+        cursor: firstDeploymentPage.nextCursor
+      }
+    );
     const cached = await repository.read();
 
     expect(initial.lifecycle).toBe('UNCONFIGURED');
     expect(initial.registryOptions).toHaveLength(3);
-    expect(registered.lifecycle).toBe('REGISTERED');
-    expect(explicitClaim.claimed).toBe(true);
-    expect(explicitClaim.verificationStatus).toBe('PENDING_REVIEW');
-    expect(explicitClaim.claimedAt).toBe(explicitClaim.verificationSubmittedAt);
-    expect(explicitClaim.claimantName).toBe('Demo Operator s.r.o.');
-    expect(groupedClaim.claimed).toBe(true);
-    expect(groupedClaim.claimedAt).toBe(explicitClaim.claimedAt);
-    expect(groupedClaim.claimantUserId).toBe(explicitClaim.claimantUserId);
-    expect(groupedClaim.operatorGroupId).toBe('operator-group-campus');
+    expect(registered.status.lifecycle).toBe('REGISTERED');
+    expect(registered.leaderboardEntry?.id).toBe(deploymentCode);
+    expect(registered.leaderboardUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: deploymentCode, group: 'UNCLAIMED' })
+    ]));
+    expect(registered.leaderboardTotalDelta).toBe(1);
+    expect(explicitClaim.status.claimed).toBe(true);
+    expect(explicitClaim.status.verificationStatus).toBe('PENDING_REVIEW');
+    expect(explicitClaim.status.claimedAt).toBe(
+      explicitClaim.status.verificationSubmittedAt
+    );
+    expect(explicitClaim.status.claimantName).toBe('Demo Operator s.r.o.');
+    expect(explicitClaim.submission).toEqual({
+      legalName: 'Demo Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test/',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
+    expect(explicitClaim.leaderboardEntry).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      claimantName: 'Demo Operator s.r.o.',
+      claimVerificationStatus: 'PENDING_REVIEW'
+    }));
+    expect(explicitClaim.leaderboardUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        group: 'CLAIMED',
+        claimantName: 'Demo Operator s.r.o.'
+      })
+    ]));
+    expect(explicitClaim.removedLeaderboardEntryIds).toEqual([deploymentCode]);
+    expect(explicitClaim.leaderboardTotalDelta).toBe(0);
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
-    expect(cached?.ledger.find(item => item.id === 'node-operator-demo')).toEqual(
+    expect(cached?.ledger.find(item => item.id === deploymentCode)).toEqual(
       expect.objectContaining({
         claimed: true,
         claimantUserId: 'operator-demo-dev',
@@ -112,28 +141,18 @@ describe('LocalOperatorRegistryService', () => {
       authorityAttested: true
     });
     expect(cached?.leaderboard.find(
-      item => item.operatorGroupId === explicitClaim.operatorGroupId
-    )).toEqual(
-      undefined
-    );
-    expect(cached?.leaderboard.find(
-      item => item.operatorGroupId === groupedClaim.operatorGroupId
-    )).toEqual(
-      expect.objectContaining({
-        group: 'CLAIMED',
-        claimed: true,
-        sharePercent: groupedClaim.sharePercent,
-        verifiedWeight: 77_000,
-        deploymentCount: 3
-      })
-    );
-    expect(cached?.groupLinks.find(
-      item => item.nodeId === 'node-operator-demo'
+      item => item.operatorGroupId === explicitClaim.status.operatorGroupId
     )).toEqual(expect.objectContaining({
-      operatorGroupId: 'operator-group-campus'
+      group: 'CLAIMED',
+      claimantName: 'Demo Operator s.r.o.'
+    }));
+    expect(leaderboard.items.find(
+      item => item.operatorGroupId === explicitClaim.status.operatorGroupId
+    )).toEqual(expect.objectContaining({
+      claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(cached?.auditHistory.map(item => item.kind)).toEqual(
-      expect.arrayContaining(['SEED', 'REGISTER', 'CLAIM', 'GROUP_TOKEN', 'GROUP_LINK'])
+      expect.arrayContaining(['SEED', 'REGISTER', 'CLAIM'])
     );
     expect(community.providers).toEqual([
       expect.objectContaining({
@@ -165,19 +184,406 @@ describe('LocalOperatorRegistryService', () => {
       group: 'FOUNDER',
       verifiedWeight: 100_000
     }));
+    expect([
+      ...firstDeploymentPage.items,
+      ...secondDeploymentPage.items
+    ]).toEqual([
+      expect.objectContaining({
+        groupId: groupedOperator?.operatorGroupId,
+        eligibilityStatus: 'ACTIVE',
+        membershipState: 'owner'
+      }),
+      expect.objectContaining({
+        groupId: groupedOperator?.operatorGroupId,
+        eligibilityStatus: 'ACTIVE',
+        membershipState: 'linked'
+      })
+    ]);
+    expect(firstDeploymentPage.nextCursor).toMatch(
+      /^operator-deployments:/
+    );
+    expect(secondDeploymentPage.nextCursor).toBeNull();
 
     expect(diskReadSpy.mock.calls.filter(
       ([key]: [string]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
     )).toHaveLength(1);
     expect(diskWriteSpy.mock.calls.filter(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
-    )).toHaveLength(7);
+    )).toHaveLength(4);
     expect(waitForDelay).toHaveBeenCalledTimes(8);
     expect(waitForDelay).toHaveBeenCalledWith(
       1500,
       undefined,
       'operator.request.aborted'
     );
+  });
+
+  it('keeps explicit local fallback revenue delivery dormant and write-free', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const before = await repository.read();
+
+    const synchronization = await service.synchronizeRevenue();
+    const reports = await service.revenueReportPage({
+      page: 0,
+      pageSize: 5,
+      filters: { status: 'BLOCKED' }
+    });
+    const after = await repository.read();
+
+    expect(synchronization).toEqual(expect.objectContaining({
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0
+    }));
+    expect(reports).toEqual({ items: [], total: 0 });
+    expect(after).toEqual(before);
+  });
+
+  it('cursor-pages deterministic settlement history with the protocol valuation formula', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+
+    const first = await service.settlementPage({
+      page: 0,
+      pageSize: 2,
+      filters: { includeSuperseded: false }
+    });
+    const second = await service.settlementPage({
+      page: 1,
+      pageSize: 2,
+      cursor: first.nextCursor,
+      filters: { includeSuperseded: false }
+    });
+    const eur = await service.settlementPage({
+      page: 0,
+      pageSize: 5,
+      filters: {
+        currencyCode: 'EUR',
+        includeSuperseded: true
+      }
+    });
+
+    expect(first.items).toHaveLength(2);
+    expect(first.nextCursor).toMatch(/^operator-settlement:/);
+    expect(second.items[0]?.period <= first.items.at(-1)!.period).toBe(true);
+    expect(eur.items.map(item => item.revision)).toEqual([1, 2, 1]);
+    expect(eur.items[1]).toEqual(expect.objectContaining({
+      shareNumerator: '277',
+      shareDenominator: '5000',
+      priorGrowthBasisPoints: 800,
+      recentGrowthBasisPoints: 1_851,
+      accelerationBasisPoints: 1_051,
+      valuationAdjustmentBasisPoints: 724,
+      effectiveValuationMultiplierBasisPoints: 32_172,
+      ttmNetworkCommissionPoolMinor: 52_500,
+      indicativeNetworkValueMinor: 3_378_060,
+      networkPoolAllocationMinor: 2_908,
+      indicativeValueAllocationMinor: 187_144,
+      valuationIsNonBinding: true
+    }));
+  });
+
+  it('keeps explicit local fallback QMAU delivery dormant and write-free', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const before = await repository.read();
+
+    const synchronization = await service.synchronizeMeasurements();
+    const reports = await service.measurementReportPage({
+      page: 0,
+      pageSize: 4,
+      filters: { status: 'BLOCKED' }
+    });
+    const after = await repository.read();
+
+    expect(synchronization).toEqual(expect.objectContaining({
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0
+    }));
+    expect(reports).toEqual({ items: [], total: 0 });
+    expect(after).toEqual(before);
+  });
+
+  it('withdraws the current claim when the registered deployment is disabled', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const registration = await service.register({
+      registryBaseUrl: 'https://registry.myscoutee.invalid',
+      expectedRegistryScope: 'demo:primary'
+    });
+    const deploymentCode = registration.status.enrollment?.deploymentCode ?? '';
+    const claim = await service.claimShare({
+      legalName: 'Disabled Demo Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
+    const claimedRowId = claim.leaderboardEntry?.id ?? '';
+
+    const mutation = await service.disconnect();
+    const overview = await service.loadClaimStatus();
+    const stored = await repository.read();
+
+    expect(mutation.status).toEqual(expect.objectContaining({
+      lifecycle: 'DISABLED',
+      enabled: false
+    }));
+    expect(mutation.leaderboardEntry).toBeNull();
+    expect(mutation.leaderboardUpserts).not.toEqual([]);
+    expect(mutation.removedLeaderboardEntryIds).toContain(claimedRowId);
+    expect(mutation.leaderboardTotalDelta).toBe(-1);
+    expect(overview).toEqual(expect.objectContaining({
+      status: expect.objectContaining({
+        claimed: false,
+        operatorGroupId: null,
+        verificationStatus: 'WITHDRAWN'
+      }),
+      submission: null
+    }));
+    expect(stored?.ledger.find(item => item.nodeId === deploymentCode))
+      .toEqual(expect.objectContaining({
+        active: false,
+        claimed: false,
+        claimantUserId: null,
+        claimantName: null,
+        claimedAt: null
+      }));
+    expect(stored?.groupLinks.some(link => link.nodeId === deploymentCode))
+      .toBe(false);
+    expect(stored?.leaderboard.some(item =>
+      item.nodeId === deploymentCode
+      || item.id === claimedRowId
+    )).toBe(false);
+    expect(stored?.claimVerificationRequest).toBeNull();
+    expect(stored?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'DISCONNECT',
+      detail: 'Registry deployment deactivated and claim withdrawn.'
+    }));
+  });
+
+  it('submits an unclaimed client-code claim with provisional leaderboard grouping', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const registration = await service.register({
+      registryBaseUrl: 'https://registry.myscoutee.invalid',
+      expectedRegistryScope: 'demo:primary'
+    });
+    const deploymentCode = registration.status.enrollment?.deploymentCode ?? '';
+    const before = await repository.read();
+    expect(before).not.toBeNull();
+    await repository.write({
+      ...before!,
+      groupingTokens: [{
+        token: 'temporary-client-code',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        redeemedAt: null,
+        operatorGroupId: 'operator-group-campus'
+      }]
+    });
+
+    const claimMutation = await service.linkOperatorGroup({
+      clientToken: 'temporary-client-code'
+    });
+    const claim = claimMutation.status;
+    const after = await repository.read();
+
+    expect(claim).toEqual(expect.objectContaining({
+      claimed: true,
+      operatorGroupId: 'operator-group-campus',
+      verificationStatus: 'PENDING_REVIEW'
+    }));
+    expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
+    expect(claim.sharePercent).toBeGreaterThan(0);
+    expect(claimMutation.leaderboardEntry).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      operatorGroupId: 'operator-group-campus',
+      deploymentCount: 3,
+      claimVerificationStatus: 'PENDING_REVIEW'
+    }));
+    expect(claimMutation.leaderboardUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        group: 'CLAIMED',
+        operatorGroupId: 'operator-group-campus',
+        deploymentCount: 3
+      })
+    ]));
+    expect(claimMutation.removedLeaderboardEntryIds).toEqual([deploymentCode]);
+    expect(claimMutation.leaderboardTotalDelta).toBe(-1);
+    expect(after?.ledger.find(item => item.nodeId === deploymentCode))
+      .toEqual(expect.objectContaining({
+        claimed: true,
+        claimantUserId: 'operator-campus'
+      }));
+    expect(after?.groupLinks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        nodeId: deploymentCode,
+        operatorGroupId: 'operator-group-campus'
+      })
+    ]));
+    const claimedGroup = after?.leaderboard.find(
+      item => item.group === 'CLAIMED'
+        && item.operatorGroupId === 'operator-group-campus'
+    );
+    expect(claimedGroup).toEqual(expect.objectContaining({
+      deploymentCount: 3,
+      sharePercent: claim.sharePercent,
+      claimVerificationStatus: 'PENDING_REVIEW'
+    }));
+    expect(after?.leaderboard).not.toEqual(before?.leaderboard);
+    expect(after?.groupingTokens[0]?.redeemedAt).not.toBeNull();
+    expect(after?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'CLAIM',
+      detail: 'Client code claim submitted for registry review.'
+    }));
+  });
+
+  it('regroups an already claimed deployment without replacing its verification', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const registration = await service.register({
+      registryBaseUrl: 'https://registry.myscoutee.invalid',
+      expectedRegistryScope: 'demo:primary'
+    });
+    const deploymentCode = registration.status.enrollment?.deploymentCode ?? '';
+    await service.claimShare({
+      legalName: 'Verified Demo Operator',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
+    const claimed = await repository.read();
+    expect(claimed).not.toBeNull();
+    await repository.write({
+      ...claimed!,
+      claimStatus: {
+        ...claimed!.claimStatus,
+        verificationStatus: 'APPROVED'
+      },
+      groupingTokens: [{
+        token: 'approved-client-code',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        redeemedAt: null,
+        operatorGroupId: 'operator-group-campus'
+      }]
+    });
+    const beforeRegroup = await repository.read();
+
+    const regroupedMutation = await service.linkOperatorGroup({
+      clientToken: 'approved-client-code'
+    });
+    const regrouped = regroupedMutation.status;
+    const afterRegroup = await repository.read();
+
+    expect(regrouped).toEqual(expect.objectContaining({
+      claimed: true,
+      claimantName: 'Verified Demo Operator',
+      operatorGroupId: 'operator-group-campus',
+      verificationStatus: 'APPROVED'
+    }));
+    expect(regroupedMutation.leaderboardEntry).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      operatorGroupId: 'operator-group-campus',
+      deploymentCount: 3
+    }));
+    expect(regroupedMutation.leaderboardUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        group: 'CLAIMED',
+        operatorGroupId: 'operator-group-campus',
+        deploymentCount: 3
+      })
+    ]));
+    expect(regroupedMutation.removedLeaderboardEntryIds).toEqual([
+      `claimed-group:${beforeRegroup?.claimStatus.operatorGroupId}`
+    ]);
+    expect(regroupedMutation.leaderboardTotalDelta).toBe(-1);
+    expect(afterRegroup?.ledger).toEqual(beforeRegroup?.ledger);
+    expect(afterRegroup?.groupLinks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        nodeId: deploymentCode,
+        operatorGroupId: 'operator-group-campus'
+      })
+    ]));
+    expect(afterRegroup?.leaderboard.find(
+      item => item.group === 'CLAIMED'
+        && item.operatorGroupId === 'operator-group-campus'
+    )).toEqual(expect.objectContaining({
+      deploymentCount: 3,
+      sharePercent: regrouped.sharePercent
+    }));
+    expect(afterRegroup?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'GROUP_LINK',
+      detail: 'Claimed deployment linked to an operator group.'
+    }));
+
+    await repository.write({
+      ...afterRegroup!,
+      groupingTokens: [{
+        token: 'same-group-client-code',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        redeemedAt: null,
+        operatorGroupId: 'operator-group-campus'
+      }]
+    });
+
+    const sameGroupMutation = await service.linkOperatorGroup({
+      clientToken: 'same-group-client-code'
+    });
+    const afterSameGroup = await repository.read();
+
+    expect(sameGroupMutation.leaderboardUpserts).toEqual([]);
+    expect(sameGroupMutation.removedLeaderboardEntryIds).toEqual([]);
+    expect(sameGroupMutation.leaderboardTotalDelta).toBe(0);
+    expect(afterSameGroup?.groupingTokens[0]?.redeemedAt).not.toBeNull();
+    expect(afterSameGroup?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'GROUP_LINK',
+      detail: 'Temporary client code redeemed by an already linked deployment.'
+    }));
   });
 
   it('does not manufacture replacement workspace data when the seed is absent', async () => {
@@ -281,18 +687,39 @@ describe('LocalOperatorRegistryService', () => {
       }
     ]);
     const saved = await service.saveConfiguration({
+      adminEmails: ['operator@example.test'],
+      privacyContact: {
+        dataControllerName: '  Example Explore Operator  ',
+        privacyContactEmail: ' Privacy@Explore.Example.test '
+      },
+      socialLinks: [{
+        provider: 'community',
+        label: 'Community',
+        url: 'https://community.example.test/',
+        icon: 'forum',
+        handle: '@community'
+      }],
       branding: {
         productName: 'Community Hub',
-        homeLabel: 'Meet locally',
         logoUrl: 'data:image/png;base64,c2FtcGxl',
+        logoCharacterIndex: null,
         themePreset: 'OCEAN'
       },
       payment: {
         providerId: 'stripe',
+        publicBaseUrl: 'https://community.example.test',
+        merchantAccount: '',
         credential: 'stripe-explore-secret'
       },
       firebase: {
         projectId: 'community-hub-explore',
+        apiKey: 'browser-api-key',
+        authDomain: 'community-hub-explore.firebaseapp.com',
+        storageBucket: 'community-hub-explore.firebasestorage.app',
+        messagingSenderId: '123456789',
+        appId: '1:123456789:web:explore',
+        measurementId: '',
+        vapidKey: 'public-vapid-key',
         authenticationCredential: 'firebase-auth-secret',
         messagingCredential: 'firebase-messaging-secret'
       }
@@ -301,31 +728,47 @@ describe('LocalOperatorRegistryService', () => {
       kind: 'FIREBASE_AUTHENTICATION'
     });
     const messaging = await service.testConfiguration({
-      kind: 'FIREBASE_MESSAGING'
+      kind: 'FIREBASE_MESSAGING',
+      destinationToken: 'explore-test-device',
+      browserReadinessToken: 'browser-generated-token',
+      browserConfigurationRevision:
+        saved.firebase.publicConfiguration.revision,
+      browserAppId: saved.firebase.publicConfiguration.appId
     });
     const persisted = await service.loadConfiguration();
+    const activated = await service.activateFirebase();
 
     expect(initial.firebase.authenticationCredentialConfigured).toBe(false);
     expect(saved).toEqual(expect.objectContaining({
+      privacyContact: {
+        configured: true,
+        dataControllerName: 'Example Explore Operator',
+        privacyContactEmail: 'privacy@explore.example.test'
+      },
       branding: expect.objectContaining({
         productName: 'Community Hub',
+        homeLabel: initial.branding.homeLabel,
         themePreset: 'OCEAN',
         revision: 1
       }),
       payment: expect.objectContaining({
         providerId: 'stripe',
+        publicBaseUrl: 'https://community.example.test',
+        merchantAccount: null,
         credentialConfigured: true,
         credentialMask: '••••cret'
       }),
-      firebase: {
+      firebase: expect.objectContaining({
         projectId: 'community-hub-explore',
         authenticationCredentialConfigured: true,
         messagingCredentialConfigured: true
-      }
+      })
     }));
     expect(authentication.success).toBe(true);
     expect(messaging.success).toBe(true);
-    expect(persisted).toEqual(saved);
+    expect(persisted.firebase.readyToActivate).toBe(true);
+    expect(persisted.firebase.active).toBe(false);
+    expect(activated.firebase.active).toBe(true);
     expect(JSON.stringify(await TestBed.inject(LocalOperatorRegistryRepository).read()))
       .not.toContain('stripe-explore-secret');
     expect(JSON.stringify(await TestBed.inject(LocalOperatorRegistryRepository).read()))

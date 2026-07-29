@@ -89,6 +89,7 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
       return {
         ...rule,
         runState: {
+          ...rule.runState,
           currentStatus: status,
           progressPercent: 100,
           progressDetail: detail,

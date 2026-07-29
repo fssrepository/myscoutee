@@ -3684,7 +3684,13 @@ export class LocalEventsRepository {
       const stageMax = incomingCapacityMax > 0
         ? incomingCapacityMax
         : Math.max(0, Math.trunc(Number(stage.capacityMax) || 0));
-      return stageMax > 0 ? Math.max(1, Math.ceil(stageMax / divisor)) : 0;
+      const groupsNeededForMaximum = stageMax > 0
+        ? Math.ceil(stageMax / divisor)
+        : 0;
+      const groupsAllowedByMinimum = groupMin > 0
+        ? Math.max(1, Math.floor(stageMax / groupMin))
+        : groupsNeededForMaximum;
+      return Math.min(groupsNeededForMaximum, groupsAllowedByMinimum);
     }
     return 0;
   }

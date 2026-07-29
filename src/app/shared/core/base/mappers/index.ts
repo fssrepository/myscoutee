@@ -5,3 +5,4 @@ export {
   type UserRateGameCardRecordDTO,
   type UserRateRecordDTO
 } from './rate.mapper';
+export * from './operator-configuration.mapper';

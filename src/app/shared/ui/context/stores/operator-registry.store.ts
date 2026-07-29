@@ -9,9 +9,15 @@ import {
   SessionService,
   type AppSession
 } from '../../../core/base/services/session.service';
+import type { ListQuery } from '../../../core/contracts/list.interface';
 import type {
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryOptionDto,
   OperatorRegistryStatusDto
 } from '../../../core/contracts/operator.interface';
@@ -25,6 +31,8 @@ export type OperatorRegistryBusyAction =
   | 'register'
   | 'retry'
   | 'disconnect'
+  | 'synchronize-measurements'
+  | 'requeue-measurement-report'
   | null;
 
 @Injectable({
@@ -36,6 +44,8 @@ export class OperatorRegistryStore {
   private readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly statusRef = signal<OperatorRegistryStatusDto | null>(null);
   private readonly inspectionRef = signal<OperatorRegistryInspectionDto | null>(null);
+  private readonly measurementSyncRef =
+    signal<OperatorMeasurementSyncDto | null>(null);
   private readonly busyActionRef = signal<OperatorRegistryBusyAction>(null);
   private readonly errorRef = signal('');
   private readonly noticeRef = signal('');
@@ -47,6 +57,7 @@ export class OperatorRegistryStore {
 
   readonly status = this.statusRef.asReadonly();
   readonly inspection = this.inspectionRef.asReadonly();
+  readonly measurementSync = this.measurementSyncRef.asReadonly();
   readonly busyAction = this.busyActionRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly notice = this.noticeRef.asReadonly();
@@ -68,11 +79,19 @@ export class OperatorRegistryStore {
     }
     const status = this.statusRef();
     const currentUrl = status?.selection?.baseUrl?.trim() ?? '';
+    const currentScope = (
+      status?.selection?.registryScope
+      ?? status?.selection?.registryIdentity?.registryScope
+      ?? ''
+    ).trim();
+    const targetScope = this.expectedRegistryScopeRef().trim();
+    const sameTarget = currentUrl
+      && sameRegistryUrl(currentUrl, baseUrl)
+      && !(currentScope && targetScope && currentScope !== targetScope);
     return !(
       status?.enabled
       && status.lifecycle === 'REGISTERED'
-      && currentUrl
-      && sameRegistryUrl(currentUrl, baseUrl)
+      && sameTarget
     );
   });
 
@@ -122,15 +141,36 @@ export class OperatorRegistryStore {
       return null;
     }
     const expectedRegistryScope = this.expectedRegistryScopeRef().trim();
-    const status = await this.run(
-      'register',
-      () => this.service.register({
-        registryBaseUrl,
-        ...(expectedRegistryScope ? { expectedRegistryScope } : {})
-      })
+    const request = {
+      registryBaseUrl,
+      ...(expectedRegistryScope ? { expectedRegistryScope } : {})
+    };
+    const replaceExistingBinding = this.requiresRegistrationReplacement(
+      this.statusRef(),
+      registryBaseUrl,
+      expectedRegistryScope
     );
-    if (status) {
+    const result = await this.run(
+      'register',
+      async () => {
+        if (!replaceExistingBinding) {
+          return this.service.register(request);
+        }
+        const replacement = await this.service.replaceRegistration(request);
+        if (!replacement.registered) {
+          this.applyDisconnectMutation(replacement.disconnected);
+          throw new Error('operator.registration.error.switch.partial');
+        }
+        return this.registrationReplacementMutation(
+          replacement.disconnected,
+          replacement.registered
+        );
+      }
+    );
+    if (result) {
+      const status = result.status;
       this.inspectionRef.set(null);
+      this.measurementSyncRef.set(null);
       this.registryBaseUrlRef.set(status.selection?.baseUrl ?? registryBaseUrl);
       this.expectedRegistryScopeRef.set(
         status.selection?.registryScope
@@ -138,9 +178,73 @@ export class OperatorRegistryStore {
         ?? this.expectedRegistryScopeRef()
       );
       this.candidateInitialized = true;
-      this.leaderboard.invalidate();
+      this.leaderboard.applyMutation(result);
+      return status;
     }
-    return status;
+    return null;
+  }
+
+  private applyDisconnectMutation(
+    result: OperatorRegistryMutationResultDto
+  ): void {
+    this.statusRef.set(result.status);
+    this.inspectionRef.set(null);
+    this.measurementSyncRef.set(null);
+    this.leaderboard.applyMutation(result);
+  }
+
+  private registrationReplacementMutation(
+    disconnected: OperatorRegistryMutationResultDto,
+    registered: OperatorRegistryMutationResultDto
+  ): OperatorRegistryMutationResultDto {
+    const upserts = new Map(
+      [...disconnected.leaderboardUpserts, ...registered.leaderboardUpserts]
+        .map(entry => [entry.id.trim(), entry] as const)
+        .filter(([id]) => Boolean(id))
+    );
+    const removedEntryIds = [...new Set([
+      ...disconnected.removedLeaderboardEntryIds,
+      ...registered.removedLeaderboardEntryIds
+    ].map(id => id.trim()).filter(Boolean))]
+      .filter(id => !upserts.has(id));
+    return {
+      ...registered,
+      leaderboardUpserts: [...upserts.values()],
+      removedLeaderboardEntryIds: removedEntryIds,
+      leaderboardTotalDelta:
+        Math.trunc(Number(disconnected.leaderboardTotalDelta) || 0)
+        + Math.trunc(Number(registered.leaderboardTotalDelta) || 0)
+    };
+  }
+
+  private requiresRegistrationReplacement(
+    status: OperatorRegistryStatusDto | null,
+    registryBaseUrl: string,
+    expectedRegistryScope: string
+  ): boolean {
+    const currentBaseUrl = status?.selection?.baseUrl?.trim() ?? '';
+    if (!status || !currentBaseUrl) {
+      return false;
+    }
+    const currentRegistryScope = (
+      status.selection?.registryScope
+      ?? status.selection?.registryIdentity?.registryScope
+      ?? ''
+    ).trim();
+    const targetDiffers = !sameRegistryUrl(currentBaseUrl, registryBaseUrl)
+      || Boolean(
+        expectedRegistryScope
+        && currentRegistryScope
+        && expectedRegistryScope !== currentRegistryScope
+      );
+    if (!targetDiffers) {
+      return false;
+    }
+    return status.enrollment !== null
+      || status.lifecycle === 'PENDING'
+      || status.lifecycle === 'REGISTERING'
+      || status.lifecycle === 'REGISTERED'
+      || status.lifecycle === 'ERROR';
   }
 
   async retry(): Promise<OperatorRegistryStatusDto | null> {
@@ -150,12 +254,69 @@ export class OperatorRegistryStore {
 
   async disconnect(): Promise<OperatorRegistryStatusDto | null> {
     this.ensureContextBound();
-    const status = await this.run('disconnect', () => this.service.disconnect());
-    if (status) {
+    const result = await this.run('disconnect', () => this.service.disconnect());
+    if (result) {
       this.inspectionRef.set(null);
-      this.leaderboard.invalidate();
+      this.measurementSyncRef.set(null);
+      this.leaderboard.applyMutation(result);
+      return result.status;
     }
-    return status;
+    return null;
+  }
+
+  async synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto | null> {
+    this.ensureContextBound();
+    const result = await this.run(
+      'synchronize-measurements',
+      () => this.service.synchronizeMeasurements()
+    );
+    if (result) {
+      this.measurementSyncRef.set(result);
+    }
+    return result;
+  }
+
+  measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    this.ensureContextBound();
+    return this.service.measurementReportPage(query, signal);
+  }
+
+  async requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto | null> {
+    this.ensureContextBound();
+    const result = await this.run(
+      'requeue-measurement-report',
+      () => this.service.requeueMeasurementReport(reportId)
+    );
+    if (!result) {
+      return null;
+    }
+    if (result.status === 'PENDING') {
+      this.measurementSyncRef.update(current => {
+        if (!current) {
+          return current;
+        }
+        const blocked = Math.max(0, current.blocked - 1);
+        return {
+          ...current,
+          state: blocked > 0 ? 'BLOCKED' : 'READY',
+          code: blocked > 0
+            ? current.code
+            : null,
+          message: blocked > 0
+            ? current.message
+            : 'operator.measurements.delivery.requeued.pending',
+          pending: current.pending + 1,
+          blocked
+        };
+      });
+    }
+    this.noticeRef.set('operator.measurements.delivery.requeued');
+    return result;
   }
 
   clearInspection(): void {
@@ -199,6 +360,7 @@ export class OperatorRegistryStore {
     this.requestGeneration += 1;
     this.statusRef.set(null);
     this.inspectionRef.set(null);
+    this.measurementSyncRef.set(null);
     this.busyActionRef.set(null);
     this.registryBaseUrlRef.set('');
     this.expectedRegistryScopeRef.set('');
@@ -206,7 +368,7 @@ export class OperatorRegistryStore {
     this.clearFeedback();
   }
 
-  private async run<T extends OperatorRegistryStatusDto | OperatorRegistryInspectionDto>(
+  private async run<T>(
     action: Exclude<OperatorRegistryBusyAction, null>,
     request: () => Promise<T>
   ): Promise<T | null> {
@@ -218,9 +380,14 @@ export class OperatorRegistryStore {
       if (requestGeneration !== this.requestGeneration) {
         return null;
       }
-      if (isStatus(result)) {
-        this.statusRef.set(result);
-        this.initializeCandidate(result);
+      const status = isMutationResult(result)
+        ? result.status
+        : isStatus(result)
+          ? result
+          : null;
+      if (status) {
+        this.statusRef.set(status);
+        this.initializeCandidate(status);
       }
       return result;
     } catch (error) {
@@ -286,14 +453,27 @@ export function operatorRegistryStoreContextKey(
     ? `demo:${session.userId.trim()}`
     : session?.kind === 'firebase'
       ? `firebase:${session.profile.id.trim()}`
+      : session?.kind === 'operator-bootstrap'
+        ? `operator-bootstrap:${session.email.trim()}`
       : 'none';
   return `${dataSource}:${sessionIdentity}`;
 }
 
-function isStatus(
-  value: OperatorRegistryStatusDto | OperatorRegistryInspectionDto
-): value is OperatorRegistryStatusDto {
-  return 'lifecycle' in value;
+function isStatus(value: unknown): value is OperatorRegistryStatusDto {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && 'lifecycle' in value
+  );
+}
+
+function isMutationResult(value: unknown): value is OperatorRegistryMutationResultDto {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && 'status' in value
+    && 'removedLeaderboardEntryIds' in value
+  );
 }
 
 function defaultMessageForAction(action: Exclude<OperatorRegistryBusyAction, null>): string {
@@ -310,6 +490,10 @@ function defaultMessageForAction(action: Exclude<OperatorRegistryBusyAction, nul
       return 'operator.registration.error.retry';
     case 'disconnect':
       return 'operator.registration.error.disconnect';
+    case 'synchronize-measurements':
+      return 'operator.measurements.error.synchronize';
+    case 'requeue-measurement-report':
+      return 'operator.measurements.error.requeue';
   }
 }
 

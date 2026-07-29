@@ -5,6 +5,9 @@ import { environment } from '../../../../../environments/environment';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,
+  OperatorClaimEligibilityStatus,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityAnnouncementDto,
@@ -12,20 +15,40 @@ import type {
   OperatorCommunityAnnouncementSeverity,
   OperatorCommunityAnnouncementStatus,
   OperatorCommunityAvailability,
+  OperatorCommunityProviderDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
   OperatorConfigurationSaveRequestDto,
   OperatorConfigurationTestRequestDto,
   OperatorConfigurationTestResultDto,
+  OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentClaimState,
+  OperatorLeaderboardDeploymentDto,
+  OperatorLeaderboardDeploymentMembershipState,
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup,
   OperatorLeaderboardGroupSummaryDto,
+  OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
+  OperatorLeaderboardSnapshotBoundaryDto,
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
   OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto,
+  OperatorSettlementDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryConfirmRequestDto,
   OperatorRegistryInspectRequestDto,
@@ -41,11 +64,14 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
 const OPERATOR_NETWORK_ROUTE = '/operator';
 const OPERATOR_ANNOUNCEMENTS_ROUTE = '/operator/announcements';
+const OPERATOR_COMMUNITY_PROVIDERS_ROUTE = '/operator/community/providers';
 const OPERATOR_UPDATES_ROUTE = '/operator/updates';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
+const OPERATOR_MEASUREMENTS_ROUTE = '/operator/measurements';
 const DEMO_OPERATOR_USER_HEADER = 'X-Demo-User-Id';
 const LEADERBOARD_VIEWS = ['founder', 'claimed', 'unclaimed'] as const;
+const ZERO_SHA256_HASH = `sha256:${'0'.repeat(64)}`;
 const UPDATE_POLL_INTERVAL_MS = 750;
 const UPDATE_POLL_LIMIT = 800;
 const UPDATE_TERMINAL_PHASES = new Set([
@@ -69,10 +95,33 @@ interface RemoteOperatorActionResult {
   receipt: RemoteOperatorActionReceipt;
 }
 
-type RemoteOperatorClaimStatus = Partial<OperatorClaimStatusDto>;
+type RemoteOperatorClaimStatus = Omit<
+  Partial<OperatorClaimStatusDto>,
+  'eligibilityStatus'
+> & {
+  eligibilityStatus?: string | null;
+};
+
+interface RemoteOperatorClaimOverview {
+  status: RemoteOperatorClaimStatus;
+  submission: OperatorClaimRequestDto | null;
+}
 
 interface RemoteOperatorLeaderboardSnapshot {
+  snapshotId: string;
+  formulaVersion: string;
+  rulesetVersion: string;
   throughPeriod: string;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  throughTransferEventIndex: number;
+  ledgerHeadHash: string;
+  auditHeadHash: string;
+  reviewHeadHash: string;
+  eligibilityHeadHash: string;
+  transferEventHeadHash: string;
   founderUnitsNumerator: string;
   founderUnitsDenominator: string;
   founderShareNumerator: string;
@@ -81,6 +130,8 @@ interface RemoteOperatorLeaderboardSnapshot {
   measuredWeightDenominator: string;
   claimedWeightNumerator: string;
   claimedWeightDenominator: string;
+  createdAt: string;
+  snapshotHash: string;
 }
 
 interface RemoteOperatorLeaderboardRow {
@@ -90,6 +141,7 @@ interface RemoteOperatorLeaderboardRow {
   label: string;
   avatarUrl: string | null;
   claimState: string;
+  eligibilityStatus: string;
   deploymentCount: number;
   weightNumerator: string;
   weightDenominator: string;
@@ -104,10 +156,57 @@ interface RemoteOperatorLeaderboardPage {
   nextCursor: string | null;
 }
 
+interface RemoteOperatorLeaderboardDeployment {
+  deploymentId: string;
+  groupId: string;
+  claimState: string;
+  eligibilityStatus: string;
+  membershipState: string;
+  weightNumerator: string;
+  weightDenominator: string;
+  shareNumerator: string;
+  shareDenominator: string;
+}
+
+interface RemoteOperatorLeaderboardDeploymentPage {
+  snapshot: RemoteOperatorLeaderboardSnapshot;
+  groupId: string;
+  items: RemoteOperatorLeaderboardDeployment[];
+  nextCursor: string | null;
+}
+
+interface RemoteOperatorRegistryMutationResult {
+  status: OperatorRegistryStatusDto;
+  leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+  removedLeaderboardEntryIds: string[];
+  leaderboardTotalDelta?: number | null;
+  created: boolean;
+}
+
+interface RemoteOperatorClaimMutationResult {
+  status: RemoteOperatorClaimStatus;
+  submission: OperatorClaimRequestDto | null;
+  leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+  removedLeaderboardEntryIds: string[];
+  leaderboardTotalDelta?: number | null;
+}
+
 interface OperatorLeaderboardCursorState {
   viewIndex: number;
   viewCursor: string | null;
   throughPeriod: string | null;
+  throughLedgerIndex: number | null;
+  throughAuditIndex: number | null;
+  throughReviewIndex: number | null;
+  throughEligibilityIndex: number | null;
+  throughTransferEventIndex: number | null;
+  ledgerHeadHash: string | null;
+  auditHeadHash: string | null;
+  reviewHeadHash: string | null;
+  eligibilityHeadHash: string | null;
+  transferEventHeadHash: string | null;
   emitted: number;
 }
 
@@ -172,6 +271,15 @@ interface RemoteOperatorAnnouncementPage {
   nextCursor: string | null;
 }
 
+interface RemoteOperatorCommunityProvider {
+  id: string;
+  name: string;
+  purpose: string;
+  url: string;
+  configured: boolean;
+  available: boolean;
+}
+
 interface RemoteOperatorUpdateJob {
   schemaVersion: number;
   jobId: string;
@@ -202,6 +310,33 @@ interface RemoteOperatorUpdatesStatus {
   enabled: boolean;
   currentVersion: string;
   latestJob: RemoteOperatorUpdateJob | null;
+}
+
+interface RemoteOperatorRevenueReportPage {
+  items: OperatorRevenueReportDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+type RemoteOperatorSettlement = {
+  [Key in keyof OperatorSettlementDto]?: unknown;
+};
+
+interface RemoteOperatorSettlementPage {
+  items: RemoteOperatorSettlement[];
+  nextAfterPeriod: string | null;
+  nextAfterSettlementId: string | null;
+  generatedAtIso: string;
+}
+
+interface RemoteOperatorMeasurementReportPage {
+  items: OperatorMeasurementReportDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 @Injectable({
@@ -258,21 +393,24 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+  async register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
     const payload: OperatorRegistryRegisterRequestDto = {
       registryBaseUrl: request.registryBaseUrl.trim(),
       ...(request.expectedRegistryScope?.trim()
         ? { expectedRegistryScope: request.expectedRegistryScope.trim() }
         : {})
     };
-    return await this.requireResponse(
+    const response = await this.requireResponse(
       `${OPERATOR_REGISTRY_ROUTE}/register`,
-      this.http.post<OperatorRegistryStatusDto>(
+      this.http.post<RemoteOperatorRegistryMutationResult>(
         `${this.endpoint}/register`,
         payload,
         this.requestOptions()
       ).toPromise()
     );
+    return this.toRegistryMutationResult(response);
   }
 
   async retry(): Promise<OperatorRegistryStatusDto> {
@@ -286,11 +424,79 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async disconnect(): Promise<OperatorRegistryStatusDto> {
-    return await this.requireResponse(
+  async disconnect(): Promise<OperatorRegistryMutationResultDto> {
+    const response = await this.requireResponse(
       `${OPERATOR_REGISTRY_ROUTE}/disconnect`,
-      this.http.post<OperatorRegistryStatusDto>(
+      this.http.post<RemoteOperatorRegistryMutationResult>(
         `${this.endpoint}/disconnect`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return this.toRegistryMutationResult(response);
+  }
+
+  async synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto> {
+    return await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/synchronize`,
+      this.http.post<OperatorMeasurementSyncDto>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/synchronize`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    this.throwIfAborted(signal);
+    const page = Math.max(0, Math.min(
+      1_000_000,
+      Math.trunc(Number(query.page) || 0)
+    ));
+    const size = Math.max(1, Math.min(
+      100,
+      Math.trunc(Number(query.pageSize) || 10)
+    ));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
+      this.http.get<RemoteOperatorMeasurementReportPage>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (Math.trunc(Number(result.page)) !== page) {
+      throw new Error('operator.measurements.reports.response.invalid');
+    }
+    return {
+      items: result.items ?? [],
+      total: Math.max(0, Math.trunc(Number(result.totalElements) || 0))
+    };
+  }
+
+  async requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto> {
+    const normalizedReportId = reportId.trim();
+    if (!/^[0-9a-f]{24}$/.test(normalizedReportId)) {
+      throw new Error('operator.measurements.report.id.invalid');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/reports/${normalizedReportId}/requeue`,
+      this.http.post<OperatorMeasurementReportDto>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports/${
+          encodeURIComponent(normalizedReportId)
+        }/requeue`,
         null,
         this.requestOptions()
       ).toPromise()
@@ -309,6 +515,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     let viewCursor = state.viewCursor;
     let throughPeriod = state.throughPeriod;
     let snapshot: RemoteOperatorLeaderboardSnapshot | null = null;
+    let snapshotBoundary = this.cursorSnapshotBoundary(state);
     let requestCount = 0;
 
     while (items.length < pageSize && viewIndex < LEADERBOARD_VIEWS.length) {
@@ -338,8 +545,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       if (remote.view !== view) {
         throw new Error('operator.leaderboard.error.response');
       }
+      const remoteBoundary = this.toSnapshotBoundary(remote.snapshot);
+      if (
+        snapshotBoundary
+        && !this.sameSnapshotBoundary(snapshotBoundary, remoteBoundary)
+      ) {
+        throw new Error('operator.leaderboard.error.snapshot.changed');
+      }
+      snapshotBoundary ??= remoteBoundary;
       snapshot ??= remote.snapshot;
-      throughPeriod ??= remote.snapshot.throughPeriod;
+      throughPeriod ??= remoteBoundary.throughPeriod;
       items.push(...remote.items.map(row => this.toLeaderboardEntry(row)));
 
       if (remote.nextCursor) {
@@ -359,6 +574,19 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
           viewIndex,
           viewCursor,
           throughPeriod,
+          throughLedgerIndex: snapshotBoundary?.throughLedgerIndex ?? null,
+          throughAuditIndex: snapshotBoundary?.throughAuditIndex ?? null,
+          throughReviewIndex: snapshotBoundary?.throughReviewIndex ?? null,
+          throughEligibilityIndex:
+            snapshotBoundary?.throughEligibilityIndex ?? null,
+          throughTransferEventIndex:
+            snapshotBoundary?.throughTransferEventIndex ?? null,
+          ledgerHeadHash: snapshotBoundary?.ledgerHeadHash ?? null,
+          auditHeadHash: snapshotBoundary?.auditHeadHash ?? null,
+          reviewHeadHash: snapshotBoundary?.reviewHeadHash ?? null,
+          eligibilityHeadHash: snapshotBoundary?.eligibilityHeadHash ?? null,
+          transferEventHeadHash:
+            snapshotBoundary?.transferEventHeadHash ?? null,
           emitted
         })
       : null;
@@ -367,26 +595,86 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       total: emitted + (nextCursor ? 1 : 0),
       nextCursor,
       context: {
+        snapshotBoundary,
         groupSummaries: this.toLeaderboardSummaries(snapshot, items)
       }
     };
   }
 
-  async loadClaimStatus(): Promise<OperatorClaimStatusDto> {
+  async leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    this.throwIfAborted(signal);
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.group.invalid'
+      );
+    }
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 20))
+    );
+    let params = new HttpParams().set('limit', pageSize);
+    const cursor = query.cursor?.trim() ?? '';
+    if (cursor) {
+      params = params.set('cursor', cursor);
+    }
+    const route = `${
+      OPERATOR_NETWORK_ROUTE
+    }/leaderboard/groups/${encodeURIComponent(normalizedGroupId)}/deployments`;
+    const remote = await this.requireResponse(
+      route,
+      this.http.get<RemoteOperatorLeaderboardDeploymentPage>(
+        `${this.apiBaseUrl}${route}`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (remote.groupId?.trim() !== normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.response'
+      );
+    }
+    const items = (remote.items ?? []).map(item =>
+      this.toLeaderboardDeployment(item, normalizedGroupId)
+    );
+    const snapshotBoundary = this.toSnapshotBoundary(remote.snapshot);
+    const nextCursor = remote.nextCursor?.trim() || null;
+    const pageOffset = Math.max(
+      0,
+      Math.trunc(Number(query.page) || 0)
+    ) * pageSize;
+    return {
+      items,
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: snapshotBoundary
+    };
+  }
+
+  async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
-      this.http.get<RemoteOperatorClaimStatus>(
+      this.http.get<RemoteOperatorClaimOverview>(
         `${this.operatorEndpoint}/claim`,
         this.requestOptions()
       ).toPromise()
     );
-    const status = this.toClaimStatus(remote);
+    const status = this.toClaimStatus(remote.status);
     this.claimVerificationAvailable =
       status.verificationCapability === 'AVAILABLE';
-    return status;
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission)
+    };
   }
 
-  async claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  async claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
     if (this.claimVerificationAvailable === null) {
       await this.loadClaimStatus();
     }
@@ -396,16 +684,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     const payload = this.requireClaimVerificationRequest(request);
     const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
-      this.http.post<RemoteOperatorClaimStatus>(
+      this.http.post<RemoteOperatorClaimMutationResult>(
         `${this.operatorEndpoint}/claim`,
         payload,
         this.requestOptions()
       ).toPromise()
     );
-    const status = this.toClaimStatus(remote);
+    const status = this.toClaimStatus(remote.status);
     this.claimVerificationAvailable =
       status.verificationCapability === 'AVAILABLE';
-    return status;
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission),
+      ...this.toLeaderboardMutation(remote)
+    };
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
@@ -430,10 +722,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
 
   async linkOperatorGroup(
     request: OperatorGroupLinkRequestDto
-  ): Promise<OperatorClaimStatusDto> {
-    await this.requireResponse(
+  ): Promise<OperatorClaimMutationResultDto> {
+    const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim/redeem`,
-      this.http.post<RemoteOperatorActionResult>(
+      this.http.post<RemoteOperatorClaimMutationResult>(
         `${this.operatorEndpoint}/claim/redeem`,
         {
           clientToken: request.clientToken.trim()
@@ -441,7 +733,14 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         this.requestOptions()
       ).toPromise()
     );
-    return this.loadClaimStatus();
+    const status = this.toClaimStatus(remote.status);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission),
+      ...this.toLeaderboardMutation(remote)
+    };
   }
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
@@ -551,11 +850,55 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   async testConfiguration(
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto> {
+    const destinationToken = request.destinationToken?.trim() ?? '';
+    const browserReadinessToken =
+      request.browserReadinessToken?.trim() ?? '';
+    const browserAppId = request.browserAppId?.trim() ?? '';
+    if (destinationToken.length > 4096) {
+      throw new Error('operator.configuration.test.messaging.destination.too.long');
+    }
+    if (
+      browserReadinessToken.length > 4096
+      || browserAppId.length > 256
+    ) {
+      throw new Error('operator.configuration.test.failed');
+    }
+    const payload: OperatorConfigurationTestRequestDto = {
+      kind: request.kind,
+      ...(request.kind === 'FIREBASE_MESSAGING' && destinationToken
+        ? { destinationToken }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING' && browserReadinessToken
+        ? { browserReadinessToken }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING'
+        && Number.isSafeInteger(request.browserConfigurationRevision)
+        && (request.browserConfigurationRevision ?? -1) >= 0
+        ? {
+            browserConfigurationRevision:
+              request.browserConfigurationRevision
+          }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING' && browserAppId
+        ? { browserAppId }
+        : {})
+    };
     return await this.requireResponse(
       `${OPERATOR_CONFIGURATION_ROUTE}/tests`,
       this.http.post<OperatorConfigurationTestResultDto>(
         `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/tests`,
-        request,
+        payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async activateFirebase(): Promise<OperatorConfigurationDto> {
+    return await this.requireResponse(
+      `${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
+      this.http.post<OperatorConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
+        null,
         this.requestOptions()
       ).toPromise()
     );
@@ -571,18 +914,171 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
+  async synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
+    return await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/synchronize`,
+      this.http.post<OperatorRevenueSyncDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/synchronize`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    this.throwIfAborted(signal);
+    const page = Math.max(0, Math.min(
+      1_000_000,
+      Math.trunc(Number(query.page) || 0)
+    ));
+    const size = Math.max(1, Math.min(
+      100,
+      Math.trunc(Number(query.pageSize) || 10)
+    ));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/reports`,
+      this.http.get<RemoteOperatorRevenueReportPage>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (Math.trunc(Number(result.page)) !== page) {
+      throw new Error('operator.revenue.delivery.reports.response.invalid');
+    }
+    return {
+      items: result.items ?? [],
+      total: Math.max(0, Math.trunc(Number(result.totalElements) || 0))
+    };
+  }
+
+  async requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto> {
+    const normalizedReportId = reportId.trim();
+    if (!/^[0-9a-f]{24}$/.test(normalizedReportId)) {
+      throw new Error('operator.revenue.delivery.report.id.invalid');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/reports/${normalizedReportId}/requeue`,
+      this.http.post<OperatorRevenueReportDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports/${
+          encodeURIComponent(normalizedReportId)
+        }/requeue`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    this.throwIfAborted(signal);
+    const limit = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
+    );
+    const currencyCode =
+      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
+    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
+    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
+    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+      throw new Error('operator.revenue.settlement.currency.invalid');
+    }
+    if (
+      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
+      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
+      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
+    ) {
+      throw new Error('operator.revenue.settlement.period.invalid');
+    }
+    const cursor = this.decodeSettlementCursor(query.cursor);
+    let params = new HttpParams()
+      .set('includeSuperseded', Boolean(
+        query.filters?.includeSuperseded
+      ))
+      .set('limit', limit);
+    if (currencyCode) {
+      params = params.set('currencyCode', currencyCode);
+    }
+    if (fromPeriod) {
+      params = params.set('fromPeriod', fromPeriod);
+    }
+    if (throughPeriod) {
+      params = params.set('throughPeriod', throughPeriod);
+    }
+    if (cursor) {
+      params = params
+        .set('afterPeriod', cursor.afterPeriod)
+        .set('afterSettlementId', cursor.afterSettlementId);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/settlements`,
+      this.http.get<RemoteOperatorSettlementPage>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/settlements`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (!Array.isArray(result.items)) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    const generatedAtIso =
+      this.settlementText(result.generatedAtIso);
+    if (!this.validIsoTimestamp(generatedAtIso)) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    const nextAfterPeriod =
+      this.settlementText(result.nextAfterPeriod);
+    const nextAfterSettlementId =
+      this.settlementText(result.nextAfterSettlementId);
+    if (Boolean(nextAfterPeriod) !== Boolean(nextAfterSettlementId)) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    const nextCursor = nextAfterPeriod
+      ? this.encodeSettlementCursor(
+          nextAfterPeriod,
+          nextAfterSettlementId
+        )
+      : null;
+    const items = result.items.map(item =>
+      this.toSettlement(item)
+    );
+    const pageOffset =
+      Math.max(0, Math.trunc(Number(query.page) || 0)) * limit;
+    return {
+      items,
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: { generatedAtIso }
+    };
+  }
+
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
-    const page = await this.loadAnnouncements({
-      includeExpired: false,
-      limit: 100
-    });
+    const [providers, page] = await Promise.all([
+      this.loadCommunityProviders(),
+      this.loadAnnouncements({
+        includeExpired: false,
+        limit: 100
+      })
+    ]);
     return {
       availability: 'INVISIBLE',
       updatedAt:
         page.snapshot.asOf?.trim()
         || page.snapshot.createdAt?.trim()
         || null,
-      providers: [],
+      providers,
       announcements: [...page.items]
         .sort((left, right) => Number(right.sequence) - Number(left.sequence))
         .map(item => this.toCommunityAnnouncement(item))
@@ -593,6 +1089,17 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     _availability: OperatorCommunityAvailability
   ): Promise<OperatorCommunityStatusDto> {
     return this.unsupported('community availability');
+  }
+
+  private async loadCommunityProviders(): Promise<OperatorCommunityProviderDto[]> {
+    const providers = await this.requireResponse(
+      OPERATOR_COMMUNITY_PROVIDERS_ROUTE,
+      this.http.get<RemoteOperatorCommunityProvider[]>(
+        `${this.apiBaseUrl}${OPERATOR_COMMUNITY_PROVIDERS_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return providers.map(provider => this.toCommunityProvider(provider));
   }
 
   private async loadAnnouncements(filters: {
@@ -766,6 +1273,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       && manifest.packageSignatureVerified === true;
   }
 
+  private toCommunityProvider(
+    provider: RemoteOperatorCommunityProvider
+  ): OperatorCommunityProviderDto {
+    const url = this.safeHttpsUrl(provider.url) ?? '';
+    return {
+      id: `${provider.id ?? ''}`.trim(),
+      name: `${provider.name ?? ''}`.trim(),
+      purpose: `${provider.purpose ?? ''}`.trim(),
+      url,
+      configured: provider.configured === true,
+      available: provider.available === true && Boolean(url)
+    };
+  }
+
   private toCommunityAnnouncement(
     announcement: RemoteOperatorAnnouncement
   ): OperatorCommunityAnnouncementDto {
@@ -932,7 +1453,44 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         : 'operator.claim.verification.backend.unavailable',
       verificationStatus,
       verificationSubmittedAt: remote.verificationSubmittedAt?.trim() || null,
-      legalName: remote.legalName?.trim() || remote.claimantName?.trim() || null
+      legalName: remote.legalName?.trim() || remote.claimantName?.trim() || null,
+      eligibilityStatus: this.claimEligibilityStatus(
+        remote.eligibilityStatus
+      )
+    };
+  }
+
+  private claimEligibilityStatus(
+    value: string | null | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (`${value ?? ''}`.trim().toLowerCase()) {
+      case 'active':
+        return 'ACTIVE';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'inactive':
+        return 'INACTIVE';
+      default:
+        return 'INACTIVE';
+    }
+  }
+
+  private toClaimSubmission(
+    remote: OperatorClaimRequestDto | null | undefined
+  ): OperatorClaimRequestDto | null {
+    if (!remote) {
+      return null;
+    }
+    return {
+      legalName: `${remote.legalName ?? ''}`,
+      registrationNumber: `${remote.registrationNumber ?? ''}`,
+      jurisdiction: `${remote.jurisdiction ?? ''}`,
+      registeredAddress: `${remote.registeredAddress ?? ''}`,
+      website: `${remote.website ?? ''}`,
+      verificationContactName: `${remote.verificationContactName ?? ''}`,
+      verificationContactRole: `${remote.verificationContactRole ?? ''}`,
+      verificationContactEmail: `${remote.verificationContactEmail ?? ''}`,
+      authorityAttested: remote.authorityAttested === true
     };
   }
 
@@ -953,11 +1511,19 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     };
     if (
       !payload.legalName
+      || payload.legalName.length > 160
       || !payload.registrationNumber
+      || payload.registrationNumber.length > 80
       || !payload.jurisdiction
+      || payload.jurisdiction.length > 80
       || !payload.registeredAddress
+      || payload.registeredAddress.length > 500
+      || !payload.website
       || !payload.verificationContactName
+      || payload.verificationContactName.length > 120
       || !payload.verificationContactRole
+      || payload.verificationContactRole.length > 120
+      || payload.verificationContactEmail.length > 254
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
       || !payload.authorityAttested
     ) {
@@ -966,13 +1532,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return payload;
   }
 
-  private publicWebsite(value: string | null | undefined): string | null {
+  private publicWebsite(value: string | null | undefined): string {
     const source = `${value ?? ''}`.trim();
-    if (!source) {
-      return null;
+    if (!source || source.length > 2048) {
+      throw new Error('operator.claim.verification.error.website');
     }
     try {
       const url = new URL(source);
+      if (url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
       if (
         url.protocol === 'https:'
         && !url.username
@@ -1026,20 +1595,194 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       : row.view === 'claimed'
         ? 'CLAIMED'
         : 'UNCLAIMED';
+    const claimVerificationStatus =
+      row.claimState?.trim().toLowerCase() === 'pending-review'
+        ? 'PENDING_REVIEW'
+        : row.claimState?.trim().toLowerCase() === 'rejected'
+          ? 'REJECTED'
+          : group === 'CLAIMED'
+            ? 'APPROVED'
+            : null;
+    const eligibilityStatus = this.leaderboardEligibilityStatus(
+      row.eligibilityStatus,
+      group
+    );
+    const reportedShare =
+      this.rational(row.shareNumerator, row.shareDenominator) * 100;
     return {
       id: row.rowId,
       nodeId: group === 'UNCLAIMED' ? row.rowId : null,
       label: row.label,
       group,
       verifiedWeight: this.rational(row.weightNumerator, row.weightDenominator),
-      sharePercent: this.rational(row.shareNumerator, row.shareDenominator) * 100,
+      sharePercent:
+        claimVerificationStatus !== 'PENDING_REVIEW'
+        && (
+          eligibilityStatus === 'SUSPENDED'
+          || eligibilityStatus === 'INACTIVE'
+        )
+          ? 0
+          : reportedShare,
       claimed: group !== 'UNCLAIMED',
       claimantUserId: null,
       claimantName: group === 'CLAIMED' ? row.label : null,
       claimantAvatarUrl: row.avatarUrl?.trim() || null,
       operatorGroupId: row.groupId?.trim() || null,
-      deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0))
+      deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0)),
+      eligibilityStatus,
+      claimVerificationStatus
     };
+  }
+
+  private toLeaderboardDeployment(
+    row: RemoteOperatorLeaderboardDeployment,
+    expectedGroupId: string
+  ): OperatorLeaderboardDeploymentDto {
+    const claimState = this.leaderboardDeploymentClaimState(row.claimState);
+    const eligibilityStatus = this.deploymentEligibilityStatus(
+      row.eligibilityStatus
+    );
+    const reportedShare =
+      this.rational(row.shareNumerator, row.shareDenominator) * 100;
+    return {
+      deploymentId: row.deploymentId?.trim() || '',
+      groupId: row.groupId?.trim() || expectedGroupId,
+      claimState,
+      eligibilityStatus,
+      membershipState: this.leaderboardDeploymentMembershipState(
+        row.membershipState
+      ),
+      verifiedWeight: this.rational(
+        row.weightNumerator,
+        row.weightDenominator
+      ),
+      sharePercent:
+        claimState !== 'pending-review'
+        && eligibilityStatus !== 'ACTIVE'
+          ? 0
+          : reportedShare
+    };
+  }
+
+  private leaderboardDeploymentClaimState(
+    value: string
+  ): OperatorLeaderboardDeploymentClaimState {
+    switch (value?.trim().toLowerCase()) {
+      case 'pending-review':
+        return 'pending-review';
+      case 'approved':
+        return 'approved';
+      case 'rejected':
+        return 'rejected';
+      case 'withdrawn':
+        return 'withdrawn';
+      case 'claimed':
+      default:
+        return 'claimed';
+    }
+  }
+
+  private leaderboardDeploymentMembershipState(
+    value: string
+  ): OperatorLeaderboardDeploymentMembershipState {
+    return value?.trim().toLowerCase() === 'owner'
+      ? 'owner'
+      : 'linked';
+  }
+
+  private leaderboardEligibilityStatus(
+    value: string | null | undefined,
+    group: OperatorLeaderboardGroup
+  ): OperatorClaimEligibilityStatus {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'active') {
+      return 'ACTIVE';
+    }
+    if (normalized === 'suspended') {
+      return 'SUSPENDED';
+    }
+    if (normalized === 'partially-suspended') {
+      return 'PARTIALLY_SUSPENDED';
+    }
+    if (normalized === 'inactive') {
+      return 'INACTIVE';
+    }
+    if (group === 'UNCLAIMED') {
+      return 'INACTIVE';
+    }
+    if (group === 'CLAIMED') {
+      return 'INACTIVE';
+    }
+    throw new Error('operator.leaderboard.error.eligibility.invalid');
+  }
+
+  private deploymentEligibilityStatus(
+    value: string | null | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (`${value ?? ''}`.trim().toLowerCase()) {
+      case 'active':
+        return 'ACTIVE';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'inactive':
+        return 'INACTIVE';
+      default:
+        return 'INACTIVE';
+    }
+  }
+
+  private toRegistryMutationResult(
+    result: RemoteOperatorRegistryMutationResult
+  ): OperatorRegistryMutationResultDto {
+    return {
+      status: result.status,
+      ...this.toLeaderboardMutation(result),
+      created: result.created === true
+    };
+  }
+
+  private toLeaderboardMutation(
+    result: {
+      leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+      leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+      removedLeaderboardEntryIds: string[];
+      leaderboardTotalDelta?: number | null;
+    }
+  ): OperatorLeaderboardMutationDto {
+    const leaderboardEntry = result.leaderboardEntry
+      ? this.toLeaderboardEntry(result.leaderboardEntry)
+      : null;
+    const upsertsById = new Map<string, OperatorLeaderboardEntryDto>();
+    for (const row of result.leaderboardUpserts ?? (
+      result.leaderboardEntry ? [result.leaderboardEntry] : []
+    )) {
+      const entry = this.toLeaderboardEntry(row);
+      const id = entry.id.trim();
+      if (id) {
+        upsertsById.set(id, entry);
+      }
+    }
+    const totalDelta = Number(result.leaderboardTotalDelta);
+    return {
+      leaderboardEntry,
+      leaderboardUpserts: [...upsertsById.values()],
+      removedLeaderboardEntryIds: this.normalizedEntryIds(
+        result.removedLeaderboardEntryIds
+      ),
+      leaderboardTotalDelta: Number.isFinite(totalDelta)
+        ? Math.trunc(totalDelta)
+        : 0
+    };
+  }
+
+  private normalizedEntryIds(
+    source: readonly string[] | null | undefined
+  ): string[] {
+    return [...new Set(
+      (source ?? [])
+        .map(id => `${id ?? ''}`.trim())
+        .filter(Boolean)
+    )];
   }
 
   private toLeaderboardSummaries(
@@ -1103,6 +1846,107 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return top / bottom;
   }
 
+  private toSnapshotBoundary(
+    snapshot: RemoteOperatorLeaderboardSnapshot
+  ): OperatorLeaderboardSnapshotBoundaryDto {
+    if (!snapshot) {
+      throw new Error('operator.leaderboard.error.snapshot.invalid');
+    }
+    const boundary: OperatorLeaderboardSnapshotBoundaryDto = {
+      throughPeriod: `${snapshot.throughPeriod ?? ''}`.trim(),
+      throughLedgerIndex: Number(snapshot.throughLedgerIndex),
+      throughAuditIndex: Number(snapshot.throughAuditIndex),
+      throughReviewIndex: Number(snapshot.throughReviewIndex),
+      throughEligibilityIndex: Number(snapshot.throughEligibilityIndex),
+      throughTransferEventIndex:
+        Number(snapshot.throughTransferEventIndex),
+      ledgerHeadHash: `${snapshot.ledgerHeadHash ?? ''}`.trim(),
+      auditHeadHash: `${snapshot.auditHeadHash ?? ''}`.trim(),
+      reviewHeadHash: `${snapshot.reviewHeadHash ?? ''}`.trim(),
+      eligibilityHeadHash: `${snapshot.eligibilityHeadHash ?? ''}`.trim(),
+      transferEventHeadHash:
+        `${snapshot.transferEventHeadHash ?? ''}`.trim()
+    };
+    if (
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(boundary.throughPeriod)
+      || !this.validSnapshotIndex(boundary.throughLedgerIndex)
+      || !this.validSnapshotIndex(boundary.throughAuditIndex)
+      || !this.validSnapshotIndex(boundary.throughReviewIndex)
+      || !this.validSnapshotIndex(boundary.throughEligibilityIndex)
+      || !this.validSnapshotIndex(boundary.throughTransferEventIndex)
+      || !this.validSnapshotHash(boundary.ledgerHeadHash)
+      || !this.validSnapshotHash(boundary.auditHeadHash)
+      || !this.validSnapshotHash(boundary.reviewHeadHash)
+      || !this.validSnapshotHash(boundary.eligibilityHeadHash)
+      || !this.validSnapshotHash(boundary.transferEventHeadHash)
+    ) {
+      throw new Error('operator.leaderboard.error.snapshot.invalid');
+    }
+    return boundary;
+  }
+
+  private cursorSnapshotBoundary(
+    state: OperatorLeaderboardCursorState
+  ): OperatorLeaderboardSnapshotBoundaryDto | null {
+    const values = [
+      state.throughPeriod,
+      state.throughLedgerIndex,
+      state.throughAuditIndex,
+      state.throughReviewIndex,
+      state.throughEligibilityIndex,
+      state.throughTransferEventIndex,
+      state.ledgerHeadHash,
+      state.auditHeadHash,
+      state.reviewHeadHash,
+      state.eligibilityHeadHash,
+      state.transferEventHeadHash
+    ];
+    if (values.every(value => value === null)) {
+      return null;
+    }
+    if (values.some(value => value === null)) {
+      throw new Error('operator.leaderboard.error.cursor.invalid');
+    }
+    return this.toSnapshotBoundary({
+      throughPeriod: state.throughPeriod!,
+      throughLedgerIndex: state.throughLedgerIndex!,
+      throughAuditIndex: state.throughAuditIndex!,
+      throughReviewIndex: state.throughReviewIndex!,
+      throughEligibilityIndex: state.throughEligibilityIndex!,
+      throughTransferEventIndex: state.throughTransferEventIndex!,
+      ledgerHeadHash: state.ledgerHeadHash!,
+      auditHeadHash: state.auditHeadHash!,
+      reviewHeadHash: state.reviewHeadHash!,
+      eligibilityHeadHash: state.eligibilityHeadHash!,
+      transferEventHeadHash: state.transferEventHeadHash!
+    } as RemoteOperatorLeaderboardSnapshot);
+  }
+
+  private sameSnapshotBoundary(
+    left: OperatorLeaderboardSnapshotBoundaryDto,
+    right: OperatorLeaderboardSnapshotBoundaryDto
+  ): boolean {
+    return left.throughPeriod === right.throughPeriod
+      && left.throughLedgerIndex === right.throughLedgerIndex
+      && left.throughAuditIndex === right.throughAuditIndex
+      && left.throughReviewIndex === right.throughReviewIndex
+      && left.throughEligibilityIndex === right.throughEligibilityIndex
+      && left.throughTransferEventIndex === right.throughTransferEventIndex
+      && left.ledgerHeadHash === right.ledgerHeadHash
+      && left.auditHeadHash === right.auditHeadHash
+      && left.reviewHeadHash === right.reviewHeadHash
+      && left.eligibilityHeadHash === right.eligibilityHeadHash
+      && left.transferEventHeadHash === right.transferEventHeadHash;
+  }
+
+  private validSnapshotIndex(value: number): boolean {
+    return Number.isSafeInteger(value) && value >= 0;
+  }
+
+  private validSnapshotHash(value: string): boolean {
+    return /^sha256:[0-9a-f]{64}$/.test(value);
+  }
+
   private encodeLeaderboardCursor(state: OperatorLeaderboardCursorState): string {
     return `operator-http:${encodeURIComponent(JSON.stringify(state))}`;
   }
@@ -1116,6 +1960,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         viewIndex: 0,
         viewCursor: null,
         throughPeriod: null,
+        throughLedgerIndex: null,
+        throughAuditIndex: null,
+        throughReviewIndex: null,
+        throughEligibilityIndex: null,
+        throughTransferEventIndex: null,
+        ledgerHeadHash: null,
+        auditHeadHash: null,
+        reviewHeadHash: null,
+        eligibilityHeadHash: null,
+        transferEventHeadHash: null,
         emitted: 0
       };
     }
@@ -1135,19 +1989,487 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       ) {
         throw new Error();
       }
+      const throughPeriod = typeof parsed.throughPeriod === 'string'
+        ? parsed.throughPeriod
+        : null;
+      const throughLedgerIndex = this.cursorIndex(parsed.throughLedgerIndex);
+      const throughAuditIndex = this.cursorIndex(parsed.throughAuditIndex);
+      const throughReviewIndex = this.cursorIndex(parsed.throughReviewIndex);
+      const throughEligibilityIndex = this.cursorIndex(
+        parsed.throughEligibilityIndex
+      );
+      const ledgerHeadHash = this.cursorHash(parsed.ledgerHeadHash);
+      const auditHeadHash = this.cursorHash(parsed.auditHeadHash);
+      const reviewHeadHash = this.cursorHash(parsed.reviewHeadHash);
+      const eligibilityHeadHash = this.cursorHash(parsed.eligibilityHeadHash);
+      const hasTransferIndex = Object.prototype.hasOwnProperty.call(
+        parsed,
+        'throughTransferEventIndex'
+      );
+      const hasTransferHash = Object.prototype.hasOwnProperty.call(
+        parsed,
+        'transferEventHeadHash'
+      );
+      const completeLegacyBoundary = [
+        throughPeriod,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex,
+        ledgerHeadHash,
+        auditHeadHash,
+        reviewHeadHash,
+        eligibilityHeadHash
+      ].every(entry => entry !== null);
+      const throughTransferEventIndex =
+        !hasTransferIndex && !hasTransferHash && completeLegacyBoundary
+          ? 0
+          : this.cursorIndex(parsed.throughTransferEventIndex);
+      const transferEventHeadHash =
+        !hasTransferIndex && !hasTransferHash && completeLegacyBoundary
+          ? ZERO_SHA256_HASH
+          : this.cursorHash(parsed.transferEventHeadHash);
       return {
         viewIndex,
         viewCursor: typeof parsed.viewCursor === 'string'
           ? parsed.viewCursor
           : null,
-        throughPeriod: typeof parsed.throughPeriod === 'string'
-          ? parsed.throughPeriod
-          : null,
+        throughPeriod,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex,
+        throughTransferEventIndex,
+        ledgerHeadHash,
+        auditHeadHash,
+        reviewHeadHash,
+        eligibilityHeadHash,
+        transferEventHeadHash,
         emitted
       };
     } catch {
       throw new Error('operator.leaderboard.error.cursor.invalid');
     }
+  }
+
+  private cursorIndex(value: unknown): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const normalized = Number(value);
+    if (!this.validSnapshotIndex(normalized)) {
+      throw new Error();
+    }
+    return normalized;
+  }
+
+  private cursorHash(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const normalized = `${value}`.trim();
+    if (!this.validSnapshotHash(normalized)) {
+      throw new Error();
+    }
+    return normalized;
+  }
+
+  private toSettlement(
+    source: RemoteOperatorSettlement
+  ): OperatorSettlementDto {
+    const settlementId = this.settlementText(source.settlementId);
+    const period = this.settlementText(source.period);
+    const currencyCode =
+      this.settlementText(source.currencyCode).toUpperCase();
+    const revision = this.settlementInteger(source.revision);
+    const supersedesSettlementId =
+      this.settlementText(source.supersedesSettlementId) || null;
+    const beneficiaryType =
+      this.settlementText(source.beneficiaryType);
+    const beneficiaryId = this.settlementText(source.beneficiaryId);
+    const shareNumerator = this.settlementText(source.shareNumerator);
+    const shareDenominator = this.settlementText(source.shareDenominator);
+    const fractionDigits = this.settlementInteger(source.fractionDigits);
+    const networkPoolMinor =
+      this.settlementInteger(source.networkPoolMinor);
+    const networkPoolAllocationMinor =
+      this.settlementInteger(source.networkPoolAllocationMinor);
+    const ttmCommissionBasisMinor =
+      this.settlementInteger(source.ttmCommissionBasisMinor);
+    const ttmNetworkCommissionPoolMinor =
+      this.settlementInteger(source.ttmNetworkCommissionPoolMinor);
+    const indicativeNetworkValueMinor =
+      this.settlementInteger(source.indicativeNetworkValueMinor);
+    const indicativeValueAllocationMinor =
+      this.settlementInteger(source.indicativeValueAllocationMinor);
+    const baseValuationMultiplierBasisPoints =
+      this.settlementInteger(source.baseValuationMultiplierBasisPoints);
+    const recentThreeMonthAverageMinor =
+      this.settlementInteger(source.recentThreeMonthAverageMinor);
+    const priorThreeMonthAverageMinor =
+      this.settlementInteger(source.priorThreeMonthAverageMinor);
+    const earlierThreeMonthAverageMinor =
+      this.settlementInteger(source.earlierThreeMonthAverageMinor);
+    const recentGrowthBasisPoints =
+      this.settlementInteger(source.recentGrowthBasisPoints);
+    const priorGrowthBasisPoints =
+      this.settlementInteger(source.priorGrowthBasisPoints);
+    const accelerationBasisPoints =
+      this.settlementInteger(source.accelerationBasisPoints);
+    const valuationAdjustmentBasisPoints =
+      this.settlementInteger(source.valuationAdjustmentBasisPoints);
+    const effectiveValuationMultiplierBasisPoints =
+      this.settlementInteger(source.effectiveValuationMultiplierBasisPoints);
+    const throughLedgerIndex =
+      this.settlementInteger(source.throughLedgerIndex);
+    const throughAuditIndex =
+      this.settlementInteger(source.throughAuditIndex);
+    const throughReviewIndex =
+      this.settlementInteger(source.throughReviewIndex);
+    const throughEligibilityIndex =
+      this.settlementInteger(source.throughEligibilityIndex);
+    const valuationRulesetVersion =
+      this.settlementText(source.valuationRulesetVersion);
+    const sourceFingerprint =
+      this.settlementText(source.sourceFingerprint);
+    const settlementHash = this.settlementText(source.settlementHash);
+    const acceptedAtIso = this.settlementText(source.acceptedAtIso);
+    if (
+      !/^stl_[0-9a-f]{32}$/.test(settlementId)
+      || !this.validSettlementPeriod(period)
+      || !/^[A-Z]{3}$/.test(currencyCode)
+      || ![
+        fractionDigits,
+        revision,
+        networkPoolMinor,
+        networkPoolAllocationMinor,
+        ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        indicativeValueAllocationMinor,
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex
+      ].every(value => Number.isSafeInteger(value))
+      || fractionDigits < 0
+      || fractionDigits > 6
+      || revision < 1
+      || (
+        revision === 1
+          ? supersedesSettlementId !== null
+          : !supersedesSettlementId
+            || !/^stl_[0-9a-f]{32}$/.test(supersedesSettlementId)
+      )
+      || beneficiaryType !== 'OPERATOR_GROUP'
+      || !/^opg_[0-9a-f]{32}$/.test(beneficiaryId)
+      || !this.validSettlementShare(
+        shareNumerator,
+        shareDenominator
+      )
+      || networkPoolMinor < 0
+      || networkPoolAllocationMinor < 0
+      || networkPoolAllocationMinor > networkPoolMinor
+      || ttmCommissionBasisMinor < 0
+      || ttmNetworkCommissionPoolMinor < 0
+      || indicativeNetworkValueMinor < 0
+      || indicativeValueAllocationMinor < 0
+      || indicativeValueAllocationMinor > indicativeNetworkValueMinor
+      || valuationRulesetVersion
+        !== 'three-month-acceleration-valuation-v1'
+      || baseValuationMultiplierBasisPoints <= 0
+      || recentThreeMonthAverageMinor < 0
+      || priorThreeMonthAverageMinor < 0
+      || earlierThreeMonthAverageMinor < 0
+      || !this.settlementWithin(
+        recentGrowthBasisPoints,
+        -10_000,
+        20_000
+      )
+      || !this.settlementWithin(
+        priorGrowthBasisPoints,
+        -10_000,
+        20_000
+      )
+      || !this.settlementWithin(
+        accelerationBasisPoints,
+        -10_000,
+        10_000
+      )
+      || !this.settlementWithin(
+        valuationAdjustmentBasisPoints,
+        -2_500,
+        2_500
+      )
+      || effectiveValuationMultiplierBasisPoints <= 0
+      || !this.validSettlementDerivation({
+        ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints
+      })
+      || source.valuationIsNonBinding !== true
+      || throughLedgerIndex <= 0
+      || throughAuditIndex < 0
+      || throughReviewIndex < 0
+      || throughEligibilityIndex < 0
+      || !this.validSnapshotHash(sourceFingerprint)
+      || !this.validSnapshotHash(settlementHash)
+      || !this.validIsoTimestamp(acceptedAtIso)
+    ) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    return {
+      settlementId,
+      period,
+      currencyCode,
+      fractionDigits,
+      revision,
+      supersedesSettlementId,
+      beneficiaryType: 'OPERATOR_GROUP',
+      beneficiaryId,
+      shareNumerator,
+      shareDenominator,
+      networkPoolMinor,
+      networkPoolAllocationMinor,
+      ttmCommissionBasisMinor,
+      ttmNetworkCommissionPoolMinor,
+      indicativeNetworkValueMinor,
+      indicativeValueAllocationMinor,
+      valuationRulesetVersion,
+      baseValuationMultiplierBasisPoints,
+      recentThreeMonthAverageMinor,
+      priorThreeMonthAverageMinor,
+      earlierThreeMonthAverageMinor,
+      recentGrowthBasisPoints,
+      priorGrowthBasisPoints,
+      accelerationBasisPoints,
+      valuationAdjustmentBasisPoints,
+      effectiveValuationMultiplierBasisPoints,
+      valuationIsNonBinding: true,
+      throughLedgerIndex,
+      throughAuditIndex,
+      throughReviewIndex,
+      throughEligibilityIndex,
+      sourceFingerprint,
+      settlementHash,
+      acceptedAtIso
+    };
+  }
+
+  private encodeSettlementCursor(
+    afterPeriod: string,
+    afterSettlementId: string
+  ): string {
+    if (
+      !this.validSettlementPeriod(afterPeriod)
+      || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+    ) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    return `operator-settlement:${
+      encodeURIComponent(JSON.stringify({
+        afterPeriod,
+        afterSettlementId
+      }))
+    }`;
+  }
+
+  private decodeSettlementCursor(
+    cursor: string | null | undefined
+  ): {
+    afterPeriod: string;
+    afterSettlementId: string;
+  } | null {
+    const normalized = `${cursor ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!normalized.startsWith('operator-settlement:')) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(
+        normalized.slice('operator-settlement:'.length)
+      )) as {
+        afterPeriod?: unknown;
+        afterSettlementId?: unknown;
+      };
+      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
+      const afterSettlementId =
+        `${parsed.afterSettlementId ?? ''}`.trim();
+      if (
+        !this.validSettlementPeriod(afterPeriod)
+        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+      ) {
+        throw new Error();
+      }
+      return { afterPeriod, afterSettlementId };
+    } catch {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+  }
+
+  private settlementText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private settlementInteger(value: unknown): number {
+    const normalized = Number(value);
+    return Number.isSafeInteger(normalized)
+      ? normalized
+      : Number.NaN;
+  }
+
+  private validSettlementPeriod(value: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+  }
+
+  private validSettlementShare(
+    numerator: string,
+    denominator: string
+  ): boolean {
+    if (
+      !/^(0|[1-9]\d*)$/.test(numerator)
+      || !/^[1-9]\d*$/.test(denominator)
+    ) {
+      return false;
+    }
+    try {
+      const top = BigInt(numerator);
+      const bottom = BigInt(denominator);
+      return top >= 0n
+        && bottom > 0n
+        && top <= bottom
+        && this.settlementGreatestCommonDivisor(top, bottom) === 1n;
+    } catch {
+      return false;
+    }
+  }
+
+  private settlementGreatestCommonDivisor(
+    left: bigint,
+    right: bigint
+  ): bigint {
+    let current = left < 0n ? -left : left;
+    let next = right < 0n ? -right : right;
+    while (next !== 0n) {
+      const remainder = current % next;
+      current = next;
+      next = remainder;
+    }
+    return current;
+  }
+
+  private settlementWithin(
+    value: number,
+    minimum: number,
+    maximum: number
+  ): boolean {
+    return Number.isSafeInteger(value)
+      && value >= minimum
+      && value <= maximum;
+  }
+
+  private validSettlementDerivation(source: {
+    ttmCommissionBasisMinor: number;
+    ttmNetworkCommissionPoolMinor: number;
+    indicativeNetworkValueMinor: number;
+    baseValuationMultiplierBasisPoints: number;
+    recentThreeMonthAverageMinor: number;
+    priorThreeMonthAverageMinor: number;
+    earlierThreeMonthAverageMinor: number;
+    recentGrowthBasisPoints: number;
+    priorGrowthBasisPoints: number;
+    accelerationBasisPoints: number;
+    valuationAdjustmentBasisPoints: number;
+    effectiveValuationMultiplierBasisPoints: number;
+  }): boolean {
+    const priorGrowth = this.settlementGrowthBasisPoints(
+      source.earlierThreeMonthAverageMinor,
+      source.priorThreeMonthAverageMinor
+    );
+    const recentGrowth = this.settlementGrowthBasisPoints(
+      source.priorThreeMonthAverageMinor,
+      source.recentThreeMonthAverageMinor
+    );
+    const acceleration = this.settlementClamp(
+      recentGrowth - priorGrowth,
+      -10_000n,
+      10_000n
+    );
+    const adjustment = this.settlementClamp(
+      recentGrowth / 4n + acceleration / 4n,
+      -2_500n,
+      2_500n
+    );
+    const baseMultiplier =
+      BigInt(source.baseValuationMultiplierBasisPoints);
+    const effectiveMultiplier =
+      baseMultiplier * (10_000n + adjustment) / 10_000n;
+    const ttmBasis = BigInt(source.ttmCommissionBasisMinor);
+    const ttmPool = ttmBasis * 500n / 10_000n;
+    const indicativeValue =
+      ttmBasis * effectiveMultiplier / 10_000n;
+    return priorGrowth === BigInt(source.priorGrowthBasisPoints)
+      && recentGrowth === BigInt(source.recentGrowthBasisPoints)
+      && acceleration === BigInt(source.accelerationBasisPoints)
+      && adjustment === BigInt(source.valuationAdjustmentBasisPoints)
+      && effectiveMultiplier
+        === BigInt(source.effectiveValuationMultiplierBasisPoints)
+      && ttmPool === BigInt(source.ttmNetworkCommissionPoolMinor)
+      && indicativeValue === BigInt(source.indicativeNetworkValueMinor);
+  }
+
+  private settlementGrowthBasisPoints(
+    previous: number,
+    current: number
+  ): bigint {
+    const previousValue = BigInt(previous);
+    const currentValue = BigInt(current);
+    if (previousValue === 0n) {
+      return currentValue === 0n ? 0n : 20_000n;
+    }
+    return this.settlementClamp(
+      (currentValue - previousValue) * 10_000n / previousValue,
+      -10_000n,
+      20_000n
+    );
+  }
+
+  private settlementClamp(
+    value: bigint,
+    minimum: bigint,
+    maximum: bigint
+  ): bigint {
+    return value < minimum
+      ? minimum
+      : value > maximum
+        ? maximum
+        : value;
+  }
+
+  private validIsoTimestamp(value: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/
+      .test(value)
+      && Number.isFinite(Date.parse(value));
   }
 
   private throwIfAborted(signal?: AbortSignal): void {

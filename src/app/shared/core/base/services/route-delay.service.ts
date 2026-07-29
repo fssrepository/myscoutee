@@ -1,8 +1,7 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 
 import { resolveRouteConfig } from '../config';
-import { SessionService } from './session.service';
 
 function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
   const routeConfig = resolveRouteConfig(route);
@@ -16,22 +15,14 @@ function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 
   providedIn: 'root'
 })
 export class RouteDelayService {
-  private readonly sessionService = inject(SessionService);
-
   resolveDelayMs(route: string, fallbackDelayMs = 0): number {
     const routeConfig = resolveRouteConfig(route);
     if (routeConfig.http || environment.activitiesDataSource === 'http') {
       return 0;
     }
-    if (
-      this.sessionService.currentSession()?.kind === 'demo'
-      || !environment.firebaseLoginEnabled
-    ) {
-      return routeConfig.demoDelayMs > 0
-        ? routeConfig.demoDelayMs
-        : normalizeDelayMs(fallbackDelayMs);
-    }
-    return 0;
+    return routeConfig.demoDelayMs > 0
+      ? routeConfig.demoDelayMs
+      : normalizeDelayMs(fallbackDelayMs);
   }
 
   resolveRequestTimeoutMs(route: string, fallbackTimeoutMs = 3000): number {
@@ -40,8 +31,7 @@ export class RouteDelayService {
 
   resolveIntervalMs(route: string, fallbackIntervalMs = 0): number {
     const routeConfig = resolveRouteConfig(route);
-    const demoRouteMode = this.sessionService.currentSession()?.kind === 'demo'
-      || (environment.activitiesDataSource !== 'http' && !environment.firebaseLoginEnabled);
+    const demoRouteMode = environment.activitiesDataSource !== 'http' && !routeConfig.http;
     const configuredIntervalMs = demoRouteMode && routeConfig.demoIntervalMs > 0
       ? routeConfig.demoIntervalMs
       : routeConfig.intervalMs;

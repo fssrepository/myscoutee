@@ -163,6 +163,7 @@ type NavigatorAdminMenuShortcutId =
 type NavigatorSettingsMenuItemId =
   | 'help'
   | 'feedback'
+  | 'global-identity'
   | 'report-bugs'
   | 'privacy'
   | 'terms'
@@ -394,7 +395,7 @@ export class SideMenuComponent implements OnDestroy {
         id: 'operator-community',
         label: 'operator.community',
         icon: 'forum',
-        palette: 'purple',
+        palette: 'teal',
         active: this.operatorMenuStore.activePopup() === 'community',
         disabled: !this.canToggleAvatarMenu(),
         ariaLabel: 'operator.community.open'
@@ -481,12 +482,22 @@ export class SideMenuComponent implements OnDestroy {
         ariaLabel: 'Open help'
       });
     if (!this.isPrivilegedWorkspaceMode()) {
-      items.push({
-        id: 'feedback',
-        label: 'Send Feedback',
-        icon: 'feedback',
-        ariaLabel: 'Send feedback'
-      });
+      items.push(
+        {
+          id: 'feedback',
+          label: 'Send Feedback',
+          icon: 'feedback',
+          ariaLabel: 'Send feedback'
+        },
+        {
+          id: 'global-identity',
+          label: 'global.identity.menu',
+          description: 'global.identity.menu.description',
+          icon: 'fingerprint',
+          palette: 'blue',
+          ariaLabel: 'global.identity.menu.open'
+        }
+      );
     }
     items.push(
       {
@@ -915,7 +926,9 @@ export class SideMenuComponent implements OnDestroy {
 
       const requestKey = session.kind === 'firebase'
         ? `firebase:${session.profile.id}`
-        : (activeUserId ? `demo:${activeUserId}` : '');
+        : session.kind === 'operator-bootstrap'
+          ? `operator-bootstrap:${session.email}`
+          : (activeUserId ? `demo:${activeUserId}` : '');
 
       if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
         return;
@@ -1301,6 +1314,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'help':
       case 'feedback':
+      case 'global-identity':
       case 'privacy':
       case 'terms':
         this.openSettingsPopup(event.id);
@@ -1685,8 +1699,12 @@ export class SideMenuComponent implements OnDestroy {
       return null;
     }
     const requestVersion = ++this.hydrationRequestVersion;
-    const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
-    const loadedProfileExt = await this.usersService.loadProfileExtById(isFirebaseSession ? undefined : userId);
+    const sessionKind = this.sessionService.currentSession()?.kind;
+    const serverIdentifiedSession = sessionKind === 'firebase'
+      || sessionKind === 'operator-bootstrap';
+    const loadedProfileExt = await this.usersService.loadProfileExtById(
+      serverIdentifiedSession ? undefined : userId
+    );
     const loadedUser = loadedProfileExt?.profile ?? null;
     if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
       return null;
@@ -1721,7 +1739,10 @@ export class SideMenuComponent implements OnDestroy {
     this.reactivationPromptUserId = userId;
     this.dialogStore.open({
       title: 'Reactivate account?',
-      message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
+      message: this.i18n.translateParams(
+        'account.reactivation.message',
+        { productName: this.deploymentBranding().productName }
+      ),
       cancelLabel: 'Cancel',
       confirmLabel: 'Reactivate',
       busyConfirmLabel: 'Reactivating...',
@@ -2161,8 +2182,10 @@ export class SideMenuComponent implements OnDestroy {
     const chat: ChatDTO & { ownerUserId?: string } = {
       id: `c-support-blocked-${activeUserId}`,
       avatar: 'MS',
-      title: 'MyScoutee Support',
-      lastMessage: 'Your account is blocked. You can message MyScoutee support here.',
+      title: this.i18n.translate('myscoutee.support'),
+      lastMessage: this.i18n.translate(
+        'myscoutee.support.blocked.chat.message'
+      ),
       lastSenderId: adminUserId,
       memberIds: [activeUserId, adminUserId],
       unread: 1,

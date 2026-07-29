@@ -7,6 +7,7 @@ export * from './content.interface';
 export * from './date.interface';
 export * from './deployment-configuration.interface';
 export * from './event.interface';
+export * from './global-identity.interface';
 export * from './list.interface';
 export * from './notification.interface';
 export * from './operator.interface';

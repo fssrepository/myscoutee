@@ -3,8 +3,7 @@
     <div class="admin-home-panel">
       <header class="admin-home-header">
         <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin'">
-          <img class="admin-brand-mark" [src]="deploymentBranding().logoUrl" [alt]="deploymentBranding().productName" />
-          <span class="admin-brand-text">{{ deploymentBranding().productName }}</span>
+          <app-deployment-brand [branding]="deploymentBranding()"></app-deployment-brand>
         </a>
       </header>
 
@@ -20,8 +19,7 @@
     <div class="admin-home-panel">
       <header class="admin-home-header">
         <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin'">
-          <img class="admin-brand-mark" [src]="deploymentBranding().logoUrl" [alt]="deploymentBranding().productName" />
-          <span class="admin-brand-text">{{ deploymentBranding().productName }}</span>
+          <app-deployment-brand [branding]="deploymentBranding()"></app-deployment-brand>
         </a>
       </header>
 
@@ -66,8 +64,7 @@
     <div class="admin-entry-panel">
       <header class="admin-entry-header">
         <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin landing'">
-          <img class="admin-brand-mark" [src]="deploymentBranding().logoUrl" [alt]="deploymentBranding().productName" />
-          <span class="admin-brand-text">{{ deploymentBranding().productName }}</span>
+          <app-deployment-brand [branding]="deploymentBranding()"></app-deployment-brand>
         </a>
         <button
           type="button"

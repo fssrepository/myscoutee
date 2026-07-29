@@ -19,14 +19,7 @@ const bundleDocs = bundles.map(bundle => ({
   version: bundle.version,
   updatedAt: bundleUpdatedAt(bundle.version)
 }));
-const messageDocs = bundles.flatMap(bundle =>
-  Object.entries(bundle.messages).map(([key, value]) => ({
-    _id: `i18n-message-${bundle.lang}-${stableSlug(key)}`,
-    key,
-    lang: bundle.lang,
-    value
-  }))
-);
+const messageDocs = buildMessageDocs(bundles);
 
 for (const databaseName of seedDatabases) {
   const databaseDir = path.join(mongoRoot, databaseName);
@@ -77,6 +70,32 @@ function stableSlug(value) {
     .replace(/^-|-$/g, '')
     .slice(0, 72);
   return normalized || hashText(value);
+}
+
+function buildMessageDocs(sourceBundles) {
+  const usedIds = new Set();
+  return sourceBundles.flatMap(bundle =>
+    Object.entries(bundle.messages).map(([key, value]) => {
+      const baseId = `i18n-message-${bundle.lang}-${stableSlug(key)}`;
+      let id = baseId;
+      if (usedIds.has(id)) {
+        const suffix = hashText(key);
+        id = `${baseId}-${suffix}`;
+        let ordinal = 2;
+        while (usedIds.has(id)) {
+          id = `${baseId}-${suffix}-${ordinal}`;
+          ordinal += 1;
+        }
+      }
+      usedIds.add(id);
+      return {
+        _id: id,
+        key,
+        lang: bundle.lang,
+        value
+      };
+    })
+  );
 }
 
 function hashText(value) {

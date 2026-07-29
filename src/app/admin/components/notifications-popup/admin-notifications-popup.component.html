@@ -189,6 +189,23 @@
 
                   <section class="process-card">
                     <div class="process-card-head">
+                      <h3>{{ jobI18n.pending.title | i18n }}</h3>
+                    </div>
+                    <div class="process-last-run">
+                      <strong>{{ rule.runState.pendingCountUpdatedAtIso ? rule.runState.pendingCount : '—' }}</strong>
+                      <span>{{ (rule.runState.pendingCountUnit || jobI18n.lastRun.affected) | i18n }}</span>
+                    </div>
+                    <div class="process-last-run-stats">
+                      <span>
+                        {{ rule.runState.pendingCountUpdatedAtIso
+                          ? shortDate(rule.runState.pendingCountUpdatedAtIso)
+                          : (jobI18n.pending.notCalculated | i18n) }}
+                      </span>
+                    </div>
+                  </section>
+
+                  <section class="process-card">
+                    <div class="process-card-head">
                       <h3>{{ 'admin.jobs.last.run' | i18n }}</h3>
                     </div>
                     <div class="process-last-run">

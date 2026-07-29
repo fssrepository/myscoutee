@@ -4,7 +4,12 @@
       <header class="operator-revenue__toolbar">
         <span class="operator-revenue__rules">
           <small>{{ 'operator.revenue.ruleset' | i18n }}</small>
-          <strong>{{ revenue.rulesetVersion }}</strong>
+          <strong [attr.title]="revenue.rulesetVersion">
+            {{
+              rulesetLabelKey(revenue.rulesetVersion)
+                | i18n: revenue.rulesetVersion
+            }}
+          </strong>
         </span>
         <span class="operator-revenue__commission">
           <small>{{ 'operator.revenue.commission.rate' | i18n }}</small>
@@ -52,39 +57,48 @@
 
           @if (selectedTimelinePoint(currency); as point) {
             <div class="operator-revenue__timeline-readout">
-              <strong>{{ point.label }}</strong>
-              <span>
+              <strong class="operator-revenue__timeline-date">{{ point.label }}</strong>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-green"></i>
-                {{ 'operator.revenue.timeline.projected.events' | i18n }}
-                {{ formatMinor(point.projectedEventMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.projected.events' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.projectedEventMinor, currency) }}</b>
               </span>
-              <span>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-blue"></i>
-                {{ 'operator.revenue.timeline.projected.assets' | i18n }}
-                {{ formatMinor(point.projectedAssetMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.projected.assets' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.projectedAssetMinor, currency) }}</b>
               </span>
-              <span>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-gold"></i>
-                {{ 'operator.revenue.timeline.net.payments' | i18n }}
-                {{ formatMinor(point.netPaymentMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.net.payments' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.netPaymentMinor, currency) }}</b>
               </span>
-              <span>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-purple"></i>
-                {{ 'operator.revenue.timeline.estimated.commission' | i18n }}
-                {{ formatMinor(point.estimatedCommissionMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.estimated.commission' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.estimatedCommissionMinor, currency) }}</b>
               </span>
             </div>
           }
 
           <div class="operator-revenue__chart">
             <svg
+              class="motion-static"
               viewBox="0 0 300 108"
               role="img"
               tabindex="0"
               [attr.aria-label]="'operator.revenue.timeline.title' | i18n"
               [class.is-dragging]="timelineDragging()"
               (pointerdown)="startTimelineDrag($event, currency.timeline)"
-              (pointermove)="moveTimelineDrag($event, currency.timeline)"
+              (pointermove)="moveTimelinePointer($event, currency.timeline)"
               (pointerup)="endTimelineDrag($event)"
               (pointercancel)="endTimelineDrag($event)"
               (lostpointercapture)="endTimelineDrag()"
@@ -100,24 +114,11 @@
                 ></polyline>
               }
               @if (selectedTimelinePoint(currency)) {
-                <line
-                  class="operator-revenue__scrub-guide"
-                  [attr.x1]="selectedTimelineX(currency)"
-                  y1="14"
-                  [attr.x2]="selectedTimelineX(currency)"
-                  y2="96"
-                ></line>
-                <circle
-                  class="operator-revenue__scrub-halo"
-                  [attr.cx]="selectedTimelineX(currency)"
-                  [attr.cy]="selectedTimelineY(currency)"
-                  r="6"
-                ></circle>
                 <circle
                   class="operator-revenue__scrub-knob"
                   [attr.cx]="selectedTimelineX(currency)"
                   [attr.cy]="selectedTimelineY(currency)"
-                  r="3"
+                  r="4"
                 ></circle>
               }
               @for (point of currency.timeline; track point.dateKey; let index = $index) {
@@ -127,7 +128,6 @@
                   cy="58"
                   r="8"
                   tabindex="0"
-                  (mouseenter)="selectTimelinePoint(point)"
                   (focus)="selectTimelinePoint(point)"
                 ></circle>
               }

@@ -40,7 +40,7 @@ export class AdminNotificationsSeedBuilder {
           description: 'admin.jobs.rule.event.random.groups.description',
           actionKey: 'event.scheduler.random-groups',
           triggerKind: 'scheduled_process',
-          enabled: false,
+          enabled: true,
           manualRunEnabled: true,
           adminManageable: true,
           priority: 200,
@@ -320,7 +320,10 @@ export class AdminNotificationsSeedBuilder {
         lastRunStatus: '',
         lastRunDetail: '',
         lastRunCount: 0,
-        lastRunUser: ''
+        lastRunUser: '',
+        pendingCount: 0,
+        pendingCountUnit: '',
+        pendingCountUpdatedAtIso: ''
       },
       runHistory: [],
       updatedDate: '',

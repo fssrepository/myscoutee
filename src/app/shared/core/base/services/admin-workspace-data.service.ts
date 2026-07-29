@@ -40,11 +40,14 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
   }
 
   get shouldUseLocalAdminHelpSession(): boolean {
-    return environment.activitiesDataSource !== 'http' || !this.isFirebaseAdminMode;
+    return this.isLocalAdminWorkspace();
   }
 
   prepareSelectedAdminSession(adminUserId: string): void {
-    if (!this.isLocalAdminWorkspace() && !this.isFirebaseAdminMode) {
+    if (
+      !this.isLocalAdminWorkspace()
+      && this.sessionService.currentSession()?.kind !== 'firebase'
+    ) {
       this.sessionService.startDemoSession(adminUserId);
     }
   }

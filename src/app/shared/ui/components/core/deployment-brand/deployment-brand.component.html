@@ -1,0 +1,18 @@
+@if (renderModel(); as model) {
+  <span
+    class="deployment-brand"
+    [class.deployment-brand--inline-logo]="model.inlineLogo"
+    [attr.aria-label]="ariaLabel || model.branding.productName"
+  >
+    @if (model.inlineLogo) {
+      <span class="deployment-brand__text" aria-hidden="true">{{ model.beforeLogo }}</span>
+    }
+    <img
+      class="deployment-brand__logo"
+      [src]="model.branding.logoUrl"
+      alt=""
+      aria-hidden="true"
+    />
+    <span class="deployment-brand__text" aria-hidden="true">{{ model.inlineLogo ? model.afterLogo : model.beforeLogo }}</span>
+  </span>
+}

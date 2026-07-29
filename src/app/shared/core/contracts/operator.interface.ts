@@ -1,6 +1,8 @@
 import type { ListQuery, PageResult } from './list.interface';
 import type {
   DeploymentBrandingDto,
+  DeploymentPrivacyContactDto,
+  DeploymentSocialLinkDto,
   DeploymentThemePreset
 } from './deployment-configuration.interface';
 
@@ -118,7 +120,70 @@ export interface OperatorRegistryRegisterRequestDto {
   expectedRegistryScope?: string;
 }
 
+export type OperatorMeasurementSyncState =
+  | 'DORMANT'
+  | 'BLOCKED'
+  | 'READY'
+  | 'BUSY'
+  | 'ERROR';
+
+export interface OperatorMeasurementSyncDto {
+  state: OperatorMeasurementSyncState;
+  code: string | null;
+  message: string | null;
+  materialized: number;
+  submitted: number;
+  accepted: number;
+  pending: number;
+  blocked: number;
+  synchronizedAt: string;
+}
+
+export type OperatorMeasurementReportStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'BLOCKED';
+
+export interface OperatorMeasurementReportFilters {
+  status?: OperatorMeasurementReportStatus;
+  revision?: string;
+}
+
+export interface OperatorMeasurementReportDto {
+  id: string;
+  period: string;
+  windowStart: string;
+  windowEnd: string;
+  revision: number;
+  rulesetVersion: string;
+  qualifiedMauCount: number;
+  actionCount: number;
+  status: OperatorMeasurementReportStatus;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  batchId: string | null;
+  acceptedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export type OperatorMeasurementReportPageDto =
+  PageResult<OperatorMeasurementReportDto>;
+
 export type OperatorLeaderboardGroup = 'FOUNDER' | 'CLAIMED' | 'UNCLAIMED';
+
+export type OperatorClaimEligibilityStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'PARTIALLY_SUSPENDED'
+  | 'INACTIVE';
+
+export type OperatorDeploymentEligibilityStatus = Exclude<
+  OperatorClaimEligibilityStatus,
+  'PARTIALLY_SUSPENDED'
+>;
 
 export interface OperatorLeaderboardEntryDto {
   id: string;
@@ -126,6 +191,7 @@ export interface OperatorLeaderboardEntryDto {
   label: string;
   group: OperatorLeaderboardGroup;
   verifiedWeight: number;
+  eligibleWeight?: number;
   sharePercent: number;
   claimed: boolean;
   claimantUserId?: string | null;
@@ -133,6 +199,30 @@ export interface OperatorLeaderboardEntryDto {
   claimantAvatarUrl?: string | null;
   operatorGroupId?: string | null;
   deploymentCount?: number;
+  claimVerificationStatus?: OperatorClaimVerificationStatus | null;
+  eligibilityStatus: OperatorClaimEligibilityStatus;
+}
+
+export interface OperatorLeaderboardMutationDto {
+  leaderboardEntry: OperatorLeaderboardEntryDto | null;
+  leaderboardUpserts: readonly OperatorLeaderboardEntryDto[];
+  removedLeaderboardEntryIds: readonly string[];
+  leaderboardTotalDelta: number;
+}
+
+export interface OperatorRegistryMutationResultDto
+  extends OperatorLeaderboardMutationDto {
+  status: OperatorRegistryStatusDto;
+  created: boolean;
+}
+
+export interface OperatorClaimOverviewDto {
+  status: OperatorClaimStatusDto;
+  submission: OperatorClaimRequestDto | null;
+}
+
+export interface OperatorClaimMutationResultDto
+  extends OperatorLeaderboardMutationDto, OperatorClaimOverviewDto {
 }
 
 export interface OperatorLeaderboardGroupSummaryDto {
@@ -144,11 +234,38 @@ export interface OperatorLeaderboardGroupSummaryDto {
 
 export interface OperatorLeaderboardPageContextDto {
   groupSummaries: readonly OperatorLeaderboardGroupSummaryDto[];
+  snapshotBoundary: OperatorLeaderboardSnapshotBoundaryDto | null;
 }
 
 export type OperatorLeaderboardPageDto = PageResult<
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardPageContextDto
+>;
+
+export type OperatorLeaderboardDeploymentClaimState =
+  | 'claimed'
+  | 'pending-review'
+  | 'approved'
+  | 'rejected'
+  | 'withdrawn';
+
+export type OperatorLeaderboardDeploymentMembershipState =
+  | 'owner'
+  | 'linked';
+
+export interface OperatorLeaderboardDeploymentDto {
+  deploymentId: string;
+  groupId: string;
+  claimState: OperatorLeaderboardDeploymentClaimState;
+  eligibilityStatus: OperatorDeploymentEligibilityStatus;
+  membershipState: OperatorLeaderboardDeploymentMembershipState;
+  verifiedWeight: number;
+  sharePercent: number;
+}
+
+export type OperatorLeaderboardDeploymentPageDto = PageResult<
+  OperatorLeaderboardDeploymentDto,
+  OperatorLeaderboardSnapshotBoundaryDto
 >;
 
 export type OperatorClaimVerificationCapability =
@@ -179,6 +296,21 @@ export interface OperatorClaimStatusDto {
   verificationStatus: OperatorClaimVerificationStatus;
   verificationSubmittedAt: string | null;
   legalName: string | null;
+  eligibilityStatus: OperatorDeploymentEligibilityStatus;
+}
+
+export interface OperatorLeaderboardSnapshotBoundaryDto {
+  throughPeriod: string;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  throughTransferEventIndex: number;
+  ledgerHeadHash: string;
+  auditHeadHash: string;
+  reviewHeadHash: string;
+  eligibilityHeadHash: string;
+  transferEventHeadHash: string;
 }
 
 export interface OperatorGroupingTokenDto {
@@ -191,7 +323,7 @@ export interface OperatorClaimRequestDto {
   registrationNumber: string;
   jurisdiction: string;
   registeredAddress: string;
-  website?: string | null;
+  website: string;
   verificationContactName: string;
   verificationContactRole: string;
   verificationContactEmail: string;
@@ -266,6 +398,8 @@ export interface OperatorPaymentProviderDto {
 export interface OperatorPaymentConfigurationDto {
   availableProviders: readonly OperatorPaymentProviderDto[];
   providerId: string | null;
+  publicBaseUrl: string | null;
+  merchantAccount: string | null;
   credentialConfigured: boolean;
   credentialMask: string | null;
 }
@@ -274,11 +408,32 @@ export interface OperatorFirebaseConfigurationDto {
   projectId: string;
   authenticationCredentialConfigured: boolean;
   messagingCredentialConfigured: boolean;
+  publicConfiguration: OperatorFirebasePublicConfigurationDto;
+  active: boolean;
+  readyToActivate: boolean;
+  authenticationTestedAt: string | null;
+  messagingTestedAt: string | null;
+  activatedAt: string | null;
+}
+
+export interface OperatorFirebasePublicConfigurationDto {
+  revision: number;
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId: string | null;
+  vapidKey: string | null;
 }
 
 export interface OperatorConfigurationDto {
   capability: OperatorConfigurationCapability;
   unavailableReason: string | null;
+  adminEmails: readonly string[];
+  privacyContact: DeploymentPrivacyContactDto;
+  socialLinks: readonly DeploymentSocialLinkDto[];
   branding: DeploymentBrandingDto;
   payment: OperatorPaymentConfigurationDto;
   firebase: OperatorFirebaseConfigurationDto;
@@ -286,18 +441,33 @@ export interface OperatorConfigurationDto {
 }
 
 export interface OperatorConfigurationSaveRequestDto {
+  adminEmails: readonly string[];
+  privacyContact: {
+    dataControllerName: string;
+    privacyContactEmail: string;
+  };
+  socialLinks: readonly DeploymentSocialLinkDto[];
   branding: {
     productName: string;
-    homeLabel: string;
     logoUrl: string;
+    logoCharacterIndex: number | null;
     themePreset: DeploymentThemePreset;
   };
   payment: {
     providerId: string | null;
+    publicBaseUrl: string;
+    merchantAccount: string;
     credential: string;
   };
   firebase: {
     projectId: string;
+    apiKey: string;
+    authDomain: string;
+    storageBucket: string;
+    messagingSenderId: string;
+    appId: string;
+    measurementId: string;
+    vapidKey: string;
     authenticationCredential: string;
     messagingCredential: string;
   };
@@ -305,6 +475,10 @@ export interface OperatorConfigurationSaveRequestDto {
 
 export interface OperatorConfigurationTestRequestDto {
   kind: OperatorConfigurationTestKind;
+  destinationToken?: string;
+  browserReadinessToken?: string;
+  browserConfigurationRevision?: number;
+  browserAppId?: string;
 }
 
 export interface OperatorConfigurationTestResultDto {
@@ -312,6 +486,7 @@ export interface OperatorConfigurationTestResultDto {
   success: boolean;
   message: string;
   testedAt: string;
+  firebase: OperatorFirebaseConfigurationDto | null;
 }
 
 export type OperatorRevenueTone =
@@ -374,6 +549,121 @@ export interface OperatorRevenueDto {
   commissionRateBasisPoints: number;
   currencies: readonly OperatorRevenueCurrencyDto[];
 }
+
+export type OperatorRevenueSyncState =
+  | 'SYNCHRONIZED'
+  | 'PENDING'
+  | 'BLOCKED'
+  | 'BUSY'
+  | 'DORMANT'
+  | 'ERROR';
+
+export interface OperatorRevenueSyncDto {
+  state: OperatorRevenueSyncState;
+  code: string | null;
+  message: string | null;
+  materialized: number;
+  submitted: number;
+  accepted: number;
+  pending: number;
+  blocked: number;
+  synchronizedAtIso: string;
+}
+
+export type OperatorRevenueReportStatus = 'PENDING' | 'ACCEPTED' | 'BLOCKED';
+
+export interface OperatorRevenueReportFilters {
+  status?: OperatorRevenueReportStatus;
+  revision?: string;
+}
+
+export interface OperatorRevenueReportCurrencyDto {
+  currencyCode: string;
+  fractionDigits: number;
+  capturedMinor: number;
+  refundedMinor: number;
+  netMinor: number;
+  commissionBasisMinor: number;
+  estimatedCommissionMinor: number;
+  paymentCount: number;
+}
+
+export interface OperatorRevenueReportDto {
+  id: string;
+  period: string;
+  revision: number;
+  supersedesBatchId: string | null;
+  rulesetVersion: string;
+  commissionRateBasisPoints: number;
+  currencies: readonly OperatorRevenueReportCurrencyDto[];
+  payloadHash: string;
+  status: OperatorRevenueReportStatus;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  failureRetryable: boolean | null;
+  failedAt: string | null;
+  acceptedBatchId: string | null;
+  acceptedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export type OperatorRevenueReportPageDto = PageResult<OperatorRevenueReportDto>;
+
+export interface OperatorSettlementFilters {
+  currencyCode?: string;
+  fromPeriod?: string;
+  throughPeriod?: string;
+  includeSuperseded?: boolean;
+}
+
+export interface OperatorSettlementDto {
+  settlementId: string;
+  period: string;
+  currencyCode: string;
+  fractionDigits: number;
+  revision: number;
+  supersedesSettlementId: string | null;
+  beneficiaryType: 'OPERATOR_GROUP';
+  beneficiaryId: string;
+  shareNumerator: string;
+  shareDenominator: string;
+  networkPoolMinor: number;
+  networkPoolAllocationMinor: number;
+  ttmCommissionBasisMinor: number;
+  ttmNetworkCommissionPoolMinor: number;
+  indicativeNetworkValueMinor: number;
+  indicativeValueAllocationMinor: number;
+  valuationRulesetVersion: string;
+  baseValuationMultiplierBasisPoints: number;
+  recentThreeMonthAverageMinor: number;
+  priorThreeMonthAverageMinor: number;
+  earlierThreeMonthAverageMinor: number;
+  recentGrowthBasisPoints: number;
+  priorGrowthBasisPoints: number;
+  accelerationBasisPoints: number;
+  valuationAdjustmentBasisPoints: number;
+  effectiveValuationMultiplierBasisPoints: number;
+  valuationIsNonBinding: true;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  sourceFingerprint: string;
+  settlementHash: string;
+  acceptedAtIso: string;
+}
+
+export interface OperatorSettlementPageContextDto {
+  generatedAtIso: string;
+}
+
+export type OperatorSettlementPageDto = PageResult<
+  OperatorSettlementDto,
+  OperatorSettlementPageContextDto
+>;
 
 export type OperatorCommunityAvailability =
   | 'ONLINE'
@@ -453,17 +743,36 @@ export interface OperatorRegistryServiceContract {
   loadStatus(): Promise<OperatorRegistryStatusDto>;
   inspect(request: OperatorRegistryInspectRequestDto): Promise<OperatorRegistryInspectionDto>;
   confirm(inspectionToken: string): Promise<OperatorRegistryStatusDto>;
-  register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto>;
+  register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto>;
   retry(): Promise<OperatorRegistryStatusDto>;
-  disconnect(): Promise<OperatorRegistryStatusDto>;
+  disconnect(): Promise<OperatorRegistryMutationResultDto>;
+  synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto>;
+  measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto>;
+  requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto>;
   leaderboardPage(
     query: ListQuery,
     signal?: AbortSignal
   ): Promise<OperatorLeaderboardPageDto>;
-  loadClaimStatus(): Promise<OperatorClaimStatusDto>;
-  claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto>;
+  leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto>;
+  loadClaimStatus(): Promise<OperatorClaimOverviewDto>;
+  claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto>;
   issueGroupingToken(): Promise<OperatorGroupingTokenDto>;
-  linkOperatorGroup(request: OperatorGroupLinkRequestDto): Promise<OperatorClaimStatusDto>;
+  linkOperatorGroup(
+    request: OperatorGroupLinkRequestDto
+  ): Promise<OperatorClaimMutationResultDto>;
   loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto>;
   applyDeploymentUpdate(
     onProgress?: OperatorDeploymentUpdateProgressHandler
@@ -475,7 +784,18 @@ export interface OperatorRegistryServiceContract {
   testConfiguration(
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto>;
+  activateFirebase(): Promise<OperatorConfigurationDto>;
   loadRevenue(): Promise<OperatorRevenueDto>;
+  synchronizeRevenue(): Promise<OperatorRevenueSyncDto>;
+  revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto>;
+  requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto>;
+  settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto>;
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto>;
   setCommunityAvailability(
     availability: OperatorCommunityAvailability

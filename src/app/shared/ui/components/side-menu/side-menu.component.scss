@@ -50,10 +50,9 @@
 
 .operator-community-menu {
   width: 66px;
+  min-width: 66px;
+  max-width: 66px;
   pointer-events: auto;
-  --app-menu-grid-columns: 1;
-  --app-menu-grid-gap: 0;
-  --app-menu-tile-height: 48px;
 }
 
 .notification-attention-launcher {
@@ -287,6 +286,20 @@ app-event-supply-contributions-popup {
   .navigator-trigger-rail {
     top: 0.7rem;
     right: 0.7rem;
+  }
+
+  .navigator-trigger-rail-inner {
+    flex-wrap: nowrap;
+  }
+
+  .operator-community-menu {
+    flex: 0 0 66px;
+    order: 0;
+  }
+
+  .user-selector-menu {
+    flex: 0 0 48px;
+    order: 1;
   }
 
   .notification-attention-launcher {

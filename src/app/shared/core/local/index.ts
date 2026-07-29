@@ -73,6 +73,7 @@ export { LocalLandingContentService } from './source/services/landing-content.se
 export { LocalDeploymentConfigurationService } from './source/services/deployment-configuration.service';
 export { LocalMediaService } from './source/services/media.service';
 export { LocalNotificationsService } from './source/services/notifications.service';
+export { LocalGlobalIdentityService } from './source/services/global-identity.service';
 export { LocalOperatorRegistryService } from './source/services/operator-registry.service';
 export { LocalContactsService } from './source/services/contacts.service';
 export { LocalUserExperiencesService } from './source/services/user-experiences.service';

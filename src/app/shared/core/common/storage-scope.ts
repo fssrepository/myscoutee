@@ -62,11 +62,16 @@ export const APP_STORAGE_KEYS = {
   eventCheckoutDrafts: scopedStorageKey('event.checkout.drafts.v1'),
   explanationGuideDismissedContexts: scopedStorageKey('explanation-guide.dismissed-contexts.v1'),
   explanationGuideEnabled: scopedStorageKey('explanation-guide.enabled.v1'),
+  firebaseConfigurationInvalidation: scopedStorageKey(
+    'firebase.configuration-invalidation.v1'
+  ),
   firebaseAuthProfile: scopedStorageKey('firebase.auth-profile.v1'),
   messagingDeviceId: scopedStorageKey('messaging.device-id.v1'),
   messagingToken: scopedStorageKey('messaging.token.v1'),
   messagingUserId: scopedStorageKey('messaging.user-id.v1'),
   optionalPrivacyApprovals: scopedStorageKey('privacy.optional-approvals.v1'),
+  operatorBootstrapSession: scopedStorageKey('operator-bootstrap.session.v1'),
+  operatorBootstrapToken: scopedStorageKey('operator-bootstrap.token.v1'),
   pwaDevServiceWorker: 'myscoutee.dev.service-worker',
   pwaInstallPromptDismissed: 'myscoutee.install-prompt.dismissed',
   pwaUpdateReloadAttempt: 'myscoutee.update-reload-attempt',

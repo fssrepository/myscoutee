@@ -509,7 +509,7 @@ export class AdminReportsPopupComponent {
       confirmTone: 'danger',
       onConfirm: () => this.blockModerationUser(
         user.userId,
-        'Your account has been blocked after moderation review. You can reply here to contact MyScoutee support and ask for a review.'
+        this.i18nText('myscoutee.support.blocked.review.message')
       )
     });
   }
@@ -1108,10 +1108,13 @@ export class AdminReportsPopupComponent {
     return {
       id: `c-support-admin-${user.userId}`,
       avatar: user.initials || 'U',
-      title: `MyScoutee Support · ${user.name}`,
+      title: this.i18nText(
+        'myscoutee.support.user.title',
+        { user: user.name }
+      ),
       lastMessage: user.profileStatus === 'blocked'
-        ? 'Your account has been blocked after moderation review.'
-        : 'MyScoutee support conversation.',
+        ? this.i18nText('moderation.account.blocked.message')
+        : this.i18nText('myscoutee.support.conversation'),
       lastSenderId: admin.id,
       memberIds: [user.userId, admin.id],
       unread: this.supportChatUnread(user),

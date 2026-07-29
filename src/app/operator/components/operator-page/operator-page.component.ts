@@ -4,6 +4,7 @@ import {
   Component,
   OnInit,
   Type,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -21,6 +22,7 @@ import type {
   OperatorLeaderboardGroup
 } from '../../../shared/core/contracts/operator.interface';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
+import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -31,6 +33,7 @@ import {
   SmartListComponent,
   type SingleRowData,
   type SmartListConfig,
+  type SmartListItemSelectEvent,
   type SmartListLoadPage
 } from '../../../shared/ui/components/core/smart-list';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -47,7 +50,10 @@ import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operat
 import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator-leaderboard-single-row.converter';
 import { I18nPipe } from '../../../shared/ui/pipes';
 
-type OperatorActionId = Exclude<OperatorMenuKind, 'community'>;
+type OperatorActionId = Exclude<
+  OperatorMenuKind,
+  'community' | 'deployments'
+>;
 
 @Component({
   selector: 'app-operator-page',
@@ -55,6 +61,7 @@ type OperatorActionId = Exclude<OperatorMenuKind, 'community'>;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppMenuComponent,
+    DeploymentBrandComponent,
     IndicatorComponent,
     I18nPipe,
     MatIconModule,
@@ -79,16 +86,30 @@ export class OperatorPageComponent implements OnInit {
   );
   private readonly registrationPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly actionPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly leaderboardSmartListRef = signal<
+    SmartListComponent<OperatorLeaderboardEntryDto, OperatorLeaderboardFilters> | null
+  >(null);
   private readonly rowConverter = new OperatorLeaderboardSingleRowConverter();
+  private readonly initialWorkspaceLoaded = signal(false);
+
+  @ViewChild('leaderboardSmartList')
+  protected set leaderboardSmartList(
+    value: SmartListComponent<
+      OperatorLeaderboardEntryDto,
+      OperatorLeaderboardFilters
+    > | undefined
+  ) {
+    this.leaderboardSmartListRef.set(value ?? null);
+  }
 
   protected readonly status = this.registry.status;
-  protected readonly busyAction = this.registry.busyAction;
   protected readonly registrationPopupComponent = this.registrationPopupComponentRef.asReadonly();
   protected readonly actionPopupComponent = this.actionPopupComponentRef.asReadonly();
   protected readonly activePopup = this.operatorMenu.activePopup;
   protected readonly loading = computed(
     () => this.profileLoadState().status === 'idle'
       || this.profileLoadState().status === 'loading'
+      || !this.initialWorkspaceLoaded()
       || (!this.status() && !this.errorMessage())
   );
   protected readonly errorMessage = computed(() => {
@@ -100,8 +121,28 @@ export class OperatorPageComponent implements OnInit {
     return status?.lastError?.message?.trim()
       || (status?.lifecycle === 'ERROR' ? 'operator.registration.status.error' : '');
   });
-  protected readonly actionItems = computed<readonly AppMenuItem<OperatorActionId>[]>(() => [
-    {
+  protected readonly actionItems = computed<readonly AppMenuItem<OperatorActionId>[]>(() => {
+    const claim = this.workspace.claimStatus();
+    const registryActive =
+      this.status()?.enabled === true
+      && this.status()?.lifecycle === 'REGISTERED';
+    const claimPendingReview =
+      registryActive
+      && claim?.verificationStatus === 'PENDING_REVIEW';
+    const claimRejected =
+      registryActive
+      && claim?.verificationStatus === 'REJECTED';
+    const claimSuspended =
+      registryActive
+      && claim?.claimed
+      && claim.eligibilityStatus === 'SUSPENDED';
+    const claimInactive =
+      registryActive
+      && claim?.claimed
+      && claim.eligibilityStatus === 'INACTIVE'
+      && !claimPendingReview
+      && !claimRejected;
+    return [{
       id: 'updates',
       label: 'operator.action.updates',
       detail: this.workspace.deploymentUpdate()?.updateAvailable
@@ -127,27 +168,38 @@ export class OperatorPageComponent implements OnInit {
       icon: 'app_registration',
       palette: 'violet',
       kind: 'action',
-      layout: 'big',
-      progress: this.busyAction() === 'register'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     },
     {
       id: 'claim',
       label: 'operator.action.claim.share',
-      detail: this.workspace.claimStatus()?.claimed
-        ? 'operator.action.claim.share.claimed'
-        : 'operator.action.claim.share.detail',
-      icon: 'redeem',
-      palette: 'amber',
+      detail: claimRejected
+        ? 'operator.action.claim.share.rejected'
+        : claimPendingReview
+          ? 'operator.action.claim.share.pending'
+          : claimSuspended
+            ? 'operator.action.claim.share.suspended'
+            : claimInactive
+              ? 'operator.action.claim.share.inactive'
+              : registryActive && claim?.claimed
+                ? 'operator.action.claim.share.claimed'
+                : 'operator.action.claim.share.detail',
+      icon: claimRejected
+        ? 'block'
+        : claimPendingReview
+          ? 'pending_actions'
+          : claimSuspended
+            ? 'pause_circle'
+            : claimInactive
+              ? 'gpp_maybe'
+              : 'redeem',
+      palette: claimRejected || claimSuspended
+        ? 'red'
+        : claimPendingReview || claimInactive
+          ? 'orange'
+          : 'amber',
       kind: 'action',
-      layout: 'big',
-      progress: this.workspace.busyAction() === 'load-claim'
-        || this.workspace.busyAction() === 'claim-share'
-        || this.workspace.busyAction() === 'issue-grouping-token'
-        || this.workspace.busyAction() === 'link-operator-group'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     },
     {
       id: 'configuration',
@@ -156,15 +208,7 @@ export class OperatorPageComponent implements OnInit {
       icon: 'tune',
       palette: 'blue',
       kind: 'action',
-      layout: 'big',
-      progress: this.workspace.busyAction() === 'load-configuration'
-        || this.workspace.busyAction() === 'save-branding'
-        || this.workspace.busyAction() === 'register-payment'
-        || this.workspace.busyAction() === 'register-firebase'
-        || this.workspace.busyAction() === 'test-authentication'
-        || this.workspace.busyAction() === 'test-messaging'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     },
     {
       id: 'revenue',
@@ -173,12 +217,9 @@ export class OperatorPageComponent implements OnInit {
       icon: 'payments',
       palette: 'green',
       kind: 'action',
-      layout: 'big',
-      progress: this.workspace.busyAction() === 'load-revenue'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
-    }
-  ]);
+      layout: 'big'
+    }];
+  });
   protected readonly leaderboardQuery = computed<
     Partial<ListQuery<OperatorLeaderboardFilters>>
   >(() => ({
@@ -212,6 +253,15 @@ export class OperatorPageComponent implements OnInit {
     cacheable: {
       identity: item => item.id
     },
+    sortable: {
+      sortKey: item => [
+        item.group === 'FOUNDER' ? 0 : item.group === 'CLAIMED' ? 1 : 2,
+        -Math.max(0, Number(item.sharePercent) || 0),
+        -Math.max(0, Number(item.verifiedWeight) || 0),
+        item.label,
+        item.id
+      ]
+    },
     groupBy: item => this.leaderboardGroupTitle(item.group),
     containerClass: {
       'operator-leaderboard-smart-list': true
@@ -232,13 +282,34 @@ export class OperatorPageComponent implements OnInit {
         void this.ensureActionPopupLoaded();
       }
     });
+    effect(() => {
+      const smartList = this.leaderboardSmartListRef();
+      const mutation = this.leaderboard.latestCacheMutation();
+      if (!smartList || !mutation) {
+        return;
+      }
+      for (const id of mutation.removedEntryIds) {
+        smartList.removeVisibleItemByIdentity(id, { totalDelta: 0 });
+      }
+      for (const entry of mutation.leaderboardUpserts) {
+        if (smartList.patchVisibleItem(
+          item => item.id === entry.id,
+          () => entry
+        )) {
+          continue;
+        }
+        smartList.reinsertVisibleItem(entry, {
+          totalDelta: 0,
+          loadedRange: 'any'
+        });
+      }
+      smartList.adjustVisibleTotal(mutation.leaderboardTotalDelta);
+      this.leaderboard.consumeCacheMutation(mutation.sequence);
+    });
   }
 
   ngOnInit(): void {
-    void Promise.all([
-      this.registry.loadStatus(),
-      this.workspace.loadDeploymentUpdate()
-    ]);
+    void this.loadInitialWorkspace();
   }
 
   protected openAction(event: AppMenuItemSelectEvent<OperatorActionId>): void {
@@ -248,7 +319,7 @@ export class OperatorPageComponent implements OnInit {
   protected leaderboardRow(
     entry: OperatorLeaderboardEntryDto
   ): SingleRowData<OperatorLeaderboardEntryDto> {
-    return this.rowConverter.convert({
+    const row = this.rowConverter.convert({
       ...entry,
       label: this.i18n.translate(entry.label)
     }, {
@@ -258,8 +329,51 @@ export class OperatorPageComponent implements OnInit {
       deploymentLabel: this.i18n.translate('operator.leaderboard.deployment'),
       deploymentsLabel: this.i18n.translate('operator.leaderboard.deployments'),
       claimedNodeLabel: this.i18n.translate('operator.leaderboard.claimed.node'),
-      unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node')
+      unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node'),
+      pendingReviewLabel: this.i18n.translate(
+        'operator.claim.verification.pending.action'
+      ),
+      rejectedReviewLabel: this.i18n.translate(
+        'operator.claim.verification.rejected.action'
+      ),
+      suspendedEligibilityLabel: this.i18n.translate(
+        'operator.claim.eligibility.suspended'
+      ),
+      partiallySuspendedEligibilityLabel: this.i18n.translate(
+        'operator.claim.eligibility.partially.suspended'
+      ),
+      inactiveEligibilityLabel: this.i18n.translate(
+        'operator.claim.eligibility.inactive'
+      )
     });
+    return {
+      ...row,
+      clickable: this.canOpenLeaderboardDeployments(entry)
+    };
+  }
+
+  protected openLeaderboardDeployments(
+    event: SmartListItemSelectEvent<
+      OperatorLeaderboardEntryDto,
+      OperatorLeaderboardFilters
+    >
+  ): void {
+    if (!this.canOpenLeaderboardDeployments(event.item)) {
+      return;
+    }
+    this.operatorMenu.openLeaderboardDeployments(event.item);
+  }
+
+  protected leaderboardRowAriaLabel(
+    entry: OperatorLeaderboardEntryDto
+  ): string | null {
+    if (!this.canOpenLeaderboardDeployments(entry)) {
+      return null;
+    }
+    return [
+      this.i18n.translate('operator.leaderboard.deployments.open'),
+      this.i18n.translate(entry.label)
+    ].join(': ');
   }
 
   private leaderboardGroupTitle(group: OperatorLeaderboardGroup): string {
@@ -269,6 +383,13 @@ export class OperatorPageComponent implements OnInit {
         ? 'operator.leaderboard.group.claimed.nodes'
         : 'operator.leaderboard.group.unclaimed.nodes';
     return this.i18n.translate(labelKey);
+  }
+
+  private canOpenLeaderboardDeployments(
+    entry: OperatorLeaderboardEntryDto
+  ): boolean {
+    return entry.group === 'CLAIMED'
+      && Boolean(entry.operatorGroupId?.trim());
   }
 
   private async ensureRegistrationPopupLoaded(): Promise<void> {
@@ -285,5 +406,16 @@ export class OperatorPageComponent implements OnInit {
     }
     const module = await import('../operator-action-popup/operator-action-popup.component');
     this.actionPopupComponentRef.set(module.OperatorActionPopupComponent);
+  }
+
+  private async loadInitialWorkspace(): Promise<void> {
+    try {
+      await Promise.all([
+        this.registry.loadStatus(),
+        this.workspace.loadInitialWorkspace()
+      ]);
+    } finally {
+      this.initialWorkspaceLoaded.set(true);
+    }
   }
 }

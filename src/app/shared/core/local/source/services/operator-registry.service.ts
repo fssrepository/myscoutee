@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { OperatorConfigurationMapper } from '../../../base/mappers/operator-configuration.mapper';
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
   DEPLOYMENT_THEME_PRESETS
@@ -8,6 +9,8 @@ import type { ListQuery } from '../../../contracts/list.interface';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityAvailability,
@@ -20,10 +23,25 @@ import type {
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentPageDto,
+  OperatorLeaderboardEntryDto,
+  OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
   OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto,
+  OperatorSettlementDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryServiceContract,
   OperatorRegistryStatusDto
@@ -34,7 +52,10 @@ import {
 } from '../../../base/operator-registry-candidate';
 import { LocalOperatorRegistryMapper } from '../mappers/operator-registry.mapper';
 import { LocalOperatorRegistryRepository } from '../repositories/operator-registry.repository';
-import type { OperatorRegistryStateRecord } from '../entity/operator.entity';
+import type {
+  OperatorLedgerNodeRecord,
+  OperatorRegistryStateRecord
+} from '../entity/operator.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
@@ -43,7 +64,12 @@ const OPERATOR_REGISTRY_CONFIRM_ROUTE = '/operator/registry/confirm';
 const OPERATOR_REGISTRY_REGISTER_ROUTE = '/operator/registry/register';
 const OPERATOR_REGISTRY_RETRY_ROUTE = '/operator/registry/retry';
 const OPERATOR_REGISTRY_DISCONNECT_ROUTE = '/operator/registry/disconnect';
+const OPERATOR_MEASUREMENTS_SYNCHRONIZE_ROUTE =
+  '/operator/measurements/synchronize';
+const OPERATOR_MEASUREMENTS_REPORTS_ROUTE = '/operator/measurements/reports';
 const OPERATOR_LEADERBOARD_ROUTE = '/operator/leaderboard';
+const OPERATOR_LEADERBOARD_DEPLOYMENTS_ROUTE =
+  '/operator/leaderboard/groups/deployments';
 const OPERATOR_CLAIM_ROUTE = '/operator/claim';
 const OPERATOR_CLAIM_APPLY_ROUTE = '/operator/claim/apply';
 const OPERATOR_CLAIM_TOKEN_ROUTE = '/operator/claim/client-token';
@@ -53,6 +79,10 @@ const OPERATOR_UPDATE_APPLY_ROUTE = '/operator/update/apply';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
 const OPERATOR_CONFIGURATION_TEST_ROUTE = '/operator/configuration/test';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
+const OPERATOR_REVENUE_SYNCHRONIZE_ROUTE = '/operator/revenue/synchronize';
+const OPERATOR_REVENUE_REPORTS_ROUTE = '/operator/revenue/reports';
+const OPERATOR_REVENUE_SETTLEMENTS_ROUTE =
+  '/operator/revenue/settlements';
 const OPERATOR_COMMUNITY_ROUTE = '/operator/community';
 
 @Injectable({
@@ -138,7 +168,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return LocalOperatorRegistryMapper.toStatusDto(next);
   }
 
-  async register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+  async register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_REGISTER_ROUTE);
     const current = await this.readStored();
     const baseUrl = this.requireBaseUrl(request.registryBaseUrl);
@@ -158,7 +190,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       }
     }), 'REGISTER', `Node registration requested: ${baseUrl}`);
     await this.repository.write(registering);
-    const next = LocalOperatorRegistryMapper.withStatus(registering, {
+    const nextStatus = LocalOperatorRegistryMapper.withStatus(registering, {
       ...current.status,
       lifecycle: 'REGISTERED',
       enabled: true,
@@ -194,8 +226,80 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       },
       lastError: null
     }, null);
+    const deploymentCode = nextStatus.status.enrollment?.deploymentCode ?? '';
+    const previousNodeId = current.claimIdentity.nodeId.trim();
+    const existingDeployment = current.ledger.find(item =>
+      item.nodeId === deploymentCode
+      || item.nodeId === previousNodeId
+    );
+    const created = !current.ledger.some(item =>
+      item.nodeId === deploymentCode
+    );
+    const deploymentEntry: OperatorLedgerNodeRecord = existingDeployment
+      ? {
+          ...existingDeployment,
+          id: deploymentCode,
+          nodeId: deploymentCode,
+          label: deploymentCode,
+          active: true,
+          eligibilityStatus: existingDeployment.claimed
+            ? existingDeployment.eligibilityStatus
+            : 'INACTIVE'
+        }
+      : {
+          id: deploymentCode,
+          nodeId: deploymentCode,
+          label: deploymentCode,
+          active: true,
+          founder: false,
+          verifiedWeight: 0,
+          claimed: false,
+          eligibilityStatus: 'INACTIVE',
+          claimantUserId: null,
+          claimantName: null,
+          claimantAvatarUrl: null,
+          measuredAt: now.toISOString(),
+          claimedAt: null
+        };
+    const ledger = [
+      ...current.ledger.filter(item =>
+        item.nodeId !== previousNodeId
+        && item.nodeId !== deploymentCode
+      ),
+      deploymentEntry
+    ];
+    const groupLinks = current.groupLinks.map(link =>
+      link.nodeId === previousNodeId
+        ? { ...link, nodeId: deploymentCode }
+        : link
+    );
+    const next: OperatorRegistryStateRecord = {
+      ...nextStatus,
+      ledger,
+      groupLinks,
+      claimIdentity: {
+        ...current.claimIdentity,
+        nodeId: deploymentCode
+      },
+      leaderboard: LocalOperatorRegistryMapper.deriveLeaderboard(
+        ledger,
+        groupLinks
+      )
+    };
     await this.repository.write(next);
-    return LocalOperatorRegistryMapper.toStatusDto(next);
+    const leaderboardEntry = next.leaderboard.find(item =>
+      item.id === deploymentCode
+      || item.nodeId === deploymentCode
+    ) ?? null;
+    return {
+      status: LocalOperatorRegistryMapper.toStatusDto(next),
+      ...this.leaderboardMutation(
+        current.leaderboard,
+        next.leaderboard,
+        leaderboardEntry
+      ),
+      created
+    };
   }
 
   async retry(): Promise<OperatorRegistryStatusDto> {
@@ -217,11 +321,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return LocalOperatorRegistryMapper.toStatusDto(next);
   }
 
-  async disconnect(): Promise<OperatorRegistryStatusDto> {
+  async disconnect(): Promise<OperatorRegistryMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_DISCONNECT_ROUTE);
     const current = await this.readStored();
     const now = new Date();
-    const next = this.appendAudit(LocalOperatorRegistryMapper.withStatus(current, {
+    const statusRecord = LocalOperatorRegistryMapper.withStatus(current, {
       ...current.status,
       lifecycle: 'DISABLED',
       enabled: false,
@@ -231,9 +335,112 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         disabledAt: now.toISOString()
       },
       lastError: null
-    }, null), 'DISCONNECT', 'Outbound registry synchronization disabled.');
+    }, null);
+    const activeNodeId = current.status.enrollment?.deploymentCode?.trim()
+      || current.claimIdentity.nodeId.trim();
+    const hadClaim = current.claimStatus.claimed
+      || current.claimStatus.verificationStatus !== 'NOT_SUBMITTED';
+    const previousOperatorGroupId =
+      current.claimStatus.operatorGroupId?.trim() ?? '';
+    const ledger: OperatorLedgerNodeRecord[] = current.ledger.map(item =>
+      item.nodeId === activeNodeId
+        ? {
+            ...item,
+            active: false,
+            claimed: false,
+            eligibilityStatus: 'INACTIVE',
+            claimantUserId: null,
+            claimantName: null,
+            claimantAvatarUrl: null,
+            claimedAt: null
+          }
+        : item
+    );
+    const groupLinks = current.groupLinks.filter(
+      link => link.nodeId !== activeNodeId
+    );
+    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+      ledger,
+      groupLinks
+    );
+    const leaderboardEntry = previousOperatorGroupId
+      ? leaderboard.find(
+          item => item.operatorGroupId === previousOperatorGroupId
+        ) ?? null
+      : null;
+    const next = this.appendAudit({
+      ...statusRecord,
+      ledger,
+      groupLinks,
+      leaderboard,
+      claimStatus: {
+        ...current.claimStatus,
+        claimed: false,
+        claimedAt: null,
+        claimantUserId: null,
+        claimantName: null,
+        claimantAvatarUrl: null,
+        operatorGroupId: null,
+        activeLinkId: null,
+        sharePercent: 0,
+        shareNumerator: '0',
+        shareDenominator: '1',
+        verificationStatus: hadClaim ? 'WITHDRAWN' : 'NOT_SUBMITTED',
+        legalName: null,
+        eligibilityStatus: 'INACTIVE'
+      },
+      claimVerificationRequest: null
+    }, 'DISCONNECT', 'Registry deployment deactivated and claim withdrawn.');
     await this.repository.write(next);
-    return LocalOperatorRegistryMapper.toStatusDto(next);
+    return {
+      status: LocalOperatorRegistryMapper.toStatusDto(next),
+      ...this.leaderboardMutation(
+        current.leaderboard,
+        next.leaderboard,
+        leaderboardEntry
+      ),
+      created: false
+    };
+  }
+
+  async synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_MEASUREMENTS_SYNCHRONIZE_ROUTE
+    );
+    return {
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      message: 'operator.measurements.delivery.not.sent',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0,
+      synchronizedAt: new Date().toISOString()
+    };
+  }
+
+  async measurementReportPage(
+    _query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_MEASUREMENTS_REPORTS_ROUTE,
+      signal
+    );
+    return {
+      items: [],
+      total: 0
+    };
+  }
+
+  async requeueMeasurementReport(
+    _reportId: string
+  ): Promise<OperatorMeasurementReportDto> {
+    await this.waitForOperatorRouteDelay(
+      `${OPERATOR_MEASUREMENTS_REPORTS_ROUTE}/requeue`
+    );
+    throw new Error('operator.measurements.report.requeue.unavailable');
   }
 
   async leaderboardPage(
@@ -244,19 +451,47 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return LocalOperatorRegistryMapper.toLeaderboardPage(await this.readStored(), query);
   }
 
-  async loadClaimStatus(): Promise<OperatorClaimStatusDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_ROUTE);
-    return structuredClone((await this.readStored()).claimStatus);
+  async leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_LEADERBOARD_DEPLOYMENTS_ROUTE,
+      signal
+    );
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.group.invalid'
+      );
+    }
+    return LocalOperatorRegistryMapper.toLeaderboardDeploymentPage(
+      await this.readStored(),
+      normalizedGroupId,
+      query
+    );
   }
 
-  async claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_ROUTE);
+    const record = await this.readStored();
+    return structuredClone({
+      status: record.claimStatus,
+      submission: record.claimVerificationRequest
+    });
+  }
+
+  async claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_APPLY_ROUTE);
     const current = await this.readStored();
     if (current.claimStatus.claimed) {
-      return structuredClone(current.claimStatus);
+      return this.claimMutation(current, current.claimStatus);
     }
     if (current.claimStatus.verificationStatus === 'PENDING_REVIEW') {
-      return structuredClone(current.claimStatus);
+      return this.claimMutation(current, current.claimStatus);
     }
     if (!current.status.enabled || current.status.lifecycle !== 'REGISTERED') {
       throw new Error('operator.claim.error.registration.required');
@@ -265,11 +500,12 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const submittedAt = new Date().toISOString();
     const claimIdentity = current.claimIdentity;
     const operatorGroupId = claimIdentity.operatorGroupId;
-    const ledger = current.ledger.map(item =>
+    const ledger: OperatorLedgerNodeRecord[] = current.ledger.map(item =>
       item.nodeId === claimIdentity.nodeId
         ? {
             ...item,
             claimed: true,
+            eligibilityStatus: 'INACTIVE',
             claimantUserId: claimIdentity.claimantUserId,
             claimantName: verificationRequest.legalName,
             claimantAvatarUrl: claimIdentity.claimantAvatarUrl,
@@ -285,12 +521,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         linkedAt: submittedAt
       }
     ];
-    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+    const provisionalLeaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
       ledger,
       groupLinks
-    );
-    const claimedGroup = leaderboard.find(
-      item => item.group === 'CLAIMED' && item.operatorGroupId === operatorGroupId
     );
     const claimStatus: OperatorClaimStatusDto = {
       ...current.claimStatus,
@@ -300,29 +533,45 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       claimantName: verificationRequest.legalName,
       claimantAvatarUrl: claimIdentity.claimantAvatarUrl,
       operatorGroupId,
-      sharePercent: claimedGroup?.sharePercent ?? 0,
+      sharePercent: 0,
       verificationCapability: 'AVAILABLE',
       verificationUnavailableReason: null,
       verificationStatus: 'PENDING_REVIEW',
       verificationSubmittedAt: submittedAt,
-      legalName: verificationRequest.legalName
+      legalName: verificationRequest.legalName,
+      eligibilityStatus: 'INACTIVE'
     };
-    await this.repository.write(this.appendAudit({
+    const leaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
+      LocalOperatorRegistryMapper.withCurrentClaimVerification(
+        provisionalLeaderboard,
+        claimStatus
+      )
+    );
+    const next = this.appendAudit({
       ...structuredClone(current),
       ledger,
       groupLinks,
       leaderboard,
       claimStatus,
       claimVerificationRequest: verificationRequest
-    }, 'CLAIM', 'Company verification submitted for review.', current.claimIdentity.nodeId));
-    return structuredClone(claimStatus);
+    }, 'CLAIM', 'Company verification submitted for review.', current.claimIdentity.nodeId);
+    await this.repository.write(next);
+    return this.claimMutation(next, claimStatus, current.leaderboard);
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_TOKEN_ROUTE);
     const current = await this.readStored();
     const operatorGroupId = current.claimStatus.operatorGroupId?.trim() ?? '';
-    if (!current.claimStatus.claimed || !operatorGroupId) {
+    const verificationApproved =
+      current.claimStatus.verificationStatus === 'APPROVED'
+      || current.claimStatus.verificationStatus === 'VERIFIED';
+    if (
+      !current.claimStatus.claimed
+      || !operatorGroupId
+      || !verificationApproved
+      || current.claimStatus.eligibilityStatus !== 'ACTIVE'
+    ) {
       throw new Error('operator.group.error.claim.required');
     }
     const now = new Date();
@@ -347,18 +596,66 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
 
   async linkOperatorGroup(
     request: OperatorGroupLinkRequestDto
-  ): Promise<OperatorClaimStatusDto> {
+  ): Promise<OperatorClaimMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_REDEEM_ROUTE);
     const current = await this.readStored();
+    if (!current.status.enabled || current.status.lifecycle !== 'REGISTERED') {
+      throw new Error('operator.claim.error.registration.required');
+    }
     const token = request.clientToken.trim();
     const tokenRecord = current.groupingTokens.find(item => item.token === token);
     if (!tokenRecord || tokenRecord.redeemedAt || Date.parse(tokenRecord.expiresAt) <= Date.now()) {
       throw new Error('operator.group.error.token.invalid');
     }
-    if (!current.claimStatus.claimed) {
-      throw new Error('operator.group.error.claim.required');
-    }
     const nowIso = new Date().toISOString();
+    if (
+      current.claimStatus.claimed
+      && current.claimStatus.operatorGroupId === tokenRecord.operatorGroupId
+    ) {
+      const updated = this.appendAudit({
+        ...structuredClone(current),
+        groupingTokens: current.groupingTokens.map(item =>
+          item.token === token ? { ...item, redeemedAt: nowIso } : item
+        )
+      }, 'GROUP_LINK',
+      'Temporary client code redeemed by an already linked deployment.',
+      current.claimIdentity.nodeId);
+      await this.repository.write(updated);
+      return this.claimMutation(
+        updated,
+        updated.claimStatus,
+        current.leaderboard
+      );
+    }
+    const groupNodeIds = new Set(
+      current.groupLinks
+        .filter(link => link.operatorGroupId === tokenRecord.operatorGroupId)
+        .map(link => link.nodeId)
+    );
+    const groupClaimant = current.ledger.find(
+      item => item.nodeId && groupNodeIds.has(item.nodeId) && item.claimed
+    );
+    const ledger: OperatorLedgerNodeRecord[] = current.claimStatus.claimed
+      ? current.ledger
+      : current.ledger.map(item =>
+          item.nodeId === current.claimIdentity.nodeId
+            ? {
+                ...item,
+                claimed: true,
+                eligibilityStatus: 'INACTIVE',
+                claimantUserId:
+                  groupClaimant?.claimantUserId
+                  ?? current.claimIdentity.claimantUserId,
+                claimantName:
+                  groupClaimant?.claimantName
+                  ?? current.claimIdentity.claimantName,
+                claimantAvatarUrl:
+                  groupClaimant?.claimantAvatarUrl
+                  ?? current.claimIdentity.claimantAvatarUrl,
+                claimedAt: nowIso
+              }
+            : item
+        );
     const groupLinks = [
       ...current.groupLinks.filter(link => link.nodeId !== current.claimIdentity.nodeId),
       {
@@ -367,29 +664,76 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         linkedAt: nowIso
       }
     ];
-    const recalculated = LocalOperatorRegistryMapper.deriveLeaderboard(
-      current.ledger,
+    const provisionalLeaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+      ledger,
       groupLinks
     );
-    const claimedGroup = recalculated.find(
+    const provisionalClaimStatus: OperatorClaimStatusDto = {
+      ...current.claimStatus,
+      claimed: true,
+      claimedAt: current.claimStatus.claimedAt ?? nowIso,
+      claimantUserId: current.claimStatus.claimed
+        ? current.claimStatus.claimantUserId
+        : groupClaimant?.claimantUserId ?? current.claimIdentity.claimantUserId,
+      claimantName: current.claimStatus.claimed
+        ? current.claimStatus.claimantName
+        : groupClaimant?.claimantName ?? current.claimIdentity.claimantName,
+      claimantAvatarUrl: current.claimStatus.claimed
+        ? current.claimStatus.claimantAvatarUrl
+        : groupClaimant?.claimantAvatarUrl ?? current.claimIdentity.claimantAvatarUrl,
+      operatorGroupId: tokenRecord.operatorGroupId,
+      sharePercent: current.claimStatus.claimed
+        ? current.claimStatus.sharePercent
+        : 0,
+      verificationCapability: 'AVAILABLE',
+      verificationUnavailableReason: null,
+      verificationStatus: current.claimStatus.claimed
+        ? current.claimStatus.verificationStatus
+        : 'PENDING_REVIEW',
+      verificationSubmittedAt:
+        current.claimStatus.verificationSubmittedAt ?? nowIso,
+      legalName: current.claimStatus.claimed
+        ? current.claimStatus.legalName
+        : groupClaimant?.claimantName ?? null,
+      eligibilityStatus: current.claimStatus.claimed
+        ? current.claimStatus.eligibilityStatus
+        : 'INACTIVE'
+    };
+    const leaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
+      LocalOperatorRegistryMapper.withCurrentClaimVerification(
+        provisionalLeaderboard,
+        provisionalClaimStatus
+      )
+    );
+    const claimedGroup = leaderboard.find(
       item => item.group === 'CLAIMED'
         && item.operatorGroupId === tokenRecord.operatorGroupId
     );
     const claimStatus: OperatorClaimStatusDto = {
-      ...current.claimStatus,
-      operatorGroupId: tokenRecord.operatorGroupId,
-      sharePercent: claimedGroup?.sharePercent ?? current.claimStatus.sharePercent
+      ...provisionalClaimStatus,
+      sharePercent: claimedGroup?.sharePercent ?? 0
     };
-    await this.repository.write(this.appendAudit({
+    const updated = this.appendAudit({
       ...structuredClone(current),
+      ledger,
       groupLinks,
-      leaderboard: recalculated,
+      leaderboard,
       claimStatus,
       groupingTokens: current.groupingTokens.map(item =>
         item.token === token ? { ...item, redeemedAt: nowIso } : item
       )
-    }, 'GROUP_LINK', 'Claimed deployment linked to an operator group.', current.claimIdentity.nodeId));
-    return structuredClone(claimStatus);
+    },
+    current.claimStatus.claimed ? 'GROUP_LINK' : 'CLAIM',
+    current.claimStatus.claimed
+      ? 'Claimed deployment linked to an operator group.'
+      : 'Client code claim submitted for registry review.',
+    current.claimIdentity.nodeId);
+    await this.repository.write(updated);
+    return this.claimMutation(
+      updated,
+      claimStatus,
+      current.leaderboard
+    );
   }
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
@@ -490,19 +834,74 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   ): Promise<OperatorConfigurationDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
     const current = await this.readStored();
+    const adminEmailValidationKey =
+      OperatorConfigurationMapper.adminEmailValidationKey(request.adminEmails);
+    if (adminEmailValidationKey) {
+      throw new Error(adminEmailValidationKey);
+    }
+    const adminEmails = OperatorConfigurationMapper.adminEmails(
+      request.adminEmails
+    );
+    const privacyContactValidationKey =
+      OperatorConfigurationMapper.privacyContactValidationKey(
+        request.privacyContact
+      );
+    if (privacyContactValidationKey) {
+      throw new Error(privacyContactValidationKey);
+    }
+    const privacyContact = OperatorConfigurationMapper.privacyContact(
+      request.privacyContact
+    );
+    const socialLinkValidationKey =
+      OperatorConfigurationMapper.socialLinksValidationKey(request.socialLinks);
+    if (socialLinkValidationKey) {
+      throw new Error(socialLinkValidationKey);
+    }
+    const socialLinks = OperatorConfigurationMapper.socialLinks(
+      request.socialLinks
+    );
     const previousPaymentProvider = current.configuration.payment.providerId;
     const themePreset = this.deploymentThemePreset(request.branding.themePreset);
     const productName = `${request.branding.productName ?? ''}`.trim().slice(0, 80);
-    const homeLabel = `${request.branding.homeLabel ?? ''}`.trim().slice(0, 120);
     const logoUrl = `${request.branding.logoUrl ?? ''}`.trim()
       || DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
-    if (!productName || !homeLabel) {
+    if (!productName) {
       throw new Error('operator.configuration.branding.label.required');
+    }
+    const logoCharacterIndex = request.branding.logoCharacterIndex;
+    if (
+      logoCharacterIndex !== null
+      && (
+        !Number.isInteger(logoCharacterIndex)
+        || logoCharacterIndex < 0
+        || logoCharacterIndex >= Array.from(productName).length
+      )
+    ) {
+      throw new Error('operator.configuration.branding.logo.character.index.invalid');
     }
     const paymentProvider = this.operatorPaymentProvider(
       request.payment.providerId,
       current.configuration.payment.availableProviders
     );
+    const paymentPublicBaseUrl = paymentProvider
+      ? OperatorConfigurationMapper.paymentPublicBaseUrl(
+        request.payment.publicBaseUrl
+      )
+      : null;
+    const paymentMerchantAccount = paymentProvider
+      ? OperatorConfigurationMapper.paymentMerchantAccount(
+        request.payment.merchantAccount
+      ) || null
+      : null;
+    const paymentValidationKey =
+      OperatorConfigurationMapper.paymentValidationKey({
+        providerId: paymentProvider,
+        publicBaseUrl: request.payment.publicBaseUrl,
+        merchantAccount: request.payment.merchantAccount
+      });
+    if (paymentValidationKey) {
+      throw new Error(paymentValidationKey);
+    }
     const paymentCredentialInput = `${request.payment.credential ?? ''}`.trim();
     const paymentCredentialConfigured = paymentProvider !== null
       && (
@@ -519,14 +918,61 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const messagingCredentialConfigured =
       Boolean(`${request.firebase.messagingCredential ?? ''}`.trim())
       || current.configuration.firebase.messagingCredentialConfigured;
+    const publicConfigurationFields = {
+      apiKey: `${request.firebase.apiKey ?? ''}`.trim().slice(0, 256),
+      authDomain: `${request.firebase.authDomain ?? ''}`.trim().slice(0, 253),
+      projectId,
+      storageBucket: `${request.firebase.storageBucket ?? ''}`.trim().slice(0, 512),
+      messagingSenderId:
+        `${request.firebase.messagingSenderId ?? ''}`.trim().slice(0, 64),
+      appId: `${request.firebase.appId ?? ''}`.trim().slice(0, 256),
+      measurementId:
+        `${request.firebase.measurementId ?? ''}`.trim().slice(0, 64) || null,
+      vapidKey: `${request.firebase.vapidKey ?? ''}`.trim().slice(0, 512) || null
+    };
+    const currentPublicConfiguration =
+      current.configuration.firebase.publicConfiguration;
+    const currentPublicConfigurationFields = {
+      apiKey: currentPublicConfiguration.apiKey,
+      authDomain: currentPublicConfiguration.authDomain,
+      projectId: currentPublicConfiguration.projectId,
+      storageBucket: currentPublicConfiguration.storageBucket,
+      messagingSenderId: currentPublicConfiguration.messagingSenderId,
+      appId: currentPublicConfiguration.appId,
+      measurementId: currentPublicConfiguration.measurementId,
+      vapidKey: currentPublicConfiguration.vapidKey
+    };
+    const firebaseChanged =
+      projectId !== current.configuration.firebase.projectId
+      || JSON.stringify(publicConfigurationFields)
+        !== JSON.stringify(currentPublicConfigurationFields)
+      || Boolean(`${request.firebase.authenticationCredential ?? ''}`.trim())
+      || Boolean(`${request.firebase.messagingCredential ?? ''}`.trim());
+    if (
+      firebaseChanged
+      && current.configuration.firebase.publicConfiguration.revision
+        >= Number.MAX_SAFE_INTEGER
+    ) {
+      throw new Error('operator.request.failed');
+    }
+    const publicConfiguration = {
+      revision: firebaseChanged
+        ? current.configuration.firebase.publicConfiguration.revision + 1
+        : current.configuration.firebase.publicConfiguration.revision,
+      ...publicConfigurationFields
+    };
     const updatedAt = new Date().toISOString();
     const configuration: OperatorConfigurationDto = {
       capability: 'AVAILABLE',
       unavailableReason: null,
+      adminEmails,
+      privacyContact,
+      socialLinks,
       branding: {
         productName,
-        homeLabel,
+        homeLabel: current.configuration.branding.homeLabel,
         logoUrl,
+        logoCharacterIndex,
         themePreset,
         revision: current.configuration.branding.revision + 1
       },
@@ -535,6 +981,8 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           current.configuration.payment.availableProviders
         ),
         providerId: paymentProvider,
+        publicBaseUrl: paymentPublicBaseUrl,
+        merchantAccount: paymentMerchantAccount,
         credentialConfigured: paymentCredentialConfigured,
         credentialMask: paymentCredentialInput
           ? this.maskCredential(paymentCredentialInput)
@@ -545,7 +993,23 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       firebase: {
         projectId,
         authenticationCredentialConfigured,
-        messagingCredentialConfigured
+        messagingCredentialConfigured,
+        publicConfiguration,
+        active: firebaseChanged
+          ? false
+          : current.configuration.firebase.active,
+        readyToActivate: firebaseChanged
+          ? false
+          : current.configuration.firebase.readyToActivate,
+        authenticationTestedAt: firebaseChanged
+          ? null
+          : current.configuration.firebase.authenticationTestedAt,
+        messagingTestedAt: firebaseChanged
+          ? null
+          : current.configuration.firebase.messagingTestedAt,
+        activatedAt: firebaseChanged
+          ? null
+          : current.configuration.firebase.activatedAt
       },
       updatedAt
     };
@@ -569,24 +1033,199 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       : Boolean(
           current.configuration.firebase.projectId.trim()
           && current.configuration.firebase.messagingCredentialConfigured
+          && request.browserReadinessToken?.trim()
+          && request.browserConfigurationRevision
+            === current.configuration.firebase.publicConfiguration.revision
+          && request.browserAppId?.trim()
+            === current.configuration.firebase.publicConfiguration.appId.trim()
         );
     const testedAt = new Date().toISOString();
+    const firebase = structuredClone(current.configuration.firebase);
+    if (request.kind === 'FIREBASE_AUTHENTICATION') {
+      firebase.authenticationTestedAt = configured ? testedAt : null;
+    }
+    if (request.kind === 'FIREBASE_MESSAGING') {
+      firebase.messagingTestedAt = configured ? testedAt : null;
+    }
+    if (!configured) {
+      firebase.active = false;
+      firebase.activatedAt = null;
+    }
+    firebase.readyToActivate = Boolean(
+      firebase.authenticationTestedAt
+      && firebase.messagingTestedAt
+      && firebase.authenticationCredentialConfigured
+      && firebase.messagingCredentialConfigured
+      && firebase.publicConfiguration.apiKey.trim()
+      && firebase.publicConfiguration.authDomain.trim()
+      && firebase.publicConfiguration.projectId.trim()
+      && firebase.publicConfiguration.messagingSenderId.trim()
+      && firebase.publicConfiguration.appId.trim()
+      && firebase.publicConfiguration.vapidKey?.trim()
+    );
     await this.repository.write(this.appendAudit({
-      ...structuredClone(current)
+      ...structuredClone(current),
+      configuration: {
+        ...structuredClone(current.configuration),
+        firebase,
+        updatedAt: testedAt
+      }
     }, 'CONFIGURATION_TEST', `Configuration test completed: ${request.kind}.`));
     return {
       kind: request.kind,
       success: configured,
       message: configured
         ? 'operator.configuration.test.success'
-        : 'operator.configuration.credentials.missing',
-      testedAt
+        : 'operator.configuration.test.failed',
+      testedAt,
+      firebase: structuredClone(firebase)
     };
+  }
+
+  async activateFirebase(): Promise<OperatorConfigurationDto> {
+    await this.waitForOperatorRouteDelay(
+      `${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`
+    );
+    const current = await this.readStored();
+    if (!current.configuration.firebase.readyToActivate) {
+      throw new Error('operator.configuration.firebase.activation.not.ready');
+    }
+    const activatedAt = new Date().toISOString();
+    const configuration: OperatorConfigurationDto = {
+      ...structuredClone(current.configuration),
+      firebase: {
+        ...structuredClone(current.configuration.firebase),
+        active: true,
+        activatedAt
+      },
+      updatedAt: activatedAt
+    };
+    await this.repository.write(this.appendAudit({
+      ...structuredClone(current),
+      configuration
+    }, 'CONFIGURATION_ACTIVATE', 'Firebase configuration activated.'));
+    return structuredClone(configuration);
   }
 
   async loadRevenue(): Promise<OperatorRevenueDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_ROUTE);
     return structuredClone((await this.readStored()).revenue);
+  }
+
+  async synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_SYNCHRONIZE_ROUTE);
+    return {
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      message: 'operator.revenue.delivery.not.sent',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0,
+      synchronizedAtIso: new Date().toISOString()
+    };
+  }
+
+  async revenueReportPage(
+    _query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_REPORTS_ROUTE, signal);
+    return {
+      items: [],
+      total: 0
+    };
+  }
+
+  async requeueRevenueReport(
+    _reportId: string
+  ): Promise<OperatorRevenueReportDto> {
+    await this.waitForOperatorRouteDelay(
+      `${OPERATOR_REVENUE_REPORTS_ROUTE}/requeue`
+    );
+    throw new Error('operator.revenue.delivery.requeue.unavailable');
+  }
+
+  async settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_REVENUE_SETTLEMENTS_ROUTE,
+      signal
+    );
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
+    );
+    const currencyCode =
+      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
+    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
+    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
+    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+      throw new Error('operator.revenue.settlement.currency.invalid');
+    }
+    if (
+      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
+      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
+      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
+    ) {
+      throw new Error('operator.revenue.settlement.period.invalid');
+    }
+    const cursor = this.decodeSettlementCursor(query.cursor);
+    const stored = await this.readStored();
+    const settlements = stored.settlements ?? [];
+    const generatedAtIso = settlements.reduce(
+      (latest, item) =>
+        item.acceptedAtIso > latest ? item.acceptedAtIso : latest,
+      ''
+    );
+    const superseded = new Set(
+      settlements
+        .map(item => item.supersedesSettlementId?.trim() ?? '')
+        .filter(Boolean)
+    );
+    const filtered = settlements
+      .filter(item =>
+        (!currencyCode || item.currencyCode === currencyCode)
+        && (!fromPeriod || item.period >= fromPeriod)
+        && (!throughPeriod || item.period <= throughPeriod)
+        && (
+          query.filters?.includeSuperseded === true
+          || !superseded.has(item.settlementId)
+        )
+        && (
+          !cursor
+          || item.period < cursor.afterPeriod
+          || (
+            item.period === cursor.afterPeriod
+            && item.settlementId > cursor.afterSettlementId
+          )
+        )
+      )
+      .sort((left, right) =>
+        right.period.localeCompare(left.period)
+        || left.settlementId.localeCompare(right.settlementId)
+      );
+    const items = filtered.slice(0, pageSize);
+    const last = items.at(-1) ?? null;
+    const nextCursor = filtered.length > items.length && last
+      ? this.encodeSettlementCursor(
+          last.period,
+          last.settlementId
+        )
+      : null;
+    const pageOffset =
+      Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+    return {
+      items: structuredClone(items),
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: {
+        generatedAtIso: generatedAtIso || new Date(0).toISOString()
+      }
+    };
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
@@ -641,6 +1280,64 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return normalizeOperatorRegistryBaseUrl(value, false);
   }
 
+  private claimMutation(
+    record: OperatorRegistryStateRecord,
+    status: OperatorClaimStatusDto,
+    previousLeaderboard: readonly OperatorLeaderboardEntryDto[] = record.leaderboard
+  ): OperatorClaimMutationResultDto {
+    const currentLeaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
+      LocalOperatorRegistryMapper.withCurrentClaimVerification(
+        record.leaderboard,
+        status
+      )
+    );
+    const operatorGroupId = status.operatorGroupId?.trim() ?? '';
+    const leaderboardEntry = operatorGroupId
+      ? currentLeaderboard.find(item =>
+          item.group === 'CLAIMED'
+          && item.operatorGroupId === operatorGroupId
+        ) ?? null
+      : null;
+    return structuredClone({
+      status,
+      submission: record.claimVerificationRequest,
+      ...this.leaderboardMutation(
+        previousLeaderboard,
+        currentLeaderboard,
+        leaderboardEntry
+      )
+    });
+  }
+
+  private leaderboardMutation(
+    previousLeaderboard: readonly OperatorLeaderboardEntryDto[],
+    currentLeaderboard: readonly OperatorLeaderboardEntryDto[],
+    leaderboardEntry: OperatorLeaderboardEntryDto | null
+  ): OperatorLeaderboardMutationDto {
+    const previousById = new Map(
+      previousLeaderboard.map(entry => [entry.id.trim(), entry])
+    );
+    const currentIds = new Set(
+      currentLeaderboard.map(entry => entry.id.trim()).filter(Boolean)
+    );
+    const leaderboardUpserts = currentLeaderboard.filter(entry => {
+      const previous = previousById.get(entry.id.trim());
+      return !previous || JSON.stringify(previous) !== JSON.stringify(entry);
+    });
+    const removedLeaderboardEntryIds = previousLeaderboard
+      .map(entry => entry.id.trim())
+      .filter(id => id && !currentIds.has(id));
+    return {
+      leaderboardEntry: leaderboardEntry
+        ? structuredClone(leaderboardEntry)
+        : null,
+      leaderboardUpserts: structuredClone(leaderboardUpserts),
+      removedLeaderboardEntryIds,
+      leaderboardTotalDelta:
+        currentLeaderboard.length - previousLeaderboard.length
+    };
+  }
+
   private deploymentThemePreset(
     value: OperatorConfigurationSaveRequestDto['branding']['themePreset']
   ): OperatorConfigurationSaveRequestDto['branding']['themePreset'] {
@@ -653,15 +1350,15 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     request: OperatorClaimRequestDto
   ): OperatorClaimRequestDto {
     const normalized: OperatorClaimRequestDto = {
-      legalName: `${request.legalName ?? ''}`.trim().slice(0, 180),
-      registrationNumber: `${request.registrationNumber ?? ''}`.trim().slice(0, 120),
-      jurisdiction: `${request.jurisdiction ?? ''}`.trim().slice(0, 120),
+      legalName: `${request.legalName ?? ''}`.trim().slice(0, 160),
+      registrationNumber: `${request.registrationNumber ?? ''}`.trim().slice(0, 80),
+      jurisdiction: `${request.jurisdiction ?? ''}`.trim().slice(0, 80),
       registeredAddress: `${request.registeredAddress ?? ''}`.trim().slice(0, 500),
       website: this.normalizedPublicWebsite(request.website),
       verificationContactName:
-        `${request.verificationContactName ?? ''}`.trim().slice(0, 180),
+        `${request.verificationContactName ?? ''}`.trim().slice(0, 120),
       verificationContactRole:
-        `${request.verificationContactRole ?? ''}`.trim().slice(0, 180),
+        `${request.verificationContactRole ?? ''}`.trim().slice(0, 120),
       verificationContactEmail:
         `${request.verificationContactEmail ?? ''}`.trim().toLowerCase().slice(0, 254),
       authorityAttested: request.authorityAttested === true
@@ -671,6 +1368,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       || !normalized.registrationNumber
       || !normalized.jurisdiction
       || !normalized.registeredAddress
+      || !normalized.website
       || !normalized.verificationContactName
       || !normalized.verificationContactRole
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.verificationContactEmail)
@@ -681,13 +1379,16 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return normalized;
   }
 
-  private normalizedPublicWebsite(value: string | null | undefined): string | null {
+  private normalizedPublicWebsite(value: string | null | undefined): string {
     const source = `${value ?? ''}`.trim();
-    if (!source) {
-      return null;
+    if (!source || source.length > 2048) {
+      throw new Error('operator.claim.verification.error.website');
     }
     try {
       const url = new URL(source);
+      if (url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
       if (
         url.protocol === 'https:'
         && !url.username
@@ -764,6 +1465,57 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     } catch {
       return false;
     }
+  }
+
+  private encodeSettlementCursor(
+    afterPeriod: string,
+    afterSettlementId: string
+  ): string {
+    return `operator-settlement:${
+      encodeURIComponent(JSON.stringify({
+        afterPeriod,
+        afterSettlementId
+      }))
+    }`;
+  }
+
+  private decodeSettlementCursor(
+    cursor: string | null | undefined
+  ): {
+    afterPeriod: string;
+    afterSettlementId: string;
+  } | null {
+    const normalized = `${cursor ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!normalized.startsWith('operator-settlement:')) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(
+        normalized.slice('operator-settlement:'.length)
+      )) as {
+        afterPeriod?: unknown;
+        afterSettlementId?: unknown;
+      };
+      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
+      const afterSettlementId =
+        `${parsed.afterSettlementId ?? ''}`.trim();
+      if (
+        !this.validSettlementPeriod(afterPeriod)
+        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+      ) {
+        throw new Error();
+      }
+      return { afterPeriod, afterSettlementId };
+    } catch {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+  }
+
+  private validSettlementPeriod(value: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
   }
 
   private async waitForOperatorRouteDelay(

@@ -110,6 +110,10 @@ export interface FormFlowControlSummaryConfig {
 
 export type FormFlowCompletionMetric = 'filled' | 'count' | 'length' | 'positiveNumber' | 'isoDate';
 export type FormFlowTone = 'default' | 'blue' | 'green' | 'orange';
+export type FormFlowControlValidationError =
+  | string
+  | null
+  | ((value: unknown, formValue: unknown) => string | null | undefined);
 
 export interface FormFlowCompletionItemConfig {
   id?: string;
@@ -133,6 +137,7 @@ export interface FormFlowControlModel {
   rowSpan?: number;
   label?: string;
   description?: string;
+  validationError?: FormFlowControlValidationError;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;

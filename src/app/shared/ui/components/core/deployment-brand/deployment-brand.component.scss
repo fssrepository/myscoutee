@@ -1,0 +1,41 @@
+:host {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.deployment-brand {
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: var(--deployment-brand-align, flex-end);
+  gap: var(--deployment-brand-gap, 0);
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: nowrap;
+}
+
+.deployment-brand--inline-logo {
+  align-items: center;
+  gap: var(--deployment-brand-character-gap, 0.02em);
+}
+
+.deployment-brand__logo {
+  width: var(--deployment-brand-logo-size, 1.2em);
+  height: var(--deployment-brand-logo-size, 1.2em);
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
+}
+
+.deployment-brand__text {
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
