@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
@@ -24,7 +24,9 @@ const DEPLOYMENT_CONFIGURATION_ROUTE = '/deployment/configuration';
 @Injectable({
   providedIn: 'root'
 })
-export class DeploymentConfigurationService extends BaseRouteModeService {
+export class DeploymentConfigurationService
+  extends BaseRouteModeService
+  implements OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
   private readonly localService = inject(LocalDeploymentConfigurationService);
   private readonly httpService = inject(HttpDeploymentConfigurationService);
@@ -39,11 +41,16 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
   );
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
+  private manifestObjectUrl: string | null = null;
 
   readonly branding = this.brandingRef.asReadonly();
   readonly socialLinks = this.socialLinksRef.asReadonly();
   readonly privacyContact = this.privacyContactRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
+
+  ngOnDestroy(): void {
+    this.revokeManifestObjectUrl();
+  }
 
   initialize(): Promise<DeploymentBrandingDto> {
     return this.load();
@@ -192,15 +199,116 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
     this.setLinkHref('link[rel~="icon"]', branding.logoUrl);
     this.setLinkType('link[rel~="icon"]', logoMediaType);
     this.setLinkHref('link[rel="apple-touch-icon"]', branding.logoUrl);
-    const themeColor = this.documentRef.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const deploymentThemeColor =
+      this.documentRef.defaultView
+        ?.getComputedStyle(documentElement)
+        .getPropertyValue('--deployment-brand-primary')
+        .trim()
+      || '#7446f2';
+    const themeColor = this.documentRef.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]'
+    );
     if (themeColor) {
-      themeColor.content =
-        this.documentRef.defaultView
-          ?.getComputedStyle(documentElement)
-          .getPropertyValue('--deployment-brand-primary')
-          .trim()
-        || '#7446f2';
+      themeColor.content = deploymentThemeColor;
     }
+    this.applyWebManifestBranding(branding, deploymentThemeColor);
+    this.publishServiceWorkerBranding(branding);
+  }
+
+  private applyWebManifestBranding(
+    branding: DeploymentBrandingDto,
+    themeColor: string
+  ): void {
+    const manifestLink = this.documentRef.querySelector<HTMLLinkElement>(
+      'link[rel="manifest"]'
+    );
+    const windowRef = this.documentRef.defaultView;
+    if (
+      !manifestLink
+      || !windowRef
+      || typeof windowRef.URL?.createObjectURL !== 'function'
+      || typeof windowRef.Blob !== 'function'
+    ) {
+      return;
+    }
+    const logoUrl = this.absoluteLogoUrl(branding.logoUrl);
+    const logoMediaType = this.logoMediaType(branding.logoUrl) || 'image/png';
+    const manifest = {
+      name: branding.productName,
+      short_name: Array.from(branding.productName).slice(0, 24).join(''),
+      description: branding.homeLabel,
+      display: 'standalone',
+      orientation: 'portrait',
+      scope: './',
+      start_url: './',
+      background_color: '#f5f6fb',
+      theme_color: themeColor,
+      icons: [
+        {
+          src: logoUrl,
+          sizes: '192x192',
+          type: logoMediaType,
+          purpose: 'any maskable'
+        },
+        {
+          src: logoUrl,
+          sizes: '512x512',
+          type: logoMediaType,
+          purpose: 'any maskable'
+        }
+      ]
+    };
+    const nextObjectUrl = windowRef.URL.createObjectURL(
+      new windowRef.Blob(
+        [JSON.stringify(manifest)],
+        { type: 'application/manifest+json' }
+      )
+    );
+    this.revokeManifestObjectUrl();
+    this.manifestObjectUrl = nextObjectUrl;
+    manifestLink.href = nextObjectUrl;
+  }
+
+  private revokeManifestObjectUrl(): void {
+    if (!this.manifestObjectUrl) {
+      return;
+    }
+    const urlApi = this.documentRef.defaultView?.URL;
+    if (typeof urlApi?.revokeObjectURL === 'function') {
+      urlApi.revokeObjectURL(this.manifestObjectUrl);
+    }
+    this.manifestObjectUrl = null;
+  }
+
+  private publishServiceWorkerBranding(
+    branding: DeploymentBrandingDto
+  ): void {
+    const serviceWorker =
+      this.documentRef.defaultView?.navigator.serviceWorker;
+    if (!serviceWorker) {
+      return;
+    }
+    const message = {
+      type: 'DEPLOYMENT_BRANDING',
+      branding: {
+        productName: branding.productName,
+        homeLabel: branding.homeLabel,
+        logoUrl: this.absoluteLogoUrl(branding.logoUrl)
+      }
+    };
+    const controller = serviceWorker.controller;
+    controller?.postMessage(message);
+    void serviceWorker.ready
+      .then(registration => {
+        const worker =
+          registration.active
+          ?? registration.waiting
+          ?? registration.installing;
+        if (worker && worker !== controller) {
+          worker.postMessage(message);
+        }
+      })
+      .catch(() => undefined);
   }
 
   private setMetaContent(selector: string, content: string): void {

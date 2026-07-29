@@ -100,11 +100,14 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   protected title(): string {
-    return this.activeConfig()?.title?.trim() || this.uiText('Document');
+    return this.uiText(
+      this.activeConfig()?.title?.trim() || 'Document'
+    );
   }
 
   protected description(): string {
-    return this.activeConfig()?.description?.trim() ?? '';
+    const description = this.activeConfig()?.description?.trim() ?? '';
+    return description ? this.uiText(description) : '';
   }
 
   protected versionLabel(): string {
@@ -283,7 +286,10 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   protected uiText(value: string): string {
-    return this.i18n.translate(value);
+    return this.i18n.translateParams(
+      value,
+      { productName: this.deploymentBranding().productName }
+    );
   }
 
   private syncSelectionFromConfig(): void {
@@ -488,7 +494,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
 
   private defaultDescription(kind: HelpCenterDocumentKind): string {
     if (kind === 'terms') {
-      return 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.';
+      return 'document.terms.description';
     }
     return '';
   }

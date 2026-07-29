@@ -186,7 +186,7 @@ export class ProfileSettingsPopupsComponent {
       ariaLabel: 'Terms of service',
       closeAriaLabel: 'Close terms popup',
       titleFallback: 'Usage terms',
-      descriptionFallback: 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.',
+      descriptionFallback: 'document.terms.description',
       versionLabel: this.helpCenter.activeTermsVersionLabel(),
       loading: !revision,
       loadingLabel: 'Loading terms content',

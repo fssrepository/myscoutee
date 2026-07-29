@@ -122,7 +122,7 @@
       <section
         class="entry-ideas"
         id="articles"
-        [attr.aria-label]="deploymentBranding().productName + ' articles'"
+        [attr.aria-label]="articlesTitle()"
       >
         @if (articlesLoading || featuredIdeaCards().length > 0) {
           <div
@@ -150,7 +150,7 @@
         <div class="entry-ideas-more-row">
           <button type="button" class="entry-ideas-more-btn" (click)="openIdeasPopup(undefined, $event)">
             <mat-icon>auto_stories</mat-icon>
-            <span>More article</span>
+            <span>{{ 'more.article' | i18n: 'More article' }}</span>
           </button>
         </div>
       </section>

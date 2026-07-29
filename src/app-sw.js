@@ -6,6 +6,13 @@ const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
 const APP_CACHE_PREFIX = `${CACHE_PREFIX}-app-`;
 const PREVIOUS_APP_CACHE_LIMIT = 1;
+const DEPLOYMENT_CONFIGURATION_URL = './api/deployment/configuration';
+const DEPLOYMENT_BRANDING_CACHE_KEY = './__deployment-branding__';
+const DEFAULT_DEPLOYMENT_BRANDING = Object.freeze({
+  productName: 'MyScoutee',
+  homeLabel: 'Your preferences come first',
+  logoUrl: './assets/logo/heart.webp'
+});
 const PRECACHE_CORE_URLS = [
   './',
   './index.html',
@@ -56,6 +63,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'DEPLOYMENT_BRANDING') {
+    event.waitUntil(
+      storeDeploymentBranding(event.data.branding)
+    );
   }
 });
 
@@ -105,16 +118,19 @@ self.addEventListener('push', event => {
   if (!payload) {
     return;
   }
-  event.waitUntil(
-    self.registration.showNotification(payload.title, {
+  event.waitUntil((async () => {
+    const branding = await deploymentBranding();
+    await self.registration.showNotification(
+      payload.title || branding.productName,
+      {
       body: payload.body,
-      icon: payload.icon || './assets/logo/heart.png',
-      badge: payload.badge || './assets/logo/heart.png',
+      icon: payload.icon || branding.logoUrl,
+      badge: payload.badge || branding.logoUrl,
       data: {
         url: payload.url || '/game'
       }
-    })
-  );
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
@@ -274,16 +290,21 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-function unavailableResponse(request) {
+async function unavailableResponse(request) {
   if (request.mode === 'navigate') {
-    return new Response('<!doctype html><title>MyScoutee</title><body>No network</body>', {
+    const branding = await deploymentBranding();
+    const productName = escapeHtml(branding.productName);
+    return new Response(
+      `<!doctype html><title>${productName}</title><body>${productName}</body>`,
+      {
       status: 503,
       statusText: 'Service Unavailable',
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store'
       }
-    });
+      }
+    );
   }
   return new Response('', {
     status: 503,
@@ -303,7 +324,7 @@ function parsePushPayload(event) {
     const notification = json.notification || {};
     const data = json.data || {};
     return {
-      title: notification.title || data.title || 'MyScoutee',
+      title: notification.title || data.title || '',
       body: notification.body || data.body || '',
       icon: notification.icon || data.icon || '',
       badge: notification.badge || data.badge || '',
@@ -311,13 +332,108 @@ function parsePushPayload(event) {
     };
   } catch {
     return {
-      title: 'MyScoutee',
+      title: '',
       body: event.data.text(),
       icon: '',
       badge: '',
       url: '/game'
     };
   }
+}
+
+async function deploymentBranding() {
+  const cache = await caches.open(API_CACHE);
+  const cached = await cache.match(DEPLOYMENT_BRANDING_CACHE_KEY);
+  if (cached) {
+    try {
+      return normalizeDeploymentBranding(await cached.json());
+    } catch {
+      await cache.delete(DEPLOYMENT_BRANDING_CACHE_KEY);
+    }
+  }
+  try {
+    const response = await fetch(DEPLOYMENT_CONFIGURATION_URL, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    if (response.ok) {
+      const branding = normalizeDeploymentBranding(await response.json());
+      await persistDeploymentBranding(cache, branding);
+      return branding;
+    }
+  } catch {
+    // Offline and cold-worker fallback uses the bundled product identity.
+  }
+  return { ...DEFAULT_DEPLOYMENT_BRANDING };
+}
+
+async function storeDeploymentBranding(value) {
+  const cache = await caches.open(API_CACHE);
+  await persistDeploymentBranding(
+    cache,
+    normalizeDeploymentBranding(value)
+  );
+}
+
+async function persistDeploymentBranding(cache, branding) {
+  await cache.put(
+    DEPLOYMENT_BRANDING_CACHE_KEY,
+    new Response(JSON.stringify(branding), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
+    })
+  );
+}
+
+function normalizeDeploymentBranding(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const productName = normalizedText(source.productName, 80)
+    || DEFAULT_DEPLOYMENT_BRANDING.productName;
+  const homeLabel = normalizedText(source.homeLabel, 120);
+  return {
+    productName,
+    homeLabel,
+    logoUrl: normalizedLogoUrl(source.logoUrl)
+  };
+}
+
+function normalizedLogoUrl(value) {
+  const normalized = normalizedText(value, 4096);
+  if (!normalized) {
+    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+  }
+  try {
+    const url = new URL(normalized, self.location.origin);
+    if (
+      (url.protocol === 'https:' || url.origin === self.location.origin)
+      && !url.username
+      && !url.password
+    ) {
+      return url.toString();
+    }
+  } catch {
+    // Fall through to the bundled logo.
+  }
+  return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+}
+
+function normalizedText(value, maximumLength) {
+  return typeof value === 'string'
+    ? Array.from(value.trim()).slice(0, maximumLength).join('')
+    : '';
+}
+
+function escapeHtml(value) {
+  return `${value ?? ''}`
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 async function openClient(targetUrl) {
