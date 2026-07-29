@@ -948,6 +948,13 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         !== JSON.stringify(currentPublicConfigurationFields)
       || Boolean(`${request.firebase.authenticationCredential ?? ''}`.trim())
       || Boolean(`${request.firebase.messagingCredential ?? ''}`.trim());
+    if (
+      firebaseChanged
+      && current.configuration.firebase.publicConfiguration.revision
+        >= Number.MAX_SAFE_INTEGER
+    ) {
+      throw new Error('operator.request.failed');
+    }
     const publicConfiguration = {
       revision: firebaseChanged
         ? current.configuration.firebase.publicConfiguration.revision + 1

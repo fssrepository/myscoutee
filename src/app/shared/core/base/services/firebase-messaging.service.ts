@@ -179,9 +179,8 @@ export class FirebaseMessagingService {
     } catch {
       throw this.browserReadinessError();
     }
-    let messaging: Messaging | null = null;
     try {
-      messaging = getMessaging(app);
+      const messaging = getMessaging(app);
       const token = await getToken(messaging, {
         vapidKey: configuration.vapidKey,
         serviceWorkerRegistration
@@ -201,11 +200,11 @@ export class FirebaseMessagingService {
             return;
           }
           released = true;
-          await this.deleteReadinessApp(app, messaging);
+          await this.deleteReadinessApp(app);
         }
       };
     } catch {
-      await this.deleteReadinessApp(app, messaging);
+      await this.deleteReadinessApp(app);
       throw this.browserReadinessError();
     }
   }
@@ -405,17 +404,14 @@ export class FirebaseMessagingService {
     }
   }
 
-  private async deleteReadinessApp(
-    app: FirebaseApp,
-    messaging: Messaging | null
-  ): Promise<void> {
-    if (messaging) {
-      try {
-        await deleteToken(messaging);
-      } catch {
-        // Continue deleting the isolated app even when token cleanup fails.
-      }
-    }
+  private async deleteReadinessApp(app: FirebaseApp): Promise<void> {
+    /*
+     * Firebase Messaging registrations are keyed by the browser, web-app
+     * configuration, VAPID key, and service-worker registration rather than
+     * by this temporary FirebaseApp name. The readiness token can therefore
+     * be the active user's real token. Deleting it here would silently break
+     * the persisted device registration; only the named SDK app is temporary.
+     */
     try {
       await deleteApp(app);
     } catch {

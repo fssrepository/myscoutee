@@ -59,7 +59,12 @@ export class FirebaseAppService {
       ) {
         return;
       }
-      void this.enqueueReconciliation(false);
+      /*
+       * A storage event can arrive while an older configuration fetch is
+       * still in flight. Queue a forced reconciliation after that fetch so
+       * another tab can never leave this tab on the superseded revision.
+       */
+      void this.enqueueReconciliation(true);
     };
     window.addEventListener('storage', onStorage);
     this.destroyRef.onDestroy(() =>

@@ -2488,7 +2488,7 @@
     "operator.revenue.delivery.requeued": "A blokkolt jelentés visszakerült a függőben lévő sorba.",
     "operator.revenue.delivery.requeued.pending": "Az újrasorba állított jelentés függőben van. A beküldéshez szinkronizáld a kézbesítést.",
     "operator.revenue.settlement.eyebrow": "Nyilvántartási elszámolás",
-    "operator.revenue.settlement.title": "Indikatív hálózati értékelés",
+    "operator.revenue.settlement.title": "Indikatív vállalati piaci érték",
     "operator.revenue.settlement.currency.notice": "Minden pénznemet külön számítunk és jelenítünk meg. Devizaátváltás nem történik.",
     "operator.revenue.settlement.nonbinding": "Indikatív · nem kötelező",
     "operator.revenue.settlement.unavailable": "Az elszámolási előzmények akkor érhetők el, ha a telepítés kapcsolódni tud a regisztrált nyilvántartásához.",

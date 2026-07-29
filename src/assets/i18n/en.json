@@ -2488,7 +2488,7 @@
     "operator.revenue.delivery.requeued": "The blocked report was returned to the pending queue.",
     "operator.revenue.delivery.requeued.pending": "The requeued report is pending. Synchronize delivery to submit it.",
     "operator.revenue.settlement.eyebrow": "Registry settlement",
-    "operator.revenue.settlement.title": "Indicative network valuation",
+    "operator.revenue.settlement.title": "Indicative company market value",
     "operator.revenue.settlement.currency.notice": "Each currency is calculated and displayed separately. No FX conversion is applied.",
     "operator.revenue.settlement.nonbinding": "Indicative · non-binding",
     "operator.revenue.settlement.unavailable": "Settlement history is unavailable until this deployment can reach its registered registry.",

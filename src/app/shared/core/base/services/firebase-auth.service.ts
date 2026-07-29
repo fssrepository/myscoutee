@@ -106,7 +106,13 @@ export class FirebaseAuthService {
     }
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
-      return this.loadStoredProfile();
+      /*
+       * A profile snapshot is not authentication. If the currently activated
+       * deployment Firebase runtime cannot be resolved, fail closed instead
+       * of reviving a session from another or superseded revision.
+       */
+      this.clearStoredProfile();
+      return null;
     }
     const currentUser = auth.currentUser ?? await this.waitForAuthState(auth);
     if (!currentUser) {

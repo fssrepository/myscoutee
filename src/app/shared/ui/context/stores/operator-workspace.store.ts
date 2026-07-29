@@ -125,6 +125,7 @@ export class OperatorWorkspaceStore {
     ReturnType<typeof setTimeout> | null = null;
   private configurationMessagingFeedbackTimer:
     ReturnType<typeof setTimeout> | null = null;
+  private configurationLifecycleGeneration = 0;
   private contextKey = this.sessionKey(this.sessionService.currentSession());
 
   readonly claimStatus = this.claimStatusRef.asReadonly();
@@ -642,23 +643,37 @@ export class OperatorWorkspaceStore {
     }
     const result = await this.run(
       action,
-      () => this.service.saveConfiguration({
-        ...structuredClone(draft),
-        payment: {
-          ...structuredClone(draft.payment),
-          publicBaseUrl:
-            OperatorConfigurationMapper.paymentPublicBaseUrl(
-              draft.payment.publicBaseUrl
-            ) || draft.payment.publicBaseUrl.trim(),
-          merchantAccount:
-            OperatorConfigurationMapper.paymentMerchantAccount(
-              draft.payment.merchantAccount
+      async () => {
+        try {
+          return await this.service.saveConfiguration({
+            ...structuredClone(draft),
+            payment: {
+              ...structuredClone(draft.payment),
+              publicBaseUrl:
+                OperatorConfigurationMapper.paymentPublicBaseUrl(
+                  draft.payment.publicBaseUrl
+                ) || draft.payment.publicBaseUrl.trim(),
+              merchantAccount:
+                OperatorConfigurationMapper.paymentMerchantAccount(
+                  draft.payment.merchantAccount
+                )
+            },
+            socialLinks: OperatorConfigurationMapper.socialLinks(
+              draft.socialLinks
             )
-        },
-        socialLinks: OperatorConfigurationMapper.socialLinks(
-          draft.socialLinks
-        )
-      })
+          });
+        } finally {
+          /*
+           * The server may have committed the new revision even when the
+           * popup closes or the response is lost. Reconcile the owned client
+           * app independently from whether this popup may still consume the
+           * response.
+           */
+          if (firebaseChanged) {
+            await this.firebaseAppService.refreshFirebaseApp();
+          }
+        }
+      }
     );
     if (result) {
       this.configurationRef.set(result);
@@ -672,9 +687,6 @@ export class OperatorWorkspaceStore {
       this.deploymentConfiguration.applyBranding(result.branding);
       this.deploymentConfiguration.applySocialLinks(result.socialLinks);
       this.deploymentConfiguration.applyPrivacyContact(result.privacyContact);
-      if (firebaseChanged) {
-        await this.firebaseAppService.refreshFirebaseApp();
-      }
       this.noticeRef.set(noticeKey);
     }
     return result;
@@ -683,6 +695,8 @@ export class OperatorWorkspaceStore {
   async testConfiguration(
     kind: OperatorConfigurationTestKind
   ): Promise<OperatorConfigurationTestResultDto | null> {
+    const lifecycleGeneration = this.configurationLifecycleGeneration;
+    const requestGeneration = this.requestGeneration;
     this.clearConfigurationTestFeedback(kind);
     if (kind === 'FIREBASE_AUTHENTICATION') {
       this.configurationAuthenticationTestRef.set(null);
@@ -716,8 +730,14 @@ export class OperatorWorkspaceStore {
         }
       }
     }
-    const firebaseWasActive =
-      this.configurationRef()?.firebase.active ?? false;
+    if (
+      lifecycleGeneration !== this.configurationLifecycleGeneration
+      || requestGeneration !== this.requestGeneration
+    ) {
+      await readinessLease?.release();
+      return null;
+    }
+    const testRequestGeneration = this.requestGeneration + 1;
     const result = await this.run(
       kind === 'FIREBASE_AUTHENTICATION' ? 'test-authentication' : 'test-messaging',
       async () => {
@@ -737,10 +757,25 @@ export class OperatorWorkspaceStore {
               : {})
           });
         } finally {
-          await readinessLease?.release();
+          try {
+            await readinessLease?.release();
+          } finally {
+            /*
+             * A failed capability test can deactivate the live revision.
+             * Keep the browser runtime fail-closed even when this popup was
+             * closed while the backend request was in flight.
+             */
+            await this.firebaseAppService.refreshFirebaseApp();
+          }
         }
       }
     );
+    if (
+      lifecycleGeneration !== this.configurationLifecycleGeneration
+      || testRequestGeneration !== this.requestGeneration
+    ) {
+      return null;
+    }
     if (result) {
       const authoritativeFirebase = result.firebase;
       if (authoritativeFirebase) {
@@ -751,9 +786,6 @@ export class OperatorWorkspaceStore {
             }
           : current
         );
-        if (firebaseWasActive && !authoritativeFirebase.active) {
-          await this.firebaseAppService.refreshFirebaseApp();
-        }
       }
       if (kind === 'FIREBASE_AUTHENTICATION') {
         this.configurationAuthenticationTestRef.set(result);
@@ -785,12 +817,21 @@ export class OperatorWorkspaceStore {
   async activateFirebase(): Promise<OperatorConfigurationDto | null> {
     const result = await this.run(
       'activate-firebase',
-      () => this.service.activateFirebase()
+      async () => {
+        try {
+          return await this.service.activateFirebase();
+        } finally {
+          /*
+           * Activation changes the public Firebase revision boundary. This
+           * reconciliation must not depend on the popup still being open.
+           */
+          await this.firebaseAppService.refreshFirebaseApp();
+        }
+      }
     );
     if (result) {
       this.configurationRef.set(result);
       this.configurationDraftRef.set(this.configurationDraftFrom(result));
-      await this.firebaseAppService.refreshFirebaseApp();
       this.noticeRef.set('operator.configuration.firebase.activated');
     }
     return result;
@@ -842,6 +883,7 @@ export class OperatorWorkspaceStore {
   }
 
   clearConfigurationCredentialDrafts(): void {
+    this.configurationLifecycleGeneration += 1;
     const busyAction = this.busyActionRef();
     if (
       busyAction

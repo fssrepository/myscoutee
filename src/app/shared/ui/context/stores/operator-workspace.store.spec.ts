@@ -501,6 +501,60 @@ describe('OperatorWorkspaceStore', () => {
     expect(store.busyAction()).toBeNull();
     expect(store.configurationAuthenticationTest()).toBeNull();
     expect(store.configurationAuthenticationFeedback()).toBeNull();
+    expect(refreshFirebaseApp).toHaveBeenCalledOnce();
+  });
+
+  it('releases browser readiness without testing after the popup ends', async () => {
+    const configured = operatorConfiguration();
+    configured.firebase = {
+      ...configured.firebase,
+      projectId: 'community-project',
+      messagingCredentialConfigured: true,
+      publicConfiguration: {
+        revision: 9,
+        apiKey: 'browser-api-key',
+        authDomain: 'community-project.firebaseapp.com',
+        projectId: 'community-project',
+        storageBucket: '',
+        messagingSenderId: '123456789',
+        appId: '1:123456789:web:operator',
+        measurementId: null,
+        vapidKey: 'public-vapid-key'
+      }
+    };
+    loadConfiguration.mockResolvedValue(configured);
+    let resolveLease!: (
+      value: {
+        proof: {
+          token: string;
+          configurationRevision: number;
+          appId: string;
+        };
+        release: () => Promise<void>;
+      }
+    ) => void;
+    createBrowserReadinessLease.mockImplementation(() =>
+      new Promise(resolve => {
+        resolveLease = resolve;
+      })
+    );
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+
+    const pending = store.testConfiguration('FIREBASE_MESSAGING');
+    store.clearConfigurationCredentialDrafts();
+    resolveLease({
+      proof: {
+        token: 'browser-generated-token',
+        configurationRevision: 9,
+        appId: '1:123456789:web:operator'
+      },
+      release: releaseBrowserReadinessLease
+    });
+
+    await expect(pending).resolves.toBeNull();
+    expect(releaseBrowserReadinessLease).toHaveBeenCalledOnce();
+    expect(testConfiguration).not.toHaveBeenCalled();
   });
 
   it('sends current browser readiness proof and releases its isolated token', async () => {
