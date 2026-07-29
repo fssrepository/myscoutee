@@ -1,6 +1,11 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
+import { FirebaseAppService } from '../../../core/base/services/firebase-app.service';
+import {
+  FirebaseMessagingService,
+  type FirebaseMessagingReadinessLease
+} from '../../../core/base/services/firebase-messaging.service';
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
 import { OperatorConfigurationMapper } from '../../../core/base/mappers/operator-configuration.mapper';
 import type { ListQuery } from '../../../core/contracts/list.interface';
@@ -63,6 +68,8 @@ export class OperatorWorkspaceStore {
   private readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  private readonly firebaseAppService = inject(FirebaseAppService);
+  private readonly firebaseMessagingService = inject(FirebaseMessagingService);
   private readonly claimStatusRef = signal<OperatorClaimStatusDto | null>(null);
   private readonly claimDraftRef = signal<OperatorClaimRequestDto>(
     this.emptyClaimDraft()
@@ -496,6 +503,7 @@ export class OperatorWorkspaceStore {
   ): Promise<OperatorConfigurationDto | null> {
     const configuration = this.configurationRef();
     const draft = this.configurationDraftRef();
+    const firebaseChanged = this.configurationFirebaseDirty();
     if (
       !configuration
       || configuration.capability !== 'AVAILABLE'
@@ -541,6 +549,9 @@ export class OperatorWorkspaceStore {
       this.clearConfigurationTestFeedback();
       this.deploymentConfiguration.applyBranding(result.branding);
       this.deploymentConfiguration.applySocialLinks(result.socialLinks);
+      if (firebaseChanged) {
+        await this.firebaseAppService.refreshFirebaseApp();
+      }
       this.noticeRef.set(noticeKey);
     }
     return result;
@@ -557,26 +568,70 @@ export class OperatorWorkspaceStore {
     }
     const destinationToken =
       this.configurationMessagingDestinationTokenRef().trim();
-    if (kind === 'FIREBASE_MESSAGING' && !destinationToken) {
-      const failure: OperatorConfigurationTestResultDto = {
-        kind,
-        success: false,
-        message: 'operator.configuration.test.messaging.destination.required',
-        testedAt: new Date().toISOString()
-      };
-      this.feedbackActionRef.set('test-messaging');
-      this.configurationMessagingTestRef.set(failure);
-      this.showConfigurationTestFeedback(kind, 'error');
-      return null;
+    let readinessLease: FirebaseMessagingReadinessLease | null = null;
+    if (kind === 'FIREBASE_MESSAGING') {
+      const publicConfiguration =
+        this.configurationRef()?.firebase.publicConfiguration;
+      if (publicConfiguration?.vapidKey?.trim()) {
+        try {
+          readinessLease =
+            await this.firebaseMessagingService.createBrowserReadinessLease({
+              revision: publicConfiguration.revision,
+              apiKey: publicConfiguration.apiKey,
+              authDomain: publicConfiguration.authDomain,
+              projectId: publicConfiguration.projectId,
+              storageBucket: publicConfiguration.storageBucket,
+              messagingSenderId: publicConfiguration.messagingSenderId,
+              appId: publicConfiguration.appId,
+              ...(publicConfiguration.measurementId
+                ? { measurementId: publicConfiguration.measurementId }
+                : {}),
+              vapidKey: publicConfiguration.vapidKey
+            });
+        } catch {
+          // The backend receives no proof and clears stale readiness state.
+        }
+      }
     }
+    const firebaseWasActive =
+      this.configurationRef()?.firebase.active ?? false;
     const result = await this.run(
       kind === 'FIREBASE_AUTHENTICATION' ? 'test-authentication' : 'test-messaging',
-      () => this.service.testConfiguration({
-        kind,
-        ...(kind === 'FIREBASE_MESSAGING' ? { destinationToken } : {})
-      })
+      async () => {
+        try {
+          return await this.service.testConfiguration({
+            kind,
+            ...(kind === 'FIREBASE_MESSAGING' && destinationToken
+              ? { destinationToken }
+              : {}),
+            ...(kind === 'FIREBASE_MESSAGING' && readinessLease
+              ? {
+                  browserReadinessToken: readinessLease.proof.token,
+                  browserConfigurationRevision:
+                    readinessLease.proof.configurationRevision,
+                  browserAppId: readinessLease.proof.appId
+                }
+              : {})
+          });
+        } finally {
+          await readinessLease?.release();
+        }
+      }
     );
     if (result) {
+      const authoritativeFirebase = result.firebase;
+      if (authoritativeFirebase) {
+        this.configurationRef.update(current => current
+          ? {
+              ...current,
+              firebase: structuredClone(authoritativeFirebase)
+            }
+          : current
+        );
+        if (firebaseWasActive && !authoritativeFirebase.active) {
+          await this.firebaseAppService.refreshFirebaseApp();
+        }
+      }
       if (kind === 'FIREBASE_AUTHENTICATION') {
         this.configurationAuthenticationTestRef.set(result);
       } else {
@@ -591,7 +646,8 @@ export class OperatorWorkspaceStore {
         kind,
         success: false,
         message: this.errorRef(),
-        testedAt: new Date().toISOString()
+        testedAt: new Date().toISOString(),
+        firebase: null
       };
       if (kind === 'FIREBASE_AUTHENTICATION') {
         this.configurationAuthenticationTestRef.set(failure);
@@ -611,6 +667,7 @@ export class OperatorWorkspaceStore {
     if (result) {
       this.configurationRef.set(result);
       this.configurationDraftRef.set(this.configurationDraftFrom(result));
+      await this.firebaseAppService.refreshFirebaseApp();
       this.noticeRef.set('operator.configuration.firebase.activated');
     }
     return result;
@@ -657,6 +714,20 @@ export class OperatorWorkspaceStore {
     this.revenueRef.set(null);
     this.revenueSyncRef.set(null);
     this.clearConfigurationTestFeedback();
+  }
+
+  clearConfigurationCredentialDrafts(): void {
+    this.configurationDraftRef.update(current => current
+      ? {
+          ...current,
+          firebase: {
+            ...current.firebase,
+            authenticationCredential: '',
+            messagingCredential: ''
+          }
+        }
+      : current
+    );
   }
 
   setGroupTokenInput(value: string): void {

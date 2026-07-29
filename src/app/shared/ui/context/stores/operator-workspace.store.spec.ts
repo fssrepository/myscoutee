@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
+import { FirebaseAppService } from '../../../core/base/services/firebase-app.service';
 import { SessionService } from '../../../core/base/services/session.service';
 import type {
   OperatorClaimRequestDto,
@@ -29,6 +30,7 @@ describe('OperatorWorkspaceStore', () => {
   const revenueReportPage = vi.fn();
   const requeueRevenueReport = vi.fn();
   const testConfiguration = vi.fn();
+  const refreshFirebaseApp = vi.fn();
   const applyMutation = vi.fn();
   const invalidate = vi.fn();
   const session = signal({
@@ -65,6 +67,8 @@ describe('OperatorWorkspaceStore', () => {
     revenueReportPage.mockReset();
     requeueRevenueReport.mockReset();
     testConfiguration.mockReset();
+    refreshFirebaseApp.mockReset();
+    refreshFirebaseApp.mockResolvedValue(null);
     applyMutation.mockReset();
     invalidate.mockReset();
     activeUserProfile.set({
@@ -104,6 +108,10 @@ describe('OperatorWorkspaceStore', () => {
             applyBranding: vi.fn(),
             applySocialLinks: vi.fn()
           }
+        },
+        {
+          provide: FirebaseAppService,
+          useValue: { refreshFirebaseApp }
         },
         {
           provide: SessionService,
@@ -397,7 +405,8 @@ describe('OperatorWorkspaceStore', () => {
       kind: 'FIREBASE_AUTHENTICATION',
       success: true,
       message: 'operator.configuration.test.success',
-      testedAt: '2026-07-28T18:00:00.000Z'
+      testedAt: '2026-07-28T18:00:00.000Z',
+      firebase: null
     });
     const store = TestBed.inject(OperatorWorkspaceStore);
 
@@ -417,7 +426,8 @@ describe('OperatorWorkspaceStore', () => {
       kind: 'FIREBASE_MESSAGING',
       success: true,
       message: 'Firebase messaging test succeeded.',
-      testedAt: '2026-07-28T18:05:00.000Z'
+      testedAt: '2026-07-28T18:05:00.000Z',
+      firebase: null
     });
     const store = TestBed.inject(OperatorWorkspaceStore);
 
@@ -433,6 +443,65 @@ describe('OperatorWorkspaceStore', () => {
     store.clearFeedback();
 
     expect(store.configurationMessagingDestinationToken()).toBe('');
+  });
+
+  it('applies authoritative Firebase deactivation from a failed backend test', async () => {
+    const active = operatorConfiguration();
+    active.firebase = {
+      ...active.firebase,
+      active: true,
+      activatedAt: '2026-07-28T17:00:00.000Z'
+    };
+    loadConfiguration.mockResolvedValue(active);
+    testConfiguration.mockResolvedValue({
+      kind: 'FIREBASE_AUTHENTICATION',
+      success: false,
+      message: 'Firebase authentication test failed.',
+      testedAt: '2026-07-28T18:10:00.000Z',
+      firebase: {
+        ...active.firebase,
+        active: false,
+        readyToActivate: false,
+        authenticationTestedAt: null,
+        activatedAt: null
+      }
+    });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+    store.setConfigurationFirebase({
+      apiKey: 'unsaved-browser-api-key'
+    });
+
+    await store.testConfiguration('FIREBASE_AUTHENTICATION');
+
+    expect(store.configuration()?.firebase.active).toBe(false);
+    expect(store.configuration()?.firebase.activatedAt).toBeNull();
+    expect(store.configurationDraft()?.firebase.apiKey)
+      .toBe('unsaved-browser-api-key');
+    expect(refreshFirebaseApp).toHaveBeenCalledOnce();
+  });
+
+  it('clears only write-only Firebase credential drafts', async () => {
+    loadConfiguration.mockResolvedValue(operatorConfiguration());
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+    store.setConfigurationFirebase({
+      apiKey: 'unsaved-browser-api-key',
+      authDomain: 'unsaved.firebaseapp.com',
+      authenticationCredential: 'write-only-authentication',
+      messagingCredential: 'write-only-messaging'
+    });
+
+    store.clearConfigurationCredentialDrafts();
+
+    expect(store.configurationDraft()?.firebase).toEqual(
+      expect.objectContaining({
+        apiKey: 'unsaved-browser-api-key',
+        authDomain: 'unsaved.firebaseapp.com',
+        authenticationCredential: '',
+        messagingCredential: ''
+      })
+    );
   });
 
   it('normalizes and saves root administrator and social-link configuration', async () => {
@@ -596,6 +665,7 @@ function operatorConfiguration(): OperatorConfigurationDto {
       authenticationCredentialConfigured: false,
       messagingCredentialConfigured: false,
       publicConfiguration: {
+        revision: 0,
         apiKey: '',
         authDomain: '',
         projectId: '',

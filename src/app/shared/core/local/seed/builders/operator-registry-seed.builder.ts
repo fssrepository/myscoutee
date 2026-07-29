@@ -170,6 +170,7 @@ export class SeedOperatorRegistryBuilder {
             authenticationCredentialConfigured: false,
             messagingCredentialConfigured: false,
             publicConfiguration: {
+              revision: 0,
               apiKey: '',
               authDomain: '',
               projectId: 'myscoutee-explore',

@@ -62,6 +62,9 @@ export const APP_STORAGE_KEYS = {
   eventCheckoutDrafts: scopedStorageKey('event.checkout.drafts.v1'),
   explanationGuideDismissedContexts: scopedStorageKey('explanation-guide.dismissed-contexts.v1'),
   explanationGuideEnabled: scopedStorageKey('explanation-guide.enabled.v1'),
+  firebaseConfigurationInvalidation: scopedStorageKey(
+    'firebase.configuration-invalidation.v1'
+  ),
   firebaseAuthProfile: scopedStorageKey('firebase.auth-profile.v1'),
   messagingDeviceId: scopedStorageKey('messaging.device-id.v1'),
   messagingToken: scopedStorageKey('messaging.token.v1'),

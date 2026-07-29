@@ -726,9 +726,9 @@ export class OperatorActionPopupComponent {
             : 'orange',
         layout: 'action',
         disabled: this.configurationDisabled()
+          || Boolean(configuration?.firebase.active)
           || this.workspace.configurationFirebaseDirty()
           || !configuration?.firebase.messagingCredentialConfigured
-          || !this.workspace.configurationMessagingDestinationToken().trim()
           || messagingFeedback !== null,
         progress: this.busyAction() === 'test-messaging'
           ? { state: 'loading', durationMs: 3000 }
@@ -742,6 +742,11 @@ export class OperatorActionPopupComponent {
   private loadedKind: OperatorMenuKind | null = null;
 
   constructor() {
+    effect(onCleanup => {
+      if (this.kind() === 'configuration') {
+        onCleanup(() => this.scrubConfigurationCredentialDrafts());
+      }
+    });
     effect(() => {
       const kind = this.kind();
       if (!kind || kind === 'registration') {
@@ -930,6 +935,10 @@ export class OperatorActionPopupComponent {
   protected close(): void {
     this.workspace.clearFeedback();
     this.menu.closePopup();
+  }
+
+  private scrubConfigurationCredentialDrafts(): void {
+    this.workspace.clearConfigurationCredentialDrafts();
   }
 
   protected formatDate(value: string | null | undefined): string {

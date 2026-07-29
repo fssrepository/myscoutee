@@ -867,7 +867,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const messagingCredentialConfigured =
       Boolean(`${request.firebase.messagingCredential ?? ''}`.trim())
       || current.configuration.firebase.messagingCredentialConfigured;
-    const publicConfiguration = {
+    const publicConfigurationFields = {
       apiKey: `${request.firebase.apiKey ?? ''}`.trim().slice(0, 256),
       authDomain: `${request.firebase.authDomain ?? ''}`.trim().slice(0, 253),
       projectId,
@@ -879,12 +879,30 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         `${request.firebase.measurementId ?? ''}`.trim().slice(0, 64) || null,
       vapidKey: `${request.firebase.vapidKey ?? ''}`.trim().slice(0, 512) || null
     };
+    const currentPublicConfiguration =
+      current.configuration.firebase.publicConfiguration;
+    const currentPublicConfigurationFields = {
+      apiKey: currentPublicConfiguration.apiKey,
+      authDomain: currentPublicConfiguration.authDomain,
+      projectId: currentPublicConfiguration.projectId,
+      storageBucket: currentPublicConfiguration.storageBucket,
+      messagingSenderId: currentPublicConfiguration.messagingSenderId,
+      appId: currentPublicConfiguration.appId,
+      measurementId: currentPublicConfiguration.measurementId,
+      vapidKey: currentPublicConfiguration.vapidKey
+    };
     const firebaseChanged =
       projectId !== current.configuration.firebase.projectId
-      || JSON.stringify(publicConfiguration)
-        !== JSON.stringify(current.configuration.firebase.publicConfiguration)
+      || JSON.stringify(publicConfigurationFields)
+        !== JSON.stringify(currentPublicConfigurationFields)
       || Boolean(`${request.firebase.authenticationCredential ?? ''}`.trim())
       || Boolean(`${request.firebase.messagingCredential ?? ''}`.trim());
+    const publicConfiguration = {
+      revision: firebaseChanged
+        ? current.configuration.firebase.publicConfiguration.revision + 1
+        : current.configuration.firebase.publicConfiguration.revision,
+      ...publicConfigurationFields
+    };
     const updatedAt = new Date().toISOString();
     const configuration: OperatorConfigurationDto = {
       capability: 'AVAILABLE',
@@ -954,7 +972,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       : Boolean(
           current.configuration.firebase.projectId.trim()
           && current.configuration.firebase.messagingCredentialConfigured
-          && request.destinationToken?.trim()
+          && request.browserReadinessToken?.trim()
+          && request.browserConfigurationRevision
+            === current.configuration.firebase.publicConfiguration.revision
+          && request.browserAppId?.trim()
+            === current.configuration.firebase.publicConfiguration.appId.trim()
         );
     const testedAt = new Date().toISOString();
     const firebase = structuredClone(current.configuration.firebase);
@@ -990,11 +1012,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       success: configured,
       message: configured
         ? 'operator.configuration.test.success'
-        : request.kind === 'FIREBASE_MESSAGING'
-          && !request.destinationToken?.trim()
-          ? 'operator.configuration.test.messaging.destination.required'
-          : 'operator.configuration.credentials.missing',
-      testedAt
+        : 'operator.configuration.test.failed',
+      testedAt,
+      firebase: structuredClone(firebase)
     };
   }
 

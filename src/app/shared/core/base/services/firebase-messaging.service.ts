@@ -2,11 +2,18 @@ import {
   HttpClient
 } from '@angular/common/http';
 import {
+  DestroyRef,
   Injectable,
   Injector,
   effect,
   inject
 } from '@angular/core';
+import {
+  deleteApp,
+  initializeApp,
+  type FirebaseApp,
+  type FirebaseOptions
+} from 'firebase/app';
 import {
   deleteToken,
   getMessaging,
@@ -23,10 +30,23 @@ import {
   APP_STORAGE_KEYS
 } from '../../common/storage-scope';
 import {
-  FirebaseAppService
+  FirebaseAppService,
+  type FirebaseAppRuntime,
+  type FirebaseConfigFile
 } from './firebase-app.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { DeploymentConfigurationService } from './deployment-configuration.service';
+
+export interface FirebaseMessagingReadinessProof {
+  token: string;
+  configurationRevision: number;
+  appId: string;
+}
+
+export interface FirebaseMessagingReadinessLease {
+  proof: FirebaseMessagingReadinessProof;
+  release: () => Promise<void>;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -35,15 +55,23 @@ export class FirebaseMessagingService {
   private static readonly DEVICE_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingDeviceId;
   private static readonly TOKEN_STORAGE_KEY = APP_STORAGE_KEYS.messagingToken;
   private static readonly TOKEN_USER_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingUserId;
+  private static readonly SERVICE_WORKER_READY_TIMEOUT_MS = 10_000;
+  private static readinessAppSequence = 0;
 
   private readonly http = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private initialized = false;
-  private foregroundListenerBound = false;
+  private foregroundListenerApp: FirebaseApp | null = null;
+  private foregroundListenerUnsubscribe: (() => void) | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.unbindForegroundMessages());
+  }
 
   initialize(): void {
     if (this.initialized || !this.enabled) {
@@ -53,16 +81,28 @@ export class FirebaseMessagingService {
 
     effect(
       () => {
+        const runtime = this.firebaseAppService.activeRuntime();
         const userId = this.userProfileStore.activeUserId().trim();
-        if (!userId || !this.enabled) {
+        if (
+          !runtime
+          || !userId
+          || !this.enabled
+          || typeof Notification === 'undefined'
+          || Notification.permission !== 'granted'
+        ) {
+          this.unbindForegroundMessages();
+          if (
+            !runtime
+            && userId
+            && this.enabled
+            && typeof Notification !== 'undefined'
+            && Notification.permission === 'granted'
+          ) {
+            void this.firebaseAppService.ensureFirebaseRuntime();
+          }
           return;
         }
-        if (typeof Notification === 'undefined') {
-          return;
-        }
-        if (Notification.permission === 'granted') {
-          void this.registerActiveDevice();
-        }
+        void this.registerActiveDevice(runtime);
       },
       { injector: this.injector }
     );
@@ -86,7 +126,86 @@ export class FirebaseMessagingService {
     await this.registerActiveDevice();
   }
 
-  private async registerActiveDevice(): Promise<void> {
+  async createBrowserReadinessLease(
+    configuration: FirebaseConfigFile
+  ): Promise<FirebaseMessagingReadinessLease> {
+    if (
+      typeof window === 'undefined'
+      || typeof Notification === 'undefined'
+      || !configuration.vapidKey.trim()
+    ) {
+      throw this.browserReadinessError();
+    }
+
+    const permissionPromise = Notification.permission === 'default'
+      ? Notification.requestPermission()
+      : Promise.resolve(Notification.permission);
+    const permission = await permissionPromise.catch(() => 'denied' as const);
+    if (permission !== 'granted') {
+      throw this.browserReadinessError();
+    }
+    const messagingSupported = await isSupported().catch(() => false);
+    if (!messagingSupported) {
+      throw this.browserReadinessError();
+    }
+    const serviceWorkerRegistration =
+      await this.waitForServiceWorkerReady(
+        FirebaseMessagingService.SERVICE_WORKER_READY_TIMEOUT_MS
+      );
+    if (!serviceWorkerRegistration) {
+      throw this.browserReadinessError();
+    }
+
+    const options: FirebaseOptions = {
+      apiKey: configuration.apiKey,
+      authDomain: configuration.authDomain,
+      projectId: configuration.projectId,
+      storageBucket: configuration.storageBucket,
+      messagingSenderId: configuration.messagingSenderId,
+      appId: configuration.appId,
+      ...(configuration.measurementId
+        ? { measurementId: configuration.measurementId }
+        : {})
+    };
+    const sequence = ++FirebaseMessagingService.readinessAppSequence;
+    const app = initializeApp(
+      options,
+      `myscoutee-messaging-readiness-${Date.now()}-${sequence}`
+    );
+    let messaging: Messaging | null = null;
+    try {
+      messaging = getMessaging(app);
+      const token = await getToken(messaging, {
+        vapidKey: configuration.vapidKey,
+        serviceWorkerRegistration
+      });
+      if (!token.trim()) {
+        throw this.browserReadinessError();
+      }
+      let released = false;
+      return {
+        proof: {
+          token: token.trim(),
+          configurationRevision: configuration.revision,
+          appId: configuration.appId
+        },
+        release: async () => {
+          if (released) {
+            return;
+          }
+          released = true;
+          await this.deleteReadinessApp(app, messaging);
+        }
+      };
+    } catch {
+      await this.deleteReadinessApp(app, messaging);
+      throw this.browserReadinessError();
+    }
+  }
+
+  private async registerActiveDevice(
+    expectedRuntime?: FirebaseAppRuntime
+  ): Promise<void> {
     if (!this.enabled) {
       return;
     }
@@ -107,21 +226,25 @@ export class FirebaseMessagingService {
     if (!messagingSupported) {
       return;
     }
-    const firebaseConfig = await this.firebaseAppService.loadFirebaseConfig();
-    if (!firebaseConfig?.vapidKey) {
-      return;
-    }
-    const firebaseApp = await this.firebaseAppService.ensureFirebaseApp();
-    if (!firebaseApp) {
+    const firebaseRuntime = expectedRuntime
+      ?? await this.firebaseAppService.ensureFirebaseRuntime();
+    if (!firebaseRuntime?.config.vapidKey) {
       return;
     }
     try {
-      const messaging = getMessaging(firebaseApp);
+      const messaging = getMessaging(firebaseRuntime.app);
       const firebaseToken = await getToken(messaging, {
-        vapidKey: firebaseConfig.vapidKey,
+        vapidKey: firebaseRuntime.config.vapidKey,
         serviceWorkerRegistration
       });
       if (!firebaseToken) {
+        return;
+      }
+      if (
+        this.firebaseAppService.activeRuntime()?.app
+          !== firebaseRuntime.app
+        || this.userProfileStore.activeUserId().trim() !== userId
+      ) {
         return;
       }
       await this.http.post(
@@ -134,19 +257,33 @@ export class FirebaseMessagingService {
           notificationsEnabled: true
         }
       ).toPromise();
+      if (
+        this.firebaseAppService.activeRuntime()?.app
+          !== firebaseRuntime.app
+        || this.userProfileStore.activeUserId().trim() !== userId
+      ) {
+        await this.deleteDeviceRegistration(userId, firebaseToken);
+        return;
+      }
       this.storeToken(firebaseToken, userId);
-      this.bindForegroundMessages(messaging);
+      this.bindForegroundMessages(firebaseRuntime.app, messaging);
     } catch {
       // Keep registration best-effort to avoid blocking app startup.
     }
   }
 
-  private bindForegroundMessages(messaging: Messaging): void {
-    if (this.foregroundListenerBound) {
+  private bindForegroundMessages(
+    app: FirebaseApp,
+    messaging: Messaging
+  ): void {
+    if (
+      this.foregroundListenerApp === app
+      && this.foregroundListenerUnsubscribe
+    ) {
       return;
     }
-    this.foregroundListenerBound = true;
-    onMessage(messaging, payload => {
+    this.unbindForegroundMessages();
+    const unsubscribe = onMessage(messaging, payload => {
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
         return;
       }
@@ -169,6 +306,19 @@ export class FirebaseMessagingService {
         });
       });
     });
+    this.foregroundListenerApp = app;
+    this.foregroundListenerUnsubscribe = unsubscribe;
+  }
+
+  private unbindForegroundMessages(): void {
+    const unsubscribe = this.foregroundListenerUnsubscribe;
+    this.foregroundListenerApp = null;
+    this.foregroundListenerUnsubscribe = null;
+    try {
+      unsubscribe?.();
+    } catch {
+      // Listener teardown must not block Firebase runtime replacement.
+    }
   }
 
   private async unregisterStoredDevice(): Promise<void> {
@@ -225,15 +375,49 @@ export class FirebaseMessagingService {
     localStorage.setItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY, userId);
   }
 
-  private async waitForServiceWorkerReady(): Promise<ServiceWorkerRegistration | null> {
+  private async waitForServiceWorkerReady(
+    timeoutMs = FirebaseMessagingService.SERVICE_WORKER_READY_TIMEOUT_MS
+  ): Promise<ServiceWorkerRegistration | null> {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return null;
     }
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     try {
-      return await navigator.serviceWorker.ready;
+      return await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<null>(resolve => {
+          timeout = setTimeout(() => resolve(null), timeoutMs);
+        })
+      ]);
     } catch {
       return null;
+    } finally {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
     }
+  }
+
+  private async deleteReadinessApp(
+    app: FirebaseApp,
+    messaging: Messaging | null
+  ): Promise<void> {
+    if (messaging) {
+      try {
+        await deleteToken(messaging);
+      } catch {
+        // Continue deleting the isolated app even when token cleanup fails.
+      }
+    }
+    try {
+      await deleteApp(app);
+    } catch {
+      // The isolated test app must never affect the active runtime app.
+    }
+  }
+
+  private browserReadinessError(): Error {
+    return new Error('operator.configuration.test.failed');
   }
 
   private isStandalone(): boolean {

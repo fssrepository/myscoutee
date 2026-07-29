@@ -922,7 +922,8 @@ describe('HttpOperatorRegistryService', () => {
       kind: 'FIREBASE_AUTHENTICATION',
       success: true,
       message: 'operator.configuration.test.success',
-      testedAt: '2026-07-28T19:00:00.000Z'
+      testedAt: '2026-07-28T19:00:00.000Z',
+      firebase: null
     }));
     const service = TestBed.inject(HttpOperatorRegistryService);
     const request = {
@@ -1003,7 +1004,8 @@ describe('HttpOperatorRegistryService', () => {
       kind: 'FIREBASE_MESSAGING',
       success: true,
       message: 'Firebase messaging test succeeded.',
-      testedAt: '2026-07-28T19:05:00.000Z'
+      testedAt: '2026-07-28T19:05:00.000Z',
+      firebase: null
     }));
 
     const result = await TestBed.inject(
@@ -1222,6 +1224,7 @@ function operatorConfiguration() {
       authenticationCredentialConfigured: false,
       messagingCredentialConfigured: false,
       publicConfiguration: {
+        revision: 0,
         apiKey: '',
         authDomain: '',
         projectId: 'myscoutee',

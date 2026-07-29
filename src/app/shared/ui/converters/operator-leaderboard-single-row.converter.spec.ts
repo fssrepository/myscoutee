@@ -1,7 +1,7 @@
 import { OperatorLeaderboardSingleRowConverter } from './operator-leaderboard-single-row.converter';
 
 describe('OperatorLeaderboardSingleRowConverter', () => {
-  it('renders a pending claim as a warning row with an under-review badge', () => {
+  it('renders a pending claim with both its review state and indicative share', () => {
     const row = new OperatorLeaderboardSingleRowConverter().convert({
       id: 'opg_pending',
       nodeId: 'dep_pending',
@@ -30,8 +30,12 @@ describe('OperatorLeaderboardSingleRowConverter', () => {
         position: 'top-right'
       })
     ]));
-    expect(row.badges).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: '5.54%' })
+    expect(row.badges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: '5.54%',
+        tone: 'accent',
+        position: 'top-right'
+      })
     ]));
   });
 

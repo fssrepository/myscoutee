@@ -53,6 +53,14 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
     const rejectedReview = entry.claimVerificationStatus === 'REJECTED';
     const rejectedReviewLabel = `${options.rejectedReviewLabel ?? ''}`.trim()
       || 'Review rejected';
+    const shareBadge: SingleRowBadge = {
+      label: `${share}%`,
+      icon: 'pie_chart',
+      ariaLabel: `${share}% ${shareLabel}`,
+      title: `${share}% ${shareLabel}`,
+      tone: entry.sharePercent > 0 ? 'accent' : 'muted',
+      position: 'top-right'
+    };
     const badges: SingleRowBadge[] = rejectedReview
       ? [{
           label: rejectedReviewLabel,
@@ -70,15 +78,8 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
             title: pendingReviewLabel,
             tone: 'warning',
             position: 'top-right'
-          }]
-        : [{
-            label: `${share}%`,
-            icon: 'pie_chart',
-            ariaLabel: `${share}% ${shareLabel}`,
-            title: `${share}% ${shareLabel}`,
-            tone: entry.sharePercent > 0 ? 'accent' : 'muted',
-            position: 'top-right'
-          }];
+          }, shareBadge]
+        : [shareBadge];
 
     return {
       id: entry.id,

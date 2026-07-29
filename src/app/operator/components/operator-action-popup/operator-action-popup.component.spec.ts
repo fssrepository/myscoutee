@@ -22,8 +22,14 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
   const configurationDraft = signal<OperatorConfigurationSaveRequestDto>(
     operatorConfigurationDraft('stripe')
   );
+  const closePopup = vi.fn();
+  const clearFeedback = vi.fn();
+  const clearConfigurationCredentialDrafts = vi.fn();
 
   beforeEach(() => {
+    closePopup.mockReset();
+    clearFeedback.mockReset();
+    clearConfigurationCredentialDrafts.mockReset();
     configuration.set(operatorConfiguration());
     configurationDraft.set(operatorConfigurationDraft('stripe'));
     TestBed.configureTestingModule({
@@ -36,7 +42,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
           provide: OperatorMenuStore,
           useValue: {
             activePopup: signal('configuration').asReadonly(),
-            closePopup: vi.fn()
+            closePopup
           }
         },
         {
@@ -52,7 +58,8 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             configuration: configuration.asReadonly(),
             configurationDraft: configurationDraft.asReadonly(),
             configurationBrandingReady: signal(true).asReadonly(),
-            clearFeedback: vi.fn(),
+            clearFeedback,
+            clearConfigurationCredentialDrafts,
             loadConfiguration: vi.fn().mockResolvedValue(configuration()),
             configurationAuthenticationFeedback: signal(null).asReadonly(),
             configurationMessagingFeedback: signal(null).asReadonly(),
@@ -152,6 +159,23 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       rowImages[1]?.closest('.app-menu__item')
         ?.classList.contains('app-menu__palette--blue')
     ).toBe(true);
+  });
+
+  it('scrubs write-only Firebase drafts when the configuration popup closes', () => {
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = fixture.componentInstance as unknown as {
+      close: () => void;
+    };
+    clearFeedback.mockClear();
+    clearConfigurationCredentialDrafts.mockClear();
+    closePopup.mockClear();
+
+    componentView.close();
+
+    expect(clearConfigurationCredentialDrafts).toHaveBeenCalledOnce();
+    expect(clearFeedback).toHaveBeenCalledOnce();
+    expect(closePopup).toHaveBeenCalledOnce();
+    fixture.destroy();
   });
 
   it('uses the generic payment icon only when a provider has no logo', () => {
@@ -340,6 +364,7 @@ function operatorConfiguration(): OperatorConfigurationDto {
       authenticationCredentialConfigured: false,
       messagingCredentialConfigured: false,
       publicConfiguration: {
+        revision: 0,
         apiKey: '',
         authDomain: '',
         projectId: 'myscoutee',

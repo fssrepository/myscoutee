@@ -776,13 +776,36 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto> {
     const destinationToken = request.destinationToken?.trim() ?? '';
+    const browserReadinessToken =
+      request.browserReadinessToken?.trim() ?? '';
+    const browserAppId = request.browserAppId?.trim() ?? '';
     if (destinationToken.length > 4096) {
       throw new Error('operator.configuration.test.messaging.destination.too.long');
+    }
+    if (
+      browserReadinessToken.length > 4096
+      || browserAppId.length > 256
+    ) {
+      throw new Error('operator.configuration.test.failed');
     }
     const payload: OperatorConfigurationTestRequestDto = {
       kind: request.kind,
       ...(request.kind === 'FIREBASE_MESSAGING' && destinationToken
         ? { destinationToken }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING' && browserReadinessToken
+        ? { browserReadinessToken }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING'
+        && Number.isSafeInteger(request.browserConfigurationRevision)
+        && (request.browserConfigurationRevision ?? -1) >= 0
+        ? {
+            browserConfigurationRevision:
+              request.browserConfigurationRevision
+          }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING' && browserAppId
+        ? { browserAppId }
         : {})
     };
     return await this.requireResponse(

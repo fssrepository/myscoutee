@@ -382,6 +382,7 @@ export interface OperatorFirebaseConfigurationDto {
 }
 
 export interface OperatorFirebasePublicConfigurationDto {
+  revision: number;
   apiKey: string;
   authDomain: string;
   projectId: string;
@@ -433,6 +434,9 @@ export interface OperatorConfigurationSaveRequestDto {
 export interface OperatorConfigurationTestRequestDto {
   kind: OperatorConfigurationTestKind;
   destinationToken?: string;
+  browserReadinessToken?: string;
+  browserConfigurationRevision?: number;
+  browserAppId?: string;
 }
 
 export interface OperatorConfigurationTestResultDto {
@@ -440,6 +444,7 @@ export interface OperatorConfigurationTestResultDto {
   success: boolean;
   message: string;
   testedAt: string;
+  firebase: OperatorFirebaseConfigurationDto | null;
 }
 
 export type OperatorRevenueTone =
