@@ -4,7 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import type {
   OperatorConfigurationDto,
-  OperatorConfigurationSaveRequestDto
+  OperatorConfigurationSaveRequestDto,
+  OperatorSettlementDto
 } from '../../../shared/core/contracts/operator.interface';
 import {
   AppMenuComponent,
@@ -62,6 +63,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             configuration: configuration.asReadonly(),
             configurationDraft: configurationDraft.asReadonly(),
             configurationBrandingReady: signal(true).asReadonly(),
+            configurationPaymentReady: signal(true).asReadonly(),
             configurationFirebaseDirty: signal(false).asReadonly(),
             configurationPrivacyContactReady: signal(true).asReadonly(),
             configurationPrivacyContactValidationKey: () => null,
@@ -322,6 +324,65 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
         palette: 'slate'
       })
     );
+    fixture.destroy();
+  });
+
+  it('configures cursor settlement paging and formats an exact large rational share', () => {
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = fixture.componentInstance as unknown as {
+      settlementConfig: {
+        pageSize?: number;
+        cacheable?: {
+          identity: (settlement: OperatorSettlementDto) => string;
+        };
+      };
+      formatSettlementShare: (
+        settlement: OperatorSettlementDto
+      ) => string;
+    };
+    const settlement = {
+      settlementId: `stl_${'1'.repeat(32)}`,
+      shareNumerator: '3074457345618258602',
+      shareDenominator: '9223372036854775807'
+    } as OperatorSettlementDto;
+
+    expect(componentView.settlementConfig.pageSize).toBe(6);
+    expect(
+      componentView.settlementConfig.cacheable?.identity(settlement)
+    ).toBe(settlement.settlementId);
+    expect(componentView.formatSettlementShare(settlement)).toBe('33.33%');
+    fixture.destroy();
+  });
+
+  it('shows Barion merchant routing and preserves an existing credential on update', () => {
+    const base = operatorConfiguration();
+    configuration.set({
+      ...base,
+      payment: {
+        ...base.payment,
+        providerId: 'barion',
+        publicBaseUrl: 'https://community.example.test',
+        merchantAccount: 'merchant@example.test',
+        credentialConfigured: true,
+        credentialMask: '••••live'
+      }
+    });
+    configurationDraft.set(operatorConfigurationDraft('barion'));
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = fixture.componentInstance as unknown as {
+      configurationPaymentIsBarion: () => boolean;
+      configurationPaymentActionItems:
+        Signal<readonly AppMenuItem<string>[]>;
+    };
+
+    expect(componentView.configurationPaymentIsBarion()).toBe(true);
+    expect(componentView.configurationPaymentActionItems()[0]).toEqual(
+      expect.objectContaining({
+        id: 'operator-update-payment',
+        disabled: false
+      })
+    );
+    fixture.destroy();
   });
 
   it('hosts the selected claimed-group deployments in a cursor SmartList', () => {
@@ -334,6 +395,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       verifiedWeight: 65_000,
       sharePercent: 30,
       claimed: true,
+      eligibilityStatus: 'ACTIVE' as const,
       operatorGroupId: 'opg_test',
       deploymentCount: 2
     });
@@ -359,7 +421,8 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       leaderboardDeploymentRow: (deployment: {
         deploymentId: string;
         groupId: string;
-        claimState: 'pending-review' | 'rejected';
+        claimState: 'pending-review' | 'approved' | 'rejected';
+        eligibilityStatus: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
         membershipState: 'owner';
         verifiedWeight: number;
         sharePercent: number;
@@ -382,6 +445,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       deploymentId: 'dep_owner',
       groupId: 'opg_test',
       claimState: 'pending-review' as const,
+      eligibilityStatus: 'INACTIVE' as const,
       membershipState: 'owner' as const,
       verifiedWeight: 42,
       sharePercent: 0
@@ -399,11 +463,14 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
         title: 'dep_owner',
         subtitle: 'operator.leaderboard.deployments.membership.owner',
         surfaceTone: 'warning',
-        badges: [
+        badges: expect.arrayContaining([
           expect.objectContaining({
             label: 'operator.leaderboard.deployments.claim.pending-review'
+          }),
+          expect.objectContaining({
+            label: '0.0%'
           })
-        ]
+        ])
       }));
     expect(componentView.leaderboardDeploymentRow({
       ...deployment,
@@ -417,6 +484,23 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
           tone: 'danger'
         })
       ]
+    }));
+    expect(componentView.leaderboardDeploymentRow({
+      ...deployment,
+      claimState: 'approved',
+      eligibilityStatus: 'SUSPENDED'
+    })).toEqual(expect.objectContaining({
+      surfaceTone: 'danger',
+      badges: expect.arrayContaining([
+        expect.objectContaining({
+          label: 'operator.claim.eligibility.suspended',
+          icon: 'pause_circle',
+          tone: 'danger'
+        }),
+        expect.objectContaining({
+          label: '0.0%'
+        })
+      ])
     }));
     expect(componentView.popupModel()).toEqual(expect.objectContaining({
       headerLabel: 'operator.leaderboard.deployments.title',
@@ -468,6 +552,8 @@ function operatorConfiguration(): OperatorConfigurationDto {
         }
       ],
       providerId: null,
+      publicBaseUrl: null,
+      merchantAccount: null,
       credentialConfigured: false,
       credentialMask: null
     },
@@ -514,6 +600,12 @@ function operatorConfigurationDraft(
     },
     payment: {
       providerId,
+      publicBaseUrl: providerId
+        ? 'https://community.example.test'
+        : '',
+      merchantAccount: providerId === 'barion'
+        ? 'merchant@example.test'
+        : '',
       credential: ''
     },
     firebase: {

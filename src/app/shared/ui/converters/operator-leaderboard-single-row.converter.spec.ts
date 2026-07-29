@@ -10,6 +10,7 @@ describe('OperatorLeaderboardSingleRowConverter', () => {
       verifiedWeight: 12_000,
       sharePercent: 5.54,
       claimed: true,
+      eligibilityStatus: 'INACTIVE',
       operatorGroupId: 'opg_pending',
       deploymentCount: 1,
       claimVerificationStatus: 'PENDING_REVIEW'
@@ -48,6 +49,7 @@ describe('OperatorLeaderboardSingleRowConverter', () => {
       verifiedWeight: 12_000,
       sharePercent: 0,
       claimed: true,
+      eligibilityStatus: 'INACTIVE',
       operatorGroupId: 'opg_rejected',
       deploymentCount: 1,
       claimVerificationStatus: 'REJECTED'
@@ -71,6 +73,71 @@ describe('OperatorLeaderboardSingleRowConverter', () => {
     ]));
     expect(row.badges).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ label: '0.0%' })
+    ]));
+  });
+
+  it('keeps suspended measured weight visible but never presents the claim as eligible', () => {
+    const row = new OperatorLeaderboardSingleRowConverter().convert({
+      id: 'opg_suspended',
+      nodeId: null,
+      label: 'Suspended Operator',
+      group: 'CLAIMED',
+      verifiedWeight: 42_000,
+      sharePercent: 0,
+      claimed: true,
+      eligibilityStatus: 'SUSPENDED',
+      operatorGroupId: 'opg_suspended',
+      deploymentCount: 1,
+      claimVerificationStatus: 'APPROVED'
+    }, {
+      locale: 'en',
+      unitsLabel: 'contribution units',
+      suspendedEligibilityLabel: 'Suspended'
+    });
+
+    expect(row.surfaceTone).toBe('danger');
+    expect(row.detail).toBe('42,000 contribution units');
+    expect(row.badges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Suspended',
+        icon: 'pause_circle',
+        tone: 'danger'
+      }),
+      expect.objectContaining({
+        label: '0.0%',
+        tone: 'muted'
+      })
+    ]));
+  });
+
+  it('renders a mixed group as partially suspended rather than fully eligible', () => {
+    const row = new OperatorLeaderboardSingleRowConverter().convert({
+      id: 'opg_mixed',
+      nodeId: null,
+      label: 'Mixed Operator',
+      group: 'CLAIMED',
+      verifiedWeight: 65_000,
+      sharePercent: 12.5,
+      claimed: true,
+      eligibilityStatus: 'PARTIALLY_SUSPENDED',
+      operatorGroupId: 'opg_mixed',
+      deploymentCount: 2,
+      claimVerificationStatus: 'APPROVED'
+    }, {
+      locale: 'en',
+      partiallySuspendedEligibilityLabel: 'Partially suspended'
+    });
+
+    expect(row.surfaceTone).toBe('warning');
+    expect(row.badges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Partially suspended',
+        tone: 'warning'
+      }),
+      expect.objectContaining({
+        label: '12.5%',
+        tone: 'accent'
+      })
     ]));
   });
 });

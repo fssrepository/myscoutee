@@ -23,6 +23,7 @@ describe('OperatorLeaderboardStore deployment drilldown', () => {
         deploymentId: 'dep_owner',
         groupId: 'opg_test',
         claimState: 'approved' as const,
+        eligibilityStatus: 'ACTIVE' as const,
         membershipState: 'owner' as const,
         verifiedWeight: 42,
         sharePercent: 4.2

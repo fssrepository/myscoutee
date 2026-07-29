@@ -3,9 +3,11 @@ import type {
   OperatorClaimStatusDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
+  OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
   OperatorLeaderboardEntryDto,
   OperatorRevenueDto,
+  OperatorSettlementDto,
   OperatorRegistryStatusDto
 } from '../../../contracts/operator.interface';
 
@@ -38,6 +40,7 @@ export interface OperatorLedgerNodeRecord {
   founder: boolean;
   verifiedWeight: number;
   claimed: boolean;
+  eligibilityStatus: OperatorDeploymentEligibilityStatus;
   claimantUserId: string | null;
   claimantName: string | null;
   claimantAvatarUrl: string | null;
@@ -80,6 +83,7 @@ export interface OperatorRegistryStateRecord {
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
   revenue: OperatorRevenueDto;
+  settlements: OperatorSettlementDto[];
   community: OperatorCommunityStatusDto;
 }
 

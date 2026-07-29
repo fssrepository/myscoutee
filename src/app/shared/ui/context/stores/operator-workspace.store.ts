@@ -28,7 +28,9 @@ import type {
   OperatorRevenueReportDto,
   OperatorRevenueReportFilters,
   OperatorRevenueReportPageDto,
-  OperatorRevenueSyncDto
+  OperatorRevenueSyncDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto
 } from '../../../core/contracts/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { UserProfileStore } from './user-profile.store';
@@ -93,6 +95,10 @@ export class OperatorWorkspaceStore {
     signal<OperatorConfigurationTestFeedback>(null);
   private readonly revenueRef = signal<OperatorRevenueDto | null>(null);
   private readonly revenueSyncRef = signal<OperatorRevenueSyncDto | null>(null);
+  private readonly revenueSettlementInitialPageRef =
+    signal<OperatorSettlementPageDto | null>(null);
+  private readonly revenueSettlementAvailableRef =
+    signal<boolean | null>(null);
   private readonly communityRef = signal<OperatorCommunityStatusDto | null>(null);
   private readonly busyActionRef = signal<OperatorWorkspaceBusyAction>(null);
   private readonly errorRef = signal('');
@@ -127,6 +133,8 @@ export class OperatorWorkspaceStore {
     this.configurationMessagingFeedbackRef.asReadonly();
   readonly revenue = this.revenueRef.asReadonly();
   readonly revenueSync = this.revenueSyncRef.asReadonly();
+  readonly revenueSettlementAvailable =
+    this.revenueSettlementAvailableRef.asReadonly();
   readonly community = this.communityRef.asReadonly();
   readonly busyAction = this.busyActionRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
@@ -213,6 +221,10 @@ export class OperatorWorkspaceStore {
         configuration.socialLinks
       )
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
+      || draft.payment.publicBaseUrl.trim()
+        !== (configuration.payment.publicBaseUrl ?? '')
+      || draft.payment.merchantAccount.trim()
+        !== (configuration.payment.merchantAccount ?? '')
       || Boolean(draft.payment.credential.trim())
       || this.configurationFirebaseDirty()
     );
@@ -254,6 +266,15 @@ export class OperatorWorkspaceStore {
   readonly configurationSocialLinksReady = computed(
     () => this.configurationSocialLinksValidationKey() === null
   );
+  readonly configurationPaymentValidationKey = computed(() =>
+    OperatorConfigurationMapper.paymentValidationKey(
+      this.configurationDraftRef()?.payment
+    )
+  );
+  readonly configurationPaymentReady = computed(() => Boolean(
+    this.configurationDraftRef()?.payment.providerId
+    && this.configurationPaymentValidationKey() === null
+  ));
 
   constructor() {
     effect(() => {
@@ -440,17 +461,42 @@ export class OperatorWorkspaceStore {
 
   async loadRevenue(): Promise<OperatorRevenueDto | null> {
     const cached = this.revenueRef();
-    if (cached) {
+    if (
+      cached
+      && this.revenueSettlementAvailableRef() !== null
+    ) {
       return cached;
     }
     const result = await this.run(
       'load-revenue',
-      () => this.service.loadRevenue()
+      async () => {
+        const [revenue, settlementPage] = await Promise.all([
+          this.service.loadRevenue(),
+          this.service.settlementPage({
+            page: 0,
+            pageSize: 6,
+            sort: 'period',
+            direction: 'desc',
+            filters: {
+              includeSuperseded: false
+            }
+          }).catch(() => null)
+        ]);
+        return { revenue, settlementPage };
+      }
     );
     if (result) {
-      this.revenueRef.set(result);
+      this.revenueRef.set(result.revenue);
+      this.revenueSettlementInitialPageRef.set(
+        result.settlementPage
+          ? structuredClone(result.settlementPage)
+          : null
+      );
+      this.revenueSettlementAvailableRef.set(
+        result.settlementPage !== null
+      );
     }
-    return result;
+    return result?.revenue ?? null;
   }
 
   async synchronizeRevenue(): Promise<OperatorRevenueSyncDto | null> {
@@ -469,6 +515,26 @@ export class OperatorWorkspaceStore {
     signal?: AbortSignal
   ): Promise<OperatorRevenueReportPageDto> {
     return this.service.revenueReportPage(query, signal);
+  }
+
+  settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    const initialPage = this.revenueSettlementInitialPageRef();
+    if (
+      initialPage
+      && Math.max(0, Math.trunc(Number(query.page) || 0)) === 0
+      && Math.max(1, Math.trunc(Number(query.pageSize) || 0)) === 6
+      && !query.cursor
+      && !`${query.filters?.currencyCode ?? ''}`.trim()
+      && !`${query.filters?.fromPeriod ?? ''}`.trim()
+      && !`${query.filters?.throughPeriod ?? ''}`.trim()
+      && query.filters?.includeSuperseded !== true
+    ) {
+      return Promise.resolve(structuredClone(initialPage));
+    }
+    return this.service.settlementPage(query, signal);
   }
 
   async requeueRevenueReport(
@@ -551,10 +617,29 @@ export class OperatorWorkspaceStore {
       this.errorRef.set(privacyContactValidationKey);
       return null;
     }
+    if (action === 'register-payment') {
+      const paymentValidationKey = this.configurationPaymentValidationKey();
+      if (paymentValidationKey) {
+        this.feedbackActionRef.set(action);
+        this.errorRef.set(paymentValidationKey);
+        return null;
+      }
+    }
     const result = await this.run(
       action,
       () => this.service.saveConfiguration({
         ...structuredClone(draft),
+        payment: {
+          ...structuredClone(draft.payment),
+          publicBaseUrl:
+            OperatorConfigurationMapper.paymentPublicBaseUrl(
+              draft.payment.publicBaseUrl
+            ) || draft.payment.publicBaseUrl.trim(),
+          merchantAccount:
+            OperatorConfigurationMapper.paymentMerchantAccount(
+              draft.payment.merchantAccount
+            )
+        },
         socialLinks: OperatorConfigurationMapper.socialLinks(
           draft.socialLinks
         )
@@ -736,6 +821,8 @@ export class OperatorWorkspaceStore {
     this.configurationMessagingDestinationTokenRef.set('');
     this.revenueRef.set(null);
     this.revenueSyncRef.set(null);
+    this.revenueSettlementInitialPageRef.set(null);
+    this.revenueSettlementAvailableRef.set(null);
     this.clearConfigurationTestFeedback();
   }
 
@@ -743,6 +830,10 @@ export class OperatorWorkspaceStore {
     this.configurationDraftRef.update(current => current
       ? {
           ...current,
+          payment: {
+            ...current.payment,
+            credential: ''
+          },
           firebase: {
             ...current.firebase,
             authenticationCredential: '',
@@ -897,16 +988,28 @@ export class OperatorWorkspaceStore {
   setConfigurationPayment(
     patch: Partial<OperatorConfigurationSaveRequestDto['payment']>
   ): void {
-    this.configurationDraftRef.update(current => current
-      ? {
-          ...current,
-          payment: {
-            ...current.payment,
-            ...patch
-          }
-        }
-      : current
-    );
+    this.configurationDraftRef.update(current => {
+      if (!current) {
+        return current;
+      }
+      const providerRemoved =
+        Object.prototype.hasOwnProperty.call(patch, 'providerId')
+        && !`${patch.providerId ?? ''}`.trim();
+      return {
+        ...current,
+        payment: providerRemoved
+          ? {
+              providerId: null,
+              publicBaseUrl: '',
+              merchantAccount: '',
+              credential: ''
+            }
+          : {
+              ...current.payment,
+              ...patch
+            }
+      };
+    });
   }
 
   setConfigurationFirebase(
@@ -1023,6 +1126,8 @@ export class OperatorWorkspaceStore {
       },
       payment: {
         providerId: configuration.payment.providerId,
+        publicBaseUrl: configuration.payment.publicBaseUrl ?? '',
+        merchantAccount: configuration.payment.merchantAccount ?? '',
         credential: ''
       },
       firebase: {

@@ -9,6 +9,8 @@ export class OperatorConfigurationMapper {
   static readonly SOCIAL_LINK_MAX_COUNT = 12;
   static readonly DATA_CONTROLLER_NAME_MAX_LENGTH = 160;
   static readonly PRIVACY_CONTACT_EMAIL_MAX_LENGTH = 254;
+  static readonly PAYMENT_PUBLIC_BASE_URL_MAX_LENGTH = 2048;
+  static readonly PAYMENT_MERCHANT_ACCOUNT_MAX_LENGTH = 254;
 
   static privacyContact(value: unknown): DeploymentPrivacyContactDto {
     const source = value && typeof value === 'object'
@@ -188,6 +190,79 @@ export class OperatorConfigurationMapper {
   static socialLinksEqual(left: unknown, right: unknown): boolean {
     return JSON.stringify(this.socialLinks(left))
       === JSON.stringify(this.socialLinks(right));
+  }
+
+  static paymentPublicBaseUrl(value: unknown): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (
+      !normalized
+      || normalized.length > this.PAYMENT_PUBLIC_BASE_URL_MAX_LENGTH
+    ) {
+      return '';
+    }
+    try {
+      const url = new URL(normalized);
+      const loopbackHost = [
+        'localhost',
+        '127.0.0.1',
+        '::1',
+        '[::1]'
+      ].includes(url.hostname.toLowerCase());
+      if (
+        (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopbackHost))
+        || !url.hostname
+        || url.username
+        || url.password
+        || url.search
+        || url.hash
+        || /(?:^|\/)\.\.(?:\/|$)/.test(url.pathname)
+      ) {
+        return '';
+      }
+      return url.toString().replace(/\/+$/, '');
+    } catch {
+      return '';
+    }
+  }
+
+  static paymentMerchantAccount(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  static paymentValidationKey(value: unknown): string | null {
+    const source = value && typeof value === 'object'
+      ? value as {
+          providerId?: unknown;
+          publicBaseUrl?: unknown;
+          merchantAccount?: unknown;
+        }
+      : {};
+    const providerId = `${source.providerId ?? ''}`.trim().toLowerCase();
+    if (!providerId) {
+      return null;
+    }
+    const publicBaseUrl = `${source.publicBaseUrl ?? ''}`.trim();
+    if (!publicBaseUrl) {
+      return 'operator.configuration.payment.public.url.required';
+    }
+    if (!this.paymentPublicBaseUrl(publicBaseUrl)) {
+      return 'operator.configuration.payment.public.url.invalid';
+    }
+    if (providerId !== 'barion') {
+      return null;
+    }
+    const merchantAccount = this.paymentMerchantAccount(
+      source.merchantAccount
+    );
+    if (!merchantAccount) {
+      return 'operator.configuration.payment.merchant.account.required';
+    }
+    return (
+      merchantAccount.length > this.PAYMENT_MERCHANT_ACCOUNT_MAX_LENGTH
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(merchantAccount)
+    )
+      ? 'operator.configuration.payment.merchant.account.invalid'
+      : null;
   }
 
   private static socialUrl(value: unknown): string {

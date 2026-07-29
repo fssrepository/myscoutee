@@ -1,6 +1,7 @@
 import type {
   OperatorRegistryStatusDto,
-  OperatorRevenueDto
+  OperatorRevenueDto,
+  OperatorSettlementDto
 } from '../../../contracts/operator.interface';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { USERS_TABLE_NAME, type UserRecord } from '../../source/entity/user.entity';
@@ -23,7 +24,7 @@ export interface OperatorBootstrapSeedResult {
 }
 
 export class SeedOperatorRegistryBuilder {
-  static readonly SEED_VERSION = 'operator-workspace-v4';
+  static readonly SEED_VERSION = 'operator-workspace-v6';
   static readonly PRIMARY_BASE_URL = 'https://registry.myscoutee.invalid';
   static readonly PRIMARY_SCOPE = 'demo:primary';
 
@@ -91,7 +92,8 @@ export class SeedOperatorRegistryBuilder {
           verificationUnavailableReason: null,
           verificationStatus: 'NOT_SUBMITTED',
           verificationSubmittedAt: null,
-          legalName: null
+          legalName: null,
+          eligibilityStatus: 'INACTIVE'
         },
         claimVerificationRequest: null,
         deploymentUpdate: {
@@ -167,6 +169,8 @@ export class SeedOperatorRegistryBuilder {
               }
             ],
             providerId: null,
+            publicBaseUrl: null,
+            merchantAccount: null,
             credentialConfigured: false,
             credentialMask: null
           },
@@ -194,6 +198,7 @@ export class SeedOperatorRegistryBuilder {
           updatedAt: nowIso
         },
         revenue: this.buildInitialRevenue(now),
+        settlements: this.buildInitialSettlements(),
         community: {
           availability: 'AVAILABLE',
           updatedAt: nowIso,
@@ -436,6 +441,215 @@ export class SeedOperatorRegistryBuilder {
     };
   }
 
+  static buildInitialSettlements(): OperatorSettlementDto[] {
+    const beneficiaryId = `opg_${'1'.repeat(32)}`;
+    const baseValuationMultiplierBasisPoints = 30_000;
+    const rows = [
+      {
+        sequence: 1,
+        period: '2026-06',
+        currencyCode: 'EUR',
+        fractionDigits: 2,
+        revision: 1,
+        supersedesSettlementId: null,
+        networkPoolMinor: 50_000,
+        ttmCommissionBasisMinor: 1_000_000,
+        recentThreeMonthAverageMinor: 92_000,
+        priorThreeMonthAverageMinor: 80_000,
+        earlierThreeMonthAverageMinor: 75_000,
+        acceptedAtIso: '2026-07-01T08:00:00.000Z'
+      },
+      {
+        sequence: 2,
+        period: '2026-06',
+        currencyCode: 'EUR',
+        fractionDigits: 2,
+        revision: 2,
+        supersedesSettlementId: `stl_${'0'.repeat(31)}1`,
+        networkPoolMinor: 52_500,
+        ttmCommissionBasisMinor: 1_050_000,
+        recentThreeMonthAverageMinor: 96_000,
+        priorThreeMonthAverageMinor: 81_000,
+        earlierThreeMonthAverageMinor: 75_000,
+        acceptedAtIso: '2026-07-02T08:00:00.000Z'
+      },
+      {
+        sequence: 3,
+        period: '2026-05',
+        currencyCode: 'EUR',
+        fractionDigits: 2,
+        revision: 1,
+        supersedesSettlementId: null,
+        networkPoolMinor: 47_500,
+        ttmCommissionBasisMinor: 950_000,
+        recentThreeMonthAverageMinor: 81_000,
+        priorThreeMonthAverageMinor: 75_000,
+        earlierThreeMonthAverageMinor: 72_000,
+        acceptedAtIso: '2026-06-01T08:00:00.000Z'
+      },
+      {
+        sequence: 4,
+        period: '2026-06',
+        currencyCode: 'USD',
+        fractionDigits: 2,
+        revision: 1,
+        supersedesSettlementId: null,
+        networkPoolMinor: 38_000,
+        ttmCommissionBasisMinor: 760_000,
+        recentThreeMonthAverageMinor: 68_000,
+        priorThreeMonthAverageMinor: 62_000,
+        earlierThreeMonthAverageMinor: 60_000,
+        acceptedAtIso: '2026-07-01T08:05:00.000Z'
+      },
+      {
+        sequence: 5,
+        period: '2026-05',
+        currencyCode: 'USD',
+        fractionDigits: 2,
+        revision: 1,
+        supersedesSettlementId: null,
+        networkPoolMinor: 35_000,
+        ttmCommissionBasisMinor: 700_000,
+        recentThreeMonthAverageMinor: 62_000,
+        priorThreeMonthAverageMinor: 60_000,
+        earlierThreeMonthAverageMinor: 58_000,
+        acceptedAtIso: '2026-06-01T08:05:00.000Z'
+      },
+      {
+        sequence: 6,
+        period: '2026-06',
+        currencyCode: 'HUF',
+        fractionDigits: 0,
+        revision: 1,
+        supersedesSettlementId: null,
+        networkPoolMinor: 1_850_000,
+        ttmCommissionBasisMinor: 37_000_000,
+        recentThreeMonthAverageMinor: 3_300_000,
+        priorThreeMonthAverageMinor: 3_050_000,
+        earlierThreeMonthAverageMinor: 2_900_000,
+        acceptedAtIso: '2026-07-01T08:10:00.000Z'
+      },
+      {
+        sequence: 7,
+        period: '2026-05',
+        currencyCode: 'HUF',
+        fractionDigits: 0,
+        revision: 1,
+        supersedesSettlementId: null,
+        networkPoolMinor: 1_700_000,
+        ttmCommissionBasisMinor: 34_000_000,
+        recentThreeMonthAverageMinor: 3_050_000,
+        priorThreeMonthAverageMinor: 2_900_000,
+        earlierThreeMonthAverageMinor: 2_780_000,
+        acceptedAtIso: '2026-06-01T08:10:00.000Z'
+      }
+    ] as const;
+    return rows.map(row => {
+      const settlementId =
+        `stl_${row.sequence.toString(16).padStart(32, '0')}`;
+      const priorGrowthBasisPoints = this.growthBasisPoints(
+        row.earlierThreeMonthAverageMinor,
+        row.priorThreeMonthAverageMinor
+      );
+      const recentGrowthBasisPoints = this.growthBasisPoints(
+        row.priorThreeMonthAverageMinor,
+        row.recentThreeMonthAverageMinor
+      );
+      const accelerationBasisPoints = Math.max(
+        -10_000,
+        Math.min(
+          10_000,
+          recentGrowthBasisPoints - priorGrowthBasisPoints
+        )
+      );
+      const valuationAdjustmentBasisPoints = Math.max(
+        -2_500,
+        Math.min(
+          2_500,
+          Math.trunc(recentGrowthBasisPoints / 4)
+          + Math.trunc(accelerationBasisPoints / 4)
+        )
+      );
+      const effectiveValuationMultiplierBasisPoints = Math.floor(
+        baseValuationMultiplierBasisPoints
+        * (10_000 + valuationAdjustmentBasisPoints)
+        / 10_000
+      );
+      const shareNumerator = '277';
+      const shareDenominator = '5000';
+      const ttmNetworkCommissionPoolMinor = Math.floor(
+        row.ttmCommissionBasisMinor * 500 / 10_000
+      );
+      const indicativeNetworkValueMinor = Math.floor(
+        row.ttmCommissionBasisMinor
+        * effectiveValuationMultiplierBasisPoints
+        / 10_000
+      );
+      return {
+        settlementId,
+        period: row.period,
+        currencyCode: row.currencyCode,
+        fractionDigits: row.fractionDigits,
+        revision: row.revision,
+        supersedesSettlementId: row.supersedesSettlementId,
+        beneficiaryType: 'OPERATOR_GROUP',
+        beneficiaryId,
+        shareNumerator,
+        shareDenominator,
+        networkPoolMinor: row.networkPoolMinor,
+        networkPoolAllocationMinor: Math.floor(
+          row.networkPoolMinor * 277 / 5_000
+        ),
+        ttmCommissionBasisMinor: row.ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        indicativeValueAllocationMinor: Math.floor(
+          indicativeNetworkValueMinor * 277 / 5_000
+        ),
+        valuationRulesetVersion:
+          'three-month-acceleration-valuation-v1',
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor:
+          row.recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor:
+          row.priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor:
+          row.earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints,
+        valuationIsNonBinding: true,
+        throughLedgerIndex: 40 + row.sequence,
+        throughAuditIndex: 20 + row.sequence,
+        throughReviewIndex: 8,
+        throughEligibilityIndex: 6,
+        sourceFingerprint:
+          `sha256:${row.sequence.toString(16).repeat(64)}`,
+        settlementHash:
+          `sha256:${(row.sequence + 8).toString(16).repeat(64)}`,
+        acceptedAtIso: row.acceptedAtIso
+      };
+    });
+  }
+
+  private static growthBasisPoints(
+    previous: number,
+    current: number
+  ): number {
+    if (previous === 0) {
+      return current === 0 ? 0 : 20_000;
+    }
+    return Math.max(
+      -10_000,
+      Math.min(
+        20_000,
+        Math.trunc((current - previous) * 10_000 / previous)
+      )
+    );
+  }
+
   static buildBootstrapMemory(
     memory: OperatorBootstrapSeedMemory,
     now = new Date()
@@ -490,6 +704,7 @@ export class SeedOperatorRegistryBuilder {
         founder: true,
         verifiedWeight: 100_000,
         claimed: true,
+        eligibilityStatus: 'ACTIVE',
         claimantUserId: null,
         claimantName: 'MyScoutee',
         claimantAvatarUrl: null,
@@ -504,6 +719,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 50_000,
         claimed: true,
+        eligibilityStatus: 'ACTIVE',
         claimantUserId: 'operator-campus',
         claimantName: 'Campus Operator',
         claimantAvatarUrl: null,
@@ -518,6 +734,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 15_000,
         claimed: true,
+        eligibilityStatus: 'ACTIVE',
         claimantUserId: 'operator-campus',
         claimantName: 'Campus Operator',
         claimantAvatarUrl: null,
@@ -532,6 +749,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 30_000,
         claimed: true,
+        eligibilityStatus: 'ACTIVE',
         claimantUserId: 'operator-city',
         claimantName: 'City Operator',
         claimantAvatarUrl: null,
@@ -546,6 +764,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 20_000,
         claimed: true,
+        eligibilityStatus: 'ACTIVE',
         claimantUserId: 'operator-club',
         claimantName: 'Club Operator',
         claimantAvatarUrl: null,
@@ -560,6 +779,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 12_000,
         claimed: false,
+        eligibilityStatus: 'INACTIVE',
         claimantUserId: null,
         claimantName: null,
         claimantAvatarUrl: null,
@@ -574,6 +794,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 9_000,
         claimed: false,
+        eligibilityStatus: 'INACTIVE',
         claimantUserId: null,
         claimantName: null,
         claimantAvatarUrl: null,
@@ -588,6 +809,7 @@ export class SeedOperatorRegistryBuilder {
         founder: false,
         verifiedWeight: 6_000,
         claimed: false,
+        eligibilityStatus: 'INACTIVE',
         claimantUserId: null,
         claimantName: null,
         claimantAvatarUrl: null,

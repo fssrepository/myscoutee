@@ -18,6 +18,9 @@ export interface OperatorLeaderboardSingleRowConverterOptions {
   unclaimedNodeLabel?: string | null;
   pendingReviewLabel?: string | null;
   rejectedReviewLabel?: string | null;
+  suspendedEligibilityLabel?: string | null;
+  partiallySuspendedEligibilityLabel?: string | null;
+  inactiveEligibilityLabel?: string | null;
 }
 
 export class OperatorLeaderboardSingleRowConverter implements UiConverter<
@@ -53,6 +56,21 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
     const rejectedReview = entry.claimVerificationStatus === 'REJECTED';
     const rejectedReviewLabel = `${options.rejectedReviewLabel ?? ''}`.trim()
       || 'Review rejected';
+    const suspended = entry.group === 'CLAIMED'
+      && entry.eligibilityStatus === 'SUSPENDED';
+    const partiallySuspended = entry.group === 'CLAIMED'
+      && entry.eligibilityStatus === 'PARTIALLY_SUSPENDED';
+    const inactive = entry.group === 'CLAIMED'
+      && entry.eligibilityStatus === 'INACTIVE';
+    const suspendedEligibilityLabel = `${
+      options.suspendedEligibilityLabel ?? ''
+    }`.trim() || 'Suspended';
+    const partiallySuspendedEligibilityLabel = `${
+      options.partiallySuspendedEligibilityLabel ?? ''
+    }`.trim() || 'Partially suspended';
+    const inactiveEligibilityLabel = `${
+      options.inactiveEligibilityLabel ?? ''
+    }`.trim() || 'Not eligible';
     const shareBadge: SingleRowBadge = {
       label: `${share}%`,
       icon: 'pie_chart',
@@ -79,7 +97,34 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
             tone: 'warning',
             position: 'top-right'
           }, shareBadge]
-        : [shareBadge];
+        : suspended
+          ? [{
+              label: suspendedEligibilityLabel,
+              icon: 'pause_circle',
+              ariaLabel: suspendedEligibilityLabel,
+              title: suspendedEligibilityLabel,
+              tone: 'danger',
+              position: 'top-right'
+            }, shareBadge]
+          : partiallySuspended
+            ? [{
+                label: partiallySuspendedEligibilityLabel,
+                icon: 'warning',
+                ariaLabel: partiallySuspendedEligibilityLabel,
+                title: partiallySuspendedEligibilityLabel,
+                tone: 'warning',
+                position: 'top-right'
+              }, shareBadge]
+            : inactive
+              ? [{
+                  label: inactiveEligibilityLabel,
+                  icon: 'gpp_maybe',
+                  ariaLabel: inactiveEligibilityLabel,
+                  title: inactiveEligibilityLabel,
+                  tone: 'muted',
+                  position: 'top-right'
+                }]
+              : [shareBadge];
 
     return {
       id: entry.id,
@@ -108,14 +153,25 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
           ? 'danger'
           : pendingReview
             ? 'warning'
-            : entry.claimed
-              ? 'success'
-              : 'muted',
+            : suspended
+              ? 'danger'
+              : partiallySuspended
+                ? 'warning'
+                : inactive
+                  ? 'muted'
+                  : entry.claimed
+                    ? 'success'
+                    : 'muted',
       toneClass: [
         'operator-leaderboard-row',
         `operator-leaderboard-row--${entry.group.toLowerCase()}`,
         pendingReview ? 'operator-leaderboard-row--pending-review' : '',
-        rejectedReview ? 'operator-leaderboard-row--rejected' : ''
+        rejectedReview ? 'operator-leaderboard-row--rejected' : '',
+        suspended ? 'operator-leaderboard-row--suspended' : '',
+        partiallySuspended
+          ? 'operator-leaderboard-row--partially-suspended'
+          : '',
+        inactive ? 'operator-leaderboard-row--inactive' : ''
       ].filter(Boolean).join(' '),
       badges,
       eagerDetail: structuredClone(entry)

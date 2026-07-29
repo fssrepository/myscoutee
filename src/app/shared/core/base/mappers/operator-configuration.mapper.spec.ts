@@ -105,4 +105,42 @@ describe('OperatorConfigurationMapper', () => {
       }
     ])).toBe('operator.configuration.social.provider.duplicate');
   });
+
+  it('normalizes a secure payment base URL and allows loopback HTTP', () => {
+    expect(OperatorConfigurationMapper.paymentPublicBaseUrl(
+      ' https://community.example.test/ '
+    )).toBe('https://community.example.test');
+    expect(OperatorConfigurationMapper.paymentPublicBaseUrl(
+      'http://127.0.0.1:8080/'
+    )).toBe('http://127.0.0.1:8080');
+    expect(OperatorConfigurationMapper.paymentPublicBaseUrl(
+      'http://community.example.test'
+    )).toBe('');
+    expect(OperatorConfigurationMapper.paymentPublicBaseUrl(
+      'https://community.example.test?secret=value'
+    )).toBe('');
+  });
+
+  it('requires payment routing and a valid Barion merchant email', () => {
+    expect(OperatorConfigurationMapper.paymentValidationKey({
+      providerId: 'stripe',
+      publicBaseUrl: '',
+      merchantAccount: ''
+    })).toBe('operator.configuration.payment.public.url.required');
+    expect(OperatorConfigurationMapper.paymentValidationKey({
+      providerId: 'stripe',
+      publicBaseUrl: 'https://community.example.test',
+      merchantAccount: ''
+    })).toBeNull();
+    expect(OperatorConfigurationMapper.paymentValidationKey({
+      providerId: 'barion',
+      publicBaseUrl: 'https://community.example.test',
+      merchantAccount: ''
+    })).toBe('operator.configuration.payment.merchant.account.required');
+    expect(OperatorConfigurationMapper.paymentValidationKey({
+      providerId: 'barion',
+      publicBaseUrl: 'https://community.example.test',
+      merchantAccount: 'merchant@example.test'
+    })).toBeNull();
+  });
 });

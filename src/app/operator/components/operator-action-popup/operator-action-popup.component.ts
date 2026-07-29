@@ -15,12 +15,15 @@ import type {
   DeploymentSocialLinkDto,
   DeploymentThemePreset,
   ListQuery,
+  OperatorClaimEligibilityStatus,
   OperatorClaimRequestDto,
   OperatorDeploymentUpdatePhase,
   OperatorLeaderboardDeploymentDto,
   OperatorRevenueReportDto,
   OperatorRevenueReportFilters,
-  OperatorRevenueSyncState
+  OperatorRevenueSyncState,
+  OperatorSettlementDto,
+  OperatorSettlementFilters
 } from '../../../shared/core/contracts';
 import {
   DEPLOYMENT_THEME_PRESETS
@@ -50,6 +53,7 @@ import {
 import {
   SingleRowComponent,
   SmartListComponent,
+  type SingleRowBadge,
   type SingleRowData,
   type SmartListConfig,
   type SmartListLoadPage
@@ -157,7 +161,7 @@ export class OperatorActionPopupComponent {
       case 'configuration':
         return this.busyAction() === 'load-configuration';
       case 'revenue':
-        return this.busyAction() === 'load-revenue' && !this.workspace.revenue();
+        return this.busyAction() === 'load-revenue';
       case 'community':
         return this.busyAction() === 'load-community' && !this.workspace.community();
       default:
@@ -208,6 +212,50 @@ export class OperatorActionPopupComponent {
     OperatorRevenueReportFilters
   > = (query, context) => from(
     this.workspace.revenueReportPage(query, context?.signal)
+  );
+  protected readonly settlementQuery = computed<
+    Partial<ListQuery<OperatorSettlementFilters>>
+  >(() => ({
+    page: 0,
+    pageSize: 6,
+    sort: 'period',
+    direction: 'desc',
+    filters: {
+      includeSuperseded: false
+    }
+  }));
+  protected readonly settlementConfig: SmartListConfig<
+    OperatorSettlementDto,
+    OperatorSettlementFilters
+  > = {
+    pageSize: 6,
+    initialPageSize: 6,
+    defaultView: 'list',
+    emptyLabel: 'operator.revenue.settlement.empty',
+    emptyDescription: 'operator.revenue.settlement.empty.description',
+    showStickyHeader: false,
+    showFirstGroupMarker: false,
+    listLayout: 'stack',
+    snapMode: 'none',
+    preloadOffsetPx: 160,
+    headerProgress: {
+      enabled: true,
+      placement: 'inline',
+      tone: 'accent'
+    },
+    cacheable: {
+      identity: settlement => settlement.settlementId
+    },
+    containerClass: {
+      'operator-settlement-smart-list': true
+    },
+    trackBy: (_index, settlement) => settlement.settlementId
+  };
+  protected readonly loadSettlementPage: SmartListLoadPage<
+    OperatorSettlementDto,
+    OperatorSettlementFilters
+  > = (query, context) => from(
+    this.workspace.settlementPage(query, context?.signal)
   );
   protected readonly leaderboardDeploymentQuery = computed<
     Partial<ListQuery<OperatorLeaderboardDeploymentFilters>>
@@ -676,6 +724,11 @@ export class OperatorActionPopupComponent {
     const mode = this.paymentActionMode();
     const hasCredential = Boolean(draft?.payment.credential.trim());
     const removing = mode === 'remove';
+    const credentialReady = hasCredential
+      || (
+        mode === 'update'
+        && configuration?.payment.credentialConfigured === true
+      );
     return [{
       id: `operator-${mode}-payment`,
       label: `operator.configuration.payment.${mode}`,
@@ -687,7 +740,13 @@ export class OperatorActionPopupComponent {
       palette: removing ? 'red' : 'green',
       layout: 'action',
       disabled: this.configurationDisabled()
-        || (!removing && (!draft?.payment.providerId || !hasCredential)),
+        || (
+          !removing
+          && (
+            !this.workspace.configurationPaymentReady()
+            || !credentialReady
+          )
+        ),
       progress: this.busyAction() === 'register-payment'
         ? { state: 'loading', durationMs: 3000 }
         : null,
@@ -1055,6 +1114,35 @@ export class OperatorActionPopupComponent {
     );
     const pendingReview = deployment.claimState === 'pending-review';
     const rejectedReview = deployment.claimState === 'rejected';
+    const suspended = deployment.eligibilityStatus === 'SUSPENDED';
+    const inactive = deployment.eligibilityStatus === 'INACTIVE';
+    const eligibilityLabel = this.claimEligibilityLabel(
+      deployment.eligibilityStatus
+    );
+    const shareLabel = [
+      `${share}%`,
+      this.i18n.translate('operator.leaderboard.share')
+    ].join(' ');
+    const shareBadge: SingleRowBadge = {
+      label: `${share}%`,
+      icon: 'pie_chart',
+      ariaLabel: shareLabel,
+      title: shareLabel,
+      tone: deployment.sharePercent > 0 ? 'accent' : 'muted',
+      position: 'top-right'
+    };
+    const eligibilityBadge: SingleRowBadge = {
+      label: eligibilityLabel,
+      icon: suspended
+        ? 'pause_circle'
+        : 'gpp_maybe',
+      ariaLabel: eligibilityLabel,
+      title: eligibilityLabel,
+      tone: suspended
+        ? 'danger'
+        : 'muted',
+      position: 'top-right'
+    };
     return {
       id: deployment.deploymentId,
       title: deployment.deploymentId,
@@ -1065,7 +1153,12 @@ export class OperatorActionPopupComponent {
           'operator.leaderboard.contribution.units'
         )
       ].join(' '),
-      metaRows: pendingReview || rejectedReview ? [] : [claimLabel],
+      metaRows: pendingReview
+        || rejectedReview
+        || suspended
+        || inactive
+        ? []
+        : [claimLabel],
       icon: deployment.membershipState === 'owner'
         ? 'verified_user'
         : 'link',
@@ -1073,9 +1166,13 @@ export class OperatorActionPopupComponent {
         ? 'danger'
         : pendingReview
           ? 'warning'
-          : deployment.membershipState === 'owner'
-            ? 'accent'
-            : 'success',
+          : suspended
+            ? 'danger'
+            : inactive
+              ? 'muted'
+              : deployment.membershipState === 'owner'
+                ? 'accent'
+                : 'success',
       toneClass: [
         'operator-leaderboard-deployment-row',
         `operator-leaderboard-deployment-row--${
@@ -1086,6 +1183,12 @@ export class OperatorActionPopupComponent {
           : '',
         rejectedReview
           ? 'operator-leaderboard-deployment-row--rejected'
+          : '',
+        suspended
+          ? 'operator-leaderboard-deployment-row--suspended'
+          : '',
+        inactive
+          ? 'operator-leaderboard-deployment-row--inactive'
           : ''
       ].filter(Boolean).join(' '),
       badges: rejectedReview
@@ -1105,23 +1208,23 @@ export class OperatorActionPopupComponent {
               title: claimLabel,
               tone: 'warning',
               position: 'top-right'
-            }]
-          : [{
-              label: `${share}%`,
-              icon: 'pie_chart',
-              ariaLabel: [
-                `${share}%`,
-                this.i18n.translate('operator.leaderboard.share')
-              ].join(' '),
-              title: [
-                `${share}%`,
-                this.i18n.translate('operator.leaderboard.share')
-              ].join(' '),
-              tone: deployment.sharePercent > 0 ? 'accent' : 'muted',
-              position: 'top-right'
-            }],
+            }, shareBadge]
+          : suspended
+            ? [eligibilityBadge, shareBadge]
+            : inactive
+              ? [eligibilityBadge]
+              : [shareBadge],
       eagerDetail: structuredClone(deployment)
     };
+  }
+
+  protected claimEligibilityLabel(
+    status: OperatorClaimEligibilityStatus
+  ): string {
+    const key = status === 'PARTIALLY_SUSPENDED'
+      ? 'operator.claim.eligibility.partially.suspended'
+      : `operator.claim.eligibility.${status.toLowerCase()}`;
+    return this.i18n.translate(key);
   }
 
   protected formatBytes(value: number): string {
@@ -1212,6 +1315,90 @@ export class OperatorActionPopupComponent {
         .map(currency => currency.currencyCode.trim().toUpperCase())
         .filter(Boolean)
     )].join(', ') || '—';
+  }
+
+  protected formatSettlementPeriod(value: string): string {
+    const source = `${value ?? ''}`.trim();
+    const timestamp = Date.parse(`${source}-01T00:00:00.000Z`);
+    if (!/^\d{4}-\d{2}$/.test(source) || !Number.isFinite(timestamp)) {
+      return source || '—';
+    }
+    return new Intl.DateTimeFormat(this.i18n.currentLanguage(), {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC'
+    }).format(new Date(timestamp));
+  }
+
+  protected formatSettlementMinor(
+    minor: number,
+    settlement: OperatorSettlementDto
+  ): string {
+    const fractionDigits = Math.max(
+      0,
+      Math.min(6, Math.trunc(settlement.fractionDigits))
+    );
+    return new Intl.NumberFormat(this.i18n.currentLanguage(), {
+      style: 'currency',
+      currency: settlement.currencyCode,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits
+    }).format(minor / (10 ** fractionDigits));
+  }
+
+  protected formatSettlementBasisPoints(
+    basisPoints: number,
+    signed = false
+  ): string {
+    return new Intl.NumberFormat(this.i18n.currentLanguage(), {
+      style: 'percent',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      signDisplay: signed ? 'exceptZero' : 'auto'
+    }).format(basisPoints / 10_000);
+  }
+
+  protected formatSettlementMultiplier(basisPoints: number): string {
+    return `${
+      new Intl.NumberFormat(this.i18n.currentLanguage(), {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(basisPoints / 10_000)
+    }×`;
+  }
+
+  protected formatSettlementShare(
+    settlement: OperatorSettlementDto
+  ): string {
+    let ratio: number;
+    try {
+      const numerator = BigInt(settlement.shareNumerator);
+      const denominator = BigInt(settlement.shareDenominator);
+      if (numerator < 0n || denominator <= 0n) {
+        return '—';
+      }
+      const fixedPoint = numerator * 1_000_000n / denominator;
+      ratio = Number(fixedPoint) / 1_000_000;
+    } catch {
+      return '—';
+    }
+    return new Intl.NumberFormat(this.i18n.currentLanguage(), {
+      style: 'percent',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(ratio);
+  }
+
+  protected settlementTrend(
+    settlement: OperatorSettlementDto
+  ): 'positive' | 'negative' | 'stable' {
+    if (settlement.accelerationBasisPoints > 0) {
+      return 'positive';
+    }
+    if (settlement.accelerationBasisPoints < 0) {
+      return 'negative';
+    }
+    return 'stable';
   }
 
   protected configurationThemeTrigger(): AppMenuTrigger {
@@ -1319,6 +1506,38 @@ export class OperatorActionPopupComponent {
         'operator.configuration.social.url.clear.aria'
       )
     };
+  }
+
+  protected configurationPaymentPublicBaseUrlConfig(): LinkInputConfig {
+    return {
+      label: this.i18n.translate(
+        'operator.configuration.payment.public.url'
+      ),
+      placeholder: this.i18n.translate(
+        'operator.configuration.payment.public.url.placeholder'
+      ),
+      required: true,
+      maxLength: 2048,
+      panelMode: 'anchored',
+      pasteAriaLabel: this.i18n.translate(
+        'operator.configuration.payment.public.url.paste.aria'
+      ),
+      openAriaLabel: this.i18n.translate(
+        'operator.configuration.payment.public.url.open.aria'
+      ),
+      deleteAriaLabel: this.i18n.translate(
+        'operator.configuration.payment.public.url.clear.aria'
+      )
+    };
+  }
+
+  protected configurationPaymentIsBarion(): boolean {
+    return (
+      this.workspace.configurationDraft()?.payment.providerId
+        ?.trim()
+        .toLowerCase()
+      === 'barion'
+    );
   }
 
   protected setConfigurationSocialLink(
@@ -1438,6 +1657,7 @@ export class OperatorActionPopupComponent {
     const claim = this.workspace.claimStatus();
     return this.registeredForClaim()
       && Boolean(claim?.claimed && claim.operatorGroupId?.trim())
+      && claim?.eligibilityStatus === 'ACTIVE'
       && (
         claim?.verificationStatus === 'APPROVED'
         || claim?.verificationStatus === 'VERIFIED'
@@ -1487,7 +1707,7 @@ export class OperatorActionPopupComponent {
         // popup must only reveal the cached snapshot.
         return;
       case 'claim':
-        await this.workspace.loadClaimStatus();
+        await this.workspace.loadClaimStatus(true);
         return;
       case 'configuration':
         await this.workspace.loadConfiguration();

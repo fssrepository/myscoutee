@@ -26,6 +26,8 @@ import type {
   OperatorRevenueReportFilters,
   OperatorRevenueReportPageDto,
   OperatorRevenueSyncDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
   OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryInspectRequestDto,
@@ -208,6 +210,13 @@ export class OperatorRegistryService extends BaseRouteModeService {
 
   requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto> {
     return this.registryService.requeueRevenueReport(reportId);
+  }
+
+  settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    return this.registryService.settlementPage(query, signal);
   }
 
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {

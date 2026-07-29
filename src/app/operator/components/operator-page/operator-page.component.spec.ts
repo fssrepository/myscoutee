@@ -175,7 +175,8 @@ describe('OperatorPageComponent', () => {
       verificationUnavailableReason: null,
       verificationStatus: 'REJECTED',
       verificationSubmittedAt: '2026-07-29T12:00:00Z',
-      legalName: 'Campus Operator Ltd.'
+      legalName: 'Campus Operator Ltd.',
+      eligibilityStatus: 'INACTIVE'
     });
     expect(componentView.actionItems().find(item => item.id === 'claim'))
       .toEqual(expect.objectContaining({
@@ -205,6 +206,7 @@ describe('OperatorPageComponent', () => {
       verifiedWeight: 0,
       sharePercent: 0,
       claimed: false,
+      eligibilityStatus: 'INACTIVE',
       deploymentCount: 1
     };
     const updatedExistingGroup: OperatorLeaderboardEntryDto = {
@@ -215,6 +217,7 @@ describe('OperatorPageComponent', () => {
       verifiedWeight: 65_000,
       sharePercent: 30.03,
       claimed: true,
+      eligibilityStatus: 'ACTIVE',
       operatorGroupId: 'campus',
       deploymentCount: 2
     };

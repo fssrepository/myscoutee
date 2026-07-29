@@ -135,10 +135,31 @@
                   claim.verificationStatus === 'APPROVED'
                   || claim.verificationStatus === 'VERIFIED'
                 ) {
-                  <p class="operator-action-popup__result is-success" role="status">
-                    <mat-icon>verified_user</mat-icon>
-                    <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
-                  </p>
+                  @if (claim.eligibilityStatus === 'ACTIVE') {
+                    <p class="operator-action-popup__result is-success" role="status">
+                      <mat-icon>verified_user</mat-icon>
+                      <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
+                    </p>
+                  } @else if (claim.eligibilityStatus === 'SUSPENDED') {
+                    <p class="operator-action-popup__result is-error" role="status">
+                      <mat-icon>pause_circle</mat-icon>
+                      <span class="operator-action-popup__result-copy">
+                        <strong>
+                          {{ 'operator.claim.eligibility.suspended' | i18n }}
+                        </strong>
+                        <small>
+                          {{ 'operator.claim.eligibility.suspended.instructions' | i18n }}
+                        </small>
+                      </span>
+                    </p>
+                  } @else {
+                    <p class="operator-action-popup__result is-pending" role="status">
+                      <mat-icon>gpp_maybe</mat-icon>
+                      <span>
+                        {{ 'operator.claim.eligibility.inactive' | i18n }}
+                      </span>
+                    </p>
+                  }
                 }
                 @if (claimPath() === 'company') {
                   @if (!claim.claimed) {
@@ -530,6 +551,44 @@
                         (itemSelect)="onAction($event)"
                       ></app-menu>
                     </div>
+
+                    @if (draft.payment.providerId) {
+                      <div
+                        class="operator-action-popup__payment-routing"
+                        [class.is-barion]="configurationPaymentIsBarion()"
+                      >
+                        <app-link-input
+                          [config]="configurationPaymentPublicBaseUrlConfig()"
+                          [ngModel]="draft.payment.publicBaseUrl"
+                          (ngModelChange)="workspace.setConfigurationPayment({
+                            publicBaseUrl: $event
+                          })"
+                          [disabled]="configurationDisabled()"
+                        ></app-link-input>
+
+                        @if (configurationPaymentIsBarion()) {
+                          <label class="operator-action-popup__field">
+                            <span>
+                              {{ 'operator.configuration.payment.merchant.account' | i18n }}
+                            </span>
+                            <input
+                              type="email"
+                              maxlength="254"
+                              autocomplete="email"
+                              [placeholder]="
+                                'operator.configuration.payment.merchant.account.placeholder'
+                                  | i18n
+                              "
+                              [ngModel]="draft.payment.merchantAccount"
+                              (ngModelChange)="workspace.setConfigurationPayment({
+                                merchantAccount: $event
+                              })"
+                              [disabled]="configurationDisabled()"
+                            />
+                          </label>
+                        }
+                      </div>
+                    }
 
                     <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
@@ -928,6 +987,219 @@
                   {{ 'operator.revenue.delivery.manual.description' | i18n }}
                 </p>
               }
+              <section
+                class="operator-action-popup__settlements"
+                [attr.aria-label]="'operator.revenue.settlement.title' | i18n"
+              >
+                <header class="operator-action-popup__settlements-header">
+                  <span class="operator-action-popup__settlements-icon">
+                    <mat-icon>account_balance</mat-icon>
+                  </span>
+                  <span>
+                    <small>{{ 'operator.revenue.settlement.eyebrow' | i18n }}</small>
+                    <strong>{{ 'operator.revenue.settlement.title' | i18n }}</strong>
+                    <em>{{ 'operator.revenue.settlement.currency.notice' | i18n }}</em>
+                  </span>
+                  <b>
+                    <mat-icon>info</mat-icon>
+                    {{ 'operator.revenue.settlement.nonbinding' | i18n }}
+                  </b>
+                </header>
+
+                @if (workspace.revenueSettlementAvailable() === false) {
+                  <p class="operator-action-popup__settlements-unavailable" role="status">
+                    <mat-icon>cloud_off</mat-icon>
+                    <span>{{ 'operator.revenue.settlement.unavailable' | i18n }}</span>
+                  </p>
+                } @else if (workspace.revenueSettlementAvailable() === true) {
+                  <app-smart-list
+                    [config]="settlementConfig"
+                    [loadPage]="loadSettlementPage"
+                    [query]="settlementQuery()"
+                    [itemTemplate]="settlementTemplate"
+                  ></app-smart-list>
+
+                  <ng-template #settlementTemplate let-settlement>
+                    <article
+                      class="operator-action-popup__settlement"
+                      [attr.data-trend]="settlementTrend(settlement)"
+                    >
+                      <header>
+                        <span class="operator-action-popup__settlement-period">
+                          <small>
+                            {{ 'operator.revenue.settlement.period' | i18n }}
+                          </small>
+                          <strong>
+                            {{ formatSettlementPeriod(settlement.period) }}
+                          </strong>
+                        </span>
+                        <span class="operator-action-popup__settlement-currency">
+                          {{ settlement.currencyCode }}
+                        </span>
+                        <span class="operator-action-popup__settlement-revision">
+                          {{ 'operator.revenue.settlement.revision' | i18n }}
+                          {{ settlement.revision }}
+                        </span>
+                      </header>
+
+                      <dl class="operator-action-popup__settlement-month">
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.monthly.pool' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.networkPoolMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {{ 'operator.revenue.settlement.monthly.group.allocation' | i18n }}
+                          </dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.networkPoolAllocationMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.share' | i18n }}</dt>
+                          <dd>{{ formatSettlementShare(settlement) }}</dd>
+                        </div>
+                      </dl>
+
+                      <dl class="operator-action-popup__settlement-valuation">
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.ttm.basis' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.ttmCommissionBasisMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.ttm.pool' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.ttmNetworkCommissionPoolMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {{ 'operator.revenue.settlement.indicative.network.value' | i18n }}
+                          </dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.indicativeNetworkValueMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {{ 'operator.revenue.settlement.indicative.group.allocation' | i18n }}
+                          </dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.indicativeValueAllocationMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <dl class="operator-action-popup__settlement-trend">
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.average.earlier' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.earlierThreeMonthAverageMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.average.prior' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.priorThreeMonthAverageMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.average.recent' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.recentThreeMonthAverageMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.growth.prior' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.priorGrowthBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.growth.recent' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.recentGrowthBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.acceleration' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.accelerationBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.adjustment' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.valuationAdjustmentBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.multiplier' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMultiplier(
+                              settlement.effectiveValuationMultiplierBasisPoints
+                            ) }}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <footer>
+                        <span>
+                          {{ 'operator.revenue.settlement.ruleset' | i18n }}:
+                          <strong>{{ settlement.valuationRulesetVersion }}</strong>
+                        </span>
+                        <span>
+                          {{ 'operator.revenue.settlement.accepted' | i18n }}:
+                          <strong>{{ formatDate(settlement.acceptedAtIso) }}</strong>
+                        </span>
+                      </footer>
+                    </article>
+                  </ng-template>
+                }
+              </section>
               @if (workspace.revenue(); as revenue) {
                 <app-operator-revenue-view [revenue]="revenue"></app-operator-revenue-view>
               }
@@ -953,6 +1225,21 @@
                           : 'operator.leaderboard.deployments') | i18n }}
                       </strong>
                     </span>
+                    @if (entry.eligibilityStatus !== 'ACTIVE') {
+                      <span
+                        class="operator-action-popup__deployment-eligibility"
+                        [attr.data-status]="entry.eligibilityStatus"
+                      >
+                        <mat-icon>
+                          {{ entry.eligibilityStatus === 'SUSPENDED'
+                            ? 'pause_circle'
+                            : entry.eligibilityStatus === 'PARTIALLY_SUSPENDED'
+                              ? 'warning'
+                              : 'gpp_maybe' }}
+                        </mat-icon>
+                        {{ claimEligibilityLabel(entry.eligibilityStatus) }}
+                      </span>
+                    }
                     <b
                       [attr.title]="'operator.leaderboard.share' | i18n"
                     >

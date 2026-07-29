@@ -30,6 +30,7 @@ describe('OperatorWorkspaceStore', () => {
   const synchronizeRevenue = vi.fn();
   const revenueReportPage = vi.fn();
   const requeueRevenueReport = vi.fn();
+  const settlementPage = vi.fn();
   const testConfiguration = vi.fn();
   const refreshFirebaseApp = vi.fn();
   const applyPrivacyContact = vi.fn();
@@ -70,6 +71,14 @@ describe('OperatorWorkspaceStore', () => {
     synchronizeRevenue.mockReset();
     revenueReportPage.mockReset();
     requeueRevenueReport.mockReset();
+    settlementPage.mockReset().mockResolvedValue({
+      items: [],
+      total: 0,
+      nextCursor: null,
+      context: {
+        generatedAtIso: '2026-07-28T18:00:00.000Z'
+      }
+    });
     testConfiguration.mockReset();
     refreshFirebaseApp.mockReset();
     refreshFirebaseApp.mockResolvedValue(null);
@@ -107,6 +116,7 @@ describe('OperatorWorkspaceStore', () => {
             synchronizeRevenue,
             revenueReportPage,
             requeueRevenueReport,
+            settlementPage,
             testConfiguration
           }
         },
@@ -232,6 +242,7 @@ describe('OperatorWorkspaceStore', () => {
       verifiedWeight: 17,
       sharePercent: 4.25,
       claimed: true,
+      eligibilityStatus: 'INACTIVE' as const,
       operatorGroupId: 'operator-group-linked',
       deploymentCount: 2,
       claimVerificationStatus: 'PENDING_REVIEW' as const
@@ -337,6 +348,32 @@ describe('OperatorWorkspaceStore', () => {
 
     expect(store.revenue()).toEqual(revenue);
     expect(loadRevenue).toHaveBeenCalledTimes(1);
+    expect(settlementPage).toHaveBeenCalledTimes(1);
+    expect(store.revenueSettlementAvailable()).toBe(true);
+    expect(await store.settlementPage({
+      page: 0,
+      pageSize: 6,
+      filters: { includeSuperseded: false }
+    })).toEqual(expect.objectContaining({
+      items: [],
+      nextCursor: null
+    }));
+    expect(settlementPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps local revenue visible when registry settlement history is unavailable', async () => {
+    const revenue = operatorRevenue();
+    loadRevenue.mockResolvedValue(revenue);
+    settlementPage.mockRejectedValue(
+      new Error('operator.registry.error.unregistered')
+    );
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    expect(await store.loadRevenue()).toEqual(revenue);
+
+    expect(store.revenue()).toEqual(revenue);
+    expect(store.revenueSettlementAvailable()).toBe(false);
+    expect(store.error()).toBe('');
   });
 
   it('keeps the aggregate result from an explicit revenue synchronization', async () => {
@@ -564,10 +601,14 @@ describe('OperatorWorkspaceStore', () => {
     expect(refreshFirebaseApp).toHaveBeenCalledOnce();
   });
 
-  it('clears only write-only Firebase credential drafts', async () => {
+  it('clears every unsaved write-only credential draft', async () => {
     loadConfiguration.mockResolvedValue(operatorConfiguration());
     const store = TestBed.inject(OperatorWorkspaceStore);
     await store.loadConfiguration();
+    store.setConfigurationPayment({
+      providerId: 'stripe',
+      credential: 'write-only-payment'
+    });
     store.setConfigurationFirebase({
       apiKey: 'unsaved-browser-api-key',
       authDomain: 'unsaved.firebaseapp.com',
@@ -577,6 +618,12 @@ describe('OperatorWorkspaceStore', () => {
 
     store.clearConfigurationCredentialDrafts();
 
+    expect(store.configurationDraft()?.payment).toEqual(
+      expect.objectContaining({
+        providerId: 'stripe',
+        credential: ''
+      })
+    );
     expect(store.configurationDraft()?.firebase).toEqual(
       expect.objectContaining({
         apiKey: 'unsaved-browser-api-key',
@@ -585,6 +632,79 @@ describe('OperatorWorkspaceStore', () => {
         messagingCredential: ''
       })
     );
+  });
+
+  it('requires provider routing and clears it when the provider is removed', async () => {
+    loadConfiguration.mockResolvedValue(operatorConfiguration());
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+
+    store.setConfigurationPayment({
+      providerId: 'barion',
+      publicBaseUrl: 'https://community.example.test',
+      merchantAccount: 'not-an-email',
+      credential: 'write-only-payment'
+    });
+
+    expect(store.configurationPaymentValidationKey())
+      .toBe('operator.configuration.payment.merchant.account.invalid');
+    expect(store.configurationPaymentReady()).toBe(false);
+
+    store.setConfigurationPayment({
+      merchantAccount: 'merchant@example.test'
+    });
+
+    expect(store.configurationPaymentValidationKey()).toBeNull();
+    expect(store.configurationPaymentReady()).toBe(true);
+
+    store.setConfigurationPayment({ providerId: null });
+
+    expect(store.configurationDraft()?.payment).toEqual({
+      providerId: null,
+      publicBaseUrl: '',
+      merchantAccount: '',
+      credential: ''
+    });
+    expect(store.configurationPaymentReady()).toBe(false);
+  });
+
+  it('normalizes payment routing when registering a provider', async () => {
+    const initial = operatorConfiguration();
+    loadConfiguration.mockResolvedValue(initial);
+    saveConfiguration.mockImplementation(async request => ({
+      ...initial,
+      payment: {
+        ...initial.payment,
+        providerId: request.payment.providerId,
+        publicBaseUrl: request.payment.publicBaseUrl,
+        merchantAccount: request.payment.merchantAccount || null,
+        credentialConfigured: true,
+        credentialMask: '••••ment'
+      }
+    }));
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+    store.setConfigurationPayment({
+      providerId: 'stripe',
+      publicBaseUrl: ' https://community.example.test/ ',
+      merchantAccount: '',
+      credential: 'write-only-payment'
+    });
+
+    await store.saveConfiguration('register-payment');
+
+    expect(saveConfiguration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment: {
+          providerId: 'stripe',
+          publicBaseUrl: 'https://community.example.test',
+          merchantAccount: '',
+          credential: 'write-only-payment'
+        }
+      })
+    );
+    expect(store.configuration()?.payment.publicBaseUrl)
+      .toBe('https://community.example.test');
   });
 
   it('normalizes and saves root administrator and social-link configuration', async () => {
@@ -692,7 +812,8 @@ function claimStatus(): OperatorClaimStatusDto {
     verificationUnavailableReason: null,
     verificationStatus: 'PENDING_REVIEW',
     verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
-    legalName: 'Example Operator s.r.o.'
+    legalName: 'Example Operator s.r.o.',
+    eligibilityStatus: 'INACTIVE'
   };
 }
 
@@ -726,7 +847,8 @@ function unclaimedStatus(): OperatorClaimStatusDto {
     verificationUnavailableReason: null,
     verificationStatus: 'NOT_SUBMITTED',
     verificationSubmittedAt: null,
-    legalName: null
+    legalName: null,
+    eligibilityStatus: 'INACTIVE'
   };
 }
 
@@ -788,6 +910,8 @@ function operatorConfiguration(): OperatorConfigurationDto {
     payment: {
       availableProviders: [],
       providerId: null,
+      publicBaseUrl: null,
+      merchantAccount: null,
       credentialConfigured: false,
       credentialMask: null
     },

@@ -61,6 +61,7 @@ describe('OperatorRegistryStore registration', () => {
       verifiedWeight: 0,
       sharePercent: 0,
       claimed: false,
+      eligibilityStatus: 'INACTIVE' as const,
       deploymentCount: 1
     };
     const mutationResult = {
@@ -133,6 +134,7 @@ describe('OperatorRegistryStore registration', () => {
         verifiedWeight: 0,
         sharePercent: 0,
         claimed: false,
+        eligibilityStatus: 'INACTIVE',
         deploymentCount: 1
       }],
       leaderboardTotalDelta: 1,
@@ -553,6 +555,7 @@ function registryMutation(
       verifiedWeight: number;
       sharePercent: number;
       claimed: boolean;
+      eligibilityStatus: 'INACTIVE';
       deploymentCount: number;
     }>;
     removedLeaderboardEntryIds: string[];

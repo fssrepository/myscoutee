@@ -36,6 +36,9 @@ import type {
   OperatorRevenueReportFilters,
   OperatorRevenueReportPageDto,
   OperatorRevenueSyncDto,
+  OperatorSettlementDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryMutationResultDto,
@@ -78,6 +81,8 @@ const OPERATOR_CONFIGURATION_TEST_ROUTE = '/operator/configuration/test';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
 const OPERATOR_REVENUE_SYNCHRONIZE_ROUTE = '/operator/revenue/synchronize';
 const OPERATOR_REVENUE_REPORTS_ROUTE = '/operator/revenue/reports';
+const OPERATOR_REVENUE_SETTLEMENTS_ROUTE =
+  '/operator/revenue/settlements';
 const OPERATOR_COMMUNITY_ROUTE = '/operator/community';
 
 @Injectable({
@@ -236,7 +241,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           id: deploymentCode,
           nodeId: deploymentCode,
           label: deploymentCode,
-          active: true
+          active: true,
+          eligibilityStatus: existingDeployment.claimed
+            ? existingDeployment.eligibilityStatus
+            : 'INACTIVE'
         }
       : {
           id: deploymentCode,
@@ -246,6 +254,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           founder: false,
           verifiedWeight: 0,
           claimed: false,
+          eligibilityStatus: 'INACTIVE',
           claimantUserId: null,
           claimantName: null,
           claimantAvatarUrl: null,
@@ -339,6 +348,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
             ...item,
             active: false,
             claimed: false,
+            eligibilityStatus: 'INACTIVE',
             claimantUserId: null,
             claimantName: null,
             claimantAvatarUrl: null,
@@ -376,7 +386,8 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         shareNumerator: '0',
         shareDenominator: '1',
         verificationStatus: hadClaim ? 'WITHDRAWN' : 'NOT_SUBMITTED',
-        legalName: null
+        legalName: null,
+        eligibilityStatus: 'INACTIVE'
       },
       claimVerificationRequest: null
     }, 'DISCONNECT', 'Registry deployment deactivated and claim withdrawn.');
@@ -494,6 +505,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         ? {
             ...item,
             claimed: true,
+            eligibilityStatus: 'INACTIVE',
             claimantUserId: claimIdentity.claimantUserId,
             claimantName: verificationRequest.legalName,
             claimantAvatarUrl: claimIdentity.claimantAvatarUrl,
@@ -526,7 +538,8 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       verificationUnavailableReason: null,
       verificationStatus: 'PENDING_REVIEW',
       verificationSubmittedAt: submittedAt,
-      legalName: verificationRequest.legalName
+      legalName: verificationRequest.legalName,
+      eligibilityStatus: 'INACTIVE'
     };
     const leaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
       LocalOperatorRegistryMapper.withCurrentClaimVerification(
@@ -553,7 +566,12 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const verificationApproved =
       current.claimStatus.verificationStatus === 'APPROVED'
       || current.claimStatus.verificationStatus === 'VERIFIED';
-    if (!current.claimStatus.claimed || !operatorGroupId || !verificationApproved) {
+    if (
+      !current.claimStatus.claimed
+      || !operatorGroupId
+      || !verificationApproved
+      || current.claimStatus.eligibilityStatus !== 'ACTIVE'
+    ) {
       throw new Error('operator.group.error.claim.required');
     }
     const now = new Date();
@@ -624,6 +642,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
             ? {
                 ...item,
                 claimed: true,
+                eligibilityStatus: 'INACTIVE',
                 claimantUserId:
                   groupClaimant?.claimantUserId
                   ?? current.claimIdentity.claimantUserId,
@@ -675,7 +694,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         current.claimStatus.verificationSubmittedAt ?? nowIso,
       legalName: current.claimStatus.claimed
         ? current.claimStatus.legalName
-        : groupClaimant?.claimantName ?? null
+        : groupClaimant?.claimantName ?? null,
+      eligibilityStatus: current.claimStatus.claimed
+        ? current.claimStatus.eligibilityStatus
+        : 'INACTIVE'
     };
     const leaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
       LocalOperatorRegistryMapper.withCurrentClaimVerification(
@@ -861,6 +883,25 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       request.payment.providerId,
       current.configuration.payment.availableProviders
     );
+    const paymentPublicBaseUrl = paymentProvider
+      ? OperatorConfigurationMapper.paymentPublicBaseUrl(
+        request.payment.publicBaseUrl
+      )
+      : null;
+    const paymentMerchantAccount = paymentProvider
+      ? OperatorConfigurationMapper.paymentMerchantAccount(
+        request.payment.merchantAccount
+      ) || null
+      : null;
+    const paymentValidationKey =
+      OperatorConfigurationMapper.paymentValidationKey({
+        providerId: paymentProvider,
+        publicBaseUrl: request.payment.publicBaseUrl,
+        merchantAccount: request.payment.merchantAccount
+      });
+    if (paymentValidationKey) {
+      throw new Error(paymentValidationKey);
+    }
     const paymentCredentialInput = `${request.payment.credential ?? ''}`.trim();
     const paymentCredentialConfigured = paymentProvider !== null
       && (
@@ -933,6 +974,8 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           current.configuration.payment.availableProviders
         ),
         providerId: paymentProvider,
+        publicBaseUrl: paymentPublicBaseUrl,
+        merchantAccount: paymentMerchantAccount,
         credentialConfigured: paymentCredentialConfigured,
         credentialMask: paymentCredentialInput
           ? this.maskCredential(paymentCredentialInput)
@@ -1091,6 +1134,87 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       `${OPERATOR_REVENUE_REPORTS_ROUTE}/requeue`
     );
     throw new Error('operator.revenue.delivery.requeue.unavailable');
+  }
+
+  async settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_REVENUE_SETTLEMENTS_ROUTE,
+      signal
+    );
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
+    );
+    const currencyCode =
+      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
+    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
+    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
+    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+      throw new Error('operator.revenue.settlement.currency.invalid');
+    }
+    if (
+      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
+      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
+      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
+    ) {
+      throw new Error('operator.revenue.settlement.period.invalid');
+    }
+    const cursor = this.decodeSettlementCursor(query.cursor);
+    const stored = await this.readStored();
+    const settlements = stored.settlements ?? [];
+    const generatedAtIso = settlements.reduce(
+      (latest, item) =>
+        item.acceptedAtIso > latest ? item.acceptedAtIso : latest,
+      ''
+    );
+    const superseded = new Set(
+      settlements
+        .map(item => item.supersedesSettlementId?.trim() ?? '')
+        .filter(Boolean)
+    );
+    const filtered = settlements
+      .filter(item =>
+        (!currencyCode || item.currencyCode === currencyCode)
+        && (!fromPeriod || item.period >= fromPeriod)
+        && (!throughPeriod || item.period <= throughPeriod)
+        && (
+          query.filters?.includeSuperseded === true
+          || !superseded.has(item.settlementId)
+        )
+        && (
+          !cursor
+          || item.period < cursor.afterPeriod
+          || (
+            item.period === cursor.afterPeriod
+            && item.settlementId > cursor.afterSettlementId
+          )
+        )
+      )
+      .sort((left, right) =>
+        right.period.localeCompare(left.period)
+        || left.settlementId.localeCompare(right.settlementId)
+      );
+    const items = filtered.slice(0, pageSize);
+    const last = items.at(-1) ?? null;
+    const nextCursor = filtered.length > items.length && last
+      ? this.encodeSettlementCursor(
+          last.period,
+          last.settlementId
+        )
+      : null;
+    const pageOffset =
+      Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+    return {
+      items: structuredClone(items),
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: {
+        generatedAtIso: generatedAtIso || new Date(0).toISOString()
+      }
+    };
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
@@ -1330,6 +1454,57 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     } catch {
       return false;
     }
+  }
+
+  private encodeSettlementCursor(
+    afterPeriod: string,
+    afterSettlementId: string
+  ): string {
+    return `operator-settlement:${
+      encodeURIComponent(JSON.stringify({
+        afterPeriod,
+        afterSettlementId
+      }))
+    }`;
+  }
+
+  private decodeSettlementCursor(
+    cursor: string | null | undefined
+  ): {
+    afterPeriod: string;
+    afterSettlementId: string;
+  } | null {
+    const normalized = `${cursor ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!normalized.startsWith('operator-settlement:')) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(
+        normalized.slice('operator-settlement:'.length)
+      )) as {
+        afterPeriod?: unknown;
+        afterSettlementId?: unknown;
+      };
+      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
+      const afterSettlementId =
+        `${parsed.afterSettlementId ?? ''}`.trim();
+      if (
+        !this.validSettlementPeriod(afterPeriod)
+        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+      ) {
+        throw new Error();
+      }
+      return { afterPeriod, afterSettlementId };
+    } catch {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+  }
+
+  private validSettlementPeriod(value: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
   }
 
   private async waitForOperatorRouteDelay(

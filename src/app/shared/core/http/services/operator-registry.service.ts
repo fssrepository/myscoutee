@@ -5,6 +5,7 @@ import { environment } from '../../../../../environments/environment';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,
+  OperatorClaimEligibilityStatus,
   OperatorClaimMutationResultDto,
   OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
@@ -20,6 +21,7 @@ import type {
   OperatorConfigurationSaveRequestDto,
   OperatorConfigurationTestRequestDto,
   OperatorConfigurationTestResultDto,
+  OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
@@ -33,6 +35,7 @@ import type {
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
+  OperatorLeaderboardSnapshotBoundaryDto,
   OperatorMeasurementReportDto,
   OperatorMeasurementReportFilters,
   OperatorMeasurementReportPageDto,
@@ -42,6 +45,9 @@ import type {
   OperatorRevenueReportFilters,
   OperatorRevenueReportPageDto,
   OperatorRevenueSyncDto,
+  OperatorSettlementDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
   OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryConfirmRequestDto,
@@ -88,7 +94,12 @@ interface RemoteOperatorActionResult {
   receipt: RemoteOperatorActionReceipt;
 }
 
-type RemoteOperatorClaimStatus = Partial<OperatorClaimStatusDto>;
+type RemoteOperatorClaimStatus = Omit<
+  Partial<OperatorClaimStatusDto>,
+  'eligibilityStatus'
+> & {
+  eligibilityStatus?: string | null;
+};
 
 interface RemoteOperatorClaimOverview {
   status: RemoteOperatorClaimStatus;
@@ -96,7 +107,18 @@ interface RemoteOperatorClaimOverview {
 }
 
 interface RemoteOperatorLeaderboardSnapshot {
+  snapshotId: string;
+  formulaVersion: string;
+  rulesetVersion: string;
   throughPeriod: string;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  ledgerHeadHash: string;
+  auditHeadHash: string;
+  reviewHeadHash: string;
+  eligibilityHeadHash: string;
   founderUnitsNumerator: string;
   founderUnitsDenominator: string;
   founderShareNumerator: string;
@@ -105,6 +127,8 @@ interface RemoteOperatorLeaderboardSnapshot {
   measuredWeightDenominator: string;
   claimedWeightNumerator: string;
   claimedWeightDenominator: string;
+  createdAt: string;
+  snapshotHash: string;
 }
 
 interface RemoteOperatorLeaderboardRow {
@@ -114,6 +138,7 @@ interface RemoteOperatorLeaderboardRow {
   label: string;
   avatarUrl: string | null;
   claimState: string;
+  eligibilityStatus: string;
   deploymentCount: number;
   weightNumerator: string;
   weightDenominator: string;
@@ -132,6 +157,7 @@ interface RemoteOperatorLeaderboardDeployment {
   deploymentId: string;
   groupId: string;
   claimState: string;
+  eligibilityStatus: string;
   membershipState: string;
   weightNumerator: string;
   weightDenominator: string;
@@ -168,6 +194,14 @@ interface OperatorLeaderboardCursorState {
   viewIndex: number;
   viewCursor: string | null;
   throughPeriod: string | null;
+  throughLedgerIndex: number | null;
+  throughAuditIndex: number | null;
+  throughReviewIndex: number | null;
+  throughEligibilityIndex: number | null;
+  ledgerHeadHash: string | null;
+  auditHeadHash: string | null;
+  reviewHeadHash: string | null;
+  eligibilityHeadHash: string | null;
   emitted: number;
 }
 
@@ -279,6 +313,17 @@ interface RemoteOperatorRevenueReportPage {
   size: number;
   totalElements: number;
   totalPages: number;
+}
+
+type RemoteOperatorSettlement = {
+  [Key in keyof OperatorSettlementDto]?: unknown;
+};
+
+interface RemoteOperatorSettlementPage {
+  items: RemoteOperatorSettlement[];
+  nextAfterPeriod: string | null;
+  nextAfterSettlementId: string | null;
+  generatedAtIso: string;
 }
 
 interface RemoteOperatorMeasurementReportPage {
@@ -465,6 +510,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     let viewCursor = state.viewCursor;
     let throughPeriod = state.throughPeriod;
     let snapshot: RemoteOperatorLeaderboardSnapshot | null = null;
+    let snapshotBoundary = this.cursorSnapshotBoundary(state);
     let requestCount = 0;
 
     while (items.length < pageSize && viewIndex < LEADERBOARD_VIEWS.length) {
@@ -494,8 +540,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       if (remote.view !== view) {
         throw new Error('operator.leaderboard.error.response');
       }
+      const remoteBoundary = this.toSnapshotBoundary(remote.snapshot);
+      if (
+        snapshotBoundary
+        && !this.sameSnapshotBoundary(snapshotBoundary, remoteBoundary)
+      ) {
+        throw new Error('operator.leaderboard.error.snapshot.changed');
+      }
+      snapshotBoundary ??= remoteBoundary;
       snapshot ??= remote.snapshot;
-      throughPeriod ??= remote.snapshot.throughPeriod;
+      throughPeriod ??= remoteBoundary.throughPeriod;
       items.push(...remote.items.map(row => this.toLeaderboardEntry(row)));
 
       if (remote.nextCursor) {
@@ -515,6 +569,15 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
           viewIndex,
           viewCursor,
           throughPeriod,
+          throughLedgerIndex: snapshotBoundary?.throughLedgerIndex ?? null,
+          throughAuditIndex: snapshotBoundary?.throughAuditIndex ?? null,
+          throughReviewIndex: snapshotBoundary?.throughReviewIndex ?? null,
+          throughEligibilityIndex:
+            snapshotBoundary?.throughEligibilityIndex ?? null,
+          ledgerHeadHash: snapshotBoundary?.ledgerHeadHash ?? null,
+          auditHeadHash: snapshotBoundary?.auditHeadHash ?? null,
+          reviewHeadHash: snapshotBoundary?.reviewHeadHash ?? null,
+          eligibilityHeadHash: snapshotBoundary?.eligibilityHeadHash ?? null,
           emitted
         })
       : null;
@@ -523,6 +586,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       total: emitted + (nextCursor ? 1 : 0),
       nextCursor,
       context: {
+        snapshotBoundary,
         groupSummaries: this.toLeaderboardSummaries(snapshot, items)
       }
     };
@@ -568,6 +632,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     const items = (remote.items ?? []).map(item =>
       this.toLeaderboardDeployment(item, normalizedGroupId)
     );
+    const snapshotBoundary = this.toSnapshotBoundary(remote.snapshot);
     const nextCursor = remote.nextCursor?.trim() || null;
     const pageOffset = Math.max(
       0,
@@ -576,7 +641,8 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return {
       items,
       total: pageOffset + items.length + (nextCursor ? 1 : 0),
-      nextCursor
+      nextCursor,
+      context: snapshotBoundary
     };
   }
 
@@ -902,6 +968,91 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         this.requestOptions()
       ).toPromise()
     );
+  }
+
+  async settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    this.throwIfAborted(signal);
+    const limit = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
+    );
+    const currencyCode =
+      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
+    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
+    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
+    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+      throw new Error('operator.revenue.settlement.currency.invalid');
+    }
+    if (
+      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
+      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
+      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
+    ) {
+      throw new Error('operator.revenue.settlement.period.invalid');
+    }
+    const cursor = this.decodeSettlementCursor(query.cursor);
+    let params = new HttpParams()
+      .set('includeSuperseded', Boolean(
+        query.filters?.includeSuperseded
+      ))
+      .set('limit', limit);
+    if (currencyCode) {
+      params = params.set('currencyCode', currencyCode);
+    }
+    if (fromPeriod) {
+      params = params.set('fromPeriod', fromPeriod);
+    }
+    if (throughPeriod) {
+      params = params.set('throughPeriod', throughPeriod);
+    }
+    if (cursor) {
+      params = params
+        .set('afterPeriod', cursor.afterPeriod)
+        .set('afterSettlementId', cursor.afterSettlementId);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/settlements`,
+      this.http.get<RemoteOperatorSettlementPage>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/settlements`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (!Array.isArray(result.items)) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    const generatedAtIso =
+      this.settlementText(result.generatedAtIso);
+    if (!this.validIsoTimestamp(generatedAtIso)) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    const nextAfterPeriod =
+      this.settlementText(result.nextAfterPeriod);
+    const nextAfterSettlementId =
+      this.settlementText(result.nextAfterSettlementId);
+    if (Boolean(nextAfterPeriod) !== Boolean(nextAfterSettlementId)) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    const nextCursor = nextAfterPeriod
+      ? this.encodeSettlementCursor(
+          nextAfterPeriod,
+          nextAfterSettlementId
+        )
+      : null;
+    const items = result.items.map(item =>
+      this.toSettlement(item)
+    );
+    const pageOffset =
+      Math.max(0, Math.trunc(Number(query.page) || 0)) * limit;
+    return {
+      items,
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: { generatedAtIso }
+    };
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
@@ -1293,8 +1444,26 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         : 'operator.claim.verification.backend.unavailable',
       verificationStatus,
       verificationSubmittedAt: remote.verificationSubmittedAt?.trim() || null,
-      legalName: remote.legalName?.trim() || remote.claimantName?.trim() || null
+      legalName: remote.legalName?.trim() || remote.claimantName?.trim() || null,
+      eligibilityStatus: this.claimEligibilityStatus(
+        remote.eligibilityStatus
+      )
     };
+  }
+
+  private claimEligibilityStatus(
+    value: string | null | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (`${value ?? ''}`.trim().toLowerCase()) {
+      case 'active':
+        return 'ACTIVE';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'inactive':
+        return 'INACTIVE';
+      default:
+        return 'INACTIVE';
+    }
   }
 
   private toClaimSubmission(
@@ -1417,26 +1586,42 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       : row.view === 'claimed'
         ? 'CLAIMED'
         : 'UNCLAIMED';
+    const claimVerificationStatus =
+      row.claimState?.trim().toLowerCase() === 'pending-review'
+        ? 'PENDING_REVIEW'
+        : row.claimState?.trim().toLowerCase() === 'rejected'
+          ? 'REJECTED'
+          : group === 'CLAIMED'
+            ? 'APPROVED'
+            : null;
+    const eligibilityStatus = this.leaderboardEligibilityStatus(
+      row.eligibilityStatus,
+      group
+    );
+    const reportedShare =
+      this.rational(row.shareNumerator, row.shareDenominator) * 100;
     return {
       id: row.rowId,
       nodeId: group === 'UNCLAIMED' ? row.rowId : null,
       label: row.label,
       group,
       verifiedWeight: this.rational(row.weightNumerator, row.weightDenominator),
-      sharePercent: this.rational(row.shareNumerator, row.shareDenominator) * 100,
+      sharePercent:
+        claimVerificationStatus !== 'PENDING_REVIEW'
+        && (
+          eligibilityStatus === 'SUSPENDED'
+          || eligibilityStatus === 'INACTIVE'
+        )
+          ? 0
+          : reportedShare,
       claimed: group !== 'UNCLAIMED',
       claimantUserId: null,
       claimantName: group === 'CLAIMED' ? row.label : null,
       claimantAvatarUrl: row.avatarUrl?.trim() || null,
       operatorGroupId: row.groupId?.trim() || null,
       deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0)),
-      claimVerificationStatus: row.claimState?.trim().toLowerCase() === 'pending-review'
-        ? 'PENDING_REVIEW'
-        : row.claimState?.trim().toLowerCase() === 'rejected'
-          ? 'REJECTED'
-          : group === 'CLAIMED'
-            ? 'APPROVED'
-            : null
+      eligibilityStatus,
+      claimVerificationStatus
     };
   }
 
@@ -1444,10 +1629,17 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     row: RemoteOperatorLeaderboardDeployment,
     expectedGroupId: string
   ): OperatorLeaderboardDeploymentDto {
+    const claimState = this.leaderboardDeploymentClaimState(row.claimState);
+    const eligibilityStatus = this.deploymentEligibilityStatus(
+      row.eligibilityStatus
+    );
+    const reportedShare =
+      this.rational(row.shareNumerator, row.shareDenominator) * 100;
     return {
       deploymentId: row.deploymentId?.trim() || '',
       groupId: row.groupId?.trim() || expectedGroupId,
-      claimState: this.leaderboardDeploymentClaimState(row.claimState),
+      claimState,
+      eligibilityStatus,
       membershipState: this.leaderboardDeploymentMembershipState(
         row.membershipState
       ),
@@ -1455,10 +1647,11 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         row.weightNumerator,
         row.weightDenominator
       ),
-      sharePercent: this.rational(
-        row.shareNumerator,
-        row.shareDenominator
-      ) * 100
+      sharePercent:
+        claimState !== 'pending-review'
+        && eligibilityStatus !== 'ACTIVE'
+          ? 0
+          : reportedShare
     };
   }
 
@@ -1486,6 +1679,47 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return value?.trim().toLowerCase() === 'owner'
       ? 'owner'
       : 'linked';
+  }
+
+  private leaderboardEligibilityStatus(
+    value: string | null | undefined,
+    group: OperatorLeaderboardGroup
+  ): OperatorClaimEligibilityStatus {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'active') {
+      return 'ACTIVE';
+    }
+    if (normalized === 'suspended') {
+      return 'SUSPENDED';
+    }
+    if (normalized === 'partially-suspended') {
+      return 'PARTIALLY_SUSPENDED';
+    }
+    if (normalized === 'inactive') {
+      return 'INACTIVE';
+    }
+    if (group === 'UNCLAIMED') {
+      return 'INACTIVE';
+    }
+    if (group === 'CLAIMED') {
+      return 'INACTIVE';
+    }
+    throw new Error('operator.leaderboard.error.eligibility.invalid');
+  }
+
+  private deploymentEligibilityStatus(
+    value: string | null | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (`${value ?? ''}`.trim().toLowerCase()) {
+      case 'active':
+        return 'ACTIVE';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'inactive':
+        return 'INACTIVE';
+      default:
+        return 'INACTIVE';
+    }
   }
 
   private toRegistryMutationResult(
@@ -1603,6 +1837,95 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return top / bottom;
   }
 
+  private toSnapshotBoundary(
+    snapshot: RemoteOperatorLeaderboardSnapshot
+  ): OperatorLeaderboardSnapshotBoundaryDto {
+    if (!snapshot) {
+      throw new Error('operator.leaderboard.error.snapshot.invalid');
+    }
+    const boundary: OperatorLeaderboardSnapshotBoundaryDto = {
+      throughPeriod: `${snapshot.throughPeriod ?? ''}`.trim(),
+      throughLedgerIndex: Number(snapshot.throughLedgerIndex),
+      throughAuditIndex: Number(snapshot.throughAuditIndex),
+      throughReviewIndex: Number(snapshot.throughReviewIndex),
+      throughEligibilityIndex: Number(snapshot.throughEligibilityIndex),
+      ledgerHeadHash: `${snapshot.ledgerHeadHash ?? ''}`.trim(),
+      auditHeadHash: `${snapshot.auditHeadHash ?? ''}`.trim(),
+      reviewHeadHash: `${snapshot.reviewHeadHash ?? ''}`.trim(),
+      eligibilityHeadHash: `${snapshot.eligibilityHeadHash ?? ''}`.trim()
+    };
+    if (
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(boundary.throughPeriod)
+      || !this.validSnapshotIndex(boundary.throughLedgerIndex)
+      || !this.validSnapshotIndex(boundary.throughAuditIndex)
+      || !this.validSnapshotIndex(boundary.throughReviewIndex)
+      || !this.validSnapshotIndex(boundary.throughEligibilityIndex)
+      || !this.validSnapshotHash(boundary.ledgerHeadHash)
+      || !this.validSnapshotHash(boundary.auditHeadHash)
+      || !this.validSnapshotHash(boundary.reviewHeadHash)
+      || !this.validSnapshotHash(boundary.eligibilityHeadHash)
+    ) {
+      throw new Error('operator.leaderboard.error.snapshot.invalid');
+    }
+    return boundary;
+  }
+
+  private cursorSnapshotBoundary(
+    state: OperatorLeaderboardCursorState
+  ): OperatorLeaderboardSnapshotBoundaryDto | null {
+    const values = [
+      state.throughPeriod,
+      state.throughLedgerIndex,
+      state.throughAuditIndex,
+      state.throughReviewIndex,
+      state.throughEligibilityIndex,
+      state.ledgerHeadHash,
+      state.auditHeadHash,
+      state.reviewHeadHash,
+      state.eligibilityHeadHash
+    ];
+    if (values.every(value => value === null)) {
+      return null;
+    }
+    if (values.some(value => value === null)) {
+      throw new Error('operator.leaderboard.error.cursor.invalid');
+    }
+    return this.toSnapshotBoundary({
+      throughPeriod: state.throughPeriod!,
+      throughLedgerIndex: state.throughLedgerIndex!,
+      throughAuditIndex: state.throughAuditIndex!,
+      throughReviewIndex: state.throughReviewIndex!,
+      throughEligibilityIndex: state.throughEligibilityIndex!,
+      ledgerHeadHash: state.ledgerHeadHash!,
+      auditHeadHash: state.auditHeadHash!,
+      reviewHeadHash: state.reviewHeadHash!,
+      eligibilityHeadHash: state.eligibilityHeadHash!
+    } as RemoteOperatorLeaderboardSnapshot);
+  }
+
+  private sameSnapshotBoundary(
+    left: OperatorLeaderboardSnapshotBoundaryDto,
+    right: OperatorLeaderboardSnapshotBoundaryDto
+  ): boolean {
+    return left.throughPeriod === right.throughPeriod
+      && left.throughLedgerIndex === right.throughLedgerIndex
+      && left.throughAuditIndex === right.throughAuditIndex
+      && left.throughReviewIndex === right.throughReviewIndex
+      && left.throughEligibilityIndex === right.throughEligibilityIndex
+      && left.ledgerHeadHash === right.ledgerHeadHash
+      && left.auditHeadHash === right.auditHeadHash
+      && left.reviewHeadHash === right.reviewHeadHash
+      && left.eligibilityHeadHash === right.eligibilityHeadHash;
+  }
+
+  private validSnapshotIndex(value: number): boolean {
+    return Number.isSafeInteger(value) && value >= 0;
+  }
+
+  private validSnapshotHash(value: string): boolean {
+    return /^sha256:[0-9a-f]{64}$/.test(value);
+  }
+
   private encodeLeaderboardCursor(state: OperatorLeaderboardCursorState): string {
     return `operator-http:${encodeURIComponent(JSON.stringify(state))}`;
   }
@@ -1616,6 +1939,14 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         viewIndex: 0,
         viewCursor: null,
         throughPeriod: null,
+        throughLedgerIndex: null,
+        throughAuditIndex: null,
+        throughReviewIndex: null,
+        throughEligibilityIndex: null,
+        ledgerHeadHash: null,
+        auditHeadHash: null,
+        reviewHeadHash: null,
+        eligibilityHeadHash: null,
         emitted: 0
       };
     }
@@ -1643,11 +1974,441 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         throughPeriod: typeof parsed.throughPeriod === 'string'
           ? parsed.throughPeriod
           : null,
+        throughLedgerIndex: this.cursorIndex(parsed.throughLedgerIndex),
+        throughAuditIndex: this.cursorIndex(parsed.throughAuditIndex),
+        throughReviewIndex: this.cursorIndex(parsed.throughReviewIndex),
+        throughEligibilityIndex: this.cursorIndex(
+          parsed.throughEligibilityIndex
+        ),
+        ledgerHeadHash: this.cursorHash(parsed.ledgerHeadHash),
+        auditHeadHash: this.cursorHash(parsed.auditHeadHash),
+        reviewHeadHash: this.cursorHash(parsed.reviewHeadHash),
+        eligibilityHeadHash: this.cursorHash(parsed.eligibilityHeadHash),
         emitted
       };
     } catch {
       throw new Error('operator.leaderboard.error.cursor.invalid');
     }
+  }
+
+  private cursorIndex(value: unknown): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const normalized = Number(value);
+    if (!this.validSnapshotIndex(normalized)) {
+      throw new Error();
+    }
+    return normalized;
+  }
+
+  private cursorHash(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const normalized = `${value}`.trim();
+    if (!this.validSnapshotHash(normalized)) {
+      throw new Error();
+    }
+    return normalized;
+  }
+
+  private toSettlement(
+    source: RemoteOperatorSettlement
+  ): OperatorSettlementDto {
+    const settlementId = this.settlementText(source.settlementId);
+    const period = this.settlementText(source.period);
+    const currencyCode =
+      this.settlementText(source.currencyCode).toUpperCase();
+    const revision = this.settlementInteger(source.revision);
+    const supersedesSettlementId =
+      this.settlementText(source.supersedesSettlementId) || null;
+    const beneficiaryType =
+      this.settlementText(source.beneficiaryType);
+    const beneficiaryId = this.settlementText(source.beneficiaryId);
+    const shareNumerator = this.settlementText(source.shareNumerator);
+    const shareDenominator = this.settlementText(source.shareDenominator);
+    const fractionDigits = this.settlementInteger(source.fractionDigits);
+    const networkPoolMinor =
+      this.settlementInteger(source.networkPoolMinor);
+    const networkPoolAllocationMinor =
+      this.settlementInteger(source.networkPoolAllocationMinor);
+    const ttmCommissionBasisMinor =
+      this.settlementInteger(source.ttmCommissionBasisMinor);
+    const ttmNetworkCommissionPoolMinor =
+      this.settlementInteger(source.ttmNetworkCommissionPoolMinor);
+    const indicativeNetworkValueMinor =
+      this.settlementInteger(source.indicativeNetworkValueMinor);
+    const indicativeValueAllocationMinor =
+      this.settlementInteger(source.indicativeValueAllocationMinor);
+    const baseValuationMultiplierBasisPoints =
+      this.settlementInteger(source.baseValuationMultiplierBasisPoints);
+    const recentThreeMonthAverageMinor =
+      this.settlementInteger(source.recentThreeMonthAverageMinor);
+    const priorThreeMonthAverageMinor =
+      this.settlementInteger(source.priorThreeMonthAverageMinor);
+    const earlierThreeMonthAverageMinor =
+      this.settlementInteger(source.earlierThreeMonthAverageMinor);
+    const recentGrowthBasisPoints =
+      this.settlementInteger(source.recentGrowthBasisPoints);
+    const priorGrowthBasisPoints =
+      this.settlementInteger(source.priorGrowthBasisPoints);
+    const accelerationBasisPoints =
+      this.settlementInteger(source.accelerationBasisPoints);
+    const valuationAdjustmentBasisPoints =
+      this.settlementInteger(source.valuationAdjustmentBasisPoints);
+    const effectiveValuationMultiplierBasisPoints =
+      this.settlementInteger(source.effectiveValuationMultiplierBasisPoints);
+    const throughLedgerIndex =
+      this.settlementInteger(source.throughLedgerIndex);
+    const throughAuditIndex =
+      this.settlementInteger(source.throughAuditIndex);
+    const throughReviewIndex =
+      this.settlementInteger(source.throughReviewIndex);
+    const throughEligibilityIndex =
+      this.settlementInteger(source.throughEligibilityIndex);
+    const valuationRulesetVersion =
+      this.settlementText(source.valuationRulesetVersion);
+    const sourceFingerprint =
+      this.settlementText(source.sourceFingerprint);
+    const settlementHash = this.settlementText(source.settlementHash);
+    const acceptedAtIso = this.settlementText(source.acceptedAtIso);
+    if (
+      !/^stl_[0-9a-f]{32}$/.test(settlementId)
+      || !this.validSettlementPeriod(period)
+      || !/^[A-Z]{3}$/.test(currencyCode)
+      || ![
+        fractionDigits,
+        revision,
+        networkPoolMinor,
+        networkPoolAllocationMinor,
+        ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        indicativeValueAllocationMinor,
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex
+      ].every(value => Number.isSafeInteger(value))
+      || fractionDigits < 0
+      || fractionDigits > 6
+      || revision < 1
+      || (
+        revision === 1
+          ? supersedesSettlementId !== null
+          : !supersedesSettlementId
+            || !/^stl_[0-9a-f]{32}$/.test(supersedesSettlementId)
+      )
+      || beneficiaryType !== 'OPERATOR_GROUP'
+      || !/^opg_[0-9a-f]{32}$/.test(beneficiaryId)
+      || !this.validSettlementShare(
+        shareNumerator,
+        shareDenominator
+      )
+      || networkPoolMinor < 0
+      || networkPoolAllocationMinor < 0
+      || networkPoolAllocationMinor > networkPoolMinor
+      || ttmCommissionBasisMinor < 0
+      || ttmNetworkCommissionPoolMinor < 0
+      || indicativeNetworkValueMinor < 0
+      || indicativeValueAllocationMinor < 0
+      || indicativeValueAllocationMinor > indicativeNetworkValueMinor
+      || valuationRulesetVersion
+        !== 'three-month-acceleration-valuation-v1'
+      || baseValuationMultiplierBasisPoints <= 0
+      || recentThreeMonthAverageMinor < 0
+      || priorThreeMonthAverageMinor < 0
+      || earlierThreeMonthAverageMinor < 0
+      || !this.settlementWithin(
+        recentGrowthBasisPoints,
+        -10_000,
+        20_000
+      )
+      || !this.settlementWithin(
+        priorGrowthBasisPoints,
+        -10_000,
+        20_000
+      )
+      || !this.settlementWithin(
+        accelerationBasisPoints,
+        -10_000,
+        10_000
+      )
+      || !this.settlementWithin(
+        valuationAdjustmentBasisPoints,
+        -2_500,
+        2_500
+      )
+      || effectiveValuationMultiplierBasisPoints <= 0
+      || !this.validSettlementDerivation({
+        ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints
+      })
+      || source.valuationIsNonBinding !== true
+      || throughLedgerIndex <= 0
+      || throughAuditIndex < 0
+      || throughReviewIndex < 0
+      || throughEligibilityIndex < 0
+      || !this.validSnapshotHash(sourceFingerprint)
+      || !this.validSnapshotHash(settlementHash)
+      || !this.validIsoTimestamp(acceptedAtIso)
+    ) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    return {
+      settlementId,
+      period,
+      currencyCode,
+      fractionDigits,
+      revision,
+      supersedesSettlementId,
+      beneficiaryType: 'OPERATOR_GROUP',
+      beneficiaryId,
+      shareNumerator,
+      shareDenominator,
+      networkPoolMinor,
+      networkPoolAllocationMinor,
+      ttmCommissionBasisMinor,
+      ttmNetworkCommissionPoolMinor,
+      indicativeNetworkValueMinor,
+      indicativeValueAllocationMinor,
+      valuationRulesetVersion,
+      baseValuationMultiplierBasisPoints,
+      recentThreeMonthAverageMinor,
+      priorThreeMonthAverageMinor,
+      earlierThreeMonthAverageMinor,
+      recentGrowthBasisPoints,
+      priorGrowthBasisPoints,
+      accelerationBasisPoints,
+      valuationAdjustmentBasisPoints,
+      effectiveValuationMultiplierBasisPoints,
+      valuationIsNonBinding: true,
+      throughLedgerIndex,
+      throughAuditIndex,
+      throughReviewIndex,
+      throughEligibilityIndex,
+      sourceFingerprint,
+      settlementHash,
+      acceptedAtIso
+    };
+  }
+
+  private encodeSettlementCursor(
+    afterPeriod: string,
+    afterSettlementId: string
+  ): string {
+    if (
+      !this.validSettlementPeriod(afterPeriod)
+      || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+    ) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    return `operator-settlement:${
+      encodeURIComponent(JSON.stringify({
+        afterPeriod,
+        afterSettlementId
+      }))
+    }`;
+  }
+
+  private decodeSettlementCursor(
+    cursor: string | null | undefined
+  ): {
+    afterPeriod: string;
+    afterSettlementId: string;
+  } | null {
+    const normalized = `${cursor ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!normalized.startsWith('operator-settlement:')) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(
+        normalized.slice('operator-settlement:'.length)
+      )) as {
+        afterPeriod?: unknown;
+        afterSettlementId?: unknown;
+      };
+      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
+      const afterSettlementId =
+        `${parsed.afterSettlementId ?? ''}`.trim();
+      if (
+        !this.validSettlementPeriod(afterPeriod)
+        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+      ) {
+        throw new Error();
+      }
+      return { afterPeriod, afterSettlementId };
+    } catch {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+  }
+
+  private settlementText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private settlementInteger(value: unknown): number {
+    const normalized = Number(value);
+    return Number.isSafeInteger(normalized)
+      ? normalized
+      : Number.NaN;
+  }
+
+  private validSettlementPeriod(value: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+  }
+
+  private validSettlementShare(
+    numerator: string,
+    denominator: string
+  ): boolean {
+    if (
+      !/^(0|[1-9]\d*)$/.test(numerator)
+      || !/^[1-9]\d*$/.test(denominator)
+    ) {
+      return false;
+    }
+    try {
+      const top = BigInt(numerator);
+      const bottom = BigInt(denominator);
+      return top >= 0n
+        && bottom > 0n
+        && top <= bottom
+        && this.settlementGreatestCommonDivisor(top, bottom) === 1n;
+    } catch {
+      return false;
+    }
+  }
+
+  private settlementGreatestCommonDivisor(
+    left: bigint,
+    right: bigint
+  ): bigint {
+    let current = left < 0n ? -left : left;
+    let next = right < 0n ? -right : right;
+    while (next !== 0n) {
+      const remainder = current % next;
+      current = next;
+      next = remainder;
+    }
+    return current;
+  }
+
+  private settlementWithin(
+    value: number,
+    minimum: number,
+    maximum: number
+  ): boolean {
+    return Number.isSafeInteger(value)
+      && value >= minimum
+      && value <= maximum;
+  }
+
+  private validSettlementDerivation(source: {
+    ttmCommissionBasisMinor: number;
+    ttmNetworkCommissionPoolMinor: number;
+    indicativeNetworkValueMinor: number;
+    baseValuationMultiplierBasisPoints: number;
+    recentThreeMonthAverageMinor: number;
+    priorThreeMonthAverageMinor: number;
+    earlierThreeMonthAverageMinor: number;
+    recentGrowthBasisPoints: number;
+    priorGrowthBasisPoints: number;
+    accelerationBasisPoints: number;
+    valuationAdjustmentBasisPoints: number;
+    effectiveValuationMultiplierBasisPoints: number;
+  }): boolean {
+    const priorGrowth = this.settlementGrowthBasisPoints(
+      source.earlierThreeMonthAverageMinor,
+      source.priorThreeMonthAverageMinor
+    );
+    const recentGrowth = this.settlementGrowthBasisPoints(
+      source.priorThreeMonthAverageMinor,
+      source.recentThreeMonthAverageMinor
+    );
+    const acceleration = this.settlementClamp(
+      recentGrowth - priorGrowth,
+      -10_000n,
+      10_000n
+    );
+    const adjustment = this.settlementClamp(
+      recentGrowth / 4n + acceleration / 4n,
+      -2_500n,
+      2_500n
+    );
+    const baseMultiplier =
+      BigInt(source.baseValuationMultiplierBasisPoints);
+    const effectiveMultiplier =
+      baseMultiplier * (10_000n + adjustment) / 10_000n;
+    const ttmBasis = BigInt(source.ttmCommissionBasisMinor);
+    const ttmPool = ttmBasis * 500n / 10_000n;
+    const indicativeValue =
+      ttmBasis * effectiveMultiplier / 10_000n;
+    return priorGrowth === BigInt(source.priorGrowthBasisPoints)
+      && recentGrowth === BigInt(source.recentGrowthBasisPoints)
+      && acceleration === BigInt(source.accelerationBasisPoints)
+      && adjustment === BigInt(source.valuationAdjustmentBasisPoints)
+      && effectiveMultiplier
+        === BigInt(source.effectiveValuationMultiplierBasisPoints)
+      && ttmPool === BigInt(source.ttmNetworkCommissionPoolMinor)
+      && indicativeValue === BigInt(source.indicativeNetworkValueMinor);
+  }
+
+  private settlementGrowthBasisPoints(
+    previous: number,
+    current: number
+  ): bigint {
+    const previousValue = BigInt(previous);
+    const currentValue = BigInt(current);
+    if (previousValue === 0n) {
+      return currentValue === 0n ? 0n : 20_000n;
+    }
+    return this.settlementClamp(
+      (currentValue - previousValue) * 10_000n / previousValue,
+      -10_000n,
+      20_000n
+    );
+  }
+
+  private settlementClamp(
+    value: bigint,
+    minimum: bigint,
+    maximum: bigint
+  ): bigint {
+    return value < minimum
+      ? minimum
+      : value > maximum
+        ? maximum
+        : value;
+  }
+
+  private validIsoTimestamp(value: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/
+      .test(value)
+      && Number.isFinite(Date.parse(value));
   }
 
   private throwIfAborted(signal?: AbortSignal): void {

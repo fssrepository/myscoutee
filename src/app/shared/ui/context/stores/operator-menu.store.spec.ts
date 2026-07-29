@@ -35,6 +35,7 @@ describe('OperatorMenuStore', () => {
       verifiedWeight: 42,
       sharePercent: 4.2,
       claimed: true,
+      eligibilityStatus: 'ACTIVE' as const,
       operatorGroupId: ' opg_test ',
       deploymentCount: 2
     };

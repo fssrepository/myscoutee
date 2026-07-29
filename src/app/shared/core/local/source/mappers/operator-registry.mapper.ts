@@ -13,6 +13,7 @@ import type {
   OperatorLeaderboardGroup,
   OperatorLeaderboardPageDto,
   OperatorRevenueDto,
+  OperatorSettlementDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryStatusDto
 } from '../../../contracts/operator.interface';
@@ -38,6 +39,7 @@ export interface OperatorRegistryRecordExtras {
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
   revenue: OperatorRevenueDto;
+  settlements: readonly OperatorSettlementDto[];
   community: OperatorCommunityStatusDto;
 }
 
@@ -74,6 +76,7 @@ export class LocalOperatorRegistryMapper {
       deploymentUpdate: structuredClone(extras.deploymentUpdate),
       configuration: structuredClone(extras.configuration),
       revenue: structuredClone(extras.revenue),
+      settlements: [...structuredClone(extras.settlements)],
       community: structuredClone(extras.community)
     };
   }
@@ -98,16 +101,20 @@ export class LocalOperatorRegistryMapper {
     if (!existing) {
       return structuredClone(initialRecord);
     }
-    const ledger = existing.ledger?.length
+    const refreshSeedOwnedData =
+      `${existing.seedVersion ?? ''}`.trim() !== initialRecord.seedVersion;
+    const storedLedger = existing.ledger?.length
       ? structuredClone(existing.ledger)
       : existing.leaderboard?.length
         ? this.legacyLedger(existing.leaderboard, initialRecord.ledger)
         : structuredClone(initialRecord.ledger);
+    const ledger = this.normalizeLedgerEligibility(
+      storedLedger,
+      refreshSeedOwnedData ? initialRecord.ledger : []
+    );
     const groupLinks = existing.groupLinks?.length
       ? structuredClone(existing.groupLinks)
       : structuredClone(initialRecord.groupLinks);
-    const refreshSeedOwnedData =
-      `${existing.seedVersion ?? ''}`.trim() !== initialRecord.seedVersion;
     return {
       seedVersion: initialRecord.seedVersion,
       status: {
@@ -158,6 +165,11 @@ export class LocalOperatorRegistryMapper {
         !refreshSeedOwnedData && existing.revenue
           ? existing.revenue
           : initialRecord.revenue
+      ),
+      settlements: structuredClone(
+        !refreshSeedOwnedData && existing.settlements
+          ? existing.settlements
+          : initialRecord.settlements
       ),
       community: existing.community
         ? {
@@ -260,6 +272,16 @@ export class LocalOperatorRegistryMapper {
       payment: {
         availableProviders,
         providerId,
+        publicBaseUrl: providerId
+          ? OperatorConfigurationMapper.paymentPublicBaseUrl(
+            payment.publicBaseUrl
+          ) || null
+          : null,
+        merchantAccount: providerId
+          ? OperatorConfigurationMapper.paymentMerchantAccount(
+            payment.merchantAccount
+          ) || null
+          : null,
         credentialConfigured: providerId
           ? payment.credentialConfigured ?? initial.payment.credentialConfigured
           : false,
@@ -309,7 +331,8 @@ export class LocalOperatorRegistryMapper {
       verificationSubmittedAt: existing.verificationSubmittedAt
         ?? existing.claimedAt
         ?? null,
-      legalName: existing.legalName ?? existing.claimantName ?? null
+      legalName: existing.legalName ?? existing.claimantName ?? null,
+      eligibilityStatus: this.claimEligibilityStatus(existing)
     };
   }
 
@@ -351,6 +374,7 @@ export class LocalOperatorRegistryMapper {
       total: ordered.length,
       nextCursor: nextOffset < ordered.length ? `operator:${nextOffset}` : null,
       context: {
+        snapshotBoundary: null,
         groupSummaries: (['FOUNDER', 'CLAIMED', 'UNCLAIMED'] as const).map(group => {
           const groupItems = ordered.filter(item => item.group === group);
           return {
@@ -411,9 +435,13 @@ export class LocalOperatorRegistryMapper {
       entry.group === 'CLAIMED'
       && entry.operatorGroupId === normalizedGroupId
     );
-    const groupWeight = deployments.reduce(
+    const eligibleGroupWeight = deployments.reduce(
       (total, entry) =>
-        total + Math.max(0, Number(entry.verifiedWeight) || 0),
+        total + (
+          this.ledgerEligibilityStatus(entry) === 'ACTIVE'
+            ? Math.max(0, Number(entry.verifiedWeight) || 0)
+            : 0
+        ),
       0
     );
     const groupSharePercent = Math.max(
@@ -437,14 +465,17 @@ export class LocalOperatorRegistryMapper {
         0,
         Number(entry.verifiedWeight) || 0
       );
+      const eligibilityStatus = this.ledgerEligibilityStatus(entry);
       return {
         deploymentId,
         groupId: normalizedGroupId,
         claimState,
+        eligibilityStatus,
         membershipState: deploymentId === ownerNodeId ? 'owner' : 'linked',
         verifiedWeight,
-        sharePercent: groupWeight > 0
-          ? groupSharePercent * verifiedWeight / groupWeight
+        sharePercent:
+          eligibilityStatus === 'ACTIVE' && eligibleGroupWeight > 0
+          ? groupSharePercent * verifiedWeight / eligibleGroupWeight
           : 0
       };
     });
@@ -478,10 +509,18 @@ export class LocalOperatorRegistryMapper {
     const claimedWeight = cloned
       .filter(item =>
         item.group === 'CLAIMED'
-        && item.claimVerificationStatus !== 'PENDING_REVIEW'
+        && (
+          item.claimVerificationStatus === 'PENDING_REVIEW'
+          || item.eligibilityStatus === 'ACTIVE'
+          || item.eligibilityStatus === 'PARTIALLY_SUSPENDED'
+        )
         && item.claimVerificationStatus !== 'REJECTED'
       )
-      .reduce((total, item) => total + Math.max(0, Number(item.verifiedWeight) || 0), 0);
+      .reduce(
+        (total, item) =>
+          total + this.displayLocalWeight(item),
+        0
+      );
     const totalUnits = founderUnits + deploymentWeight;
     const founderShare = totalUnits > 0
       ? Math.max(10, (founderUnits / totalUnits) * 100)
@@ -492,14 +531,18 @@ export class LocalOperatorRegistryMapper {
       .map(item => {
         const weight = Math.max(0, Number(item.verifiedWeight) || 0);
         const claimedShareEligible = item.group === 'CLAIMED'
-          && item.claimVerificationStatus !== 'PENDING_REVIEW'
+          && (
+            item.claimVerificationStatus === 'PENDING_REVIEW'
+            || item.eligibilityStatus === 'ACTIVE'
+            || item.eligibilityStatus === 'PARTIALLY_SUSPENDED'
+          )
           && item.claimVerificationStatus !== 'REJECTED';
         const sharePercent = item.group === 'FOUNDER'
           ? founderUnits > 0
             ? founderShare * weight / founderUnits
             : 0
           : claimedShareEligible && claimedWeight > 0
-            ? operatorPool * weight / claimedWeight
+            ? operatorPool * this.displayLocalWeight(item) / claimedWeight
             : 0;
         return {
           ...item,
@@ -564,7 +607,8 @@ export class LocalOperatorRegistryMapper {
           claimantName: entry.claimantName,
           claimantAvatarUrl: entry.claimantAvatarUrl,
           operatorGroupId: null,
-          deploymentCount: 1
+          deploymentCount: 1,
+          eligibilityStatus: entry.founder ? 'ACTIVE' : 'INACTIVE'
         });
         continue;
       }
@@ -586,13 +630,23 @@ export class LocalOperatorRegistryMapper {
           (total, entry) => total + Math.max(0, entry.verifiedWeight),
           0
         ),
+        eligibleWeight: entries.reduce(
+          (total, entry) =>
+            total + (
+              this.ledgerEligibilityStatus(entry) === 'ACTIVE'
+                ? Math.max(0, entry.verifiedWeight)
+                : 0
+            ),
+          0
+        ),
         sharePercent: 0,
         claimed: true,
         claimantUserId: primary.claimantUserId,
         claimantName: primary.claimantName,
         claimantAvatarUrl: primary.claimantAvatarUrl,
         operatorGroupId,
-        deploymentCount: entries.length
+        deploymentCount: entries.length,
+        eligibilityStatus: this.groupEligibilityStatus(entries)
       });
     }
 
@@ -654,11 +708,116 @@ export class LocalOperatorRegistryMapper {
       founder: entry.group === 'FOUNDER',
       verifiedWeight: entry.verifiedWeight,
       claimed: entry.claimed,
+      eligibilityStatus: entry.eligibilityStatus
+        ?? (entry.group === 'FOUNDER'
+          ? 'ACTIVE'
+          : entry.group === 'UNCLAIMED'
+            ? 'INACTIVE'
+            : 'INACTIVE'),
       claimantUserId: entry.claimantUserId ?? null,
       claimantName: entry.claimantName ?? null,
       claimantAvatarUrl: entry.claimantAvatarUrl ?? null,
       measuredAt,
       claimedAt: entry.claimed ? measuredAt : null
     }));
+  }
+
+  private static normalizeLedgerEligibility(
+    ledger: readonly OperatorLedgerNodeRecord[],
+    seedFallback: readonly OperatorLedgerNodeRecord[] = []
+  ): OperatorLedgerNodeRecord[] {
+    const fallbackById = new Map(
+      seedFallback.map(entry => [entry.id, entry.eligibilityStatus])
+    );
+    return ledger.map(entry => ({
+      ...entry,
+      eligibilityStatus: this.ledgerEligibilityStatus({
+        ...entry,
+        eligibilityStatus:
+          entry.eligibilityStatus
+          ?? fallbackById.get(entry.id)
+          ?? 'INACTIVE'
+      })
+    }));
+  }
+
+  private static ledgerEligibilityStatus(
+    entry: OperatorLedgerNodeRecord
+  ): OperatorLedgerNodeRecord['eligibilityStatus'] {
+    if (entry.founder) {
+      return 'ACTIVE';
+    }
+    if (entry.active === false || !entry.claimed) {
+      return 'INACTIVE';
+    }
+    switch (entry.eligibilityStatus) {
+      case 'ACTIVE':
+      case 'SUSPENDED':
+      case 'INACTIVE':
+        return entry.eligibilityStatus;
+      default:
+        return 'INACTIVE';
+    }
+  }
+
+  private static groupEligibilityStatus(
+    entries: readonly OperatorLedgerNodeRecord[]
+  ): OperatorLeaderboardEntryDto['eligibilityStatus'] {
+    const active = entries.filter(
+      entry => this.ledgerEligibilityStatus(entry) === 'ACTIVE'
+    ).length;
+    const suspended = entries.filter(
+      entry => this.ledgerEligibilityStatus(entry) === 'SUSPENDED'
+    ).length;
+    if (active > 0 && suspended > 0) {
+      return 'PARTIALLY_SUSPENDED';
+    }
+    if (active > 0) {
+      return 'ACTIVE';
+    }
+    if (suspended > 0) {
+      return 'SUSPENDED';
+    }
+    return 'INACTIVE';
+  }
+
+  private static eligibleLocalWeight(
+    entry: OperatorLeaderboardEntryDto
+  ): number {
+    if (entry.eligibilityStatus === 'ACTIVE') {
+      return Math.max(0, Number(entry.verifiedWeight) || 0);
+    }
+    if (entry.eligibilityStatus !== 'PARTIALLY_SUSPENDED') {
+      return 0;
+    }
+    return Math.max(
+      0,
+      Math.min(
+        Number(entry.verifiedWeight) || 0,
+        Number(entry.eligibleWeight) || 0
+      )
+    );
+  }
+
+  private static displayLocalWeight(
+    entry: OperatorLeaderboardEntryDto
+  ): number {
+    if (entry.claimVerificationStatus === 'PENDING_REVIEW') {
+      return Math.max(0, Number(entry.verifiedWeight) || 0);
+    }
+    return this.eligibleLocalWeight(entry);
+  }
+
+  private static claimEligibilityStatus(
+    status: OperatorClaimStatusDto
+  ): OperatorClaimStatusDto['eligibilityStatus'] {
+    switch (status.eligibilityStatus) {
+      case 'ACTIVE':
+      case 'SUSPENDED':
+      case 'INACTIVE':
+        return status.eligibilityStatus;
+      default:
+        return 'INACTIVE';
+    }
   }
 }

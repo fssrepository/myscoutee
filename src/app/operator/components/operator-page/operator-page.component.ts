@@ -132,6 +132,16 @@ export class OperatorPageComponent implements OnInit {
     const claimRejected =
       registryActive
       && claim?.verificationStatus === 'REJECTED';
+    const claimSuspended =
+      registryActive
+      && claim?.claimed
+      && claim.eligibilityStatus === 'SUSPENDED';
+    const claimInactive =
+      registryActive
+      && claim?.claimed
+      && claim.eligibilityStatus === 'INACTIVE'
+      && !claimPendingReview
+      && !claimRejected;
     return [{
       id: 'updates',
       label: 'operator.action.updates',
@@ -167,15 +177,27 @@ export class OperatorPageComponent implements OnInit {
         ? 'operator.action.claim.share.rejected'
         : claimPendingReview
           ? 'operator.action.claim.share.pending'
-          : registryActive && claim?.claimed
-            ? 'operator.action.claim.share.claimed'
-            : 'operator.action.claim.share.detail',
+          : claimSuspended
+            ? 'operator.action.claim.share.suspended'
+            : claimInactive
+              ? 'operator.action.claim.share.inactive'
+              : registryActive && claim?.claimed
+                ? 'operator.action.claim.share.claimed'
+                : 'operator.action.claim.share.detail',
       icon: claimRejected
         ? 'block'
         : claimPendingReview
           ? 'pending_actions'
-          : 'redeem',
-      palette: claimRejected ? 'red' : claimPendingReview ? 'orange' : 'amber',
+          : claimSuspended
+            ? 'pause_circle'
+            : claimInactive
+              ? 'gpp_maybe'
+              : 'redeem',
+      palette: claimRejected || claimSuspended
+        ? 'red'
+        : claimPendingReview || claimInactive
+          ? 'orange'
+          : 'amber',
       kind: 'action',
       layout: 'big'
     },
@@ -313,6 +335,15 @@ export class OperatorPageComponent implements OnInit {
       ),
       rejectedReviewLabel: this.i18n.translate(
         'operator.claim.verification.rejected.action'
+      ),
+      suspendedEligibilityLabel: this.i18n.translate(
+        'operator.claim.eligibility.suspended'
+      ),
+      partiallySuspendedEligibilityLabel: this.i18n.translate(
+        'operator.claim.eligibility.partially.suspended'
+      ),
+      inactiveEligibilityLabel: this.i18n.translate(
+        'operator.claim.eligibility.inactive'
       )
     });
     return {

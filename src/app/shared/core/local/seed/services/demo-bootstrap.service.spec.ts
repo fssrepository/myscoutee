@@ -397,6 +397,8 @@ describe('Demo bootstrap seeding', () => {
           }
         ],
         providerId: 'paypal',
+        publicBaseUrl: 'https://legacy.example.test',
+        merchantAccount: null,
         credentialConfigured: true,
         credentialMask: '••••live'
       }
@@ -438,6 +440,8 @@ describe('Demo bootstrap seeding', () => {
         }
       ],
       providerId: null,
+      publicBaseUrl: null,
+      merchantAccount: null,
       credentialConfigured: false,
       credentialMask: null
     });

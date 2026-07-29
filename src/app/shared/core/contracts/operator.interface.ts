@@ -174,12 +174,24 @@ export type OperatorMeasurementReportPageDto =
 
 export type OperatorLeaderboardGroup = 'FOUNDER' | 'CLAIMED' | 'UNCLAIMED';
 
+export type OperatorClaimEligibilityStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'PARTIALLY_SUSPENDED'
+  | 'INACTIVE';
+
+export type OperatorDeploymentEligibilityStatus = Exclude<
+  OperatorClaimEligibilityStatus,
+  'PARTIALLY_SUSPENDED'
+>;
+
 export interface OperatorLeaderboardEntryDto {
   id: string;
   nodeId: string | null;
   label: string;
   group: OperatorLeaderboardGroup;
   verifiedWeight: number;
+  eligibleWeight?: number;
   sharePercent: number;
   claimed: boolean;
   claimantUserId?: string | null;
@@ -188,6 +200,7 @@ export interface OperatorLeaderboardEntryDto {
   operatorGroupId?: string | null;
   deploymentCount?: number;
   claimVerificationStatus?: OperatorClaimVerificationStatus | null;
+  eligibilityStatus: OperatorClaimEligibilityStatus;
 }
 
 export interface OperatorLeaderboardMutationDto {
@@ -221,6 +234,7 @@ export interface OperatorLeaderboardGroupSummaryDto {
 
 export interface OperatorLeaderboardPageContextDto {
   groupSummaries: readonly OperatorLeaderboardGroupSummaryDto[];
+  snapshotBoundary: OperatorLeaderboardSnapshotBoundaryDto | null;
 }
 
 export type OperatorLeaderboardPageDto = PageResult<
@@ -243,13 +257,16 @@ export interface OperatorLeaderboardDeploymentDto {
   deploymentId: string;
   groupId: string;
   claimState: OperatorLeaderboardDeploymentClaimState;
+  eligibilityStatus: OperatorDeploymentEligibilityStatus;
   membershipState: OperatorLeaderboardDeploymentMembershipState;
   verifiedWeight: number;
   sharePercent: number;
 }
 
-export type OperatorLeaderboardDeploymentPageDto =
-  PageResult<OperatorLeaderboardDeploymentDto>;
+export type OperatorLeaderboardDeploymentPageDto = PageResult<
+  OperatorLeaderboardDeploymentDto,
+  OperatorLeaderboardSnapshotBoundaryDto
+>;
 
 export type OperatorClaimVerificationCapability =
   | 'AVAILABLE'
@@ -279,6 +296,19 @@ export interface OperatorClaimStatusDto {
   verificationStatus: OperatorClaimVerificationStatus;
   verificationSubmittedAt: string | null;
   legalName: string | null;
+  eligibilityStatus: OperatorDeploymentEligibilityStatus;
+}
+
+export interface OperatorLeaderboardSnapshotBoundaryDto {
+  throughPeriod: string;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  ledgerHeadHash: string;
+  auditHeadHash: string;
+  reviewHeadHash: string;
+  eligibilityHeadHash: string;
 }
 
 export interface OperatorGroupingTokenDto {
@@ -366,6 +396,8 @@ export interface OperatorPaymentProviderDto {
 export interface OperatorPaymentConfigurationDto {
   availableProviders: readonly OperatorPaymentProviderDto[];
   providerId: string | null;
+  publicBaseUrl: string | null;
+  merchantAccount: string | null;
   credentialConfigured: boolean;
   credentialMask: string | null;
 }
@@ -421,6 +453,8 @@ export interface OperatorConfigurationSaveRequestDto {
   };
   payment: {
     providerId: string | null;
+    publicBaseUrl: string;
+    merchantAccount: string;
     credential: string;
   };
   firebase: {
@@ -576,6 +610,59 @@ export interface OperatorRevenueReportDto {
 
 export type OperatorRevenueReportPageDto = PageResult<OperatorRevenueReportDto>;
 
+export interface OperatorSettlementFilters {
+  currencyCode?: string;
+  fromPeriod?: string;
+  throughPeriod?: string;
+  includeSuperseded?: boolean;
+}
+
+export interface OperatorSettlementDto {
+  settlementId: string;
+  period: string;
+  currencyCode: string;
+  fractionDigits: number;
+  revision: number;
+  supersedesSettlementId: string | null;
+  beneficiaryType: 'OPERATOR_GROUP';
+  beneficiaryId: string;
+  shareNumerator: string;
+  shareDenominator: string;
+  networkPoolMinor: number;
+  networkPoolAllocationMinor: number;
+  ttmCommissionBasisMinor: number;
+  ttmNetworkCommissionPoolMinor: number;
+  indicativeNetworkValueMinor: number;
+  indicativeValueAllocationMinor: number;
+  valuationRulesetVersion: string;
+  baseValuationMultiplierBasisPoints: number;
+  recentThreeMonthAverageMinor: number;
+  priorThreeMonthAverageMinor: number;
+  earlierThreeMonthAverageMinor: number;
+  recentGrowthBasisPoints: number;
+  priorGrowthBasisPoints: number;
+  accelerationBasisPoints: number;
+  valuationAdjustmentBasisPoints: number;
+  effectiveValuationMultiplierBasisPoints: number;
+  valuationIsNonBinding: true;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  sourceFingerprint: string;
+  settlementHash: string;
+  acceptedAtIso: string;
+}
+
+export interface OperatorSettlementPageContextDto {
+  generatedAtIso: string;
+}
+
+export type OperatorSettlementPageDto = PageResult<
+  OperatorSettlementDto,
+  OperatorSettlementPageContextDto
+>;
+
 export type OperatorCommunityAvailability =
   | 'ONLINE'
   | 'AVAILABLE'
@@ -703,6 +790,10 @@ export interface OperatorRegistryServiceContract {
     signal?: AbortSignal
   ): Promise<OperatorRevenueReportPageDto>;
   requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto>;
+  settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto>;
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto>;
   setCommunityAvailability(
     availability: OperatorCommunityAvailability

@@ -109,6 +109,7 @@ describe('HttpOperatorRegistryService', () => {
       label: 'dep_demo',
       avatarUrl: '',
       claimState: 'unclaimed',
+      eligibilityStatus: 'inactive',
       deploymentCount: 1,
       weightNumerator: '0',
       weightDenominator: '1',
@@ -267,7 +268,8 @@ describe('HttpOperatorRegistryService', () => {
       verificationUnavailableReason: null,
       verificationStatus: 'PENDING_REVIEW',
       verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
-      legalName: 'Demo Operator s.r.o.'
+      legalName: 'Demo Operator s.r.o.',
+      eligibilityStatus: 'inactive'
     };
     const claimedRow = {
       rowId: 'opg_demo',
@@ -276,6 +278,7 @@ describe('HttpOperatorRegistryService', () => {
       label: 'Demo Operator s.r.o.',
       avatarUrl: null,
       claimState: 'pending-review',
+      eligibilityStatus: 'inactive',
       deploymentCount: 1,
       weightNumerator: '17',
       weightDenominator: '1',
@@ -339,11 +342,17 @@ describe('HttpOperatorRegistryService', () => {
     });
 
     expect(loaded).toEqual({
-      status: claimStatus,
+      status: {
+        ...claimStatus,
+        eligibilityStatus: 'INACTIVE'
+      },
       submission: claimMutation.submission
     });
     expect(claimed).toEqual({
-      status: claimStatus,
+      status: {
+        ...claimStatus,
+        eligibilityStatus: 'INACTIVE'
+      },
       submission: claimMutation.submission,
       leaderboardEntry: expect.objectContaining({
         id: 'opg_demo',
@@ -362,7 +371,10 @@ describe('HttpOperatorRegistryService', () => {
       leaderboardTotalDelta: 0
     });
     expect(grouped).toEqual({
-      status: claimStatus,
+      status: {
+        ...claimStatus,
+        eligibilityStatus: 'INACTIVE'
+      },
       submission: claimMutation.submission,
       leaderboardEntry: expect.objectContaining({
         id: 'opg_demo',
@@ -440,7 +452,18 @@ describe('HttpOperatorRegistryService', () => {
 
   it('maps the three Java leaderboard views into one grouped cursor stream', async () => {
     const snapshot = {
+      snapshotId: 'lbs_0123456789abcdef0123456789abcdef',
+      formulaVersion: 'six-complete-month-average-v1',
+      rulesetVersion: 'qmau-v1',
       throughPeriod: '2026-07',
+      throughLedgerIndex: 42,
+      throughAuditIndex: 17,
+      throughReviewIndex: 3,
+      throughEligibilityIndex: 2,
+      ledgerHeadHash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      auditHeadHash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      reviewHeadHash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      eligibilityHeadHash: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
       founderUnitsNumerator: '100000',
       founderUnitsDenominator: '1',
       founderShareNumerator: '1',
@@ -448,7 +471,9 @@ describe('HttpOperatorRegistryService', () => {
       measuredWeightNumerator: '100000',
       measuredWeightDenominator: '1',
       claimedWeightNumerator: '0',
-      claimedWeightDenominator: '1'
+      claimedWeightDenominator: '1',
+      createdAt: '2026-07-29T00:00:00.000Z',
+      snapshotHash: 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
     };
     get.mockImplementation((_url: string, options: { params?: { get(name: string): string | null } }) => {
       const view = options.params?.get('view');
@@ -463,6 +488,7 @@ describe('HttpOperatorRegistryService', () => {
             label: 'MyScoutee',
             avatarUrl: null,
             claimState: 'founder',
+            eligibilityStatus: 'active',
             deploymentCount: 1,
             weightNumerator: '100000',
             weightDenominator: '1',
@@ -483,11 +509,12 @@ describe('HttpOperatorRegistryService', () => {
             label: 'Campus Operator',
             avatarUrl: 'https://example.com/campus.webp',
             claimState: 'pending-review',
+            eligibilityStatus: 'future-state',
             deploymentCount: 2,
             weightNumerator: '60000',
             weightDenominator: '1',
-            shareNumerator: '0',
-            shareDenominator: '1'
+            shareNumerator: '1',
+            shareDenominator: '4'
           }],
           nextCursor: null
         });
@@ -502,6 +529,7 @@ describe('HttpOperatorRegistryService', () => {
           label: 'Unclaimed deployment',
           avatarUrl: null,
           claimState: 'unclaimed',
+          eligibilityStatus: 'inactive',
           deploymentCount: 1,
           weightNumerator: '40000',
           weightDenominator: '1',
@@ -532,8 +560,9 @@ describe('HttpOperatorRegistryService', () => {
       operatorGroupId: 'opg_campus',
       deploymentCount: 2,
       verifiedWeight: 60_000,
-      sharePercent: 0,
-      claimVerificationStatus: 'PENDING_REVIEW'
+      sharePercent: 25,
+      claimVerificationStatus: 'PENDING_REVIEW',
+      eligibilityStatus: 'INACTIVE'
     }));
     expect(first.nextCursor).toMatch(/^operator-http:/);
     expect(second.items).toEqual([
@@ -542,11 +571,20 @@ describe('HttpOperatorRegistryService', () => {
         nodeId: 'dep_unclaimed',
         group: 'UNCLAIMED',
         verifiedWeight: 40_000,
-        sharePercent: 0
+        sharePercent: 0,
+        eligibilityStatus: 'INACTIVE'
       })
     ]);
     expect(second.nextCursor).toBeNull();
     expect(second.total).toBe(3);
+    expect(first.context?.snapshotBoundary).toEqual(expect.objectContaining({
+      throughLedgerIndex: 42,
+      throughAuditIndex: 17,
+      throughReviewIndex: 3,
+      throughEligibilityIndex: 2,
+      reviewHeadHash: snapshot.reviewHeadHash,
+      eligibilityHeadHash: snapshot.eligibilityHeadHash
+    }));
     expect(second.context?.groupSummaries).toEqual([
       expect.objectContaining({
         group: 'FOUNDER',
@@ -576,10 +614,90 @@ describe('HttpOperatorRegistryService', () => {
     }).params.get('throughPeriod')).toBe('2026-07');
   });
 
+  it('rejects a leaderboard page when its signed snapshot boundary changes', async () => {
+    const snapshot = {
+      snapshotId: 'lbs_0123456789abcdef0123456789abcdef',
+      formulaVersion: 'six-complete-month-average-v1',
+      rulesetVersion: 'qmau-v1',
+      throughPeriod: '2026-07',
+      throughLedgerIndex: 42,
+      throughAuditIndex: 17,
+      throughReviewIndex: 3,
+      throughEligibilityIndex: 2,
+      ledgerHeadHash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      auditHeadHash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      reviewHeadHash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      eligibilityHeadHash: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      founderUnitsNumerator: '100000',
+      founderUnitsDenominator: '1',
+      founderShareNumerator: '1',
+      founderShareDenominator: '2',
+      measuredWeightNumerator: '100000',
+      measuredWeightDenominator: '1',
+      claimedWeightNumerator: '0',
+      claimedWeightDenominator: '1',
+      createdAt: '2026-07-29T00:00:00.000Z',
+      snapshotHash: 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    };
+    get.mockImplementation((
+      _url: string,
+      options: { params?: { get(name: string): string | null } }
+    ) => {
+      const view = options.params?.get('view') ?? 'founder';
+      return of({
+        snapshot: view === 'claimed'
+          ? {
+              ...snapshot,
+              throughEligibilityIndex: 3,
+              eligibilityHeadHash:
+                'sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+            }
+          : snapshot,
+        view,
+        items: view === 'founder'
+          ? [{
+              rowId: 'founder',
+              view,
+              groupId: null,
+              label: 'MyScoutee',
+              avatarUrl: null,
+              claimState: 'founder',
+              eligibilityStatus: 'active',
+              deploymentCount: 1,
+              weightNumerator: '100000',
+              weightDenominator: '1',
+              shareNumerator: '1',
+              shareDenominator: '2'
+            }]
+          : [],
+        nextCursor: null
+      });
+    });
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    await expect(service.leaderboardPage({
+      page: 0,
+      pageSize: 2,
+      sort: 'share',
+      direction: 'desc'
+    })).rejects.toThrow('operator.leaderboard.error.snapshot.changed');
+  });
+
   it('pages claimed-group deployments without reloading the leaderboard stream', async () => {
     const groupId = 'opg_0123456789abcdef0123456789abcdef';
     const snapshot = {
+      snapshotId: 'lbs_0123456789abcdef0123456789abcdef',
+      formulaVersion: 'six-complete-month-average-v1',
+      rulesetVersion: 'qmau-v1',
       throughPeriod: '2026-07',
+      throughLedgerIndex: 42,
+      throughAuditIndex: 17,
+      throughReviewIndex: 3,
+      throughEligibilityIndex: 2,
+      ledgerHeadHash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      auditHeadHash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      reviewHeadHash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      eligibilityHeadHash: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
       founderUnitsNumerator: '1',
       founderUnitsDenominator: '1',
       founderShareNumerator: '1',
@@ -587,7 +705,9 @@ describe('HttpOperatorRegistryService', () => {
       measuredWeightNumerator: '100',
       measuredWeightDenominator: '1',
       claimedWeightNumerator: '100',
-      claimedWeightDenominator: '1'
+      claimedWeightDenominator: '1',
+      createdAt: '2026-07-29T00:00:00.000Z',
+      snapshotHash: 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
     };
     get.mockImplementation((
       _url: string,
@@ -600,6 +720,7 @@ describe('HttpOperatorRegistryService', () => {
             deploymentId: 'dep_east',
             groupId,
             claimState: 'rejected',
+            eligibilityStatus: 'inactive',
             membershipState: 'linked',
             weightNumerator: '125',
             weightDenominator: '2',
@@ -615,6 +736,7 @@ describe('HttpOperatorRegistryService', () => {
             deploymentId: 'dep_owner',
             groupId,
             claimState: 'pending-review',
+            eligibilityStatus: 'inactive',
             membershipState: 'owner',
             weightNumerator: '75',
             weightDenominator: '1',
@@ -641,24 +763,36 @@ describe('HttpOperatorRegistryService', () => {
         deploymentId: 'dep_owner',
         groupId,
         claimState: 'pending-review',
+        eligibilityStatus: 'INACTIVE',
         membershipState: 'owner',
         verifiedWeight: 75,
         sharePercent: 0
       }],
       total: 2,
-      nextCursor: 'registry-cursor-2'
+      nextCursor: 'registry-cursor-2',
+      context: expect.objectContaining({
+        throughReviewIndex: 3,
+        throughEligibilityIndex: 2,
+        reviewHeadHash: snapshot.reviewHeadHash,
+        eligibilityHeadHash: snapshot.eligibilityHeadHash
+      })
     });
     expect(second).toEqual({
       items: [{
         deploymentId: 'dep_east',
         groupId,
         claimState: 'rejected',
+        eligibilityStatus: 'INACTIVE',
         membershipState: 'linked',
         verifiedWeight: 62.5,
         sharePercent: 0
       }],
       total: 2,
-      nextCursor: null
+      nextCursor: null,
+      context: expect.objectContaining({
+        throughReviewIndex: 3,
+        throughEligibilityIndex: 2
+      })
     });
     expect(get.mock.calls.map((call: unknown[]) => call[0])).toEqual([
       `/api/operator/leaderboard/groups/${groupId}/deployments`,
@@ -907,6 +1041,89 @@ describe('HttpOperatorRegistryService', () => {
     );
   });
 
+  it('pages validated currency-separated registry settlements with the compound cursor', async () => {
+    const settlement = remoteSettlement();
+    get
+      .mockReturnValueOnce(of({
+        items: [settlement],
+        nextAfterPeriod: '2026-06',
+        nextAfterSettlementId: settlement.settlementId,
+        generatedAtIso: '2026-07-02T08:00:00.000Z'
+      }))
+      .mockReturnValueOnce(of({
+        items: [],
+        nextAfterPeriod: null,
+        nextAfterSettlementId: null,
+        generatedAtIso: '2026-07-02T08:00:00.000Z'
+      }));
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    const first = await service.settlementPage({
+      page: 0,
+      pageSize: 1,
+      filters: {
+        currencyCode: ' eur ',
+        fromPeriod: '2026-01',
+        throughPeriod: '2026-06',
+        includeSuperseded: false
+      }
+    });
+    await service.settlementPage({
+      page: 1,
+      pageSize: 1,
+      cursor: first.nextCursor
+    });
+
+    expect(first.items).toEqual([expect.objectContaining({
+      settlementId: settlement.settlementId,
+      currencyCode: 'EUR',
+      beneficiaryType: 'OPERATOR_GROUP',
+      valuationIsNonBinding: true,
+      indicativeNetworkValueMinor: 3_378_060
+    })]);
+    expect(first.context).toEqual({
+      generatedAtIso: '2026-07-02T08:00:00.000Z'
+    });
+    expect(first.nextCursor).toMatch(/^operator-settlement:/);
+    const firstCall = get.mock.calls[0] as [
+      string,
+      { params: { get(name: string): string | null } }
+    ];
+    expect(firstCall[0]).toBe('/api/operator/revenue/settlements');
+    expect(firstCall[1].params.get('currencyCode')).toBe('EUR');
+    expect(firstCall[1].params.get('fromPeriod')).toBe('2026-01');
+    expect(firstCall[1].params.get('throughPeriod')).toBe('2026-06');
+    expect(firstCall[1].params.get('includeSuperseded')).toBe('false');
+    expect(firstCall[1].params.get('limit')).toBe('1');
+    const secondCall = get.mock.calls[1] as [
+      string,
+      { params: { get(name: string): string | null } }
+    ];
+    expect(secondCall[1].params.get('afterPeriod')).toBe('2026-06');
+    expect(secondCall[1].params.get('afterSettlementId')).toBe(
+      settlement.settlementId
+    );
+  });
+
+  it('rejects an unverified registry settlement response', async () => {
+    get.mockReturnValue(of({
+      items: [{
+        ...remoteSettlement(),
+        valuationIsNonBinding: false
+      }],
+      nextAfterPeriod: null,
+      nextAfterSettlementId: null,
+      generatedAtIso: '2026-07-02T08:00:00.000Z'
+    }));
+
+    await expect(
+      TestBed.inject(HttpOperatorRegistryService).settlementPage({
+        page: 0,
+        pageSize: 6
+      })
+    ).rejects.toThrow('operator.revenue.settlement.response.invalid');
+  });
+
   it('loads, saves, and tests the persisted operator configuration through Java', async () => {
     const configuration = operatorConfiguration();
     get.mockReturnValue(of(configuration));
@@ -947,6 +1164,8 @@ describe('HttpOperatorRegistryService', () => {
       },
       payment: {
         providerId: 'stripe',
+        publicBaseUrl: 'https://community.example.test',
+        merchantAccount: '',
         credential: 'write-only-token'
       },
       firebase: {
@@ -1196,6 +1415,45 @@ function registryInspection(): OperatorRegistryInspectionDto {
   };
 }
 
+function remoteSettlement() {
+  return {
+    settlementId: `stl_${'1'.padStart(32, '0')}`,
+    period: '2026-06',
+    currencyCode: 'EUR',
+    fractionDigits: 2,
+    revision: 1,
+    supersedesSettlementId: null,
+    beneficiaryType: 'OPERATOR_GROUP',
+    beneficiaryId: `opg_${'1'.repeat(32)}`,
+    shareNumerator: '277',
+    shareDenominator: '5000',
+    networkPoolMinor: 52_500,
+    networkPoolAllocationMinor: 2_908,
+    ttmCommissionBasisMinor: 1_050_000,
+    ttmNetworkCommissionPoolMinor: 52_500,
+    indicativeNetworkValueMinor: 3_378_060,
+    indicativeValueAllocationMinor: 187_144,
+    valuationRulesetVersion: 'three-month-acceleration-valuation-v1',
+    baseValuationMultiplierBasisPoints: 30_000,
+    recentThreeMonthAverageMinor: 96_000,
+    priorThreeMonthAverageMinor: 81_000,
+    earlierThreeMonthAverageMinor: 75_000,
+    recentGrowthBasisPoints: 1_851,
+    priorGrowthBasisPoints: 800,
+    accelerationBasisPoints: 1_051,
+    valuationAdjustmentBasisPoints: 724,
+    effectiveValuationMultiplierBasisPoints: 32_172,
+    valuationIsNonBinding: true,
+    throughLedgerIndex: 42,
+    throughAuditIndex: 22,
+    throughReviewIndex: 8,
+    throughEligibilityIndex: 6,
+    sourceFingerprint: `sha256:${'a'.repeat(64)}`,
+    settlementHash: `sha256:${'b'.repeat(64)}`,
+    acceptedAtIso: '2026-07-02T08:00:00.000Z'
+  };
+}
+
 function operatorConfiguration() {
   return {
     capability: 'AVAILABLE' as const,
@@ -1233,6 +1491,8 @@ function operatorConfiguration() {
         }
       ],
       providerId: null,
+      publicBaseUrl: null,
+      merchantAccount: null,
       credentialConfigured: false,
       credentialMask: null
     },

@@ -190,10 +190,12 @@ describe('LocalOperatorRegistryService', () => {
     ]).toEqual([
       expect.objectContaining({
         groupId: groupedOperator?.operatorGroupId,
+        eligibilityStatus: 'ACTIVE',
         membershipState: 'owner'
       }),
       expect.objectContaining({
         groupId: groupedOperator?.operatorGroupId,
+        eligibilityStatus: 'ACTIVE',
         membershipState: 'linked'
       })
     ]);
@@ -244,6 +246,53 @@ describe('LocalOperatorRegistryService', () => {
     }));
     expect(reports).toEqual({ items: [], total: 0 });
     expect(after).toEqual(before);
+  });
+
+  it('cursor-pages deterministic settlement history with the protocol valuation formula', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+
+    const first = await service.settlementPage({
+      page: 0,
+      pageSize: 2,
+      filters: { includeSuperseded: false }
+    });
+    const second = await service.settlementPage({
+      page: 1,
+      pageSize: 2,
+      cursor: first.nextCursor,
+      filters: { includeSuperseded: false }
+    });
+    const eur = await service.settlementPage({
+      page: 0,
+      pageSize: 5,
+      filters: {
+        currencyCode: 'EUR',
+        includeSuperseded: true
+      }
+    });
+
+    expect(first.items).toHaveLength(2);
+    expect(first.nextCursor).toMatch(/^operator-settlement:/);
+    expect(second.items[0]?.period <= first.items.at(-1)!.period).toBe(true);
+    expect(eur.items.map(item => item.revision)).toEqual([1, 2, 1]);
+    expect(eur.items[1]).toEqual(expect.objectContaining({
+      shareNumerator: '277',
+      shareDenominator: '5000',
+      priorGrowthBasisPoints: 800,
+      recentGrowthBasisPoints: 1_851,
+      accelerationBasisPoints: 1_051,
+      valuationAdjustmentBasisPoints: 724,
+      effectiveValuationMultiplierBasisPoints: 32_172,
+      ttmNetworkCommissionPoolMinor: 52_500,
+      indicativeNetworkValueMinor: 3_378_060,
+      networkPoolAllocationMinor: 2_908,
+      indicativeValueAllocationMinor: 187_144,
+      valuationIsNonBinding: true
+    }));
   });
 
   it('keeps explicit local fallback QMAU delivery dormant and write-free', async () => {
@@ -658,6 +707,8 @@ describe('LocalOperatorRegistryService', () => {
       },
       payment: {
         providerId: 'stripe',
+        publicBaseUrl: 'https://community.example.test',
+        merchantAccount: '',
         credential: 'stripe-explore-secret'
       },
       firebase: {
@@ -702,6 +753,8 @@ describe('LocalOperatorRegistryService', () => {
       }),
       payment: expect.objectContaining({
         providerId: 'stripe',
+        publicBaseUrl: 'https://community.example.test',
+        merchantAccount: null,
         credentialConfigured: true,
         credentialMask: '••••cret'
       }),
