@@ -260,6 +260,187 @@
 
                   <section
                     class="operator-action-popup__configuration-group"
+                    data-palette="amber"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.admin.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.admin' | i18n }}</strong>
+                      </span>
+                      <mat-icon>admin_panel_settings</mat-icon>
+                    </header>
+
+                    <app-form-flow
+                      [model]="configurationAdminEmailsFormModel()"
+                      [ngModel]="configurationAdminEmailsFormValue()"
+                      (ngModelChange)="onConfigurationAdminEmailsChange($event)"
+                      [disabled]="configurationDisabled()"
+                    ></app-form-flow>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationAdminEmailActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-admin-emails') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="mint"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.social.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.social' | i18n }}</strong>
+                      </span>
+                      <mat-icon>share</mat-icon>
+                    </header>
+
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.configuration.social.guidance' | i18n }}
+                    </p>
+
+                    <div class="operator-action-popup__social-links">
+                      @for (
+                        link of workspace.configurationDraft()?.socialLinks ?? [];
+                        track $index;
+                        let linkIndex = $index
+                      ) {
+                        <article class="operator-action-popup__social-link">
+                          <div class="operator-action-popup__social-link-fields">
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.provider' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="32"
+                                autocomplete="off"
+                                [ngModel]="link.provider"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { provider: $event }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.label' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="80"
+                                autocomplete="off"
+                                [ngModel]="link.label"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { label: $event }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.icon' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="64"
+                                autocomplete="off"
+                                [placeholder]="'operator.configuration.social.icon.placeholder' | i18n"
+                                [ngModel]="link.icon ?? ''"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { icon: $event || null }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.handle' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="80"
+                                autocomplete="off"
+                                [placeholder]="'operator.configuration.social.handle.placeholder' | i18n"
+                                [ngModel]="link.handle ?? ''"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { handle: $event || null }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+                          </div>
+
+                          <app-link-input
+                            [config]="socialLinkUrlConfig()"
+                            [ngModel]="link.url"
+                            (ngModelChange)="setConfigurationSocialLink(
+                              linkIndex,
+                              { url: $event }
+                            )"
+                            [disabled]="configurationDisabled()"
+                          ></app-link-input>
+
+                          <app-menu
+                            kind="inline"
+                            layout="row"
+                            [items]="configurationSocialLinkRemoveItems(linkIndex)"
+                            (itemSelect)="onAction($event)"
+                          ></app-menu>
+                        </article>
+                      } @empty {
+                        <p class="operator-action-popup__empty">
+                          {{ 'operator.configuration.social.empty' | i18n }}
+                        </p>
+                      }
+                    </div>
+
+                    @if (workspace.configurationSocialLinksValidationKey(); as errorKey) {
+                      <p class="operator-action-popup__result is-error" role="alert">
+                        <mat-icon>error_outline</mat-icon>
+                        <span>{{ errorKey | i18n }}</span>
+                      </p>
+                    }
+
+                    <app-menu
+                      class="operator-action-popup__section-actions operator-action-popup__section-actions--social"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationSocialLinkActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-social-links') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
                     data-palette="teal"
                   >
                     <header>
@@ -395,6 +576,26 @@
                       ></textarea>
                     </label>
 
+                    <label class="operator-action-popup__field">
+                      <span>
+                        {{ 'operator.configuration.test.messaging.destination' | i18n }}
+                      </span>
+                      <textarea
+                        rows="2"
+                        maxlength="4096"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [placeholder]="'operator.configuration.test.messaging.destination.placeholder' | i18n"
+                        [ngModel]="workspace.configurationMessagingDestinationToken()"
+                        (ngModelChange)="workspace.setConfigurationMessagingDestinationToken($event)"
+                        [disabled]="configurationDisabled()"
+                      ></textarea>
+                      <small>
+                        {{ 'operator.configuration.test.messaging.destination.guidance' | i18n }}
+                      </small>
+                    </label>
+
                     <app-menu
                       class="operator-action-popup__section-actions"
                       kind="inline"
@@ -420,6 +621,139 @@
               }
             }
             @case ('revenue') {
+              @if (workspace.revenueSync(); as delivery) {
+                <article
+                  class="operator-action-popup__revenue-delivery"
+                  [attr.data-state]="delivery.state"
+                  [attr.role]="delivery.state === 'BLOCKED' || delivery.state === 'ERROR'
+                    ? 'alert'
+                    : 'status'"
+                >
+                  <header>
+                    <mat-icon>{{ revenueSyncStateIcon(delivery.state) }}</mat-icon>
+                    <span>
+                      <small>{{ 'operator.revenue.delivery' | i18n }}</small>
+                      <strong>{{ revenueSyncStateLabel(delivery.state) | i18n }}</strong>
+                    </span>
+                    <time [attr.datetime]="delivery.synchronizedAtIso">
+                      {{ formatDate(delivery.synchronizedAtIso) }}
+                    </time>
+                  </header>
+                  @if (delivery.message) {
+                    <p>
+                      {{ (delivery.code === 'EXPLORE_MODE'
+                        ? 'operator.revenue.delivery.not.sent'
+                        : delivery.message) | i18n }}
+                    </p>
+                  }
+                  <dl>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.materialized' | i18n }}</dt>
+                      <dd>{{ delivery.materialized }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.submitted' | i18n }}</dt>
+                      <dd>{{ delivery.submitted }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.accepted' | i18n }}</dt>
+                      <dd>{{ delivery.accepted }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.pending' | i18n }}</dt>
+                      <dd>{{ delivery.pending }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.blocked' | i18n }}</dt>
+                      <dd>{{ delivery.blocked }}</dd>
+                    </div>
+                  </dl>
+                </article>
+                @if (delivery.blocked > 0) {
+                  <section
+                    class="operator-action-popup__revenue-reports"
+                    [attr.aria-label]="'operator.revenue.delivery.reports.blocked' | i18n"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.revenue.delivery.reports' | i18n }}</small>
+                        <strong>
+                          {{ 'operator.revenue.delivery.reports.blocked' | i18n }}
+                        </strong>
+                      </span>
+                      <b>{{ delivery.blocked }}</b>
+                    </header>
+                    <app-smart-list
+                      #revenueReportsSmartList
+                      [config]="revenueReportConfig"
+                      [loadPage]="loadRevenueReportPage"
+                      [query]="revenueReportQuery()"
+                      [itemTemplate]="revenueReportTemplate"
+                    ></app-smart-list>
+
+                    <ng-template #revenueReportTemplate let-report>
+                      <article class="operator-action-popup__revenue-report">
+                        <header>
+                          <span class="operator-action-popup__revenue-report-icon">
+                            <mat-icon>receipt_long</mat-icon>
+                          </span>
+                          <span>
+                            <small>
+                              {{ 'operator.revenue.delivery.report.period' | i18n }}
+                            </small>
+                            <strong>
+                              {{ formatRevenueReportPeriod(report.period) }}
+                            </strong>
+                          </span>
+                          <em>
+                            {{ 'operator.revenue.delivery.report.revision' | i18n }}
+                            {{ report.revision }}
+                          </em>
+                        </header>
+                        <p>
+                          {{ (report.failureMessage
+                            || 'operator.revenue.delivery.report.failure.unknown') | i18n }}
+                        </p>
+                        @if (report.failureCode) {
+                          <small class="operator-action-popup__revenue-report-code">
+                            {{ report.failureCode }}
+                          </small>
+                        }
+                        <dl>
+                          <div>
+                            <dt>
+                              {{ 'operator.revenue.delivery.report.attempts' | i18n }}
+                            </dt>
+                            <dd>{{ report.attemptCount }}</dd>
+                          </div>
+                          <div>
+                            <dt>
+                              {{ 'operator.revenue.delivery.report.currencies' | i18n }}
+                            </dt>
+                            <dd>{{ revenueReportCurrencies(report) }}</dd>
+                          </div>
+                          <div>
+                            <dt>
+                              {{ 'operator.revenue.delivery.report.failed.at' | i18n }}
+                            </dt>
+                            <dd>{{ formatDate(report.failedAt || report.updatedAt) }}</dd>
+                          </div>
+                        </dl>
+                        <app-menu
+                          kind="inline"
+                          layout="row"
+                          [items]="revenueReportActionItems(report)"
+                          (itemSelect)="onAction($event)"
+                        ></app-menu>
+                      </article>
+                    </ng-template>
+                  </section>
+                }
+              } @else {
+                <p class="operator-action-popup__hint">
+                  {{ 'operator.revenue.delivery.manual.description' | i18n }}
+                </p>
+              }
               @if (workspace.revenue(); as revenue) {
                 <app-operator-revenue-view [revenue]="revenue"></app-operator-revenue-view>
               }

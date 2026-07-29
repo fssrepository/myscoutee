@@ -48,7 +48,9 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             clearFeedback: vi.fn(),
             loadConfiguration: vi.fn().mockResolvedValue(configuration()),
             configurationAuthenticationFeedback: signal(null).asReadonly(),
-            configurationMessagingFeedback: signal(null).asReadonly()
+            configurationMessagingFeedback: signal(null).asReadonly(),
+            configurationMessagingDestinationToken: signal('').asReadonly(),
+            setConfigurationMessagingDestinationToken: vi.fn()
           }
         },
         {
@@ -189,6 +191,8 @@ function operatorConfiguration(): OperatorConfigurationDto {
   return {
     capability: 'AVAILABLE',
     unavailableReason: null,
+    adminEmails: [],
+    socialLinks: [],
     branding: {
       productName: 'MyScoutee',
       homeLabel: 'Community',
@@ -231,6 +235,8 @@ function operatorConfigurationDraft(
   providerId: string | null
 ): OperatorConfigurationSaveRequestDto {
   return {
+    adminEmails: [],
+    socialLinks: [],
     branding: {
       productName: 'MyScoutee',
       logoUrl: 'assets/logo/heart.webp',

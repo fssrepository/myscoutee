@@ -1,4 +1,5 @@
 import type { ListQuery } from '../../../contracts/list.interface';
+import { OperatorConfigurationMapper } from '../../../base/mappers/operator-configuration.mapper';
 import type {
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
@@ -226,6 +227,12 @@ export class LocalOperatorRegistryMapper {
     return {
       capability: legacy.capability ?? initial.capability,
       unavailableReason: legacy.unavailableReason ?? initial.unavailableReason,
+      adminEmails: OperatorConfigurationMapper.adminEmails(
+        legacy.adminEmails ?? initial.adminEmails
+      ),
+      socialLinks: OperatorConfigurationMapper.socialLinks(
+        legacy.socialLinks ?? initial.socialLinks
+      ),
       branding: {
         productName: branding.productName ?? initial.branding.productName,
         homeLabel:

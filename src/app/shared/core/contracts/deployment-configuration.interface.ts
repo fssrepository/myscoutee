@@ -13,6 +13,14 @@ export const DEPLOYMENT_THEME_PRESETS = [
 
 export type DeploymentThemePreset = typeof DEPLOYMENT_THEME_PRESETS[number];
 
+export interface DeploymentSocialLinkDto {
+  provider: string;
+  label: string;
+  url: string;
+  icon: string | null;
+  handle: string | null;
+}
+
 export interface DeploymentBrandingDto {
   productName: string;
   homeLabel: string;
@@ -31,6 +39,19 @@ export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
   revision: 0
 };
 
+export const DEFAULT_DEPLOYMENT_SOCIAL_LINKS:
+Readonly<readonly DeploymentSocialLinkDto[]> = [];
+
+export interface DeploymentConfigurationDto extends DeploymentBrandingDto {
+  socialLinks: readonly DeploymentSocialLinkDto[];
+}
+
+export const DEFAULT_DEPLOYMENT_CONFIGURATION:
+Readonly<DeploymentConfigurationDto> = {
+  ...DEFAULT_DEPLOYMENT_BRANDING,
+  socialLinks: DEFAULT_DEPLOYMENT_SOCIAL_LINKS
+};
+
 export const DEPLOYMENT_LOGO_PRESETS = [
   {
     id: 'heart-webp',
@@ -45,5 +66,5 @@ export const DEPLOYMENT_LOGO_PRESETS = [
 ] as const;
 
 export interface DeploymentConfigurationServiceContract {
-  loadBranding(): Promise<DeploymentBrandingDto>;
+  loadBranding(): Promise<DeploymentConfigurationDto>;
 }

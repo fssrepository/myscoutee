@@ -68,6 +68,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
+  protected readonly deploymentSocialLinks =
+    this.deploymentConfiguration.socialLinks;
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
@@ -83,6 +85,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
+  @Output() readonly operatorRequested = new EventEmitter<void>();
   @Output() readonly consentRequested = new EventEmitter<void>();
   @Output() readonly termsRequested = new EventEmitter<void>();
 
@@ -526,6 +529,21 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
         }
       });
     }
+  }
+
+  protected requestOperatorAccess(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.closePartnersPopup();
+    this.operatorRequested.emit();
+  }
+
+  protected socialLinkAriaLabel(
+    link: { label: string; handle: string | null }
+  ): string {
+    return link.handle?.trim()
+      ? `${link.label} · ${link.handle.trim()}`
+      : link.label;
   }
 
   protected partnersPopupModel(): PopupModel {

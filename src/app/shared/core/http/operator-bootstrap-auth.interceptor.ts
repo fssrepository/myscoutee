@@ -1,13 +1,15 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpInterceptorFn
+} from '@angular/common/http';
 import { inject } from '@angular/core';
+import { catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { SessionService } from '../base/services/session.service';
 
-export const DEMO_SESSION_HEADER = 'X-App-Session-Kind';
-export const DEMO_SESSION_VALUE = 'demo';
-
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
+const operatorBootstrapLoginPath = '/auth/operator-bootstrap';
 
 function isApiRequest(url: string): boolean {
   if (url.startsWith(apiBaseUrl)) {
@@ -20,19 +22,9 @@ function isApiRequest(url: string): boolean {
   return url.startsWith(absoluteApiBaseUrl);
 }
 
-function isDemoSelectorRequest(url: string): boolean {
-  if (!isApiRequest(url)) {
-    return false;
-  }
-  return url.includes('/auth/demo-users');
-}
-
 function isOperatorBootstrapLoginRequest(url: string): boolean {
-  if (!isApiRequest(url)) {
-    return false;
-  }
   const normalizedApiBase = apiBaseUrl.replace(/\/+$/, '');
-  if (url === `${normalizedApiBase}/auth/operator-bootstrap`) {
+  if (url === `${normalizedApiBase}${operatorBootstrapLoginPath}`) {
     return true;
   }
   if (typeof document === 'undefined') {
@@ -42,28 +34,37 @@ function isOperatorBootstrapLoginRequest(url: string): boolean {
     normalizedApiBase,
     document.baseURI
   ).toString().replace(/\/+$/, '');
-  return url === `${absoluteApiBaseUrl}/auth/operator-bootstrap`;
+  return url === `${absoluteApiBaseUrl}${operatorBootstrapLoginPath}`;
 }
 
-export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
+export const operatorBootstrapAuthInterceptor: HttpInterceptorFn = (req, next) => {
   if (
-    !isApiRequest(req.url)
-    || req.headers.has(DEMO_SESSION_HEADER)
+    req.headers.has('Authorization')
+    || !isApiRequest(req.url)
     || isOperatorBootstrapLoginRequest(req.url)
   ) {
     return next(req);
   }
 
   const sessionService = inject(SessionService);
-  const isDemoRequest = sessionService.currentSession()?.kind === 'demo'
-    || isDemoSelectorRequest(req.url);
-  if (!isDemoRequest) {
+  if (sessionService.currentSession()?.kind !== 'operator-bootstrap') {
+    return next(req);
+  }
+  const token = sessionService.getOperatorBootstrapToken();
+  if (!token) {
     return next(req);
   }
 
   return next(req.clone({
     setHeaders: {
-      [DEMO_SESSION_HEADER]: DEMO_SESSION_VALUE
+      Authorization: `OperatorBootstrap ${token}`
     }
-  }));
+  })).pipe(
+    catchError(error => {
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        sessionService.clearOperatorBootstrapSession();
+      }
+      return throwError(() => error);
+    })
+  );
 };

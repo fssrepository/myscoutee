@@ -15,12 +15,15 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   const router = inject(Router);
   const session = await sessionService.ensureSession();
   if (session) {
-    if (session.kind === 'firebase') {
-      const { UsersService } = await import('./shared/core/base/services/users.service');
-      const usersService = injector.get(UsersService);
+    const { UsersService } = await import('./shared/core/base/services/users.service');
+    const usersService = injector.get(UsersService);
+    if (!usersService.localModeEnabled) {
       const user = await usersService
-        .loadUserById(undefined, 8000)
+        .loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000)
         .catch(() => null);
+      if (!user) {
+        return entryRedirect(router, state.url);
+      }
       if (isAdminUser(user)) {
         return router.createUrlTree(['/admin']);
       }
@@ -78,7 +81,9 @@ const adminAreaGuard: CanActivateFn = async (_route, state) => {
     return entryRedirect(router, state.url);
   }
 
-  if (session.kind === 'demo') {
+  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const usersService = injector.get(UsersService);
+  if (session.kind === 'demo' && usersService.localModeEnabled) {
     const { AdminWorkspaceStore } = await import('./shared/ui/context/stores/admin-workspace.store');
     const adminWorkspace = injector.get(AdminWorkspaceStore);
     const userId = session.userId.trim();
@@ -89,9 +94,9 @@ const adminAreaGuard: CanActivateFn = async (_route, state) => {
     return entryRedirect(router, state.url);
   }
 
-  const { UsersService } = await import('./shared/core/base/services/users.service');
-  const usersService = injector.get(UsersService);
-  const user = await usersService.loadUserById(undefined).catch(() => null);
+  const user = await usersService
+    .loadUserById(session.kind === 'demo' ? session.userId : undefined)
+    .catch(() => null);
   if (isAdminUser(user)) {
     return true;
   }

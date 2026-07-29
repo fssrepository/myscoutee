@@ -840,6 +840,69 @@
   color: #a34b0c;
 }
 
+.entry-partner-operator-access {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.66rem;
+  border: 1px solid rgba(49, 95, 207, 0.22);
+  border-radius: 14px;
+  padding: 0.68rem;
+  background: linear-gradient(135deg, #eef4ff 0%, #f5f0ff 100%);
+}
+
+.entry-partner-operator-access > span {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #315fcf;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.entry-partner-operator-access > span .mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.entry-partner-operator-access strong {
+  color: #173456;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.entry-partner-operator-access p {
+  margin: 0.18rem 0 0;
+  color: rgba(31, 54, 88, 0.76);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.38;
+}
+
+.entry-partner-operator-access-button {
+  min-height: 38px;
+  border: 1px solid rgba(49, 95, 207, 0.25);
+  border-radius: 12px;
+  padding: 0.5rem 0.72rem;
+  background: #315fcf;
+  color: #fff;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.entry-partner-operator-access-button .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
 .entry-ideas-popup-body {
   display: flex;
   flex: 1 1 auto;
@@ -1015,6 +1078,13 @@
   height: 18px;
   display: block;
   fill: currentColor;
+}
+
+.entry-footer-socials a .mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  line-height: 19px;
 }
 
 .entry-footer-bottom {

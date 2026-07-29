@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -8,11 +9,17 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { from } from 'rxjs';
 
 import type {
+  DeploymentSocialLinkDto,
   DeploymentThemePreset,
+  ListQuery,
   OperatorClaimRequestDto,
-  OperatorDeploymentUpdatePhase
+  OperatorDeploymentUpdatePhase,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueSyncState
 } from '../../../shared/core/contracts';
 import {
   DEPLOYMENT_THEME_PRESETS
@@ -25,6 +32,10 @@ import {
   type FormFlowModel
 } from '../../../shared/ui/components/core/form';
 import {
+  LinkInputComponent,
+  type LinkInputConfig
+} from '../../../shared/ui/components/core/form/inputs';
+import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -35,6 +46,11 @@ import {
   type PopupActionEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
+import {
+  SmartListComponent,
+  type SmartListConfig,
+  type SmartListLoadPage
+} from '../../../shared/ui/components/core/smart-list';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   OperatorMenuStore,
@@ -52,10 +68,16 @@ type OperatorPopupAction =
   | 'redeem-token'
   | 'set-claim-path'
   | 'save-branding'
+  | 'save-admin-emails'
+  | 'add-social-link'
+  | 'remove-social-link'
+  | 'save-social-links'
   | 'register-payment'
   | 'register-firebase'
   | 'test-authentication'
   | 'test-messaging'
+  | 'synchronize-revenue'
+  | 'requeue-revenue-report'
   | 'set-theme'
   | 'set-payment-provider';
 
@@ -66,6 +88,8 @@ interface OperatorPopupActionContext {
   claimPath?: OperatorClaimPath;
   themePreset?: DeploymentThemePreset;
   providerId?: string | null;
+  reportId?: string;
+  socialLinkIndex?: number;
 }
 
 @Component({
@@ -78,10 +102,12 @@ interface OperatorPopupActionContext {
     FormsModule,
     ImageCarouselComponent,
     IndicatorComponent,
+    LinkInputComponent,
     I18nPipe,
     MatIconModule,
     OperatorRevenueViewComponent,
-    PopupComponent
+    PopupComponent,
+    SmartListComponent
   ],
   templateUrl: './operator-action-popup.component.html',
   styleUrl: './operator-action-popup.component.scss'
@@ -93,6 +119,21 @@ export class OperatorActionPopupComponent {
   private readonly dialog = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   protected readonly claimPath = signal<OperatorClaimPath>('company');
+  protected readonly requeueingReportId = signal<string | null>(null);
+  private readonly revenueReportsSmartListRef = signal<
+    SmartListComponent<OperatorRevenueReportDto, OperatorRevenueReportFilters> | null
+  >(null);
+
+  @ViewChild('revenueReportsSmartList')
+  protected set revenueReportsSmartList(
+    value: SmartListComponent<
+      OperatorRevenueReportDto,
+      OperatorRevenueReportFilters
+    > | undefined
+  ) {
+    this.revenueReportsSmartListRef.set(value ?? null);
+  }
+
   protected readonly kind = computed(() => this.menu.activePopup());
   protected readonly busyAction = this.workspace.busyAction;
   protected readonly busy = computed(() => this.busyAction() !== null);
@@ -115,6 +156,48 @@ export class OperatorActionPopupComponent {
   protected readonly actionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => this.buildActionItems(this.kind()));
+  protected readonly revenueReportQuery = computed<
+    Partial<ListQuery<OperatorRevenueReportFilters>>
+  >(() => ({
+    page: 0,
+    pageSize: 5,
+    sort: 'period',
+    direction: 'desc',
+    filters: {
+      status: 'BLOCKED',
+      revision: this.workspace.revenueSync()?.synchronizedAtIso ?? ''
+    }
+  }));
+  protected readonly revenueReportConfig: SmartListConfig<
+    OperatorRevenueReportDto,
+    OperatorRevenueReportFilters
+  > = {
+    pageSize: 5,
+    initialPageSize: 5,
+    defaultView: 'list',
+    emptyLabel: 'operator.revenue.delivery.reports.empty',
+    emptyDescription: 'operator.revenue.delivery.reports.empty.description',
+    showStickyHeader: false,
+    showFirstGroupMarker: false,
+    listLayout: 'stack',
+    snapMode: 'none',
+    preloadOffsetPx: 120,
+    headerProgress: {
+      enabled: true,
+      placement: 'inline',
+      tone: 'accent'
+    },
+    cacheable: {
+      identity: report => report.id
+    },
+    trackBy: (_index, report) => report.id
+  };
+  protected readonly loadRevenueReportPage: SmartListLoadPage<
+    OperatorRevenueReportDto,
+    OperatorRevenueReportFilters
+  > = (query, context) => from(
+    this.workspace.revenueReportPage(query, context?.signal)
+  );
   protected readonly claimPathItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => [
@@ -305,6 +388,43 @@ export class OperatorActionPopupComponent {
   protected readonly claimClientCodeValue = computed(() => ({
     clientToken: this.workspace.groupTokenInput()
   }));
+  protected readonly configurationAdminEmailsFormModel =
+    computed<FormFlowModel>(() => {
+      this.i18n.revision();
+      const translate = (key: string): string => this.i18n.translate(key);
+      return {
+        title: translate('operator.configuration.admin'),
+        layout: 'grouped',
+        header: false,
+        save: null,
+        completion: { controls: 'none' },
+        steps: [{
+          id: 'operator-configuration-admin-emails',
+          title: '',
+          chrome: 'none',
+          controls: [{
+            id: 'operator-configuration-admin-email-list',
+            bind: 'adminEmailsText',
+            kind: 'textarea',
+            layout: 'wide',
+            label: translate('operator.configuration.admin.emails'),
+            description: translate(
+              'operator.configuration.admin.emails.description'
+            ),
+            placeholder: translate(
+              'operator.configuration.admin.emails.placeholder'
+            ),
+            rows: 4,
+            maxLength: 8192,
+            validationError: () =>
+              this.workspace.configurationAdminEmailsValidationKey()
+          }]
+        }]
+      };
+    });
+  protected readonly configurationAdminEmailsFormValue = computed(() => ({
+    adminEmailsText: this.workspace.configurationAdminEmailsInput()
+  }));
   protected readonly configurationThemeItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -378,6 +498,51 @@ export class OperatorActionPopupComponent {
         : null,
       context: { action: 'save-branding' }
     }];
+  });
+  protected readonly configurationAdminEmailActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => [{
+    id: 'operator-save-admin-emails',
+    label: 'operator.configuration.admin.save',
+    icon: 'save',
+    palette: 'orange',
+    layout: 'action',
+    disabled: this.configurationDisabled()
+      || !this.workspace.configurationAdminEmailsReady(),
+    progress: this.busyAction() === 'save-admin-emails'
+      ? { state: 'loading', durationMs: 3000 }
+      : null,
+    context: { action: 'save-admin-emails' }
+  }]);
+  protected readonly configurationSocialLinkActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => {
+    const count =
+      this.workspace.configurationDraft()?.socialLinks.length ?? 0;
+    return [
+      {
+        id: 'operator-add-social-link',
+        label: 'operator.configuration.social.add',
+        icon: 'add_link',
+        palette: 'teal',
+        layout: 'action',
+        disabled: this.configurationDisabled() || count >= 12,
+        context: { action: 'add-social-link' }
+      },
+      {
+        id: 'operator-save-social-links',
+        label: 'operator.configuration.social.save',
+        icon: 'save',
+        palette: 'green',
+        layout: 'action',
+        disabled: this.configurationDisabled()
+          || !this.workspace.configurationSocialLinksReady(),
+        progress: this.busyAction() === 'save-social-links'
+          ? { state: 'loading', durationMs: 3000 }
+          : null,
+        context: { action: 'save-social-links' }
+      }
+    ];
   });
   protected readonly configurationPaymentActionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
@@ -471,6 +636,7 @@ export class OperatorActionPopupComponent {
         layout: 'action',
         disabled: this.configurationDisabled()
           || !configuration?.firebase.messagingCredentialConfigured
+          || !this.workspace.configurationMessagingDestinationToken().trim()
           || messagingFeedback !== null,
         progress: this.busyAction() === 'test-messaging'
           ? { state: 'loading', durationMs: 3000 }
@@ -565,6 +731,28 @@ export class OperatorActionPopupComponent {
           'operator.configuration.branding.saved'
         );
         return;
+      case 'save-admin-emails':
+        await this.workspace.saveConfiguration(
+          'save-admin-emails',
+          'operator.configuration.admin.saved'
+        );
+        return;
+      case 'add-social-link':
+        this.workspace.addConfigurationSocialLink();
+        return;
+      case 'remove-social-link':
+        if (context.socialLinkIndex !== undefined) {
+          this.workspace.removeConfigurationSocialLink(
+            context.socialLinkIndex
+          );
+        }
+        return;
+      case 'save-social-links':
+        await this.workspace.saveConfiguration(
+          'save-social-links',
+          'operator.configuration.social.saved'
+        );
+        return;
       case 'register-payment':
         await this.workspace.saveConfiguration(
           'register-payment',
@@ -583,6 +771,28 @@ export class OperatorActionPopupComponent {
       case 'test-messaging':
         await this.workspace.testConfiguration('FIREBASE_MESSAGING');
         return;
+      case 'synchronize-revenue':
+        await this.workspace.synchronizeRevenue();
+        return;
+      case 'requeue-revenue-report': {
+        const reportId = context.reportId?.trim() ?? '';
+        if (!reportId) {
+          return;
+        }
+        this.requeueingReportId.set(reportId);
+        try {
+          const result = await this.workspace.requeueRevenueReport(reportId);
+          if (result?.status === 'PENDING') {
+            this.revenueReportsSmartListRef()?.removeVisibleItemByIdentity(
+              reportId,
+              { totalDelta: -1 }
+            );
+          }
+        } finally {
+          this.requeueingReportId.set(null);
+        }
+        return;
+      }
       case 'set-theme':
         if (context.themePreset) {
           this.workspace.setConfigurationBranding({
@@ -645,6 +855,75 @@ export class OperatorActionPopupComponent {
     return `operator.update.phase.${phase.toLowerCase()}`;
   }
 
+  protected revenueSyncStateLabel(state: OperatorRevenueSyncState): string {
+    return `operator.revenue.delivery.state.${state.toLowerCase()}`;
+  }
+
+  protected revenueSyncStateIcon(state: OperatorRevenueSyncState): string {
+    switch (state) {
+      case 'SYNCHRONIZED':
+        return 'check_circle';
+      case 'PENDING':
+      case 'BUSY':
+        return 'schedule';
+      case 'BLOCKED':
+        return 'report_problem';
+      case 'ERROR':
+        return 'error_outline';
+      case 'DORMANT':
+      default:
+        return 'pause_circle';
+    }
+  }
+
+  protected revenueReportActionItems(
+    report: OperatorRevenueReportDto
+  ): readonly AppMenuItem<string, OperatorPopupActionContext>[] {
+    const requeueing = this.requeueingReportId() === report.id;
+    return [{
+      id: `operator-requeue-revenue-report-${report.id}`,
+      label: 'operator.revenue.delivery.report.requeue',
+      detail: 'operator.revenue.delivery.report.requeue.detail',
+      icon: 'replay',
+      palette: 'orange',
+      layout: 'action',
+      disabled: this.busy() || report.status !== 'BLOCKED',
+      progress: requeueing
+        ? { state: 'loading', durationMs: 3000 }
+        : null,
+      context: {
+        action: 'requeue-revenue-report',
+        reportId: report.id
+      }
+    }];
+  }
+
+  protected formatRevenueReportPeriod(value: string): string {
+    const source = `${value ?? ''}`.trim();
+    const timestamp = Date.parse(
+      /^\d{4}-\d{2}-\d{2}$/.test(source)
+        ? `${source}T00:00:00.000Z`
+        : source
+    );
+    if (!Number.isFinite(timestamp)) {
+      return source || '—';
+    }
+    return new Intl.DateTimeFormat(this.i18n.currentLanguage(), {
+      dateStyle: 'medium',
+      timeZone: 'UTC'
+    }).format(new Date(timestamp));
+  }
+
+  protected revenueReportCurrencies(
+    report: OperatorRevenueReportDto
+  ): string {
+    return [...new Set(
+      report.currencies
+        .map(currency => currency.currencyCode.trim().toUpperCase())
+        .filter(Boolean)
+    )].join(', ') || '—';
+  }
+
   protected configurationThemeTrigger(): AppMenuTrigger {
     const themePreset =
       this.workspace.configurationDraft()?.branding.themePreset ?? 'AURORA';
@@ -700,6 +979,62 @@ export class OperatorActionPopupComponent {
     this.workspace.setConfigurationBranding({
       logoCharacterIndex: Number(value)
     });
+  }
+
+  protected onConfigurationAdminEmailsChange(value: unknown): void {
+    if (!value || typeof value !== 'object') {
+      this.workspace.setConfigurationAdminEmailsInput('');
+      return;
+    }
+    const adminEmailsText = (value as {
+      adminEmailsText?: unknown;
+    }).adminEmailsText;
+    this.workspace.setConfigurationAdminEmailsInput(
+      `${adminEmailsText ?? ''}`
+    );
+  }
+
+  protected socialLinkUrlConfig(): LinkInputConfig {
+    return {
+      label: this.i18n.translate('operator.configuration.social.url'),
+      placeholder: 'https://',
+      required: true,
+      maxLength: 2048,
+      panelMode: 'anchored',
+      pasteAriaLabel: this.i18n.translate(
+        'operator.configuration.social.url.paste.aria'
+      ),
+      openAriaLabel: this.i18n.translate(
+        'operator.configuration.social.url.open.aria'
+      ),
+      deleteAriaLabel: this.i18n.translate(
+        'operator.configuration.social.url.clear.aria'
+      )
+    };
+  }
+
+  protected setConfigurationSocialLink(
+    index: number,
+    patch: Partial<DeploymentSocialLinkDto>
+  ): void {
+    this.workspace.setConfigurationSocialLink(index, patch);
+  }
+
+  protected configurationSocialLinkRemoveItems(
+    index: number
+  ): readonly AppMenuItem<string, OperatorPopupActionContext>[] {
+    return [{
+      id: `operator-remove-social-link-${index}`,
+      label: 'operator.configuration.social.remove',
+      icon: 'delete_outline',
+      palette: 'red',
+      layout: 'action',
+      disabled: this.configurationDisabled(),
+      context: {
+        action: 'remove-social-link',
+        socialLinkIndex: index
+      }
+    }];
   }
 
   protected brandingLogoCharacterIndexInvalid(): boolean {
@@ -764,10 +1099,16 @@ export class OperatorActionPopupComponent {
         return 'operator.claim.client.code.redeeming';
       case 'apply-update':
         return 'operator.update.applying';
+      case 'synchronize-revenue':
+        return 'operator.revenue.delivery.synchronizing';
+      case 'requeue-revenue-report':
+        return 'operator.revenue.delivery.report.requeue.progress';
       case 'test-authentication':
       case 'test-messaging':
         return 'operator.configuration.testing';
       case 'save-branding':
+      case 'save-admin-emails':
+      case 'save-social-links':
       case 'register-payment':
       case 'register-firebase':
         return 'operator.configuration.saving';
@@ -935,8 +1276,25 @@ export class OperatorActionPopupComponent {
           context: { action: 'redeem-token' }
         }];
       }
+      case 'revenue': {
+        const sync = this.workspace.revenueSync();
+        return [{
+          id: 'operator-synchronize-revenue',
+          label: 'operator.revenue.delivery.synchronize',
+          detail: sync
+            ? this.revenueSyncStateLabel(sync.state)
+            : 'operator.revenue.delivery.synchronize.detail',
+          icon: sync ? this.revenueSyncStateIcon(sync.state) : 'sync',
+          palette: this.revenueSyncPalette(sync?.state),
+          layout: 'action',
+          disabled: this.busy(),
+          progress: this.busyAction() === 'synchronize-revenue'
+            ? { state: 'loading', durationMs: 3000 }
+            : null,
+          context: { action: 'synchronize-revenue' }
+        }];
+      }
       case 'configuration':
-      case 'revenue':
       case 'community':
       default:
         return [];
@@ -958,6 +1316,24 @@ export class OperatorActionPopupComponent {
       return 'update';
     }
     return 'register';
+  }
+
+  private revenueSyncPalette(
+    state: OperatorRevenueSyncState | undefined
+  ): 'green' | 'orange' | 'red' | 'slate' {
+    switch (state) {
+      case 'SYNCHRONIZED':
+        return 'green';
+      case 'PENDING':
+      case 'BUSY':
+        return 'orange';
+      case 'BLOCKED':
+      case 'ERROR':
+        return 'red';
+      case 'DORMANT':
+      default:
+        return 'slate';
+    }
   }
 
   private titleKey(kind: OperatorMenuKind | null): string {

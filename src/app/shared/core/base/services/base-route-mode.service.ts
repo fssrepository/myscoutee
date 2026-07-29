@@ -8,6 +8,12 @@ export interface RouteModeConfig {
   mode?: RouteMode | null;
 }
 
+export function resolveDataSourceRouteMode(
+  dataSource: 'local' | 'http'
+): RouteMode {
+  return dataSource === 'http' ? 'http' : 'local';
+}
+
 export abstract class BaseRouteModeService {
   protected readonly sessionService = inject(SessionService);
 
@@ -36,9 +42,6 @@ export abstract class BaseRouteModeService {
     if (routeConfig.http) {
       return 'http';
     }
-    return environment.activitiesDataSource !== 'http'
-      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled)
-      ? 'local'
-      : 'http';
+    return resolveDataSourceRouteMode(environment.activitiesDataSource);
   }
 }

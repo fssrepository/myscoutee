@@ -12,6 +12,15 @@ import { EntryLandingComponent } from './entry-landing.component';
 
 describe('EntryLandingComponent article lists', () => {
   const loadPublishedIdeaCardsPage = vi.fn();
+  const socialLinks = signal([
+    {
+      provider: 'community',
+      label: 'Community',
+      url: 'https://community.example.test/',
+      icon: null,
+      handle: '@community'
+    }
+  ]);
 
   beforeEach(() => {
     loadPublishedIdeaCardsPage.mockReset();
@@ -25,7 +34,8 @@ describe('EntryLandingComponent article lists', () => {
         {
           provide: DeploymentConfigurationService,
           useValue: {
-            branding: signal(DEFAULT_DEPLOYMENT_BRANDING)
+            branding: signal(DEFAULT_DEPLOYMENT_BRANDING),
+            socialLinks
           }
         }
       ]
@@ -123,8 +133,22 @@ describe('EntryLandingComponent article lists', () => {
     expect(popupText).toContain('100,000 ÷ total verified MAU');
     expect(popupText).toContain('Founder share is capped at 10%');
     expect(popupText).toContain('never operator commissions');
+    const operatorAccess = popupBody?.querySelector(
+      '.entry-partner-operator-access-button'
+    ) as HTMLButtonElement | null;
+    const operatorRequested = vi.fn();
+    fixture.componentInstance.operatorRequested.subscribe(operatorRequested);
+    expect(operatorAccess).not.toBeNull();
+    operatorAccess?.click();
+    fixture.detectChanges();
+    expect(operatorRequested).toHaveBeenCalledOnce();
+    expect(view(fixture.componentInstance).partnersPopupOpen).toBe(false);
 
-    const closeButton = fixture.nativeElement.querySelector('.ui-popup__close') as HTMLButtonElement | null;
+    partnerButton?.click();
+    fixture.detectChanges();
+    const closeButton = fixture.nativeElement.querySelector(
+      '.ui-popup__close'
+    ) as HTMLButtonElement | null;
     expect(closeButton).not.toBeNull();
     closeButton?.click();
     fixture.detectChanges();
@@ -133,6 +157,21 @@ describe('EntryLandingComponent article lists', () => {
     expect(partnerButton?.getAttribute('aria-expanded')).toBe('false');
     expect(fixture.nativeElement.querySelector('.entry-shell')?.hasAttribute('inert')).toBe(false);
     expect(fixture.nativeElement.querySelector('.entry-partners-popup-body')).toBeNull();
+  });
+
+  it('renders deployment-controlled social links with the generic icon fallback', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.detectChanges();
+
+    const link = fixture.nativeElement.querySelector(
+      '.entry-footer-socials a'
+    ) as HTMLAnchorElement | null;
+    expect(link?.href).toBe('https://community.example.test/');
+    expect(link?.getAttribute('aria-label')).toBe('Community · @community');
+    expect(link?.querySelector('.mat-icon')?.textContent?.trim()).toBe('public');
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'github.com/fssrepository/myscoutee/issues'
+    );
   });
 
   it('renders article body images without repeating the card cover', () => {

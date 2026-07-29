@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { OperatorConfigurationMapper } from '../../../base/mappers/operator-configuration.mapper';
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
   DEPLOYMENT_THEME_PRESETS
@@ -25,7 +26,15 @@ import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
   OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryMutationResultDto,
@@ -51,6 +60,9 @@ const OPERATOR_REGISTRY_CONFIRM_ROUTE = '/operator/registry/confirm';
 const OPERATOR_REGISTRY_REGISTER_ROUTE = '/operator/registry/register';
 const OPERATOR_REGISTRY_RETRY_ROUTE = '/operator/registry/retry';
 const OPERATOR_REGISTRY_DISCONNECT_ROUTE = '/operator/registry/disconnect';
+const OPERATOR_MEASUREMENTS_SYNCHRONIZE_ROUTE =
+  '/operator/measurements/synchronize';
+const OPERATOR_MEASUREMENTS_REPORTS_ROUTE = '/operator/measurements/reports';
 const OPERATOR_LEADERBOARD_ROUTE = '/operator/leaderboard';
 const OPERATOR_CLAIM_ROUTE = '/operator/claim';
 const OPERATOR_CLAIM_APPLY_ROUTE = '/operator/claim/apply';
@@ -61,6 +73,8 @@ const OPERATOR_UPDATE_APPLY_ROUTE = '/operator/update/apply';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
 const OPERATOR_CONFIGURATION_TEST_ROUTE = '/operator/configuration/test';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
+const OPERATOR_REVENUE_SYNCHRONIZE_ROUTE = '/operator/revenue/synchronize';
+const OPERATOR_REVENUE_REPORTS_ROUTE = '/operator/revenue/reports';
 const OPERATOR_COMMUNITY_ROUTE = '/operator/community';
 
 @Injectable({
@@ -373,6 +387,46 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       ),
       created: false
     };
+  }
+
+  async synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_MEASUREMENTS_SYNCHRONIZE_ROUTE
+    );
+    return {
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      message: 'operator.measurements.delivery.not.sent',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0,
+      synchronizedAt: new Date().toISOString()
+    };
+  }
+
+  async measurementReportPage(
+    _query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_MEASUREMENTS_REPORTS_ROUTE,
+      signal
+    );
+    return {
+      items: [],
+      total: 0
+    };
+  }
+
+  async requeueMeasurementReport(
+    _reportId: string
+  ): Promise<OperatorMeasurementReportDto> {
+    await this.waitForOperatorRouteDelay(
+      `${OPERATOR_MEASUREMENTS_REPORTS_ROUTE}/requeue`
+    );
+    throw new Error('operator.measurements.report.requeue.unavailable');
   }
 
   async leaderboardPage(
@@ -733,6 +787,22 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   ): Promise<OperatorConfigurationDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
     const current = await this.readStored();
+    const adminEmailValidationKey =
+      OperatorConfigurationMapper.adminEmailValidationKey(request.adminEmails);
+    if (adminEmailValidationKey) {
+      throw new Error(adminEmailValidationKey);
+    }
+    const adminEmails = OperatorConfigurationMapper.adminEmails(
+      request.adminEmails
+    );
+    const socialLinkValidationKey =
+      OperatorConfigurationMapper.socialLinksValidationKey(request.socialLinks);
+    if (socialLinkValidationKey) {
+      throw new Error(socialLinkValidationKey);
+    }
+    const socialLinks = OperatorConfigurationMapper.socialLinks(
+      request.socialLinks
+    );
     const previousPaymentProvider = current.configuration.payment.providerId;
     const themePreset = this.deploymentThemePreset(request.branding.themePreset);
     const productName = `${request.branding.productName ?? ''}`.trim().slice(0, 80);
@@ -776,6 +846,8 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const configuration: OperatorConfigurationDto = {
       capability: 'AVAILABLE',
       unavailableReason: null,
+      adminEmails,
+      socialLinks,
       branding: {
         productName,
         homeLabel: current.configuration.branding.homeLabel,
@@ -823,6 +895,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       : Boolean(
           current.configuration.firebase.projectId.trim()
           && current.configuration.firebase.messagingCredentialConfigured
+          && request.destinationToken?.trim()
         );
     const testedAt = new Date().toISOString();
     await this.repository.write(this.appendAudit({
@@ -833,7 +906,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       success: configured,
       message: configured
         ? 'operator.configuration.test.success'
-        : 'operator.configuration.credentials.missing',
+        : request.kind === 'FIREBASE_MESSAGING'
+          && !request.destinationToken?.trim()
+          ? 'operator.configuration.test.messaging.destination.required'
+          : 'operator.configuration.credentials.missing',
       testedAt
     };
   }
@@ -841,6 +917,41 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   async loadRevenue(): Promise<OperatorRevenueDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_ROUTE);
     return structuredClone((await this.readStored()).revenue);
+  }
+
+  async synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_SYNCHRONIZE_ROUTE);
+    return {
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      message: 'operator.revenue.delivery.not.sent',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0,
+      synchronizedAtIso: new Date().toISOString()
+    };
+  }
+
+  async revenueReportPage(
+    _query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_REPORTS_ROUTE, signal);
+    return {
+      items: [],
+      total: 0
+    };
+  }
+
+  async requeueRevenueReport(
+    _reportId: string
+  ): Promise<OperatorRevenueReportDto> {
+    await this.waitForOperatorRouteDelay(
+      `${OPERATOR_REVENUE_REPORTS_ROUTE}/requeue`
+    );
+    throw new Error('operator.revenue.delivery.requeue.unavailable');
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {

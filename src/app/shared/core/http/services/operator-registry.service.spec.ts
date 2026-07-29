@@ -170,6 +170,87 @@ describe('HttpOperatorRegistryService', () => {
     }
   });
 
+  it('synchronizes QMAU delivery, pages blocked reports, and requeues one exact report', async () => {
+    const report = {
+      id: '0123456789abcdef01234567',
+      period: '2026-06',
+      windowStart: '2026-05-03',
+      windowEnd: '2026-06-01',
+      revision: 1,
+      rulesetVersion: 'qmau-v1',
+      qualifiedMauCount: 248,
+      actionCount: 731,
+      status: 'BLOCKED' as const,
+      attemptCount: 2,
+      nextRetryAt: null,
+      failureCode: 'RECEIPT_INVALID',
+      failureMessage: 'The registry receipt was invalid.',
+      batchId: null,
+      acceptedAt: null,
+      createdAt: '2026-07-01T00:01:00.000Z',
+      updatedAt: '2026-07-01T00:03:00.000Z'
+    };
+    const synchronization = {
+      state: 'BLOCKED' as const,
+      code: 'MEASUREMENT_OUTBOX_BLOCKED',
+      message: 'A QMAU report requires operator review.',
+      materialized: 1,
+      submitted: 1,
+      accepted: 0,
+      pending: 0,
+      blocked: 1,
+      synchronizedAt: '2026-07-01T00:04:00.000Z'
+    };
+    post.mockReturnValueOnce(of(synchronization));
+    get.mockReturnValueOnce(of({
+      items: [report],
+      page: 0,
+      size: 4,
+      totalElements: 1,
+      totalPages: 1
+    }));
+    post.mockReturnValueOnce(of({
+      ...report,
+      status: 'PENDING' as const,
+      updatedAt: '2026-07-01T00:05:00.000Z'
+    }));
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    const syncResult = await service.synchronizeMeasurements();
+    const page = await service.measurementReportPage({
+      page: 0,
+      pageSize: 4,
+      filters: {
+        status: 'BLOCKED',
+        revision: 'client-cache-only'
+      }
+    });
+    const requeued = await service.requeueMeasurementReport(report.id);
+
+    expect(syncResult).toEqual(synchronization);
+    expect(page).toEqual({ items: [report], total: 1 });
+    expect(requeued.status).toBe('PENDING');
+    expect(post.mock.calls[0]).toEqual([
+      '/api/operator/measurements/synchronize',
+      null,
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    ]);
+    const reportCall = get.mock.calls[0] as [
+      string,
+      { params: { get(name: string): string | null } }
+    ];
+    expect(reportCall[0]).toBe('/api/operator/measurements/reports');
+    expect(reportCall[1].params.get('status')).toBe('BLOCKED');
+    expect(reportCall[1].params.get('page')).toBe('0');
+    expect(reportCall[1].params.get('size')).toBe('4');
+    expect(reportCall[1].params.get('revision')).toBeNull();
+    expect(post.mock.calls[1]).toEqual([
+      '/api/operator/measurements/reports/0123456789abcdef01234567/requeue',
+      null,
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    ]);
+  });
+
   it('wires claim, grouping-token, and group-link actions to the Java operator routes', async () => {
     const claimStatus = {
       claimed: true,
@@ -636,6 +717,98 @@ describe('HttpOperatorRegistryService', () => {
     );
   });
 
+  it('runs explicit revenue synchronization and returns the aggregate delivery state', async () => {
+    const synchronization = {
+      state: 'BLOCKED' as const,
+      code: 'REVENUE_OUTBOX_BLOCKED',
+      message: 'A revenue report requires operator review.',
+      materialized: 1,
+      submitted: 2,
+      accepted: 1,
+      pending: 0,
+      blocked: 1,
+      synchronizedAtIso: '2026-07-28T18:31:00.000Z'
+    };
+    post.mockReturnValue(of(synchronization));
+
+    const result = await TestBed.inject(
+      HttpOperatorRegistryService
+    ).synchronizeRevenue();
+
+    expect(result).toEqual(synchronization);
+    expect(post).toHaveBeenCalledWith(
+      '/api/operator/revenue/synchronize',
+      null,
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    );
+    expect(withRequestTimeout).toHaveBeenCalledWith(
+      '/operator/revenue/synchronize',
+      expect.any(Promise),
+      'operator.request.timeout'
+    );
+  });
+
+  it('loads only blocked revenue reports and requeues one exact report', async () => {
+    const report = {
+      id: '0123456789abcdef01234567',
+      period: '2026-07-27',
+      revision: 2,
+      supersedesBatchId: null,
+      rulesetVersion: 'net-captured-revenue-v1',
+      commissionRateBasisPoints: 500,
+      currencies: [],
+      payloadHash: 'payload-hash',
+      status: 'BLOCKED' as const,
+      attemptCount: 1,
+      nextRetryAt: null,
+      failureCode: 'INVALID_REVENUE_RECEIPT',
+      failureMessage: 'Registry receipt was invalid.',
+      failureRetryable: false,
+      failedAt: '2026-07-28T18:31:00.000Z',
+      acceptedBatchId: null,
+      acceptedAt: null,
+      createdAt: '2026-07-28T18:30:00.000Z',
+      updatedAt: '2026-07-28T18:31:00.000Z'
+    };
+    get.mockReturnValue(of({
+      items: [report],
+      page: 0,
+      size: 5,
+      totalElements: 1,
+      totalPages: 1
+    }));
+    post.mockReturnValue(of({
+      ...report,
+      status: 'PENDING' as const,
+      updatedAt: '2026-07-28T18:32:00.000Z'
+    }));
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    const page = await service.revenueReportPage({
+      page: 0,
+      pageSize: 5,
+      filters: { status: 'BLOCKED', revision: 'ignored-by-http' }
+    });
+    const requeued = await service.requeueRevenueReport(report.id);
+
+    expect(page).toEqual({ items: [report], total: 1 });
+    expect(requeued.status).toBe('PENDING');
+    const reportCall = get.mock.calls[0] as [
+      string,
+      { params: { get(name: string): string | null } }
+    ];
+    expect(reportCall[0]).toBe('/api/operator/revenue/reports');
+    expect(reportCall[1].params.get('status')).toBe('BLOCKED');
+    expect(reportCall[1].params.get('page')).toBe('0');
+    expect(reportCall[1].params.get('size')).toBe('5');
+    expect(reportCall[1].params.get('revision')).toBeNull();
+    expect(post).toHaveBeenCalledWith(
+      '/api/operator/revenue/reports/0123456789abcdef01234567/requeue',
+      null,
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    );
+  });
+
   it('loads, saves, and tests the persisted operator configuration through Java', async () => {
     const configuration = operatorConfiguration();
     get.mockReturnValue(of(configuration));
@@ -655,6 +828,14 @@ describe('HttpOperatorRegistryService', () => {
     }));
     const service = TestBed.inject(HttpOperatorRegistryService);
     const request = {
+      adminEmails: ['operator@example.test'],
+      socialLinks: [{
+        provider: 'community',
+        label: 'Community',
+        url: 'https://community.example.test/',
+        icon: 'forum',
+        handle: '@community'
+      }],
       branding: {
         productName: 'Community Hub',
         logoUrl: '/api/media/operator/logo.webp',
@@ -708,6 +889,32 @@ describe('HttpOperatorRegistryService', () => {
     expect(post).toHaveBeenCalledWith(
       '/api/operator/configuration/tests',
       { kind: 'FIREBASE_AUTHENTICATION' },
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    );
+  });
+
+  it('sends a trimmed write-only destination token for the Firebase messaging test', async () => {
+    post.mockReturnValue(of({
+      kind: 'FIREBASE_MESSAGING',
+      success: true,
+      message: 'Firebase messaging test succeeded.',
+      testedAt: '2026-07-28T19:05:00.000Z'
+    }));
+
+    const result = await TestBed.inject(
+      HttpOperatorRegistryService
+    ).testConfiguration({
+      kind: 'FIREBASE_MESSAGING',
+      destinationToken: ' registration-token '
+    });
+
+    expect(result.success).toBe(true);
+    expect(post).toHaveBeenCalledWith(
+      '/api/operator/configuration/tests',
+      {
+        kind: 'FIREBASE_MESSAGING',
+        destinationToken: 'registration-token'
+      },
       expect.objectContaining({ headers: expect.any(HttpHeaders) })
     );
   });

@@ -73,6 +73,13 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: 'https://cdn.example.test/community-hub.webp',
       logoCharacterIndex: null,
       themePreset: 'OCEAN',
+      socialLinks: [{
+        provider: 'community',
+        label: 'Community',
+        url: 'https://community.example.test/',
+        icon: null,
+        handle: '@community'
+      }],
       revision: 4
     });
     const service = TestBed.inject(DeploymentConfigurationService);
@@ -88,6 +95,13 @@ describe('DeploymentConfigurationService', () => {
       revision: 4
     });
     expect(service.branding()).toEqual(branding);
+    expect(service.socialLinks()).toEqual([{
+      provider: 'community',
+      label: 'Community',
+      url: 'https://community.example.test/',
+      icon: null,
+      handle: '@community'
+    }]);
     expect(TestBed.inject(DOCUMENT).documentElement.dataset['deploymentTheme'])
       .toBe('ocean');
     expect(TestBed.inject(DOCUMENT).title).toBe('Community Hub');
@@ -122,6 +136,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: 'assets/logo/heart.png',
       logoCharacterIndex: 3,
       themePreset: 'OCEAN',
+      socialLinks: [],
       revision: 4
     });
     const service = TestBed.inject(DeploymentConfigurationService);

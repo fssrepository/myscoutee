@@ -3,11 +3,16 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
+  DEFAULT_DEPLOYMENT_CONFIGURATION,
+  DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
   DEPLOYMENT_THEME_PRESETS,
   type DeploymentBrandingDto,
+  type DeploymentConfigurationDto,
   type DeploymentConfigurationServiceContract,
+  type DeploymentSocialLinkDto,
   type DeploymentThemePreset
 } from '../../contracts/deployment-configuration.interface';
+import { OperatorConfigurationMapper } from '../mappers/operator-configuration.mapper';
 import { HttpDeploymentConfigurationService } from '../../http/services/deployment-configuration.service';
 import { LocalDeploymentConfigurationService } from '../../local/source/services/deployment-configuration.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -24,10 +29,14 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
   private readonly brandingRef = signal<DeploymentBrandingDto>(
     structuredClone(DEFAULT_DEPLOYMENT_BRANDING)
   );
+  private readonly socialLinksRef = signal<readonly DeploymentSocialLinkDto[]>(
+    structuredClone(DEFAULT_DEPLOYMENT_SOCIAL_LINKS)
+  );
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
 
   readonly branding = this.brandingRef.asReadonly();
+  readonly socialLinks = this.socialLinksRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
 
   initialize(): Promise<DeploymentBrandingDto> {
@@ -46,18 +55,33 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
     return structuredClone(branding);
   }
 
+  applySocialLinks(
+    value: readonly DeploymentSocialLinkDto[]
+  ): readonly DeploymentSocialLinkDto[] {
+    const socialLinks = OperatorConfigurationMapper.socialLinks(value);
+    this.socialLinksRef.set(socialLinks);
+    return structuredClone(socialLinks);
+  }
+
   private async load(): Promise<DeploymentBrandingDto> {
     if (!this.loadPromise) {
       this.loadingRef.set(true);
       this.loadPromise = this.configurationService()
         .loadBranding()
-        .catch(() => structuredClone(DEFAULT_DEPLOYMENT_BRANDING))
-        .then(value => this.applyBranding(value))
+        .catch(() => structuredClone(DEFAULT_DEPLOYMENT_CONFIGURATION))
+        .then(value => this.applyConfiguration(value))
         .finally(() => {
           this.loadingRef.set(false);
         });
     }
     return structuredClone(await this.loadPromise);
+  }
+
+  private applyConfiguration(
+    value: DeploymentConfigurationDto
+  ): DeploymentBrandingDto {
+    this.applySocialLinks(value.socialLinks);
+    return this.applyBranding(value);
   }
 
   private configurationService(): DeploymentConfigurationServiceContract {

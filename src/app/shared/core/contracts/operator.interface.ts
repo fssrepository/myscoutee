@@ -1,6 +1,7 @@
 import type { ListQuery, PageResult } from './list.interface';
 import type {
   DeploymentBrandingDto,
+  DeploymentSocialLinkDto,
   DeploymentThemePreset
 } from './deployment-configuration.interface';
 
@@ -117,6 +118,58 @@ export interface OperatorRegistryRegisterRequestDto {
   registryBaseUrl: string;
   expectedRegistryScope?: string;
 }
+
+export type OperatorMeasurementSyncState =
+  | 'DORMANT'
+  | 'BLOCKED'
+  | 'READY'
+  | 'BUSY'
+  | 'ERROR';
+
+export interface OperatorMeasurementSyncDto {
+  state: OperatorMeasurementSyncState;
+  code: string | null;
+  message: string | null;
+  materialized: number;
+  submitted: number;
+  accepted: number;
+  pending: number;
+  blocked: number;
+  synchronizedAt: string;
+}
+
+export type OperatorMeasurementReportStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'BLOCKED';
+
+export interface OperatorMeasurementReportFilters {
+  status?: OperatorMeasurementReportStatus;
+  revision?: string;
+}
+
+export interface OperatorMeasurementReportDto {
+  id: string;
+  period: string;
+  windowStart: string;
+  windowEnd: string;
+  revision: number;
+  rulesetVersion: string;
+  qualifiedMauCount: number;
+  actionCount: number;
+  status: OperatorMeasurementReportStatus;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  batchId: string | null;
+  acceptedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export type OperatorMeasurementReportPageDto =
+  PageResult<OperatorMeasurementReportDto>;
 
 export type OperatorLeaderboardGroup = 'FOUNDER' | 'CLAIMED' | 'UNCLAIMED';
 
@@ -302,6 +355,8 @@ export interface OperatorFirebaseConfigurationDto {
 export interface OperatorConfigurationDto {
   capability: OperatorConfigurationCapability;
   unavailableReason: string | null;
+  adminEmails: readonly string[];
+  socialLinks: readonly DeploymentSocialLinkDto[];
   branding: DeploymentBrandingDto;
   payment: OperatorPaymentConfigurationDto;
   firebase: OperatorFirebaseConfigurationDto;
@@ -309,6 +364,8 @@ export interface OperatorConfigurationDto {
 }
 
 export interface OperatorConfigurationSaveRequestDto {
+  adminEmails: readonly string[];
+  socialLinks: readonly DeploymentSocialLinkDto[];
   branding: {
     productName: string;
     logoUrl: string;
@@ -328,6 +385,7 @@ export interface OperatorConfigurationSaveRequestDto {
 
 export interface OperatorConfigurationTestRequestDto {
   kind: OperatorConfigurationTestKind;
+  destinationToken?: string;
 }
 
 export interface OperatorConfigurationTestResultDto {
@@ -397,6 +455,68 @@ export interface OperatorRevenueDto {
   commissionRateBasisPoints: number;
   currencies: readonly OperatorRevenueCurrencyDto[];
 }
+
+export type OperatorRevenueSyncState =
+  | 'SYNCHRONIZED'
+  | 'PENDING'
+  | 'BLOCKED'
+  | 'BUSY'
+  | 'DORMANT'
+  | 'ERROR';
+
+export interface OperatorRevenueSyncDto {
+  state: OperatorRevenueSyncState;
+  code: string | null;
+  message: string | null;
+  materialized: number;
+  submitted: number;
+  accepted: number;
+  pending: number;
+  blocked: number;
+  synchronizedAtIso: string;
+}
+
+export type OperatorRevenueReportStatus = 'PENDING' | 'ACCEPTED' | 'BLOCKED';
+
+export interface OperatorRevenueReportFilters {
+  status?: OperatorRevenueReportStatus;
+  revision?: string;
+}
+
+export interface OperatorRevenueReportCurrencyDto {
+  currencyCode: string;
+  fractionDigits: number;
+  capturedMinor: number;
+  refundedMinor: number;
+  netMinor: number;
+  commissionBasisMinor: number;
+  estimatedCommissionMinor: number;
+  paymentCount: number;
+}
+
+export interface OperatorRevenueReportDto {
+  id: string;
+  period: string;
+  revision: number;
+  supersedesBatchId: string | null;
+  rulesetVersion: string;
+  commissionRateBasisPoints: number;
+  currencies: readonly OperatorRevenueReportCurrencyDto[];
+  payloadHash: string;
+  status: OperatorRevenueReportStatus;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  failureRetryable: boolean | null;
+  failedAt: string | null;
+  acceptedBatchId: string | null;
+  acceptedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export type OperatorRevenueReportPageDto = PageResult<OperatorRevenueReportDto>;
 
 export type OperatorCommunityAvailability =
   | 'ONLINE'
@@ -481,6 +601,14 @@ export interface OperatorRegistryServiceContract {
   ): Promise<OperatorRegistryMutationResultDto>;
   retry(): Promise<OperatorRegistryStatusDto>;
   disconnect(): Promise<OperatorRegistryMutationResultDto>;
+  synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto>;
+  measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto>;
+  requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto>;
   leaderboardPage(
     query: ListQuery,
     signal?: AbortSignal
@@ -505,6 +633,12 @@ export interface OperatorRegistryServiceContract {
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto>;
   loadRevenue(): Promise<OperatorRevenueDto>;
+  synchronizeRevenue(): Promise<OperatorRevenueSyncDto>;
+  revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto>;
+  requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto>;
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto>;
   setCommunityAvailability(
     availability: OperatorCommunityAvailability

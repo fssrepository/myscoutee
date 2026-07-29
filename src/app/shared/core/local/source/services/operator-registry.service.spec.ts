@@ -181,6 +181,66 @@ describe('LocalOperatorRegistryService', () => {
     );
   });
 
+  it('keeps explicit local fallback revenue delivery dormant and write-free', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const before = await repository.read();
+
+    const synchronization = await service.synchronizeRevenue();
+    const reports = await service.revenueReportPage({
+      page: 0,
+      pageSize: 5,
+      filters: { status: 'BLOCKED' }
+    });
+    const after = await repository.read();
+
+    expect(synchronization).toEqual(expect.objectContaining({
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0
+    }));
+    expect(reports).toEqual({ items: [], total: 0 });
+    expect(after).toEqual(before);
+  });
+
+  it('keeps explicit local fallback QMAU delivery dormant and write-free', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const before = await repository.read();
+
+    const synchronization = await service.synchronizeMeasurements();
+    const reports = await service.measurementReportPage({
+      page: 0,
+      pageSize: 4,
+      filters: { status: 'BLOCKED' }
+    });
+    const after = await repository.read();
+
+    expect(synchronization).toEqual(expect.objectContaining({
+      state: 'DORMANT',
+      code: 'LOCAL_FALLBACK',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 0
+    }));
+    expect(reports).toEqual({ items: [], total: 0 });
+    expect(after).toEqual(before);
+  });
+
   it('withdraws the current claim when the registered deployment is disabled', async () => {
     const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
     const seedContext = await seedRepository.prepareBootstrap();
@@ -543,6 +603,14 @@ describe('LocalOperatorRegistryService', () => {
       }
     ]);
     const saved = await service.saveConfiguration({
+      adminEmails: ['operator@example.test'],
+      socialLinks: [{
+        provider: 'community',
+        label: 'Community',
+        url: 'https://community.example.test/',
+        icon: 'forum',
+        handle: '@community'
+      }],
       branding: {
         productName: 'Community Hub',
         logoUrl: 'data:image/png;base64,c2FtcGxl',

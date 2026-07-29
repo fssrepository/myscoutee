@@ -7,6 +7,7 @@ import { SessionService } from '../../../core/base/services/session.service';
 import type {
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
+  OperatorConfigurationDto,
   OperatorDeploymentUpdateDto,
   OperatorRevenueDto
 } from '../../../core/contracts/operator.interface';
@@ -20,6 +21,11 @@ describe('OperatorWorkspaceStore', () => {
   const loadClaimStatus = vi.fn();
   const loadDeploymentUpdate = vi.fn();
   const loadRevenue = vi.fn();
+  const loadConfiguration = vi.fn();
+  const saveConfiguration = vi.fn();
+  const synchronizeRevenue = vi.fn();
+  const revenueReportPage = vi.fn();
+  const requeueRevenueReport = vi.fn();
   const testConfiguration = vi.fn();
   const applyMutation = vi.fn();
   const invalidate = vi.fn();
@@ -50,6 +56,11 @@ describe('OperatorWorkspaceStore', () => {
     loadClaimStatus.mockReset();
     loadDeploymentUpdate.mockReset();
     loadRevenue.mockReset();
+    loadConfiguration.mockReset();
+    saveConfiguration.mockReset();
+    synchronizeRevenue.mockReset();
+    revenueReportPage.mockReset();
+    requeueRevenueReport.mockReset();
     testConfiguration.mockReset();
     applyMutation.mockReset();
     invalidate.mockReset();
@@ -74,13 +85,21 @@ describe('OperatorWorkspaceStore', () => {
             linkOperatorGroup,
             loadClaimStatus,
             loadDeploymentUpdate,
+            loadConfiguration,
+            saveConfiguration,
             loadRevenue,
+            synchronizeRevenue,
+            revenueReportPage,
+            requeueRevenueReport,
             testConfiguration
           }
         },
         {
           provide: DeploymentConfigurationService,
-          useValue: { applyBranding: vi.fn() }
+          useValue: {
+            applyBranding: vi.fn(),
+            applySocialLinks: vi.fn()
+          }
         },
         {
           provide: SessionService,
@@ -265,6 +284,79 @@ describe('OperatorWorkspaceStore', () => {
     expect(loadRevenue).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the aggregate result from an explicit revenue synchronization', async () => {
+    const synchronization = {
+      state: 'PENDING' as const,
+      code: 'REVENUE_DELIVERY_PENDING',
+      message: 'Revenue reports are stored and will be retried.',
+      materialized: 1,
+      submitted: 1,
+      accepted: 0,
+      pending: 1,
+      blocked: 0,
+      synchronizedAtIso: '2026-07-28T18:31:00.000Z'
+    };
+    synchronizeRevenue.mockResolvedValue(synchronization);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    expect(store.revenueSync()).toBeNull();
+    expect(await store.synchronizeRevenue()).toEqual(synchronization);
+
+    expect(store.revenueSync()).toEqual(synchronization);
+    expect(synchronizeRevenue).toHaveBeenCalledTimes(1);
+  });
+
+  it('requeues one blocked report and updates the aggregate delivery counters', async () => {
+    synchronizeRevenue.mockResolvedValue({
+      state: 'BLOCKED',
+      code: 'REVENUE_OUTBOX_BLOCKED',
+      message: 'A revenue report requires operator review.',
+      materialized: 0,
+      submitted: 0,
+      accepted: 0,
+      pending: 0,
+      blocked: 1,
+      synchronizedAtIso: '2026-07-28T18:31:00.000Z'
+    });
+    requeueRevenueReport.mockResolvedValue({
+      id: '0123456789abcdef01234567',
+      period: '2026-07-27',
+      revision: 1,
+      supersedesBatchId: null,
+      rulesetVersion: 'net-captured-revenue-v1',
+      commissionRateBasisPoints: 500,
+      currencies: [],
+      payloadHash: 'payload-hash',
+      status: 'PENDING',
+      attemptCount: 1,
+      nextRetryAt: null,
+      failureCode: 'INVALID_REVENUE_RECEIPT',
+      failureMessage: 'Registry receipt was invalid.',
+      failureRetryable: false,
+      failedAt: '2026-07-28T18:30:00.000Z',
+      acceptedBatchId: null,
+      acceptedAt: null,
+      createdAt: '2026-07-28T18:29:00.000Z',
+      updatedAt: '2026-07-28T18:32:00.000Z'
+    });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    await store.synchronizeRevenue();
+    const result = await store.requeueRevenueReport(
+      '0123456789abcdef01234567'
+    );
+
+    expect(result?.status).toBe('PENDING');
+    expect(store.revenueSync()).toEqual(expect.objectContaining({
+      state: 'PENDING',
+      code: 'REVENUE_DELIVERY_PENDING',
+      pending: 1,
+      blocked: 0,
+      message: 'operator.revenue.delivery.requeued.pending'
+    }));
+    expect(store.notice()).toBe('operator.revenue.delivery.requeued');
+  });
+
   it('briefly exposes independent shared action feedback for Firebase tests', async () => {
     vi.useFakeTimers();
     testConfiguration.mockResolvedValue({
@@ -284,6 +376,74 @@ describe('OperatorWorkspaceStore', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(store.configurationAuthenticationFeedback()).toBeNull();
+  });
+
+  it('keeps the messaging destination transient and sends it only with the test', async () => {
+    testConfiguration.mockResolvedValue({
+      kind: 'FIREBASE_MESSAGING',
+      success: true,
+      message: 'Firebase messaging test succeeded.',
+      testedAt: '2026-07-28T18:05:00.000Z'
+    });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    store.setConfigurationMessagingDestinationToken(' registration-token ');
+    await store.testConfiguration('FIREBASE_MESSAGING');
+
+    expect(testConfiguration).toHaveBeenCalledWith({
+      kind: 'FIREBASE_MESSAGING',
+      destinationToken: 'registration-token'
+    });
+    expect(store.configurationMessagingTest()?.success).toBe(true);
+
+    store.clearFeedback();
+
+    expect(store.configurationMessagingDestinationToken()).toBe('');
+  });
+
+  it('normalizes and saves root administrator and social-link configuration', async () => {
+    const initial = operatorConfiguration();
+    loadConfiguration.mockResolvedValue(initial);
+    saveConfiguration.mockImplementation(async request => ({
+      ...initial,
+      adminEmails: request.adminEmails,
+      socialLinks: request.socialLinks,
+      updatedAt: '2026-07-28T19:00:00.000Z'
+    }));
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    await store.loadConfiguration();
+    store.setConfigurationAdminEmailsInput(
+      ' Owner@Example.test, owner@example.test\nadmin@example.test '
+    );
+    store.addConfigurationSocialLink();
+    store.setConfigurationSocialLink(0, {
+      provider: 'community',
+      label: 'Community',
+      url: 'https://community.example.test',
+      icon: 'forum',
+      handle: '@community'
+    });
+
+    await store.saveConfiguration('save-social-links');
+
+    expect(saveConfiguration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminEmails: ['owner@example.test', 'admin@example.test'],
+        socialLinks: [{
+          provider: 'community',
+          label: 'Community',
+          url: 'https://community.example.test/',
+          icon: 'forum',
+          handle: '@community'
+        }]
+      })
+    );
+    expect(store.configuration()?.adminEmails).toEqual([
+      'owner@example.test',
+      'admin@example.test'
+    ]);
+    expect(store.configuration()?.socialLinks[0]?.provider).toBe('community');
   });
 });
 
@@ -365,5 +525,34 @@ function operatorRevenue(): OperatorRevenueDto {
     rulesetVersion: 'net-captured-revenue-v1',
     commissionRateBasisPoints: 500,
     currencies: []
+  };
+}
+
+function operatorConfiguration(): OperatorConfigurationDto {
+  return {
+    capability: 'AVAILABLE',
+    unavailableReason: null,
+    adminEmails: [],
+    socialLinks: [],
+    branding: {
+      productName: 'MyScoutee',
+      homeLabel: 'Your preferences come first',
+      logoUrl: 'assets/logo/heart.webp',
+      logoCharacterIndex: null,
+      themePreset: 'AURORA',
+      revision: 1
+    },
+    payment: {
+      availableProviders: [],
+      providerId: null,
+      credentialConfigured: false,
+      credentialMask: null
+    },
+    firebase: {
+      projectId: '',
+      authenticationCredentialConfigured: false,
+      messagingCredentialConfigured: false
+    },
+    updatedAt: '2026-07-28T18:00:00.000Z'
   };
 }

@@ -54,6 +54,29 @@ describe('installSessionActiveUserSync', () => {
     TestBed.tick();
     expect(activeUserId()).toBe('');
   });
+
+  it('keeps the canonical backend profile id for an operator bootstrap session', () => {
+    const session = signal<AppSession | null>({
+      kind: 'operator-bootstrap',
+      email: 'operator@example.test',
+      expiresAt: '2099-07-29T12:00:00Z'
+    });
+    const activeUserId = signal('persisted-operator-id');
+
+    TestBed.runInInjectionContext(() => {
+      installSessionActiveUserSync(
+        session,
+        activeUserId.asReadonly(),
+        userId => activeUserId.set(userId)
+      );
+    });
+    TestBed.tick();
+    expect(activeUserId()).toBe('persisted-operator-id');
+
+    session.set(null);
+    TestBed.tick();
+    expect(activeUserId()).toBe('');
+  });
 });
 
 function firebaseSession(id: string): AppSession {

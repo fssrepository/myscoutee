@@ -915,7 +915,9 @@ export class SideMenuComponent implements OnDestroy {
 
       const requestKey = session.kind === 'firebase'
         ? `firebase:${session.profile.id}`
-        : (activeUserId ? `demo:${activeUserId}` : '');
+        : session.kind === 'operator-bootstrap'
+          ? `operator-bootstrap:${session.email}`
+          : (activeUserId ? `demo:${activeUserId}` : '');
 
       if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
         return;
@@ -1685,8 +1687,12 @@ export class SideMenuComponent implements OnDestroy {
       return null;
     }
     const requestVersion = ++this.hydrationRequestVersion;
-    const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
-    const loadedProfileExt = await this.usersService.loadProfileExtById(isFirebaseSession ? undefined : userId);
+    const sessionKind = this.sessionService.currentSession()?.kind;
+    const serverIdentifiedSession = sessionKind === 'firebase'
+      || sessionKind === 'operator-bootstrap';
+    const loadedProfileExt = await this.usersService.loadProfileExtById(
+      serverIdentifiedSession ? undefined : userId
+    );
     const loadedUser = loadedProfileExt?.profile ?? null;
     if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
       return null;

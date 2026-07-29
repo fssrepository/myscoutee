@@ -134,11 +134,13 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    if (this.isFirebaseAdminMode && !this.workspace.dashboard()) {
+    if (!this.workspace.dashboard()) {
       const session = await this.sessionService.ensureSession();
-      if (session?.kind === 'firebase') {
+      if (session) {
         this.restoringWorkspace.set(true);
-        const dashboard = await this.bootstrapAdmin();
+        const dashboard = await this.bootstrapAdmin(
+          session.kind === 'demo' ? session.userId : undefined
+        );
         this.restoringWorkspace.set(false);
         if (dashboard) {
           return;
@@ -202,15 +204,19 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       return false;
     }
     try {
-      if (this.isFirebaseAdminMode) {
-        const session = await this.sessionService.ensureSession();
-        if (session?.kind !== 'firebase') {
-          this.clearAdminSession();
-          return false;
-        }
+      const session = await this.sessionService.ensureSession();
+      if (!session) {
+        this.clearAdminSession();
+        return false;
+      }
+      if (session.kind === 'demo' && session.userId.trim() !== adminId) {
+        this.clearAdminSession();
+        return false;
       }
       this.prepareSelectedAdminSession(adminId);
-      return Boolean(await this.bootstrapAdmin(adminId));
+      return Boolean(await this.bootstrapAdmin(
+        session.kind === 'demo' ? session.userId : undefined
+      ));
     } catch {
       this.clearAdminSession();
       return false;

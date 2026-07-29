@@ -29,7 +29,15 @@ import type {
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
   OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto,
   OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryConfirmRequestDto,
@@ -50,6 +58,7 @@ const OPERATOR_COMMUNITY_PROVIDERS_ROUTE = '/operator/community/providers';
 const OPERATOR_UPDATES_ROUTE = '/operator/updates';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
+const OPERATOR_MEASUREMENTS_ROUTE = '/operator/measurements';
 const DEMO_OPERATOR_USER_HEADER = 'X-Demo-User-Id';
 const LEADERBOARD_VIEWS = ['founder', 'claimed', 'unclaimed'] as const;
 const UPDATE_POLL_INTERVAL_MS = 750;
@@ -242,6 +251,22 @@ interface RemoteOperatorUpdatesStatus {
   latestJob: RemoteOperatorUpdateJob | null;
 }
 
+interface RemoteOperatorRevenueReportPage {
+  items: OperatorRevenueReportDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+interface RemoteOperatorMeasurementReportPage {
+  items: OperatorMeasurementReportDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -337,6 +362,73 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       ).toPromise()
     );
     return this.toRegistryMutationResult(response);
+  }
+
+  async synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto> {
+    return await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/synchronize`,
+      this.http.post<OperatorMeasurementSyncDto>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/synchronize`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    this.throwIfAborted(signal);
+    const page = Math.max(0, Math.min(
+      1_000_000,
+      Math.trunc(Number(query.page) || 0)
+    ));
+    const size = Math.max(1, Math.min(
+      100,
+      Math.trunc(Number(query.pageSize) || 10)
+    ));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
+      this.http.get<RemoteOperatorMeasurementReportPage>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (Math.trunc(Number(result.page)) !== page) {
+      throw new Error('operator.measurements.reports.response.invalid');
+    }
+    return {
+      items: result.items ?? [],
+      total: Math.max(0, Math.trunc(Number(result.totalElements) || 0))
+    };
+  }
+
+  async requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto> {
+    const normalizedReportId = reportId.trim();
+    if (!/^[0-9a-f]{24}$/.test(normalizedReportId)) {
+      throw new Error('operator.measurements.report.id.invalid');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/reports/${normalizedReportId}/requeue`,
+      this.http.post<OperatorMeasurementReportDto>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports/${
+          encodeURIComponent(normalizedReportId)
+        }/requeue`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
   }
 
   async leaderboardPage(
@@ -609,11 +701,21 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   async testConfiguration(
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto> {
+    const destinationToken = request.destinationToken?.trim() ?? '';
+    if (destinationToken.length > 4096) {
+      throw new Error('operator.configuration.test.messaging.destination.too.long');
+    }
+    const payload: OperatorConfigurationTestRequestDto = {
+      kind: request.kind,
+      ...(request.kind === 'FIREBASE_MESSAGING' && destinationToken
+        ? { destinationToken }
+        : {})
+    };
     return await this.requireResponse(
       `${OPERATOR_CONFIGURATION_ROUTE}/tests`,
       this.http.post<OperatorConfigurationTestResultDto>(
         `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/tests`,
-        request,
+        payload,
         this.requestOptions()
       ).toPromise()
     );
@@ -624,6 +726,71 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       OPERATOR_REVENUE_ROUTE,
       this.http.get<OperatorRevenueDto>(
         `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
+    return await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/synchronize`,
+      this.http.post<OperatorRevenueSyncDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/synchronize`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    this.throwIfAborted(signal);
+    const page = Math.max(0, Math.min(
+      1_000_000,
+      Math.trunc(Number(query.page) || 0)
+    ));
+    const size = Math.max(1, Math.min(
+      100,
+      Math.trunc(Number(query.pageSize) || 10)
+    ));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/reports`,
+      this.http.get<RemoteOperatorRevenueReportPage>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (Math.trunc(Number(result.page)) !== page) {
+      throw new Error('operator.revenue.delivery.reports.response.invalid');
+    }
+    return {
+      items: result.items ?? [],
+      total: Math.max(0, Math.trunc(Number(result.totalElements) || 0))
+    };
+  }
+
+  async requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto> {
+    const normalizedReportId = reportId.trim();
+    if (!/^[0-9a-f]{24}$/.test(normalizedReportId)) {
+      throw new Error('operator.revenue.delivery.report.id.invalid');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/reports/${normalizedReportId}/requeue`,
+      this.http.post<OperatorRevenueReportDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports/${
+          encodeURIComponent(normalizedReportId)
+        }/requeue`,
+        null,
         this.requestOptions()
       ).toPromise()
     );

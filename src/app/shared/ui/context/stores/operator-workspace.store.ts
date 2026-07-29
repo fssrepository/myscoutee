@@ -2,6 +2,8 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
+import { OperatorConfigurationMapper } from '../../../core/base/mappers/operator-configuration.mapper';
+import type { ListQuery } from '../../../core/contracts/list.interface';
 import {
   SessionService,
   type AppSession
@@ -17,7 +19,11 @@ import type {
   OperatorConfigurationTestKind,
   OperatorConfigurationTestResultDto,
   OperatorDeploymentUpdateDto,
-  OperatorRevenueDto
+  OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto
 } from '../../../core/contracts/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { UserProfileStore } from './user-profile.store';
@@ -31,7 +37,11 @@ export type OperatorWorkspaceBusyAction =
   | 'apply-update'
   | 'load-configuration'
   | 'load-revenue'
+  | 'synchronize-revenue'
+  | 'requeue-revenue-report'
   | 'save-branding'
+  | 'save-admin-emails'
+  | 'save-social-links'
   | 'register-payment'
   | 'register-firebase'
   | 'test-authentication'
@@ -61,15 +71,18 @@ export class OperatorWorkspaceStore {
   private readonly configurationRef = signal<OperatorConfigurationDto | null>(null);
   private readonly configurationDraftRef =
     signal<OperatorConfigurationSaveRequestDto | null>(null);
+  private readonly configurationAdminEmailsInputRef = signal('');
   private readonly configurationAuthenticationTestRef =
     signal<OperatorConfigurationTestResultDto | null>(null);
   private readonly configurationMessagingTestRef =
     signal<OperatorConfigurationTestResultDto | null>(null);
+  private readonly configurationMessagingDestinationTokenRef = signal('');
   private readonly configurationAuthenticationFeedbackRef =
     signal<OperatorConfigurationTestFeedback>(null);
   private readonly configurationMessagingFeedbackRef =
     signal<OperatorConfigurationTestFeedback>(null);
   private readonly revenueRef = signal<OperatorRevenueDto | null>(null);
+  private readonly revenueSyncRef = signal<OperatorRevenueSyncDto | null>(null);
   private readonly communityRef = signal<OperatorCommunityStatusDto | null>(null);
   private readonly busyActionRef = signal<OperatorWorkspaceBusyAction>(null);
   private readonly errorRef = signal('');
@@ -90,15 +103,20 @@ export class OperatorWorkspaceStore {
   readonly deploymentUpdate = this.deploymentUpdateRef.asReadonly();
   readonly configuration = this.configurationRef.asReadonly();
   readonly configurationDraft = this.configurationDraftRef.asReadonly();
+  readonly configurationAdminEmailsInput =
+    this.configurationAdminEmailsInputRef.asReadonly();
   readonly configurationAuthenticationTest =
     this.configurationAuthenticationTestRef.asReadonly();
   readonly configurationMessagingTest =
     this.configurationMessagingTestRef.asReadonly();
+  readonly configurationMessagingDestinationToken =
+    this.configurationMessagingDestinationTokenRef.asReadonly();
   readonly configurationAuthenticationFeedback =
     this.configurationAuthenticationFeedbackRef.asReadonly();
   readonly configurationMessagingFeedback =
     this.configurationMessagingFeedbackRef.asReadonly();
   readonly revenue = this.revenueRef.asReadonly();
+  readonly revenueSync = this.revenueSyncRef.asReadonly();
   readonly community = this.communityRef.asReadonly();
   readonly busyAction = this.busyActionRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
@@ -146,6 +164,14 @@ export class OperatorWorkspaceStore {
       || draft.branding.logoCharacterIndex
         !== configuration.branding.logoCharacterIndex
       || draft.branding.themePreset !== configuration.branding.themePreset
+      || !OperatorConfigurationMapper.adminEmailsEqual(
+        draft.adminEmails,
+        configuration.adminEmails
+      )
+      || !OperatorConfigurationMapper.socialLinksEqual(
+        draft.socialLinks,
+        configuration.socialLinks
+      )
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
       || Boolean(draft.payment.credential.trim())
       || draft.firebase.projectId.trim() !== configuration.firebase.projectId
@@ -166,6 +192,22 @@ export class OperatorWorkspaceStore {
         && index < Array.from(draft.branding.productName.trim()).length
       );
   });
+  readonly configurationAdminEmailsValidationKey = computed(() =>
+    OperatorConfigurationMapper.adminEmailValidationKey(
+      this.configurationAdminEmailsInputRef()
+    )
+  );
+  readonly configurationAdminEmailsReady = computed(
+    () => this.configurationAdminEmailsValidationKey() === null
+  );
+  readonly configurationSocialLinksValidationKey = computed(() =>
+    OperatorConfigurationMapper.socialLinksValidationKey(
+      this.configurationDraftRef()?.socialLinks ?? []
+    )
+  );
+  readonly configurationSocialLinksReady = computed(
+    () => this.configurationSocialLinksValidationKey() === null
+  );
 
   constructor() {
     effect(() => {
@@ -309,7 +351,11 @@ export class OperatorWorkspaceStore {
     if (result) {
       this.configurationRef.set(result);
       this.configurationDraftRef.set(this.configurationDraftFrom(result));
+      this.configurationAdminEmailsInputRef.set(
+        OperatorConfigurationMapper.adminEmailInput(result.adminEmails)
+      );
       this.deploymentConfiguration.applyBranding(result.branding);
+      this.deploymentConfiguration.applySocialLinks(result.socialLinks);
     }
     return result;
   }
@@ -329,8 +375,66 @@ export class OperatorWorkspaceStore {
     return result;
   }
 
+  async synchronizeRevenue(): Promise<OperatorRevenueSyncDto | null> {
+    const result = await this.run(
+      'synchronize-revenue',
+      () => this.service.synchronizeRevenue()
+    );
+    if (result) {
+      this.revenueSyncRef.set(result);
+    }
+    return result;
+  }
+
+  revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    return this.service.revenueReportPage(query, signal);
+  }
+
+  async requeueRevenueReport(
+    reportId: string
+  ): Promise<OperatorRevenueReportDto | null> {
+    const result = await this.run(
+      'requeue-revenue-report',
+      () => this.service.requeueRevenueReport(reportId)
+    );
+    if (!result) {
+      return null;
+    }
+    if (result.status === 'PENDING') {
+      this.revenueSyncRef.update(current => {
+        if (!current) {
+          return current;
+        }
+        const blocked = Math.max(0, current.blocked - 1);
+        return {
+          ...current,
+          state: blocked > 0 ? 'BLOCKED' : 'PENDING',
+          code: blocked > 0
+            ? current.code
+            : 'REVENUE_DELIVERY_PENDING',
+          message: blocked > 0
+            ? current.message
+            : 'operator.revenue.delivery.requeued.pending',
+          pending: current.pending + 1,
+          blocked,
+          synchronizedAtIso: current.synchronizedAtIso
+        };
+      });
+    }
+    this.noticeRef.set('operator.revenue.delivery.requeued');
+    return result;
+  }
+
   async saveConfiguration(
-    action: 'save-branding' | 'register-payment' | 'register-firebase',
+    action:
+      | 'save-branding'
+      | 'save-admin-emails'
+      | 'save-social-links'
+      | 'register-payment'
+      | 'register-firebase',
     noticeKey = 'operator.configuration.saved'
   ): Promise<OperatorConfigurationDto | null> {
     const configuration = this.configurationRef();
@@ -346,17 +450,40 @@ export class OperatorWorkspaceStore {
       );
       return null;
     }
+    const adminEmailValidationKey =
+      this.configurationAdminEmailsValidationKey();
+    if (adminEmailValidationKey) {
+      this.feedbackActionRef.set(action);
+      this.errorRef.set(adminEmailValidationKey);
+      return null;
+    }
+    const socialLinkValidationKey =
+      this.configurationSocialLinksValidationKey();
+    if (socialLinkValidationKey) {
+      this.feedbackActionRef.set(action);
+      this.errorRef.set(socialLinkValidationKey);
+      return null;
+    }
     const result = await this.run(
       action,
-      () => this.service.saveConfiguration(structuredClone(draft))
+      () => this.service.saveConfiguration({
+        ...structuredClone(draft),
+        socialLinks: OperatorConfigurationMapper.socialLinks(
+          draft.socialLinks
+        )
+      })
     );
     if (result) {
       this.configurationRef.set(result);
       this.configurationDraftRef.set(this.configurationDraftFrom(result));
+      this.configurationAdminEmailsInputRef.set(
+        OperatorConfigurationMapper.adminEmailInput(result.adminEmails)
+      );
       this.configurationAuthenticationTestRef.set(null);
       this.configurationMessagingTestRef.set(null);
       this.clearConfigurationTestFeedback();
       this.deploymentConfiguration.applyBranding(result.branding);
+      this.deploymentConfiguration.applySocialLinks(result.socialLinks);
       this.noticeRef.set(noticeKey);
     }
     return result;
@@ -371,9 +498,26 @@ export class OperatorWorkspaceStore {
     } else {
       this.configurationMessagingTestRef.set(null);
     }
+    const destinationToken =
+      this.configurationMessagingDestinationTokenRef().trim();
+    if (kind === 'FIREBASE_MESSAGING' && !destinationToken) {
+      const failure: OperatorConfigurationTestResultDto = {
+        kind,
+        success: false,
+        message: 'operator.configuration.test.messaging.destination.required',
+        testedAt: new Date().toISOString()
+      };
+      this.feedbackActionRef.set('test-messaging');
+      this.configurationMessagingTestRef.set(failure);
+      this.showConfigurationTestFeedback(kind, 'error');
+      return null;
+    }
     const result = await this.run(
       kind === 'FIREBASE_AUTHENTICATION' ? 'test-authentication' : 'test-messaging',
-      () => this.service.testConfiguration({ kind })
+      () => this.service.testConfiguration({
+        kind,
+        ...(kind === 'FIREBASE_MESSAGING' ? { destinationToken } : {})
+      })
     );
     if (result) {
       if (kind === 'FIREBASE_AUTHENTICATION') {
@@ -433,7 +577,9 @@ export class OperatorWorkspaceStore {
     this.feedbackActionRef.set(null);
     this.configurationAuthenticationTestRef.set(null);
     this.configurationMessagingTestRef.set(null);
+    this.configurationMessagingDestinationTokenRef.set('');
     this.revenueRef.set(null);
+    this.revenueSyncRef.set(null);
     this.clearConfigurationTestFeedback();
   }
 
@@ -490,6 +636,79 @@ export class OperatorWorkspaceStore {
     );
   }
 
+  setConfigurationAdminEmailsInput(value: string): void {
+    const input = `${value ?? ''}`.slice(0, 8192);
+    this.configurationAdminEmailsInputRef.set(input);
+    this.configurationDraftRef.update(current => current
+      ? {
+          ...current,
+          adminEmails: OperatorConfigurationMapper.adminEmails(input)
+        }
+      : current
+    );
+  }
+
+  addConfigurationSocialLink(): void {
+    this.configurationDraftRef.update(current => {
+      if (
+        !current
+        || current.socialLinks.length
+          >= OperatorConfigurationMapper.SOCIAL_LINK_MAX_COUNT
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        socialLinks: [
+          ...current.socialLinks,
+          {
+            provider: '',
+            label: '',
+            url: '',
+            icon: null,
+            handle: null
+          }
+        ]
+      };
+    });
+  }
+
+  setConfigurationSocialLink(
+    index: number,
+    patch: Partial<OperatorConfigurationSaveRequestDto['socialLinks'][number]>
+  ): void {
+    this.configurationDraftRef.update(current => {
+      if (!current || index < 0 || index >= current.socialLinks.length) {
+        return current;
+      }
+      return {
+        ...current,
+        socialLinks: current.socialLinks.map((link, linkIndex) =>
+          linkIndex === index
+            ? {
+                ...link,
+                ...patch
+              }
+            : link
+        )
+      };
+    });
+  }
+
+  removeConfigurationSocialLink(index: number): void {
+    this.configurationDraftRef.update(current => {
+      if (!current || index < 0 || index >= current.socialLinks.length) {
+        return current;
+      }
+      return {
+        ...current,
+        socialLinks: current.socialLinks.filter(
+          (_link, linkIndex) => linkIndex !== index
+        )
+      };
+    });
+  }
+
   setConfigurationPayment(
     patch: Partial<OperatorConfigurationSaveRequestDto['payment']>
   ): void {
@@ -518,6 +737,14 @@ export class OperatorWorkspaceStore {
         }
       : current
     );
+  }
+
+  setConfigurationMessagingDestinationToken(value: string): void {
+    this.configurationMessagingDestinationTokenRef.set(
+      `${value ?? ''}`.slice(0, 4096)
+    );
+    this.configurationMessagingTestRef.set(null);
+    this.clearConfigurationTestFeedback('FIREBASE_MESSAGING');
   }
 
   private async run<T>(
@@ -553,8 +780,11 @@ export class OperatorWorkspaceStore {
     this.deploymentUpdateRef.set(null);
     this.configurationRef.set(null);
     this.configurationDraftRef.set(null);
+    this.configurationAdminEmailsInputRef.set('');
     this.configurationAuthenticationTestRef.set(null);
     this.configurationMessagingTestRef.set(null);
+    this.configurationMessagingDestinationTokenRef.set('');
+    this.revenueSyncRef.set(null);
     this.communityRef.set(null);
     this.busyActionRef.set(null);
     this.clearFeedback();
@@ -567,6 +797,9 @@ export class OperatorWorkspaceStore {
     if (session?.kind === 'firebase') {
       return `firebase:${session.profile.id.trim()}`;
     }
+    if (session?.kind === 'operator-bootstrap') {
+      return `operator-bootstrap:${session.email.trim()}`;
+    }
     return 'none';
   }
 
@@ -574,6 +807,12 @@ export class OperatorWorkspaceStore {
     configuration: OperatorConfigurationDto
   ): OperatorConfigurationSaveRequestDto {
     return {
+      adminEmails: OperatorConfigurationMapper.adminEmails(
+        configuration.adminEmails
+      ),
+      socialLinks: OperatorConfigurationMapper.socialLinks(
+        configuration.socialLinks
+      ),
       branding: {
         productName: configuration.branding.productName,
         logoUrl: configuration.branding.logoUrl,
@@ -634,7 +873,11 @@ export class OperatorWorkspaceStore {
   private seedClaimContact(): void {
     const profile = this.userProfileStore.activeUserProfile();
     const session = this.sessionService.currentSession();
-    if (!profile && session?.kind !== 'firebase') {
+    if (
+      !profile
+      && session?.kind !== 'firebase'
+      && session?.kind !== 'operator-bootstrap'
+    ) {
       return;
     }
     this.claimDraftRef.update(current => ({
@@ -645,7 +888,11 @@ export class OperatorWorkspaceStore {
         || (session?.kind === 'firebase' ? session.profile.name.trim() : ''),
       verificationContactEmail:
         current.verificationContactEmail
-        || (session?.kind === 'firebase' ? session.profile.email.trim() : '')
+        || (session?.kind === 'firebase'
+          ? session.profile.email.trim()
+          : session?.kind === 'operator-bootstrap'
+            ? session.email.trim()
+            : '')
     }));
   }
 

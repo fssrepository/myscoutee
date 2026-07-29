@@ -112,6 +112,30 @@ export class SeedOperatorRegistryBuilder {
         configuration: {
           capability: 'AVAILABLE',
           unavailableReason: null,
+          adminEmails: [],
+          socialLinks: [
+            {
+              provider: 'instagram',
+              label: 'Instagram',
+              url: 'https://www.instagram.com/myscoutee',
+              icon: 'photo_camera',
+              handle: '@myscoutee'
+            },
+            {
+              provider: 'youtube',
+              label: 'YouTube',
+              url: 'https://www.youtube.com/@myscoutee',
+              icon: 'smart_display',
+              handle: '@myscoutee'
+            },
+            {
+              provider: 'facebook',
+              label: 'Facebook',
+              url: 'https://www.facebook.com/myscoutee',
+              icon: 'public',
+              handle: 'MyScoutee'
+            }
+          ],
           branding: {
             productName: 'MyScoutee',
             homeLabel: 'Your preferences come first',

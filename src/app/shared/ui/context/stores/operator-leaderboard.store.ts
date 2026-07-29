@@ -183,6 +183,9 @@ export class OperatorLeaderboardStore {
     if (session?.kind === 'firebase') {
       return `firebase:${session.profile.id.trim()}`;
     }
+    if (session?.kind === 'operator-bootstrap') {
+      return `operator-bootstrap:${session.email.trim()}`;
+    }
     return 'none';
   }
 }

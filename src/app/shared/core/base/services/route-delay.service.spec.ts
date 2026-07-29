@@ -40,9 +40,18 @@ describe('RouteDelayService', () => {
     expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(0);
   });
 
-  it('uses configured demo delay in an existing local route mode', () => {
+  it('uses configured local delay regardless of the authentication provider', () => {
     environment.activitiesDataSource = 'local';
-    environment.firebaseLoginEnabled = false;
+    environment.firebaseLoginEnabled = true;
+    currentSession = {
+      kind: 'firebase',
+      profile: {
+        id: 'real-user',
+        name: 'Real User',
+        email: 'real@example.com',
+        initials: 'RU'
+      }
+    };
 
     const service = TestBed.inject(RouteDelayService);
 
