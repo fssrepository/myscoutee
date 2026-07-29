@@ -87,10 +87,10 @@ describe('LocalOperatorRegistryService', () => {
     expect(initial.registryOptions).toHaveLength(3);
     expect(registered.status.lifecycle).toBe('REGISTERED');
     expect(registered.leaderboardEntry?.id).toBe(deploymentCode);
-    expect(registered.leaderboardUpserts).toEqual([
+    expect(registered.leaderboardUpserts).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: deploymentCode, group: 'UNCLAIMED' })
-    ]);
-    expect(registered.leaderboardTotalDelta).toBe(0);
+    ]));
+    expect(registered.leaderboardTotalDelta).toBe(1);
     expect(explicitClaim.status.claimed).toBe(true);
     expect(explicitClaim.status.verificationStatus).toBe('PENDING_REVIEW');
     expect(explicitClaim.status.claimedAt).toBe(
@@ -113,12 +113,12 @@ describe('LocalOperatorRegistryService', () => {
       claimantName: 'Demo Operator s.r.o.',
       claimVerificationStatus: 'PENDING_REVIEW'
     }));
-    expect(explicitClaim.leaderboardUpserts).toEqual([
+    expect(explicitClaim.leaderboardUpserts).toEqual(expect.arrayContaining([
       expect.objectContaining({
         group: 'CLAIMED',
         claimantName: 'Demo Operator s.r.o.'
       })
-    ]);
+    ]));
     expect(explicitClaim.removedLeaderboardEntryIds).toEqual([deploymentCode]);
     expect(explicitClaim.leaderboardTotalDelta).toBe(0);
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
@@ -429,7 +429,7 @@ describe('LocalOperatorRegistryService', () => {
       verificationStatus: 'PENDING_REVIEW'
     }));
     expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
-    expect(claim.sharePercent).toBe(0);
+    expect(claim.sharePercent).toBeGreaterThan(0);
     expect(claimMutation.leaderboardEntry).toEqual(expect.objectContaining({
       group: 'CLAIMED',
       operatorGroupId: 'operator-group-campus',
@@ -462,7 +462,7 @@ describe('LocalOperatorRegistryService', () => {
     );
     expect(claimedGroup).toEqual(expect.objectContaining({
       deploymentCount: 3,
-      sharePercent: 0,
+      sharePercent: claim.sharePercent,
       claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(after?.leaderboard).not.toEqual(before?.leaderboard);

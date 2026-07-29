@@ -73,7 +73,7 @@ describe('OperatorRevenueViewComponent', () => {
     expect(
       host.querySelector<SVGSVGElement>('.operator-revenue__chart svg')
         ?.classList.contains('motion-static')
-    ).toBeTrue();
+    ).toBe(true);
     const linePoints = () => [...host.querySelectorAll<SVGPolylineElement>(
       '.operator-revenue__line'
     )].map(line => line.getAttribute('points'));

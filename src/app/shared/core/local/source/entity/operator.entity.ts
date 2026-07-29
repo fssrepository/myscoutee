@@ -62,6 +62,7 @@ export interface OperatorRegistryAuditEventRecord {
     | 'UPDATE'
     | 'CONFIGURATION_SAVE'
     | 'CONFIGURATION_TEST'
+    | 'CONFIGURATION_ACTIVATE'
     | 'COMMUNITY';
   at: string;
   nodeId: string | null;

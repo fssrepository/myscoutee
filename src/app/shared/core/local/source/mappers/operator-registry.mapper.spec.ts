@@ -1,4 +1,5 @@
 import type { OperatorLeaderboardEntryDto } from '../../../contracts/operator.interface';
+import { SeedOperatorRegistryBuilder } from '../../seed/builders/operator-registry-seed.builder';
 import { LocalOperatorRegistryMapper } from './operator-registry.mapper';
 
 describe('LocalOperatorRegistryMapper', () => {
@@ -112,5 +113,45 @@ describe('LocalOperatorRegistryMapper', () => {
       }));
     expect(recalculated.find(item => item.id === 'opg_active')?.sharePercent)
       .toBeGreaterThan(0);
+  });
+
+  it('migrates a legacy partially suspended group without inventing a deployment state', () => {
+    const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
+      new Date('2026-07-29T00:00:00.000Z')
+    );
+    const legacyEntry: OperatorLeaderboardEntryDto = {
+      id: 'legacy-partial-group',
+      nodeId: 'legacy-node',
+      label: 'Legacy operator',
+      group: 'CLAIMED',
+      verifiedWeight: 300,
+      eligibleWeight: 100,
+      sharePercent: 10,
+      claimed: true,
+      claimantUserId: 'legacy-user',
+      claimantName: 'Legacy operator',
+      claimantAvatarUrl: null,
+      operatorGroupId: 'legacy-group',
+      deploymentCount: 2,
+      claimVerificationStatus: 'APPROVED',
+      eligibilityStatus: 'PARTIALLY_SUSPENDED'
+    };
+    const migrated = LocalOperatorRegistryMapper.toSeedRecord(
+      {
+        registryRecord: {
+          ...structuredClone(initial),
+          ledger: [],
+          leaderboard: [legacyEntry]
+        }
+      },
+      initial
+    );
+
+    expect(migrated.ledger).toEqual([
+      expect.objectContaining({
+        id: 'legacy-partial-group',
+        eligibilityStatus: 'SUSPENDED'
+      })
+    ]);
   });
 });

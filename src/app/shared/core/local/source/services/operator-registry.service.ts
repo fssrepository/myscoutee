@@ -342,7 +342,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       || current.claimStatus.verificationStatus !== 'NOT_SUBMITTED';
     const previousOperatorGroupId =
       current.claimStatus.operatorGroupId?.trim() ?? '';
-    const ledger = current.ledger.map(item =>
+    const ledger: OperatorLedgerNodeRecord[] = current.ledger.map(item =>
       item.nodeId === activeNodeId
         ? {
             ...item,
@@ -500,7 +500,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const submittedAt = new Date().toISOString();
     const claimIdentity = current.claimIdentity;
     const operatorGroupId = claimIdentity.operatorGroupId;
-    const ledger = current.ledger.map(item =>
+    const ledger: OperatorLedgerNodeRecord[] = current.ledger.map(item =>
       item.nodeId === claimIdentity.nodeId
         ? {
             ...item,
@@ -635,7 +635,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const groupClaimant = current.ledger.find(
       item => item.nodeId && groupNodeIds.has(item.nodeId) && item.claimed
     );
-    const ledger = current.claimStatus.claimed
+    const ledger: OperatorLedgerNodeRecord[] = current.claimStatus.claimed
       ? current.ledger
       : current.ledger.map(item =>
           item.nodeId === current.claimIdentity.nodeId

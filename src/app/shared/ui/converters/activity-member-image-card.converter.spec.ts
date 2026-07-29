@@ -20,7 +20,7 @@ function pendingInvitation(): ActivityMemberDTO {
     userId: 'user-1',
     name: 'Lucas Lane',
     initials: 'LL',
-    gender: 'male',
+    gender: 'man',
     city: 'Seattle',
     statusText: 'Waiting for admin approval.',
     role: 'Member',

@@ -27,9 +27,9 @@ describe('FirebaseAppService reconciliation', () => {
     vi.mocked(getApps).mockReset();
     vi.mocked(getApps).mockReturnValue([]);
     vi.mocked(initializeApp).mockReset();
-    vi.mocked(initializeApp).mockImplementation((options, name) => ({
-      name: `${name}`,
-      options,
+    vi.mocked(initializeApp).mockImplementation(() => ({
+      name: 'myscoutee-deployment-runtime',
+      options: {},
       automaticDataCollectionEnabled: false
     }) as FirebaseApp);
     fetchMock.mockReset();
@@ -60,17 +60,12 @@ describe('FirebaseAppService reconciliation', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(firstConfiguration));
     const service = TestBed.inject(FirebaseAppService);
     const firstRuntime = await service.ensureFirebaseRuntime();
-    let resolveRefresh:
-      ((response: Response) => void) | null = null;
-    fetchMock.mockImplementationOnce(() =>
-      new Promise<Response>(resolve => {
-        resolveRefresh = resolve;
-      })
-    );
+    const refreshResponse = deferred<Response>();
+    fetchMock.mockReturnValueOnce(refreshResponse.promise);
 
     const refresh = service.refreshFirebaseApp();
     const ensureDuringRefresh = service.ensureFirebaseRuntime();
-    resolveRefresh?.(jsonResponse(secondConfiguration));
+    refreshResponse.resolve(jsonResponse(secondConfiguration));
     const [refreshedApp, ensuredRuntime] = await Promise.all([
       refresh,
       ensureDuringRefresh
@@ -133,4 +128,15 @@ function jsonResponse(value: unknown): Response {
       'Content-Type': 'application/json'
     }
   });
+}
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+} {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>(next => {
+    resolve = next;
+  });
+  return { promise, resolve };
 }

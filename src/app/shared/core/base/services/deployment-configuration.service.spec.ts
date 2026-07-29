@@ -8,13 +8,40 @@ import { SessionService } from './session.service';
 
 describe('DeploymentConfigurationService', () => {
   const loadLocalBranding = vi.fn();
+  const createObjectUrl = vi.fn<(value: Blob) => string>();
+  const revokeObjectUrl = vi.fn<(value: string) => void>();
   const metadataFixtures: Element[] = [];
   let initialDocumentTitle = '';
   let initialDeploymentTheme: string | undefined;
+  let originalCreateObjectUrl: PropertyDescriptor | undefined;
+  let originalRevokeObjectUrl: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     loadLocalBranding.mockReset();
+    createObjectUrl.mockReset();
+    revokeObjectUrl.mockReset();
+    createObjectUrl
+      .mockReturnValueOnce('blob:deployment-manifest-1')
+      .mockReturnValueOnce('blob:deployment-manifest-2');
     const documentRef = document;
+    originalCreateObjectUrl = Object.getOwnPropertyDescriptor(
+      documentRef.defaultView!.URL,
+      'createObjectURL'
+    );
+    originalRevokeObjectUrl = Object.getOwnPropertyDescriptor(
+      documentRef.defaultView!.URL,
+      'revokeObjectURL'
+    );
+    Object.defineProperty(
+      documentRef.defaultView!.URL,
+      'createObjectURL',
+      { configurable: true, value: createObjectUrl }
+    );
+    Object.defineProperty(
+      documentRef.defaultView!.URL,
+      'revokeObjectURL',
+      { configurable: true, value: revokeObjectUrl }
+    );
     initialDocumentTitle = documentRef.title;
     initialDeploymentTheme =
       documentRef.documentElement.dataset['deploymentTheme'];
@@ -30,6 +57,10 @@ describe('DeploymentConfigurationService', () => {
     addHeadFixture('link', { rel: 'icon' });
     addHeadFixture('link', { rel: 'apple-touch-icon' });
     addHeadFixture('link', { rel: 'canonical' });
+    addHeadFixture('link', {
+      rel: 'manifest',
+      href: 'manifest.webmanifest'
+    });
     TestBed.configureTestingModule({
       providers: [
         DeploymentConfigurationService,
@@ -55,6 +86,7 @@ describe('DeploymentConfigurationService', () => {
   });
 
   afterEach(() => {
+    TestBed.resetTestingModule();
     metadataFixtures.splice(0).forEach(element => element.remove());
     document.title = initialDocumentTitle;
     if (initialDeploymentTheme === undefined) {
@@ -63,7 +95,8 @@ describe('DeploymentConfigurationService', () => {
       document.documentElement.dataset['deploymentTheme'] =
         initialDeploymentTheme;
     }
-    TestBed.resetTestingModule();
+    restoreUrlMethod('createObjectURL', originalCreateObjectUrl);
+    restoreUrlMethod('revokeObjectURL', originalRevokeObjectUrl);
   });
 
   it('loads one central branding value and applies runtime document branding', async () => {
@@ -136,7 +169,48 @@ describe('DeploymentConfigurationService', () => {
       .toBe('https://cdn.example.test/community-hub.webp');
     expect(linkHref('link[rel="canonical"]'))
       .toBe(new URL('/', document.baseURI).toString());
+    expect(linkHref('link[rel="manifest"]'))
+      .toBe('blob:deployment-manifest-1');
+    expect(createObjectUrl).toHaveBeenCalledTimes(1);
+    const manifest = JSON.parse(
+      await readBlob(createObjectUrl.mock.calls[0][0])
+    ) as Record<string, unknown>;
+    expect(manifest).toMatchObject({
+      name: 'Community Hub',
+      short_name: 'Community Hub',
+      description: 'Meet locally',
+      display: 'standalone',
+      icons: [
+        {
+          src: 'https://cdn.example.test/community-hub.webp',
+          sizes: '192x192',
+          type: 'image/webp'
+        },
+        {
+          src: 'https://cdn.example.test/community-hub.webp',
+          sizes: '512x512',
+          type: 'image/webp'
+        }
+      ]
+    });
     expect(loadLocalBranding).toHaveBeenCalledTimes(1);
+
+    service.applyBranding({
+      ...branding,
+      productName: 'Community Hub Next',
+      homeLabel: 'Meet nearby',
+      revision: 5
+    });
+
+    expect(linkHref('link[rel="manifest"]'))
+      .toBe('blob:deployment-manifest-2');
+    expect(revokeObjectUrl)
+      .toHaveBeenCalledWith('blob:deployment-manifest-1');
+
+    service.ngOnDestroy();
+
+    expect(revokeObjectUrl)
+      .toHaveBeenCalledWith('blob:deployment-manifest-2');
   });
 
   it('rejects an invalid persisted logo character index instead of repairing it', async () => {
@@ -181,5 +255,34 @@ describe('DeploymentConfigurationService', () => {
   function linkHref(selector: string): string | null {
     return document.querySelector<HTMLLinkElement>(selector)
       ?.getAttribute('href') ?? null;
+  }
+
+  function restoreUrlMethod(
+    name: 'createObjectURL' | 'revokeObjectURL',
+    descriptor: PropertyDescriptor | undefined
+  ): void {
+    const urlApi = document.defaultView!.URL;
+    if (descriptor) {
+      Object.defineProperty(urlApi, name, descriptor);
+    } else {
+      delete (urlApi as unknown as Record<string, unknown>)[name];
+    }
+  }
+
+  function readBlob(blob: Blob): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener(
+        'load',
+        () => resolve(`${reader.result ?? ''}`),
+        { once: true }
+      );
+      reader.addEventListener(
+        'error',
+        () => reject(reader.error),
+        { once: true }
+      );
+      reader.readAsText(blob);
+    });
   }
 });

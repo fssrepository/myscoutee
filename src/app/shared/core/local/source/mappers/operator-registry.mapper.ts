@@ -5,6 +5,7 @@ import type {
   OperatorClaimStatusDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
+  OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
   OperatorLeaderboardDeploymentClaimState,
   OperatorLeaderboardDeploymentDto,
@@ -700,6 +701,9 @@ export class LocalOperatorRegistryMapper {
     fallback: readonly OperatorLedgerNodeRecord[]
   ): OperatorLedgerNodeRecord[] {
     const measuredAt = fallback[0]?.measuredAt ?? new Date(0).toISOString();
+    const fallbackEligibilityById = new Map(
+      fallback.map(entry => [entry.id, entry.eligibilityStatus])
+    );
     return leaderboard.map(entry => ({
       id: entry.id,
       nodeId: entry.nodeId,
@@ -708,12 +712,14 @@ export class LocalOperatorRegistryMapper {
       founder: entry.group === 'FOUNDER',
       verifiedWeight: entry.verifiedWeight,
       claimed: entry.claimed,
-      eligibilityStatus: entry.eligibilityStatus
-        ?? (entry.group === 'FOUNDER'
-          ? 'ACTIVE'
-          : entry.group === 'UNCLAIMED'
-            ? 'INACTIVE'
-            : 'INACTIVE'),
+      eligibilityStatus: entry.group === 'FOUNDER'
+        ? 'ACTIVE'
+        : entry.group === 'UNCLAIMED' || !entry.claimed
+          ? 'INACTIVE'
+          : this.deploymentEligibilityStatus(
+            entry.eligibilityStatus,
+            fallbackEligibilityById.get(entry.id)
+          ),
       claimantUserId: entry.claimantUserId ?? null,
       claimantName: entry.claimantName ?? null,
       claimantAvatarUrl: entry.claimantAvatarUrl ?? null,
@@ -757,6 +763,27 @@ export class LocalOperatorRegistryMapper {
         return entry.eligibilityStatus;
       default:
         return 'INACTIVE';
+    }
+  }
+
+  private static deploymentEligibilityStatus(
+    value: OperatorLeaderboardEntryDto['eligibilityStatus'] | null | undefined,
+    fallback: OperatorDeploymentEligibilityStatus | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (value) {
+      case 'ACTIVE':
+      case 'SUSPENDED':
+      case 'INACTIVE':
+        return value;
+      case 'PARTIALLY_SUSPENDED':
+        /*
+         * PARTIALLY_SUSPENDED is a group aggregate, never a deployment
+         * state. Preserve an available per-deployment fallback; otherwise
+         * migrate conservatively without granting eligible weight.
+         */
+        return fallback ?? 'SUSPENDED';
+      default:
+        return fallback ?? 'INACTIVE';
     }
   }
 

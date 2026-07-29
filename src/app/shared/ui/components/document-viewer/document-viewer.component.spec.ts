@@ -13,6 +13,7 @@ import { DocumentViewerComponent } from './document-viewer.component';
 import type { DocumentViewerConfig } from './document-viewer.types';
 
 describe('DocumentViewerComponent deployment privacy tokens', () => {
+  const branding = signal({ ...DEFAULT_DEPLOYMENT_BRANDING });
   const privacyContact = signal<DeploymentPrivacyContactDto>(
     unconfiguredPrivacyContact()
   );
@@ -24,10 +25,13 @@ describe('DocumentViewerComponent deployment privacy tokens', () => {
       'No privacy contact has been published.',
     'deployment.privacy.deletion.email.prefix':
       'You can also send a deletion request to',
-    'deployment.privacy.deletion.email.suffix': '.'
+    'deployment.privacy.deletion.email.suffix': '.',
+    'document.terms.description':
+      'Review the terms that apply when you use {productName}.'
   };
 
   beforeEach(() => {
+    branding.set({ ...DEFAULT_DEPLOYMENT_BRANDING });
     privacyContact.set(unconfiguredPrivacyContact());
     i18nRevision.set(0);
     TestBed.configureTestingModule({
@@ -36,7 +40,7 @@ describe('DocumentViewerComponent deployment privacy tokens', () => {
         {
           provide: DeploymentConfigurationService,
           useValue: {
-            branding: signal(DEFAULT_DEPLOYMENT_BRANDING).asReadonly(),
+            branding: branding.asReadonly(),
             privacyContact: privacyContact.asReadonly()
           }
         },
@@ -44,7 +48,11 @@ describe('DocumentViewerComponent deployment privacy tokens', () => {
           provide: I18nService,
           useValue: {
             revision: i18nRevision.asReadonly(),
-            translate: (key: string) => translations[key] ?? key
+            translate: (key: string) => translations[key] ?? key,
+            translateParams: (
+              key: string,
+              values: Readonly<Record<string, string | number>>
+            ) => interpolate(translations[key] ?? key, values)
           }
         },
         {
@@ -111,6 +119,28 @@ describe('DocumentViewerComponent deployment privacy tokens', () => {
     expect(rendered.innerHTML).not.toContain('{{');
   });
 
+  it('interpolates deployment branding in an i18n-backed description', () => {
+    branding.set({
+      ...DEFAULT_DEPLOYMENT_BRANDING,
+      productName: 'Community Hub',
+      revision: 3
+    });
+    const fixture = TestBed.createComponent(DocumentViewerComponent);
+    fixture.componentRef.setInput('config', {
+      ...viewerConfig('<p>Terms</p>'),
+      title: 'Usage terms',
+      description: 'document.terms.description'
+    });
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement
+        .querySelector('.document-viewer-title-wrap p')
+        ?.textContent
+        ?.trim()
+    ).toBe('Review the terms that apply when you use Community Hub.');
+  });
+
   function createViewer(contentHtml: string) {
     const fixture = TestBed.createComponent(DocumentViewerComponent);
     fixture.componentRef.setInput('config', viewerConfig(contentHtml));
@@ -147,4 +177,14 @@ function unconfiguredPrivacyContact(): DeploymentPrivacyContactDto {
     dataControllerName: '',
     privacyContactEmail: ''
   };
+}
+
+function interpolate(
+  value: string,
+  values: Readonly<Record<string, string | number>>
+): string {
+  return Object.entries(values).reduce(
+    (result, [key, item]) => result.replaceAll(`{${key}}`, `${item}`),
+    value
+  );
 }

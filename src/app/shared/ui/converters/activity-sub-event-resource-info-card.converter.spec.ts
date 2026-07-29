@@ -64,6 +64,7 @@ function resourceCard(): AppDTOs.SubEventResourceCardDTO {
     city: 'Seattle',
     details: '',
     imageUrl: '',
+    sourceLink: '',
     routes: [],
     capacityTotal: 4,
     accepted: 1,

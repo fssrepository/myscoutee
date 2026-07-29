@@ -19,7 +19,7 @@ describe('GlobalIdentityMapper', () => {
     });
 
     expect(status.state).toBe('UNLINK');
-    expect(status.linked).toBeTrue();
+    expect(status.linked).toBe(true);
     expect(status.keyVersion).toBe(3);
   });
 
@@ -32,7 +32,7 @@ describe('GlobalIdentityMapper', () => {
     });
 
     expect(status.state).toBe('UNAVAILABLE');
-    expect(status.linked).toBeFalse();
+    expect(status.linked).toBe(false);
     expect(status.keyVersion).toBeNull();
     expect(status.verifiedAt).toBeNull();
   });

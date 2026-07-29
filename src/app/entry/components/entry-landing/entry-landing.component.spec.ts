@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { PageResult, SmartListConfig, SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
@@ -12,6 +13,14 @@ import { EntryLandingComponent } from './entry-landing.component';
 
 describe('EntryLandingComponent article lists', () => {
   const loadPublishedIdeaCardsPage = vi.fn();
+  const branding = signal({ ...DEFAULT_DEPLOYMENT_BRANDING });
+  const i18nRevision = signal(0);
+  const translations: Readonly<Record<string, string>> = {
+    'landing.articles.title': '{productName} articles',
+    'landing.articles.count.one': '{count} article',
+    'landing.articles.count.many': '{count} articles',
+    'close.articles': 'Close articles'
+  };
   const socialLinks = signal([
     {
       provider: 'community',
@@ -24,6 +33,8 @@ describe('EntryLandingComponent article lists', () => {
 
   beforeEach(() => {
     loadPublishedIdeaCardsPage.mockReset();
+    branding.set({ ...DEFAULT_DEPLOYMENT_BRANDING });
+    i18nRevision.set(0);
     TestBed.configureTestingModule({
       imports: [EntryLandingComponent],
       providers: [
@@ -34,8 +45,24 @@ describe('EntryLandingComponent article lists', () => {
         {
           provide: DeploymentConfigurationService,
           useValue: {
-            branding: signal(DEFAULT_DEPLOYMENT_BRANDING),
+            branding,
             socialLinks
+          }
+        },
+        {
+          provide: I18nService,
+          useValue: {
+            revision: i18nRevision.asReadonly(),
+            translate: (key: string, fallback?: string) =>
+              translations[key] ?? fallback ?? key,
+            translateParams: (
+              key: string,
+              values: Readonly<Record<string, string | number>>,
+              fallback?: string
+            ) => interpolate(
+              translations[key] ?? fallback ?? key,
+              values
+            )
           }
         }
       ]
@@ -100,6 +127,24 @@ describe('EntryLandingComponent article lists', () => {
     view(component).openIdeasPopup();
     expect(view(component).ideasPopupOpen).toBe(true);
     expect(view(component).ideasPopupModel().subtitle).toBe('4 articles');
+  });
+
+  it('uses deployment branding and singular count in the article popup', () => {
+    branding.set({
+      ...DEFAULT_DEPLOYMENT_BRANDING,
+      productName: 'Community Hub',
+      revision: 7
+    });
+    const component =
+      TestBed.createComponent(EntryLandingComponent).componentInstance;
+    component.ideaCount = 1;
+
+    view(component).openIdeasPopup();
+
+    expect(view(component).ideasPopupModel()).toMatchObject({
+      title: 'Community Hub articles',
+      subtitle: '1 article'
+    });
   });
 
   it('opens a concise partner role overview and keeps the two economics separate', () => {
@@ -206,7 +251,7 @@ interface EntryLandingTestView {
   openIdeasPopup: () => void;
   ideasPopupOpen: boolean;
   partnersPopupOpen: boolean;
-  ideasPopupModel: () => { subtitle?: string };
+  ideasPopupModel: () => { title?: string; subtitle?: string };
 }
 
 function view(component: EntryLandingComponent): EntryLandingTestView {
@@ -228,4 +273,14 @@ function card(id: string, featured: boolean): InfoCardData<IdeaArticleDetailDto>
       featured
     }
   };
+}
+
+function interpolate(
+  value: string,
+  values: Readonly<Record<string, string | number>>
+): string {
+  return Object.entries(values).reduce(
+    (result, [key, item]) => result.replaceAll(`{${key}}`, `${item}`),
+    value
+  );
 }
