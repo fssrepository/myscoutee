@@ -163,6 +163,7 @@ type NavigatorAdminMenuShortcutId =
 type NavigatorSettingsMenuItemId =
   | 'help'
   | 'feedback'
+  | 'global-identity'
   | 'report-bugs'
   | 'privacy'
   | 'terms'
@@ -481,12 +482,22 @@ export class SideMenuComponent implements OnDestroy {
         ariaLabel: 'Open help'
       });
     if (!this.isPrivilegedWorkspaceMode()) {
-      items.push({
-        id: 'feedback',
-        label: 'Send Feedback',
-        icon: 'feedback',
-        ariaLabel: 'Send feedback'
-      });
+      items.push(
+        {
+          id: 'feedback',
+          label: 'Send Feedback',
+          icon: 'feedback',
+          ariaLabel: 'Send feedback'
+        },
+        {
+          id: 'global-identity',
+          label: 'global.identity.menu',
+          description: 'global.identity.menu.description',
+          icon: 'fingerprint',
+          palette: 'blue',
+          ariaLabel: 'global.identity.menu.open'
+        }
+      );
     }
     items.push(
       {
@@ -1303,6 +1314,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'help':
       case 'feedback':
+      case 'global-identity':
       case 'privacy':
       case 'terms':
         this.openSettingsPopup(event.id);

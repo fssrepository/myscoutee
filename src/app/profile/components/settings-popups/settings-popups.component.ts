@@ -41,6 +41,9 @@ import {
 import {
   ProfileReportUserPopupComponent
 } from '../report-user-popup/report-user-popup.component';
+import {
+  ProfileGlobalIdentityPopupComponent
+} from '../global-identity-popup/global-identity-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 @Component({
@@ -50,6 +53,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
     DocumentViewerComponent,
     PopupComponent,
     ProfileFeedbackPopupComponent,
+    ProfileGlobalIdentityPopupComponent,
     ProfileReportUserPopupComponent
   ],
   templateUrl: './settings-popups.component.html',
@@ -97,6 +101,8 @@ export class ProfileSettingsPopupsComponent {
         return 'Send Feedback';
       case 'report-user':
         return 'Report User';
+      case 'global-identity':
+        return 'global.identity.title';
       default:
         return '';
     }
@@ -104,19 +110,26 @@ export class ProfileSettingsPopupsComponent {
 
   protected settingsPopupModel(popup: ProfileSettingsPopup): PopupModel {
     const title = this.popupTitle(popup);
+    const subtitle = popup === 'feedback'
+      ? 'Tell us what works well or what should be improved. Product feedback is triaged by category.'
+      : popup === 'report-user'
+        ? 'Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.'
+        : popup === 'global-identity'
+          ? 'global.identity.subtitle'
+          : null;
     return {
       title,
-      subtitle: popup === 'feedback'
-        ? 'Tell us what works well or what should be improved. Product feedback is triaged by category.'
-        : popup === 'report-user'
-          ? 'Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.'
-          : null,
+      subtitle,
       ariaLabel: title,
       closeAriaLabel: 'Close',
       size: 'wide',
       height: 'auto',
       headerTone: 'accent',
-      bodyLayout: popup === 'feedback' || popup === 'report-user' ? 'overflow' : 'default',
+      bodyLayout: popup === 'feedback'
+        || popup === 'report-user'
+        || popup === 'global-identity'
+        ? 'overflow'
+        : 'default',
       onClose: () => this.closePopup()
     };
   }

@@ -42,7 +42,7 @@ export class GlobalIdentityMapper {
     return {
       state: 'UNAVAILABLE',
       linked: false,
-      consentVersion: 'global-identity-consent-v1',
+      consentVersion: 'global-dedup-consent-v1',
       keyVersion: null,
       suite: 'P256-SHA256',
       activeFromPeriod: null,

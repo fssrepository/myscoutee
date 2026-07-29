@@ -3,7 +3,13 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
 
-export type ProfileSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
+export type ProfileSettingsPopup =
+  | 'help'
+  | 'feedback'
+  | 'global-identity'
+  | 'privacy'
+  | 'terms'
+  | 'report-user';
 
 export interface ProfileReportUserContext {
   targetUserId: string;
