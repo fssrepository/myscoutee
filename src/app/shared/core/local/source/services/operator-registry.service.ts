@@ -820,6 +820,16 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const adminEmails = OperatorConfigurationMapper.adminEmails(
       request.adminEmails
     );
+    const privacyContactValidationKey =
+      OperatorConfigurationMapper.privacyContactValidationKey(
+        request.privacyContact
+      );
+    if (privacyContactValidationKey) {
+      throw new Error(privacyContactValidationKey);
+    }
+    const privacyContact = OperatorConfigurationMapper.privacyContact(
+      request.privacyContact
+    );
     const socialLinkValidationKey =
       OperatorConfigurationMapper.socialLinksValidationKey(request.socialLinks);
     if (socialLinkValidationKey) {
@@ -908,6 +918,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       capability: 'AVAILABLE',
       unavailableReason: null,
       adminEmails,
+      privacyContact,
       socialLinks,
       branding: {
         productName,
@@ -994,7 +1005,6 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       && firebase.publicConfiguration.apiKey.trim()
       && firebase.publicConfiguration.authDomain.trim()
       && firebase.publicConfiguration.projectId.trim()
-      && firebase.publicConfiguration.storageBucket.trim()
       && firebase.publicConfiguration.messagingSenderId.trim()
       && firebase.publicConfiguration.appId.trim()
       && firebase.publicConfiguration.vapidKey?.trim()

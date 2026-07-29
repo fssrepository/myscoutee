@@ -4,10 +4,12 @@ import { Injectable, inject, signal } from '@angular/core';
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
   DEFAULT_DEPLOYMENT_CONFIGURATION,
+  DEFAULT_DEPLOYMENT_PRIVACY_CONTACT,
   DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
   DEPLOYMENT_THEME_PRESETS,
   type DeploymentBrandingDto,
   type DeploymentConfigurationDto,
+  type DeploymentPrivacyContactDto,
   type DeploymentConfigurationServiceContract,
   type DeploymentSocialLinkDto,
   type DeploymentThemePreset
@@ -32,11 +34,15 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
   private readonly socialLinksRef = signal<readonly DeploymentSocialLinkDto[]>(
     structuredClone(DEFAULT_DEPLOYMENT_SOCIAL_LINKS)
   );
+  private readonly privacyContactRef = signal<DeploymentPrivacyContactDto>(
+    structuredClone(DEFAULT_DEPLOYMENT_PRIVACY_CONTACT)
+  );
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
 
   readonly branding = this.brandingRef.asReadonly();
   readonly socialLinks = this.socialLinksRef.asReadonly();
+  readonly privacyContact = this.privacyContactRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
 
   initialize(): Promise<DeploymentBrandingDto> {
@@ -63,6 +69,15 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
     return structuredClone(socialLinks);
   }
 
+  applyPrivacyContact(
+    value: DeploymentPrivacyContactDto
+  ): DeploymentPrivacyContactDto {
+    const privacyContact =
+      OperatorConfigurationMapper.privacyContact(value);
+    this.privacyContactRef.set(privacyContact);
+    return structuredClone(privacyContact);
+  }
+
   private async load(): Promise<DeploymentBrandingDto> {
     if (!this.loadPromise) {
       this.loadingRef.set(true);
@@ -81,6 +96,7 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
     value: DeploymentConfigurationDto
   ): DeploymentBrandingDto {
     this.applySocialLinks(value.socialLinks);
+    this.applyPrivacyContact(value.privacyContact);
     return this.applyBranding(value);
   }
 

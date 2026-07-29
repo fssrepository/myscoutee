@@ -47,6 +47,7 @@ export type OperatorWorkspaceBusyAction =
   | 'requeue-revenue-report'
   | 'save-branding'
   | 'save-admin-emails'
+  | 'save-privacy-contact'
   | 'save-social-links'
   | 'register-payment'
   | 'register-firebase'
@@ -203,6 +204,10 @@ export class OperatorWorkspaceStore {
         draft.adminEmails,
         configuration.adminEmails
       )
+      || draft.privacyContact.dataControllerName.trim()
+        !== configuration.privacyContact.dataControllerName
+      || draft.privacyContact.privacyContactEmail.trim().toLowerCase()
+        !== configuration.privacyContact.privacyContactEmail
       || !OperatorConfigurationMapper.socialLinksEqual(
         draft.socialLinks,
         configuration.socialLinks
@@ -232,6 +237,14 @@ export class OperatorWorkspaceStore {
   );
   readonly configurationAdminEmailsReady = computed(
     () => this.configurationAdminEmailsValidationKey() === null
+  );
+  readonly configurationPrivacyContactValidationKey = computed(() =>
+    OperatorConfigurationMapper.privacyContactValidationKey(
+      this.configurationDraftRef()?.privacyContact
+    )
+  );
+  readonly configurationPrivacyContactReady = computed(
+    () => this.configurationPrivacyContactValidationKey() === null
   );
   readonly configurationSocialLinksValidationKey = computed(() =>
     OperatorConfigurationMapper.socialLinksValidationKey(
@@ -420,6 +433,7 @@ export class OperatorWorkspaceStore {
       );
       this.deploymentConfiguration.applyBranding(result.branding);
       this.deploymentConfiguration.applySocialLinks(result.socialLinks);
+      this.deploymentConfiguration.applyPrivacyContact(result.privacyContact);
     }
     return result;
   }
@@ -496,6 +510,7 @@ export class OperatorWorkspaceStore {
     action:
       | 'save-branding'
       | 'save-admin-emails'
+      | 'save-privacy-contact'
       | 'save-social-links'
       | 'register-payment'
       | 'register-firebase',
@@ -529,6 +544,13 @@ export class OperatorWorkspaceStore {
       this.errorRef.set(socialLinkValidationKey);
       return null;
     }
+    const privacyContactValidationKey =
+      this.configurationPrivacyContactValidationKey();
+    if (privacyContactValidationKey) {
+      this.feedbackActionRef.set(action);
+      this.errorRef.set(privacyContactValidationKey);
+      return null;
+    }
     const result = await this.run(
       action,
       () => this.service.saveConfiguration({
@@ -549,6 +571,7 @@ export class OperatorWorkspaceStore {
       this.clearConfigurationTestFeedback();
       this.deploymentConfiguration.applyBranding(result.branding);
       this.deploymentConfiguration.applySocialLinks(result.socialLinks);
+      this.deploymentConfiguration.applyPrivacyContact(result.privacyContact);
       if (firebaseChanged) {
         await this.firebaseAppService.refreshFirebaseApp();
       }
@@ -795,6 +818,21 @@ export class OperatorWorkspaceStore {
     );
   }
 
+  setConfigurationPrivacyContact(
+    patch: Partial<OperatorConfigurationSaveRequestDto['privacyContact']>
+  ): void {
+    this.configurationDraftRef.update(current => current
+      ? {
+          ...current,
+          privacyContact: {
+            ...current.privacyContact,
+            ...patch
+          }
+        }
+      : current
+    );
+  }
+
   addConfigurationSocialLink(): void {
     this.configurationDraftRef.update(current => {
       if (
@@ -968,6 +1006,12 @@ export class OperatorWorkspaceStore {
       adminEmails: OperatorConfigurationMapper.adminEmails(
         configuration.adminEmails
       ),
+      privacyContact: {
+        dataControllerName:
+          configuration.privacyContact.dataControllerName,
+        privacyContactEmail:
+          configuration.privacyContact.privacyContactEmail
+      },
       socialLinks: OperatorConfigurationMapper.socialLinks(
         configuration.socialLinks
       ),

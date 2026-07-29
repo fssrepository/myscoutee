@@ -21,6 +21,12 @@ export interface DeploymentSocialLinkDto {
   handle: string | null;
 }
 
+export interface DeploymentPrivacyContactDto {
+  configured: boolean;
+  dataControllerName: string;
+  privacyContactEmail: string;
+}
+
 export interface DeploymentBrandingDto {
   productName: string;
   homeLabel: string;
@@ -42,14 +48,23 @@ export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
 export const DEFAULT_DEPLOYMENT_SOCIAL_LINKS:
 Readonly<readonly DeploymentSocialLinkDto[]> = [];
 
+export const DEFAULT_DEPLOYMENT_PRIVACY_CONTACT:
+Readonly<DeploymentPrivacyContactDto> = {
+  configured: false,
+  dataControllerName: '',
+  privacyContactEmail: ''
+};
+
 export interface DeploymentConfigurationDto extends DeploymentBrandingDto {
   socialLinks: readonly DeploymentSocialLinkDto[];
+  privacyContact: DeploymentPrivacyContactDto;
 }
 
 export const DEFAULT_DEPLOYMENT_CONFIGURATION:
 Readonly<DeploymentConfigurationDto> = {
   ...DEFAULT_DEPLOYMENT_BRANDING,
-  socialLinks: DEFAULT_DEPLOYMENT_SOCIAL_LINKS
+  socialLinks: DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
+  privacyContact: DEFAULT_DEPLOYMENT_PRIVACY_CONTACT
 };
 
 export const DEPLOYMENT_LOGO_PRESETS = [

@@ -233,6 +233,9 @@ export class LocalOperatorRegistryMapper {
       adminEmails: OperatorConfigurationMapper.adminEmails(
         legacy.adminEmails ?? initial.adminEmails
       ),
+      privacyContact: OperatorConfigurationMapper.privacyContact(
+        legacy.privacyContact ?? initial.privacyContact
+      ),
       socialLinks: OperatorConfigurationMapper.socialLinks(
         legacy.socialLinks ?? initial.socialLinks
       ),

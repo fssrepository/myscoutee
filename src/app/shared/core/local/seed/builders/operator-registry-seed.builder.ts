@@ -113,6 +113,11 @@ export class SeedOperatorRegistryBuilder {
           capability: 'AVAILABLE',
           unavailableReason: null,
           adminEmails: [],
+          privacyContact: {
+            configured: true,
+            dataControllerName: 'MyScoutee Explore Operator',
+            privacyContactEmail: 'privacy@explore.myscoutee.test'
+          },
           socialLinks: [
             {
               provider: 'instagram',

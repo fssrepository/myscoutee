@@ -1,6 +1,7 @@
 import type { ListQuery, PageResult } from './list.interface';
 import type {
   DeploymentBrandingDto,
+  DeploymentPrivacyContactDto,
   DeploymentSocialLinkDto,
   DeploymentThemePreset
 } from './deployment-configuration.interface';
@@ -397,6 +398,7 @@ export interface OperatorConfigurationDto {
   capability: OperatorConfigurationCapability;
   unavailableReason: string | null;
   adminEmails: readonly string[];
+  privacyContact: DeploymentPrivacyContactDto;
   socialLinks: readonly DeploymentSocialLinkDto[];
   branding: DeploymentBrandingDto;
   payment: OperatorPaymentConfigurationDto;
@@ -406,6 +408,10 @@ export interface OperatorConfigurationDto {
 
 export interface OperatorConfigurationSaveRequestDto {
   adminEmails: readonly string[];
+  privacyContact: {
+    dataControllerName: string;
+    privacyContactEmail: string;
+  };
   socialLinks: readonly DeploymentSocialLinkDto[];
   branding: {
     productName: string;

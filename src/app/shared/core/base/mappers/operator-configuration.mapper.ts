@@ -1,4 +1,5 @@
 import type {
+  DeploymentPrivacyContactDto,
   DeploymentSocialLinkDto
 } from '../../contracts/deployment-configuration.interface';
 
@@ -6,6 +7,53 @@ export class OperatorConfigurationMapper {
   static readonly ADMIN_EMAIL_MAX_COUNT = 32;
   static readonly ADMIN_EMAIL_MAX_LENGTH = 254;
   static readonly SOCIAL_LINK_MAX_COUNT = 12;
+  static readonly DATA_CONTROLLER_NAME_MAX_LENGTH = 160;
+  static readonly PRIVACY_CONTACT_EMAIL_MAX_LENGTH = 254;
+
+  static privacyContact(value: unknown): DeploymentPrivacyContactDto {
+    const source = value && typeof value === 'object'
+      ? value as Partial<DeploymentPrivacyContactDto>
+      : {};
+    const dataControllerName =
+      `${source.dataControllerName ?? ''}`.trim();
+    const privacyContactEmail =
+      `${source.privacyContactEmail ?? ''}`.trim().toLowerCase();
+    return {
+      configured: Boolean(dataControllerName && privacyContactEmail),
+      dataControllerName,
+      privacyContactEmail
+    };
+  }
+
+  static privacyContactValidationKey(value: unknown): string | null {
+    const source = value && typeof value === 'object'
+      ? value as Partial<DeploymentPrivacyContactDto>
+      : {};
+    const dataControllerName =
+      `${source.dataControllerName ?? ''}`.trim();
+    const privacyContactEmail =
+      `${source.privacyContactEmail ?? ''}`.trim().toLowerCase();
+    if (Boolean(dataControllerName) !== Boolean(privacyContactEmail)) {
+      return 'operator.configuration.privacy.contact.incomplete';
+    }
+    if (!dataControllerName && !privacyContactEmail) {
+      return null;
+    }
+    if (
+      dataControllerName.length > this.DATA_CONTROLLER_NAME_MAX_LENGTH
+      || /[\u0000-\u001f\u007f-\u009f]/.test(dataControllerName)
+    ) {
+      return 'operator.configuration.privacy.controller.invalid';
+    }
+    if (
+      privacyContactEmail.length > this.PRIVACY_CONTACT_EMAIL_MAX_LENGTH
+      || /[\u0000-\u001f\u007f-\u009f]/.test(privacyContactEmail)
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(privacyContactEmail)
+    ) {
+      return 'operator.configuration.privacy.email.invalid';
+    }
+    return null;
+  }
 
   static adminEmails(value: unknown): string[] {
     const source = Array.isArray(value)

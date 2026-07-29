@@ -24,7 +24,8 @@ export class LocalDeploymentConfigurationService
     return structuredClone(record?.configuration
       ? {
           ...record.configuration.branding,
-          socialLinks: record.configuration.socialLinks
+          socialLinks: record.configuration.socialLinks,
+          privacyContact: record.configuration.privacyContact
         }
       : DEFAULT_DEPLOYMENT_CONFIGURATION
     );

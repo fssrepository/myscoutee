@@ -76,6 +76,7 @@ type OperatorPopupAction =
   | 'set-claim-path'
   | 'save-branding'
   | 'save-admin-emails'
+  | 'save-privacy-contact'
   | 'add-social-link'
   | 'remove-social-link'
   | 'save-social-links'
@@ -476,6 +477,63 @@ export class OperatorActionPopupComponent {
   protected readonly configurationAdminEmailsFormValue = computed(() => ({
     adminEmailsText: this.workspace.configurationAdminEmailsInput()
   }));
+  protected readonly configurationPrivacyContactFormModel =
+    computed<FormFlowModel>(() => {
+      this.i18n.revision();
+      const translate = (key: string): string => this.i18n.translate(key);
+      return {
+        title: translate('operator.configuration.privacy.contact'),
+        layout: 'grouped',
+        header: false,
+        save: null,
+        completion: { controls: 'none' },
+        steps: [{
+          id: 'operator-configuration-privacy-contact',
+          title: '',
+          chrome: 'none',
+          controls: [
+            {
+              id: 'operator-configuration-data-controller-name',
+              bind: 'dataControllerName',
+              kind: 'text',
+              layout: 'half',
+              label: translate(
+                'operator.configuration.privacy.controller.name'
+              ),
+              placeholder: translate(
+                'operator.configuration.privacy.controller.name.placeholder'
+              ),
+              maxLength: 160,
+              validationError: () =>
+                this.workspace.configurationPrivacyContactValidationKey()
+            },
+            {
+              id: 'operator-configuration-privacy-contact-email',
+              bind: 'privacyContactEmail',
+              kind: 'text',
+              layout: 'half',
+              label: translate(
+                'operator.configuration.privacy.contact.email'
+              ),
+              placeholder: translate(
+                'operator.configuration.privacy.contact.email.placeholder'
+              ),
+              maxLength: 254,
+              validationError: () =>
+                this.workspace.configurationPrivacyContactValidationKey()
+            }
+          ]
+        }]
+      };
+    });
+  protected readonly configurationPrivacyContactFormValue = computed(() => ({
+    dataControllerName:
+      this.workspace.configurationDraft()?.privacyContact.dataControllerName
+      ?? '',
+    privacyContactEmail:
+      this.workspace.configurationDraft()?.privacyContact.privacyContactEmail
+      ?? ''
+  }));
   protected readonly configurationThemeItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -565,6 +623,21 @@ export class OperatorActionPopupComponent {
       : null,
     context: { action: 'save-admin-emails' }
   }]);
+  protected readonly configurationPrivacyContactActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => [{
+    id: 'operator-save-privacy-contact',
+    label: 'operator.configuration.privacy.contact.save',
+    icon: 'save',
+    palette: 'blue',
+    layout: 'action',
+    disabled: this.configurationDisabled()
+      || !this.workspace.configurationPrivacyContactReady(),
+    progress: this.busyAction() === 'save-privacy-contact'
+      ? { state: 'loading', durationMs: 3000 }
+      : null,
+    context: { action: 'save-privacy-contact' }
+  }]);
   protected readonly configurationSocialLinkActionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -634,7 +707,6 @@ export class OperatorActionPopupComponent {
       draft?.firebase.apiKey.trim()
       && draft.firebase.authDomain.trim()
       && draft.firebase.projectId.trim()
-      && draft.firebase.storageBucket.trim()
       && draft.firebase.messagingSenderId.trim()
       && draft.firebase.appId.trim()
       && draft.firebase.vapidKey.trim()
