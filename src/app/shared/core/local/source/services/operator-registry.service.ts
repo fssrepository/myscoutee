@@ -431,12 +431,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         linkedAt: submittedAt
       }
     ];
-    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+    const provisionalLeaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
       ledger,
       groupLinks
-    );
-    const claimedGroup = leaderboard.find(
-      item => item.group === 'CLAIMED' && item.operatorGroupId === operatorGroupId
     );
     const claimStatus: OperatorClaimStatusDto = {
       ...current.claimStatus,
@@ -446,13 +443,19 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       claimantName: verificationRequest.legalName,
       claimantAvatarUrl: claimIdentity.claimantAvatarUrl,
       operatorGroupId,
-      sharePercent: claimedGroup?.sharePercent ?? 0,
+      sharePercent: 0,
       verificationCapability: 'AVAILABLE',
       verificationUnavailableReason: null,
       verificationStatus: 'PENDING_REVIEW',
       verificationSubmittedAt: submittedAt,
       legalName: verificationRequest.legalName
     };
+    const leaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
+      LocalOperatorRegistryMapper.withCurrentClaimVerification(
+        provisionalLeaderboard,
+        claimStatus
+      )
+    );
     const next = this.appendAudit({
       ...structuredClone(current),
       ledger,
@@ -551,15 +554,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         linkedAt: nowIso
       }
     ];
-    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+    const provisionalLeaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
       ledger,
       groupLinks
     );
-    const claimedGroup = leaderboard.find(
-      item => item.group === 'CLAIMED'
-        && item.operatorGroupId === tokenRecord.operatorGroupId
-    );
-    const claimStatus: OperatorClaimStatusDto = {
+    const provisionalClaimStatus: OperatorClaimStatusDto = {
       ...current.claimStatus,
       claimed: true,
       claimedAt: current.claimStatus.claimedAt ?? nowIso,
@@ -573,7 +572,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         ? current.claimStatus.claimantAvatarUrl
         : groupClaimant?.claimantAvatarUrl ?? current.claimIdentity.claimantAvatarUrl,
       operatorGroupId: tokenRecord.operatorGroupId,
-      sharePercent: claimedGroup?.sharePercent ?? current.claimStatus.sharePercent,
+      sharePercent: current.claimStatus.claimed
+        ? current.claimStatus.sharePercent
+        : 0,
       verificationCapability: 'AVAILABLE',
       verificationUnavailableReason: null,
       verificationStatus: current.claimStatus.claimed
@@ -584,6 +585,20 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       legalName: current.claimStatus.claimed
         ? current.claimStatus.legalName
         : groupClaimant?.claimantName ?? null
+    };
+    const leaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
+      LocalOperatorRegistryMapper.withCurrentClaimVerification(
+        provisionalLeaderboard,
+        provisionalClaimStatus
+      )
+    );
+    const claimedGroup = leaderboard.find(
+      item => item.group === 'CLAIMED'
+        && item.operatorGroupId === tokenRecord.operatorGroupId
+    );
+    const claimStatus: OperatorClaimStatusDto = {
+      ...provisionalClaimStatus,
+      sharePercent: claimedGroup?.sharePercent ?? 0
     };
     await this.repository.write(this.appendAudit({
       ...structuredClone(current),
@@ -876,10 +891,12 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         ) ?? null
       : null;
     const visibleLeaderboardEntry = leaderboardEntry
-      ? LocalOperatorRegistryMapper.withCurrentClaimVerification(
-          [leaderboardEntry],
-          status
-        )[0] ?? null
+      ? LocalOperatorRegistryMapper.recalculateLeaderboard(
+          LocalOperatorRegistryMapper.withCurrentClaimVerification(
+            record.leaderboard,
+            status
+          )
+        ).find(item => item.id === leaderboardEntry.id) ?? null
       : null;
     const deploymentId = record.claimIdentity.nodeId.trim();
     return structuredClone({

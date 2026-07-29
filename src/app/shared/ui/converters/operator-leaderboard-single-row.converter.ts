@@ -49,26 +49,23 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
     const pendingReview = entry.claimVerificationStatus === 'PENDING_REVIEW';
     const pendingReviewLabel = `${options.pendingReviewLabel ?? ''}`.trim()
       || 'Under review';
-    const badges: SingleRowBadge[] = [
-      ...(pendingReview
-        ? [{
-            label: pendingReviewLabel,
-            icon: 'pending_actions',
-            ariaLabel: pendingReviewLabel,
-            title: pendingReviewLabel,
-            tone: 'warning' as const,
-            position: 'inline' as const
-          }]
-        : []),
-      {
-        label: `${share}%`,
-        icon: 'pie_chart',
-        ariaLabel: `${share}% ${shareLabel}`,
-        title: `${share}% ${shareLabel}`,
-        tone: entry.sharePercent > 0 ? 'accent' : 'muted',
-        position: 'top-right'
-      }
-    ];
+    const badges: SingleRowBadge[] = pendingReview
+      ? [{
+          label: pendingReviewLabel,
+          icon: 'pending_actions',
+          ariaLabel: pendingReviewLabel,
+          title: pendingReviewLabel,
+          tone: 'warning',
+          position: 'top-right'
+        }]
+      : [{
+          label: `${share}%`,
+          icon: 'pie_chart',
+          ariaLabel: `${share}% ${shareLabel}`,
+          title: `${share}% ${shareLabel}`,
+          tone: entry.sharePercent > 0 ? 'accent' : 'muted',
+          position: 'top-right'
+        }];
 
     return {
       id: entry.id,

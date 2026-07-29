@@ -316,9 +316,11 @@ export class LocalOperatorRegistryMapper {
   ): OperatorLeaderboardPageDto {
     const pageSize = Math.max(1, Math.min(100, Math.trunc(Number(query.pageSize) || 20)));
     const cursorOffset = this.cursorOffset(query.cursor);
-    const ordered = this.withCurrentClaimVerification(
-      this.recalculateLeaderboard(record.leaderboard),
-      record.claimStatus
+    const ordered = this.recalculateLeaderboard(
+      this.withCurrentClaimVerification(
+        record.leaderboard,
+        record.claimStatus
+      )
     );
     const items = ordered.slice(cursorOffset, cursorOffset + pageSize);
     const nextOffset = cursorOffset + items.length;
@@ -357,7 +359,10 @@ export class LocalOperatorRegistryMapper {
       .filter(item => item.group !== 'FOUNDER')
       .reduce((total, item) => total + Math.max(0, Number(item.verifiedWeight) || 0), 0);
     const claimedWeight = cloned
-      .filter(item => item.group === 'CLAIMED')
+      .filter(item =>
+        item.group === 'CLAIMED'
+        && item.claimVerificationStatus !== 'PENDING_REVIEW'
+      )
       .reduce((total, item) => total + Math.max(0, Number(item.verifiedWeight) || 0), 0);
     const totalUnits = founderUnits + deploymentWeight;
     const founderShare = totalUnits > 0
@@ -368,11 +373,13 @@ export class LocalOperatorRegistryMapper {
     return cloned
       .map(item => {
         const weight = Math.max(0, Number(item.verifiedWeight) || 0);
+        const claimedShareEligible = item.group === 'CLAIMED'
+          && item.claimVerificationStatus !== 'PENDING_REVIEW';
         const sharePercent = item.group === 'FOUNDER'
           ? founderUnits > 0
             ? founderShare * weight / founderUnits
             : 0
-          : item.group === 'CLAIMED' && claimedWeight > 0
+          : claimedShareEligible && claimedWeight > 0
             ? operatorPool * weight / claimedWeight
             : 0;
         return {

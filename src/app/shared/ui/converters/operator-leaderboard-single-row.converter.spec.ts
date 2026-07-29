@@ -27,12 +27,11 @@ describe('OperatorLeaderboardSingleRowConverter', () => {
       expect.objectContaining({
         label: 'Under review',
         tone: 'warning',
-        position: 'inline'
-      }),
-      expect.objectContaining({
-        label: '5.54%',
         position: 'top-right'
       })
+    ]));
+    expect(row.badges).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: '5.54%' })
     ]));
   });
 });

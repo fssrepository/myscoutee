@@ -271,7 +271,7 @@ describe('LocalOperatorRegistryService', () => {
       verificationStatus: 'PENDING_REVIEW'
     }));
     expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
-    expect(claim.sharePercent).toBeGreaterThan(0);
+    expect(claim.sharePercent).toBe(0);
     expect(after?.ledger.find(item => item.nodeId === deploymentCode))
       .toEqual(expect.objectContaining({
         claimed: true,
@@ -289,7 +289,8 @@ describe('LocalOperatorRegistryService', () => {
     );
     expect(claimedGroup).toEqual(expect.objectContaining({
       deploymentCount: 3,
-      sharePercent: claim.sharePercent
+      sharePercent: 0,
+      claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(after?.leaderboard).not.toEqual(before?.leaderboard);
     expect(after?.groupingTokens[0]?.redeemedAt).not.toBeNull();

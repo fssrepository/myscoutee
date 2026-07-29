@@ -324,7 +324,7 @@ describe('HttpOperatorRegistryService', () => {
       founderShareDenominator: '2',
       measuredWeightNumerator: '100000',
       measuredWeightDenominator: '1',
-      claimedWeightNumerator: '60000',
+      claimedWeightNumerator: '0',
       claimedWeightDenominator: '1'
     };
     get.mockImplementation((_url: string, options: { params?: { get(name: string): string | null } }) => {
@@ -359,12 +359,12 @@ describe('HttpOperatorRegistryService', () => {
             groupId: 'opg_campus',
             label: 'Campus Operator',
             avatarUrl: 'https://example.com/campus.webp',
-            claimState: 'claimed',
+            claimState: 'pending-review',
             deploymentCount: 2,
             weightNumerator: '60000',
             weightDenominator: '1',
-            shareNumerator: '3',
-            shareDenominator: '10'
+            shareNumerator: '0',
+            shareDenominator: '1'
           }],
           nextCursor: null
         });
@@ -409,7 +409,7 @@ describe('HttpOperatorRegistryService', () => {
       operatorGroupId: 'opg_campus',
       deploymentCount: 2,
       verifiedWeight: 60_000,
-      sharePercent: 30,
+      sharePercent: 0,
       claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(first.nextCursor).toMatch(/^operator-http:/);
@@ -432,12 +432,12 @@ describe('HttpOperatorRegistryService', () => {
       }),
       expect.objectContaining({
         group: 'CLAIMED',
-        verifiedWeight: 60_000,
-        sharePercent: 50
+        verifiedWeight: 0,
+        sharePercent: 0
       }),
       expect.objectContaining({
         group: 'UNCLAIMED',
-        verifiedWeight: 40_000,
+        verifiedWeight: 100_000,
         sharePercent: 0
       })
     ]);
