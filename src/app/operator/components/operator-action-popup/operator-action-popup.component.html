@@ -281,6 +281,55 @@
 
                   <section
                     class="operator-action-popup__configuration-group"
+                    data-palette="blue"
+                  >
+                    <header>
+                      <span>
+                        <small>
+                          {{ 'operator.configuration.privacy.contact.eyebrow' | i18n }}
+                        </small>
+                        <strong>
+                          {{ 'operator.configuration.privacy.contact' | i18n }}
+                        </strong>
+                      </span>
+                      <mat-icon>privacy_tip</mat-icon>
+                    </header>
+
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.configuration.privacy.contact.guidance' | i18n }}
+                    </p>
+
+                    <app-form-flow
+                      [model]="configurationPrivacyContactFormModel()"
+                      [ngModel]="configurationPrivacyContactFormValue()"
+                      (ngModelChange)="onConfigurationPrivacyContactChange($event)"
+                      [disabled]="configurationDisabled()"
+                    ></app-form-flow>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationPrivacyContactActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-privacy-contact') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
                     data-palette="amber"
                   >
                     <header>

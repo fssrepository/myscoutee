@@ -927,6 +927,12 @@ export class OperatorActionPopupComponent {
           'operator.configuration.admin.saved'
         );
         return;
+      case 'save-privacy-contact':
+        await this.workspace.saveConfiguration(
+          'save-privacy-contact',
+          'operator.configuration.privacy.contact.saved'
+        );
+        return;
       case 'add-social-link':
         this.workspace.addConfigurationSocialLink();
         return;
@@ -1278,6 +1284,24 @@ export class OperatorActionPopupComponent {
     );
   }
 
+  protected onConfigurationPrivacyContactChange(value: unknown): void {
+    if (!value || typeof value !== 'object') {
+      this.workspace.setConfigurationPrivacyContact({
+        dataControllerName: '',
+        privacyContactEmail: ''
+      });
+      return;
+    }
+    const source = value as {
+      dataControllerName?: unknown;
+      privacyContactEmail?: unknown;
+    };
+    this.workspace.setConfigurationPrivacyContact({
+      dataControllerName: `${source.dataControllerName ?? ''}`,
+      privacyContactEmail: `${source.privacyContactEmail ?? ''}`
+    });
+  }
+
   protected socialLinkUrlConfig(): LinkInputConfig {
     return {
       label: this.i18n.translate('operator.configuration.social.url'),
@@ -1392,6 +1416,7 @@ export class OperatorActionPopupComponent {
         return 'operator.configuration.testing';
       case 'save-branding':
       case 'save-admin-emails':
+      case 'save-privacy-contact':
       case 'save-social-links':
       case 'register-payment':
       case 'register-firebase':
