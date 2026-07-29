@@ -21,7 +21,7 @@ export class GlobalIdentityMapper {
     const keyVersion = Number(value?.keyVersion);
     return {
       state,
-      linked: value?.linked === true && state === 'ACTIVE',
+      linked: value?.linked === true && state !== 'UNAVAILABLE',
       consentVersion: this.text(value?.consentVersion),
       keyVersion: Number.isSafeInteger(keyVersion) && keyVersion > 0
         ? keyVersion

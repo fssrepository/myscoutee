@@ -71,6 +71,7 @@ const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
 const OPERATOR_MEASUREMENTS_ROUTE = '/operator/measurements';
 const DEMO_OPERATOR_USER_HEADER = 'X-Demo-User-Id';
 const LEADERBOARD_VIEWS = ['founder', 'claimed', 'unclaimed'] as const;
+const ZERO_SHA256_HASH = `sha256:${'0'.repeat(64)}`;
 const UPDATE_POLL_INTERVAL_MS = 750;
 const UPDATE_POLL_LIMIT = 800;
 const UPDATE_TERMINAL_PHASES = new Set([
@@ -115,10 +116,12 @@ interface RemoteOperatorLeaderboardSnapshot {
   throughAuditIndex: number;
   throughReviewIndex: number;
   throughEligibilityIndex: number;
+  throughTransferEventIndex: number;
   ledgerHeadHash: string;
   auditHeadHash: string;
   reviewHeadHash: string;
   eligibilityHeadHash: string;
+  transferEventHeadHash: string;
   founderUnitsNumerator: string;
   founderUnitsDenominator: string;
   founderShareNumerator: string;
@@ -198,10 +201,12 @@ interface OperatorLeaderboardCursorState {
   throughAuditIndex: number | null;
   throughReviewIndex: number | null;
   throughEligibilityIndex: number | null;
+  throughTransferEventIndex: number | null;
   ledgerHeadHash: string | null;
   auditHeadHash: string | null;
   reviewHeadHash: string | null;
   eligibilityHeadHash: string | null;
+  transferEventHeadHash: string | null;
   emitted: number;
 }
 
@@ -574,10 +579,14 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
           throughReviewIndex: snapshotBoundary?.throughReviewIndex ?? null,
           throughEligibilityIndex:
             snapshotBoundary?.throughEligibilityIndex ?? null,
+          throughTransferEventIndex:
+            snapshotBoundary?.throughTransferEventIndex ?? null,
           ledgerHeadHash: snapshotBoundary?.ledgerHeadHash ?? null,
           auditHeadHash: snapshotBoundary?.auditHeadHash ?? null,
           reviewHeadHash: snapshotBoundary?.reviewHeadHash ?? null,
           eligibilityHeadHash: snapshotBoundary?.eligibilityHeadHash ?? null,
+          transferEventHeadHash:
+            snapshotBoundary?.transferEventHeadHash ?? null,
           emitted
         })
       : null;
@@ -1849,10 +1858,14 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       throughAuditIndex: Number(snapshot.throughAuditIndex),
       throughReviewIndex: Number(snapshot.throughReviewIndex),
       throughEligibilityIndex: Number(snapshot.throughEligibilityIndex),
+      throughTransferEventIndex:
+        Number(snapshot.throughTransferEventIndex),
       ledgerHeadHash: `${snapshot.ledgerHeadHash ?? ''}`.trim(),
       auditHeadHash: `${snapshot.auditHeadHash ?? ''}`.trim(),
       reviewHeadHash: `${snapshot.reviewHeadHash ?? ''}`.trim(),
-      eligibilityHeadHash: `${snapshot.eligibilityHeadHash ?? ''}`.trim()
+      eligibilityHeadHash: `${snapshot.eligibilityHeadHash ?? ''}`.trim(),
+      transferEventHeadHash:
+        `${snapshot.transferEventHeadHash ?? ''}`.trim()
     };
     if (
       !/^\d{4}-(0[1-9]|1[0-2])$/.test(boundary.throughPeriod)
@@ -1860,10 +1873,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       || !this.validSnapshotIndex(boundary.throughAuditIndex)
       || !this.validSnapshotIndex(boundary.throughReviewIndex)
       || !this.validSnapshotIndex(boundary.throughEligibilityIndex)
+      || !this.validSnapshotIndex(boundary.throughTransferEventIndex)
       || !this.validSnapshotHash(boundary.ledgerHeadHash)
       || !this.validSnapshotHash(boundary.auditHeadHash)
       || !this.validSnapshotHash(boundary.reviewHeadHash)
       || !this.validSnapshotHash(boundary.eligibilityHeadHash)
+      || !this.validSnapshotHash(boundary.transferEventHeadHash)
     ) {
       throw new Error('operator.leaderboard.error.snapshot.invalid');
     }
@@ -1879,10 +1894,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       state.throughAuditIndex,
       state.throughReviewIndex,
       state.throughEligibilityIndex,
+      state.throughTransferEventIndex,
       state.ledgerHeadHash,
       state.auditHeadHash,
       state.reviewHeadHash,
-      state.eligibilityHeadHash
+      state.eligibilityHeadHash,
+      state.transferEventHeadHash
     ];
     if (values.every(value => value === null)) {
       return null;
@@ -1896,10 +1913,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       throughAuditIndex: state.throughAuditIndex!,
       throughReviewIndex: state.throughReviewIndex!,
       throughEligibilityIndex: state.throughEligibilityIndex!,
+      throughTransferEventIndex: state.throughTransferEventIndex!,
       ledgerHeadHash: state.ledgerHeadHash!,
       auditHeadHash: state.auditHeadHash!,
       reviewHeadHash: state.reviewHeadHash!,
-      eligibilityHeadHash: state.eligibilityHeadHash!
+      eligibilityHeadHash: state.eligibilityHeadHash!,
+      transferEventHeadHash: state.transferEventHeadHash!
     } as RemoteOperatorLeaderboardSnapshot);
   }
 
@@ -1912,10 +1931,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       && left.throughAuditIndex === right.throughAuditIndex
       && left.throughReviewIndex === right.throughReviewIndex
       && left.throughEligibilityIndex === right.throughEligibilityIndex
+      && left.throughTransferEventIndex === right.throughTransferEventIndex
       && left.ledgerHeadHash === right.ledgerHeadHash
       && left.auditHeadHash === right.auditHeadHash
       && left.reviewHeadHash === right.reviewHeadHash
-      && left.eligibilityHeadHash === right.eligibilityHeadHash;
+      && left.eligibilityHeadHash === right.eligibilityHeadHash
+      && left.transferEventHeadHash === right.transferEventHeadHash;
   }
 
   private validSnapshotIndex(value: number): boolean {
@@ -1943,10 +1964,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         throughAuditIndex: null,
         throughReviewIndex: null,
         throughEligibilityIndex: null,
+        throughTransferEventIndex: null,
         ledgerHeadHash: null,
         auditHeadHash: null,
         reviewHeadHash: null,
         eligibilityHeadHash: null,
+        transferEventHeadHash: null,
         emitted: 0
       };
     }
@@ -1966,24 +1989,62 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       ) {
         throw new Error();
       }
+      const throughPeriod = typeof parsed.throughPeriod === 'string'
+        ? parsed.throughPeriod
+        : null;
+      const throughLedgerIndex = this.cursorIndex(parsed.throughLedgerIndex);
+      const throughAuditIndex = this.cursorIndex(parsed.throughAuditIndex);
+      const throughReviewIndex = this.cursorIndex(parsed.throughReviewIndex);
+      const throughEligibilityIndex = this.cursorIndex(
+        parsed.throughEligibilityIndex
+      );
+      const ledgerHeadHash = this.cursorHash(parsed.ledgerHeadHash);
+      const auditHeadHash = this.cursorHash(parsed.auditHeadHash);
+      const reviewHeadHash = this.cursorHash(parsed.reviewHeadHash);
+      const eligibilityHeadHash = this.cursorHash(parsed.eligibilityHeadHash);
+      const hasTransferIndex = Object.prototype.hasOwnProperty.call(
+        parsed,
+        'throughTransferEventIndex'
+      );
+      const hasTransferHash = Object.prototype.hasOwnProperty.call(
+        parsed,
+        'transferEventHeadHash'
+      );
+      const completeLegacyBoundary = [
+        throughPeriod,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex,
+        ledgerHeadHash,
+        auditHeadHash,
+        reviewHeadHash,
+        eligibilityHeadHash
+      ].every(entry => entry !== null);
+      const throughTransferEventIndex =
+        !hasTransferIndex && !hasTransferHash && completeLegacyBoundary
+          ? 0
+          : this.cursorIndex(parsed.throughTransferEventIndex);
+      const transferEventHeadHash =
+        !hasTransferIndex && !hasTransferHash && completeLegacyBoundary
+          ? ZERO_SHA256_HASH
+          : this.cursorHash(parsed.transferEventHeadHash);
       return {
         viewIndex,
         viewCursor: typeof parsed.viewCursor === 'string'
           ? parsed.viewCursor
           : null,
-        throughPeriod: typeof parsed.throughPeriod === 'string'
-          ? parsed.throughPeriod
-          : null,
-        throughLedgerIndex: this.cursorIndex(parsed.throughLedgerIndex),
-        throughAuditIndex: this.cursorIndex(parsed.throughAuditIndex),
-        throughReviewIndex: this.cursorIndex(parsed.throughReviewIndex),
-        throughEligibilityIndex: this.cursorIndex(
-          parsed.throughEligibilityIndex
-        ),
-        ledgerHeadHash: this.cursorHash(parsed.ledgerHeadHash),
-        auditHeadHash: this.cursorHash(parsed.auditHeadHash),
-        reviewHeadHash: this.cursorHash(parsed.reviewHeadHash),
-        eligibilityHeadHash: this.cursorHash(parsed.eligibilityHeadHash),
+        throughPeriod,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex,
+        throughTransferEventIndex,
+        ledgerHeadHash,
+        auditHeadHash,
+        reviewHeadHash,
+        eligibilityHeadHash,
+        transferEventHeadHash,
         emitted
       };
     } catch {

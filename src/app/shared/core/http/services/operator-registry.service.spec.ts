@@ -460,10 +460,12 @@ describe('HttpOperatorRegistryService', () => {
       throughAuditIndex: 17,
       throughReviewIndex: 3,
       throughEligibilityIndex: 2,
+      throughTransferEventIndex: 0,
       ledgerHeadHash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       auditHeadHash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       reviewHeadHash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       eligibilityHeadHash: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      transferEventHeadHash: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
       founderUnitsNumerator: '100000',
       founderUnitsDenominator: '1',
       founderShareNumerator: '1',
@@ -624,10 +626,12 @@ describe('HttpOperatorRegistryService', () => {
       throughAuditIndex: 17,
       throughReviewIndex: 3,
       throughEligibilityIndex: 2,
+      throughTransferEventIndex: 0,
       ledgerHeadHash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       auditHeadHash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       reviewHeadHash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       eligibilityHeadHash: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      transferEventHeadHash: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
       founderUnitsNumerator: '100000',
       founderUnitsDenominator: '1',
       founderShareNumerator: '1',
@@ -683,6 +687,100 @@ describe('HttpOperatorRegistryService', () => {
     })).rejects.toThrow('operator.leaderboard.error.snapshot.changed');
   });
 
+  it('resumes a legacy compound cursor at the zero ownership-transfer boundary', async () => {
+    const zeroHash =
+      'sha256:0000000000000000000000000000000000000000000000000000000000000000';
+    const legacyCursor = `operator-http:${encodeURIComponent(JSON.stringify({
+      viewIndex: 1,
+      viewCursor: 'registry-v2-cursor',
+      throughPeriod: '2026-07',
+      throughLedgerIndex: 42,
+      throughAuditIndex: 17,
+      throughReviewIndex: 3,
+      throughEligibilityIndex: 2,
+      ledgerHeadHash:
+        'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      auditHeadHash:
+        'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      reviewHeadHash:
+        'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      eligibilityHeadHash:
+        'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      emitted: 1
+    }))}`;
+    const snapshot = {
+      snapshotId: 'lbs_0123456789abcdef0123456789abcdef',
+      formulaVersion: 'six-complete-month-average-v1',
+      rulesetVersion: 'qmau-v1',
+      throughPeriod: '2026-07',
+      throughLedgerIndex: 42,
+      throughAuditIndex: 17,
+      throughReviewIndex: 3,
+      throughEligibilityIndex: 2,
+      throughTransferEventIndex: 0,
+      ledgerHeadHash:
+        'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      auditHeadHash:
+        'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      reviewHeadHash:
+        'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      eligibilityHeadHash:
+        'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      transferEventHeadHash: zeroHash,
+      founderUnitsNumerator: '100000',
+      founderUnitsDenominator: '1',
+      founderShareNumerator: '1',
+      founderShareDenominator: '2',
+      measuredWeightNumerator: '100000',
+      measuredWeightDenominator: '1',
+      claimedWeightNumerator: '60000',
+      claimedWeightDenominator: '1',
+      createdAt: '2026-07-29T00:00:00.000Z',
+      snapshotHash:
+        'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    };
+    get.mockReturnValue(of({
+      snapshot,
+      view: 'claimed',
+      items: [{
+        rowId: 'claimed-group:campus',
+        view: 'claimed',
+        groupId: 'opg_campus',
+        label: 'Campus Operator',
+        avatarUrl: null,
+        claimState: 'approved',
+        eligibilityStatus: 'active',
+        deploymentCount: 2,
+        weightNumerator: '60000',
+        weightDenominator: '1',
+        shareNumerator: '1',
+        shareDenominator: '4'
+      }],
+      nextCursor: null
+    }));
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    const result = await service.leaderboardPage({
+      page: 1,
+      pageSize: 1,
+      cursor: legacyCursor,
+      sort: 'share',
+      direction: 'desc'
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.context?.snapshotBoundary).toEqual(expect.objectContaining({
+      throughTransferEventIndex: 0,
+      transferEventHeadHash: zeroHash
+    }));
+    const [, options] = get.mock.calls[0] as [
+      string,
+      { params: { get(name: string): string | null } }
+    ];
+    expect(options.params.get('view')).toBe('claimed');
+    expect(options.params.get('cursor')).toBe('registry-v2-cursor');
+  });
+
   it('pages claimed-group deployments without reloading the leaderboard stream', async () => {
     const groupId = 'opg_0123456789abcdef0123456789abcdef';
     const snapshot = {
@@ -694,10 +792,12 @@ describe('HttpOperatorRegistryService', () => {
       throughAuditIndex: 17,
       throughReviewIndex: 3,
       throughEligibilityIndex: 2,
+      throughTransferEventIndex: 0,
       ledgerHeadHash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       auditHeadHash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       reviewHeadHash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       eligibilityHeadHash: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      transferEventHeadHash: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
       founderUnitsNumerator: '1',
       founderUnitsDenominator: '1',
       founderShareNumerator: '1',

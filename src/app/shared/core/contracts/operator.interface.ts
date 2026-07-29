@@ -305,10 +305,12 @@ export interface OperatorLeaderboardSnapshotBoundaryDto {
   throughAuditIndex: number;
   throughReviewIndex: number;
   throughEligibilityIndex: number;
+  throughTransferEventIndex: number;
   ledgerHeadHash: string;
   auditHeadHash: string;
   reviewHeadHash: string;
   eligibilityHeadHash: string;
+  transferEventHeadHash: string;
 }
 
 export interface OperatorGroupingTokenDto {
