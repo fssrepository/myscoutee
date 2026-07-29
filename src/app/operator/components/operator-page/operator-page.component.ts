@@ -153,11 +153,9 @@ export class OperatorPageComponent implements OnInit {
     },
     {
       id: 'claim',
-      label: claimPendingReview
-        ? 'operator.action.claim.share.pending'
-        : 'operator.action.claim.share',
+      label: 'operator.action.claim.share',
       detail: claimPendingReview
-        ? 'operator.action.claim.share.pending.detail'
+        ? 'operator.action.claim.share.pending'
         : registryActive && claim?.claimed
           ? 'operator.action.claim.share.claimed'
           : 'operator.action.claim.share.detail',

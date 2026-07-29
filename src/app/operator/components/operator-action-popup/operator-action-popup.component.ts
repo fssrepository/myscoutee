@@ -208,14 +208,6 @@ export class OperatorActionPopupComponent {
                 return website && !this.validClaimWebsite(website)
                   ? translate('operator.claim.verification.error.website')
                   : null;
-              },
-              config: {
-                model: {
-                  label: translate('operator.claim.verification.website'),
-                  placeholder: 'https://',
-                  required: true,
-                  maxLength: 2048
-                }
               }
             },
             {
