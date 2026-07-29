@@ -133,6 +133,7 @@ export interface OperatorLeaderboardEntryDto {
   claimantAvatarUrl?: string | null;
   operatorGroupId?: string | null;
   deploymentCount?: number;
+  claimVerificationStatus?: OperatorClaimVerificationStatus | null;
 }
 
 export interface OperatorLeaderboardMutationDto {

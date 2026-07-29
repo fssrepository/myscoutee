@@ -88,7 +88,8 @@ describe('LocalOperatorRegistryService', () => {
     });
     expect(explicitClaim.leaderboardEntry).toEqual(expect.objectContaining({
       group: 'CLAIMED',
-      claimantName: 'Demo Operator s.r.o.'
+      claimantName: 'Demo Operator s.r.o.',
+      claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(explicitClaim.removedLeaderboardEntryIds).toEqual([deploymentCode]);
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
@@ -115,6 +116,11 @@ describe('LocalOperatorRegistryService', () => {
     )).toEqual(expect.objectContaining({
       group: 'CLAIMED',
       claimantName: 'Demo Operator s.r.o.'
+    }));
+    expect(leaderboard.items.find(
+      item => item.operatorGroupId === explicitClaim.status.operatorGroupId
+    )).toEqual(expect.objectContaining({
+      claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(cached?.auditHistory.map(item => item.kind)).toEqual(
       expect.arrayContaining(['SEED', 'REGISTER', 'CLAIM'])

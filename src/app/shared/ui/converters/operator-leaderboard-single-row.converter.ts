@@ -1,5 +1,8 @@
 import type { OperatorLeaderboardEntryDto } from '../../core/contracts/operator.interface';
-import type { SingleRowData } from '../components/core/smart-list/card/card.types';
+import type {
+  SingleRowBadge,
+  SingleRowData
+} from '../components/core/smart-list/card/card.types';
 import type {
   ConverterOptionsArg,
   UiConverter
@@ -13,6 +16,7 @@ export interface OperatorLeaderboardSingleRowConverterOptions {
   deploymentsLabel?: string | null;
   claimedNodeLabel?: string | null;
   unclaimedNodeLabel?: string | null;
+  pendingReviewLabel?: string | null;
 }
 
 export class OperatorLeaderboardSingleRowConverter implements UiConverter<
@@ -42,6 +46,29 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
       : `${options.deploymentsLabel ?? ''}`.trim() || 'deployments';
     const claimedNodeLabel = `${options.claimedNodeLabel ?? ''}`.trim();
     const unclaimedNodeLabel = `${options.unclaimedNodeLabel ?? ''}`.trim();
+    const pendingReview = entry.claimVerificationStatus === 'PENDING_REVIEW';
+    const pendingReviewLabel = `${options.pendingReviewLabel ?? ''}`.trim()
+      || 'Under review';
+    const badges: SingleRowBadge[] = [
+      ...(pendingReview
+        ? [{
+            label: pendingReviewLabel,
+            icon: 'pending_actions',
+            ariaLabel: pendingReviewLabel,
+            title: pendingReviewLabel,
+            tone: 'warning' as const,
+            position: 'inline' as const
+          }]
+        : []),
+      {
+        label: `${share}%`,
+        icon: 'pie_chart',
+        ariaLabel: `${share}% ${shareLabel}`,
+        title: `${share}% ${shareLabel}`,
+        tone: entry.sharePercent > 0 ? 'accent' : 'muted',
+        position: 'top-right'
+      }
+    ];
 
     return {
       id: entry.id,
@@ -66,20 +93,17 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
             : 'dns',
       surfaceTone: entry.group === 'FOUNDER'
         ? 'accent'
-        : entry.claimed
-          ? 'success'
-          : 'muted',
-      toneClass: `operator-leaderboard-row operator-leaderboard-row--${entry.group.toLowerCase()}`,
-      badges: [
-        {
-          label: `${share}%`,
-          icon: 'pie_chart',
-          ariaLabel: `${share}% ${shareLabel}`,
-          title: `${share}% ${shareLabel}`,
-          tone: entry.sharePercent > 0 ? 'accent' : 'muted',
-          position: 'top-right'
-        }
-      ],
+        : pendingReview
+          ? 'warning'
+          : entry.claimed
+            ? 'success'
+            : 'muted',
+      toneClass: [
+        'operator-leaderboard-row',
+        `operator-leaderboard-row--${entry.group.toLowerCase()}`,
+        pendingReview ? 'operator-leaderboard-row--pending-review' : ''
+      ].filter(Boolean).join(' '),
+      badges,
       eagerDetail: structuredClone(entry)
     };
   }

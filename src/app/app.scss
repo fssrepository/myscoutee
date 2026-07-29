@@ -22,27 +22,25 @@
   text-align: center;
 }
 
-.app-route-warmup__brand {
+.app-route-warmup__mark {
   position: relative;
-  min-height: 76px;
-  max-width: min(88vw, 420px);
-  padding: 0.78rem 1.18rem;
+  width: 76px;
+  height: 76px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 18px 34px rgba(36, 65, 110, 0.16);
-  color: var(--deployment-brand-text);
-  font-size: 1.35rem;
-  font-weight: 900;
-  --deployment-brand-logo-size: 46px;
-  --deployment-brand-gap: 0.2rem;
 }
 
-.app-route-warmup__brand app-deployment-brand {
+.app-route-warmup__mark img {
   position: relative;
   z-index: 1;
+  width: 46px;
+  height: 46px;
+  display: block;
+  object-fit: contain;
 }
 
 .app-route-warmup__ring {
@@ -59,6 +57,13 @@
   inset: 6px;
   border-radius: inherit;
   background: #ffffff;
+}
+
+.app-route-warmup__label {
+  color: var(--deployment-brand-text);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 @keyframes app-route-warmup-spin {

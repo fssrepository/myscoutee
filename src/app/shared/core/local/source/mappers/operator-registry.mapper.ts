@@ -316,7 +316,10 @@ export class LocalOperatorRegistryMapper {
   ): OperatorLeaderboardPageDto {
     const pageSize = Math.max(1, Math.min(100, Math.trunc(Number(query.pageSize) || 20)));
     const cursorOffset = this.cursorOffset(query.cursor);
-    const ordered = this.recalculateLeaderboard(record.leaderboard);
+    const ordered = this.withCurrentClaimVerification(
+      this.recalculateLeaderboard(record.leaderboard),
+      record.claimStatus
+    );
     const items = ordered.slice(cursorOffset, cursorOffset + pageSize);
     const nextOffset = cursorOffset + items.length;
     return {
@@ -384,6 +387,28 @@ export class LocalOperatorRegistryMapper {
         || right.verifiedWeight - left.verifiedWeight
         || left.label.localeCompare(right.label)
       );
+  }
+
+  static withCurrentClaimVerification(
+    entries: readonly OperatorLeaderboardEntryDto[],
+    claimStatus: OperatorClaimStatusDto
+  ): OperatorLeaderboardEntryDto[] {
+    const operatorGroupId = claimStatus.operatorGroupId?.trim() ?? '';
+    if (
+      !operatorGroupId
+      || claimStatus.verificationStatus !== 'PENDING_REVIEW'
+    ) {
+      return Array.from(entries, entry => structuredClone(entry));
+    }
+    return entries.map(entry =>
+      entry.group === 'CLAIMED'
+      && entry.operatorGroupId === operatorGroupId
+        ? {
+            ...structuredClone(entry),
+            claimVerificationStatus: 'PENDING_REVIEW'
+          }
+        : structuredClone(entry)
+    );
   }
 
   static deriveLeaderboard(

@@ -1108,7 +1108,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       claimantName: group === 'CLAIMED' ? row.label : null,
       claimantAvatarUrl: row.avatarUrl?.trim() || null,
       operatorGroupId: row.groupId?.trim() || null,
-      deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0))
+      deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0)),
+      claimVerificationStatus: row.claimState?.trim().toLowerCase() === 'pending-review'
+        ? 'PENDING_REVIEW'
+        : group === 'CLAIMED'
+          ? 'APPROVED'
+          : null
     };
   }
 

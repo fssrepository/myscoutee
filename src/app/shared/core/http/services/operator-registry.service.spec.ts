@@ -215,7 +215,7 @@ describe('HttpOperatorRegistryService', () => {
           clientToken: url.endsWith('/client-token') ? 'client_token_1' : null,
           receipt: {
             acceptedAt: '2026-07-28T18:00:00.000Z',
-            claimState: 'claimed',
+            claimState: 'pending-review',
             groupId: 'opg_demo',
             tokenExpiresAt: url.endsWith('/client-token')
               ? '2026-07-28T18:05:00.000Z'
@@ -409,7 +409,8 @@ describe('HttpOperatorRegistryService', () => {
       operatorGroupId: 'opg_campus',
       deploymentCount: 2,
       verifiedWeight: 60_000,
-      sharePercent: 30
+      sharePercent: 30,
+      claimVerificationStatus: 'PENDING_REVIEW'
     }));
     expect(first.nextCursor).toMatch(/^operator-http:/);
     expect(second.items).toEqual([

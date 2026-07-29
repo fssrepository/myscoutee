@@ -308,7 +308,10 @@ export class OperatorPageComponent implements OnInit {
       deploymentLabel: this.i18n.translate('operator.leaderboard.deployment'),
       deploymentsLabel: this.i18n.translate('operator.leaderboard.deployments'),
       claimedNodeLabel: this.i18n.translate('operator.leaderboard.claimed.node'),
-      unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node')
+      unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node'),
+      pendingReviewLabel: this.i18n.translate(
+        'operator.claim.verification.pending.action'
+      )
     });
   }
 

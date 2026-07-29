@@ -25,11 +25,10 @@
     aria-live="polite"
     [attr.aria-label]="'Loading ' + deploymentBranding().productName"
   >
-    <span class="app-route-warmup__brand">
+    <span class="app-route-warmup__mark">
       <span class="app-route-warmup__ring" aria-hidden="true"></span>
-      <app-deployment-brand
-        [branding]="deploymentBranding()"
-      ></app-deployment-brand>
+      <img [src]="deploymentBranding().logoUrl" alt="" />
     </span>
+    <span class="app-route-warmup__label">{{ deploymentBranding().productName }}</span>
   </section>
 }

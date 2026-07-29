@@ -875,11 +875,17 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           && item.operatorGroupId === operatorGroupId
         ) ?? null
       : null;
+    const visibleLeaderboardEntry = leaderboardEntry
+      ? LocalOperatorRegistryMapper.withCurrentClaimVerification(
+          [leaderboardEntry],
+          status
+        )[0] ?? null
+      : null;
     const deploymentId = record.claimIdentity.nodeId.trim();
     return structuredClone({
       status,
       submission: record.claimVerificationRequest,
-      leaderboardEntry,
+      leaderboardEntry: visibleLeaderboardEntry,
       removedLeaderboardEntryIds: deploymentId ? [deploymentId] : []
     });
   }
