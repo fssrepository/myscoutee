@@ -107,6 +107,7 @@ import {
   type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
+import { mergeChatReadAvatars } from './chat-message-read-state';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -3397,9 +3398,13 @@ export class EventChatPopupComponent implements OnDestroy {
       changed = true;
       const existingMessageId = `${existingMessage.id ?? ''}`.trim();
       const normalizedMessageId = `${normalizedMessage.id ?? ''}`.trim();
-      return existingMessageId && normalizedMessageId && existingMessageId !== normalizedMessageId
+      const replacement = existingMessageId && normalizedMessageId && existingMessageId !== normalizedMessageId
         ? { ...normalizedMessage, id: existingMessageId }
         : normalizedMessage;
+      return {
+        ...replacement,
+        readBy: mergeChatReadAvatars(existingMessage.readBy, normalizedMessage.readBy)
+      };
     });
     if (!changed) {
       return;
@@ -3496,7 +3501,8 @@ export class EventChatPopupComponent implements OnDestroy {
     return {
       ...preferred,
       clientId: preferred.clientId || fallback.clientId,
-      reactions: preferredReactions.length >= fallbackReactions.length ? preferredReactions : fallbackReactions
+      reactions: preferredReactions.length >= fallbackReactions.length ? preferredReactions : fallbackReactions,
+      readBy: mergeChatReadAvatars(existing.readBy, candidate.readBy)
     };
   }
 
@@ -3708,12 +3714,16 @@ export class EventChatPopupComponent implements OnDestroy {
       id: `${normalizedMessage.id ?? ''}`.trim() || pendingMessageId,
       clientId: pendingClientId || normalizedMessage.clientId,
       reactions: hasQueuedReaction ? (pendingMessage?.reactions ?? []) : normalizedMessage.reactions,
+      readBy: mergeChatReadAvatars(pendingMessage?.readBy, normalizedMessage.readBy),
       deliveryState: hasQueuedReaction ? 'pending' : normalizedMessage.deliveryState
     };
     let nextMessages = [...this.messages];
     const duplicateIndex = nextMessages.findIndex((existingMessage, index) => index !== pendingIndex && existingMessage.id === nextMessage.id);
     if (duplicateIndex >= 0) {
-      nextMessages[duplicateIndex] = nextMessage;
+      nextMessages[duplicateIndex] = {
+        ...nextMessage,
+        readBy: mergeChatReadAvatars(nextMessages[duplicateIndex].readBy, nextMessage.readBy)
+      };
       nextMessages = nextMessages.filter((_existingMessage, index) => index !== pendingIndex);
     } else {
       nextMessages[pendingIndex] = nextMessage;
@@ -3811,16 +3821,22 @@ export class EventChatPopupComponent implements OnDestroy {
   ): ContractTypes.ChatMessageDto[] {
     const matchedPendingIds = new Set<string>();
     const snapshotMessages = snapshot.map(message => {
-      const pendingId = this.matchPendingMessageId(message);
+      const liveMessage = this.messages.find(existingMessage => this.isSameChatMessage(existingMessage, message));
+      const messageWithLiveReadState = {
+        ...message,
+        readBy: mergeChatReadAvatars(liveMessage?.readBy, message.readBy)
+      };
+      const pendingId = this.matchPendingMessageId(messageWithLiveReadState);
       if (!pendingId) {
-        return message;
+        return messageWithLiveReadState;
       }
       matchedPendingIds.add(pendingId);
       this.clearPendingMessageTimeout(pendingId);
       const pendingMessage = this.messages.find(existingMessage => existingMessage.id === pendingId);
       return this.normalizeChatMessage({
-        ...message,
-        clientId: pendingMessage?.clientId
+        ...messageWithLiveReadState,
+        clientId: pendingMessage?.clientId,
+        readBy: mergeChatReadAvatars(pendingMessage?.readBy, messageWithLiveReadState.readBy)
       });
     });
     const unresolvedPendingMessages = this.messages.filter(message =>
