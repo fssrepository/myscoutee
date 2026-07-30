@@ -15,7 +15,6 @@ export { LandingContentService } from './base/services/landing-content.service';
 export { DeploymentConfigurationService } from './base/services/deployment-configuration.service';
 export { MediaService } from './base/services/media.service';
 export { NotificationsService } from './base/services/notifications.service';
-export { GlobalIdentityService } from './base/services/global-identity.service';
 export { OperatorRegistryService } from './base/services/operator-registry.service';
 export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
 export {
