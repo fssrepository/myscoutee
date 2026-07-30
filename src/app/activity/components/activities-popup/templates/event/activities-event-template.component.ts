@@ -1436,8 +1436,8 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivitySecondaryAction(row: InfoCardData, isRejectInvitation = false): Promise<void> {
-    if (!isRejectInvitation && !this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row)) {
-      await this.confirmActivityLeave(row);
+    if (isRejectInvitation || (!this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row))) {
+      await this.confirmActivityLeave(row, isRejectInvitation);
       return;
     }
     const activeUserId = this.activeUserId();
@@ -1448,12 +1448,14 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityLeave(row: InfoCardData): Promise<void> {
+  private async confirmActivityLeave(row: InfoCardData, resolvingInvitation = false): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return;
     }
-    const counterDelta = this.leftEventCounterDelta(row);
+    const counterDelta = resolvingInvitation
+      ? this.trashedEventCounterDelta(row, 'invitations')
+      : this.leftEventCounterDelta(row);
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
       removeMembershipOnly: true,
       checkoutState: 'cancelled',
