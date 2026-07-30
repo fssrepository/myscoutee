@@ -12,7 +12,7 @@ import { SeedNotificationsBuilder } from '../builders';
   providedIn: 'root'
 })
 export class SeedNotificationsRepository {
-  private static readonly SEED_VERSION = 'notification-center-v3';
+  private static readonly SEED_VERSION = 'notification-center-v4';
 
   private readonly memoryDb = inject(LocalMemoryDb);
 

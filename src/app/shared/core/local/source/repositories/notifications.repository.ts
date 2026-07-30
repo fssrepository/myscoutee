@@ -111,6 +111,62 @@ export class LocalNotificationsRepository {
     return this.cloneRecord(nextRecord);
   }
 
+  markUnreadBySource(
+    userId: string,
+    kind: string,
+    sourceType: string,
+    sourceId: string
+  ): number {
+    const normalizedUserId = userId.trim();
+    const normalizedKind = kind.trim();
+    const normalizedSourceType = sourceType.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedKind || !normalizedSourceType || !normalizedSourceId) {
+      return 0;
+    }
+    const table = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const matchingIds = (table.idsByRecipientUserId[normalizedUserId] ?? [])
+      .filter(id => {
+        const record = table.byId[id];
+        return record
+          && !record.readAtIso
+          && record.kind === normalizedKind
+          && record.sourceType === normalizedSourceType
+          && record.sourceId === normalizedSourceId;
+      });
+    if (matchingIds.length === 0) {
+      return 0;
+    }
+    const readAtIso = new Date().toISOString();
+    this.memoryDb.write(state => {
+      const currentTable = state[NOTIFICATIONS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      matchingIds.forEach(id => {
+        const record = currentTable.byId[id];
+        if (record) {
+          nextById[id] = { ...record, readAtIso };
+        }
+      });
+      const unreadCount = Math.max(
+        0,
+        this.unreadCountFromTable(currentTable, normalizedUserId) - matchingIds.length
+      );
+      return {
+        ...state,
+        [NOTIFICATIONS_TABLE_NAME]: {
+          ...currentTable,
+          byId: nextById
+        },
+        [USERS_TABLE_NAME]: this.withUserUnreadCount(
+          state[USERS_TABLE_NAME],
+          normalizedUserId,
+          unreadCount
+        )
+      };
+    });
+    return matchingIds.length;
+  }
+
   setMuted(userId: string, muted: boolean): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
