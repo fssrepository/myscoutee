@@ -168,7 +168,7 @@ export class I18nService {
       this.applyBundle(stored.lang, stored.version, stored.data);
     }
 
-    const seed = this.usesHttpBundles() && stored
+    const seed = this.usesHttpBundles()
       ? null
       : await this.firstLocalSeedBundle(
         candidates,
@@ -196,7 +196,7 @@ export class I18nService {
   ): Promise<void> {
     const lang = I18nService.DEFAULT_LANGUAGE;
     const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
-    const seed = assetUrl
+    const seed = !this.usesHttpBundles() && assetUrl
       ? await this.loadLocalSeedBundle(assetUrl, true)
       : null;
     if (!this.isCurrentBundleLoad(scope, generation)) {
@@ -309,7 +309,8 @@ export class I18nService {
         this.applyServerBundle(stored, activateTranslation);
       }
     } catch {
-      // The cached/static language bundles remain available.
+      // A previously cached backend bundle remains available. Local assets are
+      // intentionally not a fallback when the backend is authoritative.
     }
   }
 
@@ -658,7 +659,8 @@ export class I18nService {
     const messages = this.messagesSignal();
     const sourceMessages = this.sourceMessagesSignal();
     const sourceKeyByText = this.sourceKeyByTextSignal();
-    const dynamicTranslated = this.translateDynamicSource(normalizedKey, messages, sourceKeyByText);
+    const dynamicTranslated = this.translateDynamicSource(normalizedKey, messages, sourceKeyByText)
+      ?? this.translateDynamicSource(normalizedKey, sourceMessages, sourceKeyByText);
     if (dynamicTranslated) {
       return this.replaceCoreText(source, dynamicTranslated);
     }

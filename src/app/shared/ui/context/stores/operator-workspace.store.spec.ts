@@ -221,6 +221,79 @@ describe('OperatorWorkspaceStore', () => {
       })
     );
     expect(workspace.tlsConfiguration()?.enabled).toBe(true);
+    expect(workspace.tlsConfiguration()?.updatedAt)
+      .toBe('2026-07-29T18:00:00.000Z');
+  });
+
+  it('flashes TLS test feedback like the Firebase header tests', async () => {
+    vi.useFakeTimers();
+    const workspace = TestBed.inject(OperatorWorkspaceStore);
+    loadConfiguration.mockResolvedValue(operatorConfiguration());
+    await workspace.loadConfiguration();
+    workspace.setTlsConfiguration({
+      enabled: true,
+      domain: 'app.example.test',
+      contactEmail: 'operator@example.test'
+    });
+    testTlsConfiguration.mockResolvedValue({
+      jobId: 'tls_0123456789abcdef0123456789abcdef',
+      phase: 'COMPLETED',
+      percent: 100,
+      message: 'operator.configuration.tls.test.domain.success',
+      updatedAt: '2026-07-30T09:00:00.000Z',
+      configuration: null
+    });
+
+    await workspace.testTlsConfiguration('DOMAIN');
+
+    expect(workspace.tlsDomainFeedback()).toBe('success');
+    vi.advanceTimersByTime(1000);
+    expect(workspace.tlsDomainFeedback()).toBeNull();
+  });
+
+  it('flashes TLS save success and error feedback for one second', async () => {
+    vi.useFakeTimers();
+    const workspace = TestBed.inject(OperatorWorkspaceStore);
+    loadConfiguration.mockResolvedValue(operatorConfiguration());
+    await workspace.loadConfiguration();
+    workspace.setTlsConfiguration({
+      enabled: true,
+      domain: 'app.example.test',
+      contactEmail: 'operator@example.test'
+    });
+    saveTlsConfiguration.mockResolvedValue({
+      jobId: 'tls_0123456789abcdef0123456789abcdef',
+      phase: 'COMPLETED',
+      percent: 100,
+      message: 'operator.configuration.tls.saved',
+      updatedAt: '2026-07-30T09:00:00.000Z',
+      configuration: {
+        capability: 'AVAILABLE',
+        unavailableReason: null,
+        enabled: true,
+        mode: 'AUTOMATIC',
+        domain: 'app.example.test',
+        contactEmail: 'operator@example.test',
+        autoRenew: true,
+        certificateConfigured: true,
+        certificateIssuer: 'Let’s Encrypt',
+        certificateExpiresAt: '2026-10-28T09:00:00.000Z',
+        updatedAt: '2026-07-30T09:00:00.000Z'
+      }
+    });
+
+    await workspace.saveTlsConfiguration();
+
+    expect(workspace.tlsSaveFeedback()).toBe('success');
+    vi.advanceTimersByTime(1000);
+    expect(workspace.tlsSaveFeedback()).toBeNull();
+
+    saveTlsConfiguration.mockRejectedValue(new Error('TLS save failed'));
+    await workspace.saveTlsConfiguration();
+
+    expect(workspace.tlsSaveFeedback()).toBe('error');
+    vi.advanceTimersByTime(1000);
+    expect(workspace.tlsSaveFeedback()).toBeNull();
   });
 
   afterEach(() => {

@@ -911,7 +911,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   async saveTlsConfiguration(
     request: OperatorTlsConfigurationUpdateDto
   ): Promise<OperatorTlsJobDto> {
-    return await this.requireResponse(
+    const job = await this.requireResponse(
       OPERATOR_TLS_CONFIGURATION_ROUTE,
       this.http.put<OperatorTlsJobDto>(
         `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}`,
@@ -919,6 +919,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         this.requestOptions()
       ).toPromise()
     );
+    return await this.waitForTlsJob(job);
   }
 
   async testTlsConfiguration(

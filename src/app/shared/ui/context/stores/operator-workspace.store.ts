@@ -123,6 +123,12 @@ export class OperatorWorkspaceStore {
     signal<OperatorConfigurationTestFeedback>(null);
   private readonly configurationMessagingFeedbackRef =
     signal<OperatorConfigurationTestFeedback>(null);
+  private readonly tlsDomainFeedbackRef =
+    signal<OperatorConfigurationTestFeedback>(null);
+  private readonly tlsCertificateFeedbackRef =
+    signal<OperatorConfigurationTestFeedback>(null);
+  private readonly tlsSaveFeedbackRef =
+    signal<OperatorConfigurationTestFeedback>(null);
   private readonly revenueRef = signal<OperatorRevenueDto | null>(null);
   private readonly revenueSyncRef = signal<OperatorRevenueSyncDto | null>(null);
   private readonly revenueSettlementInitialPageRef =
@@ -139,6 +145,12 @@ export class OperatorWorkspaceStore {
   private configurationAuthenticationFeedbackTimer:
     ReturnType<typeof setTimeout> | null = null;
   private configurationMessagingFeedbackTimer:
+    ReturnType<typeof setTimeout> | null = null;
+  private tlsDomainFeedbackTimer:
+    ReturnType<typeof setTimeout> | null = null;
+  private tlsCertificateFeedbackTimer:
+    ReturnType<typeof setTimeout> | null = null;
+  private tlsSaveFeedbackTimer:
     ReturnType<typeof setTimeout> | null = null;
   private configurationLifecycleGeneration = 0;
   private contextKey = this.sessionKey(this.sessionService.currentSession());
@@ -165,6 +177,10 @@ export class OperatorWorkspaceStore {
     this.configurationAuthenticationFeedbackRef.asReadonly();
   readonly configurationMessagingFeedback =
     this.configurationMessagingFeedbackRef.asReadonly();
+  readonly tlsDomainFeedback = this.tlsDomainFeedbackRef.asReadonly();
+  readonly tlsCertificateFeedback =
+    this.tlsCertificateFeedbackRef.asReadonly();
+  readonly tlsSaveFeedback = this.tlsSaveFeedbackRef.asReadonly();
   readonly revenue = this.revenueRef.asReadonly();
   readonly revenueSync = this.revenueSyncRef.asReadonly();
   readonly revenueSettlementAvailable =
@@ -544,6 +560,7 @@ export class OperatorWorkspaceStore {
   setTlsConfiguration(
     patch: Partial<OperatorTlsConfigurationUpdateDto>
   ): void {
+    this.clearTlsTestFeedback();
     this.tlsConfigurationDraftRef.update(current => current
       ? {
           ...current,
@@ -557,6 +574,7 @@ export class OperatorWorkspaceStore {
   async testTlsConfiguration(
     kind: OperatorTlsTestKind
   ): Promise<OperatorTlsJobDto | null> {
+    this.clearTlsTestFeedback(kind);
     const draft = this.tlsConfigurationDraftRef();
     if (!draft || !this.tlsConfigurationReady()) {
       this.errorRef.set('operator.configuration.tls.validation.invalid');
@@ -575,14 +593,19 @@ export class OperatorWorkspaceStore {
     if (result) {
       this.tlsJobRef.set(result);
       this.noticeRef.set(result.message);
+      this.showTlsTestFeedback(kind, 'success');
+    } else if (this.errorRef()) {
+      this.showTlsTestFeedback(kind, 'error');
     }
     return result;
   }
 
   async saveTlsConfiguration(): Promise<OperatorTlsJobDto | null> {
+    this.clearTlsSaveFeedback();
     const draft = this.tlsConfigurationDraftRef();
     if (!draft || !this.tlsConfigurationReady()) {
       this.errorRef.set('operator.configuration.tls.validation.invalid');
+      this.showTlsSaveFeedback('error');
       return null;
     }
     const result = await this.run(
@@ -606,6 +629,9 @@ export class OperatorWorkspaceStore {
         );
         this.noticeRef.set(result.message);
       }
+      this.showTlsSaveFeedback('success');
+    } else if (this.errorRef()) {
+      this.showTlsSaveFeedback('error');
     }
     return result;
   }
@@ -1015,6 +1041,8 @@ export class OperatorWorkspaceStore {
     this.revenueSettlementInitialPageRef.set(null);
     this.revenueSettlementAvailableRef.set(null);
     this.clearConfigurationTestFeedback();
+    this.clearTlsTestFeedback();
+    this.clearTlsSaveFeedback();
   }
 
   clearConfigurationCredentialDrafts(): void {
@@ -1060,6 +1088,7 @@ export class OperatorWorkspaceStore {
     this.configurationMessagingTestRef.set(null);
     this.configurationMessagingDestinationTokenRef.set('');
     this.clearConfigurationTestFeedback();
+    this.clearTlsTestFeedback();
   }
 
   setGroupTokenInput(value: string): void {
@@ -1506,5 +1535,63 @@ export class OperatorWorkspaceStore {
       }
       this.configurationMessagingFeedbackRef.set(null);
     }
+  }
+
+  private showTlsTestFeedback(
+    kind: OperatorTlsTestKind,
+    state: Exclude<OperatorConfigurationTestFeedback, null>
+  ): void {
+    const feedbackRef = kind === 'DOMAIN'
+      ? this.tlsDomainFeedbackRef
+      : this.tlsCertificateFeedbackRef;
+    feedbackRef.set(state);
+    const timer = setTimeout(() => {
+      feedbackRef.set(null);
+      if (kind === 'DOMAIN') {
+        this.tlsDomainFeedbackTimer = null;
+      } else {
+        this.tlsCertificateFeedbackTimer = null;
+      }
+    }, 1000);
+    if (kind === 'DOMAIN') {
+      this.tlsDomainFeedbackTimer = timer;
+    } else {
+      this.tlsCertificateFeedbackTimer = timer;
+    }
+  }
+
+  private clearTlsTestFeedback(kind?: OperatorTlsTestKind): void {
+    if (!kind || kind === 'DOMAIN') {
+      if (this.tlsDomainFeedbackTimer) {
+        clearTimeout(this.tlsDomainFeedbackTimer);
+        this.tlsDomainFeedbackTimer = null;
+      }
+      this.tlsDomainFeedbackRef.set(null);
+    }
+    if (!kind || kind === 'CERTIFICATE') {
+      if (this.tlsCertificateFeedbackTimer) {
+        clearTimeout(this.tlsCertificateFeedbackTimer);
+        this.tlsCertificateFeedbackTimer = null;
+      }
+      this.tlsCertificateFeedbackRef.set(null);
+    }
+  }
+
+  private showTlsSaveFeedback(
+    state: Exclude<OperatorConfigurationTestFeedback, null>
+  ): void {
+    this.tlsSaveFeedbackRef.set(state);
+    this.tlsSaveFeedbackTimer = setTimeout(() => {
+      this.tlsSaveFeedbackRef.set(null);
+      this.tlsSaveFeedbackTimer = null;
+    }, 1000);
+  }
+
+  private clearTlsSaveFeedback(): void {
+    if (this.tlsSaveFeedbackTimer) {
+      clearTimeout(this.tlsSaveFeedbackTimer);
+      this.tlsSaveFeedbackTimer = null;
+    }
+    this.tlsSaveFeedbackRef.set(null);
   }
 }

@@ -198,6 +198,32 @@ describe('AppMenuComponent delayed drag', () => {
     expect(fallback?.hidden).toBe(false);
     expect(fallback?.textContent?.trim()).toBe('B');
   });
+
+  it('renders the tab-style switch for a labelled inline toggle', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    const component = fixture.componentInstance;
+    component.kind = 'inline';
+    component.layout = 'row';
+    component.items = [{
+      id: 'https-enabled',
+      label: 'On',
+      kind: 'toggle',
+      layout: 'pill',
+      active: true,
+      checked: true
+    }];
+
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.app-menu__button-row-label')?.textContent?.trim())
+      .toBe('On');
+    expect(
+      host.querySelector(
+        '.app-menu__button-row-toggle.app-menu__tabs-toggle--active'
+      )
+    ).not.toBeNull();
+  });
 });
 
 function createMenu(): {

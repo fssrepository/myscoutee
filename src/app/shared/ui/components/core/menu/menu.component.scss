@@ -124,6 +124,11 @@
   width: auto;
 }
 
+:host(.app-menu-host--layout-row) .app-menu {
+  width: var(--app-menu-row-width, auto);
+  max-width: 100%;
+}
+
 :host(.app-menu-host--panel-docked.app-menu-host--kind-select) .app-menu,
 :host(.app-menu-host--panel-docked.app-menu-host--model-layout-tabs) .app-menu,
 :host(.app-menu-host--panel-docked.app-menu-host--kind-fab) .app-menu,
@@ -1097,7 +1102,7 @@
 }
 
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
-  flex: 0 0 auto;
+  flex: var(--app-menu-action-flex, 0 0 auto);
   min-width: var(--app-menu-action-min-width, auto);
   height: var(--app-menu-action-height, 36px);
   min-height: var(--app-menu-action-height, 36px);
@@ -1183,6 +1188,19 @@
   box-shadow: 0 5px 14px rgba(12, 24, 40, 0.16);
 }
 
+.app-menu__button-row-item--toggle.app-menu__button-row-item--labelled.app-menu__button-row-item--active {
+  border-color: rgba(82, 101, 126, 0.28);
+  background: linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
+  color: #536174;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.app-menu__button-row-item--toggle.app-menu__button-row-item--labelled.app-menu__button-row-item--active:not(:disabled):hover {
+  border-color: rgba(82, 101, 126, 0.34);
+  background: linear-gradient(180deg, #ffffff 0%, #e9eff6 100%);
+  color: #536174;
+}
+
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled.app-menu__button-row-item--active {
   border-color: rgba(31, 63, 105, 0.18);
   background: var(--app-menu-bg-strong);
@@ -1212,6 +1230,12 @@
 
 .app-menu__button-row-main .app-menu__button-row-label {
   flex: 0 1 auto;
+}
+
+.app-menu__button-row-toggle {
+  position: relative;
+  z-index: 3;
+  margin-left: 0.12rem;
 }
 
 .app-menu__button-row-label {

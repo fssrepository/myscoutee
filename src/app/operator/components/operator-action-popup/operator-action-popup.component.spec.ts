@@ -50,6 +50,9 @@ describe('OperatorActionPopupComponent', () => {
     privateKey: ''
   });
   const busyAction = signal<string | null>(null);
+  const tlsDomainFeedback = signal<'success' | 'error' | null>(null);
+  const tlsCertificateFeedback = signal<'success' | 'error' | null>(null);
+  const tlsSaveFeedback = signal<'success' | 'error' | null>(null);
   const activePopup =
     signal<'configuration' | 'community' | null>('configuration');
   const closePopup = vi.fn();
@@ -66,6 +69,9 @@ describe('OperatorActionPopupComponent', () => {
     configurationDraft.set(operatorConfigurationDraft('stripe'));
     activePopup.set('configuration');
     busyAction.set(null);
+    tlsDomainFeedback.set(null);
+    tlsCertificateFeedback.set(null);
+    tlsSaveFeedback.set(null);
     tlsConfigurationDraft.set({
       enabled: false,
       mode: 'AUTOMATIC',
@@ -103,6 +109,9 @@ describe('OperatorActionPopupComponent', () => {
             tlsConfiguration: tlsConfiguration.asReadonly(),
             tlsConfigurationDraft: tlsConfigurationDraft.asReadonly(),
             tlsConfigurationReady: signal(true).asReadonly(),
+            tlsDomainFeedback: tlsDomainFeedback.asReadonly(),
+            tlsCertificateFeedback: tlsCertificateFeedback.asReadonly(),
+            tlsSaveFeedback: tlsSaveFeedback.asReadonly(),
             setTlsConfiguration: vi.fn(),
             configurationBrandingReady: signal(true).asReadonly(),
             configurationPaymentReady: signal(true).asReadonly(),
@@ -219,7 +228,7 @@ describe('OperatorActionPopupComponent', () => {
     ).toBe(true);
   });
 
-  it('keeps TLS toggles as draft state and gives Save the standard delayed ring', () => {
+  it('keeps TLS actions distinct and gives Save the standard delayed ring', () => {
     tlsConfigurationDraft.update(current => ({
       ...current,
       enabled: true,
@@ -229,30 +238,74 @@ describe('OperatorActionPopupComponent', () => {
     busyAction.set('save-tls');
     const actionFixture = TestBed.createComponent(OperatorActionPopupComponent);
     const componentView = actionFixture.componentInstance as unknown as {
-      configurationTlsEnabledItems:
+      configurationTlsAutoRenewItems:
         Signal<readonly AppMenuItem<string>[]>;
-      configurationTlsActionItems:
+      configurationTlsTestActionItems:
         Signal<readonly AppMenuItem<string>[]>;
+      configurationTlsSaveActionItems:
+        Signal<readonly AppMenuItem<string>[]>;
+      showTlsSaveAction: () => boolean;
     };
 
-    expect(componentView.configurationTlsEnabledItems()[0]).toEqual(
-      expect.objectContaining({ checked: true, active: true })
-    );
     expect(
-      componentView.configurationTlsActionItems()
+      componentView.configurationTlsSaveActionItems()
         .find(item => item.id === 'operator-save-tls')
         ?.progress
     ).toEqual({ state: 'loading', durationMs: 3000 });
+    expect(componentView.showTlsSaveAction()).toBe(true);
+    expect(componentView.configurationTlsAutoRenewItems()[0])
+      .toEqual(expect.objectContaining({
+        kind: 'toggle',
+        layout: 'pill',
+        label: 'operator.configuration.tls.auto.renew',
+        active: true,
+        checked: true
+      }));
     busyAction.set(null);
-    tlsConfigurationDraft.update(current => ({
-      ...current,
-      enabled: false
-    }));
+    tlsDomainFeedback.set('success');
     expect(
-      componentView.configurationTlsActionItems()
-        .find(item => item.id === 'operator-save-tls')
-        ?.disabled
-    ).toBe(false);
+      componentView.configurationTlsTestActionItems()
+        .find(item => item.id === 'operator-test-tls-domain')
+    ).toEqual(expect.objectContaining({
+      icon: 'check_circle',
+      palette: 'green',
+      progress: { state: 'success', durationMs: 1000 }
+    }));
+    tlsDomainFeedback.set('error');
+    tlsCertificateFeedback.set('error');
+    expect(componentView.configurationTlsTestActionItems()).toEqual([
+      expect.objectContaining({
+        icon: 'error_outline',
+        palette: 'red',
+        progress: { state: 'error', durationMs: 1000 }
+      }),
+      expect.objectContaining({
+        icon: 'error_outline',
+        palette: 'red',
+        progress: { state: 'error', durationMs: 1000 }
+      })
+    ]);
+    tlsSaveFeedback.set('success');
+    expect(componentView.configurationTlsSaveActionItems()[0])
+      .toEqual(expect.objectContaining({
+        icon: 'check_circle',
+        palette: 'green',
+        progress: { state: 'success', durationMs: 1000 }
+      }));
+    tlsSaveFeedback.set('error');
+    expect(componentView.configurationTlsSaveActionItems()[0])
+      .toEqual(expect.objectContaining({
+        icon: 'error_outline',
+        palette: 'red',
+        progress: { state: 'error', durationMs: 1000 }
+      }));
+    tlsSaveFeedback.set(null);
+    expect(componentView.configurationTlsSaveActionItems()[0])
+      .toEqual(expect.objectContaining({
+        icon: 'save',
+        palette: 'violet',
+        progress: null
+      }));
     actionFixture.destroy();
   });
 
