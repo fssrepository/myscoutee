@@ -396,6 +396,9 @@ export class GameService extends BaseRouteModeService {
     if (state.requestInFlight) {
       return this.getUserGameCardsStackSnapshot(normalizedUserId);
     }
+    if (!reset && state.filterCount !== null && state.nextCursor === null) {
+      return this.getUserGameCardsStackSnapshot(normalizedUserId);
+    }
     const fallbackIds = [...state.cardUserIds];
     const fallbackSocialCards = state.socialCards.map(card => ({ ...card }));
     const fallbackCursor = state.nextCursor;
@@ -464,6 +467,12 @@ export class GameService extends BaseRouteModeService {
         }
         state.socialCards = this.normalizeGameSocialCardsForMode([...socialCardsById.values()], mode);
         state.nextCursor = cards.nextCursor;
+        if (state.nextCursor === null) {
+          const visibleLoadedCount = mode === 'single'
+            ? state.cardUserIds.length
+            : state.socialCards.length;
+          state.filterCount = Math.min(state.filterCount, visibleLoadedCount);
+        }
       } else if (reset) {
         state.filterCount = null;
         state.cardUserIds = [];

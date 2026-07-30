@@ -1687,7 +1687,9 @@ export class HomeComponent implements OnDestroy {
       if (snapshot.nextCursor === null && !this.hasUnloadedRemainingServiceRows(snapshot)) {
         return;
       }
-      await this.gameService.loadNextUserGameCardsStackPage(
+      const previousCursor = snapshot.nextCursor;
+      const previousLoadedCount = this.loadedServiceRowsCount(snapshot);
+      const nextSnapshot = await this.gameService.loadNextUserGameCardsStackPage(
         this.activeUserId,
         this.gameFilterForRequest(),
         this.gameStackPageSizeForCurrentMode(),
@@ -1696,6 +1698,12 @@ export class HomeComponent implements OnDestroy {
         this.rightSocialQuery.trim() || null
       );
       this.mergeGameStackUsersIntoHomeUsers();
+      if (
+        nextSnapshot.nextCursor === previousCursor
+        && this.loadedServiceRowsCount(nextSnapshot) <= previousLoadedCount
+      ) {
+        return;
+      }
     }
   }
 
