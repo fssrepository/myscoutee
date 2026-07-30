@@ -551,6 +551,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesRates.openEditor(row, event.sourceEvent);
       return;
     }
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      this.activitiesEvents.runActivityItemViewAction(
+        row as ActivityEventListItem,
+        event.sourceEvent
+      );
+      return;
+    }
     this.activitiesEvents.onActivityRowClick(row as ActivityEventListItem, event.sourceEvent);
   }
 

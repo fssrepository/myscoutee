@@ -620,6 +620,9 @@ export class HomeComponent implements OnDestroy {
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Loading more cards';
     }
+    if (this.hasFilteredCandidates && !this.hasRemainingCandidatesForCurrentMode) {
+      return 'No more profiles';
+    }
     if (this.hasFilteredCandidates) {
       return 'No cards available';
     }
@@ -629,6 +632,9 @@ export class HomeComponent implements OnDestroy {
   protected get noCandidateDescription(): string {
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Preloading the next stack in the background.';
+    }
+    if (this.hasFilteredCandidates && !this.hasRemainingCandidatesForCurrentMode) {
+      return 'You have reached the end of this stack.';
     }
     if (this.hasFilteredCandidates) {
       return 'Change filters to get more cards.';
@@ -2639,7 +2645,10 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     const serviceStackBefore = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-    if (!serviceStackBefore.nextCursor && (serviceStackBefore.cardUserIds.length > 0 || serviceStackBefore.socialCards.length > 0)) {
+    if (
+      serviceStackBefore.nextCursor === null
+      && !this.hasUnloadedRemainingServiceRows(serviceStackBefore)
+    ) {
       this.gameStackExhausted = true;
       return;
     }

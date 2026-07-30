@@ -1328,6 +1328,8 @@ export interface UserGameCardsQueryRequest {
   filterPreferences?: UserGameFilterPreferencesDto | null;
   cursor?: string | null;
   pageSize?: number;
+  excludedCardUserIds?: string[];
+  excludedSocialCardIds?: string[];
 }
 
 export interface UserGameCardsDto {

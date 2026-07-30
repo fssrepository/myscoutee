@@ -34,7 +34,7 @@ describe('SeedNotificationsBuilder', () => {
 
   it('builds a cursor-pagination-sized category mix for the selected user', () => {
     const records = SeedNotificationsBuilder.buildForUser('u3', users);
-    const invitations = SeedEventsBuilder.buildSeedInvitationItemsByUser().u3 ?? [];
+    const invitations = SeedEventsBuilder.buildSeedInvitationItemsByUser()['u3'] ?? [];
 
     expect(records.length).toBe(32 + invitations.length);
     expect(records.filter(record => !record.readAtIso).length).toBe(24 + invitations.length);
@@ -57,7 +57,7 @@ describe('SeedNotificationsBuilder', () => {
 
   it('targets any selected demo member without leaking the previous recipient', () => {
     const records = SeedNotificationsBuilder.buildForUser('u1', users);
-    const invitations = SeedEventsBuilder.buildSeedInvitationItemsByUser().u1 ?? [];
+    const invitations = SeedEventsBuilder.buildSeedInvitationItemsByUser()['u1'] ?? [];
 
     expect(records.length).toBe(32 + invitations.length);
     expect(records.every(record => record.recipientUserId === 'u1')).toBe(true);
