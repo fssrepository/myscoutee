@@ -278,6 +278,22 @@
   --app-menu-action-padding: 0.3rem 0.85rem;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  :host
+    ::ng-deep
+    .entry-hero-cta-menu
+    .app-menu__button-row-item--action.app-menu__button-row-item--labelled:not(:disabled):hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  :host
+    ::ng-deep
+    .entry-hero-cta-menu
+    .app-menu__button-row-item--action.app-menu__button-row-item--labelled:not(:disabled):active {
+    transform: scale(0.97);
+  }
+}
+
 @media (max-width: 760px) {
   :host ::ng-deep .entry-hero-cta-menu .app-menu__button-row {
     flex-wrap: wrap;
@@ -288,6 +304,16 @@
     app-menu.entry-hero-cta-menu.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action
     .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
     flex: 1 1 calc(50% - 0.39rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host
+    ::ng-deep
+    .entry-hero-cta-menu
+    .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
+    transition: none;
+    transform: none;
   }
 }
 
