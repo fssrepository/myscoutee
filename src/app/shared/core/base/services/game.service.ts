@@ -383,9 +383,20 @@ export class GameService extends BaseRouteModeService {
     mode: UserGameCardsQueryRequest['mode'] = 'single',
     leftQuery: UserGameCardsQueryRequest['leftQuery'] = null,
     rightQuery: UserGameCardsQueryRequest['rightQuery'] = null,
-    requestTimeoutMs?: number
+    requestTimeoutMs?: number,
+    forceRequest = false
   ): Promise<UserGameCardsStackSnapshot> {
-    return this.loadUserGameCardsStackPage(userId, filterPreferences, pageSize, false, mode, leftQuery, rightQuery, requestTimeoutMs);
+    return this.loadUserGameCardsStackPage(
+      userId,
+      filterPreferences,
+      pageSize,
+      false,
+      mode,
+      leftQuery,
+      rightQuery,
+      requestTimeoutMs,
+      forceRequest
+    );
   }
 
   private async loadUserGameCardsStackPage(
@@ -396,7 +407,8 @@ export class GameService extends BaseRouteModeService {
     mode: UserGameCardsQueryRequest['mode'],
     leftQuery: UserGameCardsQueryRequest['leftQuery'],
     rightQuery: UserGameCardsQueryRequest['rightQuery'],
-    requestTimeoutMs?: number
+    requestTimeoutMs?: number,
+    forceRequest = false
   ): Promise<UserGameCardsStackSnapshot> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -416,6 +428,7 @@ export class GameService extends BaseRouteModeService {
       && state.nextCursor === null
       && (state.cardUserIds.length > 0 || state.socialCards.length > 0)
       && !this.hasUnloadedRemainingGameCards(state, mode, excludedUserIds, excludedPairKeys)
+      && !forceRequest
     ) {
       return this.getUserGameCardsStackSnapshot(normalizedUserId);
     }
@@ -426,7 +439,7 @@ export class GameService extends BaseRouteModeService {
     const existingSocialCards = reset
       ? []
       : fallbackSocialCards
-        .filter(card => this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys))
+        .filter(card => card.id.trim().length > 0 && card.userId.trim().length > 0)
         .map(card => ({ ...card }));
     const existingCursor = reset
       ? null
@@ -490,16 +503,16 @@ export class GameService extends BaseRouteModeService {
           ...(cards.socialCards ?? []).map(card => card.id)
         ]);
         state.nextCursor = cards.nextCursor;
-        if (state.nextCursor === null) {
-          const loadedRemainingCount = mode === 'single'
-            ? state.cardUserIds.filter(id =>
-              this.shouldKeepGameCardUserId(id, normalizedUserId, excludedUserIds)
-            ).length
-            : state.socialCards.filter(card =>
-              this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys)
-            ).length;
-          state.filterCount = Math.min(state.filterCount, loadedRemainingCount);
-        }
+        const loadedRemainingCount = mode === 'single'
+          ? state.cardUserIds.filter(id =>
+            this.shouldKeepGameCardUserId(id, normalizedUserId, excludedUserIds)
+          ).length
+          : state.socialCards.filter(card =>
+            this.shouldKeepGameSocialCard(card, mode, excludedUserIds, excludedPairKeys)
+          ).length;
+        state.filterCount = state.nextCursor === null
+          ? loadedRemainingCount
+          : Math.max(state.filterCount, loadedRemainingCount);
       } else if (reset) {
         state.filterCount = null;
         state.cardUserIds = [];
