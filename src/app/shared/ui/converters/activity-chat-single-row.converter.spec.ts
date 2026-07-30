@@ -61,6 +61,58 @@ describe('ActivityChatSingleRowConverter identity', () => {
   });
 });
 
+describe('ActivityChatSingleRowConverter member summaries', () => {
+  it('uses the API member summary for the last sender without a profile cache resolver', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      lastSenderId: 'member-1',
+      members: [{
+        id: 'member-1',
+        name: 'Kai Morgan',
+        initials: 'KM',
+        gender: 'man'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Nagy Eszter',
+        initials: 'NE',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('Kai Morgan');
+    expect(row.title).not.toBe('Nagy Eszter');
+  });
+
+  it('counts member summaries when legacy member ids are absent', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      memberIds: [],
+      members: [{
+        id: 'viewer',
+        name: 'Nagy Eszter',
+        initials: 'NE',
+        gender: 'woman'
+      }, {
+        id: 'member-1',
+        name: 'Kai Morgan',
+        initials: 'KM',
+        gender: 'man'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Nagy Eszter',
+        initials: 'NE',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.memberCount).toBe(2);
+  });
+});
+
 function groupChat(): ChatDTO {
   return {
     id: 'chat-group-b',

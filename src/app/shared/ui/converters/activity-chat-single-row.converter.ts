@@ -1,4 +1,9 @@
-import type { ChatChannelType, ChatDTO, SupportCaseStatus } from '../../core/contracts/chat.interface';
+import type {
+  ChatChannelType,
+  ChatDTO,
+  ChatMemberSummaryDto,
+  SupportCaseStatus
+} from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import { AppUtils } from '../../app-utils';
 import type { SingleRowData } from '../components/core/smart-list/card';
@@ -14,6 +19,8 @@ export interface ActivityChatSingleRowConverterOptions {
 interface ResolvedActivityChatSingleRowConverterOptions extends ActivityChatSingleRowConverterOptions {
   fallbackUser: UserDto;
 }
+
+type ActivityChatPerson = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender'>;
 
 export class ActivityChatSingleRowConverter {
   static convert(
@@ -290,8 +297,8 @@ export class ActivityChatSingleRowConverter {
   private static resolveLastSender(
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
-  ): UserDto | null {
-    const lastSender = this.resolveUserById(dto.lastSenderId, options);
+  ): ActivityChatPerson | null {
+    const lastSender = this.resolveUserById(dto.lastSenderId, dto, options);
     if (lastSender) {
       return lastSender;
     }
@@ -317,10 +324,14 @@ export class ActivityChatSingleRowConverter {
   private static resolveMembers(
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
-  ): UserDto[] {
-    const members = (dto.memberIds ?? [])
-      .map(memberId => this.resolveUserById(memberId, options))
-      .filter((user): user is UserDto => Boolean(user));
+  ): ActivityChatPerson[] {
+    const memberIds = new Set([
+      ...(dto.memberIds ?? []),
+      ...(dto.members ?? []).map(member => member.id)
+    ].map(memberId => `${memberId ?? ''}`.trim()).filter(Boolean));
+    const members = [...memberIds]
+      .map(memberId => this.resolveUserById(memberId, dto, options))
+      .filter((user): user is ActivityChatPerson => Boolean(user));
     if (members.length > 0) {
       return this.uniqueUsersById(members);
     }
@@ -338,8 +349,9 @@ export class ActivityChatSingleRowConverter {
 
   private static resolveUserById(
     userId: string | undefined,
+    dto: Pick<ChatDTO, 'members'>,
     options: ActivityChatSingleRowConverterOptions
-  ): UserDto | null {
+  ): ActivityChatPerson | null {
     const normalizedUserId = `${userId ?? ''}`.trim();
     if (!normalizedUserId) {
       return null;
@@ -347,12 +359,27 @@ export class ActivityChatSingleRowConverter {
     if (normalizedUserId === options.activeUser.id) {
       return options.activeUser;
     }
-    return options.resolveUserById?.(normalizedUserId) ?? null;
+    const resolvedUser = options.resolveUserById?.(normalizedUserId) ?? null;
+    if (resolvedUser) {
+      return resolvedUser;
+    }
+    const member = (dto.members ?? []).find(candidate => `${candidate.id ?? ''}`.trim() === normalizedUserId);
+    return member ? this.memberSummaryPerson(member) : null;
   }
 
-  private static uniqueUsersById(users: readonly UserDto[]): UserDto[] {
+  private static memberSummaryPerson(member: ChatMemberSummaryDto): ActivityChatPerson {
+    const name = `${member.name ?? ''}`.trim() || member.id;
+    return {
+      id: member.id,
+      name,
+      initials: `${member.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
+      gender: member.gender === 'woman' ? 'woman' : 'man'
+    };
+  }
+
+  private static uniqueUsersById(users: readonly ActivityChatPerson[]): ActivityChatPerson[] {
     const seen = new Set<string>();
-    const unique: UserDto[] = [];
+    const unique: ActivityChatPerson[] = [];
     for (const user of users) {
       if (seen.has(user.id)) {
         continue;
