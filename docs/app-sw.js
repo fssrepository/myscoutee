@@ -1,12 +1,19 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-e4df55829f7c-20260727230848";
-const BUILD_ID = "e4df55829f7c-20260727230848";
+const CACHE_VERSION = "build-0cba2b4f9ea6-20260730123426";
+const BUILD_ID = "0cba2b4f9ea6-20260730123426";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
 const APP_CACHE_PREFIX = `${CACHE_PREFIX}-app-`;
 const PREVIOUS_APP_CACHE_LIMIT = 1;
+const DEPLOYMENT_CONFIGURATION_URL = './api/deployment/configuration';
+const DEPLOYMENT_BRANDING_CACHE_KEY = './__deployment-branding__';
+const DEFAULT_DEPLOYMENT_BRANDING = Object.freeze({
+  productName: 'MyScoutee',
+  homeLabel: 'Your preferences come first',
+  logoUrl: './assets/logo/heart.webp'
+});
 const PRECACHE_CORE_URLS = [
   './',
   './index.html',
@@ -23,109 +30,131 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-232LZJSP.js",
-  "./chunk-27KIEUDF.js",
-  "./chunk-2ETPG256.js",
-  "./chunk-2SJXTFUJ.js",
-  "./chunk-3K2DMEV4.js",
-  "./chunk-3O7FSA2B.js",
-  "./chunk-4J7AY6EG.js",
-  "./chunk-4RWFPIN7.js",
-  "./chunk-4ZGC273P.js",
-  "./chunk-54YUWOU5.js",
-  "./chunk-5NMNY4ZA.js",
-  "./chunk-5PQFHX7R.js",
-  "./chunk-64HDKRX7.js",
-  "./chunk-6BX32QMS.js",
-  "./chunk-6PS56TAN.js",
-  "./chunk-6SPED3UJ.js",
-  "./chunk-72JDJAJX.js",
-  "./chunk-7OJX6AHJ.js",
-  "./chunk-AKAALRLR.js",
-  "./chunk-B2W4NSSN.js",
-  "./chunk-B76YTRGS.js",
-  "./chunk-BRARPE73.js",
-  "./chunk-C3TNBN2F.js",
-  "./chunk-CABMKMHH.js",
-  "./chunk-CKEKQBO2.js",
-  "./chunk-CYPSAPP4.js",
-  "./chunk-D6KLXMFO.js",
-  "./chunk-DHMSPDOJ.js",
-  "./chunk-DIBTMBY7.js",
-  "./chunk-DL4RHNVN.js",
-  "./chunk-DUKMN2BG.js",
-  "./chunk-E4KE3QKB.js",
-  "./chunk-EVOM2LGA.js",
-  "./chunk-EWQRBHHZ.js",
-  "./chunk-F47TFN7L.js",
-  "./chunk-F7WXN6IS.js",
-  "./chunk-FCSV67U7.js",
-  "./chunk-FMYQK2GF.js",
-  "./chunk-G2O2MOK3.js",
-  "./chunk-G3XUYD3V.js",
-  "./chunk-GP432PHO.js",
-  "./chunk-GQVZMZXE.js",
-  "./chunk-GX5IFZAS.js",
-  "./chunk-HE5OIVJR.js",
-  "./chunk-HXOTV4RE.js",
-  "./chunk-I4LXVEQE.js",
-  "./chunk-I5CXX2KN.js",
-  "./chunk-IIC3TI2B.js",
-  "./chunk-IKQF6EBT.js",
+  "./chunk-25J5RQ5B.js",
+  "./chunk-2I4GGWVI.js",
+  "./chunk-35ELRSLD.js",
+  "./chunk-3BTJBXWV.js",
+  "./chunk-3HCYVNKT.js",
+  "./chunk-3MFSDAZK.js",
+  "./chunk-3OKWXYTQ.js",
+  "./chunk-3UQIZUL2.js",
+  "./chunk-3ZITYLX7.js",
+  "./chunk-46XDQWKS.js",
+  "./chunk-4DY23NGS.js",
+  "./chunk-4G5OK66M.js",
+  "./chunk-4VTC4BN6.js",
+  "./chunk-53YC7A4I.js",
+  "./chunk-5ESHGOIX.js",
+  "./chunk-5FZTEZJB.js",
+  "./chunk-5HZNELSX.js",
+  "./chunk-5TQ54ASB.js",
+  "./chunk-5VKWN3U7.js",
+  "./chunk-6FVWGQ4D.js",
+  "./chunk-6H5WBQV7.js",
+  "./chunk-6JB65VIJ.js",
+  "./chunk-6YCM3HCC.js",
+  "./chunk-7VMK2EDP.js",
+  "./chunk-ALJ34VNX.js",
+  "./chunk-APS4RASU.js",
+  "./chunk-ATI5KTTA.js",
+  "./chunk-B7HOOEHU.js",
+  "./chunk-BFG4HLL3.js",
+  "./chunk-BFR4DN2W.js",
+  "./chunk-BHIQTBO7.js",
+  "./chunk-BK4DQNAU.js",
+  "./chunk-CELULRD5.js",
+  "./chunk-CI3FWCU5.js",
+  "./chunk-D7F7LDZJ.js",
+  "./chunk-DCCI37AG.js",
+  "./chunk-DNDCQVNF.js",
+  "./chunk-DYAIXFAK.js",
+  "./chunk-EM7TPDRW.js",
+  "./chunk-EU24XUS5.js",
+  "./chunk-F2IBZKJB.js",
+  "./chunk-FJIMXMHQ.js",
+  "./chunk-FYR5KZI7.js",
+  "./chunk-G3MLGNXH.js",
+  "./chunk-GKZDRXE4.js",
+  "./chunk-GN2IJLL3.js",
+  "./chunk-GO5QSQUF.js",
+  "./chunk-GPZKASUN.js",
+  "./chunk-GQHLZPLF.js",
+  "./chunk-HDUV74HR.js",
+  "./chunk-HOWISKJ6.js",
   "./chunk-ILYEL5SY.js",
-  "./chunk-IQYUH2NB.js",
-  "./chunk-J4VN3LVX.js",
-  "./chunk-J6DOMUCJ.js",
-  "./chunk-JMNHMXLC.js",
-  "./chunk-JON337DW.js",
-  "./chunk-JW5CMASA.js",
-  "./chunk-KODEKGCS.js",
-  "./chunk-L44UQXWY.js",
-  "./chunk-LCLJ2F6V.js",
-  "./chunk-LEDXHFT3.js",
-  "./chunk-LM4XY6OH.js",
-  "./chunk-M3NVS7JV.js",
-  "./chunk-MMONNHTO.js",
-  "./chunk-NOJSUCLW.js",
-  "./chunk-NZCYFD2M.js",
-  "./chunk-OGPW47NL.js",
-  "./chunk-OZJE45NO.js",
-  "./chunk-PS2554JC.js",
-  "./chunk-Q3BQQV5K.js",
-  "./chunk-QHLOSQWA.js",
-  "./chunk-QNFICO2I.js",
-  "./chunk-R4QQ23Q5.js",
-  "./chunk-R7BJGNCR.js",
-  "./chunk-RJQDCZWF.js",
-  "./chunk-RMR6AOAQ.js",
-  "./chunk-RR3FTBWH.js",
+  "./chunk-IP2AE7QN.js",
+  "./chunk-IV3UE3BP.js",
+  "./chunk-J2OH2P6B.js",
+  "./chunk-JDRDVVJV.js",
+  "./chunk-JKVIPKU2.js",
+  "./chunk-JZ625CV3.js",
+  "./chunk-KAY5JW3T.js",
+  "./chunk-KB33S2EZ.js",
+  "./chunk-KJYTH4DM.js",
+  "./chunk-LAKDLSFK.js",
+  "./chunk-LAPKFGJS.js",
+  "./chunk-LBTPF36E.js",
+  "./chunk-LE7OBLBJ.js",
+  "./chunk-LFPG4VBU.js",
+  "./chunk-LQMDNSJC.js",
+  "./chunk-LU4SEWUF.js",
+  "./chunk-M4BBLW6K.js",
+  "./chunk-MSODL3X5.js",
+  "./chunk-N4YP5VWP.js",
+  "./chunk-NELL6Y2K.js",
+  "./chunk-NHAL5BKS.js",
+  "./chunk-NHPGLX7K.js",
+  "./chunk-NJWRJONG.js",
+  "./chunk-NZAX6AHY.js",
+  "./chunk-OZVISBHT.js",
+  "./chunk-P5K226NH.js",
+  "./chunk-PYS7CLWR.js",
+  "./chunk-Q6FMDPXI.js",
+  "./chunk-QIHBVCPA.js",
+  "./chunk-QUQXYYHD.js",
+  "./chunk-QYYU4P2L.js",
+  "./chunk-RFF2BDUH.js",
+  "./chunk-RPBRXEX4.js",
+  "./chunk-RUTT6XHK.js",
   "./chunk-S24YZLS5.js",
-  "./chunk-S4CEPTAW.js",
-  "./chunk-SAH4I3LK.js",
-  "./chunk-SB4VWWAU.js",
-  "./chunk-SFBJRAVG.js",
-  "./chunk-TKUWF55N.js",
-  "./chunk-TUY4JIW3.js",
-  "./chunk-U6HVNEDZ.js",
-  "./chunk-ULAPRGQ4.js",
-  "./chunk-UTI6NKB2.js",
-  "./chunk-UWQWVN3Y.js",
-  "./chunk-VCTRVSNJ.js",
-  "./chunk-VILYZIF3.js",
-  "./chunk-VWYQ7PHI.js",
-  "./chunk-W2ZGGUTB.js",
-  "./chunk-W6OTKMCQ.js",
-  "./chunk-WEAM4W27.js",
-  "./chunk-X3IJSK44.js",
-  "./chunk-X7UY6B2E.js",
-  "./chunk-XBDNT23B.js",
-  "./chunk-XWKDHDFT.js",
-  "./chunk-YBLEAFXP.js",
-  "./chunk-YPGKKBGY.js",
-  "./chunk-Z2MNCWOG.js",
-  "./chunk-ZIXA72AR.js",
-  "./chunk-ZVHDCPA5.js",
-  "./main-6U4RVHII.js",
+  "./chunk-S5HDBC47.js",
+  "./chunk-SHN3FKTG.js",
+  "./chunk-SIP6ILI5.js",
+  "./chunk-SJSSPBW7.js",
+  "./chunk-T5WATDKT.js",
+  "./chunk-TBH2MK2E.js",
+  "./chunk-TCOPQWYJ.js",
+  "./chunk-TKVHDFS5.js",
+  "./chunk-TPFOJLAN.js",
+  "./chunk-TVLIF6TH.js",
+  "./chunk-UMLUOERJ.js",
+  "./chunk-URBY2ZJ7.js",
+  "./chunk-UTV4FTRY.js",
+  "./chunk-VA2KRVWH.js",
+  "./chunk-VC2WBCWD.js",
+  "./chunk-VF7A4SLC.js",
+  "./chunk-WKEWVVDP.js",
+  "./chunk-WKNITTOF.js",
+  "./chunk-XBYVYZVH.js",
+  "./chunk-XDEAMRDG.js",
+  "./chunk-XG4GAPKZ.js",
+  "./chunk-XUNSSLD4.js",
+  "./chunk-XWFKAZWG.js",
+  "./chunk-XZSM2V4P.js",
+  "./chunk-YFHM7FOI.js",
+  "./chunk-YHTEWTRD.js",
+  "./chunk-YQ4N4JX5.js",
+  "./chunk-YSCRZWJG.js",
+  "./chunk-YX5FXOSX.js",
+  "./chunk-Z3RFS5R2.js",
+  "./chunk-ZC2H6ECU.js",
+  "./chunk-ZFPVIT22.js",
+  "./chunk-ZHAWKX6P.js",
+  "./chunk-ZJR3YDKR.js",
+  "./chunk-ZR4QYHLW.js",
+  "./chunk-ZTVIKPG7.js",
+  "./chunk-ZYKZ7NY5.js",
+  "./main-SWUWXW4M.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -190,7 +219,7 @@ const PRECACHE_BUILD_URLS = [
   "./media/roboto-vietnamese-400-normal-R3IJFZXV.woff",
   "./media/roboto-vietnamese-500-normal-SNWSONII.woff",
   "./media/roboto-vietnamese-500-normal-VJX2WMYG.woff2",
-  "./styles-T3QTPFFJ.css"
+  "./styles-CESK6H4M.css"
 ];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
@@ -226,6 +255,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'DEPLOYMENT_BRANDING') {
+    event.waitUntil(
+      storeDeploymentBranding(event.data.branding)
+    );
   }
 });
 
@@ -275,16 +310,19 @@ self.addEventListener('push', event => {
   if (!payload) {
     return;
   }
-  event.waitUntil(
-    self.registration.showNotification(payload.title, {
+  event.waitUntil((async () => {
+    const branding = await deploymentBranding();
+    await self.registration.showNotification(
+      payload.title || branding.productName,
+      {
       body: payload.body,
-      icon: payload.icon || './assets/logo/heart.png',
-      badge: payload.badge || './assets/logo/heart.png',
+      icon: payload.icon || branding.logoUrl,
+      badge: payload.badge || branding.logoUrl,
       data: {
         url: payload.url || '/game'
       }
-    })
-  );
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
@@ -444,16 +482,21 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-function unavailableResponse(request) {
+async function unavailableResponse(request) {
   if (request.mode === 'navigate') {
-    return new Response('<!doctype html><title>MyScoutee</title><body>No network</body>', {
+    const branding = await deploymentBranding();
+    const productName = escapeHtml(branding.productName);
+    return new Response(
+      `<!doctype html><title>${productName}</title><body>${productName}</body>`,
+      {
       status: 503,
       statusText: 'Service Unavailable',
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store'
       }
-    });
+      }
+    );
   }
   return new Response('', {
     status: 503,
@@ -473,7 +516,7 @@ function parsePushPayload(event) {
     const notification = json.notification || {};
     const data = json.data || {};
     return {
-      title: notification.title || data.title || 'MyScoutee',
+      title: notification.title || data.title || '',
       body: notification.body || data.body || '',
       icon: notification.icon || data.icon || '',
       badge: notification.badge || data.badge || '',
@@ -481,13 +524,108 @@ function parsePushPayload(event) {
     };
   } catch {
     return {
-      title: 'MyScoutee',
+      title: '',
       body: event.data.text(),
       icon: '',
       badge: '',
       url: '/game'
     };
   }
+}
+
+async function deploymentBranding() {
+  const cache = await caches.open(API_CACHE);
+  const cached = await cache.match(DEPLOYMENT_BRANDING_CACHE_KEY);
+  if (cached) {
+    try {
+      return normalizeDeploymentBranding(await cached.json());
+    } catch {
+      await cache.delete(DEPLOYMENT_BRANDING_CACHE_KEY);
+    }
+  }
+  try {
+    const response = await fetch(DEPLOYMENT_CONFIGURATION_URL, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    if (response.ok) {
+      const branding = normalizeDeploymentBranding(await response.json());
+      await persistDeploymentBranding(cache, branding);
+      return branding;
+    }
+  } catch {
+    // Offline and cold-worker fallback uses the bundled product identity.
+  }
+  return { ...DEFAULT_DEPLOYMENT_BRANDING };
+}
+
+async function storeDeploymentBranding(value) {
+  const cache = await caches.open(API_CACHE);
+  await persistDeploymentBranding(
+    cache,
+    normalizeDeploymentBranding(value)
+  );
+}
+
+async function persistDeploymentBranding(cache, branding) {
+  await cache.put(
+    DEPLOYMENT_BRANDING_CACHE_KEY,
+    new Response(JSON.stringify(branding), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
+    })
+  );
+}
+
+function normalizeDeploymentBranding(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const productName = normalizedText(source.productName, 80)
+    || DEFAULT_DEPLOYMENT_BRANDING.productName;
+  const homeLabel = normalizedText(source.homeLabel, 120);
+  return {
+    productName,
+    homeLabel,
+    logoUrl: normalizedLogoUrl(source.logoUrl)
+  };
+}
+
+function normalizedLogoUrl(value) {
+  const normalized = normalizedText(value, 4096);
+  if (!normalized) {
+    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+  }
+  try {
+    const url = new URL(normalized, self.location.origin);
+    if (
+      (url.protocol === 'https:' || url.origin === self.location.origin)
+      && !url.username
+      && !url.password
+    ) {
+      return url.toString();
+    }
+  } catch {
+    // Fall through to the bundled logo.
+  }
+  return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+}
+
+function normalizedText(value, maximumLength) {
+  return typeof value === 'string'
+    ? Array.from(value.trim()).slice(0, maximumLength).join('')
+    : '';
+}
+
+function escapeHtml(value) {
+  return `${value ?? ''}`
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 async function openClient(targetUrl) {
