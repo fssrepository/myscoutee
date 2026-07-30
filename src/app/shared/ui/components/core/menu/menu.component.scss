@@ -165,6 +165,50 @@
   --app-menu-shadow: rgba(18, 39, 68, 0.12);
 }
 
+.app-menu__palette--brand {
+  --app-menu-bg: var(--deployment-control-primary-background, #fff);
+  --app-menu-bg-hover: color-mix(
+    in srgb,
+    var(--deployment-control-primary-background, #fff) 92%,
+    var(--deployment-control-primary-text, #6843d8)
+  );
+  --app-menu-bg-strong: var(--deployment-control-primary-background, #fff);
+  --app-menu-action-bg: var(--deployment-control-primary-background, #fff);
+  --app-menu-action-bg-hover: color-mix(
+    in srgb,
+    var(--deployment-control-primary-background, #fff) 92%,
+    var(--deployment-control-primary-text, #6843d8)
+  );
+  --app-menu-action-fg: var(--deployment-control-primary-text, #6843d8);
+  --app-menu-action-border: transparent;
+  --app-menu-action-shadow: 0 10px 20px color-mix(
+    in srgb,
+    var(--deployment-brand-shadow, rgba(71, 38, 138, 0.26)) 76%,
+    transparent
+  );
+  --app-menu-border: transparent;
+  --app-menu-fg: var(--deployment-control-primary-text, #6843d8);
+  --app-menu-icon: var(--deployment-control-primary-text, #6843d8);
+  --app-menu-line: color-mix(in srgb, var(--deployment-control-primary-text, #6843d8) 28%, transparent);
+  --app-menu-shadow: var(--deployment-brand-shadow, rgba(71, 38, 138, 0.26));
+}
+
+.app-menu__palette--ink {
+  --app-menu-bg: linear-gradient(135deg, #242832 0%, #0f1117 100%);
+  --app-menu-bg-hover: linear-gradient(135deg, #2d323e 0%, #151820 100%);
+  --app-menu-bg-strong: linear-gradient(135deg, #171a21 0%, #07080b 100%);
+  --app-menu-action-bg: linear-gradient(135deg, #171a21 0%, #07080b 100%);
+  --app-menu-action-bg-hover: linear-gradient(135deg, #20242d 0%, #0b0d12 100%);
+  --app-menu-action-fg: #fff;
+  --app-menu-action-border: transparent;
+  --app-menu-action-shadow: 0 9px 20px rgba(4, 6, 10, 0.34);
+  --app-menu-border: rgba(255, 255, 255, 0.12);
+  --app-menu-fg: #fff;
+  --app-menu-icon: #fff;
+  --app-menu-line: rgba(255, 255, 255, 0.2);
+  --app-menu-shadow: rgba(4, 6, 10, 0.34);
+}
+
 .app-menu__palette--slate,
 .app-menu__palette--muted {
   --app-menu-bg: linear-gradient(180deg, #f4f6f9 0%, #e7edf4 100%);

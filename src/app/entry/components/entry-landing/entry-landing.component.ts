@@ -21,9 +21,15 @@ import {
   PopupComponent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui/components/core/menu';
 import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
+type EntryHeroCtaId = 'explore' | 'how-it-works' | 'bug-report' | 'partners';
 
 interface AppVersionPayload {
   readonly version?: unknown;
@@ -56,6 +62,7 @@ interface PartnerRoleOverview {
     WarpImageCardComponent,
     SmartListComponent,
     PopupComponent,
+    AppMenuComponent,
     MatRippleModule,
     MatIconModule,
     I18nPipe
@@ -414,6 +421,70 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected showHowItWorksCta(): boolean {
     return !this.networkUnavailable && (this.articlesLoading || this.publishedIdeaCount() > 0);
+  }
+
+  protected entryHeroCtaItems(): readonly AppMenuItem<EntryHeroCtaId>[] {
+    const items: AppMenuItem<EntryHeroCtaId>[] = [
+      {
+        id: 'explore',
+        label: this.entryPrimaryCtaLabel,
+        icon: this.entryPrimaryCtaIcon,
+        kind: 'action',
+        layout: 'action',
+        palette: 'brand',
+        disabled: this.networkUnavailable
+      }
+    ];
+    if (this.showHowItWorksCta()) {
+      items.push({
+        id: 'how-it-works',
+        label: 'see.how.it.works',
+        icon: 'timeline',
+        kind: 'action',
+        layout: 'action',
+        palette: 'default'
+      });
+    }
+    items.push(
+      {
+        id: 'bug-report',
+        label: 'bug.report',
+        icon: 'bug_report',
+        kind: 'action',
+        layout: 'action',
+        palette: 'amber',
+        ariaLabel: 'landing.preview.open.guide'
+      },
+      {
+        id: 'partners',
+        label: 'landing.partners.title',
+        icon: 'handshake',
+        kind: 'action',
+        layout: 'action',
+        palette: 'ink',
+        ariaLabel: 'landing.partners.open.aria'
+      }
+    );
+    return items;
+  }
+
+  protected onEntryHeroCtaSelect(
+    event: AppMenuItemSelectEvent<EntryHeroCtaId>
+  ): void {
+    switch (event.id) {
+      case 'explore':
+        this.requestDemo();
+        break;
+      case 'how-it-works':
+        this.scrollEntryTo('articles', event.sourceEvent);
+        break;
+      case 'bug-report':
+        this.openPreviewGuide(event.sourceEvent);
+        break;
+      case 'partners':
+        this.openPartnersPopup(event.sourceEvent);
+        break;
+    }
   }
 
   private async loadAppVersionLabel(): Promise<void> {

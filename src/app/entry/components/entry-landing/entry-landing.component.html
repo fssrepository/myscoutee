@@ -49,50 +49,13 @@
             <p class="hero-line-even">Dating became swiping in the 2010s.</p>
             <p class="hero-line-even">{{ deploymentBranding().productName }} makes meeting people social again.</p>
           </div>
-          <div class="entry-hero-cta">
-            <button
-              type="button"
-              class="entry-cta entry-cta-primary"
-              [class.entry-cta-network]="networkUnavailable"
-              [disabled]="networkUnavailable"
-              matRipple
-              [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
-              (click)="requestDemo()"
-              >
-              <mat-icon>{{ entryPrimaryCtaIcon }}</mat-icon>
-              <span>{{ entryPrimaryCtaLabel }}</span>
-            </button>
-            @if (showHowItWorksCta()) {
-              <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
-                <mat-icon>timeline</mat-icon>
-                <span>{{ 'see.how.it.works' | i18n: 'See how it works' }}</span>
-              </a>
-            }
-            <button
-              type="button"
-              class="entry-cta entry-cta-bug"
-              matRipple
-              [matRippleColor]="'rgba(255, 245, 214, 0.18)'"
-              [attr.aria-label]="'landing.preview.open.guide' | i18n: 'Open preview guide'"
-              (click)="openPreviewGuide($event)"
-              >
-              <mat-icon>bug_report</mat-icon>
-              <span>{{ 'bug.report' | i18n: 'Bug report' }}</span>
-            </button>
-            <button
-              type="button"
-              class="entry-cta entry-cta-partners"
-              matRipple
-              [matRippleColor]="'rgba(255, 255, 255, 0.16)'"
-              aria-haspopup="dialog"
-              [attr.aria-expanded]="partnersPopupOpen"
-              [attr.aria-label]="'landing.partners.open.aria' | i18n: 'Open partner overview'"
-              (click)="openPartnersPopup($event)"
-              >
-              <mat-icon>handshake</mat-icon>
-              <span>{{ 'landing.partners.title' | i18n: 'For Partners' }}</span>
-            </button>
-          </div>
+          <app-menu
+            class="entry-hero-cta-menu"
+            kind="inline"
+            layout="row"
+            [items]="entryHeroCtaItems()"
+            (itemSelect)="onEntryHeroCtaSelect($event)"
+          ></app-menu>
         </div>
 
         <aside class="entry-hero-how" id="how" aria-label="How it works">

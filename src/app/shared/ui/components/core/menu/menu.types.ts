@@ -22,6 +22,8 @@ export type AppMenuItemKind =
   | 'toggle';
 export type AppMenuPalette =
   | 'default'
+  | 'brand'
+  | 'ink'
   | 'neutral'
   | 'slate'
   | 'blue'
