@@ -630,7 +630,8 @@ export class OperatorActionPopupComponent {
       label: 'operator.configuration.tls.auto.renew',
       kind: 'toggle',
       layout: 'pill',
-      palette: enabled ? 'green' : 'slate',
+      showToggleIndicator: true,
+      palette: 'teal',
       active: enabled,
       checked: enabled,
       disabled: this.configurationTlsDisabled()

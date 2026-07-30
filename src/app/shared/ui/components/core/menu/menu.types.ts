@@ -194,6 +194,7 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   active?: AppMenuLiveValue<boolean | null | undefined>;
   checked?: AppMenuLiveValue<boolean | null | undefined>;
   showCheck?: AppMenuLiveValue<boolean | null | undefined>;
+  showToggleIndicator?: AppMenuLiveValue<boolean | null | undefined>;
   removable?: AppMenuLiveValue<boolean | null | undefined>;
   removeIcon?: AppMenuLiveValue<string | null | undefined>;
   removeAriaLabel?: AppMenuLiveValue<string | null | undefined>;

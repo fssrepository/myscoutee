@@ -257,7 +257,9 @@ describe('OperatorActionPopupComponent', () => {
       .toEqual(expect.objectContaining({
         kind: 'toggle',
         layout: 'pill',
+        showToggleIndicator: true,
         label: 'operator.configuration.tls.auto.renew',
+        palette: 'teal',
         active: true,
         checked: true
       }));

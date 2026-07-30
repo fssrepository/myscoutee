@@ -182,7 +182,7 @@
                   <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
                 </span>
               }
-              @if (isLabeledActionRowItem(item) && isToggleItem(item)) {
+              @if (isLabeledActionRowItem(item) && showActionRowToggleIndicator(item)) {
                 <span
                   class="app-menu__tabs-toggle app-menu__button-row-toggle"
                   [class.app-menu__tabs-toggle--active]="isItemActive(item)"

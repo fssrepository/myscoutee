@@ -1232,19 +1232,6 @@
   box-shadow: 0 5px 14px rgba(12, 24, 40, 0.16);
 }
 
-.app-menu__button-row-item--toggle.app-menu__button-row-item--labelled.app-menu__button-row-item--active {
-  border-color: rgba(82, 101, 126, 0.28);
-  background: linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
-  color: #536174;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
-}
-
-.app-menu__button-row-item--toggle.app-menu__button-row-item--labelled.app-menu__button-row-item--active:not(:disabled):hover {
-  border-color: rgba(82, 101, 126, 0.34);
-  background: linear-gradient(180deg, #ffffff 0%, #e9eff6 100%);
-  color: #536174;
-}
-
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled.app-menu__button-row-item--active {
   border-color: rgba(31, 63, 105, 0.18);
   background: var(--app-menu-bg-strong);
