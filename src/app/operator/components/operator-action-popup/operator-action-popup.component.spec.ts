@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import type {
+  OperatorCommunityStatusDto,
   OperatorConfigurationDto,
   OperatorConfigurationSaveRequestDto,
   OperatorTlsConfigurationDto,
@@ -20,8 +21,9 @@ import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operato
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { OperatorActionPopupComponent } from './operator-action-popup.component';
 
-describe('OperatorActionPopupComponent payment provider menu', () => {
+describe('OperatorActionPopupComponent', () => {
   const configuration = signal<OperatorConfigurationDto>(operatorConfiguration());
+  const community = signal<OperatorCommunityStatusDto | null>(null);
   const configurationDraft = signal<OperatorConfigurationSaveRequestDto>(
     operatorConfigurationDraft('stripe')
   );
@@ -60,6 +62,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     clearFeedback.mockReset();
     clearConfigurationCredentialDrafts.mockReset();
     configuration.set(operatorConfiguration());
+    community.set(null);
     configurationDraft.set(operatorConfigurationDraft('stripe'));
     activePopup.set('configuration');
     busyAction.set(null);
@@ -118,7 +121,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             setConfigurationMessagingDestinationToken: vi.fn(),
             error: signal('').asReadonly(),
             notice: signal('').asReadonly(),
-            community: signal(null).asReadonly(),
+            community: community.asReadonly(),
             loadCommunityStatus: vi.fn().mockResolvedValue(null)
           }
         },
@@ -399,6 +402,60 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     expect(clearConfigurationCredentialDrafts).not.toHaveBeenCalled();
   });
 
+  it('renders the complete signed package contract and explicit verification state', () => {
+    activePopup.set('community');
+    community.set(operatorCommunityStatus());
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(
+      [...host.querySelectorAll<HTMLElement>(
+        '.operator-action-popup__release code'
+      )].map(element => element.textContent?.trim())
+    ).toEqual(expect.arrayContaining([
+      'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      'pkey_86dfce4288ce436029e7236ac60b0604',
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=='
+    ]));
+    const verifiedState = host.querySelector<HTMLElement>(
+      '.operator-action-popup__signature-state'
+    );
+    expect(verifiedState?.dataset['verified']).toBe('true');
+    expect(verifiedState?.textContent).toContain(
+      'operator.community.announcement.artifact.signature.verified'
+    );
+
+    community.update(current => {
+      const announcement = current!.announcements[0]!;
+      const update = announcement.update!;
+      return {
+        ...current!,
+        announcements: [{
+          ...announcement,
+          update: {
+            ...update,
+            artifact: {
+              ...update.artifact,
+              downloadUrlVerified: false,
+              signatureVerified: false
+            }
+          }
+        }]
+      };
+    });
+    fixture.detectChanges();
+
+    const unverifiedState = host.querySelector<HTMLElement>(
+      '.operator-action-popup__signature-state'
+    );
+    expect(unverifiedState?.dataset['verified']).toBe('false');
+    expect(unverifiedState?.textContent).toContain(
+      'operator.community.announcement.artifact.signature.unverified'
+    );
+    fixture.destroy();
+  });
+
   it('uses the generic payment icon only when a provider has no logo', () => {
     configuration.set({
       ...operatorConfiguration(),
@@ -626,6 +683,45 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     fixture.destroy();
   });
 });
+
+function operatorCommunityStatus(): OperatorCommunityStatusDto {
+  return {
+    availability: 'AVAILABLE',
+    updatedAt: '2026-07-30T09:00:00.000Z',
+    providers: [],
+    announcements: [{
+      id: 'ann_release_1_2_3',
+      kind: 'UPDATE',
+      severity: 'SUCCESS',
+      status: 'PUBLISHED',
+      unread: true,
+      title: 'MyScoutee 1.2.3',
+      body: 'Signed GitHub Release package.',
+      publishedAt: '2026-07-30T09:00:00.000Z',
+      expiresAt: null,
+      links: [],
+      update: {
+        version: '1.2.3',
+        purpose: 'Signed release',
+        releaseNotes: [],
+        artifact: {
+          downloadUrl:
+            'https://github.com/fssrepository/myscoutee/releases/download/v1.2.3/myscoutee_1.2.3_amd64.deb',
+          downloadUrlVerified: true,
+          sha256Digest:
+            'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          packageSigningKeyId:
+            'pkey_86dfce4288ce436029e7236ac60b0604',
+          signature:
+            'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==',
+          signatureVerified: true,
+          sizeBytes: 18_874_368,
+          compatibility: 'v1.0.0 – v2.0.0'
+        }
+      }
+    }]
+  };
+}
 
 function operatorConfiguration(): OperatorConfigurationDto {
   return {

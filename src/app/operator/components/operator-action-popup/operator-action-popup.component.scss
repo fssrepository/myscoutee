@@ -1446,6 +1446,24 @@
   font-size: 0.72rem;
 }
 
+.operator-action-popup__release dd.operator-action-popup__signature-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: #a36a17;
+}
+
+.operator-action-popup__release
+  dd.operator-action-popup__signature-state[data-verified='true'] {
+  color: #137157;
+}
+
+.operator-action-popup__signature-state .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+}
+
 .operator-action-popup__download {
   min-width: 0;
   padding-top: 0.42rem;

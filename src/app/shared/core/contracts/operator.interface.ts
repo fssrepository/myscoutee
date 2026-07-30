@@ -759,7 +759,9 @@ export interface OperatorCommunityAnnouncementUpdateDto {
     downloadUrl: string;
     downloadUrlVerified: boolean;
     sha256Digest: string;
+    packageSigningKeyId: string;
     signature: string;
+    signatureVerified: boolean;
     sizeBytes: number;
     compatibility: string;
   };

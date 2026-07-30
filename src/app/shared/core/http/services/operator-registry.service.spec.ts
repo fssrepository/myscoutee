@@ -980,6 +980,10 @@ describe('HttpOperatorRegistryService', () => {
           version: '1.2.3',
           artifact: expect.objectContaining({
             downloadUrlVerified: true,
+            sha256Digest: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+            packageSigningKeyId: 'pkey_86dfce4288ce436029e7236ac60b0604',
+            signature: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==',
+            signatureVerified: true,
             sizeBytes: 12_345
           })
         })
@@ -1661,8 +1665,8 @@ function remoteAnnouncementPage() {
           artifactUrl: 'https://downloads.example.test/myscoutee_1.2.3_amd64.deb',
           artifactSizeBytes: 12_345,
           artifactSha256: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-          packageSigningKeyId: 'release_key_1',
-          packageSignature: 'ed25519:signature',
+          packageSigningKeyId: 'pkey_86dfce4288ce436029e7236ac60b0604',
+          packageSignature: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==',
           releaseNotesUrl: 'https://downloads.example.test/releases/1.2.3',
           backupRequired: true,
           expectedDowntimeSeconds: 90,

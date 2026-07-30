@@ -1361,8 +1361,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
             artifact: {
               downloadUrl: manifest.artifactUrl,
               downloadUrlVerified: this.installableUpdate(manifest),
-              sha256Digest: manifest.artifactSha256,
-              signature: manifest.packageSignature,
+              sha256Digest: manifest.artifactSha256?.trim() || '',
+              packageSigningKeyId:
+                manifest.packageSigningKeyId?.trim() || '',
+              signature: manifest.packageSignature?.trim() || '',
+              signatureVerified:
+                manifest.packageSignatureVerified === true,
               sizeBytes: Math.max(0, Number(manifest.artifactSizeBytes) || 0),
               compatibility: `v${manifest.minimumCompatibleVersion} – v${manifest.maximumCompatibleVersion}`
             }

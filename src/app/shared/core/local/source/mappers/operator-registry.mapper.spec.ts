@@ -3,6 +3,23 @@ import { SeedOperatorRegistryBuilder } from '../../seed/builders/operator-regist
 import { LocalOperatorRegistryMapper } from './operator-registry.mapper';
 
 describe('LocalOperatorRegistryMapper', () => {
+  it('seeds signed release metadata in the canonical package contract', () => {
+    const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
+      new Date('2026-07-30T09:00:00.000Z')
+    );
+    const artifact = initial.community.announcements
+      .find(announcement => announcement.kind === 'UPDATE')
+      ?.update?.artifact;
+
+    expect(artifact?.sha256Digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(artifact?.packageSigningKeyId).toMatch(/^pkey_[0-9a-f]{32}$/);
+    expect(artifact?.signature).toMatch(/^[A-Za-z0-9+/]{86}==$/);
+    const decodedSignature = atob(artifact?.signature ?? '');
+    expect(decodedSignature).toHaveLength(64);
+    expect(btoa(decodedSignature)).toBe(artifact?.signature);
+    expect(artifact?.signatureVerified).toBe(true);
+  });
+
   it('keeps rejected claim weight measured but excludes it from share', () => {
     const entries: OperatorLeaderboardEntryDto[] = [{
       id: 'founder',

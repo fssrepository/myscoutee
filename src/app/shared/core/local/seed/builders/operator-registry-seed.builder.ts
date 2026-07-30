@@ -249,8 +249,10 @@ export class SeedOperatorRegistryBuilder {
                 artifact: {
                   downloadUrl: 'https://github.com/fssrepository/myscoutee/releases/download/v1.1.0/myscoutee_1.1.0_amd64.deb',
                   downloadUrlVerified: true,
-                  sha256Digest: '7e3d57c2c68793c0d4a25e94db5f4ba1d9a50e2b3f62c789417eaa35b610cd28',
-                  signature: 'ed25519:4f45c8dc7a37c7118c1b9b53b36ba57d2bf873f8667f76745673d964ee4547b7',
+                  sha256Digest: 'sha256:7e3d57c2c68793c0d4a25e94db5f4ba1d9a50e2b3f62c789417eaa35b610cd28',
+                  packageSigningKeyId: 'pkey_86dfce4288ce436029e7236ac60b0604',
+                  signature: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==',
+                  signatureVerified: true,
                   sizeBytes: 18_874_368,
                   compatibility: 'operator.community.announcement.update.1_1_0.compatibility'
                 }

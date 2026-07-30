@@ -1562,8 +1562,28 @@
                                 <dd><code>{{ release.artifact.sha256Digest }}</code></dd>
                               </div>
                               <div>
+                                <dt>{{ 'operator.community.announcement.artifact.signing.key' | i18n }}</dt>
+                                <dd><code>{{ release.artifact.packageSigningKeyId }}</code></dd>
+                              </div>
+                              <div>
                                 <dt>{{ 'operator.community.announcement.artifact.signature' | i18n }}</dt>
                                 <dd><code>{{ release.artifact.signature }}</code></dd>
+                              </div>
+                              <div>
+                                <dt>{{ 'operator.community.announcement.artifact.signature.status' | i18n }}</dt>
+                                <dd
+                                  class="operator-action-popup__signature-state"
+                                  [attr.data-verified]="release.artifact.signatureVerified"
+                                >
+                                  <mat-icon>
+                                    {{ release.artifact.signatureVerified ? 'verified_user' : 'gpp_maybe' }}
+                                  </mat-icon>
+                                  <span>
+                                    {{ (release.artifact.signatureVerified
+                                      ? 'operator.community.announcement.artifact.signature.verified'
+                                      : 'operator.community.announcement.artifact.signature.unverified') | i18n }}
+                                  </span>
+                                </dd>
                               </div>
                             </dl>
                             <div class="operator-action-popup__download">
