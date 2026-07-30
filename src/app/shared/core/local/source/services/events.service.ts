@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../../app-utils';
 import type { ActivityPendingReason } from '../../../common/constants';
 import type {
   EventTournamentGroupDeleteRequestDTO,
@@ -143,7 +144,23 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.resolveDemoActivityUserId(userId),
       query
     );
-    return this.withCheckoutResultStates(this.resolveDemoActivityUserId(userId), LocalActivityEventsMapper.toDtoPage(page));
+    return this.withCheckoutResultStates(
+      this.resolveDemoActivityUserId(userId),
+      this.withCreatorAvatarUrls(LocalActivityEventsMapper.toDtoPage(page))
+    );
+  }
+
+  private withCreatorAvatarUrls(page: ActivityEventPageResultDTO): ActivityEventPageResultDTO {
+    return {
+      ...page,
+      items: page.items.map(item => {
+        const creator = this.usersRepository.queryUserById(item.creatorUserId);
+        return {
+          ...item,
+          creatorAvatarUrl: AppUtils.firstImageUrl(creator?.images)
+        };
+      })
+    };
   }
 
   private async withCheckoutResultStates(

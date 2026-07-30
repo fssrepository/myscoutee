@@ -448,6 +448,7 @@ export interface ActivityEventDTO {
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
+  creatorAvatarUrl?: string | null;
   creatorCity: string;
   visibility: AppConstants.EventVisibility;
   startAtIso: string;

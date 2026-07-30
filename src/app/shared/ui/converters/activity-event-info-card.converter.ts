@@ -151,8 +151,10 @@ export class ActivityEventInfoCardConverter {
   private static mediaStart(dto: ActivityEventDTO): InfoCardData['mediaStart'] {
     return {
       variant: 'avatar',
+      imageUrl: dto.creatorAvatarUrl?.trim() || null,
       label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
-      interactive: false
+      ariaLabel: `View ${dto.creatorName || 'organizer'} profile`,
+      interactive: Boolean(dto.creatorUserId?.trim())
     };
   }
 

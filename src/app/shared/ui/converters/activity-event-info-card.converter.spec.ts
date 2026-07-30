@@ -25,4 +25,21 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     expect(card.menuBadgeCount).toBe(0);
     expect(card.mediaEnd?.pendingCount).toBe(2);
   });
+
+  it('uses the organizer profile image in a clickable avatar overlay', () => {
+    const card = ActivityEventInfoCardConverter.convert({
+      id: 'event-1',
+      title: 'Seattle Wildflower Meetup',
+      creatorUserId: 'organizer-1',
+      creatorName: 'Kai Morgan',
+      creatorInitials: 'KM',
+      creatorAvatarUrl: '/media/kai.webp'
+    } as ActivityEventDTO);
+
+    expect(card.mediaStart).toMatchObject({
+      variant: 'avatar',
+      imageUrl: '/media/kai.webp',
+      interactive: true
+    });
+  });
 });

@@ -2230,6 +2230,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     return ActivityChatSingleRowConverter.convert(source as ChatDTO, {
       activeUser: this.activeUser,
+      resolveUserById: userId => this.usersService.peekCachedUserById(userId),
       adminServiceMode: query.filters?.adminServiceOnly === true,
       translate: key => this.i18nService.translate(key)
     });
@@ -2255,6 +2256,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     return ActivityChatSingleRowConverter.convertList(sources as readonly ChatDTO[], {
       activeUser: this.activeUser,
+      resolveUserById: userId => this.usersService.peekCachedUserById(userId),
       adminServiceMode: query.filters?.adminServiceOnly === true,
       translate: key => this.i18nService.translate(key)
     });

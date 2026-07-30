@@ -336,6 +336,10 @@ export class InfoCardComponent implements OnDestroy {
     return action.icon ?? null;
   }
 
+  protected overlayImageUrl(action: InfoCardOverlayAction | null | undefined): string {
+    return AppUtils.mediaImageVariantUrl(action?.imageUrl, 'small');
+  }
+
   protected overlayDetailIcon(action: InfoCardOverlayAction | null | undefined): string | null {
     return action?.detailIcon ?? null;
   }

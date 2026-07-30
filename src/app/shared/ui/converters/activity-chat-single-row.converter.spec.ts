@@ -70,7 +70,8 @@ describe('ActivityChatSingleRowConverter member summaries', () => {
         id: 'member-1',
         name: 'Kai Morgan',
         initials: 'KM',
-        gender: 'man'
+        gender: 'man',
+        imageUrl: '/media/kai.webp'
       }]
     }, {
       activeUser: {
@@ -83,6 +84,8 @@ describe('ActivityChatSingleRowConverter member summaries', () => {
 
     expect(row.title).toBe('Kai Morgan');
     expect(row.title).not.toBe('Nagy Eszter');
+    expect(row.avatarUrl).toBe('/media/kai.webp');
+    expect(row.avatarInitials).toBe('KM');
   });
 
   it('counts member summaries when legacy member ids are absent', () => {

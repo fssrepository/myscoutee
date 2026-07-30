@@ -27,6 +27,7 @@ import {
   type AppMenuPalette,
   type CardMenuAction,
   type CardMenuActionEvent,
+  type CardProfileViewData,
   type CardMenuRequestEvent
 } from '../../../../../shared/ui';
 import {
@@ -55,6 +56,7 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
 
+  @Output() readonly profileClick = new EventEmitter<CardProfileViewData>();
   @Output() readonly mediaEndClick = new EventEmitter<void>();
   @Output() readonly menuAction = new EventEmitter<CardMenuActionEvent<InfoCardData>>();
   @Output() readonly menuRequest = new EventEmitter<CardMenuRequestEvent<InfoCardData>>();
@@ -80,6 +82,17 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
   protected onMediaEndClick(): void {
     this.mediaEndClick.emit();
+  }
+
+  protected onMediaStartClick(): void {
+    const userId = `${this.card?.ownerUserId ?? this.card?.ownerId ?? ''}`.trim();
+    if (!userId) {
+      return;
+    }
+    this.profileClick.emit({
+      userId,
+      label: null
+    });
   }
 
   protected onMenuAction(event: CardMenuActionEvent<InfoCardData>): void {

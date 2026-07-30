@@ -20,7 +20,10 @@ interface ResolvedActivityChatSingleRowConverterOptions extends ActivityChatSing
   fallbackUser: UserDto;
 }
 
-type ActivityChatPerson = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender'>;
+type ActivityChatPerson = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender'> & {
+  avatarUrl?: string | null;
+  images?: readonly string[];
+};
 
 export class ActivityChatSingleRowConverter {
   static convert(
@@ -51,7 +54,6 @@ export class ActivityChatSingleRowConverter {
     const supportStatus = this.supportStatus(dto.supportCase?.status);
     const supportAssigneeName = dto.supportCase?.assignee?.name ?? null;
     const showSupportControls = options.adminServiceMode === true && Boolean(supportStatus);
-    const avatar = `${dto.avatar ?? ''}`.trim();
     const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
     const ownerId = `${dto.ownerId ?? ''}`.trim();
     const groupChannelLabel = channelType === 'groupSubEvent' ? this.groupChannelLabel(dto) : '';
@@ -72,7 +74,8 @@ export class ActivityChatSingleRowConverter {
       detail: groupParentLabel || lastMessage,
       metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
       unread: showSupportControls ? 0 : unread,
-      avatarInitials: avatar ? avatar.slice(0, 2).toUpperCase() : options.activeUser.initials,
+      avatarUrl: this.personAvatarUrl(lastSender),
+      avatarInitials: lastSender?.initials || AppUtils.initialsFromText(lastSender?.name ?? dto.title),
       avatarToneClass: lastSender ? `user-color-${lastSender.gender}` : null,
       memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),
@@ -373,8 +376,18 @@ export class ActivityChatSingleRowConverter {
       id: member.id,
       name,
       initials: `${member.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
-      gender: member.gender === 'woman' ? 'woman' : 'man'
+      gender: member.gender === 'woman' ? 'woman' : 'man',
+      avatarUrl: `${member.imageUrl ?? ''}`.trim() || null
     };
+  }
+
+  private static personAvatarUrl(person: ActivityChatPerson | null): string | null {
+    if (!person) {
+      return null;
+    }
+    return `${person.avatarUrl ?? ''}`.trim()
+      || AppUtils.firstImageUrl(person.images)
+      || null;
   }
 
   private static uniqueUsersById(users: readonly ActivityChatPerson[]): ActivityChatPerson[] {
