@@ -23,6 +23,7 @@
     "build:prod": "NG_BUILD_MAX_WORKERS=12 ng build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
     "build:prod:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
     "build:prod:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng build --configuration production 2>&1 | tee .agent/logs/ng-build-prod.log && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js 2>&1 | tee -a .agent/logs/ng-build-prod.log'",
+    "audit:i18n-seeds": "node scripts/audit-i18n-mongo-seed.js",
     "watch": "npm run watch:dev",
     "watch:dev": "NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration dev",
     "watch:e2e": "NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration e2e",
