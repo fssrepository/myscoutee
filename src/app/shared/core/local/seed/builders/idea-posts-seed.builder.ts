@@ -183,6 +183,7 @@ export class SeedIdeaPostsBuilder {
     nowIso: string;
   }): IdeaPostDto {
     const imageUrl = this.seedImageUrl(options.id);
+    const contentHtml = this.normalizeHtml(options.contentHtml.replaceAll('@image_url', imageUrl));
     return {
       id: options.id,
       contentKey: this.contentKeyFromId(options.id),
@@ -190,7 +191,7 @@ export class SeedIdeaPostsBuilder {
       languageLabel: this.languageLabel(options.lang),
       title: options.title,
       excerpt: options.excerpt,
-      contentHtml: this.normalizeHtml(options.contentHtml.replaceAll('@image_url', imageUrl)),
+      contentHtml: this.withPrimaryImage(contentHtml, imageUrl, options.title),
       imageUrl,
       imageUrls: [imageUrl],
       featured: options.featured,
@@ -204,6 +205,18 @@ export class SeedIdeaPostsBuilder {
       updatedAtIso: options.nowIso,
       updatedByUserId: 'system'
     };
+  }
+
+  private static withPrimaryImage(contentHtml: string, imageUrl: string, title: string): string {
+    if (contentHtml.includes(imageUrl)) {
+      return contentHtml;
+    }
+    const alt = title
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+    return `${contentHtml}\n<figure><img src="${imageUrl}" alt="${alt}"></figure>`;
   }
 
   private static rebaseSeedDateTime(value: string): string {
