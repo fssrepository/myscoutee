@@ -45,7 +45,8 @@ export class ActivityChatSingleRowConverter {
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
   ): SingleRowData {
-    const lastSender = this.resolveLastSender(dto, options);
+    const systemSender = this.isSystemRandomRoomSender(dto);
+    const lastSender = systemSender ? null : this.resolveLastSender(dto, options);
     const unread = Math.max(0, Math.trunc(Number(dto.unread) || 0));
     const memberCount = this.resolveMemberCount(dto, options);
     const distanceMetersExact = Number.isFinite(Number(dto.distanceMetersExact))
@@ -69,14 +70,20 @@ export class ActivityChatSingleRowConverter {
       distanceMetersExact,
       badgeCount: showSupportControls ? 0 : unread,
       sortScore: unread * 10 + memberCount,
-      title: lastSender?.name ?? dto.title,
+      title: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
       subtitle: groupChannelLabel || dto.title,
       detail: groupParentLabel || lastMessage,
       metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
       unread: showSupportControls ? 0 : unread,
-      avatarUrl: this.personAvatarUrl(lastSender),
-      avatarInitials: lastSender?.initials || AppUtils.initialsFromText(lastSender?.name ?? dto.title),
-      avatarToneClass: lastSender ? `user-color-${lastSender.gender}` : null,
+      avatarUrl: systemSender ? null : this.personAvatarUrl(lastSender),
+      avatarInitials: systemSender
+        ? null
+        : lastSender?.initials || AppUtils.initialsFromText(lastSender?.name ?? dto.title),
+      avatarToneClass: systemSender
+        ? 'notification-system-avatar'
+        : lastSender ? `user-color-${lastSender.gender}` : null,
+      avatarAriaLabel: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
+      icon: systemSender ? 'auto_awesome' : null,
       memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),
       surfaceTone: showSupportControls
@@ -307,6 +314,13 @@ export class ActivityChatSingleRowConverter {
     }
     const members = this.resolveMembers(dto, options);
     return members[0] ?? null;
+  }
+
+  private static isSystemRandomRoomSender(dto: ChatDTO): boolean {
+    const eventId = `${dto.eventId ?? dto.ownerId ?? ''}`.trim();
+    return this.normalizeChannelType(dto) === 'mainEvent'
+      && eventId.startsWith('random-room:')
+      && !`${dto.lastSenderId ?? ''}`.trim();
   }
 
   private static resolveMemberCount(

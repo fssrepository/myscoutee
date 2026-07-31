@@ -62,6 +62,68 @@ describe('ActivityChatSingleRowConverter identity', () => {
 });
 
 describe('ActivityChatSingleRowConverter member summaries', () => {
+  it('renders the initial random-room message with the system identity instead of the first member', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'mainEvent',
+      ownerId: 'random-room:source-event:stage:group:2',
+      eventId: 'random-room:source-event:stage:group:2',
+      title: 'Random Room R2',
+      lastMessage: 'Welcome! MyScoutee created this room.',
+      lastSenderId: '',
+      members: [{
+        id: 'member-1',
+        name: 'Sophia Lane',
+        initials: 'SL',
+        gender: 'woman',
+        imageUrl: '/media/sophia.webp'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('MyScoutee System');
+    expect(row.subtitle).toBe('Random Room R2');
+    expect(row.icon).toBe('auto_awesome');
+    expect(row.avatarUrl).toBeNull();
+    expect(row.avatarInitials).toBeNull();
+    expect(row.avatarToneClass).toBe('notification-system-avatar');
+  });
+
+  it('renders a real random-room sender after a member writes a message', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'mainEvent',
+      ownerId: 'random-room:source-event:stage:group:2',
+      eventId: 'random-room:source-event:stage:group:2',
+      title: 'Random Room R2',
+      lastSenderId: 'member-1',
+      members: [{
+        id: 'member-1',
+        name: 'Sophia Lane',
+        initials: 'SL',
+        gender: 'woman',
+        imageUrl: '/media/sophia.webp'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('Sophia Lane');
+    expect(row.avatarUrl).toBe('/media/sophia.webp');
+    expect(row.icon).toBeNull();
+  });
+
   it('uses the API member summary for the last sender without a profile cache resolver', () => {
     const row = ActivityChatSingleRowConverter.convert({
       ...groupChat(),
