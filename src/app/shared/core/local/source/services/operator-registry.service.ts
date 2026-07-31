@@ -938,7 +938,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     if (!productName) {
       throw new Error('operator.configuration.branding.label.required');
     }
-    const logoCharacterIndex = request.branding.logoCharacterIndex;
+    const logoCharacterIndex =
+      request.branding.logoCharacterIndex
+      ?? DEFAULT_DEPLOYMENT_BRANDING.logoCharacterIndex;
     if (
       logoCharacterIndex !== null
       && (

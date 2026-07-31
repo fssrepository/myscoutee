@@ -51,12 +51,12 @@ export class NotificationSingleRowConverter implements UiConverter<
           tone: read ? 'muted' : this.badgeTone(notification.category),
           position: 'top-right'
         },
-        {
-          label: read ? 'Read' : 'New',
-          icon: read ? 'done_all' : 'fiber_new',
-          tone: read ? 'muted' : 'danger',
-          position: 'inline'
-        }
+        ...(read ? [{
+          label: 'Read',
+          icon: 'done_all',
+          tone: 'muted' as const,
+          position: 'inline' as const
+        }] : [])
       ],
       menuActions: read ? [] : ['markNotificationRead'],
       progressRing: options.progressRing === true,

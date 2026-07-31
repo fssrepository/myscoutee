@@ -40,7 +40,7 @@ export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
   productName: 'MyScoutee',
   homeLabel: 'Your preferences come first',
   logoUrl: 'assets/logo/heart.webp',
-  logoCharacterIndex: null,
+  logoCharacterIndex: 0,
   themePreset: 'AURORA',
   revision: 0
 };

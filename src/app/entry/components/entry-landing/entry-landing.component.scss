@@ -41,24 +41,23 @@
 }
 
 .entry-preview-badge {
-  position: absolute;
-  top: -1.25rem;
-  right: -0.32rem;
-  z-index: 8;
-  min-height: 22px;
-  border: 1px solid rgba(201, 144, 39, 0.34);
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(32vw, 132px);
+  min-height: 30px;
+  border: 1px solid #fb923c;
   border-radius: 999px;
-  padding: 0.02rem 0.42rem 0.02rem 0.56rem;
+  padding: 0.08rem 0.62rem;
   gap: 0.18rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #fff8dc 0%, #ffe49b 100%);
-  color: #855d11;
-  box-shadow: 0 5px 12px rgba(143, 93, 15, 0.1);
-  font-size: 0.62rem;
+  background: linear-gradient(135deg, #ffc46b 0%, #ff963f00 100%);
+  color: #4a1d08;
+  box-shadow: 0 5px 12px rgba(194, 65, 12, 0.2);
+  font-size: 0.72rem;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.2;
   text-transform: uppercase;
   white-space: nowrap;
   font-family: inherit;
@@ -87,13 +86,19 @@
 }
 
 .entry-brand {
-  position: relative;
   display: inline-flex;
-  align-items: flex-end;
+  align-items: center;
+  gap: 0.34rem;
   min-width: 0;
+  max-width: 100%;
   text-decoration: none;
   color: var(--deployment-text-main);
   font-weight: 700;
+}
+
+.entry-brand-copy {
+  min-width: 0;
+  display: inline-flex;
   background-image: linear-gradient(
     90deg,
     var(--deployment-brand-primary),
@@ -103,12 +108,6 @@
   background-repeat: no-repeat;
   background-size: 100% 3px;
   background-position: 0 100%;
-}
-
-.entry-brand-copy {
-  position: relative;
-  min-width: 0;
-  display: inline-block;
 }
 
 .entry-brand app-deployment-brand {
@@ -1291,15 +1290,13 @@
   }
 
   .entry-preview-badge {
-    top: -1.02rem;
-    right: -0.22rem;
     max-width: min(48vw, 122px);
-    min-height: 16px;
-    padding: 0.02rem 0.34rem 0.02rem 0.46rem;
-    font-size: 0.65rem;
+    min-height: 28px;
+    padding: 0.06rem 0.52rem;
+    font-size: 0.7rem;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 16px;
+    line-height: 1.2;
   }
 
   .entry-preview-badge span:first-child {

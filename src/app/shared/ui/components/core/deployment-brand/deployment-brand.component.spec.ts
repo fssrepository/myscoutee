@@ -6,10 +6,10 @@ import type { DeploymentBrandingDto } from '../../../../core/contracts/deploymen
 import { DeploymentBrandComponent } from './deployment-brand.component';
 
 describe('DeploymentBrandComponent', () => {
-  const branding = signal<DeploymentBrandingDto>(brand(null));
+  const branding = signal<DeploymentBrandingDto>(brand(0));
 
   beforeEach(() => {
-    branding.set(brand(null));
+    branding.set(brand(0));
     TestBed.configureTestingModule({
       imports: [DeploymentBrandComponent],
       providers: [{
@@ -23,19 +23,20 @@ describe('DeploymentBrandComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('keeps the logo adjacent to the complete name when the index is null', () => {
+  it('replaces index zero by default while retaining the full accessible name', () => {
     const fixture = TestBed.createComponent(DeploymentBrandComponent);
     fixture.detectChanges();
-    const host = fixture.nativeElement as HTMLElement;
+    const rendered = fixture.nativeElement.querySelector(
+      '.deployment-brand'
+    ) as HTMLElement;
 
-    expect(host.querySelector('.deployment-brand')?.textContent?.trim())
-      .toBe('MyScoutee');
-    expect(host.querySelector('.deployment-brand--inline-logo')).toBeNull();
-    expect(host.querySelectorAll('img')).toHaveLength(1);
+    expect(rendered.textContent?.trim()).toBe('yScoutee');
+    expect(rendered.getAttribute('aria-label')).toBe('MyScoutee');
+    expect(rendered.classList.contains('deployment-brand--inline-logo')).toBe(true);
   });
 
-  it('replaces index zero while retaining the full accessible name', () => {
-    branding.set(brand(0));
+  it('treats a legacy null index as the default first-character replacement', () => {
+    branding.set(brand(null));
     const fixture = TestBed.createComponent(DeploymentBrandComponent);
     fixture.detectChanges();
     const rendered = fixture.nativeElement.querySelector(

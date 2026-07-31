@@ -1533,37 +1533,37 @@ const EXPLANATION_HOME_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'affinity',
     icon: 'tune',
-    title: 'Affinity slider',
-    blurb: 'Choose how strong the card feels for you.',
-    contentHtml: '<p>Tap or drag the Affinity slider from 1 to 10. The Go button saves the current visible value.</p>'
+    title: 'Rate a card',
+    blurb: 'Choose a score from 1 to 10.',
+    contentHtml: '<p>Tap or drag the <strong>Affinity</strong> bar. Your choice is saved immediately, then the next card appears.</p>'
   },
   {
     id: 'affinity-network',
     icon: 'hub',
-    title: 'Affinity and group chats',
-    blurb: 'Your answer helps find a small group where conversation is easier to start.',
-    contentHtml: '<p>When you choose 1-10, you are saying how much you would like to talk with this person. That number is not used alone: it matters more when interest is mutual, recent, and stronger than the usual background noise.</p><p>If several people seem likely to enjoy meeting each other, MyScoutee can place them into a random group chat of 6-12 people. It is still a fresh group, but it is nudged toward people who already have enough shared interest to make the first message feel less awkward.</p>'
+    title: 'Why ratings matter',
+    blurb: 'Ratings help improve later suggestions.',
+    contentHtml: '<p>Your score shows how interested you are in the person or pair on the card. MyScoutee can use it with other signals to make future suggestions more relevant.</p>'
   },
   {
     id: 'profile',
     icon: 'visibility',
-    title: 'Profile and photos',
-    blurb: 'Cards can contain more photos and a profile detail view.',
-    contentHtml: '<p>Tap the left or right image columns to browse photos. Use the eye icon to open profile details.</p>'
+    title: 'Photos and profile',
+    blurb: 'See more before you rate.',
+    contentHtml: '<p>Tap the left or right side of the image to browse photos. Use the eye icon to open the full profile.</p>'
   },
   {
     id: 'filters',
     icon: 'filter_alt',
     title: 'Filters and modes',
-    blurb: 'Use the top bar to narrow who appears.',
-    contentHtml: '<p>The filter button opens profile filters. The number shows how many results match the selected filter condition.</p><p><strong>Preferences</strong>: normal preference-based cards. <strong>Friends in Common</strong>: people connected through someone or an event. <strong>Inside Network</strong>: pairs from your existing network. <strong>Outside Network</strong>: pairs outside it.</p>'
+    blurb: 'Choose which cards you want to see.',
+    contentHtml: '<p>The filter button narrows the results, and its number shows how many matches remain. Use <strong>Preferences</strong>, <strong>Friends in Common</strong>, <strong>Inside Network</strong>, or <strong>Outside Network</strong> to switch card groups.</p>'
   },
   {
     id: 'history',
     icon: 'history',
-    title: 'History and edits',
-    blurb: 'Your previous ratings stay available.',
-    contentHtml: '<p>Open history from the header or menu. In Activity ratings, use the star icon to edit a value you already gave.</p>'
+    title: 'Rating history',
+    blurb: 'Review or change an earlier rating.',
+    contentHtml: '<p>Open history from the header. To change a rating later, open <strong>Activity ratings</strong> and select its star action.</p>'
   }
 ];
 
@@ -1571,37 +1571,37 @@ const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'affinity',
     icon: 'tune',
-    title: 'Szimpátia sáv',
-    blurb: 'Állítsd be, mennyire szimpatikus a kártya.',
-    contentHtml: '<p>Tapints vagy húzd a Szimpátia sávot 1 és 10 között. A Mehet gomb csak akkor jelenik meg, amikor már választottál értéket.</p>'
+    title: 'Kártya értékelése',
+    blurb: 'Válassz egy értéket 1 és 10 között.',
+    contentHtml: '<p>Koppints vagy húzd a <strong>Szimpátia</strong> sávot. A választás azonnal mentődik, majd megjelenik a következő kártya.</p>'
   },
   {
     id: 'affinity-network',
     icon: 'hub',
-    title: 'Szimpátia és csoportchat',
-    blurb: 'A válaszod segít olyan kis csoportot találni, ahol könnyebb elkezdeni beszélgetni.',
-    contentHtml: '<p>Amikor 1 és 10 között választasz, azt jelzed, mennyire szívesen beszélgetnél ezzel az emberrel. Nem csak ez az egy szám dönt: többet ér, ha a szimpátia kölcsönös, friss, és a szokásos háttérzajhoz képest is erős.</p><p>Ha több embernél látszik, hogy jó eséllyel szívesen ismerkednének egymással, a MyScoutee kioszthat egy 6-12 fős véletlenszerű csoportos chatet. A csoport továbbra is új és laza, csak olyan irányba van terelve, ahol az első üzenet kevésbé kínos.</p>'
+    title: 'Miért számít?',
+    blurb: 'Az értékelés javítja a későbbi ajánlásokat.',
+    contentHtml: '<p>A pontszám megmutatja, mennyire érdekel a kártyán látható ember vagy páros. A MyScoutee ezt más adatokkal együtt használhatja, hogy később jobb ajánlásokat adjon.</p>'
   },
   {
     id: 'profile',
     icon: 'visibility',
-    title: 'Profil és képek',
-    blurb: 'A kártya több képet és részletes profilt is rejthet.',
-    contentHtml: '<p>Tapints a kép bal vagy jobb oszlopára a fotók lapozásához. A szem ikon megnyitja a profil részleteit.</p>'
+    title: 'Képek és profil',
+    blurb: 'Értékelés előtt többet is megnézhetsz.',
+    contentHtml: '<p>A kép bal vagy jobb oldalára koppintva lapozhatsz a fotók között. A szem ikon megnyitja a teljes profilt.</p>'
   },
   {
     id: 'filters',
     icon: 'filter_alt',
     title: 'Szűrők és módok',
-    blurb: 'A felső sávval szűkítheted, kik jelenjenek meg.',
-    contentHtml: '<p>A tölcsér ikon nyitja a profilszűrőket. A szám azt mutatja, hogy az adott szűrőfeltétel mellett hány találat van.</p><p><strong>Preferenciák</strong>: normál, saját beállításaid szerinti kártyák. <strong>Közös ismerősök</strong>: valakin vagy eseményen keresztül kapcsolódó profilok. <strong>Hálózaton belül</strong>: párok a meglévő kapcsolati körből. <strong>Hálózaton kívül</strong>: párok azon kívül.</p>'
+    blurb: 'Válaszd ki, milyen kártyákat szeretnél látni.',
+    contentHtml: '<p>A szűrőgomb szűkíti a találatokat, a rajta lévő szám pedig a megmaradt találatokat mutatja. A <strong>Preferenciák</strong>, <strong>Közös ismerősök</strong>, <strong>Hálózaton belül</strong> és <strong>Hálózaton kívül</strong> módok más-más kártyacsoportot nyitnak meg.</p>'
   },
   {
     id: 'history',
     icon: 'history',
-    title: 'Előzmények',
-    blurb: 'A korábbi értékelések később is elérhetők.',
-    contentHtml: '<p>Az előzményeket a history gombbal vagy a menüből nyithatod meg. Az Activity értékeléseknél a csillag ikonon keresztül módosíthatod a saját értékedet.</p>'
+    title: 'Értékelési előzmények',
+    blurb: 'Nézd meg vagy módosítsd egy korábbi értékelésedet.',
+    contentHtml: '<p>Az előzményeket a fejlécből nyithatod meg. Későbbi módosításhoz keresd meg a kártyát az <strong>Értékelések</strong> között, majd válaszd a csillagos műveletet.</p>'
   }
 ];
 
@@ -1609,30 +1609,30 @@ const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'activity-rate-filter',
     icon: 'north_east',
-    title: 'What you are looking at',
-    blurb: 'Pick which kind of rating cards should be shown.',
-    contentHtml: '<p>Open the first menu to choose cards you rated, cards where someone rated you, mutual ratings, people you met, or suggestions.</p><p>The red number tells you how many cards are in that choice. The Social switch simply decides whether cards suggested through shared people or events are included.</p>'
+    title: 'Choose ratings',
+    blurb: 'Select which rating cards are shown.',
+    contentHtml: '<p>The first menu switches between ratings you gave or received, mutual ratings, people you met, and suggestions. <strong>Social</strong> shows the social subset for the selected group; turning it off returns to the regular subset.</p>'
   },
   {
     id: 'activity-header-controls',
     icon: 'route',
     title: 'Order and view',
-    blurb: 'These buttons only change how the list is shown.',
-    contentHtml: '<p><strong>Recent</strong>, <strong>Relevant</strong>, and <strong>Past</strong> decide what comes first. They do not change anyone&rsquo;s score.</p><p><strong>Month</strong>, <strong>Week</strong>, <strong>Day</strong>, and <strong>Distance</strong> decide how the same cards are grouped. A label like <strong>10 km</strong> is just a group title.</p>'
+    blurb: 'Change how the same cards are arranged.',
+    contentHtml: '<p><strong>Recent</strong>, <strong>Relevant</strong>, and <strong>Past</strong> change the order. <strong>Month</strong>, <strong>Week</strong>, <strong>Day</strong>, and <strong>Distance</strong> change the grouping without changing any score.</p>'
   },
   {
     id: 'activity-score-badge',
     icon: 'star',
-    title: 'Rating one card',
-    blurb: 'Tap a card, then use the 1-10 bar to change your rating.',
-    contentHtml: '<p>The star badge shows your current rating for that card. After you select a card, the bar at the bottom changes only that selected card.</p><p>If a card is read-only, you may still see a received score, but the bottom bar will not change it.</p>'
+    title: 'Change a rating',
+    blurb: 'Select a card, then choose 1 to 10.',
+    contentHtml: '<p>The star shows the current score. The bottom bar changes only the selected card; a received, read-only rating can be viewed but not edited.</p>'
   },
   {
     id: 'activity-fullscreen',
     icon: 'fullscreen',
-    title: 'Rating one by one',
-    blurb: 'Use fullscreen when you want to focus on a single card.',
-    contentHtml: '<p>The fullscreen button opens a larger card. The small bars at the top of the image show when there are more photos.</p><p>The rating bar sits below the image and changes only the card you can see. When you exit fullscreen, you return to the same filtered list.</p>'
+    title: 'Fullscreen rating',
+    blurb: 'Focus on one card at a time.',
+    contentHtml: '<p>Fullscreen enlarges the selected card and keeps its rating bar below the image. Close it to return to the same filtered list.</p>'
   }
 ];
 
@@ -1640,30 +1640,30 @@ const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'activity-rate-filter',
     icon: 'north_east',
-    title: 'Mit nézel?',
-    blurb: 'Itt választod ki, milyen értékeléskártyák látszanak.',
-    contentHtml: '<p>Nyisd le az első menüt, és válassz: akiket te értékeltél, akik téged értékeltek, kölcsönös értékelések, akikkel találkoztál, vagy ajánlások.</p><p>A piros szám azt mutatja, hány kártya van abban a választásban. A Social kapcsoló csak azt dönti el, hogy bekerüljenek-e a közös emberek vagy események alapján ajánlott kártyák.</p>'
+    title: 'Értékelések kiválasztása',
+    blurb: 'Válaszd ki, melyik értékeléskártyák látszanak.',
+    contentHtml: '<p>Az első menüben válthatsz az adott, kapott és kölcsönös értékelések, a találkozások és az ajánlások között. A <strong>Közösségi</strong> kapcsoló az adott csoport közösségi ajánlásait mutatja; kikapcsolva a normál kártyák térnek vissza.</p>'
   },
   {
     id: 'activity-header-controls',
     icon: 'route',
     title: 'Sorrend és nézet',
-    blurb: 'Ezek a gombok csak azt változtatják, hogyan látod a listát.',
-    contentHtml: '<p>A <strong>Legutóbbi</strong>, <strong>Releváns</strong> és <strong>Korábbi</strong> azt dönti el, mi kerüljön előre. Ettől senkinek nem változik a pontja.</p><p>A <strong>Hónap</strong>, <strong>Hét</strong>, <strong>Nap</strong> és <strong>Távolság</strong> azt dönti el, milyen csoportokban látod ugyanazokat a kártyákat. A <strong>10 km</strong> felirat csak egy csoportcím.</p>'
+    blurb: 'Rendezd át ugyanazokat a kártyákat.',
+    contentHtml: '<p>A <strong>Legutóbbi</strong>, <strong>Releváns</strong> és <strong>Korábbi</strong> a sorrendet, a <strong>Hónap</strong>, <strong>Hét</strong>, <strong>Nap</strong> és <strong>Távolság</strong> pedig a csoportosítást változtatja. Ettől egyetlen pontszám sem módosul.</p>'
   },
   {
     id: 'activity-score-badge',
     icon: 'star',
-    title: 'Egy kártya pontozása',
-    blurb: 'Koppints egy kártyára, majd az 1-10-es sávval módosítsd az értékelést.',
-    contentHtml: '<p>A csillagos jelvény azt mutatja, most mennyire értékelted azt a kártyát. Ha kijelölsz egy kártyát, az alsó sáv csak azt az egy kártyát módosítja.</p><p>Ha egy kártya csak olvasható, láthatod rajta a kapott pontot, de az alsó sáv nem fogja átírni.</p>'
+    title: 'Értékelés módosítása',
+    blurb: 'Jelölj ki egy kártyát, majd válassz 1 és 10 között.',
+    contentHtml: '<p>A csillag az aktuális pontszámot mutatja. Az alsó sáv csak a kijelölt kártyát módosítja; a kapott, csak olvasható értékelést megnézheted, de nem írhatod át.</p>'
   },
   {
     id: 'activity-fullscreen',
     icon: 'fullscreen',
-    title: 'Egyesével pontozás',
-    blurb: 'A teljes képernyő akkor jó, ha csak egy kártyára szeretnél figyelni.',
-    contentHtml: '<p>A teljes képernyő ikon nagyobb kártyát nyit. A kép tetején lévő kis sávok mutatják, ha több fotó van.</p><p>A pontozósáv közvetlenül a kép alatt van, és csak az éppen látható kártyát módosítja. Kilépés után ugyanabba a szűrt listába térsz vissza.</p>'
+    title: 'Teljes képernyős értékelés',
+    blurb: 'Egyszerre egy kártyára figyelj.',
+    contentHtml: '<p>A teljes képernyő felnagyítja a kijelölt kártyát, az értékelősáv pedig a kép alatt marad. Bezáráskor ugyanabba a szűrt listába térsz vissza.</p>'
   }
 ];
 
@@ -1671,37 +1671,37 @@ const EXPLANATION_EVENTS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'activity-event-entry',
     icon: 'event',
-    title: 'Event lists',
-    blurb: 'Pick which pile of events you want to see.',
-    contentHtml: '<p>Open <strong>Events</strong> when you want invitations, events you joined, events you host, drafts, or old/deleted items. The red bubbles are counts, so you know where something waits for you.</p><p><strong>Upcoming</strong>/<strong>Past</strong> and <strong>Month</strong>/<strong>Week</strong>/<strong>Day</strong>/<strong>Distance</strong> only change how the same cards are sorted. <strong>Explore</strong> finds public events. The plus button starts a new one.</p>'
+    title: 'Choose an event list',
+    blurb: 'Open the group you need.',
+    contentHtml: '<p>Switch between all or active events, pending items, invitations, your events, drafts, and trash. Use <strong>Explore</strong> for public events or the plus button to create one.</p>'
   },
   {
     id: 'activity-event-card',
     icon: 'event_note',
-    title: 'Reading a card',
-    blurb: 'The card gives the basic story: picture, title, time, place, and seats.',
-    contentHtml: '<p>The image is the event preview. The small avatar is the host or inviter. The title tells you the event name, the date line tells you when it happens, and the place line tells you where it is and how far away it is.</p><p>A badge like <strong>1 / 5</strong> means 1 accepted person out of 5 seats. A small red number on that badge means there are pending people, invitations, or requests to check.</p>'
+    title: 'Read an event card',
+    blurb: 'See the key details at a glance.',
+    contentHtml: '<p>The card shows the event image, title, time, place, and organizer. A badge such as <strong>1 / 5</strong> shows accepted people against capacity, while a red number marks pending items.</p>'
   },
   {
     id: 'activity-event-actions',
     icon: 'more_vert',
-    title: 'What you can tap',
-    blurb: 'The seats badge opens people. The three dots open actions.',
-    contentHtml: '<p>Tap the <strong>1 / 5</strong> seats badge to see who is in, who is waiting, and who needs approval. If you host the event, this is where you can manage people.</p><p>Tap the three-dot menu for your available actions: view, edit, publish a draft, accept or reject an invite, contact the organizer, notify participants, share, report, leave, delete, or restore.</p>'
+    title: 'People and actions',
+    blurb: 'Open members or the actions available to you.',
+    contentHtml: '<p>Tap the capacity badge to see participants and pending people. The three-dot menu changes with your role and the event state, so it may offer viewing, editing, publishing, invitation handling, sharing, leaving, deleting, or restoring.</p>'
   },
   {
     id: 'activity-event-join',
     icon: 'person_add',
-    title: 'Joining an event',
-    blurb: 'Some events are instant. Some ask for approval, tickets, or choices first.',
-    contentHtml: '<p>If you were invited, the card can let you accept or reject the invite. If the event has approval, a waitlist, tickets, rules, or optional parts, the app asks for those details before your spot is final.</p><p>After the event, you may also see feedback screens. Those deeper screens can have their own explanation because checkout, members, resources, and feedback have more buttons.</p>'
+    title: 'Join an event',
+    blurb: 'The steps depend on the event settings.',
+    contentHtml: '<p>You can accept or reject an invitation from its card. Some events confirm you immediately; others require approval, a ticket, accepted rules, payment, or choices before your place is final.</p>'
   },
   {
     id: 'activity-event-hosting',
     icon: 'emoji_events',
-    title: 'Making events',
-    blurb: 'You can make a small meetup or a bigger tournament-style event.',
-    contentHtml: '<p><strong>Create Event</strong> starts a normal event. From there you can keep it simple, or build a bigger setup with stages, groups, optional parts, resources, tickets, prices, and seat limits.</p><p>If you host, you can also use auto invite. It can pull from the priority/relevance list, so better matched people can be suggested or invited first instead of adding everyone by hand.</p>'
+    title: 'Create or host',
+    blurb: 'Start simple and add details when needed.',
+    contentHtml: '<p>The plus button opens the event editor. You can create a basic meetup or add sub-events, groups, resources, tickets, pricing, and capacity rules.</p>'
   }
 ];
 
@@ -1709,37 +1709,37 @@ const EXPLANATION_EVENTS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'activity-event-entry',
     icon: 'event',
-    title: 'Eseménylisták',
-    blurb: 'Itt választod ki, melyik eseménykupacot nézed.',
-    contentHtml: '<p>Az <strong>Események</strong> nézetben látod a meghívásokat, csatlakozott eseményeket, saját eseményeket, piszkozatokat és régi/törölt elemeket. A piros buborékok darabszámok, így látod, hol vár rád valami.</p><p>A <strong>Közelgő</strong>/<strong>Korábbi</strong> és a <strong>Hónap</strong>/<strong>Hét</strong>/<strong>Nap</strong>/<strong>Távolság</strong> csak ugyanazokat a kártyákat rendezi át. A <strong>Felfedezés</strong> nyilvános eseményeket keres. A plusz gomb új eseményt indít.</p>'
+    title: 'Eseménylista választása',
+    blurb: 'Nyisd meg azt a csoportot, amelyikre szükséged van.',
+    contentHtml: '<p>Válthatsz az összes vagy aktív esemény, a függő elemek, meghívások, saját események, piszkozatok és a kuka között. A <strong>Felfedezés</strong> nyilvános eseményeket keres, a plusz gomb pedig újat hoz létre.</p>'
   },
   {
     id: 'activity-event-card',
     icon: 'event_note',
-    title: 'Egy kártya olvasása',
-    blurb: 'A kártya röviden megmutatja: kép, cím, idő, hely és férőhely.',
-    contentHtml: '<p>A kép az esemény előnézete. A kis avatar a szervezőt vagy meghívót jelzi. A cím az esemény neve, a dátumsor az időpont, a helyszín sor pedig a helyet és távolságot mutatja.</p><p>Az <strong>1 / 5</strong> jelvény azt jelenti, hogy 1 ember bent van az 5 helyből. A kis piros szám függő embereket, meghívásokat vagy kéréseket jelez.</p>'
+    title: 'Eseménykártya',
+    blurb: 'A legfontosabb adatokat egy helyen látod.',
+    contentHtml: '<p>A kártyán az esemény képe, címe, ideje, helye és szervezője látszik. Az <strong>1 / 5</strong> jellegű jelvény az elfogadott résztvevőket és a férőhelyet, a piros szám pedig a függő elemeket mutatja.</p>'
   },
   {
     id: 'activity-event-actions',
     icon: 'more_vert',
-    title: 'Mire lehet koppintani',
-    blurb: 'A férőhely jelvény embereket nyit. A három pont műveleteket nyit.',
-    contentHtml: '<p>Az <strong>1 / 5</strong> jelvényre koppintva látod, kik vannak bent, kik várnak, és kit kell jóváhagyni. Ha te vagy a szervező, itt tudod kezelni az embereket.</p><p>A hárompontos menüben a szereped szerinti műveletek jelennek meg: megtekintés, szerkesztés, piszkozat publikálása, meghívás elfogadása vagy elutasítása, szervező megkeresése, résztvevők értesítése, megosztás, jelentés, kilépés, törlés vagy visszaállítás.</p>'
+    title: 'Résztvevők és műveletek',
+    blurb: 'Nyisd meg a tagokat vagy a számodra elérhető műveleteket.',
+    contentHtml: '<p>A férőhelyjelvény megnyitja a résztvevőket és a függő jelentkezőket. A hárompontos menü a szerepedhez és az esemény állapotához igazodik, ezért megtekintést, szerkesztést, közzétételt, meghíváskezelést, megosztást, kilépést, törlést vagy visszaállítást kínálhat.</p>'
   },
   {
     id: 'activity-event-join',
     icon: 'person_add',
-    title: 'Csatlakozás eseményhez',
-    blurb: 'Van azonnali csatlakozás, és van ahol jóváhagyás, jegy vagy választás kell.',
-    contentHtml: '<p>Ha meghívtak, a kártyáról elfogadhatod vagy elutasíthatod a meghívást. Ha az esemény jóváhagyást, várólistát, jegyet, szabályokat vagy opcionális részeket használ, az app előbb bekéri ezeket.</p><p>Esemény után visszajelző képernyők is jöhetnek. A mélyebb képernyők, például fizetés, tagok, erőforrások és visszajelzés, saját részletesebb magyarázatot is kaphatnak.</p>'
+    title: 'Csatlakozás',
+    blurb: 'A lépések az esemény beállításaitól függenek.',
+    contentHtml: '<p>A meghívást a kártyáról fogadhatod el vagy utasíthatod vissza. Egyes események azonnal visszaigazolnak, másoknál jóváhagyás, jegy, szabályelfogadás, fizetés vagy további választás kell a végleges helyhez.</p>'
   },
   {
     id: 'activity-event-hosting',
     icon: 'emoji_events',
-    title: 'Esemény készítése',
-    blurb: 'Lehet egyszerű találkozó, vagy nagyobb bajnokság jellegű esemény.',
-    contentHtml: '<p>Az <strong>Új esemény</strong> normál eseményt indít. Maradhat egyszerű, vagy építhetsz belőle nagyobb rendszert szakaszokkal, csoportokkal, opcionális részekkel, erőforrásokkal, jegyekkel, árakkal és férőhelylimitekkel.</p><p>Szervezőként automatikus meghívást is használhatsz. Ez a prioritási/relevancia listából dolgozhat, így a jobban illő emberek kerülhetnek előre, nem kell mindenkit kézzel felvenni.</p>'
+    title: 'Létrehozás és szervezés',
+    blurb: 'Indulj egyszerűen, és csak azt add hozzá, amire szükség van.',
+    contentHtml: '<p>A plusz gomb megnyitja az eseményszerkesztőt. Készíthetsz egyszerű találkozót, vagy hozzáadhatsz aleseményeket, csoportokat, erőforrásokat, jegyeket, árazást és férőhelyszabályokat.</p>'
   }
 ];
 
@@ -1747,37 +1747,37 @@ const EXPLANATION_CHATS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'activity-chat-list',
     icon: 'forum',
-    title: 'Chat lists',
-    blurb: 'Pick which conversations you want to see.',
-    contentHtml: '<p>Open <strong>Chats</strong> to see conversations connected to your events and groups. The second menu filters the list: All, Event, Sub event, Group, or Service.</p><p>Red bubbles mean unread or waiting items. Date bars group the conversations so you can quickly see what is new today and what is older.</p>'
+    title: 'Choose a chat list',
+    blurb: 'Filter conversations by their purpose.',
+    contentHtml: '<p>Show all chats or filter by <strong>Event</strong>, <strong>Sub-event</strong>, <strong>Group</strong>, <strong>Service</strong>, or <strong>App Support</strong>. Red counters mark unread or pending items.</p>'
   },
   {
     id: 'activity-chat-card',
     icon: 'chat_bubble',
-    title: 'Reading a chat row',
-    blurb: 'A row tells you who spoke, which channel it is, and how many people are inside.',
-    contentHtml: '<p>The round avatar is the last sender or channel person. The bold name is who last wrote, and the line under it shows the channel name, for example <strong>Main Event</strong>, <strong>Group Channel</strong>, or <strong>Contact Organizer</strong>.</p><p>The dark pill like <strong>4 members</strong> shows how many people are in that chat. A small red number on it is unread messages or pending chat-related work.</p>'
+    title: 'Read a chat row',
+    blurb: 'See the latest activity before opening it.',
+    contentHtml: '<p>A row shows the latest sender, channel, recent message, time, member count, and unread count. Tap it to open the conversation.</p>'
   },
   {
     id: 'activity-chat-channels',
     icon: 'account_tree',
     title: 'Channel types',
-    blurb: 'Different chats are for different jobs.',
-    contentHtml: '<p><strong>Main event</strong> is the broad event chat. <strong>Sub event</strong> is for one stage or optional part. <strong>Group</strong> is for a smaller team inside the event. <strong>Service</strong> or <strong>Organizer</strong> is for questions, support, notifications, or admin handling.</p><p>This keeps planning tidy: you can ask a ticket question in organizer chat, arrange a stage in sub-event chat, and talk with only your group in group chat.</p>'
+    blurb: 'Keep each conversation in the right place.',
+    contentHtml: '<p>Event chats cover the whole event, sub-event chats cover one part, and group chats cover a smaller team. Service and App Support chats handle their own help or system-related topics.</p>'
   },
   {
     id: 'activity-chat-message-window',
     icon: 'mark_chat_unread',
-    title: 'Opening messages',
-    blurb: 'Tap a row to open the conversation and the typing box.',
-    contentHtml: '<p>The top bar shows the channel name. The member button opens people in the chat, the context button opens the related event or group area, and the pin icon opens messages marked as important.</p><p>Messages are bubbles: other people are on the left, your messages are on the right. A bubble can hold text, an image, a voice clip, a poll, a shared event, or a shared asset card.</p><p>Tap a message to select it. Floating buttons appear for reply, reaction, and more actions. The menu can show View, Reply, Edit, Unsend, Mark important/remove important, or Report depending on the message and your role.</p>'
+    title: 'Open a conversation',
+    blurb: 'Read messages and use the available actions.',
+    contentHtml: '<p>The header opens members, the related event or group, and pinned messages. Message actions depend on ownership and content: you may reply, react, edit or unsend your own message, pin it, open an attachment, or report it.</p>'
   },
   {
     id: 'activity-chat-tools',
     icon: 'add_circle',
-    title: 'Useful chat tools',
-    blurb: 'Chats are for coordination, not only hello messages.',
-    contentHtml: '<p>The plus button beside Write message opens the same tools you use in the real chat: upload image, send voice clip, create poll, share event, and share asset.</p><p>Polls and shared event or asset cards appear inside the message stream, so people can vote or open the shared item later. Use it for practical planning: meeting spot, who brings what, rides, tickets, approvals, or last-minute changes.</p>'
+    title: 'Send more than text',
+    blurb: 'Use chat tools for practical planning.',
+    contentHtml: '<p>The plus button lets you add an image, voice clip, poll, event, or asset. Shared items stay in the conversation so participants can open them later.</p>'
   }
 ];
 
@@ -1785,37 +1785,37 @@ const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'activity-chat-list',
     icon: 'forum',
-    title: 'Chatlisták',
-    blurb: 'Itt választod ki, melyik beszélgetéseket látod.',
-    contentHtml: '<p>A <strong>Chatek</strong> nézetben az eseményekhez és csoportokhoz tartozó beszélgetéseket látod. A második menü szűr: Összes, Esemény, Alesemény, Csoport vagy Szerviz.</p><p>A piros buborék olvasatlant vagy várakozó tennivalót jelent. A dátumsávok csoportosítják a beszélgetéseket, így látod, mi friss és mi régebbi.</p>'
+    title: 'Beszélgetések kiválasztása',
+    blurb: 'Szűrd a beszélgetéseket a céljuk szerint.',
+    contentHtml: '<p>Megnézheted az összes beszélgetést, vagy szűrhetsz <strong>Esemény</strong>, <strong>Alesemény</strong>, <strong>Csoport</strong>, <strong>Szolgáltatás</strong> és <strong>Alkalmazástámogatás</strong> szerint. A piros számláló olvasatlan vagy függő elemet jelez.</p>'
   },
   {
     id: 'activity-chat-card',
     icon: 'chat_bubble',
-    title: 'Egy chat sor olvasása',
-    blurb: 'A sor megmutatja, ki írt, melyik csatorna ez, és hányan vannak benne.',
-    contentHtml: '<p>A kerek avatar az utolsó írót vagy a csatorna emberét jelzi. A vastag név mutatja, ki írt utoljára, az alatta lévő sor pedig a csatornát, például <strong>Main Event</strong>, <strong>Group Channel</strong> vagy <strong>Contact Organizer</strong>.</p><p>A sötét jelvény, például <strong>4 tag</strong>, azt mutatja, hányan vannak a chatben. A kis piros szám olvasatlan üzenetet vagy chathez tartozó tennivalót jelez.</p>'
+    title: 'Beszélgetéssor',
+    blurb: 'Megnyitás előtt lásd a legutóbbi aktivitást.',
+    contentHtml: '<p>A sor megmutatja az utolsó írót, a csatornát, a legutóbbi üzenetet, az időpontot, a tagok és az olvasatlan üzenetek számát. Koppints rá a beszélgetés megnyitásához.</p>'
   },
   {
     id: 'activity-chat-channels',
     icon: 'account_tree',
     title: 'Csatornatípusok',
-    blurb: 'Más chat más feladatra való.',
-    contentHtml: '<p>A <strong>Main event</strong> a fő esemény chatje. A <strong>Sub event</strong> egy szakaszhoz vagy opcionális részhez tartozik. A <strong>Group</strong> kisebb csapatnak szól. A <strong>Service</strong> vagy <strong>Organizer</strong> kérdéshez, támogatáshoz, értesítéshez vagy admin kezeléshez való.</p><p>Így nem keveredik minden: jegykérdést írhatsz a szervezőnek, szakaszról beszélhetsz az alesemény chatben, és csak a saját csoportoddal egyeztethetsz a group chatben.</p>'
+    blurb: 'Minden beszélgetés maradjon a megfelelő helyen.',
+    contentHtml: '<p>Az eseménybeszélgetés az egész eseményhez, az alesemény-beszélgetés egy részhez, a csoportbeszélgetés pedig egy kisebb csapathoz tartozik. A szolgáltatási és alkalmazástámogatási csatornák a saját ügyintézési témáikat kezelik.</p>'
   },
   {
     id: 'activity-chat-message-window',
     icon: 'mark_chat_unread',
-    title: 'Üzenetek megnyitása',
-    blurb: 'Koppints egy sorra: megnyílik a beszélgetés és az írómező.',
-    contentHtml: '<p>Felül a csatorna neve látszik. Mellette a tagok gomb, a kapcsolódó esemény vagy csoport gomb és a gombostű ikon van. A gombostű a fontosnak jelölt üzenetek listáját nyitja, hogy később gyorsan visszatalálj.</p><p>Az üzenetek buborékokban vannak: bal oldalon mások, jobb oldalon a saját üzeneted. Egy buborékban lehet szöveg, kép, hang, szavazás, megosztott esemény vagy eszközkártya.</p><p>Koppints egy üzenetre a kijelöléshez. A lebegő gombokkal válaszolhatsz, reagálhatsz, vagy megnyithatod a menüt. A menüben szereptől és üzenettípustól függően Megnyitás, Válasz, Szerkesztés, Visszavonás, Fontosnak jelölés vagy Jelentés jelenhet meg.</p>'
+    title: 'Beszélgetés megnyitása',
+    blurb: 'Olvasd el az üzeneteket, és használd az elérhető műveleteket.',
+    contentHtml: '<p>A fejlécből megnyithatod a tagokat, a kapcsolódó eseményt vagy csoportot és a kitűzött üzeneteket. Az üzenet tulajdonától és tartalmától függően válaszolhatsz, reagálhatsz, saját üzenetet szerkeszthetsz vagy visszavonhatsz, kitűzhetsz, mellékletet nyithatsz meg vagy jelenthetsz.</p>'
   },
   {
     id: 'activity-chat-tools',
     icon: 'add_circle',
-    title: 'Hasznos chat eszközök',
-    blurb: 'A chat nem csak köszönésre van, hanem szervezésre is.',
-    contentHtml: '<p>Az Üzenet írása mező melletti plusz gomb ugyanazokat az eszközöket nyitja, mint a valódi chatben: kép feltöltése, hangüzenet, szavazás, esemény megosztása és eszköz megosztása.</p><p>A szavazás és a megosztott esemény vagy eszköz kártya magában a beszélgetésben jelenik meg, így később is lehet rá szavazni vagy megnyitni. Használd gyakorlati dolgokra: találkozási pont, ki mit hoz, fuvar, jegyek, jóváhagyás vagy utolsó pillanatos változás.</p>'
+    title: 'Több mint szöveg',
+    blurb: 'A beszélgetés eszközeivel könnyebb a szervezés.',
+    contentHtml: '<p>A plusz gombbal képet, hangüzenetet, szavazást, eseményt vagy eszközt küldhetsz. A megosztott elemek a beszélgetésben maradnak, így később is megnyithatók.</p>'
   }
 ];
 
@@ -1823,23 +1823,23 @@ const EXPLANATION_CONTACTS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'contacts-list',
     icon: 'contacts',
-    title: 'Your contact list',
-    blurb: 'This is your private quick-reach list.',
-    contentHtml: '<p>Use the search field to filter saved contacts by name. <strong>Create contact</strong> lets you pick a member and add that person to your own list.</p><p>An empty list only means you have not saved anyone here yet. It does not remove people from events, chats, ratings, or profiles.</p>'
+    title: 'Saved contacts',
+    blurb: 'Keep useful people easy to find.',
+    contentHtml: '<p>Search your saved contacts by name. <strong>Create Contact</strong> lets you choose a member and add that person to this list.</p>'
   },
   {
     id: 'contacts-card',
     icon: 'badge',
-    title: 'Reading a contact card',
-    blurb: 'Each row shows who the person is and the shortcuts you saved.',
-    contentHtml: '<p>The avatar and name identify the person. The eye button opens the profile. The three-dot button opens the card actions: saved contact methods, Edit, and Delete.</p><p>The chips below the city are one-tap ways to reach that person, such as phone, email, WhatsApp, Telegram, Facebook, Instagram, LinkedIn, or a website, depending on what you saved.</p>'
+    title: 'Contact card',
+    blurb: 'Open a profile or use a saved shortcut.',
+    contentHtml: '<p>The card shows the person, city, and saved contact methods. The eye opens the profile; the chips and three-dot menu open phone, message, email, social, website, edit, or delete actions when available.</p>'
   },
   {
     id: 'contacts-private-methods',
     icon: 'alternate_email',
-    title: 'Private contact methods',
-    blurb: 'Friends or trusted contacts can have richer reach details.',
-    contentHtml: '<p>Public profile fields stay separate from this list. When you know someone well, for example after becoming friends, you can keep more private ways to reach them here: email, phone, social handle, website, or another useful link.</p><p>Use <strong>Edit</strong> to add, change, or remove methods. These are your quick shortcuts for that saved contact; deleting the contact only removes it from this list.</p>'
+    title: 'Edit contact methods',
+    blurb: 'Change only the shortcuts saved in your contact list.',
+    contentHtml: '<p><strong>Edit</strong> adds, changes, or removes phone, email, messaging, social, and web links. It does not edit the person&rsquo;s profile, and deleting the contact only removes the entry from your list.</p>'
   }
 ];
 
@@ -1847,23 +1847,23 @@ const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'contacts-list',
     icon: 'contacts',
-    title: 'Kapcsolatlista',
-    blurb: 'Ez a saját, gyorsan elérhető kapcsolatlistád.',
-    contentHtml: '<p>A keresővel név alapján szűrheted a mentett kapcsolatokat. A <strong>Kapcsolat létrehozása</strong> gombbal kiválasztasz egy tagot, és hozzáadod a saját listádhoz.</p><p>Az üres lista csak azt jelenti, hogy ide még nem mentettél senkit. Ettől az eseményekben, chatekben, értékelésekben és profilokon semmi nem tűnik el.</p>'
+    title: 'Mentett kapcsolatok',
+    blurb: 'Tartsd könnyen elérhető helyen a fontos embereket.',
+    contentHtml: '<p>A mentett kapcsolatok között név alapján kereshetsz. A <strong>Kapcsolat létrehozása</strong> gombbal kiválaszthatsz egy tagot, és hozzáadhatod ehhez a listához.</p>'
   },
   {
     id: 'contacts-card',
     icon: 'badge',
-    title: 'Egy kapcsolatkártya',
-    blurb: 'A sor megmutatja, ki az ember, és milyen gyors eléréseket mentettél hozzá.',
-    contentHtml: '<p>Az avatar és a név azonosítja az embert. A szem gomb megnyitja a profilt. A hárompontos gomb nyitja a kártyaműveleteket: mentett elérési módok, szerkesztés és törlés.</p><p>A város alatti chipek egyérintéses elérések, például telefon, email, WhatsApp, Telegram, Facebook, Instagram, LinkedIn vagy weboldal, attól függően, mit mentettél.</p>'
+    title: 'Kapcsolatkártya',
+    blurb: 'Nyisd meg a profilt, vagy használd a mentett gyorsgombokat.',
+    contentHtml: '<p>A kártya az embert, a várost és a mentett elérési módokat mutatja. A szem megnyitja a profilt; a címkék és a hárompontos menü telefonos, üzenetküldési, e-mailes, közösségi, webes, szerkesztési vagy törlési műveletet nyithat.</p>'
   },
   {
     id: 'contacts-private-methods',
     icon: 'alternate_email',
-    title: 'Privátabb elérési módok',
-    blurb: 'Barátokhoz vagy megbízható kapcsolatokhoz több praktikus adatot is menthetsz.',
-    contentHtml: '<p>A nyilvános profilmezők ettől külön maradnak. Ha valakit jobban ismersz, például barátok vagytok, itt tarthatsz privátabb elérési módokat: emailt, telefonszámot, közösségi profilt, weboldalt vagy más hasznos linket.</p><p>A <strong>Szerkesztés</strong> alatt adhatsz hozzá, módosíthatsz vagy törölhetsz módszereket. Ezek a saját gyorsgombjaid ehhez a mentett kapcsolathoz; a kapcsolat törlése csak ebből a listából veszi ki.</p>'
+    title: 'Elérési módok szerkesztése',
+    blurb: 'Csak a kapcsolatlistában mentett gyorsgombokat módosítod.',
+    contentHtml: '<p>A <strong>Szerkesztés</strong> alatt telefonos, e-mailes, üzenetküldési, közösségi és webes elérést adhatsz hozzá, módosíthatsz vagy törölhetsz. Ettől az illető profilja nem változik, a kapcsolat törlése pedig csak a saját listádból távolítja el.</p>'
   }
 ];
 
@@ -1871,30 +1871,30 @@ const EXPLANATION_PROFILE_EDITOR_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'profile-editor-basics',
     icon: 'manage_accounts',
-    title: 'Profile basics',
-    blurb: 'This is where your public profile is maintained.',
-    contentHtml: '<p>Edit the fields that describe who you are, what you are open to, and how others should understand your profile card. Keep the short fields scannable; the detail fields can carry the nuance.</p>'
+    title: 'Basic details',
+    blurb: 'Complete the information used on your profile.',
+    contentHtml: '<p>For a regular profile, name, birthday, city, height, physique, gender, and languages are required. The short About text, work, and school entries add useful context.</p>'
   },
   {
     id: 'profile-editor-media',
     icon: 'add_photo_alternate',
-    title: 'Photos and media',
-    blurb: 'Profile images are edited separately from text.',
-    contentHtml: '<p>Use the photo area to add, reorder, replace, or remove images. The same saved image state is what the home cards and profile view use after reload.</p>'
+    title: 'Profile photos',
+    blurb: 'Manage images in a separate panel.',
+    contentHtml: '<p>Use the edit action on the profile card to open <strong>Images</strong>. Add, reorder, replace, or remove photos, then return to the main panel before saving.</p>'
   },
   {
     id: 'profile-editor-details',
     icon: 'tune',
-    title: 'Details, chips, and privacy',
-    blurb: 'Structured fields make matching and filtering predictable.',
-    contentHtml: '<p>Chips such as interests, languages, values, habits, and profile details are stored as structured choices. Privacy controls decide which details are visible broadly, only to trusted contexts, or only to hosts.</p>'
+    title: 'Details and visibility',
+    blurb: 'Add optional details and choose who can see them.',
+    contentHtml: '<p>Add experience, lifestyle, values, and interests as needed. The header controls the overall profile status, while visibility icons beside supported details choose <strong>Public</strong>, <strong>Friends</strong>, <strong>Hosts</strong>, or <strong>Private</strong>.</p>'
   },
   {
     id: 'profile-editor-save',
     icon: 'save',
-    title: 'Save and verify',
-    blurb: 'Saved profile data should survive reopening the editor.',
-    contentHtml: '<p>After saving, reopen the editor or profile view to confirm that the same photos, chips, dropdowns, and text fields come back from the selected data source.</p>'
+    title: 'Save your profile',
+    blurb: 'Use the checkmark when you are finished.',
+    contentHtml: '<p>The checkmark saves your changes and closes the editor. Closing the main panel without saving does not submit the changes.</p>'
   }
 ];
 
@@ -1902,30 +1902,30 @@ const EXPLANATION_PROFILE_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'profile-editor-basics',
     icon: 'manage_accounts',
-    title: 'Profil alapok',
-    blurb: 'Itt tarthatod karban a nyilvános profilodat.',
-    contentHtml: '<p>Szerkeszd azokat a mezőket, amelyek megmutatják, ki vagy, mire vagy nyitott, és hogyan lássák mások a profilkártyádat. A rövid mezők legyenek gyorsan olvashatók; a részletes mezők hordozzák az árnyalatokat.</p>'
+    title: 'Alapadatok',
+    blurb: 'Töltsd ki a profilodon használt adatokat.',
+    contentHtml: '<p>Normál profilnál a név, születési dátum, város, magasság, testalkat, nem és nyelvek kötelezők. A rövid bemutatkozás, a munkahely és az iskola további hasznos információt ad.</p>'
   },
   {
     id: 'profile-editor-media',
     icon: 'add_photo_alternate',
-    title: 'Fotók és média',
-    blurb: 'A profilképek külön kezelődnek a szöveges mezőktől.',
-    contentHtml: '<p>A fotó résznél adhatsz hozzá, rendezhetsz át, cserélhetsz vagy törölhetsz képeket. Mentés után ugyanezt a képállapotot használja a kezdőkártya és a profilnézet is.</p>'
+    title: 'Profilképek',
+    blurb: 'A képeket külön panelen kezelheted.',
+    contentHtml: '<p>A profilkártya szerkesztési műveletével nyisd meg a <strong>Képek</strong> panelt. Itt hozzáadhatsz, átrendezhetsz, cserélhetsz vagy törölhetsz fotókat; mentés előtt térj vissza a fő panelre.</p>'
   },
   {
     id: 'profile-editor-details',
     icon: 'tune',
-    title: 'Részletek, chipek és adatvédelem',
-    blurb: 'A strukturált mezők kiszámíthatóbbá teszik a szűrést és ajánlást.',
-    contentHtml: '<p>Az érdeklődések, nyelvek, értékek, szokások és profilrészletek strukturált választásokként mentődnek. Az adatvédelmi beállítások döntik el, mi látható szélesen, csak megbízhatóbb környezetben vagy csak szervezőknek.</p>'
+    title: 'Részletek és láthatóság',
+    blurb: 'Adj meg opcionális részleteket, és válaszd ki, ki láthatja őket.',
+    contentHtml: '<p>Szükség szerint adj meg tapasztalatokat, életmódot, értékeket és érdeklődési köröket. A fejléc a teljes profil állapotát szabályozza, a támogatott részletek melletti ikonokkal pedig <strong>Nyilvános</strong>, <strong>Ismerősök</strong>, <strong>Szervezők</strong> vagy <strong>Privát</strong> láthatóságot választhatsz.</p>'
   },
   {
     id: 'profile-editor-save',
     icon: 'save',
-    title: 'Mentés és ellenőrzés',
-    blurb: 'A mentett profiladatnak újranyitás után is meg kell maradnia.',
-    contentHtml: '<p>Mentés után nyisd újra a szerkesztőt vagy a profilnézetet, és ellenőrizd, hogy ugyanazok a fotók, chipek, legördülők és szövegmezők jönnek vissza a kiválasztott adatforrásból.</p>'
+    title: 'Profil mentése',
+    blurb: 'Ha elkészültél, használd a pipát.',
+    contentHtml: '<p>A pipa menti a módosításokat, majd bezárja a szerkesztőt. Ha mentés nélkül zárod be a fő panelt, a változtatások nem kerülnek beküldésre.</p>'
   }
 ];
 
@@ -1933,23 +1933,23 @@ const EXPLANATION_PROFILE_VIEW_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'profile-view-overview',
     icon: 'visibility',
-    title: 'Profile view',
-    blurb: 'This screen is the read-only version of a profile.',
-    contentHtml: '<p>The profile view shows the saved photos, headline fields, details, and visible context that another user can inspect from cards, chats, contacts, or event member lists.</p>'
+    title: 'Profile overview',
+    blurb: 'This screen shows a profile without editing it.',
+    contentHtml: '<p>The top card shows the selected photo, name, age, city, and headline. The Basics section lists key profile details and marks missing values as not set.</p>'
   },
   {
     id: 'profile-view-photos',
     icon: 'photo_library',
-    title: 'Photos and sections',
-    blurb: 'Use the media and detail blocks to understand the person quickly.',
-    contentHtml: '<p>Images, chips, experiences, and profile sections are grouped so they can be scanned without entering edit mode. Empty or private fields should simply stay hidden.</p>'
+    title: 'Photos and details',
+    blurb: 'Browse the information available on this profile.',
+    contentHtml: '<p>Select another photo on the profile card when more are available. Below it, the About area, non-empty detail groups, and experience entries are shown in separate sections.</p>'
   },
   {
     id: 'profile-view-actions',
     icon: 'more_horiz',
-    title: 'Actions from a profile',
-    blurb: 'Available actions depend on context and permissions.',
-    contentHtml: '<p>Depending on where the profile was opened, actions can lead back to rating, contact, chat, report, event member handling, or admin moderation. The profile content itself should stay consistent across those entry points.</p>'
+    title: 'Read-only view',
+    blurb: 'This popup does not change the profile.',
+    contentHtml: '<p>There are no edit or contact actions on this screen. Close the popup to return to the card, chat, contact, or member list where you opened it.</p>'
   }
 ];
 
@@ -1957,23 +1957,23 @@ const EXPLANATION_PROFILE_VIEW_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'profile-view-overview',
     icon: 'visibility',
-    title: 'Profilnézet',
-    blurb: 'Ez a profil csak olvasható változata.',
-    contentHtml: '<p>A profilnézet a mentett fotókat, fő mezőket, részleteket és látható kontextust mutatja, amit más felhasználó kártyáról, chatből, kapcsolatból vagy eseménytag-listából megnyithat.</p>'
+    title: 'Profil áttekintése',
+    blurb: 'Ezen a képernyőn szerkesztés nélkül nézheted meg a profilt.',
+    contentHtml: '<p>A felső kártyán a kiválasztott kép, név, életkor, város és rövid leírás látszik. Az Alapadatok rész felsorolja a fontos profiladatokat, a hiányzó értékeket pedig nincs megadva jelzéssel mutatja.</p>'
   },
   {
     id: 'profile-view-photos',
     icon: 'photo_library',
-    title: 'Fotók és szekciók',
-    blurb: 'A média és részletblokkok gyors megértésre valók.',
-    contentHtml: '<p>A képek, chipek, tapasztalatok és profilszekciók úgy vannak csoportosítva, hogy szerkesztő mód nélkül is átnézhetők legyenek. Az üres vagy privát mezők maradjanak egyszerűen rejtve.</p>'
+    title: 'Képek és részletek',
+    blurb: 'Nézd át a profilon elérhető információkat.',
+    contentHtml: '<p>Ha több kép van, a profilkártyán másik fotót választhatsz. Alatta külön részben jelenik meg a bemutatkozás, a kitöltött részletcsoportok és a tapasztalatok.</p>'
   },
   {
     id: 'profile-view-actions',
     icon: 'more_horiz',
-    title: 'Profilműveletek',
-    blurb: 'Az elérhető műveletek a kontextustól és jogosultságtól függnek.',
-    contentHtml: '<p>Attól függően, honnan nyílt a profil, a műveletek értékeléshez, kapcsolathoz, chathez, jelentéshez, eseménytag-kezeléshez vagy admin moderációhoz vezethetnek. Maga a profiltartalom ezek között is maradjon konzisztens.</p>'
+    title: 'Csak olvasható nézet',
+    blurb: 'Ez az ablak nem módosítja a profilt.',
+    contentHtml: '<p>Ezen a képernyőn nincs szerkesztési vagy kapcsolatfelvételi művelet. Zárd be az ablakot, hogy visszatérj ahhoz a kártyához, beszélgetéshez, kapcsolathoz vagy taglistához, ahonnan megnyitottad.</p>'
   }
 ];
 
@@ -1981,23 +1981,23 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'event-feedback-entry',
     icon: 'rate_review',
-    title: 'Event feedback',
-    blurb: 'Feedback appears after an event or from activity history.',
-    contentHtml: '<p>Use feedback to record how the event worked, how collaboration felt, and whether you would join similar events again. It is connected to real event participation, not a generic profile rating.</p>'
+    title: 'Feedback lists',
+    blurb: 'Choose the feedback state you want to see.',
+    contentHtml: '<p><strong>Pending</strong> holds events waiting for your feedback, <strong>Feedbacked</strong> holds submitted items, and <strong>Removed</strong> holds skipped items that can be restored. <strong>Own Events</strong> shows feedback received for events you organized.</p>'
   },
   {
     id: 'event-feedback-categories',
     icon: 'checklist',
-    title: 'Questions and categories',
-    blurb: 'Different roles can see different feedback questions.',
-    contentHtml: '<p>Hosts, attendees, and collaborators may answer different sections. Some answers improve future matching and event planning, while moderation-sensitive answers should remain scoped to the right workflow.</p>'
+    title: 'Answer the cards',
+    blurb: 'Complete each card, then review your answers.',
+    contentHtml: '<p>On every event or participant card, answer the two questions and choose up to three traits. Review the summary, then use <strong>Submit feedback</strong> to send all answers.</p>'
   },
   {
     id: 'event-feedback-save',
     icon: 'task_alt',
-    title: 'Save once, reopen safely',
-    blurb: 'Submitted feedback should not vanish or duplicate.',
-    contentHtml: '<p>After saving, the event should move to the right feedback state in lists. Reopening should show the saved state or the next required action without creating duplicate feedback records.</p>'
+    title: 'After feedback',
+    blurb: 'Review submitted or received results.',
+    contentHtml: '<p>Submitted feedback moves to <strong>Feedbacked</strong> and can be opened again. Organizers can view summaries and named responses for their own events; a separate organizer note needs at least eight characters.</p>'
   }
 ];
 
@@ -2005,23 +2005,23 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'event-feedback-entry',
     icon: 'rate_review',
-    title: 'Esemény-visszajelzés',
-    blurb: 'Visszajelzés esemény után vagy aktivitás-előzményből jelenhet meg.',
-    contentHtml: '<p>A visszajelzés arra való, hogy rögzítsd, hogyan működött az esemény, milyen volt az együttműködés, és csatlakoznál-e hasonló eseményhez újra. Valódi részvételhez kapcsolódik, nem általános profilértékelés.</p>'
+    title: 'Visszajelzési listák',
+    blurb: 'Válaszd ki, melyik állapotot szeretnéd látni.',
+    contentHtml: '<p>A <strong>Függőben</strong> listában a kitöltésre váró, a <strong>Kitöltve</strong> listában a beküldött, az <strong>Eltávolítva</strong> listában pedig a kihagyott és visszaállítható események vannak. A <strong>Saját események</strong> a szervezőként kapott visszajelzéseket mutatja.</p>'
   },
   {
     id: 'event-feedback-categories',
     icon: 'checklist',
-    title: 'Kérdések és kategóriák',
-    blurb: 'Különböző szerepek más visszajelzési kérdéseket láthatnak.',
-    contentHtml: '<p>Szervezők, résztvevők és együttműködők más szekciókat kaphatnak. Egyes válaszok a későbbi ajánlást és eseménytervezést javítják, a moderáció-érzékeny válaszok pedig maradjanak a megfelelő folyamathoz kötve.</p>'
+    title: 'Kártyák kitöltése',
+    blurb: 'Tölts ki minden kártyát, majd ellenőrizd a válaszaidat.',
+    contentHtml: '<p>Minden esemény- vagy résztvevőkártyán válaszolj a két kérdésre, és válassz legfeljebb három jellemzőt. Az összegzés után a <strong>Visszajelzés beküldése</strong> gomb elküldi az összes választ.</p>'
   },
   {
     id: 'event-feedback-save',
     icon: 'task_alt',
-    title: 'Egyszeri mentés, biztonságos újranyitás',
-    blurb: 'A beküldött visszajelzés ne tűnjön el és ne duplikálódjon.',
-    contentHtml: '<p>Mentés után az eseménynek a megfelelő visszajelzési állapotba kell kerülnie a listákban. Újranyitáskor a mentett állapot vagy a következő szükséges művelet jelenjen meg, duplikált rekord nélkül.</p>'
+    title: 'Beküldés után',
+    blurb: 'Nézd meg az elküldött vagy kapott eredményeket.',
+    contentHtml: '<p>A beküldött válasz a <strong>Kitöltve</strong> listába kerül, és később újra megnyitható. A szervezők a saját eseményeik összesítését és névvel jelölt válaszait látják; a külön szervezői megjegyzés legalább nyolc karakteres lehet.</p>'
   }
 ];
 
@@ -2029,37 +2029,37 @@ const EXPLANATION_ASSETS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'assets-entry',
     icon: 'inventory_2',
-    title: 'Your assets',
-    blurb: 'This popup starts from your own things, not from one event.',
-    contentHtml: '<p>The type menu switches between <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, and <strong>Ticket</strong>. The red number is the count for that type.</p><p><strong>Transport</strong>, <strong>Accommodation</strong>, and <strong>Supplies</strong> are editable assets you own. The plus button creates a new one. <strong>Ticket</strong> is different: it is for event entry codes and scanning, not for editing a physical asset.</p>'
+    title: 'Choose an asset type',
+    blurb: 'Switch between your assets and tickets.',
+    contentHtml: '<p>Use the top menu for <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, or <strong>Tickets</strong>. The first three are assets you can add and edit; tickets are event entry records.</p>'
   },
   {
     id: 'assets-card',
     icon: 'view_agenda',
-    title: 'One asset card',
-    blurb: 'This is the short version of one thing you own.',
-    contentHtml: '<p>The picture is the asset photo; if there is no image, the card shows the built-in no-image placeholder. The small icon shows the asset type. The title is the name, the line under it shows type/category/city, and the text is your practical note.</p><p>The right badge is the useful number: seats, beds, quantity, or pending requests. The three-dot menu is for owner actions such as <strong>Share</strong>, <strong>Edit</strong>, and <strong>Delete</strong>. Accommodation can also show a location/map button.</p>'
+    title: 'Asset card',
+    blurb: 'See the item and its current availability.',
+    contentHtml: '<p>The card shows the image, title, subtitle, and an availability or request count. Use the location icon when shown, or the three-dot menu for actions such as sharing, requests, editing, and deleting.</p>'
   },
   {
     id: 'assets-editor',
     icon: 'edit',
-    title: 'Common asset editor',
-    blurb: 'Transport, accommodation, and supplies share this basic editor.',
-    contentHtml: '<p>For every real asset you set the image/source link, type, title, category, capacity, quantity, details, visibility, optional pricing, and lending policies.</p><p><strong>Public</strong> can be found broadly in Asset Explorer. <strong>Friends only</strong> limits discovery to your friend/network context. <strong>Invitation only</strong> keeps it out of normal discovery, so it is used by direct sharing or assignment.</p>'
+    title: 'Edit an asset',
+    blurb: 'Transport, accommodation, and supplies use the same form.',
+    contentHtml: '<p>Title, total capacity, and quantity are required. You can also add one image, a subtitle, source link, category, details, visibility, pricing, and lending rules; accommodation also requires a location.</p>'
   },
   {
     id: 'assets-requests',
     icon: 'assignment',
-    title: 'Requests and helpers',
-    blurb: 'Open the badge when somebody wants to use what you own.',
-    contentHtml: '<p>The requests popup can show all rows, active items, pending requests, and borrowed items. A row shows who asked, the related event or use context, the time window, and how much capacity is left.</p><p>You can approve or reject pending requests. For accepted people you may promote someone to <strong>Manager</strong> for that asset. Manager is only a helper role for that asset; it is not the same as app admin.</p>'
+    title: 'Requests',
+    blurb: 'Review who wants to use the asset.',
+    contentHtml: '<p>Filter all, active, pending, or borrowed requests. You can accept or reject a pending request, and make an accepted user a <strong>Manager</strong> for this asset.</p>'
   },
   {
     id: 'assets-scope',
     icon: 'travel_explore',
-    title: 'Where an asset can be used',
-    blurb: 'Visibility controls discovery; event screens assign the asset.',
-    contentHtml: '<p>Your own asset can appear in <strong>Asset Explorer</strong> when its visibility allows it. That is where other people can discover it and request it.</p><p>The same asset can also be assigned to an event or sub-event from the event resource screen. That assignment screen can have extra event-only states, but those are not the normal own-assets list.</p>'
+    title: 'Visibility and events',
+    blurb: 'Control discovery and assign assets separately.',
+    contentHtml: '<p>Visibility controls who may find the asset in <strong>Asset Explorer</strong>. To use it in an event or sub-event, assign it from that event&rsquo;s resource screen.</p>'
   }
 ];
 
@@ -2067,37 +2067,37 @@ const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'assets-entry',
     icon: 'inventory_2',
-    title: 'Saját eszközeid',
-    blurb: 'Ez a popup a saját dolgaidból indul ki, nem egy konkrét eseményből.',
-    contentHtml: '<p>A típusmenü vált: <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Kellékek</strong> és <strong>Jegy</strong>. A piros szám az adott típus darabszáma.</p><p>A <strong>Transport</strong>, <strong>Accommodation</strong> és <strong>Kellékek</strong> szerkeszthető saját eszközök. A plusz gomb újat hoz létre. A <strong>Jegy</strong> más: belépőkódokra és szkennelésre való, nem tárgyi eszköz szerkesztésére.</p>'
+    title: 'Eszköztípus választása',
+    blurb: 'Válts a saját eszközök és a jegyek között.',
+    contentHtml: '<p>A felső menüben a <strong>Járművek</strong>, <strong>Szállások</strong>, <strong>Kellékek</strong> és <strong>Jegyek</strong> között válthatsz. Az első három hozzáadható és szerkeszthető eszköz, a jegy pedig eseményhez tartozó belépési adat.</p>'
   },
   {
     id: 'assets-card',
     icon: 'view_agenda',
-    title: 'Egy eszközkártya',
-    blurb: 'Ez egy saját eszköz rövid, olvasható változata.',
-    contentHtml: '<p>A kép az eszköz fotója; ha nincs kép, a kártya a beépített nincs-kép jelzést mutatja. A kis ikon a típust jelzi. A cím az eszköz neve, alatta típus/kategória/város, a szöveg pedig praktikus megjegyzés.</p><p>A jobb oldali jelvény a hasznos szám: férőhely, ágy, mennyiség vagy függő kérés. A hárompontos menüben tulajdonosi műveletek vannak: <strong>Megosztás</strong>, <strong>Szerkesztés</strong>, <strong>Törlés</strong>. Accommodation típusnál helyszín/térkép gomb is megjelenhet.</p>'
+    title: 'Eszközkártya',
+    blurb: 'Lásd az eszközt és az aktuális elérhetőségét.',
+    contentHtml: '<p>A kártyán a kép, cím, alcím és az elérhető mennyiség vagy kérések száma látszik. Ha van helyikon, az megnyitja a térképet; a hárompontos menüben többek között megosztás, kéréskezelés, szerkesztés és törlés lehet.</p>'
   },
   {
     id: 'assets-editor',
     icon: 'edit',
-    title: 'Közös eszközszerkesztő',
-    blurb: 'A Transport, Accommodation és kellék ugyanarra az alap szerkesztőre épül.',
-    contentHtml: '<p>Minden valódi eszköznél képet/forráslinket, típust, címet, kategóriát, kapacitást, mennyiséget, leírást, láthatóságot, opcionális árat és kölcsönzési szabályokat adhatsz meg.</p><p>A <strong>Public</strong> szélesen megjelenhet az Eszköz Felfedezésben. A <strong>Friends only</strong> az ismerősi/hálózati körre szűkít. Az <strong>Invitation only</strong> nem normál felfedezésre való, hanem közvetlen megosztásra vagy hozzárendelésre.</p>'
+    title: 'Eszköz szerkesztése',
+    blurb: 'A járművek, szállások és kellékek ugyanazt az űrlapot használják.',
+    contentHtml: '<p>A cím, a teljes kapacitás és a mennyiség kötelező. Megadhatsz még egy képet, alcímet, forráslinket, kategóriát, részleteket, láthatóságot, árat és kölcsönzési szabályokat; szállásnál a helyszín is kötelező.</p>'
   },
   {
     id: 'assets-requests',
     icon: 'assignment',
-    title: 'Kérések és segítők',
-    blurb: 'A jelvényt nyisd meg, ha valaki használni szeretné, ami a tied.',
-    contentHtml: '<p>A kérések popupban válthatsz: összes sor, aktív elemek, függő kérések és kölcsönadott elemek. Egy sor megmutatja, ki kérte, milyen eseményhez vagy használati helyzethez kapcsolódik, milyen időablakra, és mennyi kapacitás marad.</p><p>Függő kérésnél jóváhagyhatsz vagy elutasíthatsz. Elfogadott emberből lehet <strong>Manager</strong> az adott eszközhöz. A Manager csak az adott eszköz segítő szerepe; nem ugyanaz, mint az app admin.</p>'
+    title: 'Kérések',
+    blurb: 'Nézd meg, ki szeretné használni az eszközt.',
+    contentHtml: '<p>Szűrhetsz az összes, aktív, függő vagy kölcsönadott kérésre. A függő kérést elfogadhatod vagy elutasíthatod, az elfogadott felhasználót pedig az eszköz <strong>Kezelőjévé</strong> teheted.</p>'
   },
   {
     id: 'assets-scope',
     icon: 'travel_explore',
-    title: 'Hol használható egy eszköz',
-    blurb: 'A láthatóság a felfedezést szabályozza; az eseményképernyők hozzárendelnek.',
-    contentHtml: '<p>A saját eszközöd megjelenhet az <strong>Eszköz Felfedezésben</strong>, ha a láthatósága engedi. Ott mások megtalálhatják és kérhetik.</p><p>Ugyanezt az eszközt eseményhez vagy aleseményhez is hozzá lehet rendelni az esemény erőforrás képernyőjén. Ott lehetnek extra, csak eseményhez tartozó állapotok, de ezek nem a normál saját eszközlista jelentései.</p>'
+    title: 'Láthatóság és események',
+    blurb: 'A felfedezést és az eseményhez rendelést külön állítod.',
+    contentHtml: '<p>A láthatóság szabályozza, ki találhatja meg az eszközt az <strong>Eszközkeresőben</strong>. Eseményhez vagy aleseményhez az adott esemény erőforrás-képernyőjén rendelheted hozzá.</p>'
   }
 ];
 
@@ -2115,17 +2115,17 @@ const EXPLANATION_ASSETS_TRANSPORT_SECTIONS: HelpCenterSectionDto[] = assetExpla
   'assets-entry': {
     icon: 'directions_car',
     title: 'Your transport',
-    blurb: 'Transport uses the common editor, with travel details added.',
-    contentHtml: '<p>The <strong>Transport</strong> tab lists vehicles and transfer options you own or manage as your own assets. Use plus to add transport, then describe seats, route, city, pickup notes, rules, price, and visibility.</p><p>Public or friends-only transport can be discovered in Asset Explorer and requested. The same transport asset can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+    blurb: 'Add and manage vehicles or other transport.',
+    contentHtml: '<p>The <strong>Transport</strong> tab lists transport assets you own or manage. Use the plus button to create one, then set its title, capacity, quantity, details, visibility, and any optional price or rules.</p>'
   },
   'assets-card': {
     icon: 'directions_car',
-    title: 'Reading a transport card',
-    contentHtml: '<p>The photo shows the transport asset. The icon confirms it is transport, the title is the asset name, and the second line can show model, transmission, category, route, or city.</p><p>The right badge is seats or pending requests. The three-dot menu is where the owner shares, edits, or deletes the asset.</p>'
+    title: 'Transport card',
+    contentHtml: '<p>The card shows the image, name, subtitle, and available capacity or requests. Open the three-dot menu to see the actions available for that transport.</p>'
   },
   'assets-editor': {
-    title: 'Transport-specific fields',
-    contentHtml: '<p>Beyond the common fields, transport is mainly about <strong>seats</strong> and <strong>route</strong>. Use details for pickup window, luggage limits, fuel sharing, route stops, driver notes, and whether people can request it outside your own events.</p>'
+    title: 'Transport details',
+    contentHtml: '<p>Use total capacity for the available seats and quantity for the units offered. Put pickup, route, luggage, fuel, or driver information in <strong>Details</strong>; a separate route control appears only for a related event assignment.</p>'
   }
 });
 
@@ -2133,17 +2133,17 @@ const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS: HelpCenterSectionDto[] = assetE
   'assets-entry': {
     icon: 'apartment',
     title: 'Your accommodation',
-    blurb: 'Accommodation uses the common editor, with location as the important extra.',
-    contentHtml: '<p>The <strong>Accommodation</strong> tab lists places, rooms, beds, venues, or storage you own or manage as your own assets. Add accommodation, then describe location, sleeping capacity, rules, price, and visibility.</p><p>Public or friends-only accommodation can be discovered in Asset Explorer and requested. It can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+    blurb: 'Add and manage places you can offer.',
+    contentHtml: '<p>The <strong>Accommodation</strong> tab lists places you own or manage. Use the plus button to create one, then set its title, location, capacity, quantity, details, visibility, and any optional price or rules.</p>'
   },
   'assets-card': {
     icon: 'apartment',
-    title: 'Reading an accommodation card',
-    contentHtml: '<p>The photo shows the place. The icon confirms it is accommodation, the title is the place name, and the second line can show type, city, or category.</p><p>The right badge is the useful number: beds/rooms/capacity or pending requests. The location icon can open the map when the place has a location.</p>'
+    title: 'Accommodation card',
+    contentHtml: '<p>The card shows the image, name, subtitle, and available capacity or requests. Use the location icon to open the saved place on a map.</p>'
   },
   'assets-editor': {
-    title: 'Accommodation-specific fields',
-    contentHtml: '<p>Beyond the common fields, accommodation needs a <strong>location</strong>. The map/location button uses that place. Use details for check-in, sleeping setup, shared rooms, quiet hours, pets, parking, and what a guest must know before requesting it.</p>'
+    title: 'Accommodation details',
+    contentHtml: '<p>A <strong>location</strong> is required for accommodation. Use capacity and quantity for the space offered, and Details for check-in, sleeping, parking, or house rules.</p>'
   }
 });
 
@@ -2151,17 +2151,17 @@ const EXPLANATION_ASSETS_SUPPLIES_SECTIONS: HelpCenterSectionDto[] = assetExplan
   'assets-entry': {
     icon: 'inventory_2',
     title: 'Your supplies',
-    blurb: 'Supplies use the common editor, with quantity as the important extra.',
-    contentHtml: '<p>The <strong>Supplies</strong> tab lists gear, tools, kits, food packs, camping items, and other practical things you own. Add a supply item, then describe quantity, condition, rules, price, and visibility.</p><p>A public or friends-only supply can be discovered in Asset Explorer and requested. It can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+    blurb: 'Add and manage equipment or other useful items.',
+    contentHtml: '<p>The <strong>Supplies</strong> tab lists items you own or manage. Use the plus button to create one, then set its title, capacity, quantity, details, visibility, and any optional price or rules.</p>'
   },
   'assets-card': {
     icon: 'inventory_2',
-    title: 'Reading a supply card',
-    contentHtml: '<p>The photo shows the item. The icon confirms it is a supply asset, the title is the item name, and the second line can show type, category, or city.</p><p>The right badge is usually quantity or pending requests. The three-dot menu is where the owner normally shares, edits, or deletes the item.</p>'
+    title: 'Supply card',
+    contentHtml: '<p>The card shows the image, name, subtitle, and available quantity or requests. Open the three-dot menu to see the actions available for that item.</p>'
   },
   'assets-editor': {
-    title: 'Supply-specific fields',
-    contentHtml: '<p>Beyond the common fields, supplies are mainly about <strong>quantity</strong>. Use details for condition, pickup/return rules, what is included, missing parts, deposit, and whether several people can borrow parts of the quantity.</p>'
+    title: 'Supply details',
+    contentHtml: '<p>Set the total capacity and the quantity offered. Use <strong>Details</strong> for condition, included parts, pickup, return, or deposit information.</p>'
   }
 });
 
@@ -2170,40 +2170,40 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
     id: 'assets-tickets',
     icon: 'qr_code_2',
     title: 'Your tickets',
-    blurb: 'Tickets are event entry records, not editable owned assets.',
-    contentHtml: '<p>The <strong>Ticket</strong> tab is separate from Transport, Accommodation, and Supplies. It lists ticketed events and entry codes connected to you.</p><p>Use <strong>Upcoming</strong> and <strong>Past</strong> to change the list. The <strong>Scan Ticket</strong> button opens scanner mode for reading another person&rsquo;s QR code at check-in.</p>'
+    blurb: 'View entry records linked to events.',
+    contentHtml: '<p>Switch between <strong>Upcoming</strong> and <strong>Past</strong> tickets. <strong>Scan Ticket</strong> opens the check-in scanner for another person&rsquo;s QR code.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
-    title: 'Reading a ticket card',
-    blurb: 'A ticket card points back to an event.',
-    contentHtml: '<p>The card shows the event image, title, date, role, and ticket context. Tap the QR badge in the top-right corner to open your own code for that ticket.</p><p>You do not edit this like a transport asset or supply. Its data comes from the event, booking, member role, and ticketing/check-in setup.</p>'
+    title: 'Ticket card',
+    blurb: 'See the event and open your entry code.',
+    contentHtml: '<p>The card shows the event, date, and your ticket context. Tap its QR badge to open your own code; ticket details come from the event and cannot be edited here.</p>'
   },
   {
     id: 'assets-ticket-scanner',
     icon: 'qr_code_scanner',
-    title: 'Ticket scanner',
-    blurb: 'Use it when you need to read somebody else&rsquo;s QR code.',
-    contentHtml: '<p>The scanner opens a camera/check-in screen. After reading a QR code it shows the ticket holder, event, role, and time, so you can confirm whether the ticket belongs here.</p><p>This is a check-in tool. It does not create or edit tickets.</p>'
+    title: 'Scan a ticket',
+    blurb: 'Check another person in when camera scanning is supported.',
+    contentHtml: '<p>After reading a QR code, the scanner shows the ticket holder and related event details for checking. It verifies entry information; it does not create or edit tickets.</p>'
   }
 ];
 
 const EXPLANATION_ASSETS_TRANSPORT_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
   'assets-entry': {
     icon: 'directions_car',
-    title: 'Saját transport eszközeid',
-    blurb: 'A Transport a közös eszközszerkesztőt használja, utazási adatokkal kiegészítve.',
-    contentHtml: '<p>Az <strong>Transport</strong> tab azokat a járműveket listázza, amelyeket saját eszközként birtokolsz vagy kezelsz. A plusz gombbal adhatsz hozzá transportot, majd megadhatod a férőhelyet, útvonalat, várost, indulási megjegyzést, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható transport megjelenhet az Eszköz Felfedezésben, és kérhető. Ugyanez a transport eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+    title: 'Saját járművek',
+    blurb: 'Adj hozzá és kezelj járművet vagy más szállítási eszközt.',
+    contentHtml: '<p>A <strong>Járművek</strong> fül a tulajdonodban vagy kezelésedben lévő szállítási eszközöket mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
   },
   'assets-card': {
     icon: 'directions_car',
-    title: 'Egy transport kártya',
-    contentHtml: '<p>A kép a transportot mutatja. Az ikon jelzi, hogy transportról van szó, a cím a transport neve, alatta modell, váltó, kategória, útvonal vagy város jelenhet meg.</p><p>A jobb oldali jelvény férőhelyet vagy függő kérést mutat. A hárompontos menüben a tulajdonos megoszt, szerkeszt vagy töröl.</p>'
+    title: 'Járműkártya',
+    contentHtml: '<p>A kártyán a kép, név, alcím és az elérhető kapacitás vagy kérések száma látszik. A hárompontos menü megnyitja az adott járműhöz elérhető műveleteket.</p>'
   },
   'assets-editor': {
-    title: 'Transportra jellemző mezők',
-    contentHtml: '<p>A közös mezőkön túl a transport főleg <strong>férőhelyről</strong> és <strong>útvonalról</strong> szól. Írd a részletekhez az indulási ablakot, csomaglimitet, üzemanyag-megosztást, megállókat, sofőr megjegyzést, és hogy kérhető-e a saját eseményeiden kívül is.</p>'
+    title: 'Jármű adatai',
+    contentHtml: '<p>A teljes kapacitásnál add meg a férőhelyeket, a mennyiségnél pedig a felajánlott egységeket. Az indulási helyet, útvonalat, csomagot, üzemanyagot vagy sofőrt a <strong>Részletek</strong> mezőben írd le; külön útvonalbeállítás csak eseményhez kapcsolt hozzárendelésnél jelenik meg.</p>'
   }
 });
 
@@ -2211,17 +2211,17 @@ const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSectionDto[] = ass
   'assets-entry': {
     icon: 'apartment',
     title: 'Saját szállások',
-    blurb: 'Az Accommodation a közös eszközszerkesztőt használja, helyszínnel kiegészítve.',
-    contentHtml: '<p>Az <strong>Accommodation</strong> tab szállást, szobát, ágyat vagy helyet listáz, amit saját eszközként birtokolsz vagy kezelsz. Adj hozzá helyet, majd írd le a lokációt, alvó kapacitást, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható szállás megjelenhet az Eszköz Felfedezésben, és kérhető. Eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+    blurb: 'Adj hozzá és kezelj felajánlható helyeket.',
+    contentHtml: '<p>A <strong>Szállások</strong> fül a tulajdonodban vagy kezelésedben lévő helyeket mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, helyszínét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
   },
   'assets-card': {
     icon: 'apartment',
-    title: 'Egy szálláskártya',
-    contentHtml: '<p>A kép a helyet mutatja. Az ikon jelzi, hogy Accommodation/szállás, a cím a hely neve, alatta típus, város vagy kategória jelenhet meg.</p><p>A jobb oldali jelvény ágyat, szobát, kapacitást vagy függő kérést mutathat. A hely ikon térképet nyithat, ha van helyszín.</p>'
+    title: 'Szálláskártya',
+    contentHtml: '<p>A kártyán a kép, név, alcím és az elérhető kapacitás vagy kérések száma látszik. A helyikonnal megnyithatod a mentett helyszínt a térképen.</p>'
   },
   'assets-editor': {
-    title: 'Accommodation típusra jellemző mezők',
-    contentHtml: '<p>A közös mezőkön túl az Accommodation típusnál a <strong>helyszín</strong> fontos. A térkép/helyszín gomb ezt használja. Írd a részletekhez a bejutást, alvási rendet, közös szobát, csendidőt, kisállatot, parkolást és amit kérés előtt tudni kell.</p>'
+    title: 'Szállás adatai',
+    contentHtml: '<p>Szállásnál a <strong>helyszín</strong> kötelező. A kapacitással és mennyiséggel add meg a felajánlott helyet, a Részletek mezőben pedig írd le a bejutást, alvást, parkolást vagy házirendet.</p>'
   }
 });
 
@@ -2229,17 +2229,17 @@ const EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU: HelpCenterSectionDto[] = assetExp
   'assets-entry': {
     icon: 'inventory_2',
     title: 'Saját kellékek',
-    blurb: 'A kellék a közös eszközszerkesztőt használja, mennyiséggel kiegészítve.',
-    contentHtml: '<p>A <strong>Kellékek</strong> tab felszerelést, szerszámot, csomagot, ételt, kempingcuccot és más praktikus tárgyat listáz, amit te birtokolsz. Adj hozzá kelléket, majd írd le a mennyiséget, állapotot, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható kellék megjelenhet az Eszköz Felfedezésben, és kérhető. Eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+    blurb: 'Adj hozzá és kezelj felszerelést vagy más hasznos tárgyat.',
+    contentHtml: '<p>A <strong>Kellékek</strong> fül a tulajdonodban vagy kezelésedben lévő tárgyakat mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
   },
   'assets-card': {
     icon: 'inventory_2',
-    title: 'Egy kellékkártya',
-    contentHtml: '<p>A kép a tárgyat mutatja. Az ikon jelzi, hogy kellék, a cím az eszköz neve, alatta típus, kategória vagy város jelenhet meg.</p><p>A jobb oldali jelvény általában mennyiséget vagy függő kérést mutat. A hárompontos menüben a tulajdonos jellemzően megoszt, szerkeszt vagy töröl.</p>'
+    title: 'Kellékkártya',
+    contentHtml: '<p>A kártyán a kép, név, alcím és az elérhető mennyiség vagy kérések száma látszik. A hárompontos menü megnyitja az adott tárgyhoz elérhető műveleteket.</p>'
   },
   'assets-editor': {
-    title: 'Kellékre jellemző mezők',
-    contentHtml: '<p>A közös mezőkön túl a kellék főleg <strong>mennyiségről</strong> szól. Írd a részletekhez az állapotot, átvétel/visszahozás módját, mit tartalmaz, mi hiányzik, van-e kaució, és osztható-e a mennyiség több ember között.</p>'
+    title: 'Kellék adatai',
+    contentHtml: '<p>Add meg a teljes kapacitást és a felajánlott mennyiséget. A <strong>Részletek</strong> mezőben írd le az állapotot, a tartozékokat, az átvételt, a visszaadást vagy a kauciót.</p>'
   }
 });
 
@@ -2248,22 +2248,22 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     id: 'assets-tickets',
     icon: 'qr_code_2',
     title: 'Saját jegyek',
-    blurb: 'A jegy belépési rekord, nem szerkeszthető saját tárgyi eszköz.',
-    contentHtml: '<p>A <strong>Jegy</strong> tab külön van a Transport, Accommodation és Kellékek típusoktól. Jegyes eseményeket és hozzád kapcsolódó belépőkódokat listáz.</p><p>A <strong>Közelgő</strong> és <strong>Korábbi</strong> a listát váltja. A <strong>Scan Ticket</strong> gomb szkenner módot nyit, amikor más ember QR kódját kell beolvasni beléptetésnél.</p>'
+    blurb: 'Nézd meg az eseményekhez tartozó belépési adatokat.',
+    contentHtml: '<p>Válts a <strong>Közelgő</strong> és <strong>Korábbi</strong> jegyek között. A <strong>Jegy beolvasása</strong> gomb megnyitja a beléptető leolvasót egy másik ember QR-kódjához.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
-    title: 'Egy jegykártya',
-    blurb: 'A jegykártya egy eseményre mutat vissza.',
-    contentHtml: '<p>A kártya eseményképet, címet, dátumot, szerepet és jegykörnyezetet mutat. A jobb felső QR jelvényre koppintva a saját jegykódod nyílik meg.</p><p>Ezt nem úgy szerkeszted, mint egy transport eszközt vagy kelléket. Az adatai az eseményből, foglalásból, tagszerepből és ticketing/check-in beállításból jönnek.</p>'
+    title: 'Jegykártya',
+    blurb: 'Nézd meg az eseményt, és nyisd meg a belépőkódodat.',
+    contentHtml: '<p>A kártya az eseményt, a dátumot és a jegyed adatait mutatja. A QR-jelvény megnyitja a saját kódodat; a jegy adatai az eseményből származnak, és itt nem szerkeszthetők.</p>'
   },
   {
     id: 'assets-ticket-scanner',
     icon: 'qr_code_scanner',
-    title: 'Jegyszkenner',
-    blurb: 'Akkor használod, amikor más QR kódját kell beolvasni.',
-    contentHtml: '<p>A scanner kamerás/check-in képernyőt nyit. QR olvasás után megmutatja a jegy tulajdonosát, az eseményt, szerepet és időpontot, így ellenőrizhető, hogy ide tartozik-e.</p><p>Ez beléptető eszköz. Nem hoz létre és nem szerkeszt jegyet.</p>'
+    title: 'Jegy beolvasása',
+    blurb: 'Támogatott kamerás eszközön olvasd be más jegyét.',
+    contentHtml: '<p>A QR-kód beolvasása után megjelenik a jegy tulajdonosa és a kapcsolódó esemény adatai. Ez a belépési adatokat ellenőrzi; jegyet nem hoz létre és nem szerkeszt.</p>'
   }
 ];
 
@@ -2271,44 +2271,44 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'event-editor-main',
     icon: 'edit_calendar',
-    title: 'Main event form',
-    blurb: 'Fill the card first: picture, name, seats, text, date, and place.',
-    contentHtml: '<p>The big image box is the event photo. <strong>Name</strong>, <strong>Capacity</strong>, and <strong>Description</strong> are required; a red outline just means something is still missing.</p><p>The top <strong>Members</strong> button opens the people list. <strong>Public</strong>, <strong>Friends only</strong>, or <strong>Invitation only</strong> decides who can find the event. The red check saves; X closes.</p>'
+    title: 'Required event details',
+    blurb: 'Complete the fields needed for saving.',
+    contentHtml: '<p>Name, description, minimum and maximum capacity, start time, and end time are required. The image and location are optional; use the header checkmark to save.</p>'
   },
   {
     id: 'event-editor-switches',
     icon: 'tune',
-    title: 'Finding, joining, preview',
-    blurb: 'Visibility and Blind/Open are different things.',
-    contentHtml: '<p><strong>Public</strong>, <strong>Friends only</strong>, and <strong>Invitation only</strong> decide who can discover or join. <strong>Open Event</strong> and <strong>Blind Event</strong> only decide whether normal attendees can preview each other before the event.</p><p><strong>Blind Event</strong> is not a secret event. It hides the attendee preview, while Admin and Manager can still manage members. <strong>Topics</strong> help matching, <strong>Auto Inviter</strong> can fill open seats from the priority plan, and <strong>Ticketing</strong> adds ticket/QR check-in.</p>'
+    title: 'Visibility and joining',
+    blurb: 'Choose who can find the event and what joining requires.',
+    contentHtml: '<p><strong>Public</strong>, <strong>Friends only</strong>, and <strong>Invitation only</strong> control discovery. Open or Blind controls attendee previews; you can also choose up to five topics and enable automatic invitations, ticketing, or approval.</p>'
   },
   {
     id: 'event-editor-schedule',
     icon: 'event_time',
-    title: 'Time, price, rules',
-    blurb: 'This part answers: when, price, rules, and place.',
-    contentHtml: '<p><strong>Date</strong> can be one-time or repeating. If the event repeats, <strong>Slot Setup</strong> controls the normal time windows and any date-specific changes.</p><p><strong>Pricing</strong> can stay off or add a charge. <strong>Event Policies</strong> are rules people must accept before joining or booking. The location row and map button set where the event happens.</p>'
+    title: 'Schedule, price, and rules',
+    blurb: 'Set when the event runs and any joining conditions.',
+    contentHtml: '<p>Choose a one-time or repeating schedule and adjust its time slots when needed. Pricing and event policies are optional, and the location field sets the place shown for the event.</p>'
   },
   {
     id: 'event-editor-subevents',
     icon: 'account_tree',
-    title: 'Parts and tournaments',
-    blurb: 'Sub Events are smaller pieces under the main event.',
-    contentHtml: '<p>Use <strong>Sub Events</strong> for stages, rounds, side plans, group blocks, or optional sessions. <strong>Mandatory</strong> means included in the main event. <strong>Optional</strong> means people can choose it separately, often with its own seats or price.</p><p><strong>Casual</strong> is a simple list. <strong>Tournament</strong> adds stages, groups, scores, status changes, and a leaderboard. The editor keeps sub-event times inside the main event; for repeating events, the same sub-event timing is repeated inside each slot.</p>'
+    title: 'Sub-events',
+    blurb: 'Split a larger event into smaller parts.',
+    contentHtml: '<p>Sub-events can be mandatory parts or optional choices with their own capacity and price. <strong>Casual</strong> keeps a simple structure, while <strong>Tournament</strong> adds stages, groups, scores, and standings.</p>'
   },
   {
     id: 'event-editor-members',
     icon: 'groups',
     title: 'Members and roles',
-    blurb: 'This popup is where organizers handle people.',
-    contentHtml: '<p><strong>Admin</strong> is the main organizer. <strong>Manager</strong> is a helper under Admin: managers can help with members and resources, and can also appear because someone manages an assigned transport, accommodation, or supply. <strong>Member</strong> is a normal attendee.</p><p><strong>Invite</strong> adds people. <strong>Pending only</strong> shows waiting requests/invites. The status chip shows Admin, Manager, Member, pending, invite, or disqualified. The eye opens a profile; the three-dot menu can approve, reject/delete, remove, disqualify, reinstate, or report depending on your role and the member state.</p>'
+    blurb: 'Manage participants in a separate member window.',
+    contentHtml: '<p>Open <strong>Members</strong> to invite people and review accepted or pending participants. Available role and status actions depend on whether you are an organizer, manager, or member.</p>'
   },
   {
     id: 'event-editor-assets',
     icon: 'inventory_2',
     title: 'Resources',
-    blurb: 'Resources are the people and things assigned to one part.',
-    contentHtml: '<p>From a sub-event or group menu you can open <strong>Members</strong>, <strong>Transport</strong>, <strong>Accommodation</strong>, or <strong>Supplies</strong>. <strong>Assign</strong> attaches something you already control. <strong>Explore</strong> searches available assets and can start a request/booking flow.</p><p>Counts show accepted and pending assignments. Capacity tells you whether that part has enough people, transport seats, beds/rooms, or supplies. If a resource has its own manager, that person can become a Manager for the event context.</p>'
+    blurb: 'Assign people and assets to an event part.',
+    contentHtml: '<p>From a sub-event or group, open members, transport, accommodation, or supplies. <strong>Assign</strong> uses an asset you already manage, while <strong>Explore</strong> finds one you can request.</p>'
   }
 ];
 
@@ -2316,44 +2316,44 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'event-editor-main',
     icon: 'edit_calendar',
-    title: 'Fő esemény űrlap',
-    blurb: 'Először ezt töltsd ki: kép, név, létszám, szöveg, dátum és hely.',
-    contentHtml: '<p>A nagy képes mező lesz az esemény fotója. A <strong>Name</strong>, <strong>Capacity</strong> és <strong>Description</strong> kötelező; a piros keret csak azt jelzi, hogy ott még hiányzik valami.</p><p>Felül a <strong>Members</strong> gomb nyitja az embereket. A <strong>Public</strong>, <strong>Friends only</strong> vagy <strong>Invitation only</strong> azt dönti el, ki találhatja meg az eseményt. A piros pipa ment, az X bezár.</p>'
+    title: 'Kötelező eseményadatok',
+    blurb: 'Töltsd ki a mentéshez szükséges mezőket.',
+    contentHtml: '<p>A név, leírás, legkisebb és legnagyobb létszám, kezdési idő és befejezési idő kötelező. A kép és a helyszín opcionális; a fejléc pipája menti az eseményt.</p>'
   },
   {
     id: 'event-editor-switches',
     icon: 'tune',
-    title: 'Ki találja meg, ki kit lát?',
-    blurb: 'A láthatóság és a Blind/Open két külön beállítás.',
-    contentHtml: '<p>A <strong>Public</strong>, <strong>Friends only</strong> és <strong>Invitation only</strong> azt dönti el, ki találhatja meg vagy kérheti az eseményt. Az <strong>Open Event</strong> és <strong>Blind Event</strong> csak azt dönti el, hogy a sima résztvevők előre láthatják-e egymást.</p><p>A <strong>Blind Event</strong> tehát nem titkos esemény. Csak a résztvevői előnézetet rejti el; az Admin és Manager továbbra is kezeli az embereket. A <strong>Topics</strong> segít a keresésben/illesztésben, az <strong>Auto Inviter</strong> a prioritási tervből tud szabad helyekre meghívni, a <strong>Ticketing</strong> pedig jegy/QR beléptetést kapcsol.</p>'
+    title: 'Láthatóság és csatlakozás',
+    blurb: 'Állítsd be, ki találhatja meg az eseményt, és mi kell a belépéshez.',
+    contentHtml: '<p>A <strong>Nyilvános</strong>, <strong>Csak ismerősök</strong> és <strong>Csak meghívással</strong> a megtalálhatóságot szabályozza. A nyitott vagy vak mód a résztvevők előnézetét kezeli; emellett legfeljebb öt témát választhatsz, és bekapcsolhatod az automatikus meghívást, a jegykezelést vagy a jóváhagyást.</p>'
   },
   {
     id: 'event-editor-schedule',
     icon: 'event_time',
-    title: 'Idő, ár, szabályok',
-    blurb: 'Itt állítod: mikor van, van-e ár, milyen szabály van, és hol lesz.',
-    contentHtml: '<p>A <strong>Date</strong> lehet egyszeri vagy ismétlődő. Ismétlődő eseménynél a <strong>Slot Setup</strong> állítja a normál időablakokat és a külön dátumos kivételeket.</p><p>A <strong>Pricing</strong> maradhat OFF, vagy adhatsz árat. Az <strong>Event Policies</strong> olyan szabály, amit csatlakozás/foglalás előtt el kell fogadni. A helyszín sor és a térkép gomb állítja be a helyet.</p>'
+    title: 'Idő, ár és szabályok',
+    blurb: 'Állítsd be az időbeosztást és a csatlakozás feltételeit.',
+    contentHtml: '<p>Válassz egyszeri vagy ismétlődő időbeosztást, és szükség esetén módosítsd az idősávokat. Az árazás és az eseményszabályok opcionálisak, a helyszínmező pedig az eseménynél megjelenő helyet adja meg.</p>'
   },
   {
     id: 'event-editor-subevents',
     icon: 'account_tree',
-    title: 'Részek és bajnokság',
-    blurb: 'A Sub Events kisebb részekre bontja a fő eseményt.',
-    contentHtml: '<p>A <strong>Sub Events</strong> jó szakaszra, körre, mellékprogramra, csoportblokkra vagy opcionális részre. A <strong>Mandatory</strong> a fő esemény része. Az <strong>Optional</strong> külön választható, gyakran saját létszámmal vagy árral.</p><p>A <strong>Casual</strong> sima lista. A <strong>Tournament</strong> szakaszokat, csoportokat, pontokat, státuszváltásokat és ranglistát ad. A szerkesztő az időket a fő eseményen belül tartja; ismétlődő eseménynél ugyanaz az alesemény-idő minden slotban újra megjelenik.</p>'
+    title: 'Alesemények',
+    blurb: 'Bontsd kisebb részekre a nagyobb eseményt.',
+    contentHtml: '<p>Az alesemény lehet kötelező rész vagy külön választható program saját létszámmal és árral. A <strong>Kötetlen</strong> mód egyszerű felépítést, a <strong>Bajnokság</strong> pedig szakaszokat, csoportokat, pontokat és rangsort ad.</p>'
   },
   {
     id: 'event-editor-members',
     icon: 'groups',
     title: 'Tagok és szerepek',
-    blurb: 'Ez az a popup, ahol a szervező embereket kezel.',
-    contentHtml: '<p>Az <strong>Admin</strong> a fő szervező. A <strong>Manager</strong> Admin alatti segítő: kezelhet tagokat és erőforrásokat, és akkor is megjelenhet, ha valaki egy hozzárendelt transport, szállás vagy kellék felelőse. A <strong>Member</strong> sima résztvevő.</p><p>A <strong>Invite</strong> meghív. A <strong>Pending only</strong> csak a várakozó kéréseket/meghívásokat mutatja. A jelvény mutatja: Admin, Manager, Member, függő kérés, kiküldött meghívó vagy kizárt. A szem profilra visz; a hárompontos menü szereptől és állapottól függően jóváhagyást, elutasítást/törlést, eltávolítást, kizárást, visszaállítást vagy jelentést ad.</p>'
+    blurb: 'A résztvevőket külön tagablakban kezelheted.',
+    contentHtml: '<p>A <strong>Tagok</strong> ablakban embereket hívhatsz meg, valamint megnézheted az elfogadott és függő résztvevőket. A szerep- és állapotműveletek attól függenek, hogy szervező, kezelő vagy résztvevő vagy.</p>'
   },
   {
     id: 'event-editor-assets',
     icon: 'inventory_2',
     title: 'Erőforrások',
-    blurb: 'Erőforrás az ember vagy dolog, amit egy részhez hozzárendelsz.',
-    contentHtml: '<p>Egy alesemény vagy csoport menüjéből nyitható: <strong>Members</strong>, <strong>Transport</strong>, <strong>Accommodation</strong> és <strong>Supplies</strong>. Az <strong>Assign</strong> olyat tesz hozzá, amit már kezelsz. Az <strong>Explore</strong> elérhető eszközt keres, és kérés/foglalás folyamatot indíthat.</p><p>A számok az elfogadott és függő hozzárendeléseket mutatják. A kapacitásból látod, elég ember, transport férőhely, szálláshely vagy kellék van-e ahhoz a részhez. Ha egy erőforrásnak saját felelőse van, ő Managerként is megjelenhet az esemény környezetében.</p>'
+    blurb: 'Rendelj embereket és eszközöket az esemény egy részéhez.',
+    contentHtml: '<p>Egy aleseményből vagy csoportból nyithatod meg a tagokat, járműveket, szállásokat és kellékeket. A <strong>Hozzárendelés</strong> egy már kezelt eszközt használ, a <strong>Felfedezés</strong> pedig kérhető eszközt keres.</p>'
   }
 ];
 
@@ -2451,9 +2451,9 @@ const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevisionDto = {
   lang: 'en',
   languageLabel: 'English',
   version: 1,
-  title: 'Home explanation',
-  summary: 'How the home screen works',
-  description: 'Short in-app guidance for the selected screen.',
+  title: 'Home cards',
+  summary: 'Rate cards, switch groups, and revisit ratings.',
+  description: 'Learn how to rate a card and control which suggestions appear.',
   headerColor: 'violet',
   sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS, 'en'),
   active: true,
@@ -2468,9 +2468,9 @@ const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-home-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Kezdőlap magyarázat',
-  summary: 'Így működik a kezdőlap',
-  description: 'Rövid alkalmazáson belüli útmutató a kiválasztott képernyőhöz.',
+  title: 'Kezdőlap kártyái',
+  summary: 'Értékelés, kártyacsoportok és előzmények.',
+  description: 'Itt megtudhatod, hogyan értékelj, és hogyan válaszd ki a megjelenő ajánlásokat.',
   sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS_HU, 'hu')
 };
 
@@ -2478,8 +2478,9 @@ const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-activity-rates-default-v1',
   contextKey: 'activities.rates',
-  title: 'Activity ratings explanation',
-  summary: 'Filters, order, and scoring for rating cards',
+  title: 'Activity ratings',
+  summary: 'Filter, arrange, and update rating cards.',
+  description: 'See which ratings can be changed and how each view works.',
   sections: withSeededExplanationImages('activities.rates', EXPLANATION_ACTIVITY_RATES_SECTIONS, 'en')
 };
 
@@ -2488,8 +2489,9 @@ const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-activity-rates-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Értékelések magyarázat',
-  summary: 'Szűrés, sorrend és pontozás az értékeléskártyákon',
+  title: 'Aktivitási értékelések',
+  summary: 'Értékeléskártyák szűrése, rendezése és módosítása.',
+  description: 'Itt láthatod, mely értékelések módosíthatók, és mire valók a nézetek.',
   sections: withSeededExplanationImages('activities.rates', EXPLANATION_ACTIVITY_RATES_SECTIONS_HU, 'hu')
 };
 
@@ -2497,8 +2499,9 @@ const DEFAULT_EXPLANATION_EVENTS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-events-default-v1',
   contextKey: 'events',
-  title: 'Events explanation',
-  summary: 'Event lists, cards, joining, and hosting',
+  title: 'Events',
+  summary: 'Find, join, create, and manage events.',
+  description: 'Learn what event cards show and which actions are available.',
   sections: withSeededExplanationImages('events', EXPLANATION_EVENTS_SECTIONS, 'en')
 };
 
@@ -2507,8 +2510,9 @@ const DEFAULT_EXPLANATION_EVENTS_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-events-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Események magyarázat',
-  summary: 'Eseménylisták, kártyák, csatlakozás és szervezés',
+  title: 'Események',
+  summary: 'Események keresése, csatlakozás, létrehozás és kezelés.',
+  description: 'Itt megtudhatod, mit mutat egy eseménykártya, és milyen műveletek érhetők el.',
   sections: withSeededExplanationImages('events', EXPLANATION_EVENTS_SECTIONS_HU, 'hu')
 };
 
@@ -2516,8 +2520,9 @@ const DEFAULT_EXPLANATION_ASSETS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-assets-default-v1',
   contextKey: 'assets',
-  title: 'Assets explanation',
-  summary: 'Own assets, requests, event resources, and tickets',
+  title: 'Assets',
+  summary: 'Manage assets, requests, assignments, and tickets.',
+  description: 'Learn how asset cards, editing, requests, and visibility work.',
   sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS, 'en')
 };
 
@@ -2526,8 +2531,9 @@ const DEFAULT_EXPLANATION_ASSETS_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-assets-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Eszközök magyarázat',
-  summary: 'Saját eszközök, kérések, esemény-erőforrások és jegyek',
+  title: 'Eszközök',
+  summary: 'Eszközök, kérések, hozzárendelések és jegyek kezelése.',
+  description: 'Itt megismerheted az eszközkártyákat, a szerkesztést, a kéréseket és a láthatóságot.',
   sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS_HU, 'hu')
 };
 
@@ -2535,8 +2541,9 @@ const DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-transport-default-v1',
   contextKey: 'assets.transport',
-  title: 'Transport assets explanation',
-  summary: 'Own transport assets, transport cards, editor, and requests',
+  title: 'Transport assets',
+  summary: 'Manage transport details, capacity, and requests.',
+  description: 'Learn how to add, edit, share, and assign transport assets.',
   sections: withSeededExplanationImages('assets.transport', EXPLANATION_ASSETS_TRANSPORT_SECTIONS, 'en')
 };
 
@@ -2545,8 +2552,9 @@ const DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION_HU: HelpCenterRevisionDto = 
   id: 'explanation-assets-transport-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Transport eszközök magyarázat',
-  summary: 'Saját transport eszközök, kártyák, szerkesztés és kérések',
+  title: 'Járművek',
+  summary: 'Járműadatok, kapacitás és kérések kezelése.',
+  description: 'Itt megtudhatod, hogyan adj hozzá, szerkessz, ossz meg és rendelj eseményhez járművet.',
   sections: withSeededExplanationImages('assets.transport', EXPLANATION_ASSETS_TRANSPORT_SECTIONS_HU, 'hu')
 };
 
@@ -2554,8 +2562,9 @@ const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION: HelpCenterRevisionDto =
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-accommodation-default-v1',
   contextKey: 'assets.accommodation',
-  title: 'Accommodation assets explanation',
-  summary: 'Own accommodation, location, editor, and requests',
+  title: 'Accommodation assets',
+  summary: 'Manage places, capacity, location, and requests.',
+  description: 'Learn how to add, edit, share, and assign accommodation.',
   sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS, 'en')
 };
 
@@ -2564,8 +2573,9 @@ const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU: HelpCenterRevisionDt
   id: 'explanation-assets-accommodation-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Accommodation eszközök magyarázata',
-  summary: 'Saját szállások, helyszín, szerkesztés és kérések',
+  title: 'Szállások',
+  summary: 'Helyszín, kapacitás és kérések kezelése.',
+  description: 'Itt megtudhatod, hogyan adj hozzá, szerkessz, ossz meg és rendelj eseményhez szállást.',
   sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU, 'hu')
 };
 
@@ -2573,8 +2583,9 @@ const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-supplies-default-v1',
   contextKey: 'assets.supplies',
-  title: 'Supply assets explanation',
-  summary: 'Own supplies, quantities, editor, and requests',
+  title: 'Supply assets',
+  summary: 'Manage supplies, quantities, and requests.',
+  description: 'Learn how to add, edit, share, and assign supplies.',
   sections: withSeededExplanationImages('assets.supplies', EXPLANATION_ASSETS_SUPPLIES_SECTIONS, 'en')
 };
 
@@ -2583,8 +2594,9 @@ const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-assets-supplies-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Kellék eszközök magyarázat',
-  summary: 'Saját kellékek, mennyiségek, szerkesztés és kérések',
+  title: 'Kellékek',
+  summary: 'Kellékek, mennyiségek és kérések kezelése.',
+  description: 'Itt megtudhatod, hogyan adj hozzá, szerkessz, ossz meg és rendelj eseményhez kelléket.',
   sections: withSeededExplanationImages('assets.supplies', EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU, 'hu')
 };
 
@@ -2592,8 +2604,9 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-tickets-default-v1',
   contextKey: 'assets.tickets',
-  title: 'Ticket assets explanation',
-  summary: 'Event tickets, QR codes, ordering, and scanning',
+  title: 'Event tickets',
+  summary: 'View ticket cards, QR codes, and scanning.',
+  description: 'Learn how to open your code and check another ticket.',
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS, 'en')
 };
 
@@ -2602,8 +2615,9 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-assets-tickets-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Jegyek magyarázat',
-  summary: 'Eseményjegyek, QR kódok, sorrend és szkennelés',
+  title: 'Eseményjegyek',
+  summary: 'Jegykártyák, QR-kódok és beolvasás.',
+  description: 'Itt megtudhatod, hogyan nyisd meg a saját kódodat, és hogyan ellenőrizz egy másik jegyet.',
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS_HU, 'hu')
 };
 
@@ -2611,8 +2625,9 @@ const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-event-editor-default-v1',
   contextKey: 'event.editor',
-  title: 'Event editor guide',
-  summary: 'Main event settings, roles, parts, resources, and tournament flow',
+  title: 'Event editor',
+  summary: 'Set event details, schedule, members, and resources.',
+  description: 'Learn which fields are required and where advanced options belong.',
   sections: withSeededExplanationImages('event.editor', EXPLANATION_EVENT_EDITOR_SECTIONS, 'en')
 };
 
@@ -2621,8 +2636,9 @@ const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-event-editor-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Eseményszerkesztő segítség',
-  summary: 'Fő beállítások, szerepek, részek, erőforrások és bajnokság',
+  title: 'Eseményszerkesztő',
+  summary: 'Eseményadatok, időpontok, tagok és erőforrások beállítása.',
+  description: 'Itt megtudhatod, mely mezők kötelezők, és hol találod a további beállításokat.',
   sections: withSeededExplanationImages('event.editor', EXPLANATION_EVENT_EDITOR_SECTIONS_HU, 'hu')
 };
 
@@ -2630,8 +2646,9 @@ const DEFAULT_EXPLANATION_CHATS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-chats-default-v1',
   contextKey: 'chats',
-  title: 'Chats explanation',
-  summary: 'Chat lists, channel types, and the message window',
+  title: 'Chats',
+  summary: 'Find conversations, send messages, and use chat tools.',
+  description: 'Learn what each channel is for and which message actions are available.',
   sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS, 'en')
 };
 
@@ -2640,8 +2657,9 @@ const DEFAULT_EXPLANATION_CHATS_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-chats-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Chatek magyarázat',
-  summary: 'Chatlisták, csatornatípusok és az üzenetablak',
+  title: 'Beszélgetések',
+  summary: 'Beszélgetések keresése, üzenetküldés és további eszközök.',
+  description: 'Itt megtudhatod, mire valók a csatornák, és milyen üzenetműveletek érhetők el.',
   sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS_HU, 'hu')
 };
 
@@ -2649,8 +2667,9 @@ const DEFAULT_EXPLANATION_CONTACTS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-contacts-default-v1',
   contextKey: 'contacts',
-  title: 'Contacts explanation',
-  summary: 'Saved contacts, cards, private reach methods, and editing',
+  title: 'Contacts',
+  summary: 'Save people and manage contact shortcuts.',
+  description: 'Learn how contact cards and saved contact methods work.',
   sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS, 'en')
 };
 
@@ -2659,8 +2678,9 @@ const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-contacts-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Kapcsolatok magyarázat',
-  summary: 'Mentett kapcsolatok, kártyák, privátabb elérések és szerkesztés',
+  title: 'Kapcsolatok',
+  summary: 'Emberek mentése és elérési gyorsgombok kezelése.',
+  description: 'Itt megtudhatod, hogyan működnek a kapcsolatkártyák és a mentett elérési módok.',
   sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS_HU, 'hu')
 };
 
@@ -2668,8 +2688,9 @@ const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-profile-editor-default-v1',
   contextKey: 'profile.editor',
-  title: 'Profile editor explanation',
-  summary: 'Profile fields, photos, chips, privacy, and save checks',
+  title: 'Profile editor',
+  summary: 'Edit profile details, photos, visibility, and experience.',
+  description: 'Learn which details are required and how to save your profile.',
   sections: withSeededExplanationImages('profile.editor', EXPLANATION_PROFILE_EDITOR_SECTIONS, 'en')
 };
 
@@ -2678,8 +2699,9 @@ const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-profile-editor-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Profilszerkesztő magyarázat',
-  summary: 'Profilmezők, fotók, chipek, adatvédelem és mentés ellenőrzése',
+  title: 'Profilszerkesztő',
+  summary: 'Profiladatok, képek, láthatóság és tapasztalatok szerkesztése.',
+  description: 'Itt megtudhatod, mely adatok kötelezők, és hogyan mentsd el a profilodat.',
   sections: withSeededExplanationImages('profile.editor', EXPLANATION_PROFILE_EDITOR_SECTIONS_HU, 'hu')
 };
 
@@ -2687,8 +2709,9 @@ const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-profile-view-default-v1',
   contextKey: 'profile.view',
-  title: 'Profile view explanation',
-  summary: 'Profile details, visible sections, and context actions',
+  title: 'Profile view',
+  summary: 'Browse photos, profile details, and experience.',
+  description: 'Learn what this read-only profile screen shows.',
   sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS, 'en')
 };
 
@@ -2697,8 +2720,9 @@ const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-profile-view-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Profilnézet magyarázat',
-  summary: 'Profilrészletek, látható szekciók és kontextusműveletek',
+  title: 'Profilnézet',
+  summary: 'Képek, profiladatok és tapasztalatok megtekintése.',
+  description: 'Itt megtudhatod, mit mutat ez a csak olvasható profilképernyő.',
   sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS_HU, 'hu')
 };
 
@@ -2706,8 +2730,9 @@ const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-event-feedback-default-v1',
   contextKey: 'event.feedback',
-  title: 'Event feedback explanation',
-  summary: 'Feedback questions, event context, and saved state',
+  title: 'Event feedback',
+  summary: 'Submit feedback and review event results.',
+  description: 'Learn how feedback lists, answer cards, and organizer results work.',
   sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS, 'en')
 };
 
@@ -2716,8 +2741,9 @@ const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU: HelpCenterRevisionDto = {
   id: 'explanation-event-feedback-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Esemény-visszajelzés magyarázat',
-  summary: 'Visszajelzési kérdések, eseménykontextus és mentett állapot',
+  title: 'Esemény-visszajelzés',
+  summary: 'Visszajelzés beküldése és az eredmények áttekintése.',
+  description: 'Itt megismerheted a visszajelzési listákat, a válaszkártyákat és a szervezői eredményeket.',
   sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU, 'hu')
 };
 

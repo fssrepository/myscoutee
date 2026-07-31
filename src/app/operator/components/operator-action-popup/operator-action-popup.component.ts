@@ -1649,7 +1649,7 @@ export class OperatorActionPopupComponent {
     value: number | string | null
   ): void {
     if (value === null || `${value}`.trim() === '') {
-      this.workspace.setConfigurationBranding({ logoCharacterIndex: null });
+      this.workspace.setConfigurationBranding({ logoCharacterIndex: 0 });
       return;
     }
     this.workspace.setConfigurationBranding({

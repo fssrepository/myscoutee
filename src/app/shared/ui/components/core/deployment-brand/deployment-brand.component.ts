@@ -31,15 +31,7 @@ export class DeploymentBrandComponent {
   protected renderModel(): DeploymentBrandRenderModel {
     const branding = this.branding ?? this.deploymentConfiguration.branding();
     const characters = Array.from(branding.productName);
-    const index = branding.logoCharacterIndex;
-    if (index === null) {
-      return {
-        branding,
-        inlineLogo: false,
-        beforeLogo: branding.productName,
-        afterLogo: ''
-      };
-    }
+    const index = branding.logoCharacterIndex ?? 0;
     return {
       branding,
       inlineLogo: true,

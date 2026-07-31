@@ -748,6 +748,7 @@ describe('LocalOperatorRegistryService', () => {
       branding: expect.objectContaining({
         productName: 'Community Hub',
         homeLabel: initial.branding.homeLabel,
+        logoCharacterIndex: 0,
         themePreset: 'OCEAN',
         revision: 1
       }),
