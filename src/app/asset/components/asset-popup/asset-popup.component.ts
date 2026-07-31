@@ -7,7 +7,8 @@ import {
   HostListener,
   ViewChild,
   effect,
-  inject
+  inject,
+  untracked
 } from '@angular/core';
 import {
   MatIconModule
@@ -149,6 +150,8 @@ type AssetPopupMenuContext =
   providers: [AppMenuDispatcher]
 })
 export class AssetPopupComponent {
+  private static readonly TICKET_POLL_INTERVAL_MS = 30_000;
+
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
@@ -222,6 +225,7 @@ export class AssetPopupComponent {
   };
   protected readonly ticketSmartListConfig: SmartListConfig<AssetContracts.AssetTicketDTO, AssetTicketListFilters> = {
     pageSize: 18,
+    pollIntervalMs: AssetPopupComponent.TICKET_POLL_INTERVAL_MS,
     defaultView: 'list',
     emptyLabel: 'No ticketed events',
     emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
@@ -259,8 +263,9 @@ export class AssetPopupComponent {
         return;
       }
       if (activeFilter === AppConstants.ASSET_FILTER_TICKET) {
+        const activeUserId = this.userProfileStore.activeUserId().trim();
         this.assetPopupStore.prepareTicketPopupOpen(
-          this.assetTicketsService.peekTicketCountByUser(this.userProfileStore.activeUserId().trim())
+          untracked(() => this.assetTicketsService.peekTicketCountByUser(activeUserId))
         );
       } else {
         void this.refreshOwnedAssetsFromRepository(

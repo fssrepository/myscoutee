@@ -31,6 +31,23 @@ describe('AssetPopupStore ticket validation state', () => {
     expect(store.ticketScannerReason()).toBeNull();
     expect(store.ticketScannerResult()).toBeNull();
   });
+
+  it('keeps an open ticket popup in sync with the polled ticket row', () => {
+    const store = new AssetPopupStore();
+    const original = ticketRow();
+    const refreshed = {
+      ...original,
+      usedAtIso: '2030-04-18T18:45:00.000Z'
+    };
+    store.openTicketCode(original, original.scanCode);
+
+    store.updateTicketList([refreshed], 1);
+
+    expect(store.selectedTicketRow()).toBe(refreshed);
+    expect(store.selectedTicketRow()?.usedAtIso).toBe('2030-04-18T18:45:00.000Z');
+    expect(store.selectedTicketCodeValueRef()).toBe(original.scanCode);
+    expect(store.ticketScanMode()).toBe('ticketCode');
+  });
 });
 
 function ticketRow(): AssetContracts.AssetTicketDTO {

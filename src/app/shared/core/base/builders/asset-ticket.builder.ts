@@ -46,28 +46,26 @@ export class AssetTicketBuilder {
     if (!normalizedEventId || !normalizedHolderUserId) {
       return '';
     }
-    const encodedEventId = encodeURIComponent(normalizedEventId);
-    const encodedHolderUserId = encodeURIComponent(normalizedHolderUserId);
-    const body = `${encodedEventId}|${encodedHolderUserId}`;
-    return `DEMO|${body}|${AppUtils.hashText(`ticket:${body}`).toString(36)}`;
+    const source = `${normalizedEventId.length}:${normalizedEventId}\u001f${normalizedHolderUserId}`;
+    const token = [0, 1, 2, 3]
+      .map(round => this.demoScanHash(`ticket:${round}\u001f${source}`)
+        .toString(16)
+        .padStart(8, '0'))
+      .join('');
+    return `DEMO-${token}`;
   }
 
-  static parseDemoScanCode(code: string): { eventId: string; holderUserId: string } | null {
-    const parts = code.trim().split('|');
-    if (parts.length !== 4 || parts[0] !== 'DEMO') {
-      return null;
+  static isDemoScanCode(code: string): boolean {
+    return /^DEMO-[0-9a-f]{32}$/.test(code.trim());
+  }
+
+  private static demoScanHash(value: string): number {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193);
     }
-    const body = `${parts[1]}|${parts[2]}`;
-    if (parts[3] !== AppUtils.hashText(`ticket:${body}`).toString(36)) {
-      return null;
-    }
-    try {
-      const eventId = decodeURIComponent(parts[1]).trim();
-      const holderUserId = decodeURIComponent(parts[2]).trim();
-      return eventId && holderUserId ? { eventId, holderUserId } : null;
-    } catch {
-      return null;
-    }
+    return hash >>> 0;
   }
 
   static dateLabel(row: AssetContracts.AssetTicketDTO): string {

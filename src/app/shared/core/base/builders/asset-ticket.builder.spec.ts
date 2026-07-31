@@ -20,14 +20,16 @@ describe('AssetTicketBuilder', () => {
     expect(payload.code).not.toContain('Sensitive City');
   });
 
-  it('round-trips deterministic demo codes containing only ids and a checksum', () => {
+  it('creates deterministic opaque demo codes without embedding event or holder ids', () => {
     const code = AssetTicketBuilder.createDemoScanCode('event/with space', 'holder@example');
 
-    expect(AssetTicketBuilder.parseDemoScanCode(code)).toEqual({
-      eventId: 'event/with space',
-      holderUserId: 'holder@example'
-    });
-    expect(AssetTicketBuilder.parseDemoScanCode(`${code}tampered`)).toBeNull();
+    expect(code).toMatch(/^DEMO-[0-9a-f]{32}$/);
+    expect(code).toBe(AssetTicketBuilder.createDemoScanCode('event/with space', 'holder@example'));
+    expect(code).not.toContain('event');
+    expect(code).not.toContain('holder');
+    expect(AssetTicketBuilder.isDemoScanCode(code)).toBe(true);
+    expect(AssetTicketBuilder.isDemoScanCode(`${code}tampered`)).toBe(false);
+    expect(code).not.toBe(AssetTicketBuilder.createDemoScanCode('event/with space', 'other-holder'));
   });
 });
 

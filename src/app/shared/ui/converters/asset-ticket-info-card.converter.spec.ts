@@ -10,7 +10,7 @@ describe('AssetTicketInfoCardConverter', () => {
     expect(card.mediaEnd).toMatchObject({
       icon: 'qr_code_2',
       interactive: true,
-      ariaLabel: 'Open ticket QR code'
+      ariaLabel: 'asset.ticket.qr.open.aria'
     });
   });
 

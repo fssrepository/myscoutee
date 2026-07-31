@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AssetTicketBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { LocalActivityMembersRepository } from './activity-members.repository';
 import { LocalEventsRepository } from './events.repository';
 import { LocalUsersRepository } from './users.repository';
 import { LocalAssetTicketsMapper } from '../mappers/asset.mapper';
@@ -13,6 +14,7 @@ import type * as AssetContracts from '../../../contracts/asset.interface';
 })
 export class LocalAssetTicketsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
 
@@ -32,17 +34,29 @@ export class LocalAssetTicketsRepository {
   ): AssetContracts.AssetTicketValidationDTO {
     const code = request.code.trim();
     const actorUserId = request.userId.trim();
-    const parsedCode = AssetTicketBuilder.parseDemoScanCode(code);
-    if (!parsedCode || !actorUserId) {
+    if (!AssetTicketBuilder.isDemoScanCode(code) || !actorUserId) {
       return this.invalid('invalid_code');
     }
 
-    const event = this.eventsRepository.queryEventRecordById(actorUserId, parsedCode.eventId);
+    const resolvedTicket = this.resolveTicketByScanCode(code);
+    if (!resolvedTicket) {
+      return this.invalid('not_found');
+    }
+    const { holder, holderEvent } = resolvedTicket;
+    const event = this.eventsRepository.queryEventRecordById(actorUserId, holderEvent.id);
     if (!event) {
       return this.invalid('not_found');
     }
     const actorCanManage = event.creatorUserId === actorUserId
-      || (event.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === actorUserId);
+      || (event.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === actorUserId)
+      || this.activityMembersRepository.peekRecordsByOwner({
+        ownerType: 'event',
+        ownerId: event.id
+      }).some(member =>
+        member.userId.trim() === actorUserId
+        && member.status === 'accepted'
+        && (member.role === 'Admin' || member.role === 'Manager')
+      );
     if (!actorCanManage) {
       return this.invalid('not_authorized');
     }
@@ -57,31 +71,23 @@ export class LocalAssetTicketsRepository {
       return this.invalid('expired');
     }
 
-    const holder = this.usersRepository.queryUserById(parsedCode.holderUserId);
     if (!holder || ['blocked', 'inactive', 'deleted'].includes(holder.profileStatus)) {
       return this.invalid('revoked');
     }
-    const holderEvent = [
-      ...this.eventsRepository.queryFeedbackCandidateItemsByUser(parsedCode.holderUserId),
-      ...this.eventsRepository.queryHostingItemsByUser(parsedCode.holderUserId)
-    ].find(record => record.id === event.id);
-    if (!holderEvent) {
+
+    const ticketRow = LocalAssetTicketsMapper.toTicketDTOs([holderEvent])
+      .find(row => row.id === event.id && row.holderUserId === holder.id);
+    if (!ticketRow || ticketRow.scanCode !== code) {
       return this.invalid('revoked');
     }
 
-    const currentUsedAtIso = `${event.ticketCheckInsByHolderUserId?.[parsedCode.holderUserId] ?? ''}`.trim();
+    const currentUsedAtIso = `${event.ticketCheckInsByHolderUserId?.[ticketRow.holderUserId] ?? ''}`.trim();
     if (currentUsedAtIso) {
       return this.invalid('already_used');
     }
 
-    const ticketRow = LocalAssetTicketsMapper.toTicketDTOs([holderEvent])
-      .find(row => row.id === event.id && row.holderUserId === parsedCode.holderUserId);
-    if (!ticketRow || ticketRow.scanCode !== code) {
-      return this.invalid('not_found');
-    }
-
     const usedAtIso = new Date().toISOString();
-    this.persistTicketCheckIn(event.id, parsedCode.holderUserId, usedAtIso);
+    this.persistTicketCheckIn(event.id, ticketRow.holderUserId, usedAtIso);
     const ticket = AssetTicketBuilder.createScanPayload(
       { ...ticketRow, usedAtIso },
       holder
@@ -102,6 +108,26 @@ export class LocalAssetTicketsRepository {
       ...this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId),
       ...this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
     ].filter(record => `${record.status ?? 'A'}`.trim() === 'A');
+  }
+
+  private resolveTicketByScanCode(code: string): {
+    holder: NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>;
+    holderEvent: NonNullable<ReturnType<LocalEventsRepository['queryEventRecordById']>>;
+  } | null {
+    for (const user of this.usersRepository.queryAllUsers()) {
+      const holder = this.usersRepository.queryUserById(user.id);
+      if (!holder) {
+        continue;
+      }
+      const holderEvent = [
+        ...this.eventsRepository.queryFeedbackCandidateItemsByUser(user.id),
+        ...this.eventsRepository.queryHostingItemsByUser(user.id)
+      ].find(record => AssetTicketBuilder.createDemoScanCode(record.id, user.id) === code);
+      if (holderEvent) {
+        return { holder, holderEvent };
+      }
+    }
+    return null;
   }
 
   private persistTicketCheckIn(eventId: string, holderUserId: string, usedAtIso: string): void {

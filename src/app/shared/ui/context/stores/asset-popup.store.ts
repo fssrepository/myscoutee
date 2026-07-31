@@ -68,8 +68,19 @@ export class AssetPopupStore {
   }
 
   updateTicketList(items: readonly AssetContracts.AssetTicketDTO[], total: number): void {
-    this.ticketRowsRef.set([...items]);
+    const nextItems = [...items];
+    this.ticketRowsRef.set(nextItems);
     this.ticketTotalCountRef.set(this.normalizedCount(total));
+    const selectedTicket = this.selectedTicketRowRef();
+    if (!selectedTicket) {
+      return;
+    }
+    const selectedTicketKey = this.ticketIdentity(selectedTicket);
+    const nextSelectedTicket = nextItems.find(item => this.ticketIdentity(item) === selectedTicketKey);
+    if (nextSelectedTicket) {
+      this.selectedTicketRowRef.set(nextSelectedTicket);
+      this.selectedTicketCodeValueRef.set(nextSelectedTicket.scanCode.trim());
+    }
   }
 
   openTicketCode(row: AssetContracts.AssetTicketDTO, scanCode: string): void {
@@ -149,5 +160,9 @@ export class AssetPopupStore {
 
   private normalizedCount(value: number): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private ticketIdentity(ticket: AssetContracts.AssetTicketDTO): string {
+    return `${ticket.type}:${ticket.id}:${ticket.holderUserId}`;
   }
 }

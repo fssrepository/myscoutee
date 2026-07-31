@@ -4,6 +4,10 @@ import { AssetTicketBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  type ActivityMemberRecord
+} from '../entity/activity.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { LocalAssetTicketsRepository } from './asset-tickets.repository';
@@ -66,6 +70,21 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
     });
   });
 
+  it('allows an accepted event manager to validate a ticket', () => {
+    seedEventMembers([eventManagerRecord()]);
+
+    const response = repository.validateTicket({
+      code: AssetTicketBuilder.createDemoScanCode('event-1', 'holder-1'),
+      userId: 'other-1'
+    });
+
+    expect(response.valid).toBe(true);
+    expect(response.ticket).toMatchObject({
+      holderUserId: 'holder-1',
+      eventId: 'event-1'
+    });
+  });
+
   function seedUsers(users: UserDto[]): void {
     memoryDb.write(state => ({
       ...state,
@@ -85,7 +104,49 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
       }
     }));
   }
+
+  function seedEventMembers(records: ActivityMemberRecord[]): void {
+    memoryDb.write(state => ({
+      ...state,
+      [ACTIVITY_MEMBERS_TABLE_NAME]: {
+        byId: Object.fromEntries(records.map(record => [record.id, record])),
+        ids: records.map(record => record.id),
+        idsByOwnerKey: {
+          'event:event-1': records.map(record => record.id)
+        }
+      }
+    }));
+  }
 });
+
+function eventManagerRecord(): ActivityMemberRecord {
+  return {
+    id: 'event:event-1:other-1',
+    userId: 'other-1',
+    name: 'Other Member',
+    initials: 'OM',
+    gender: 'woman',
+    city: 'Budapest',
+    statusText: '',
+    role: 'Manager',
+    status: 'accepted',
+    pendingSource: null,
+    requestKind: null,
+    invitedByActiveUser: false,
+    invitedByUserId: null,
+    metAtIso: '2030-04-18T18:00:00.000Z',
+    actionAtIso: '2030-04-18T18:00:00.000Z',
+    metWhere: 'Ticketed Event',
+    avatarUrl: '',
+    ownerType: 'event',
+    ownerId: 'event-1',
+    ownerKey: 'event:event-1',
+    createdMs: 1,
+    updatedMs: 1,
+    createdAtIso: '2030-04-18T18:00:00.000Z',
+    updatedAtIso: '2030-04-18T18:00:00.000Z'
+  };
+}
 
 function eventRecord(): ActivityEventRecord {
   return {
