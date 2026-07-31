@@ -211,6 +211,22 @@
   background: linear-gradient(145deg, #a7adb7, #687180);
 }
 
+.user-color-system {
+  color: #fff;
+  border: 1px solid rgba(116, 226, 255, 0.72);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(103, 232, 255, 0.96), transparent 42%),
+    linear-gradient(145deg, #3948c8 0%, #8a3fc0 58%, #e94791 100%);
+  box-shadow: 0 4px 12px rgba(67, 48, 163, 0.3);
+}
+
+.chat-sender-avatar.user-color-system .mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  line-height: 19px;
+}
+
 .chat-message-content {
   min-width: 0;
 }

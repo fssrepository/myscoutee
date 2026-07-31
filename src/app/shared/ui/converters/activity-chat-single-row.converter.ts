@@ -4,6 +4,7 @@ import type {
   ChatMemberSummaryDto,
   SupportCaseStatus
 } from '../../core/contracts/chat.interface';
+import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import { AppUtils } from '../../app-utils';
 import type { SingleRowData } from '../components/core/smart-list/card';
@@ -59,7 +60,9 @@ export class ActivityChatSingleRowConverter {
     const ownerId = `${dto.ownerId ?? ''}`.trim();
     const groupChannelLabel = channelType === 'groupSubEvent' ? this.groupChannelLabel(dto) : '';
     const groupParentLabel = channelType === 'groupSubEvent' ? this.groupParentLabel(dto) : '';
-    const lastMessage = dto.lastMessage?.trim() || '';
+    const lastMessage = systemSender
+      ? RANDOM_ROOM_WELCOME_MESSAGE
+      : dto.lastMessage?.trim() || '';
 
     return {
       id: dto.id,
