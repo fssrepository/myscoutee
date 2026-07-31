@@ -126,7 +126,7 @@ export class SeedIdeaPostsBuilder {
         contentHtml: `
           <p>Hozz létre eseményt leírással, időponttal, helyszínnel és létszámkorláttal. Témákat vagy választható programelemeket is hozzáadhatsz, hogy mindenki előre lássa a tervet.</p>
           <ul>
-            <li>Válassz nyilvános, csak ismerősöknek szóló vagy meghívásos láthatóságot.</li>
+            <li>Válassz nyilvános, csak barátoknak szóló vagy meghívásos láthatóságot.</li>
             <li>Döntsd el, hogy a jelentkezéseket jóvá kell-e hagyni.</li>
             <li>Hívj meg embereket közvetlenül, vagy bekapcsolt funkció esetén használj automatikus meghívást az üres helyekre.</li>
           </ul>
@@ -140,7 +140,7 @@ export class SeedIdeaPostsBuilder {
         id: 'idea-trust-context-hu',
         lang: 'hu',
         title: 'Több háttér a találkozó előtt',
-        excerpt: 'A profil, az eseménybeli szerep, a kapcsolódó csevegés és a benyomások segítenek megérteni, kivel találkozol.',
+        excerpt: 'A profil, az eseményen betöltött szerep, a kapcsolódó csevegés és a benyomások segítenek megérteni, kivel találkozol.',
         contentHtml: `
           <p>A profil megmutathatja azokat az adatokat, amelyeket valaki megoszt magáról. Az esemény ehhez hozzáadja a tervet, valamint a tag szerepét vagy részvételét, az esemény- és csoportos csevegés pedig a programhoz köti a beszélgetést.</p>
           <p>A tényleges részvétel után a szervezők és a résztvevők külön esemény-visszajelzést adhatnak. Ez hozzájárulhat a szervezőről vagy tagról megjelenő benyomásokhoz, de nem garantálja, hogyan alakul egy későbbi találkozó.</p>
@@ -159,7 +159,7 @@ export class SeedIdeaPostsBuilder {
           <p>Regisztráció után létrehozhatod a profilodat, és beállíthatod a láthatóságát. Nyilvános profil szükséges ahhoz, hogy megjelenj a profilajánlásokban, és használd az emberek értékelésére szolgáló funkciókat.</p>
           <ul>
             <li>Fedezz fel és értékelj embereket, valamint böngéssz az elérhető események között.</li>
-            <li>Jelentkezz, fogadj el meghívást, vagy szervezz és kezelj saját eseményt.</li>
+            <li>Jelentkezz eseményre, fogadj el meghívást, vagy szervezz és kezelj saját eseményt.</li>
             <li>Használj esemény-, csoportos és támogatási csevegést, majd adj visszajelzést a részvétel után.</li>
           </ul>
           <p>A fiókod megőrzi a profilodat és a tevékenységeidet, így később is visszatérhetsz a terveidhez és a beszélgetéseidhez.</p>

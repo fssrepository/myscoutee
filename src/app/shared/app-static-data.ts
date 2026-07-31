@@ -1573,7 +1573,7 @@ const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'tune',
     title: 'Kártya értékelése',
     blurb: 'Válassz egy értéket 1 és 10 között.',
-    contentHtml: '<p>Koppints vagy húzd a <strong>Szimpátia</strong> sávot. A választás azonnal mentődik, majd megjelenik a következő kártya.</p>'
+    contentHtml: '<p>Koppints vagy húzd a <strong>Szimpátia</strong> sávot. A rendszer azonnal elmenti a választást, majd megjelenik a következő kártya.</p>'
   },
   {
     id: 'affinity-network',
@@ -1749,7 +1749,7 @@ const EXPLANATION_CHATS_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'forum',
     title: 'Choose a chat list',
     blurb: 'Filter conversations by their purpose.',
-    contentHtml: '<p>Show all chats or filter by <strong>Event</strong>, <strong>Sub-event</strong>, <strong>Group</strong>, <strong>Service</strong>, or <strong>App Support</strong>. Red counters mark unread or pending items.</p>'
+    contentHtml: '<p>Show all chats or filter by <strong>Event</strong>, <strong>Sub-event</strong>, <strong>Group</strong>, <strong>Service</strong>, or <strong>App Support</strong>. Red counters show unread items.</p>'
   },
   {
     id: 'activity-chat-card',
@@ -1787,7 +1787,7 @@ const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'forum',
     title: 'Beszélgetések kiválasztása',
     blurb: 'Szűrd a beszélgetéseket a céljuk szerint.',
-    contentHtml: '<p>Megnézheted az összes beszélgetést, vagy szűrhetsz <strong>Esemény</strong>, <strong>Alesemény</strong>, <strong>Csoport</strong>, <strong>Szolgáltatás</strong> és <strong>Alkalmazástámogatás</strong> szerint. A piros számláló olvasatlan vagy függő elemet jelez.</p>'
+    contentHtml: '<p>Megnézheted az összes beszélgetést, vagy szűrhetsz <strong>Esemény</strong>, <strong>Alesemény</strong>, <strong>Csoport</strong>, <strong>Szerviz</strong> és <strong>Alkalmazástámogatás</strong> szerint. A piros számláló az olvasatlan elemek számát mutatja.</p>'
   },
   {
     id: 'activity-chat-card',
@@ -1801,7 +1801,7 @@ const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'account_tree',
     title: 'Csatornatípusok',
     blurb: 'Minden beszélgetés maradjon a megfelelő helyen.',
-    contentHtml: '<p>Az eseménybeszélgetés az egész eseményhez, az alesemény-beszélgetés egy részhez, a csoportbeszélgetés pedig egy kisebb csapathoz tartozik. A szolgáltatási és alkalmazástámogatási csatornák a saját ügyintézési témáikat kezelik.</p>'
+    contentHtml: '<p>Az eseménybeszélgetés az egész eseményhez, az alesemény-beszélgetés egy részhez, a csoportbeszélgetés pedig egy kisebb csapathoz tartozik. A <strong>Szerviz</strong> és az <strong>Alkalmazástámogatás</strong> csatornái a saját ügyintézési témáikat kezelik.</p>'
   },
   {
     id: 'activity-chat-message-window',
@@ -1918,7 +1918,7 @@ const EXPLANATION_PROFILE_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'tune',
     title: 'Részletek és láthatóság',
     blurb: 'Adj meg opcionális részleteket, és válaszd ki, ki láthatja őket.',
-    contentHtml: '<p>Szükség szerint adj meg tapasztalatokat, életmódot, értékeket és érdeklődési köröket. A fejléc a teljes profil állapotát szabályozza, a támogatott részletek melletti ikonokkal pedig <strong>Nyilvános</strong>, <strong>Ismerősök</strong>, <strong>Szervezők</strong> vagy <strong>Privát</strong> láthatóságot választhatsz.</p>'
+    contentHtml: '<p>Szükség szerint adj meg tapasztalatokat, életmódot, értékeket és érdeklődési köröket. A fejléc a teljes profil állapotát szabályozza, a támogatott részletek melletti ikonokkal pedig <strong>Nyilvános</strong>, <strong>Barátok</strong>, <strong>Szervezők</strong> vagy <strong>Privát</strong> láthatóságot választhatsz.</p>'
   },
   {
     id: 'profile-editor-save',
@@ -1990,14 +1990,14 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'checklist',
     title: 'Answer the cards',
     blurb: 'Complete each card, then review your answers.',
-    contentHtml: '<p>On every event or participant card, answer the two questions and choose up to three traits. Review the summary, then use <strong>Submit feedback</strong> to send all answers.</p>'
+    contentHtml: '<p>On every event or participant card, answer the two questions and choose one to three traits. Review the summary, then use <strong>Submit feedback</strong> to send all answers.</p>'
   },
   {
     id: 'event-feedback-save',
     icon: 'task_alt',
     title: 'After feedback',
     blurb: 'Review submitted or received results.',
-    contentHtml: '<p>Submitted feedback moves to <strong>Feedbacked</strong> and can be opened again. Organizers can view summaries and named responses for their own events; a separate organizer note needs at least eight characters.</p>'
+    contentHtml: '<p>Submitted feedback moves to <strong>Feedbacked</strong> and can be opened again. Organizers can view summaries and named responses for their own events; a separate note to the organizer requires at least eight characters.</p>'
   }
 ];
 
@@ -2007,21 +2007,21 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'rate_review',
     title: 'Visszajelzési listák',
     blurb: 'Válaszd ki, melyik állapotot szeretnéd látni.',
-    contentHtml: '<p>A <strong>Függőben</strong> listában a kitöltésre váró, a <strong>Kitöltve</strong> listában a beküldött, az <strong>Eltávolítva</strong> listában pedig a kihagyott és visszaállítható események vannak. A <strong>Saját események</strong> a szervezőként kapott visszajelzéseket mutatja.</p>'
+    contentHtml: '<p>A <strong>Függőben</strong> listában a kitöltésre váró, a <strong>Visszajelezve</strong> listában a beküldött, az <strong>Eltávolítva</strong> listában pedig a kihagyott és visszaállítható események vannak. A <strong>Saját események</strong> a szervezőként kapott visszajelzéseket mutatja.</p>'
   },
   {
     id: 'event-feedback-categories',
     icon: 'checklist',
     title: 'Kártyák kitöltése',
     blurb: 'Tölts ki minden kártyát, majd ellenőrizd a válaszaidat.',
-    contentHtml: '<p>Minden esemény- vagy résztvevőkártyán válaszolj a két kérdésre, és válassz legfeljebb három jellemzőt. Az összegzés után a <strong>Visszajelzés beküldése</strong> gomb elküldi az összes választ.</p>'
+    contentHtml: '<p>Minden esemény- vagy résztvevőkártyán válaszolj a két kérdésre, és válassz 1–3 jellemzőt. Az összegzés után a <strong>Visszajelzés beküldése</strong> gomb elküldi az összes választ.</p>'
   },
   {
     id: 'event-feedback-save',
     icon: 'task_alt',
     title: 'Beküldés után',
     blurb: 'Nézd meg az elküldött vagy kapott eredményeket.',
-    contentHtml: '<p>A beküldött válasz a <strong>Kitöltve</strong> listába kerül, és később újra megnyitható. A szervezők a saját eseményeik összesítését és névvel jelölt válaszait látják; a külön szervezői megjegyzés legalább nyolc karakteres lehet.</p>'
+    contentHtml: '<p>A beküldött válasz a <strong>Visszajelezve</strong> listába kerül, és később újra megnyitható. A szervezők a saját eseményeik összesítését és névvel jelölt válaszait látják; a szervezőnek szóló külön megjegyzéshez legalább nyolc karaktert kell írni.</p>'
   }
 ];
 
@@ -2031,7 +2031,7 @@ const EXPLANATION_ASSETS_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'inventory_2',
     title: 'Choose an asset type',
     blurb: 'Switch between your assets and tickets.',
-    contentHtml: '<p>Use the top menu for <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, or <strong>Tickets</strong>. The first three are assets you can add and edit; tickets are event entry records.</p>'
+    contentHtml: '<p>Use the top menu for <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, or <strong>Ticket</strong>. The first three are assets you can add and edit; tickets are event entry records.</p>'
   },
   {
     id: 'assets-card',
@@ -2069,7 +2069,7 @@ const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'inventory_2',
     title: 'Eszköztípus választása',
     blurb: 'Válts a saját eszközök és a jegyek között.',
-    contentHtml: '<p>A felső menüben a <strong>Járművek</strong>, <strong>Szállások</strong>, <strong>Kellékek</strong> és <strong>Jegyek</strong> között válthatsz. Az első három hozzáadható és szerkeszthető eszköz, a jegy pedig eseményhez tartozó belépési adat.</p>'
+    contentHtml: '<p>A felső menüben a <strong>Közlekedés</strong>, <strong>Szállás</strong>, <strong>Kellékek</strong> és <strong>Jegy</strong> között válthatsz. Az első három hozzáadható és szerkeszthető eszköz, a jegy pedig eseményhez tartozó belépési adat.</p>'
   },
   {
     id: 'assets-card',
@@ -2171,7 +2171,7 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'qr_code_2',
     title: 'Your tickets',
     blurb: 'View entry records linked to events.',
-    contentHtml: '<p>Switch between <strong>Upcoming</strong> and <strong>Past</strong> tickets. <strong>Scan Ticket</strong> opens the check-in scanner for another person&rsquo;s QR code.</p>'
+    contentHtml: '<p>Switch between <strong>Upcoming</strong> and <strong>Past</strong> tickets. <strong>Scan Ticket</strong> opens the QR reader for another person&rsquo;s ticket.</p>'
   },
   {
     id: 'assets-ticket-card',
@@ -2184,8 +2184,8 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
     id: 'assets-ticket-scanner',
     icon: 'qr_code_scanner',
     title: 'Scan a ticket',
-    blurb: 'Check another person in when camera scanning is supported.',
-    contentHtml: '<p>After reading a QR code, the scanner shows the ticket holder and related event details for checking. It verifies entry information; it does not create or edit tickets.</p>'
+    blurb: 'Read another ticket&rsquo;s QR code when camera scanning is supported.',
+    contentHtml: '<p>After reading a QR code, the scanner shows the ticket holder and event details stored in it. It does not confirm validity, mark the ticket as used, create it, or edit it.</p>'
   }
 ];
 
@@ -2194,7 +2194,7 @@ const EXPLANATION_ASSETS_TRANSPORT_SECTIONS_HU: HelpCenterSectionDto[] = assetEx
     icon: 'directions_car',
     title: 'Saját járművek',
     blurb: 'Adj hozzá és kezelj járművet vagy más szállítási eszközt.',
-    contentHtml: '<p>A <strong>Járművek</strong> fül a tulajdonodban vagy kezelésedben lévő szállítási eszközöket mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
+    contentHtml: '<p>A <strong>Közlekedés</strong> fül a tulajdonodban vagy kezelésedben lévő szállítási eszközöket mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
   },
   'assets-card': {
     icon: 'directions_car',
@@ -2212,7 +2212,7 @@ const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSectionDto[] = ass
     icon: 'apartment',
     title: 'Saját szállások',
     blurb: 'Adj hozzá és kezelj felajánlható helyeket.',
-    contentHtml: '<p>A <strong>Szállások</strong> fül a tulajdonodban vagy kezelésedben lévő helyeket mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, helyszínét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
+    contentHtml: '<p>A <strong>Szállás</strong> fül a tulajdonodban vagy kezelésedben lévő helyeket mutatja. A plusz gombbal újat hozhatsz létre, majd megadhatod a címét, helyszínét, kapacitását, mennyiségét, részleteit, láthatóságát, valamint az opcionális árat és szabályokat.</p>'
   },
   'assets-card': {
     icon: 'apartment',
@@ -2249,7 +2249,7 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'qr_code_2',
     title: 'Saját jegyek',
     blurb: 'Nézd meg az eseményekhez tartozó belépési adatokat.',
-    contentHtml: '<p>Válts a <strong>Közelgő</strong> és <strong>Korábbi</strong> jegyek között. A <strong>Jegy beolvasása</strong> gomb megnyitja a beléptető leolvasót egy másik ember QR-kódjához.</p>'
+    contentHtml: '<p>Válts a <strong>Közelgő</strong> és <strong>Korábbi</strong> jegyek között. A <strong>Jegy szkennelése</strong> gomb megnyitja a QR-olvasót egy másik ember jegyéhez.</p>'
   },
   {
     id: 'assets-ticket-card',
@@ -2262,8 +2262,8 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     id: 'assets-ticket-scanner',
     icon: 'qr_code_scanner',
     title: 'Jegy beolvasása',
-    blurb: 'Támogatott kamerás eszközön olvasd be más jegyét.',
-    contentHtml: '<p>A QR-kód beolvasása után megjelenik a jegy tulajdonosa és a kapcsolódó esemény adatai. Ez a belépési adatokat ellenőrzi; jegyet nem hoz létre és nem szerkeszt.</p>'
+    blurb: 'Támogatott kamerás eszközön olvasd be más jegyének QR-kódját.',
+    contentHtml: '<p>A beolvasás után megjelennek a kódban tárolt jegytulajdonos- és eseményadatok. Ez a képernyő nem ellenőrzi a jegy érvényességét, nem jelöli felhasználtnak, és nem hoz létre vagy szerkeszt jegyet.</p>'
   }
 ];
 
@@ -2280,7 +2280,7 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'tune',
     title: 'Visibility and joining',
     blurb: 'Choose who can find the event and what joining requires.',
-    contentHtml: '<p><strong>Public</strong>, <strong>Friends only</strong>, and <strong>Invitation only</strong> control discovery. Open or Blind controls attendee previews; you can also choose up to five topics and enable automatic invitations, ticketing, or approval.</p>'
+    contentHtml: '<p><strong>Public</strong>, <strong>Friends only</strong>, and <strong>Invitation only</strong> control discovery. The <strong>Open</strong>/<strong>Blind</strong> setting decides whether attendees can see each other before the event; you can also choose up to five topics and enable automatic invitations, ticketing, or approval.</p>'
   },
   {
     id: 'event-editor-schedule',
@@ -2325,7 +2325,7 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'tune',
     title: 'Láthatóság és csatlakozás',
     blurb: 'Állítsd be, ki találhatja meg az eseményt, és mi kell a belépéshez.',
-    contentHtml: '<p>A <strong>Nyilvános</strong>, <strong>Csak ismerősök</strong> és <strong>Csak meghívással</strong> a megtalálhatóságot szabályozza. A nyitott vagy vak mód a résztvevők előnézetét kezeli; emellett legfeljebb öt témát választhatsz, és bekapcsolhatod az automatikus meghívást, a jegykezelést vagy a jóváhagyást.</p>'
+    contentHtml: '<p>A <strong>Nyilvános</strong>, <strong>Csak barátok</strong> és <strong>Csak meghívással</strong> beállítások a megtalálhatóságot szabályozzák. A <strong>Nyitott</strong>/<strong>Vak</strong> beállítás dönti el, hogy a résztvevők láthatják-e egymást az esemény előtt; emellett legfeljebb öt témát választhatsz, és bekapcsolhatod az automatikus meghívást, a jegykezelést vagy a jóváhagyást.</p>'
   },
   {
     id: 'event-editor-schedule',
@@ -2606,7 +2606,7 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevisionDto = {
   contextKey: 'assets.tickets',
   title: 'Event tickets',
   summary: 'View ticket cards, QR codes, and scanning.',
-  description: 'Learn how to open your code and check another ticket.',
+  description: 'Learn how to open your code, scan another ticket, and view the details stored in its QR code.',
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS, 'en')
 };
 
@@ -2617,7 +2617,7 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevisionDto = {
   languageLabel: 'Magyar',
   title: 'Eseményjegyek',
   summary: 'Jegykártyák, QR-kódok és beolvasás.',
-  description: 'Itt megtudhatod, hogyan nyisd meg a saját kódodat, és hogyan ellenőrizz egy másik jegyet.',
+  description: 'Itt megtudhatod, hogyan nyisd meg a saját kódodat, olvass be egy másik jegyet, és nézd meg a QR-kódban tárolt adatokat.',
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS_HU, 'hu')
 };
 
