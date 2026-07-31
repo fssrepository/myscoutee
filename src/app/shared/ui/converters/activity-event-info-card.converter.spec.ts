@@ -42,4 +42,25 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
       interactive: true
     });
   });
+
+  it('renders a random room as a system-owned event rather than a user-owned event', () => {
+    const card = ActivityEventInfoCardConverter.convert({
+      id: 'random-room:event-1:stage-1:room-1',
+      title: 'Random Room R1',
+      eventType: 'random-room',
+      creatorName: 'MyScoutee System',
+      creatorAvatarUrl: '/unexpected-user-avatar.webp',
+      imageUrl: '/media/public?key=images/system/random-room-default.png',
+      status: 'A'
+    } as ActivityEventDTO);
+
+    expect(card.surfaceTone).toBe('system');
+    expect(card.leadingIcon?.icon).toBe('auto_awesome');
+    expect(card.mediaStart).toMatchObject({
+      variant: 'badge',
+      icon: 'auto_awesome',
+      label: 'System',
+      interactive: false
+    });
+  });
 });

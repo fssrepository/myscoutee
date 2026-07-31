@@ -16,6 +16,7 @@ export type InfoCardSurfaceTone =
   | 'pending'
   | 'published'
   | 'series'
+  | 'system'
   | 'waitlist'
   | 'review'
   | 'blocked'

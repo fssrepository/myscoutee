@@ -166,6 +166,17 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px rgba(31, 111, 118, 0.12);
 }
 
+.ui-info-card--tone-system {
+  border-color: rgba(94, 62, 205, 0.66);
+  background:
+    radial-gradient(circle at 12% 2%, rgba(64, 223, 255, 0.42), transparent 40%),
+    radial-gradient(circle at 94% 96%, rgba(255, 83, 177, 0.3), transparent 42%),
+    linear-gradient(145deg, #dddfff 0%, #cddcff 45%, #ecd6f4 100%);
+  box-shadow:
+    0 10px 24px rgba(62, 43, 153, 0.25),
+    0 0 0 1px rgba(85, 193, 255, 0.16) inset;
+}
+
 .ui-info-card--tone-review {
   border-color: rgba(126, 82, 35, 0.5);
   background: linear-gradient(180deg, #f6ead8 0%, #ecd5b5 100%);

@@ -21,6 +21,24 @@ describe('NotificationSingleRowConverter badges', () => {
     expect(row.badges?.map(badge => badge.label)).toContain('Read');
     expect(row.badges).toHaveLength(2);
   });
+
+  it('renders random-room notifications with a non-user system avatar', () => {
+    const row = converter.convert(notification({
+      kind: 'event-random-groups',
+      category: 'scheduled',
+      senderName: 'MyScoutee System',
+      senderAvatarUrl: '/unexpected-user-avatar.webp',
+      payload: {
+        eventScope: 'random-room'
+      }
+    }));
+
+    expect(row.icon).toBe('auto_awesome');
+    expect(row.avatarUrl).toBeNull();
+    expect(row.avatarInitials).toBeNull();
+    expect(row.avatarToneClass).toBe('notification-system-avatar');
+    expect(row.subtitle).toContain('MyScoutee System');
+  });
 });
 
 function notification(
