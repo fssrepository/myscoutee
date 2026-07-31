@@ -59,7 +59,7 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     expect(card.mediaStart).toMatchObject({
       variant: 'badge',
       icon: 'auto_awesome',
-      label: 'System',
+      label: '',
       interactive: false
     });
   });

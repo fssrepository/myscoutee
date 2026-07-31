@@ -155,7 +155,7 @@ export class ActivityEventInfoCardConverter {
         shape: 'circle',
         tone: 'selected',
         icon: 'auto_awesome',
-        label: 'System',
+        label: '',
         ariaLabel: 'System generated room',
         interactive: false
       };
