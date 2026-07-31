@@ -86,7 +86,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
-    if (url.origin !== self.location.origin && url.hostname !== 'api.qrserver.com') {
+    if (url.origin !== self.location.origin) {
       return;
     }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
@@ -106,10 +106,6 @@ self.addEventListener('fetch', event => {
       event.respondWith(networkFirstStaticAsset(request));
       return;
     }
-  }
-
-  if (url.hostname === 'api.qrserver.com') {
-    event.respondWith(cacheFirst(request, MEDIA_CACHE));
   }
 });
 

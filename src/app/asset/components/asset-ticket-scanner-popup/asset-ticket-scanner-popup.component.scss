@@ -84,6 +84,13 @@
   border-color: rgba(52, 132, 95, 0.34);
   box-shadow: 0 8px 20px rgba(42, 120, 90, 0.16);
   animation: ticket-scan-success-flash 220ms ease-out;
+  position: relative;
+}
+
+.ticket-scan-person-card-invalid {
+  background: linear-gradient(180deg, #fff0f1 0%, #f7dfe3 100%);
+  border-color: rgba(173, 74, 88, 0.4);
+  box-shadow: 0 8px 20px rgba(145, 48, 65, 0.12);
 }
 
 .ticket-scan-person-body {
@@ -161,6 +168,20 @@
   font-weight: 650;
   text-align: center;
   line-height: 1.25;
+}
+
+.ticket-scanner-result-message {
+  position: absolute;
+  right: 0.86rem;
+  bottom: 0.52rem;
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.ticket-scanner-result-message-valid,
+.ticket-scanner-status-valid {
+  color: #24704b;
 }
 
 .ticket-scanner-target {

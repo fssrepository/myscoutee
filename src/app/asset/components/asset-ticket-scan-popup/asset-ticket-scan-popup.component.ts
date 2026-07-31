@@ -5,6 +5,7 @@ import {
   computed,
   effect,
   inject,
+  signal,
   untracked
 } from '@angular/core';
 
@@ -12,6 +13,7 @@ import {
   AssetTicketBuilder
 } from '../../../shared/core/base/builders';
 import {
+  AssetTicketsService,
   UsersService,
   type UserDto
 } from '../../../shared/core';
@@ -64,14 +66,15 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
   private readonly ngZone = inject(NgZone);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
+  private readonly assetTicketsService = inject(AssetTicketsService);
   protected readonly store = inject(AssetPopupStore);
 
-  private ticketScannerTimer: ReturnType<typeof setTimeout> | null = null;
   private ticketScannerMediaStream: MediaStream | null = null;
   private ticketScannerDetectionFrame: number | null = null;
   private ticketScannerDetectBusy = false;
   private ticketScannerVideoElement: HTMLVideoElement | null = null;
-  private readonly warmedTicketQrUrls = new Set<string>();
+  private ticketScannerGeneration = 0;
+  private ticketQrGeneration = 0;
 
   protected readonly visible = computed(() => (
     this.store.ticketScanMode() === 'ticketCode'
@@ -85,39 +88,42 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     const payload = this.store.ticketScannerResultRef();
     return AssetTicketScanConverter.convert(payload, this.ticketPayloadUser(payload));
   });
-  protected readonly ticketQrImageUrl = computed(() => {
-    const encodedPayload = this.store.selectedTicketCodeValueRef() || this.encodedSelectedTicketPayload();
-    return AssetTicketScanConverter.qrImageUrl(encodedPayload);
-  });
+  protected readonly ticketQrImageUrl = signal('');
 
   constructor() {
     effect(() => {
-      const rows = this.store.ticketRowsRef();
-      untracked(() => this.warmTicketQrImages(rows));
-    });
-    effect(() => {
       const mode = this.store.ticketScanMode();
+      const row = this.store.selectedTicketRowRef();
+      const selectedCode = this.store.selectedTicketCodeValueRef();
       untracked(() => {
         if (mode === 'ticketScanner') {
-          this.ensureScannerTicketSelection();
           this.startTicketScannerReading();
           return;
         }
-        this.cancelTicketScannerTimer();
+        this.invalidateTicketScannerSession();
         this.stopTicketScannerCamera();
+        if (mode === 'ticketCode' && row && !row.usedAtIso) {
+          void this.renderTicketQrCode(selectedCode || row.scanCode);
+        } else {
+          this.clearTicketQrCode();
+        }
       });
     });
   }
 
   ngOnDestroy(): void {
     this.ticketScannerVideoElement = null;
-    this.cancelTicketScannerTimer();
+    this.invalidateTicketScannerSession();
     this.stopTicketScannerCamera();
+    this.clearTicketQrCode();
   }
 
   protected ticketScanPopupModel(): PopupModel {
     const isTicketCode = this.store.ticketScanMode() === 'ticketCode';
-    const title = isTicketCode ? 'Ticket' : 'Scan Ticket';
+    const selectedTicketUsed = !!this.store.selectedTicketRowRef()?.usedAtIso;
+    const title = isTicketCode
+      ? (selectedTicketUsed ? 'asset.ticket.checked.in' : 'asset.ticket.title')
+      : 'asset.ticket.scan.title';
     return {
       title,
       ariaLabel: title,
@@ -136,90 +142,52 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
 
   protected closeTicketScanPopup(event?: Event): void {
     event?.stopPropagation();
-    this.cancelTicketScannerTimer();
+    this.invalidateTicketScannerSession();
     this.stopTicketScannerCamera();
     this.store.closeTicketScan();
   }
 
-  protected retryTicketScanner(event?: Event): void {
+  protected readonly retryTicketScanner = (event?: Event): void => {
     event?.stopPropagation();
     this.store.retryTicketScanner();
     this.startTicketScannerReading();
-  }
+  };
 
   protected onTicketScannerVideoElementChange(element: HTMLVideoElement | null): void {
     this.ticketScannerVideoElement = element;
   }
 
-  private ensureScannerTicketSelection(): void {
-    const selectedRow = this.store.selectedTicketRowRef();
-    const selectedCode = this.store.selectedTicketCodeValueRef();
-    if (selectedRow && selectedCode) {
-      return;
-    }
-    const fallbackRow = selectedRow ?? this.store.ticketRowsRef()[0] ?? null;
-    if (!fallbackRow) {
-      this.store.selectedTicketRowRef.set(null);
-      this.store.selectedTicketCodeValueRef.set('');
-      return;
-    }
-    this.store.selectedTicketRowRef.set(fallbackRow);
-    this.store.selectedTicketCodeValueRef.set(this.encodeTicketPayload(this.createTicketScanPayload(fallbackRow)));
-  }
-
   private selectedTicketPayload(): AssetContracts.TicketScanPayloadDTO | null {
-    const decoded = this.decodeTicketPayload(this.store.selectedTicketCodeValueRef());
-    if (decoded) {
-      return decoded;
-    }
     const row = this.store.selectedTicketRowRef();
     if (!row) {
       return null;
     }
-    return {
-      ...this.createTicketScanPayload(row),
-      code: this.store.selectedTicketCodeValueRef() || this.createTicketScanPayload(row).code
-    };
+    return AssetTicketBuilder.createScanPayload(
+      {
+        ...row,
+        scanCode: this.store.selectedTicketCodeValueRef().trim() || row.scanCode
+      },
+      this.resolveTicketHolder(row) ?? {
+        id: row.holderUserId,
+        name: 'Ticket Holder',
+        age: 0,
+        city: ''
+      }
+    );
   }
 
-  private encodedSelectedTicketPayload(): string {
-    const payload = this.selectedTicketPayload();
-    return payload ? this.encodeTicketPayload(payload) : '';
-  }
-
-  private createTicketScanPayload(row: AssetContracts.AssetTicketDTO): AssetContracts.TicketScanPayloadDTO {
-    return AssetTicketBuilder.createScanPayload(row, this.resolveActiveTicketHolder() ?? {
-      id: this.currentActiveUserId(),
-      name: 'Ticket Holder',
-      age: 0,
-      city: ''
-    });
+  private resolveTicketHolder(row: AssetContracts.AssetTicketDTO): TicketPerson | null {
+    const holderUserId = row.holderUserId.trim();
+    if (!holderUserId) {
+      return null;
+    }
+    return this.userProfileStore.getUserProfile(holderUserId)
+      ?? this.userById.get(holderUserId)
+      ?? null;
   }
 
   private currentActiveUserId(): string {
     return this.userProfileStore.getActiveUserId().trim();
-  }
-
-  private resolveActiveTicketHolder(): TicketPerson | null {
-    const activeUserId = this.currentActiveUserId();
-    const activeProfile = this.userProfileStore.activeUserProfile();
-    if (activeProfile && activeProfile.id.trim() === activeUserId) {
-      return activeProfile;
-    }
-    return this.ticketPayloadUser({
-      code: '',
-      holderUserId: activeUserId,
-      holderName: '',
-      holderAge: 0,
-      holderCity: '',
-      holderRole: 'Member',
-      eventId: '',
-      eventTitle: '',
-      eventSubtitle: '',
-      eventTimeframe: '',
-      eventDateLabel: '',
-      issuedAtIso: ''
-    });
   }
 
   private ticketPayloadUser(payload: AssetContracts.TicketScanPayloadDTO | null): TicketPerson | null {
@@ -242,113 +210,58 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     return new Map(this.users.map(user => [user.id, user]));
   }
 
-  private encodeTicketPayload(payload: AssetContracts.TicketScanPayloadDTO): string {
+  private async renderTicketQrCode(scanCode: string): Promise<void> {
+    const generation = ++this.ticketQrGeneration;
+    this.ticketQrImageUrl.set('');
     try {
-      const json = JSON.stringify(payload);
-      if (typeof TextEncoder === 'undefined' || typeof btoa === 'undefined') {
-        return json;
+      const imageUrl = await AssetTicketScanConverter.qrImageDataUrl(scanCode);
+      if (generation === this.ticketQrGeneration && this.store.ticketScanModeRef() === 'ticketCode') {
+        this.ticketQrImageUrl.set(imageUrl);
       }
-      const bytes = new TextEncoder().encode(json);
-      let binary = '';
-      bytes.forEach(value => {
-        binary += String.fromCharCode(value);
-      });
-      return btoa(binary);
     } catch {
-      return JSON.stringify(payload);
+      if (generation === this.ticketQrGeneration) {
+        this.ticketQrImageUrl.set('');
+      }
     }
   }
 
-  private decodeTicketPayload(encoded: string): AssetContracts.TicketScanPayloadDTO | null {
-    try {
-      if (typeof TextDecoder === 'undefined' || typeof atob === 'undefined') {
-        return null;
-      }
-      const binary = atob(encoded);
-      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-      const json = new TextDecoder().decode(bytes);
-      const parsed = JSON.parse(json) as Partial<AssetContracts.TicketScanPayloadDTO>;
-      if (
-        typeof parsed.code !== 'string'
-        || typeof parsed.holderUserId !== 'string'
-        || typeof parsed.holderName !== 'string'
-        || typeof parsed.eventId !== 'string'
-        || typeof parsed.eventTitle !== 'string'
-        || typeof parsed.eventSubtitle !== 'string'
-        || typeof parsed.eventTimeframe !== 'string'
-        || typeof parsed.issuedAtIso !== 'string'
-      ) {
-        return null;
-      }
-      return {
-        code: parsed.code,
-        holderUserId: parsed.holderUserId,
-        holderName: parsed.holderName,
-        holderAge: typeof parsed.holderAge === 'number' ? parsed.holderAge : 0,
-        holderCity: typeof parsed.holderCity === 'string' ? parsed.holderCity : '',
-        holderRole: parsed.holderRole === 'Admin' || parsed.holderRole === 'Manager' ? parsed.holderRole : 'Member',
-        eventId: parsed.eventId,
-        eventTitle: parsed.eventTitle,
-        eventSubtitle: parsed.eventSubtitle,
-        eventTimeframe: parsed.eventTimeframe,
-        eventDateLabel: typeof parsed.eventDateLabel === 'string' ? parsed.eventDateLabel : parsed.eventTimeframe,
-        issuedAtIso: parsed.issuedAtIso
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  private warmTicketQrImages(rows: readonly AssetContracts.AssetTicketDTO[]): void {
-    if (typeof fetch === 'undefined' || typeof navigator === 'undefined' || navigator.onLine === false) {
-      return;
-    }
-    for (const row of rows) {
-      const qrImageUrl = this.ticketQrImageUrlForRow(row);
-      if (!qrImageUrl || this.warmedTicketQrUrls.has(qrImageUrl)) {
-        continue;
-      }
-      this.warmedTicketQrUrls.add(qrImageUrl);
-      void fetch(qrImageUrl, {
-        mode: 'no-cors',
-        cache: 'reload'
-      }).catch(() => {
-        this.warmedTicketQrUrls.delete(qrImageUrl);
-      });
-    }
-  }
-
-  private ticketQrImageUrlForRow(row: AssetContracts.AssetTicketDTO): string {
-    const payload = this.encodeTicketPayload(this.createTicketScanPayload(row));
-    return AssetTicketScanConverter.qrImageUrl(payload);
+  private clearTicketQrCode(): void {
+    this.ticketQrGeneration += 1;
+    this.ticketQrImageUrl.set('');
   }
 
   private startTicketScannerReading(): void {
-    this.cancelTicketScannerTimer();
+    const generation = ++this.ticketScannerGeneration;
     this.stopTicketScannerCamera();
-    void this.startTicketScannerSession();
+    void this.startTicketScannerSession(generation);
   }
 
-  private cancelTicketScannerTimer(): void {
-    if (!this.ticketScannerTimer) {
-      return;
-    }
-    clearTimeout(this.ticketScannerTimer);
-    this.ticketScannerTimer = null;
+  private invalidateTicketScannerSession(): void {
+    this.ticketScannerGeneration += 1;
   }
 
-  private async startTicketScannerSession(): Promise<void> {
-    if (this.store.ticketScanModeRef() !== 'ticketScanner') {
+  private scannerSessionIsCurrent(
+    generation: number,
+    expectedState: 'reading' | 'validating' = 'reading'
+  ): boolean {
+    return generation === this.ticketScannerGeneration
+      && this.store.ticketScanModeRef() === 'ticketScanner'
+      && this.store.ticketScannerStateRef() === expectedState;
+  }
+
+  private async startTicketScannerSession(generation: number): Promise<void> {
+    if (!this.scannerSessionIsCurrent(generation)) {
       return;
     }
     const videoElement = await this.waitForTicketScannerVideo();
-    if (!videoElement) {
-      this.startTicketScannerFallbackTimer();
+    if (!videoElement || !this.scannerSessionIsCurrent(generation)) {
+      this.applyTicketScannerError(generation);
       return;
     }
     const stream = await this.startTicketScannerMediaStream();
-    if (!stream) {
-      this.startTicketScannerFallbackTimer();
+    if (!stream || !this.scannerSessionIsCurrent(generation)) {
+      stream?.getTracks().forEach(track => track.stop());
+      this.applyTicketScannerError(generation);
       return;
     }
     this.ticketScannerMediaStream = stream;
@@ -358,45 +271,30 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     try {
       await videoElement.play();
     } catch {
-      this.startTicketScannerFallbackTimer();
+      this.applyTicketScannerError(generation);
+      return;
+    }
+    if (!this.scannerSessionIsCurrent(generation)) {
+      this.stopTicketScannerCamera();
       return;
     }
     const detector = this.createBrowserBarcodeDetector();
     if (!detector) {
-      if (this.store.selectedTicketCodeValueRef()) {
-        this.startTicketScannerFallbackTimer();
-      }
+      this.applyTicketScannerError(generation);
       return;
     }
-    this.startTicketScannerDetectionLoop(detector, videoElement);
+    this.startTicketScannerDetectionLoop(detector, videoElement, generation);
   }
 
-  private startTicketScannerFallbackTimer(): void {
-    this.cancelTicketScannerTimer();
-    this.ticketScannerTimer = setTimeout(() => {
-      this.ticketScannerTimer = null;
-      const decoded = this.decodeTicketPayload(this.store.selectedTicketCodeValueRef());
-      if (decoded) {
-        this.applyTicketScannerSuccess(decoded);
-        return;
-      }
-      const selectedRow = this.store.selectedTicketRowRef();
-      if (selectedRow) {
-        this.applyTicketScannerSuccess(this.createTicketScanPayload(selectedRow));
-        return;
-      }
-      this.ngZone.run(() => {
-        this.store.applyTicketScannerIdle();
-      });
-      this.stopTicketScannerCamera();
-    }, 1200);
-  }
-
-  private startTicketScannerDetectionLoop(detector: BrowserBarcodeDetector, videoElement: HTMLVideoElement): void {
+  private startTicketScannerDetectionLoop(
+    detector: BrowserBarcodeDetector,
+    videoElement: HTMLVideoElement,
+    generation: number
+  ): void {
     this.cancelTicketScannerDetectionLoop();
     this.ticketScannerDetectBusy = false;
     const tick = (): void => {
-      if (this.store.ticketScanModeRef() !== 'ticketScanner' || this.store.ticketScannerStateRef() !== 'reading') {
+      if (!this.scannerSessionIsCurrent(generation)) {
         this.cancelTicketScannerDetectionLoop();
         return;
       }
@@ -404,13 +302,13 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
         this.ticketScannerDetectBusy = true;
         void detector.detect(videoElement)
           .then(results => {
-            const payload = this.ticketScannerPayloadFromResults(results);
-            if (payload) {
-              this.applyTicketScannerSuccess(payload);
+            const code = this.ticketScannerCodeFromResults(results);
+            if (code) {
+              this.beginTicketValidation(code, generation);
             }
           })
           .catch(() => {
-            // Ignore intermittent detector read errors and keep scanning.
+            this.applyTicketScannerError(generation);
           })
           .finally(() => {
             this.ticketScannerDetectBusy = false;
@@ -421,25 +319,59 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     this.ticketScannerDetectionFrame = requestAnimationFrame(tick);
   }
 
-  private ticketScannerPayloadFromResults(results: BrowserBarcodeDetectorResult[]): AssetContracts.TicketScanPayloadDTO | null {
+  private ticketScannerCodeFromResults(results: BrowserBarcodeDetectorResult[]): string {
     for (const result of results) {
-      const raw = `${result.rawValue ?? ''}`.trim();
-      if (!raw) {
-        continue;
-      }
-      const decoded = this.decodeTicketPayload(raw);
-      if (decoded) {
-        return decoded;
+      const rawCode = `${result.rawValue ?? ''}`.trim();
+      if (rawCode) {
+        return rawCode;
       }
     }
-    return null;
+    return '';
   }
 
-  private applyTicketScannerSuccess(payload: AssetContracts.TicketScanPayloadDTO): void {
-    this.cancelTicketScannerTimer();
+  private beginTicketValidation(code: string, generation: number): void {
+    if (!this.scannerSessionIsCurrent(generation)) {
+      return;
+    }
     this.ngZone.run(() => {
-      this.store.applyTicketScannerSuccess(payload);
+      this.store.applyTicketScannerValidating();
     });
+    this.stopTicketScannerCamera();
+    void this.validateTicket(code, generation);
+  }
+
+  private async validateTicket(code: string, generation: number): Promise<void> {
+    try {
+      const response = await this.assetTicketsService.validateTicket({
+        code,
+        userId: this.currentActiveUserId()
+      });
+      if (!this.scannerSessionIsCurrent(generation, 'validating')) {
+        return;
+      }
+      this.ngZone.run(() => {
+        if (response.valid && response.reason === 'valid' && response.ticket) {
+          this.store.applyTicketScannerValid(response.ticket);
+          return;
+        }
+        if (!response.valid && response.reason !== 'valid') {
+          this.store.applyTicketScannerInvalid(response.reason);
+          return;
+        }
+        this.store.applyTicketScannerError();
+      });
+    } catch {
+      if (this.scannerSessionIsCurrent(generation, 'validating')) {
+        this.ngZone.run(() => this.store.applyTicketScannerError());
+      }
+    }
+  }
+
+  private applyTicketScannerError(generation: number): void {
+    if (!this.scannerSessionIsCurrent(generation)) {
+      return;
+    }
+    this.ngZone.run(() => this.store.applyTicketScannerError());
     this.stopTicketScannerCamera();
   }
 

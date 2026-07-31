@@ -2170,22 +2170,22 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
     id: 'assets-tickets',
     icon: 'qr_code_2',
     title: 'Your tickets',
-    blurb: 'View entry records linked to events.',
-    contentHtml: '<p>Switch between <strong>Upcoming</strong> and <strong>Past</strong> tickets. <strong>Scan Ticket</strong> opens the QR reader for another person&rsquo;s ticket.</p>'
+    blurb: 'View your upcoming and past event tickets.',
+    contentHtml: '<p>Switch between <strong>Upcoming</strong> and <strong>Past</strong>. If you manage an event, <strong>Scan Ticket</strong> opens the camera so you can check in an attendee.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
     title: 'Ticket card',
-    blurb: 'See the event and open your entry code.',
-    contentHtml: '<p>The card shows the event, date, and your ticket context. Tap its QR badge to open your own code; ticket details come from the event and cannot be edited here.</p>'
+    blurb: 'Open your QR code or see when it was used.',
+    contentHtml: '<p>Tap the QR badge to show your entry code. After check-in, the card changes to <strong>Checked in</strong>; the same popup then shows the scan time instead of the QR code.</p>'
   },
   {
     id: 'assets-ticket-scanner',
     icon: 'qr_code_scanner',
     title: 'Scan a ticket',
-    blurb: 'Read another ticket&rsquo;s QR code when camera scanning is supported.',
-    contentHtml: '<p>After reading a QR code, the scanner shows the ticket holder and event details stored in it. It does not confirm validity, mark the ticket as used, create it, or edit it.</p>'
+    blurb: 'Check in an attendee with a valid, unused ticket.',
+    contentHtml: '<p>The server checks that you can manage the event and that the ticket is active, eligible, unexpired, and unused. A successful scan checks in the named holder and uses the ticket once; another scan is rejected. The QR code contains only an anonymous ticket code.</p>'
   }
 ];
 
@@ -2248,22 +2248,22 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     id: 'assets-tickets',
     icon: 'qr_code_2',
     title: 'Saját jegyek',
-    blurb: 'Nézd meg az eseményekhez tartozó belépési adatokat.',
-    contentHtml: '<p>Válts a <strong>Közelgő</strong> és <strong>Korábbi</strong> jegyek között. A <strong>Jegy szkennelése</strong> gomb megnyitja a QR-olvasót egy másik ember jegyéhez.</p>'
+    blurb: 'Nézd meg a közelgő és korábbi eseményjegyeidet.',
+    contentHtml: '<p>Válts a <strong>Közelgő</strong> és <strong>Korábbi</strong> jegyek között. Ha te kezeled az eseményt, a <strong>Jegy szkennelése</strong> gombbal beléptetheted a résztvevőt.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
     title: 'Jegykártya',
-    blurb: 'Nézd meg az eseményt, és nyisd meg a belépőkódodat.',
-    contentHtml: '<p>A kártya az eseményt, a dátumot és a jegyed adatait mutatja. A QR-jelvény megnyitja a saját kódodat; a jegy adatai az eseményből származnak, és itt nem szerkeszthetők.</p>'
+    blurb: 'Nyisd meg a QR-kódot, vagy nézd meg a beléptetés idejét.',
+    contentHtml: '<p>A QR-jelvény megnyitja a belépőkódodat. Beléptetés után a kártyán a <strong>Beléptetve</strong> jelvény jelenik meg; ugyanaz a felugró ablak ekkor a beolvasás idejét mutatja a QR-kód helyett.</p>'
   },
   {
     id: 'assets-ticket-scanner',
     icon: 'qr_code_scanner',
     title: 'Jegy beolvasása',
-    blurb: 'Támogatott kamerás eszközön olvasd be más jegyének QR-kódját.',
-    contentHtml: '<p>A beolvasás után megjelennek a kódban tárolt jegytulajdonos- és eseményadatok. Ez a képernyő nem ellenőrzi a jegy érvényességét, nem jelöli felhasználtnak, és nem hoz létre vagy szerkeszt jegyet.</p>'
+    blurb: 'Érvényes, még nem használt jeggyel léptesd be a résztvevőt.',
+    contentHtml: '<p>A szerver ellenőrzi, hogy kezelheted-e az eseményt, és a jegy aktív, jogosult résztvevőhöz tartozik, nem járt le és még nem használták. A sikeres beolvasás egyszer használhatóan belépteti a megnevezett tulajdonost; az újabb próbát elutasítja. A QR-kód csak egy személytelen jegyazonosítót tartalmaz.</p>'
   }
 ];
 
@@ -2605,8 +2605,8 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevisionDto = {
   id: 'explanation-assets-tickets-default-v1',
   contextKey: 'assets.tickets',
   title: 'Event tickets',
-  summary: 'View ticket cards, QR codes, and scanning.',
-  description: 'Learn how to open your code, scan another ticket, and view the details stored in its QR code.',
+  summary: 'Open your ticket or check in an attendee.',
+  description: 'See how ticket QR codes, one-time check-in, and used-ticket status work.',
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS, 'en')
 };
 
@@ -2616,8 +2616,8 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevisionDto = {
   lang: 'hu',
   languageLabel: 'Magyar',
   title: 'Eseményjegyek',
-  summary: 'Jegykártyák, QR-kódok és beolvasás.',
-  description: 'Itt megtudhatod, hogyan nyisd meg a saját kódodat, olvass be egy másik jegyet, és nézd meg a QR-kódban tárolt adatokat.',
+  summary: 'Nyisd meg a jegyedet, vagy léptess be egy résztvevőt.',
+  description: 'Itt megtudhatod, hogyan működik a QR-kód, az egyszeri beléptetés és a felhasznált jegy jelzése.',
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS_HU, 'hu')
 };
 

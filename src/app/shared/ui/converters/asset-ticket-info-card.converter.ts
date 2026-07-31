@@ -20,11 +20,13 @@ export class AssetTicketInfoCardConverter {
       id: `${row.type}:${row.id}`,
       dateIso: row.dateIso,
       distanceMetersExact: row.distanceMetersExact,
+      status: row.usedAtIso ? 'used' : 'active',
       groupLabel: options.groupLabel ?? null,
       title: row.title,
       imageUrl: this.ticketImageUrl(row),
       metaRows: [this.ticketMetaLine(row)],
       description: row.subtitle,
+      surfaceTone: row.usedAtIso ? 'published' : 'default',
       leadingIcon: {
         icon: this.ticketLeadingIcon(row),
         tone: this.ticketLeadingIconTone(row)
@@ -38,10 +40,13 @@ export class AssetTicketInfoCardConverter {
       },
       mediaEnd: {
         variant: 'badge',
-        tone: 'default',
-        icon: 'qr_code_2',
+        tone: row.usedAtIso ? 'stage-finalized' : 'default',
+        icon: row.usedAtIso ? 'check_circle' : 'qr_code_2',
+        label: row.usedAtIso ? 'asset.ticket.checked.in' : null,
         interactive: true,
-        ariaLabel: 'Open ticket QR code'
+        ariaLabel: row.usedAtIso
+          ? 'asset.ticket.checkin.details.aria'
+          : 'asset.ticket.qr.open.aria'
       },
       clickable: false
     };

@@ -3,7 +3,7 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 import type * as AssetContracts from '../../../core/contracts/asset.interface';
 
 export type AssetTicketScanMode = 'ticketCode' | 'ticketScanner';
-export type AssetTicketScannerState = 'idle' | 'reading' | 'success';
+export type AssetTicketScannerState = 'idle' | 'reading' | 'validating' | 'valid' | 'invalid' | 'error';
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +20,7 @@ export class AssetPopupStore {
   readonly selectedTicketCodeValueRef = signal('');
   readonly ticketScannerStateRef = signal<AssetTicketScannerState>('idle');
   readonly ticketScannerResultRef = signal<AssetContracts.TicketScanPayloadDTO | null>(null);
+  readonly ticketScannerReasonRef = signal<AssetContracts.AssetTicketValidationReason | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
 
@@ -33,6 +34,7 @@ export class AssetPopupStore {
   readonly selectedTicketRow = this.selectedTicketRowRef.asReadonly();
   readonly ticketScannerState = this.ticketScannerStateRef.asReadonly();
   readonly ticketScannerResult = this.ticketScannerResultRef.asReadonly();
+  readonly ticketScannerReason = this.ticketScannerReasonRef.asReadonly();
   readonly ticketDateOrder = this.ticketDateOrderRef.asReadonly();
   readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
   readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
@@ -70,10 +72,11 @@ export class AssetPopupStore {
     this.ticketTotalCountRef.set(this.normalizedCount(total));
   }
 
-  openTicketCode(row: AssetContracts.AssetTicketDTO, encodedPayload: string): void {
+  openTicketCode(row: AssetContracts.AssetTicketDTO, scanCode: string): void {
     this.selectedTicketRowRef.set(row);
-    this.selectedTicketCodeValueRef.set(encodedPayload);
+    this.selectedTicketCodeValueRef.set(scanCode.trim());
     this.ticketScannerResultRef.set(null);
+    this.ticketScannerReasonRef.set(null);
     this.ticketScannerStateRef.set('idle');
     this.ticketScanModeRef.set('ticketCode');
   }
@@ -81,6 +84,7 @@ export class AssetPopupStore {
   openTicketScanner(): void {
     this.ticketScannerStateRef.set('reading');
     this.ticketScannerResultRef.set(null);
+    this.ticketScannerReasonRef.set(null);
     this.ticketScanModeRef.set('ticketScanner');
   }
 
@@ -91,16 +95,31 @@ export class AssetPopupStore {
   retryTicketScanner(): void {
     this.ticketScannerStateRef.set('reading');
     this.ticketScannerResultRef.set(null);
+    this.ticketScannerReasonRef.set(null);
   }
 
-  applyTicketScannerSuccess(payload: AssetContracts.TicketScanPayloadDTO): void {
-    this.ticketScannerResultRef.set(payload);
-    this.ticketScannerStateRef.set('success');
-  }
-
-  applyTicketScannerIdle(): void {
+  applyTicketScannerValidating(): void {
     this.ticketScannerResultRef.set(null);
-    this.ticketScannerStateRef.set('idle');
+    this.ticketScannerReasonRef.set(null);
+    this.ticketScannerStateRef.set('validating');
+  }
+
+  applyTicketScannerValid(ticket: AssetContracts.TicketScanPayloadDTO): void {
+    this.ticketScannerResultRef.set(ticket);
+    this.ticketScannerReasonRef.set('valid');
+    this.ticketScannerStateRef.set('valid');
+  }
+
+  applyTicketScannerInvalid(reason: Exclude<AssetContracts.AssetTicketValidationReason, 'valid'>): void {
+    this.ticketScannerResultRef.set(null);
+    this.ticketScannerReasonRef.set(reason);
+    this.ticketScannerStateRef.set('invalid');
+  }
+
+  applyTicketScannerError(): void {
+    this.ticketScannerResultRef.set(null);
+    this.ticketScannerReasonRef.set(null);
+    this.ticketScannerStateRef.set('error');
   }
 
   async ensureAssetPopupLoaded(): Promise<void> {
@@ -124,6 +143,7 @@ export class AssetPopupStore {
     this.selectedTicketCodeValueRef.set('');
     this.ticketScannerStateRef.set('idle');
     this.ticketScannerResultRef.set(null);
+    this.ticketScannerReasonRef.set(null);
     this.ticketScanModeRef.set(null);
   }
 

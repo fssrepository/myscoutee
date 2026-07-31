@@ -15,9 +15,20 @@
           </div>
         </div>
       </div>
-      <div class="ticket-code-qr-wrap">
-        <img class="ticket-code-qr-image" [src]="qrImageUrl" alt="Ticket QR code" />
-      </div>
+      @if (selectedTicketRow.usedAtIso) {
+        <div class="ticket-code-used-panel">
+          <span class="material-icons ticket-code-used-icon" aria-hidden="true">check_circle</span>
+          <strong>{{ 'asset.ticket.checked.in' | i18n }}</strong>
+          <span>{{ checkedInAtLabel() }}</span>
+          <small>{{ 'asset.ticket.used.readonly' | i18n }}</small>
+        </div>
+      } @else {
+        <div class="ticket-code-qr-wrap">
+          @if (qrImageUrl) {
+            <img class="ticket-code-qr-image" [src]="qrImageUrl" [alt]="'asset.ticket.qr.alt' | i18n" />
+          }
+        </div>
+      }
     </div>
   }
 </div>

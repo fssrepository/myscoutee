@@ -502,6 +502,8 @@ export interface TicketScanPayloadDTO {
   code: string;
   holderUserId: string;
   holderName: string;
+  holderInitials?: string;
+  holderAvatarUrl?: string;
   holderAge: number;
   holderCity: string;
   holderRole: AppConstants.ActivityMemberRole;

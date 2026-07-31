@@ -1,5 +1,6 @@
 import {
   Component,
+  OnDestroy,
   TemplateRef,
   ViewChild,
   computed,
@@ -57,6 +58,7 @@ import type { EventFeedbackListFilter } from '../../../shared/core/common/consta
 import {
   EventsService
 } from '../../../shared/core/base';
+import { ExplanationGuideService } from '../../../shared/core';
 import {
   DialogStore,
   type DialogConfig
@@ -100,14 +102,17 @@ interface EventFeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'o
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'
 })
-export class EventFeedbackPopupComponent {
+export class EventFeedbackPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activitiesPopupStore = inject(ActivitiesPopupStore);
   private readonly eventsService = inject(EventsService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly dialogStore = inject(DialogStore);
+  private unregisterExplanationContext: (() => void) | null = null;
+  private explanationContextActive = false;
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
   private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
   protected readonly isPopupOpen = signal(false);
@@ -331,6 +336,10 @@ export class EventFeedbackPopupComponent {
 
   constructor() {
     effect(() => {
+      this.setExplanationContext(this.isPopupOpen());
+    });
+
+    effect(() => {
       const request = this.memberMenuStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledNavigatorEventFeedbackRequestMs) {
         return;
@@ -389,6 +398,10 @@ export class EventFeedbackPopupComponent {
     });
   }
 
+  ngOnDestroy(): void {
+    this.clearExplanationContext();
+  }
+
   protected openPopup(): void {
     this.eventFeedbackListFilter.set('pending');
     this.eventFeedbackListSubmitMessage.set('');
@@ -398,6 +411,23 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackPageResult.set(null);
     this.eventFeedbackFilterCountDelta.set({});
     this.isPopupOpen.set(true);
+  }
+
+  private setExplanationContext(isOpen: boolean): void {
+    if (this.explanationContextActive === isOpen) {
+      return;
+    }
+    this.clearExplanationContext();
+    if (isOpen) {
+      this.explanationContextActive = true;
+      this.unregisterExplanationContext = this.explanationGuide.registerContext('event.feedback');
+    }
+  }
+
+  private clearExplanationContext(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+    this.explanationContextActive = false;
   }
 
   protected closePopup(event?: Event): void {

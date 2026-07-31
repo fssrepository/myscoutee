@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, HostListener, computed, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, resource, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
@@ -7,7 +7,14 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { I18nPipe, IndicatorComponent } from '../../../shared/ui';
 import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import {
-  ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
+  ContactsService,
+  ExplanationGuideService,
+  type ExperienceEntry,
+  type ProfileViewData,
+  type ProfileDetailFormGroup,
+  type ProfileDetailFormRow,
+  type UserDto
+} from '../../../shared/core';
 import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
 
 interface ProfileViewRow {
@@ -30,9 +37,12 @@ interface ProfileViewRow {
   styleUrl: './profile-view-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProfileViewPopupComponent {
+export class ProfileViewPopupComponent implements OnDestroy {
   private readonly profileStore = inject(ProfileStore);
   private readonly contactsService = inject(ContactsService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
+  private explanationContextActive = false;
 
   protected readonly target = this.profileStore.profileViewTarget;
   private readonly targetUserId = computed(() => this.target()?.userId?.trim() || undefined);
@@ -82,6 +92,16 @@ export class ProfileViewPopupComponent {
   protected readonly aboutRows = computed(() => this.buildAboutRows(this.user()));
   protected readonly detailGroups = computed(() => this.buildDetailGroups(this.user()));
 
+  constructor() {
+    effect(() => {
+      this.setExplanationContext(!!this.target());
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.clearExplanationContext();
+  }
+
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
     if (!this.target()) {
@@ -95,6 +115,23 @@ export class ProfileViewPopupComponent {
   protected closePopup(event?: Event): void {
     event?.stopPropagation();
     this.profileStore.closeProfileView();
+  }
+
+  private setExplanationContext(isOpen: boolean): void {
+    if (this.explanationContextActive === isOpen) {
+      return;
+    }
+    this.clearExplanationContext();
+    if (isOpen) {
+      this.explanationContextActive = true;
+      this.unregisterExplanationContext = this.explanationGuide.registerContext('profile.view');
+    }
+  }
+
+  private clearExplanationContext(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+    this.explanationContextActive = false;
   }
 
   protected profileViewPopupModel(): PopupModel {

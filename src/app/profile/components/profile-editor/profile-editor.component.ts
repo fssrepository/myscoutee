@@ -4,6 +4,7 @@ import {
 import {
   Component,
   HostListener,
+  OnDestroy,
   ViewChild,
   computed,
   effect,
@@ -25,6 +26,7 @@ import {
   AppUtils
 } from '../../../shared/app-utils';
 import {
+  ExplanationGuideService,
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UsersService
 } from '../../../shared/core';
@@ -99,7 +101,7 @@ type ProfileEditorMenuContext =
   templateUrl: './profile-editor.component.html',
   styleUrl: './profile-editor.component.scss'
 })
-export class ProfileEditorComponent {
+export class ProfileEditorComponent implements OnDestroy {
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
   private readonly dialogStore = inject(DialogStore);
@@ -108,8 +110,11 @@ export class ProfileEditorComponent {
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
+  private unregisterExplanationContext: (() => void) | null = null;
+  private explanationContextActive = false;
 
   protected readonly isOpen = this.profileStore.profileEditorOpen;
   protected readonly activeUserIsAdmin = this.userProfileStore.activeUserIsAdmin;
@@ -133,6 +138,7 @@ export class ProfileEditorComponent {
   constructor() {
     effect(() => {
       const isOpen = this.profileStore.profileEditorOpen();
+      this.setExplanationContext(isOpen);
       const activeProfileExt = this.userProfileStore.activeUserProfileExt();
       const activeUser = activeProfileExt?.profile ?? this.userProfileStore.activeUserProfile();
       const activeUserId = activeUser?.id.trim() ?? '';
@@ -150,6 +156,10 @@ export class ProfileEditorComponent {
       this.lastLoadedUserId = activeUserId;
       this.loadProfileEditorState(activeUserId, activeProfileExt);
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearExplanationContext();
   }
 
   @HostListener('document:click', ['$event'])
@@ -175,6 +185,23 @@ export class ProfileEditorComponent {
 
   protected get activeUser(): UserDto | null {
     return this.profileEditorData.profile.id ? this.profileEditorData.profile : null;
+  }
+
+  private setExplanationContext(isOpen: boolean): void {
+    if (this.explanationContextActive === isOpen) {
+      return;
+    }
+    this.clearExplanationContext();
+    if (isOpen) {
+      this.explanationContextActive = true;
+      this.unregisterExplanationContext = this.explanationGuide.registerContext('profile.editor');
+    }
+  }
+
+  private clearExplanationContext(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+    this.explanationContextActive = false;
   }
 
   protected get profileEditorAge(): number {

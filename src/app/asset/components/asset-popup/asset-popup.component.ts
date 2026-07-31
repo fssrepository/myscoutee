@@ -1760,7 +1760,7 @@ export class AssetPopupComponent {
 
   protected openTicketCodePopup(row: AssetContracts.AssetTicketDTO, event?: Event): void {
     event?.stopPropagation();
-    this.assetPopupStore.openTicketCode(row, '');
+    this.assetPopupStore.openTicketCode(row, row.scanCode);
   }
 
   protected openTicketScannerPopup(event?: Event): void {

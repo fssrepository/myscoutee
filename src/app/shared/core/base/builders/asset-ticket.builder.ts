@@ -5,6 +5,8 @@ import type * as AssetContracts from '../../contracts/asset.interface';
 type TicketHolder = {
   id?: string | null;
   name?: string | null;
+  initials?: string | null;
+  images?: readonly string[] | null;
   age?: number | null;
   city?: string | null;
 };
@@ -23,6 +25,8 @@ export class AssetTicketBuilder {
       code: row.scanCode.trim(),
       holderUserId: userId,
       holderName: userName,
+      holderInitials: holder.initials?.trim() || AppUtils.initialsFromText(userName),
+      holderAvatarUrl: AppUtils.firstImageUrl(holder.images),
       holderAge,
       holderCity,
       holderRole: row.isAdmin ? 'Admin' : 'Member',
