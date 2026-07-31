@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-0145b777b042-20260731065750";
-const BUILD_ID = "0145b777b042-20260731065750";
+const CACHE_VERSION = "build-819aaac75f3e-20260731071400";
+const BUILD_ID = "819aaac75f3e-20260731071400";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -98,7 +98,6 @@ const PRECACHE_BUILD_URLS = [
   "./chunk-JBPMMTXU.js",
   "./chunk-JHQHHZHX.js",
   "./chunk-JJIR6S5G.js",
-  "./chunk-JXLFMXAL.js",
   "./chunk-KB33S2EZ.js",
   "./chunk-KEQHSSCE.js",
   "./chunk-KH3VOHWG.js",
@@ -126,6 +125,7 @@ const PRECACHE_BUILD_URLS = [
   "./chunk-R5Z355S6.js",
   "./chunk-S24YZLS5.js",
   "./chunk-SHCKXQZJ.js",
+  "./chunk-SOBYN74T.js",
   "./chunk-STDUBZSI.js",
   "./chunk-SVZYC5VY.js",
   "./chunk-SYC4CMD6.js",
@@ -154,7 +154,7 @@ const PRECACHE_BUILD_URLS = [
   "./chunk-ZD4WMLIX.js",
   "./chunk-ZEX2FEVC.js",
   "./chunk-ZWHGTLLJ.js",
-  "./main-ON6FIGRX.js",
+  "./main-MZIYJEDJ.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
