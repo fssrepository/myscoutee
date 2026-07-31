@@ -933,8 +933,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const previousPaymentProvider = current.configuration.payment.providerId;
     const themePreset = this.deploymentThemePreset(request.branding.themePreset);
     const productName = `${request.branding.productName ?? ''}`.trim().slice(0, 80);
-    const logoUrl = `${request.branding.logoUrl ?? ''}`.trim()
-      || DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+    const logoUrl = `${request.branding.logoUrl ?? ''}`.trim();
     if (!productName) {
       throw new Error('operator.configuration.branding.label.required');
     }
@@ -945,7 +944,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       logoCharacterIndex !== null
       && (
         !Number.isInteger(logoCharacterIndex)
-        || logoCharacterIndex < 0
+        || logoCharacterIndex < -1
         || logoCharacterIndex >= Array.from(productName).length
       )
     ) {

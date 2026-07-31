@@ -402,9 +402,12 @@ function normalizeDeploymentBranding(value) {
 }
 
 function normalizedLogoUrl(value) {
+  if (typeof value !== 'string') {
+    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+  }
   const normalized = normalizedText(value, 4096);
   if (!normalized) {
-    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+    return '';
   }
   try {
     const url = new URL(normalized, self.location.origin);

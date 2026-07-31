@@ -288,7 +288,7 @@ export class OperatorWorkspaceStore {
     return index === null
       || (
         Number.isInteger(index)
-        && index >= 0
+        && index >= -1
         && index < Array.from(draft.branding.productName.trim()).length
       );
   });

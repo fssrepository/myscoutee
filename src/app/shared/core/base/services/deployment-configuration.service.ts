@@ -145,7 +145,7 @@ export class DeploymentConfigurationService
       return DEFAULT_DEPLOYMENT_BRANDING.logoCharacterIndex;
     }
     const characterCount = Array.from(productName).length;
-    if (!Number.isInteger(value) || value < 0 || value >= characterCount) {
+    if (!Number.isInteger(value) || value < -1 || value >= characterCount) {
       throw new Error('deployment.configuration.branding.logo.character.index.invalid');
     }
     return value;
@@ -153,6 +153,9 @@ export class DeploymentConfigurationService
 
   private safeLogoUrl(value: string | null | undefined): string {
     const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
     if (
       normalized.startsWith('assets/')
       || normalized.startsWith('/')
@@ -194,7 +197,7 @@ export class DeploymentConfigurationService
     );
     this.setMetaContent(
       'meta[property="og:image:alt"]',
-      `${branding.productName} logo`
+      metadataLogoUrl ? `${branding.productName} logo` : ''
     );
     this.setLinkHref('link[rel~="icon"]', branding.logoUrl);
     this.setLinkType('link[rel~="icon"]', logoMediaType);
@@ -232,7 +235,9 @@ export class DeploymentConfigurationService
       return;
     }
     const logoUrl = this.absoluteLogoUrl(branding.logoUrl);
-    const logoMediaType = this.logoMediaType(branding.logoUrl) || 'image/png';
+    const logoMediaType = logoUrl
+      ? this.logoMediaType(branding.logoUrl) || 'image/png'
+      : '';
     const manifest = {
       name: branding.productName,
       short_name: Array.from(branding.productName).slice(0, 24).join(''),
@@ -243,20 +248,22 @@ export class DeploymentConfigurationService
       start_url: './',
       background_color: '#f5f6fb',
       theme_color: themeColor,
-      icons: [
-        {
-          src: logoUrl,
-          sizes: '192x192',
-          type: logoMediaType,
-          purpose: 'any maskable'
-        },
-        {
-          src: logoUrl,
-          sizes: '512x512',
-          type: logoMediaType,
-          purpose: 'any maskable'
-        }
-      ]
+      icons: logoUrl
+        ? [
+            {
+              src: logoUrl,
+              sizes: '192x192',
+              type: logoMediaType,
+              purpose: 'any maskable'
+            },
+            {
+              src: logoUrl,
+              sizes: '512x512',
+              type: logoMediaType,
+              purpose: 'any maskable'
+            }
+          ]
+        : []
     };
     const nextObjectUrl = windowRef.URL.createObjectURL(
       new windowRef.Blob(
@@ -321,7 +328,11 @@ export class DeploymentConfigurationService
   private setLinkHref(selector: string, href: string): void {
     const link = this.documentRef.querySelector<HTMLLinkElement>(selector);
     if (link) {
-      link.setAttribute('href', href);
+      if (href) {
+        link.setAttribute('href', href);
+      } else {
+        link.removeAttribute('href');
+      }
     }
   }
 
@@ -338,6 +349,9 @@ export class DeploymentConfigurationService
   }
 
   private absoluteLogoUrl(logoUrl: string): string {
+    if (!logoUrl) {
+      return '';
+    }
     if (/^data:image\//i.test(logoUrl)) {
       return logoUrl;
     }

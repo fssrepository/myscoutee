@@ -253,6 +253,7 @@ export interface ActivityEventRecord {
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
+  ticketCheckInsByHolderUserId?: Record<string, string>;
   approvalRequired?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   policiesEnabled?: boolean;

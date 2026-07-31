@@ -1770,7 +1770,7 @@ export class OperatorActionPopupComponent {
     }
     const index = branding.logoCharacterIndex;
     return !Number.isInteger(index)
-      || index < 0
+      || index < -1
       || index >= Array.from(branding.productName.trim()).length;
   }
 

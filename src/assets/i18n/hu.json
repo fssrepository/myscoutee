@@ -2773,7 +2773,7 @@
     "operator.configuration.branding.theme": "Nyitóoldali téma",
     "operator.configuration.branding.logo": "Logó",
     "operator.configuration.branding.logo.character.index": "A logó helyettesítési indexe",
-    "operator.configuration.branding.logo.character.index.invalid": "Adj meg egész számot 0 és az utolsó karakter pozíciója között.",
+    "operator.configuration.branding.logo.character.index.invalid": "Adj meg -1-et, ha a logó nem helyettesít karaktert, vagy egy karakterpozíciót 0-tól.",
     "operator.configuration.branding.logo.guidance": "512 × 512 px (1:1) · PNG/WebP ajánlott · max. 10 MB.",
     "operator.configuration.branding.logo.heart.webp": "MyScoutee szív (WebP)",
     "operator.configuration.branding.logo.heart.png": "MyScoutee szív (PNG)",

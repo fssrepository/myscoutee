@@ -213,6 +213,37 @@ describe('DeploymentConfigurationService', () => {
       .toHaveBeenCalledWith('blob:deployment-manifest-2');
   });
 
+  it('preserves an explicitly removed logo without publishing image metadata', async () => {
+    loadLocalBranding.mockResolvedValue({
+      productName: 'Community Hub',
+      homeLabel: 'Meet locally',
+      logoUrl: '',
+      logoCharacterIndex: -1,
+      themePreset: 'OCEAN',
+      socialLinks: [],
+      privacyContact: {
+        configured: false,
+        dataControllerName: '',
+        privacyContactEmail: ''
+      },
+      revision: 4
+    });
+    const service = TestBed.inject(DeploymentConfigurationService);
+
+    const branding = await service.initialize();
+
+    expect(branding.logoUrl).toBe('');
+    expect(branding.logoCharacterIndex).toBe(-1);
+    expect(metaContent('meta[property="og:image"]')).toBe('');
+    expect(metaContent('meta[property="og:image:alt"]')).toBe('');
+    expect(linkHref('link[rel~="icon"]')).toBeNull();
+    expect(linkHref('link[rel="apple-touch-icon"]')).toBeNull();
+    const manifest = JSON.parse(
+      await readBlob(createObjectUrl.mock.calls[0][0])
+    ) as Record<string, unknown>;
+    expect(manifest['icons']).toEqual([]);
+  });
+
   it('rejects an invalid persisted logo character index instead of repairing it', async () => {
     loadLocalBranding.mockResolvedValue({
       productName: 'Hub',

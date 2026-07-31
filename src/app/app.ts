@@ -76,11 +76,13 @@ export class App implements OnDestroy {
       visible,
       busy,
       tone: 'info',
-      icon: {
-        kind: 'image',
-        src: branding.logoUrl,
-        alt: ''
-      },
+      icon: branding.logoUrl
+        ? {
+            kind: 'image',
+            src: branding.logoUrl,
+            alt: ''
+          }
+        : null,
       title,
       description: this.i18nService.translateParams(
         'install.prompt.description',

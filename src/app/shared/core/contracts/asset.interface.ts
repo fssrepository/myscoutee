@@ -411,6 +411,9 @@ export interface AssetTicketPageQueryDTO {
 
 export interface AssetTicketDTO {
   id: string;
+  scanCode: string;
+  holderUserId: string;
+  usedAtIso: string | null;
   type: 'events' | 'hosting' | 'invitations';
   status?: string | null;
   title: string;
@@ -508,4 +511,26 @@ export interface TicketScanPayloadDTO {
   eventTimeframe: string;
   eventDateLabel: string;
   issuedAtIso: string;
+  usedAtIso: string;
+}
+
+export type AssetTicketValidationReason =
+  | 'valid'
+  | 'invalid_code'
+  | 'not_found'
+  | 'not_authorized'
+  | 'revoked'
+  | 'expired'
+  | 'already_used'
+  | 'event_unavailable';
+
+export interface AssetTicketValidationRequestDTO {
+  code: string;
+  userId: string;
+}
+
+export interface AssetTicketValidationDTO {
+  valid: boolean;
+  reason: AssetTicketValidationReason;
+  ticket: TicketScanPayloadDTO | null;
 }

@@ -62,6 +62,34 @@ describe('DeploymentBrandComponent', () => {
     expect(rendered.textContent?.trim()).toBe('ABC');
     expect(rendered.getAttribute('aria-label')).toBe('A😀BC');
   });
+
+  it('renders the full name without a wordmark logo at index minus one', () => {
+    branding.set(brand(-1));
+    const fixture = TestBed.createComponent(DeploymentBrandComponent);
+    fixture.detectChanges();
+    const rendered = fixture.nativeElement.querySelector(
+      '.deployment-brand'
+    ) as HTMLElement;
+
+    expect(rendered.textContent?.trim()).toBe('MyScoutee');
+    expect(rendered.querySelector('img')).toBeNull();
+    expect(rendered.classList.contains('deployment-brand--inline-logo')).toBe(false);
+  });
+
+  it('renders the full name when no logo is configured', () => {
+    branding.set({
+      ...brand(0),
+      logoUrl: ''
+    });
+    const fixture = TestBed.createComponent(DeploymentBrandComponent);
+    fixture.detectChanges();
+    const rendered = fixture.nativeElement.querySelector(
+      '.deployment-brand'
+    ) as HTMLElement;
+
+    expect(rendered.textContent?.trim()).toBe('MyScoutee');
+    expect(rendered.querySelector('img')).toBeNull();
+  });
 });
 
 function brand(logoCharacterIndex: number | null): DeploymentBrandingDto {
