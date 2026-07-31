@@ -1314,6 +1314,26 @@ app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
     gap: 0.38rem;
   }
 
+  .entry-auth-btn-compact-mobile {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .entry-auth-btn-compact-mobile span {
+    display: none;
+  }
+
+  .entry-auth-btn-compact-mobile .mat-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 1.5rem;
+    line-height: 1.5rem;
+  }
+
   .entry-preview-badge {
     max-width: min(48vw, 122px);
     min-height: 28px;

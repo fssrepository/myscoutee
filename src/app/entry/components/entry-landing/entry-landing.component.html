@@ -24,7 +24,9 @@
           [class.entry-auth-btn-network]="networkUnavailable"
           [class.entry-auth-btn-unavailable]="authUnavailable"
           [class.entry-auth-btn-location]="authLocationRequired"
+          [class.entry-auth-btn-compact-mobile]="entryAuthButtonCanCompactOnMobile"
           [disabled]="networkUnavailable || authUnavailable"
+          [attr.aria-label]="entryAuthButtonLabel"
           matRipple
           [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
           (click)="requestHeaderAuth()"

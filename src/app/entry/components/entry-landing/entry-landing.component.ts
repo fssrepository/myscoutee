@@ -379,6 +379,13 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       && !!this.firebaseAuthProfile;
   }
 
+  protected get entryAuthButtonCanCompactOnMobile(): boolean {
+    return !this.networkUnavailable
+      && !this.authUnavailable
+      && !this.authLocationRequired
+      && !this.entryAuthButtonShowsAvatar;
+  }
+
   protected get entryAuthButtonIcon(): string {
     if (this.networkUnavailable) {
       return 'wifi_off';
@@ -388,9 +395,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (this.authLocationRequired) {
       return 'location_on';
-    }
-    if (this.authMode === 'selector') {
-      return 'group';
     }
     return 'login';
   }
