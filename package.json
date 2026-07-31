@@ -64,7 +64,7 @@
     "@angular/build": "^21.2.12",
     "@angular/cli": "^21.2.12",
     "@angular/compiler-cli": "^21.2.12",
-    "@angular/material": "^21.2.12",
+    "@angular/material": "^22.0.6",
     "@types/qrcode": "1.5.6",
     "jsdom": "^27.1.0",
     "playwright": "^1.60.0",
