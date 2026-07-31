@@ -271,10 +271,39 @@
   margin-top: 0.2rem;
 }
 
+app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
 .entry-hero-cta-menu {
   margin-top: 1rem;
   --app-menu-action-height: 44px;
   --app-menu-action-padding: 0.3rem 0.85rem;
+}
+
+@media (min-width: 761px) {
+  app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
+    width: calc(100% + 0.5rem);
+    max-width: none;
+  }
+
+  .entry-hero-cta-menu {
+    --app-menu-action-padding: 0.3rem 0.75rem;
+  }
+}
+
+:host ::ng-deep .entry-hero-cta-menu .app-menu {
+  display: block;
+  width: 100%;
+}
+
+:host ::ng-deep .entry-hero-cta-menu .app-menu__button-row {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -294,10 +323,6 @@
 }
 
 @media (max-width: 760px) {
-  :host ::ng-deep .entry-hero-cta-menu .app-menu__button-row {
-    flex-wrap: wrap;
-  }
-
   :host
     ::ng-deep
     app-menu.entry-hero-cta-menu.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action
