@@ -28,8 +28,6 @@ Please include:
 * The possible security impact
 * Any suggested fix, if available
 
-You can expect an initial response within 7 days.
-
 If the vulnerability is confirmed, it will be investigated and addressed as soon as reasonably possible. Details should remain private until a fix has been released.
 
 If the report is declined, an explanation will be provided when possible.
