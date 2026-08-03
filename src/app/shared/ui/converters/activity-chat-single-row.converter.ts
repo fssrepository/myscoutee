@@ -1,4 +1,10 @@
-import type { ChatChannelType, ChatDTO, SupportCaseStatus } from '../../core/contracts/chat.interface';
+import type {
+  ChatChannelType,
+  ChatDTO,
+  ChatMemberSummaryDto,
+  SupportCaseStatus
+} from '../../core/contracts/chat.interface';
+import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import { AppUtils } from '../../app-utils';
 import type { SingleRowData } from '../components/core/smart-list/card';
@@ -14,6 +20,11 @@ export interface ActivityChatSingleRowConverterOptions {
 interface ResolvedActivityChatSingleRowConverterOptions extends ActivityChatSingleRowConverterOptions {
   fallbackUser: UserDto;
 }
+
+type ActivityChatPerson = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender'> & {
+  avatarUrl?: string | null;
+  images?: readonly string[];
+};
 
 export class ActivityChatSingleRowConverter {
   static convert(
@@ -35,7 +46,8 @@ export class ActivityChatSingleRowConverter {
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
   ): SingleRowData {
-    const lastSender = this.resolveLastSender(dto, options);
+    const systemSender = this.isSystemRandomRoomSender(dto);
+    const lastSender = systemSender ? null : this.resolveLastSender(dto, options);
     const unread = Math.max(0, Math.trunc(Number(dto.unread) || 0));
     const memberCount = this.resolveMemberCount(dto, options);
     const distanceMetersExact = Number.isFinite(Number(dto.distanceMetersExact))
@@ -44,12 +56,13 @@ export class ActivityChatSingleRowConverter {
     const supportStatus = this.supportStatus(dto.supportCase?.status);
     const supportAssigneeName = dto.supportCase?.assignee?.name ?? null;
     const showSupportControls = options.adminServiceMode === true && Boolean(supportStatus);
-    const avatar = `${dto.avatar ?? ''}`.trim();
     const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
     const ownerId = `${dto.ownerId ?? ''}`.trim();
     const groupChannelLabel = channelType === 'groupSubEvent' ? this.groupChannelLabel(dto) : '';
     const groupParentLabel = channelType === 'groupSubEvent' ? this.groupParentLabel(dto) : '';
-    const lastMessage = dto.lastMessage?.trim() || '';
+    const lastMessage = systemSender
+      ? RANDOM_ROOM_WELCOME_MESSAGE
+      : dto.lastMessage?.trim() || '';
 
     return {
       id: dto.id,
@@ -60,13 +73,20 @@ export class ActivityChatSingleRowConverter {
       distanceMetersExact,
       badgeCount: showSupportControls ? 0 : unread,
       sortScore: unread * 10 + memberCount,
-      title: lastSender?.name ?? dto.title,
+      title: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
       subtitle: groupChannelLabel || dto.title,
       detail: groupParentLabel || lastMessage,
       metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
       unread: showSupportControls ? 0 : unread,
-      avatarInitials: avatar ? avatar.slice(0, 2).toUpperCase() : options.activeUser.initials,
-      avatarToneClass: lastSender ? `user-color-${lastSender.gender}` : null,
+      avatarUrl: systemSender ? null : this.personAvatarUrl(lastSender),
+      avatarInitials: systemSender
+        ? null
+        : lastSender?.initials || AppUtils.initialsFromText(lastSender?.name ?? dto.title),
+      avatarToneClass: systemSender
+        ? 'notification-system-avatar'
+        : lastSender ? `user-color-${lastSender.gender}` : null,
+      avatarAriaLabel: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
+      icon: systemSender ? 'auto_awesome' : null,
       memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),
       surfaceTone: showSupportControls
@@ -290,13 +310,20 @@ export class ActivityChatSingleRowConverter {
   private static resolveLastSender(
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
-  ): UserDto | null {
-    const lastSender = this.resolveUserById(dto.lastSenderId, options);
+  ): ActivityChatPerson | null {
+    const lastSender = this.resolveUserById(dto.lastSenderId, dto, options);
     if (lastSender) {
       return lastSender;
     }
     const members = this.resolveMembers(dto, options);
     return members[0] ?? null;
+  }
+
+  private static isSystemRandomRoomSender(dto: ChatDTO): boolean {
+    const eventId = `${dto.eventId ?? dto.ownerId ?? ''}`.trim();
+    return this.normalizeChannelType(dto) === 'mainEvent'
+      && eventId.startsWith('random-room:')
+      && !`${dto.lastSenderId ?? ''}`.trim();
   }
 
   private static resolveMemberCount(
@@ -317,10 +344,14 @@ export class ActivityChatSingleRowConverter {
   private static resolveMembers(
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
-  ): UserDto[] {
-    const members = (dto.memberIds ?? [])
-      .map(memberId => this.resolveUserById(memberId, options))
-      .filter((user): user is UserDto => Boolean(user));
+  ): ActivityChatPerson[] {
+    const memberIds = new Set([
+      ...(dto.memberIds ?? []),
+      ...(dto.members ?? []).map(member => member.id)
+    ].map(memberId => `${memberId ?? ''}`.trim()).filter(Boolean));
+    const members = [...memberIds]
+      .map(memberId => this.resolveUserById(memberId, dto, options))
+      .filter((user): user is ActivityChatPerson => Boolean(user));
     if (members.length > 0) {
       return this.uniqueUsersById(members);
     }
@@ -338,8 +369,9 @@ export class ActivityChatSingleRowConverter {
 
   private static resolveUserById(
     userId: string | undefined,
+    dto: Pick<ChatDTO, 'members'>,
     options: ActivityChatSingleRowConverterOptions
-  ): UserDto | null {
+  ): ActivityChatPerson | null {
     const normalizedUserId = `${userId ?? ''}`.trim();
     if (!normalizedUserId) {
       return null;
@@ -347,12 +379,37 @@ export class ActivityChatSingleRowConverter {
     if (normalizedUserId === options.activeUser.id) {
       return options.activeUser;
     }
-    return options.resolveUserById?.(normalizedUserId) ?? null;
+    const resolvedUser = options.resolveUserById?.(normalizedUserId) ?? null;
+    if (resolvedUser) {
+      return resolvedUser;
+    }
+    const member = (dto.members ?? []).find(candidate => `${candidate.id ?? ''}`.trim() === normalizedUserId);
+    return member ? this.memberSummaryPerson(member) : null;
   }
 
-  private static uniqueUsersById(users: readonly UserDto[]): UserDto[] {
+  private static memberSummaryPerson(member: ChatMemberSummaryDto): ActivityChatPerson {
+    const name = `${member.name ?? ''}`.trim() || member.id;
+    return {
+      id: member.id,
+      name,
+      initials: `${member.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
+      gender: member.gender === 'woman' ? 'woman' : 'man',
+      avatarUrl: `${member.imageUrl ?? ''}`.trim() || null
+    };
+  }
+
+  private static personAvatarUrl(person: ActivityChatPerson | null): string | null {
+    if (!person) {
+      return null;
+    }
+    return `${person.avatarUrl ?? ''}`.trim()
+      || AppUtils.firstImageUrl(person.images)
+      || null;
+  }
+
+  private static uniqueUsersById(users: readonly ActivityChatPerson[]): ActivityChatPerson[] {
     const seen = new Set<string>();
-    const unique: UserDto[] = [];
+    const unique: ActivityChatPerson[] = [];
     for (const user of users) {
       if (seen.has(user.id)) {
         continue;

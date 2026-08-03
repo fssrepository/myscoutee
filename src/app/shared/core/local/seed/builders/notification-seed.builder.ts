@@ -1,6 +1,8 @@
 import type { NotificationCategory } from '../../../contracts/notification.interface';
 import type { NotificationRecord } from '../../source/entity/notification.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
+import type { ActivityInvitationSeedItem } from '../entity';
+import { SeedEventsBuilder } from './events-seed.builder';
 
 interface SeedNotificationDefinition {
   kind: string;
@@ -13,6 +15,7 @@ interface SeedNotificationDefinition {
 }
 
 const SEED_REFERENCE_TIME_MS = Date.parse('2026-07-27T18:30:00.000Z');
+const INVITATION_REFERENCE_TIME_MS = Date.parse('2026-07-30T12:35:00.000Z');
 const UNREAD_SEED_COUNT = 24;
 const SEED_NOTIFICATION_DEFINITIONS: readonly SeedNotificationDefinition[] = [
   {
@@ -321,8 +324,18 @@ export class SeedNotificationsBuilder {
       && user.id !== normalizedRecipientUserId
       && user.admin !== true
     );
+    const invitations = SeedEventsBuilder
+      .buildSeedInvitationItemsByUser()[normalizedRecipientUserId] ?? [];
+    const invitationRecords = invitations.map((invitation, index) =>
+      this.buildInvitationNotification(
+        normalizedRecipientUserId,
+        invitation,
+        users,
+        index
+      )
+    );
 
-    return SEED_NOTIFICATION_DEFINITIONS.map((definition, index) => {
+    const generalRecords = SEED_NOTIFICATION_DEFINITIONS.map((definition, index) => {
       const sender = definition.sender && senders.length > 0
         ? senders[index % senders.length]
         : null;
@@ -354,5 +367,67 @@ export class SeedNotificationsBuilder {
         }
       };
     });
+    return [...invitationRecords, ...generalRecords];
+  }
+
+  private static buildInvitationNotification(
+    recipientUserId: string,
+    invitation: ActivityInvitationSeedItem,
+    users: readonly UserRecord[],
+    index: number
+  ): NotificationRecord {
+    const inviterName = invitation.inviter.trim() || 'An event organizer';
+    const sender = this.resolveInvitationSender(invitation, users, recipientUserId);
+    const eventTitle = invitation.description.trim() || 'Event invitation';
+    const createdAtMs = INVITATION_REFERENCE_TIME_MS - index * 15 * 60_000;
+    return {
+      id: `${recipientUserId}:notification-event-invite:${invitation.id}`,
+      recipientUserId,
+      kind: 'event-invite',
+      category: 'event',
+      title: eventTitle,
+      message: `${inviterName} invited you to ${eventTitle}.`,
+      createdAtIso: new Date(createdAtMs).toISOString(),
+      readAtIso: invitation.unread > 0
+        ? null
+        : new Date(createdAtMs + 12 * 60_000).toISOString(),
+      senderUserId: sender?.id ?? (invitation.creatorUserId?.trim() || null),
+      senderName: sender?.name?.trim() || inviterName,
+      senderAvatarUrl: sender?.images?.[0]?.trim() || null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: invitation.id,
+      payload: {
+        demo: 'true',
+        seedVersion: '3',
+        eventId: invitation.id,
+        eventTitle,
+        eventScope: 'invitations',
+        ...(sender?.id ? { senderUserId: sender.id } : {})
+      }
+    };
+  }
+
+  private static resolveInvitationSender(
+    invitation: ActivityInvitationSeedItem,
+    users: readonly UserRecord[],
+    recipientUserId: string
+  ): UserRecord | null {
+    const explicitCreatorUserId = invitation.creatorUserId?.trim() || '';
+    if (explicitCreatorUserId) {
+      return users.find(user => user.id === explicitCreatorUserId) ?? null;
+    }
+    const normalizedInviter = invitation.inviter.trim().toLocaleLowerCase();
+    if (!normalizedInviter) {
+      return null;
+    }
+    return users.find(user => {
+      if (!user.id.trim() || user.id === recipientUserId || user.admin === true) {
+        return false;
+      }
+      const normalizedName = user.name.trim().toLocaleLowerCase();
+      const firstName = normalizedName.split(/\s+/)[0] ?? '';
+      return normalizedName === normalizedInviter || firstName === normalizedInviter;
+    }) ?? null;
   }
 }

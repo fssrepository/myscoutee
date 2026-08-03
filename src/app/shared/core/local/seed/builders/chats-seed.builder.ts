@@ -287,7 +287,10 @@ export class SeedChatsBuilder {
     const items: ChatRecord[] = [];
     for (const record of records) {
       items.push(this.buildServiceContextChat(normalizedOwnerUserId, record));
-      items.push(this.buildMainContextChat(normalizedOwnerUserId, record));
+      const mainChat = this.buildMainContextChat(normalizedOwnerUserId, record);
+      if (mainChat) {
+        items.push(mainChat);
+      }
       const subEvents = this.sortSubEventsByStartAsc(this.contextSubEvents(record));
       for (const [index, subEvent] of subEvents.entries()) {
         const stageLabel = `Stage ${index + 1}`;
@@ -361,9 +364,12 @@ export class SeedChatsBuilder {
     return `${ownerUserId.trim()}:${chatId.trim()}:${messageId.trim()}`;
   }
 
-  private static buildMainContextChat(ownerUserId: string, record: ActivityEventRecord): ChatRecord {
+  private static buildMainContextChat(ownerUserId: string, record: ActivityEventRecord): ChatRecord | null {
     const eventTitle = record.title.trim() || 'Event';
-    const memberIds = this.seedEventMemberIds(ownerUserId, record, Math.max(4, record.acceptedMembers || 0));
+    const memberIds = this.acceptedParentMemberIdsForOwner(ownerUserId, record);
+    if (memberIds.length === 0) {
+      return null;
+    }
     return this.createContextChatItem({
       id: `c-context-main-${record.id}`,
       title: `${eventTitle} · Main Event`,
@@ -713,8 +719,8 @@ export class SeedChatsBuilder {
       mk(`${item.id}-1`, memberA, `Let us align the plan for ${chatTopic}.`, at(180), [memberB, memberC]),
       mk(`${item.id}-2`, memberB, 'I can bring two more people.', at(140), [memberA, memberC]),
       mk(`${item.id}-3`, memberC, 'Route and timing look good on my side.', at(95), [memberA, memberB]),
-      mk(`${item.id}-4`, sender, lastLine, at(48), [memberA, memberB, memberC]),
-      mk(`${item.id}-5`, me, 'Perfect, locking this in.', at(12), [memberA, memberB])
+      mk(`${item.id}-4`, me, 'Perfect, locking this in.', at(48), [memberA, memberB, memberC]),
+      mk(`${item.id}-5`, sender, lastLine, at(12), [memberA, memberB])
     ];
 
     return this.applySeedUnreadState(

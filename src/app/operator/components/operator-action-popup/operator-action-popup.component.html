@@ -204,6 +204,185 @@
                     </p>
                   }
 
+                  @if (workspace.tlsConfiguration(); as tlsConfiguration) {
+                    @if (workspace.tlsConfigurationDraft(); as tlsDraft) {
+                      <section
+                        class="operator-action-popup__configuration-group"
+                        data-palette="mint"
+                      >
+                        <header class="operator-action-popup__tls-header">
+                          <span class="operator-action-popup__tls-title">
+                            <small>{{ 'operator.configuration.tls.eyebrow' | i18n }}</small>
+                            <strong>{{ 'operator.configuration.tls' | i18n }}</strong>
+                          </span>
+                          <div class="operator-action-popup__tls-toggle-wrap">
+                            <button
+                              type="button"
+                              class="operator-action-popup__on-off-toggle"
+                              [class.is-on]="tlsDraft.enabled"
+                              [disabled]="configurationTlsDisabled()"
+                              (click)="toggleTlsEnabled($event)"
+                              [attr.aria-label]="'operator.configuration.tls.enabled' | i18n"
+                            >
+                              <mat-icon>{{ tlsDraft.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+                              <span>{{ (tlsDraft.enabled ? 'on' : 'off') | i18n }}</span>
+                            </button>
+                          </div>
+                          @if (tlsDraft.enabled) {
+                            <app-menu
+                              class="operator-action-popup__header-actions operator-action-popup__tls-test-actions"
+                              kind="inline"
+                              layout="row"
+                              [items]="configurationTlsTestActionItems()"
+                              (itemSelect)="onAction($event)"
+                            ></app-menu>
+                          }
+                        </header>
+
+                        @if (tlsConfiguration.capability !== 'AVAILABLE') {
+                          <p class="operator-action-popup__result is-error" role="alert">
+                            <mat-icon>cloud_off</mat-icon>
+                            <span>
+                              {{ (tlsConfiguration.unavailableReason
+                                || 'operator.configuration.tls.backend.unavailable') | i18n }}
+                            </span>
+                          </p>
+                        }
+
+                        @if (tlsDraft.enabled) {
+                          <div class="operator-action-popup__tls-grid">
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.tls.domain' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="253"
+                                autocomplete="url"
+                                autocapitalize="off"
+                                spellcheck="false"
+                                placeholder="app.example.com"
+                                [ngModel]="tlsDraft.domain"
+                                (ngModelChange)="workspace.setTlsConfiguration({ domain: $event })"
+                                [disabled]="configurationTlsDisabled()"
+                              />
+                            </label>
+
+                            <div class="operator-action-popup__select-field">
+                              <span>{{ 'operator.configuration.tls.mode' | i18n }}</span>
+                              <div class="operator-action-popup__tls-source-controls">
+                                <app-menu
+                                  kind="select"
+                                  [trigger]="configurationTlsModeTrigger()"
+                                  [items]="configurationTlsModeItems()"
+                                  (itemSelect)="onAction($event)"
+                                ></app-menu>
+                                @if (tlsDraft.mode === 'AUTOMATIC') {
+                                  <app-menu
+                                    class="operator-action-popup__tls-renewal-toggle"
+                                    kind="inline"
+                                    layout="row"
+                                    [items]="configurationTlsAutoRenewItems()"
+                                    (itemSelect)="onAction($event)"
+                                  ></app-menu>
+                                }
+                              </div>
+                            </div>
+
+                            @if (tlsDraft.mode === 'AUTOMATIC') {
+                              <label class="operator-action-popup__field is-wide">
+                                <span>{{ 'operator.configuration.tls.contact.email' | i18n }}</span>
+                                <input
+                                  type="email"
+                                  maxlength="254"
+                                  autocomplete="email"
+                                  [ngModel]="tlsDraft.contactEmail"
+                                  (ngModelChange)="workspace.setTlsConfiguration({ contactEmail: $event })"
+                                  [disabled]="configurationTlsDisabled()"
+                                />
+                              </label>
+                            } @else {
+                              <label class="operator-action-popup__field is-wide">
+                                <span>{{ 'operator.configuration.tls.certificate' | i18n }}</span>
+                                <textarea
+                                  rows="5"
+                                  maxlength="131072"
+                                  autocomplete="off"
+                                  spellcheck="false"
+                                  [placeholder]="tlsConfiguration.certificateConfigured
+                                    && tlsConfiguration.mode === 'MANUAL'
+                                    && tlsConfiguration.domain === tlsDraft.domain.trim().toLowerCase()
+                                    ? ('operator.configuration.tls.credential.configured' | i18n)
+                                    : ('operator.configuration.tls.certificate.placeholder' | i18n)"
+                                  [ngModel]="tlsDraft.certificate"
+                                  (ngModelChange)="workspace.setTlsConfiguration({ certificate: $event })"
+                                  [disabled]="configurationTlsDisabled()"
+                                ></textarea>
+                              </label>
+                              <label class="operator-action-popup__field is-wide">
+                                <span>{{ 'operator.configuration.tls.private.key' | i18n }}</span>
+                                <textarea
+                                  rows="5"
+                                  maxlength="131072"
+                                  autocomplete="new-password"
+                                  spellcheck="false"
+                                  [placeholder]="tlsConfiguration.certificateConfigured
+                                    && tlsConfiguration.mode === 'MANUAL'
+                                    && tlsConfiguration.domain === tlsDraft.domain.trim().toLowerCase()
+                                    ? ('operator.configuration.tls.credential.configured' | i18n)
+                                    : ('operator.configuration.tls.private.key.placeholder' | i18n)"
+                                  [ngModel]="tlsDraft.privateKey"
+                                  (ngModelChange)="workspace.setTlsConfiguration({ privateKey: $event })"
+                                  [disabled]="configurationTlsDisabled()"
+                                ></textarea>
+                              </label>
+                            }
+                          </div>
+
+                          @if (tlsConfiguration.certificateConfigured) {
+                            <p class="operator-action-popup__hint">
+                              {{ 'operator.configuration.tls.certificate.configured' | i18n }}
+                              @if (tlsConfiguration.updatedAt) {
+                                · {{ formatDate(tlsConfiguration.updatedAt) }}
+                              }
+                            </p>
+                          }
+
+                        }
+
+                        @if (showTlsSaveAction()) {
+                          <app-menu
+                            class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                            kind="inline"
+                            layout="row"
+                            panelMode="anchored"
+                            [items]="configurationTlsSaveActionItems()"
+                            (itemSelect)="onAction($event)"
+                          ></app-menu>
+                        }
+
+                        @if (
+                          workspace.feedbackAction() === 'save-tls'
+                          || workspace.feedbackAction() === 'test-tls-domain'
+                          || workspace.feedbackAction() === 'test-tls-certificate'
+                        ) {
+                          @if (workspace.error()) {
+                            <p class="operator-action-popup__result is-error" role="alert">
+                              <mat-icon>error_outline</mat-icon>
+                              <span>{{ workspace.error() | i18n }}</span>
+                            </p>
+                          } @else if (
+                            workspace.notice()
+                            && workspace.feedbackAction() !== 'save-tls'
+                          ) {
+                            <p class="operator-action-popup__result is-success" role="status">
+                              <mat-icon>check_circle</mat-icon>
+                              <span>{{ workspace.notice() | i18n }}</span>
+                            </p>
+                          }
+                        }
+                      </section>
+                    }
+                  }
+
                   <section
                     class="operator-action-popup__configuration-group"
                     data-palette="violet"
@@ -258,7 +437,7 @@
                           </span>
                           <input
                             type="number"
-                            min="0"
+                            min="-1"
                             step="1"
                             [ngModel]="draft.branding.logoCharacterIndex"
                             (ngModelChange)="onBrandingLogoCharacterIndexChange($event)"
@@ -278,9 +457,10 @@
                       </div>
 
                       <app-menu
-                        class="operator-action-popup__section-actions operator-action-popup__branding-actions"
+                        class="operator-action-popup__section-actions operator-action-popup__branding-actions operator-action-popup__single-action-menu"
                         kind="inline"
                         layout="row"
+                        panelMode="anchored"
                         [items]="configurationBrandingActionItems()"
                         (itemSelect)="onAction($event)"
                       ></app-menu>
@@ -328,9 +508,10 @@
                     ></app-form-flow>
 
                     <app-menu
-                      class="operator-action-popup__section-actions"
+                      class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
                       kind="inline"
                       layout="row"
+                      panelMode="anchored"
                       [items]="configurationPrivacyContactActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
@@ -369,9 +550,10 @@
                     ></app-form-flow>
 
                     <app-menu
-                      class="operator-action-popup__section-actions"
+                      class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
                       kind="inline"
                       layout="row"
+                      panelMode="anchored"
                       [items]="configurationAdminEmailActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
@@ -488,8 +670,10 @@
                           ></app-link-input>
 
                           <app-menu
+                            class="operator-action-popup__single-action-menu"
                             kind="inline"
                             layout="row"
+                            panelMode="anchored"
                             [items]="configurationSocialLinkRemoveItems(linkIndex)"
                             (itemSelect)="onAction($event)"
                           ></app-menu>
@@ -604,9 +788,10 @@
                     </label>
 
                     <app-menu
-                      class="operator-action-popup__section-actions"
+                      class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
                       kind="inline"
                       layout="row"
+                      panelMode="anchored"
                       [items]="configurationPaymentActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
@@ -665,17 +850,89 @@
                       </span>
                     }
 
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.firebase.project.id' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="160"
-                        autocomplete="off"
-                        [ngModel]="draft.firebase.projectId"
-                        (ngModelChange)="workspace.setConfigurationFirebase({ projectId: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
+                    <div class="operator-action-popup__firebase-public-grid">
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.firebase.project.id' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="160"
+                          autocomplete="off"
+                          [ngModel]="draft.firebase.projectId"
+                          (ngModelChange)="workspace.setConfigurationFirebase({ projectId: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.firebase.auth.domain' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="253"
+                          autocomplete="off"
+                          autocapitalize="off"
+                          spellcheck="false"
+                          placeholder="project-id.firebaseapp.com"
+                          [ngModel]="draft.firebase.authDomain"
+                          (ngModelChange)="workspace.setConfigurationFirebase({ authDomain: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.firebase.storage.bucket' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="512"
+                          autocomplete="off"
+                          autocapitalize="off"
+                          spellcheck="false"
+                          [ngModel]="draft.firebase.storageBucket"
+                          (ngModelChange)="workspace.setConfigurationFirebase({ storageBucket: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.firebase.messaging.sender.id' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="64"
+                          autocomplete="off"
+                          inputmode="numeric"
+                          [ngModel]="draft.firebase.messagingSenderId"
+                          (ngModelChange)="workspace.setConfigurationFirebase({ messagingSenderId: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.firebase.app.id' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="256"
+                          autocomplete="off"
+                          autocapitalize="off"
+                          spellcheck="false"
+                          [ngModel]="draft.firebase.appId"
+                          (ngModelChange)="workspace.setConfigurationFirebase({ appId: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.firebase.measurement.id' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="64"
+                          autocomplete="off"
+                          autocapitalize="off"
+                          spellcheck="false"
+                          [ngModel]="draft.firebase.measurementId"
+                          (ngModelChange)="workspace.setConfigurationFirebase({ measurementId: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+                    </div>
 
                     <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.firebase.api.key' | i18n }}</span>
@@ -687,76 +944,6 @@
                         spellcheck="false"
                         [ngModel]="draft.firebase.apiKey"
                         (ngModelChange)="workspace.setConfigurationFirebase({ apiKey: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.firebase.auth.domain' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="253"
-                        autocomplete="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                        placeholder="project-id.firebaseapp.com"
-                        [ngModel]="draft.firebase.authDomain"
-                        (ngModelChange)="workspace.setConfigurationFirebase({ authDomain: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.firebase.storage.bucket' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="512"
-                        autocomplete="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                        [ngModel]="draft.firebase.storageBucket"
-                        (ngModelChange)="workspace.setConfigurationFirebase({ storageBucket: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.firebase.messaging.sender.id' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="64"
-                        autocomplete="off"
-                        inputmode="numeric"
-                        [ngModel]="draft.firebase.messagingSenderId"
-                        (ngModelChange)="workspace.setConfigurationFirebase({ messagingSenderId: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.firebase.app.id' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="256"
-                        autocomplete="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                        [ngModel]="draft.firebase.appId"
-                        (ngModelChange)="workspace.setConfigurationFirebase({ appId: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.firebase.measurement.id' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="64"
-                        autocomplete="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                        [ngModel]="draft.firebase.measurementId"
-                        (ngModelChange)="workspace.setConfigurationFirebase({ measurementId: $event })"
                         [disabled]="configurationDisabled()"
                       />
                     </label>
@@ -1405,8 +1592,28 @@
                                 <dd><code>{{ release.artifact.sha256Digest }}</code></dd>
                               </div>
                               <div>
+                                <dt>{{ 'operator.community.announcement.artifact.signing.key' | i18n }}</dt>
+                                <dd><code>{{ release.artifact.packageSigningKeyId }}</code></dd>
+                              </div>
+                              <div>
                                 <dt>{{ 'operator.community.announcement.artifact.signature' | i18n }}</dt>
                                 <dd><code>{{ release.artifact.signature }}</code></dd>
+                              </div>
+                              <div>
+                                <dt>{{ 'operator.community.announcement.artifact.signature.status' | i18n }}</dt>
+                                <dd
+                                  class="operator-action-popup__signature-state"
+                                  [attr.data-verified]="release.artifact.signatureVerified"
+                                >
+                                  <mat-icon>
+                                    {{ release.artifact.signatureVerified ? 'verified_user' : 'gpp_maybe' }}
+                                  </mat-icon>
+                                  <span>
+                                    {{ (release.artifact.signatureVerified
+                                      ? 'operator.community.announcement.artifact.signature.verified'
+                                      : 'operator.community.announcement.artifact.signature.unverified') | i18n }}
+                                  </span>
+                                </dd>
                               </div>
                             </dl>
                             <div class="operator-action-popup__download">

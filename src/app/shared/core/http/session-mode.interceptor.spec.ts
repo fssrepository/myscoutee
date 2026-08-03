@@ -9,6 +9,7 @@ import { SessionService } from '../base/services/session.service';
 import {
   DEMO_SESSION_HEADER,
   DEMO_SESSION_VALUE,
+  DEMO_USER_HEADER,
   sessionModeInterceptor
 } from './session-mode.interceptor';
 
@@ -46,17 +47,27 @@ describe('sessionModeInterceptor bootstrap isolation', () => {
 
     expect(response.body).toBe(DEMO_SESSION_VALUE);
   });
+
+  it('sends the selected demo member on API posts', async () => {
+    const response = await interceptHeader(
+      new HttpRequest('POST', '/api/game-cards/query', {}),
+      DEMO_USER_HEADER
+    );
+
+    expect(response.body).toBe('operator-demo');
+  });
 });
 
 function interceptHeader(
-  request: HttpRequest<unknown>
+  request: HttpRequest<unknown>,
+  headerName = DEMO_SESSION_HEADER
 ): Promise<HttpResponse<string | null>> {
   return firstValueFrom(TestBed.runInInjectionContext(() =>
     sessionModeInterceptor(
       request,
       nextRequest => of(new HttpResponse({
         status: 200,
-        body: nextRequest.headers.get(DEMO_SESSION_HEADER)
+        body: nextRequest.headers.get(headerName)
       }))
     )
   )) as Promise<HttpResponse<string | null>>;

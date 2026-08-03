@@ -27,7 +27,9 @@
   >
     <span class="app-route-warmup__mark">
       <span class="app-route-warmup__ring" aria-hidden="true"></span>
-      <img [src]="deploymentBranding().logoUrl" alt="" />
+      @if (deploymentBranding().logoUrl; as logoUrl) {
+        <img [src]="logoUrl" alt="" />
+      }
     </span>
     <span class="app-route-warmup__label">{{ deploymentBranding().productName }}</span>
   </section>

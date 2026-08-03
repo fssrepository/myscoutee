@@ -701,8 +701,8 @@ describe('LocalOperatorRegistryService', () => {
       }],
       branding: {
         productName: 'Community Hub',
-        logoUrl: 'data:image/png;base64,c2FtcGxl',
-        logoCharacterIndex: null,
+        logoUrl: '',
+        logoCharacterIndex: -1,
         themePreset: 'OCEAN'
       },
       payment: {
@@ -748,6 +748,8 @@ describe('LocalOperatorRegistryService', () => {
       branding: expect.objectContaining({
         productName: 'Community Hub',
         homeLabel: initial.branding.homeLabel,
+        logoUrl: '',
+        logoCharacterIndex: -1,
         themePreset: 'OCEAN',
         revision: 1
       }),

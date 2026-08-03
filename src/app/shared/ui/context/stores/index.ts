@@ -75,10 +75,6 @@ export {
 } from './demo-bootstrap-selector.store';
 export { HelpCenterStore } from './help-center.store';
 export {
-  GlobalIdentityStore,
-  type GlobalIdentityBusyAction
-} from './global-identity.store';
-export {
   ProfileStore,
   type ProfileBindings,
   type ProfileViewRequest,

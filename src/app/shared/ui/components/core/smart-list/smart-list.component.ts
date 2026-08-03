@@ -781,6 +781,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.items.length;
   }
 
+  public async preloadNextListPage(options: { force?: boolean } = {}): Promise<boolean> {
+    if (
+      this.currentViewMode !== 'list'
+      || this.loading
+      || (!this.hasMore && options.force !== true)
+    ) {
+      return false;
+    }
+    const previousItemCount = this.items.length;
+    await this.loadNextPage();
+    return this.items.length > previousItemCount;
+  }
+
   public findVisibleItem(predicate: (item: T, index: number) => boolean): T | null {
     return this.items.find(predicate) ?? null;
   }

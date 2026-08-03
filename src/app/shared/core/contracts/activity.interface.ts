@@ -253,6 +253,7 @@ export interface ActivityEventRecord {
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
+  ticketCheckInsByHolderUserId?: Record<string, string>;
   approvalRequired?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   policiesEnabled?: boolean;
@@ -448,6 +449,7 @@ export interface ActivityEventDTO {
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
+  creatorAvatarUrl?: string | null;
   creatorCity: string;
   visibility: AppConstants.EventVisibility;
   startAtIso: string;
@@ -1327,6 +1329,8 @@ export interface UserGameCardsQueryRequest {
   filterPreferences?: UserGameFilterPreferencesDto | null;
   cursor?: string | null;
   pageSize?: number;
+  excludedCardUserIds?: string[];
+  excludedSocialCardIds?: string[];
 }
 
 export interface UserGameCardsDto {

@@ -149,10 +149,23 @@ export class ActivityEventInfoCardConverter {
   }
 
   private static mediaStart(dto: ActivityEventDTO): InfoCardData['mediaStart'] {
+    if (dto.eventType === 'random-room') {
+      return {
+        variant: 'badge',
+        shape: 'circle',
+        tone: 'selected',
+        icon: 'auto_awesome',
+        label: '',
+        ariaLabel: 'System generated room',
+        interactive: false
+      };
+    }
     return {
       variant: 'avatar',
+      imageUrl: dto.creatorAvatarUrl?.trim() || null,
       label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
-      interactive: false
+      ariaLabel: `View ${dto.creatorName || 'organizer'} profile`,
+      interactive: Boolean(dto.creatorUserId?.trim())
     };
   }
 
@@ -243,6 +256,9 @@ export class ActivityEventInfoCardConverter {
       case 'DR':
         return 'draft';
       default:
+        if (dto.eventType === 'random-room') {
+          return 'system';
+        }
         if (this.isInvited(dto, activeUserId)) {
           return 'pending';
         }
@@ -302,6 +318,9 @@ export class ActivityEventInfoCardConverter {
     }
     if (this.isInvited(dto, activeUserId)) {
       return 'mail';
+    }
+    if (dto.eventType === 'random-room') {
+      return 'auto_awesome';
     }
     return this.visibilityIcon(dto.visibility);
   }

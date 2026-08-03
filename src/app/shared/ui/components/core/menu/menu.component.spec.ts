@@ -198,6 +198,57 @@ describe('AppMenuComponent delayed drag', () => {
     expect(fallback?.hidden).toBe(false);
     expect(fallback?.textContent?.trim()).toBe('B');
   });
+
+  it('renders a labelled inline toggle as a button by default', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    const component = fixture.componentInstance;
+    component.kind = 'inline';
+    component.layout = 'row';
+    component.items = [{
+      id: 'https-enabled',
+      label: 'On',
+      kind: 'toggle',
+      layout: 'pill',
+      active: true,
+      checked: true
+    }];
+
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.app-menu__button-row-label')?.textContent?.trim())
+      .toBe('On');
+    expect(
+      host.querySelector(
+        '.app-menu__button-row-toggle.app-menu__tabs-toggle--active'
+      )
+    ).toBeNull();
+  });
+
+  it('renders the switch indicator when a labelled inline toggle config enables it', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    const component = fixture.componentInstance;
+    component.kind = 'inline';
+    component.layout = 'row';
+    component.items = [{
+      id: 'https-enabled',
+      label: 'On',
+      kind: 'toggle',
+      layout: 'pill',
+      active: true,
+      checked: true,
+      showToggleIndicator: true
+    }];
+
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(
+      host.querySelector(
+        '.app-menu__button-row-toggle.app-menu__tabs-toggle--active'
+      )
+    ).not.toBeNull();
+  });
 });
 
 function createMenu(): {

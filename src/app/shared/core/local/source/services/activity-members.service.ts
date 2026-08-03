@@ -7,8 +7,9 @@ import type { ActivityMemberRecord } from '../entity/activity.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
-import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
 import type {
   ActivityMemberDTO,
@@ -26,6 +27,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
@@ -261,6 +263,18 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       nextRecords,
       ownerSnapshot?.capacityTotal ?? null
     );
+    if (
+      normalizedOwner.ownerType === 'event'
+      && action === 'remove'
+      && targetIsInvitation
+    ) {
+      this.notificationsRepository.markUnreadBySource(
+        normalizedTargetUserId,
+        'event-invite',
+        'event',
+        normalizedOwner.ownerId
+      );
+    }
     if (normalizedOwner.ownerType === 'group') {
       this.eventsRepository.syncTournamentStagePending(
         `${options?.eventId ?? ''}`.trim(),

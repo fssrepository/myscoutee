@@ -119,6 +119,15 @@
   flex: 0 0 auto;
 }
 
+.ui-single-row__avatar.notification-system-avatar {
+  color: #fff;
+  border: 1px solid rgba(116, 226, 255, 0.72);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(103, 232, 255, 0.96), transparent 42%),
+    linear-gradient(145deg, #3948c8 0%, #8a3fc0 58%, #e94791 100%);
+  box-shadow: 0 4px 12px rgba(67, 48, 163, 0.3);
+}
+
 .ui-single-row__avatar--circle {
   border-radius: 50%;
 }

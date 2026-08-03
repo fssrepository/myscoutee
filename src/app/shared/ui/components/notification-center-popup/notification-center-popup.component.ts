@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { from } from 'rxjs';
 
+import { AppUtils } from '../../../app-utils';
 import type {
   NotificationBucket,
   NotificationDto,
@@ -125,6 +126,14 @@ export class NotificationCenterPopupComponent {
     cacheable: {
       identity: item => item.id
     },
+    sortable: {
+      sortKey: item => [
+        -this.notificationDateMs(item.createdAtIso),
+        item.id
+      ]
+    },
+    groupBy: item => this.notificationDateGroupLabel(item.createdAtIso),
+    showFirstGroupMarker: true,
     containerClass: {
       'notification-center-smart-list': true
     },
@@ -187,6 +196,18 @@ export class NotificationCenterPopupComponent {
     return this.converter.convert(notification, {
       progressRing: this.store.isMarkReadPending(notification.id)
     });
+  }
+
+  private notificationDateGroupLabel(value: string): string {
+    const groupDate = new Date(value);
+    return Number.isNaN(groupDate.getTime())
+      ? 'Date unavailable'
+      : AppUtils.smartListDayLabel(groupDate);
+  }
+
+  private notificationDateMs(value: string): number {
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
   }
 
   protected rowMenuContext(notification: NotificationDto): NotificationRowMenuContext {

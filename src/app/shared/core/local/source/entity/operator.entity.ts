@@ -7,6 +7,7 @@ import type {
   OperatorDeploymentUpdateDto,
   OperatorLeaderboardEntryDto,
   OperatorRevenueDto,
+  OperatorTlsConfigurationDto,
   OperatorSettlementDto,
   OperatorRegistryStatusDto
 } from '../../../contracts/operator.interface';
@@ -83,6 +84,7 @@ export interface OperatorRegistryStateRecord {
   groupingTokens: OperatorGroupingTokenRecord[];
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
+  tlsConfiguration?: OperatorTlsConfigurationDto;
   revenue: OperatorRevenueDto;
   settlements: OperatorSettlementDto[];
   community: OperatorCommunityStatusDto;

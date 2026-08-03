@@ -86,7 +86,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
-    if (url.origin !== self.location.origin && url.hostname !== 'api.qrserver.com') {
+    if (url.origin !== self.location.origin) {
       return;
     }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
@@ -106,10 +106,6 @@ self.addEventListener('fetch', event => {
       event.respondWith(networkFirstStaticAsset(request));
       return;
     }
-  }
-
-  if (url.hostname === 'api.qrserver.com') {
-    event.respondWith(cacheFirst(request, MEDIA_CACHE));
   }
 });
 
@@ -402,9 +398,12 @@ function normalizeDeploymentBranding(value) {
 }
 
 function normalizedLogoUrl(value) {
+  if (typeof value !== 'string') {
+    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+  }
   const normalized = normalizedText(value, 4096);
   if (!normalized) {
-    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+    return '';
   }
   try {
     const url = new URL(normalized, self.location.origin);

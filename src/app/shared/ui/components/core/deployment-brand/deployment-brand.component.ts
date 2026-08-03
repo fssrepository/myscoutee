@@ -31,20 +31,17 @@ export class DeploymentBrandComponent {
   protected renderModel(): DeploymentBrandRenderModel {
     const branding = this.branding ?? this.deploymentConfiguration.branding();
     const characters = Array.from(branding.productName);
-    const index = branding.logoCharacterIndex;
-    if (index === null) {
-      return {
-        branding,
-        inlineLogo: false,
-        beforeLogo: branding.productName,
-        afterLogo: ''
-      };
-    }
+    const index = branding.logoCharacterIndex ?? 0;
+    const inlineLogo = Boolean(branding.logoUrl.trim()) && index >= 0;
     return {
       branding,
-      inlineLogo: true,
-      beforeLogo: characters.slice(0, index).join(''),
-      afterLogo: characters.slice(index + 1).join('')
+      inlineLogo,
+      beforeLogo: inlineLogo
+        ? characters.slice(0, index).join('')
+        : branding.productName,
+      afterLogo: inlineLogo
+        ? characters.slice(index + 1).join('')
+        : ''
     };
   }
 }

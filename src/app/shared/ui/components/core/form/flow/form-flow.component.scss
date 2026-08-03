@@ -698,7 +698,7 @@
 }
 
 .form-flow__link-input {
-  --link-input-label-font-size: 12px;
+  --link-input-label-font-size: var(--form-flow-label-font-size, 12px);
 }
 
 .form-flow__control--wide {
@@ -716,8 +716,9 @@
   gap: 10px;
   margin-bottom: 6px;
   color: #233e61;
-  font-size: 12px;
+  font-size: var(--form-flow-label-font-size, 12px);
   font-weight: 700;
+  line-height: 1;
 
   strong {
     color: #c63838;

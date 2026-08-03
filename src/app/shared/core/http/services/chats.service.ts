@@ -22,6 +22,7 @@ import type {
   ChatMessagesPageResultDTO,
   ChatServiceEnsureInput
 } from '../../contracts/chat.interface';
+import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import {
@@ -867,15 +868,24 @@ export class HttpChatsService implements IChatsService {
     _fallbackIndex: number | null = null
   ): ContractTypes.ChatMessageDto {
     const senderAvatar = message.senderAvatar ?? null;
+    const systemRandomRoomWelcome = this.isRandomRoomWelcomeMessage(message);
     const senderId = this.normalizeHttpText(message.senderId) || this.normalizeHttpText(senderAvatar?.id);
-    const senderName = this.normalizeHttpText(message.senderName) || this.normalizeHttpText(message.sender) || senderId || 'User';
+    const senderName = systemRandomRoomWelcome
+      ? 'MyScoutee System'
+      : this.normalizeHttpText(message.senderName) || this.normalizeHttpText(message.sender) || senderId || 'User';
     const senderInitials = this.normalizeHttpText(message.senderInitials)
       || this.normalizeHttpText(senderAvatar?.initials)
       || AppUtils.initialsFromText(senderName || senderId || 'User');
-    const senderGender = this.normalizeHttpGender(message.senderGender ?? senderAvatar?.gender);
-    const senderImageUrl = this.normalizeHttpMediaUrl(message.senderImageUrl, 'small')
-      ?? this.resolveHttpChatAvatarImageUrl(senderId, senderAvatar);
-    const text = this.normalizeHttpText(message.text);
+    const senderGender = systemRandomRoomWelcome
+      ? 'system'
+      : this.normalizeHttpGender(message.senderGender ?? senderAvatar?.gender);
+    const senderImageUrl = systemRandomRoomWelcome
+      ? null
+      : this.normalizeHttpMediaUrl(message.senderImageUrl, 'small')
+        ?? this.resolveHttpChatAvatarImageUrl(senderId, senderAvatar);
+    const text = systemRandomRoomWelcome
+      ? RANDOM_ROOM_WELCOME_MESSAGE
+      : this.normalizeHttpText(message.text);
     const sentAtIso = this.normalizeHttpText(message.sentAtIso) || new Date().toISOString();
     const sentAt = new Date(sentAtIso);
     const activeUserId = this.activeUserId();
@@ -966,12 +976,20 @@ export class HttpChatsService implements IChatsService {
 
   private normalizeHttpGender(value: unknown): ContractTypes.ChatUserGender {
     const normalized = this.normalizeHttpText(value).toLowerCase();
+    if (normalized === 'system') {
+      return 'system';
+    }
     if (normalized === 'deleted' || normalized === 'du') {
       return 'deleted';
     }
     return normalized === 'woman' || normalized.startsWith('w') || normalized.startsWith('f')
       ? 'woman'
       : 'man';
+  }
+
+  private isRandomRoomWelcomeMessage(message: HttpChatMessageDto): boolean {
+    return this.normalizeHttpText(message.id) === 'system:random-room-welcome'
+      || this.normalizeHttpText(message.clientId) === 'random-room-welcome';
   }
 
   private normalizeSupportCaseStatus(value: unknown): ContractTypes.SupportCaseStatus | null {

@@ -8,30 +8,61 @@ import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/act
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalEventsService } from './events.service';
 import { LocalUsersService } from './users.service';
 
-describe('LocalEventsService promo-code validation', () => {
+describe('LocalEventsService', () => {
   const waitForRouteDelay = vi.fn();
   const queryEventRecordById = vi.fn();
+  const queryInvitationItemsByUser = vi.fn();
+  const requestJoin = vi.fn();
+  const trashItem = vi.fn();
+  const flushEvents = vi.fn();
+  const markUnreadBySource = vi.fn();
+  const unreadCount = vi.fn();
+  const syncRealtimeNotificationCount = vi.fn();
 
   beforeEach(() => {
     waitForRouteDelay.mockReset().mockResolvedValue(undefined);
     queryEventRecordById.mockReset();
+    queryInvitationItemsByUser.mockReset().mockReturnValue([]);
+    requestJoin.mockReset();
+    trashItem.mockReset();
+    flushEvents.mockReset().mockResolvedValue(undefined);
+    markUnreadBySource.mockReset().mockReturnValue(0);
+    unreadCount.mockReset().mockReturnValue(0);
+    syncRealtimeNotificationCount.mockReset();
     TestBed.configureTestingModule({
       providers: [
         LocalEventsService,
         { provide: RouteDelayService, useValue: { waitForRouteDelay } },
-        { provide: LocalEventsRepository, useValue: { queryEventRecordById } },
+        {
+          provide: LocalEventsRepository,
+          useValue: {
+            queryEventRecordById,
+            queryInvitationItemsByUser,
+            requestJoin,
+            trashItem,
+            flushToIndexedDb: flushEvents
+          }
+        },
         { provide: LocalActivityResourcesRepository, useValue: {} },
         { provide: LocalActivitySubEventStageRuntimeRepository, useValue: {} },
         { provide: LocalEventCheckoutBasketsRepository, useValue: {} },
         { provide: LocalEventFeedbackRepository, useValue: {} },
         { provide: LocalUsersRepository, useValue: {} },
+        {
+          provide: LocalNotificationsRepository,
+          useValue: { markUnreadBySource, unreadCount }
+        },
         { provide: LocalActivityMembersService, useValue: {} },
-        { provide: LocalUsersService, useValue: {} }
+        {
+          provide: LocalUsersService,
+          useValue: { syncRealtimeNotificationCount }
+        }
       ]
     });
   });
@@ -101,6 +132,51 @@ describe('LocalEventsService promo-code validation', () => {
       messageKey: 'event.checkout.promo.invalid',
       message: null
     });
+  });
+
+  it('marks the related notification read after accepting an invitation', async () => {
+    queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
+    requestJoin.mockReturnValue({
+      id: 'event-1',
+      acceptedMembers: 1,
+      pendingMembers: 0,
+      capacityTotal: 10,
+      acceptedMemberUserIds: ['user-1']
+    } as ActivityEventRecord);
+    markUnreadBySource.mockReturnValue(1);
+    unreadCount.mockReturnValue(4);
+
+    await TestBed.inject(LocalEventsService).requestJoin('user-1', 'event-1', {
+      bookingConfirmed: true
+    });
+
+    expect(markUnreadBySource).toHaveBeenCalledWith(
+      'user-1',
+      'event-invite',
+      'event',
+      'event-1'
+    );
+    expect(requestJoin.mock.invocationCallOrder[0])
+      .toBeLessThan(markUnreadBySource.mock.invocationCallOrder[0]);
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('user-1', 4);
+  });
+
+  it('marks the related notification read after rejecting an invitation', async () => {
+    queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
+    markUnreadBySource.mockReturnValue(1);
+    unreadCount.mockReturnValue(3);
+
+    await TestBed.inject(LocalEventsService).trashItem('user-1', 'event-1');
+
+    expect(markUnreadBySource).toHaveBeenCalledWith(
+      'user-1',
+      'event-invite',
+      'event',
+      'event-1'
+    );
+    expect(trashItem.mock.invocationCallOrder[0])
+      .toBeLessThan(markUnreadBySource.mock.invocationCallOrder[0]);
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('user-1', 3);
   });
 });
 

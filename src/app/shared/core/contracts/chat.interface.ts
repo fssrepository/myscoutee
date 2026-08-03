@@ -1,7 +1,11 @@
 import type * as AppConstants from '../common/constants';
 import type { SubEventDTO } from './event.interface';
 
-export type ChatUserGender = 'woman' | 'man' | 'deleted';
+export const RANDOM_ROOM_WELCOME_MESSAGE =
+  'Welcome! We matched you here by affinity and past interactions. Leave anytime. '
+  + 'Set visibility to non-public in Global Settings to stop future Random Rooms.';
+
+export type ChatUserGender = 'woman' | 'man' | 'deleted' | 'system';
 
 export interface ChatReadAvatar {
   id: string;
