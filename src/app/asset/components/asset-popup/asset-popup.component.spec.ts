@@ -1,0 +1,158 @@
+import { ChangeDetectorRef, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+
+import {
+  ActivityResourcesService,
+  AssetTicketsService,
+  AssetsService,
+  ExplanationGuideService,
+  I18nService,
+  ShareTokensService
+} from '../../../shared/core';
+import * as AppConstants from '../../../shared/core/common/constants';
+import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import {
+  AppMenuDispatcher
+} from '../../../shared/ui';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { AssetAvailabilityPopupStore } from '../../../shared/ui/context/stores/asset-availability-popup.store';
+import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
+import { AssetStore } from '../../../shared/ui/context/stores/asset.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AssetPopupComponent } from './asset-popup.component';
+
+describe('AssetPopupComponent ticket cache reactivity', () => {
+  const activeUserId = signal('owner-1');
+  const dbRevision = signal(0);
+  const peekTicketCountByUser = vi.fn(() => {
+    dbRevision();
+    return 1;
+  });
+
+  beforeEach(() => {
+    activeUserId.set('owner-1');
+    dbRevision.set(0);
+    peekTicketCountByUser.mockClear();
+    TestBed.configureTestingModule({
+      providers: [
+        AssetAvailabilityPopupStore,
+        AssetPopupStore,
+        AssetStore,
+        SubEventResourcePopupStore,
+        {
+          provide: UserProfileStore,
+          useValue: {
+            activeUserId: activeUserId.asReadonly(),
+            activeUserProfile: () => null,
+            getActiveUserId: () => activeUserId()
+          }
+        },
+        {
+          provide: AppRuntimeStore,
+          useValue: { isOnline: () => true }
+        },
+        {
+          provide: ActivityStore,
+          useValue: {}
+        },
+        {
+          provide: AssetsService,
+          useValue: {
+            peekOwnedAssetsByUser: () => [],
+            queryOwnedAssetsByUser: async () => []
+          }
+        },
+        {
+          provide: AssetTicketsService,
+          useValue: {
+            peekTicketCountByUser,
+            queryTicketPage: async () => ({ items: [], total: 0 })
+          }
+        },
+        {
+          provide: ShareTokensService,
+          useValue: {}
+        },
+        {
+          provide: DialogStore,
+          useValue: {}
+        },
+        {
+          provide: AppMenuDispatcher,
+          useValue: {
+            activeMenu: () => null,
+            close: vi.fn()
+          }
+        },
+        {
+          provide: I18nService,
+          useValue: {
+            revision: () => 0,
+            translate: (value: string | null | undefined) => value ?? ''
+          }
+        },
+        {
+          provide: ActivityResourcesService,
+          useValue: {}
+        },
+        {
+          provide: ExplanationGuideService,
+          useValue: {
+            registerContext: () => vi.fn()
+          }
+        },
+        {
+          provide: ChangeDetectorRef,
+          useValue: { markForCheck: vi.fn() }
+        }
+      ]
+    });
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('does not reset a scanner result when the local ticket cache changes', () => {
+    const assetStore = TestBed.inject(AssetStore);
+    const popupStore = TestBed.inject(AssetPopupStore);
+    assetStore.activeOwnerUserIdRef.set(activeUserId());
+    TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    TestBed.tick();
+
+    assetStore.openAssetPopup(AppConstants.ASSET_FILTER_TICKET);
+    TestBed.tick();
+    expect(peekTicketCountByUser).toHaveBeenCalledOnce();
+
+    popupStore.openTicketScanner();
+    popupStore.applyTicketScannerValid(scanPayload());
+    dbRevision.update(value => value + 1);
+    TestBed.tick();
+
+    expect(peekTicketCountByUser).toHaveBeenCalledOnce();
+    expect(popupStore.ticketScanMode()).toBe('ticketScanner');
+    expect(popupStore.ticketScannerState()).toBe('valid');
+    expect(popupStore.ticketScannerResult()?.holderUserId).toBe('holder-1');
+  });
+});
+
+function scanPayload(): AssetContracts.TicketScanPayloadDTO {
+  return {
+    code: 'TKT-code',
+    holderUserId: 'holder-1',
+    holderName: 'Ticket Holder',
+    holderAge: 30,
+    holderCity: 'Budapest',
+    holderRole: 'Member',
+    eventId: 'event-1',
+    eventTitle: 'Evening event',
+    eventSubtitle: 'Main hall',
+    eventTimeframe: 'Tonight',
+    eventDateLabel: 'Tonight',
+    issuedAtIso: '2030-04-18T19:00:00.000Z',
+    usedAtIso: '2030-04-18T18:45:00.000Z'
+  };
+}

@@ -620,6 +620,9 @@ export class HomeComponent implements OnDestroy {
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Loading more cards';
     }
+    if (this.hasFilteredCandidates && !this.hasRemainingCandidatesForCurrentMode) {
+      return 'No more profiles';
+    }
     if (this.hasFilteredCandidates) {
       return 'No cards available';
     }
@@ -629,6 +632,9 @@ export class HomeComponent implements OnDestroy {
   protected get noCandidateDescription(): string {
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Preloading the next stack in the background.';
+    }
+    if (this.hasFilteredCandidates && !this.hasRemainingCandidatesForCurrentMode) {
+      return 'You have reached the end of this stack.';
     }
     if (this.hasFilteredCandidates) {
       return 'Change filters to get more cards.';
@@ -1678,24 +1684,38 @@ export class HomeComponent implements OnDestroy {
       ? Math.max(1, Math.trunc(Number(query.pageSize)))
       : this.gameStackPageSizeForCurrentMode();
     const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
+    let pageRequestAttempted = false;
     while (this.availableServiceRowsCount() < requiredCount) {
       const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
       if (snapshot.requestInFlight) {
         await this.waitForHomeGameStackTick();
         continue;
       }
-      if (snapshot.nextCursor === null && !this.hasUnloadedRemainingServiceRows(snapshot)) {
+      const forceRequest = snapshot.nextCursor === null
+        && !this.hasUnloadedRemainingServiceRows(snapshot);
+      if (forceRequest && pageRequestAttempted) {
         return;
       }
-      await this.gameService.loadNextUserGameCardsStackPage(
+      const previousCursor = snapshot.nextCursor;
+      const previousLoadedCount = this.loadedServiceRowsCount(snapshot);
+      const nextSnapshot = await this.gameService.loadNextUserGameCardsStackPage(
         this.activeUserId,
         this.gameFilterForRequest(),
         this.gameStackPageSizeForCurrentMode(),
         this.selectedHomeMode,
         this.leftSocialQuery.trim() || null,
-        this.rightSocialQuery.trim() || null
+        this.rightSocialQuery.trim() || null,
+        undefined,
+        forceRequest
       );
+      pageRequestAttempted = true;
       this.mergeGameStackUsersIntoHomeUsers();
+      if (
+        nextSnapshot.nextCursor === previousCursor
+        && this.loadedServiceRowsCount(nextSnapshot) <= previousLoadedCount
+      ) {
+        return;
+      }
     }
   }
 
@@ -1704,7 +1724,7 @@ export class HomeComponent implements OnDestroy {
     socialCards: UserGameSocialCard[];
   }): number {
     if (this.isFriendsInCommonMode) {
-      return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards).length;
+      return serviceStack.socialCards.filter(card => card.socialContext === 'friends-in-common').length;
     }
     if (this.isPairMode) {
       return this.socialCardsForCurrentMode(serviceStack.socialCards).length;
@@ -1745,7 +1765,7 @@ export class HomeComponent implements OnDestroy {
   private availableServiceRowsCount(): number {
     const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (this.isFriendsInCommonMode) {
-      return this.visibleFriendsInCommonSocialCards(snapshot.socialCards).length;
+      return snapshot.socialCards.filter(card => card.socialContext === 'friends-in-common').length;
     }
     if (this.isPairMode) {
       return this.socialCardsForCurrentMode(snapshot.socialCards).length;
@@ -1872,7 +1892,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private socialFriendsInCommonSingleRows(): HomeSingleSmartListRow[] {
-    return this.visibleFriendsInCommonSocialCards(this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards)
+    return this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
+      .filter(card => card.socialContext === 'friends-in-common')
       .flatMap(card => {
         const candidate = this.userById(card.userId);
         return candidate
@@ -2507,14 +2528,13 @@ export class HomeComponent implements OnDestroy {
   private totalRoundsForCurrentMode(): number {
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (serviceStack.cardUserIds.length > 0 || serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null) {
-      const loadedCount = this.loadedServiceRowsCount(serviceStack);
       if (serviceStack.filterCount !== null) {
-        const unloadedRemainingCount = Math.max(
-          0,
-          serviceStack.filterCount - this.loadedRemainingServiceRowsCount(serviceStack)
+        return Math.max(
+          this.gameStackCardsLoaded,
+          Math.max(0, this.cardIndex) + serviceStack.filterCount
         );
-        return loadedCount + unloadedRemainingCount;
       }
+      const loadedCount = this.loadedServiceRowsCount(serviceStack);
       return loadedCount + (serviceStack.nextCursor !== null ? 1 : 0);
     }
     return this.candidatePool.length;
@@ -2588,7 +2608,13 @@ export class HomeComponent implements OnDestroy {
     if (remainingCards > HomeComponent.GAME_STACK_PRELOAD_THRESHOLD) {
       return;
     }
-    if (this.gameStackExhausted || !this.hasMoreRoundsForCurrentMode()) {
+    if (this.gameStackExhausted) {
+      return;
+    }
+    if (
+      !this.hasMoreRoundsForCurrentMode()
+      && !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)
+    ) {
       this.gameStackExhausted = true;
       return;
     }
@@ -2630,28 +2656,17 @@ export class HomeComponent implements OnDestroy {
     if (this.gameStackPaginating || this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       return;
     }
-    const serviceStackBefore = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-    if (!serviceStackBefore.nextCursor && (serviceStackBefore.cardUserIds.length > 0 || serviceStackBefore.socialCards.length > 0)) {
-      this.gameStackExhausted = true;
+    const smartList = this.homeSmartList;
+    if (!smartList) {
       return;
     }
 
     this.gameStackPaginating = true;
-    void this.gameService.loadNextUserGameCardsStackPage(
-      this.activeUserId,
-      this.gameFilter,
-      this.gameStackPageSizeForCurrentMode(),
-      this.selectedHomeMode,
-      this.leftSocialQuery.trim() || null,
-      this.rightSocialQuery.trim() || null
-    ).then(serviceStack => {
-      this.mergeGameStackUsersIntoHomeUsers();
-      const previousLoaded = this.gameStackCardsLoaded;
-      const totalRounds = this.totalRoundsForCurrentMode();
-      const loadedCount = this.loadedServiceRowsCount(serviceStack);
-      this.gameStackCardsLoaded = Math.min(totalRounds, loadedCount);
-      const loadedMoreCards = this.gameStackCardsLoaded > previousLoaded;
-      this.gameStackExhausted = !loadedMoreCards && !serviceStack.nextCursor;
+    void smartList.preloadNextListPage({ force: true }).then(() => {
+      const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
+      this.gameStackCardsLoaded = smartList.visibleItemCount();
+      this.gameStackExhausted = serviceStack.nextCursor === null
+        && !this.hasUnloadedRemainingServiceRows(serviceStack);
       this.preloadGameImageWindow();
       this.beginCandidateImageLoadingForCurrentSelection(true);
     }).catch(() => {

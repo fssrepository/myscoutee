@@ -2,6 +2,7 @@
   <app-info-card
     [card]="card"
     [useSharedMenu]="true"
+    (mediaStartClick)="onMediaStartClick()"
     (mediaEndClick)="onMediaEndClick()"
     (menuAction)="onMenuAction($event)"
     (menuRequest)="onMenuRequest($event)"

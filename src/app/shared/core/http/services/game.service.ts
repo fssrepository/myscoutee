@@ -55,7 +55,9 @@ export class HttpGameService implements UserGameDataService {
               rightQuery: request.rightQuery ?? null,
               filterPreferences: request.filterPreferences ?? null,
               cursor: request.cursor ?? null,
-              pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10
+              pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10,
+              excludedCardUserIds: this.normalizeIds(request.excludedCardUserIds),
+              excludedSocialCardIds: this.normalizeIds(request.excludedSocialCardIds)
             }
           )
           .toPromise(),
@@ -212,5 +214,13 @@ export class HttpGameService implements UserGameDataService {
       bridgeCount: Number.isFinite(card.bridgeCount) ? Math.max(0, Math.trunc(Number(card.bridgeCount))) : undefined,
       eventName: `${card.eventName ?? ''}`.trim() || undefined
     };
+  }
+
+  private normalizeIds(values: readonly string[] | null | undefined): string[] {
+    return Array.from(new Set(
+      (values ?? [])
+        .map(value => `${value ?? ''}`.trim())
+        .filter(value => value.length > 0)
+    ));
   }
 }

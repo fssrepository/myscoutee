@@ -1,23 +1,25 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { HttpAssetTicketsService } from './asset-tickets.service';
 
 describe('HttpAssetTicketsService', () => {
   const get = vi.fn();
+  const post = vi.fn();
   const writeTicketPage = vi.fn();
   const readTicketPage = vi.fn();
 
   beforeEach(() => {
     get.mockReset();
+    post.mockReset();
     writeTicketPage.mockReset();
     readTicketPage.mockReset().mockReturnValue(null);
     TestBed.configureTestingModule({
       providers: [
         HttpAssetTicketsService,
-        { provide: HttpClient, useValue: { get } },
+        { provide: HttpClient, useValue: { get, post } },
         {
           provide: OfflineCacheService,
           useValue: { writeTicketPage, readTicketPage }
@@ -43,5 +45,41 @@ describe('HttpAssetTicketsService', () => {
     const [, options] = get.mock.calls[0];
     expect(options.params.get('userId')).toBe('nagy-eszter');
     expect(options.params.get('order')).toBe('upcoming');
+  });
+
+  it('posts the raw ticket code and scanner actor without using cached ticket data', async () => {
+    post.mockReturnValue(of({
+      valid: false,
+      reason: 'already_used',
+      ticket: null
+    }));
+
+    const response = await TestBed.inject(HttpAssetTicketsService).validateTicket({
+      code: ' TKT-live-code ',
+      userId: ' event-manager '
+    });
+
+    expect(post).toHaveBeenCalledWith('/api/assets/tickets/validate', {
+      code: 'TKT-live-code',
+      userId: 'event-manager'
+    });
+    expect(response).toEqual({
+      valid: false,
+      reason: 'already_used',
+      ticket: null
+    });
+    expect(readTicketPage).not.toHaveBeenCalled();
+  });
+
+  it('propagates ticket validation transport errors without an offline fallback', async () => {
+    const transportError = new Error('network unavailable');
+    post.mockReturnValue(throwError(() => transportError));
+
+    await expect(TestBed.inject(HttpAssetTicketsService).validateTicket({
+      code: 'TKT-live-code',
+      userId: 'event-manager'
+    })).rejects.toBe(transportError);
+
+    expect(readTicketPage).not.toHaveBeenCalled();
   });
 });

@@ -470,11 +470,15 @@
       </span>
     }
     @default {
-      @if (overlayIcon(action); as overlayActionIcon) {
-        <mat-icon>{{ overlayActionIcon }}</mat-icon>
-      }
-      @if (overlayLabel(action)) {
-        <span>{{ overlayLabel(action) | i18n }}</span>
+      @if (overlayImageUrl(action); as overlayActionImageUrl) {
+        <img class="ui-info-card__overlay-avatar-image" [src]="overlayActionImageUrl" alt="" />
+      } @else {
+        @if (overlayIcon(action); as overlayActionIcon) {
+          <mat-icon>{{ overlayActionIcon }}</mat-icon>
+        }
+        @if (overlayLabel(action)) {
+          <span>{{ overlayLabel(action) | i18n }}</span>
+        }
       }
     }
   }

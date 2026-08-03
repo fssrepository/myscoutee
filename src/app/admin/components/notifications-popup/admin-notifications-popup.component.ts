@@ -388,7 +388,7 @@ const PROCESS_NEXT_RUN_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.active,
   PROCESS_LIST_FILTER.running
 ]);
-const PROCESS_RUNTIME_POLL_INTERVAL_MS = 1000;
+const PROCESS_LIST_POLL_INTERVAL_MS = 5_000;
 const PROCESS_FAILED_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.failed
 ]);
@@ -472,10 +472,12 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
   private readonly timingBaselineSignatures = new Map<string, string>();
   private readonly parameterBaselineSignatures = new Map<string, string>();
-  private readonly runtimePollScheduler = new UiTaskScheduler<string[]>({
-    intervalMs: () => this.runningProcessRuleKeys().length > 0 ? PROCESS_RUNTIME_POLL_INTERVAL_MS : 0,
-    state: () => this.runningProcessRuleKeys(),
-    task: ({ state, signal }) => this.pollRunningProcessRules(state, signal)
+  private readonly processListPollScheduler = new UiTaskScheduler<string>({
+    intervalMs: () => this.admin.activePopup() === ADMIN_POPUP_KEY
+      ? PROCESS_LIST_POLL_INTERVAL_MS
+      : 0,
+    state: () => this.detailOpen() ? this.selectedRuleKey() : '',
+    task: ({ signal }) => this.pollProcessList(signal)
   });
 
   protected readonly processFilterOptions = PROCESS_FILTER_OPTIONS;
@@ -493,7 +495,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         this.timingDirtyKeys.set(new Set());
         this.parameterDirtyKeys.set(new Set());
         this.stopRuntimeUpdates();
-        this.runtimePollScheduler.stop({ abort: true });
+        this.processListPollScheduler.stop({ abort: true });
         return;
       }
       if (!this.loadedForOpen) {
@@ -506,7 +508,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopRuntimeUpdates();
-    this.runtimePollScheduler.destroy();
+    this.processListPollScheduler.destroy();
   }
 
   protected async load(silent = false): Promise<void> {
@@ -538,7 +540,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       if (!this.processRules().some(rule => rule.ruleKey === this.selectedRuleKey())) {
         this.selectedRuleKey.set(this.processRules()[0]?.ruleKey ?? '');
       }
-      this.runtimePollScheduler.restart();
+      this.processListPollScheduler.restart();
     } catch {
       if (!silent) {
         this.error.set(JOB_I18N.error.load);
@@ -649,7 +651,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         durationMillis: 0
       }
     }));
-    this.runtimePollScheduler.restart();
+    this.processListPollScheduler.restart();
     try {
       const result = await this.notificationsService.runNotificationRule(rule.ruleKey, this.activeAdminId());
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
@@ -1475,7 +1477,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       this.activeAdminId(),
       event => this.applyRuntimeEvent(event)
     );
-    this.runtimePollScheduler.restart();
+    this.processListPollScheduler.restart();
   }
 
   private stopRuntimeUpdates(): void {
@@ -1501,7 +1503,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         }
       : current);
     if (this.isRuntimeStatus(event.runState.currentStatus, PROCESS_RUNTIME_STATUS.running)) {
-      this.runtimePollScheduler.restart();
+      this.processListPollScheduler.restart();
     }
   }
 
@@ -1702,32 +1704,22 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     });
   }
 
-  private runningProcessRuleKeys(): string[] {
-    return this.processRules()
-      .filter(rule => this.isRuntimeStatus(rule.runState.currentStatus, PROCESS_RUNTIME_STATUS.running))
-      .filter(rule => !this.hasFinishedCurrentRun(rule))
-      .map(rule => rule.ruleKey);
-  }
-
-  private async pollRunningProcessRules(ruleKeys: readonly string[], signal?: AbortSignal): Promise<void> {
-    await Promise.all(ruleKeys.map(async ruleKey => {
-      if (signal?.aborted) {
-        return;
+  private async pollProcessList(signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted || this.loading() || this.saving() || this.scheduleEditorOpen()) {
+      return;
+    }
+    const incomingState = await this.notificationsService.loadNotificationCenter(
+      this.activeAdminId(),
+      {
+        skipDemoDelay: true,
+        filter: this.processFilter()
       }
-      const incoming = await this.notificationsService.loadNotificationRuleRuntime(ruleKey, this.activeAdminId());
-      if (!incoming || signal?.aborted) {
-        return;
-      }
-      this.patchRule(ruleKey, current => this.shouldApplyRuntimeState(current, incoming.runState)
-        ? {
-            ...current,
-            runState: incoming.runState,
-            runHistory: incoming.runHistory ?? [],
-            updatedDate: incoming.updatedDate || current.updatedDate,
-            updatedUser: incoming.updatedUser || current.updatedUser
-          }
-        : current);
-    }));
+    );
+    if (signal?.aborted) {
+      return;
+    }
+    // List rows and an open detail popup read the same state signal.
+    this.mergeRuntimeState(incomingState);
   }
 
   private shouldApplyRuntimeState(

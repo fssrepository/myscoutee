@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AssetContracts from '../../contracts/asset.interface';
@@ -57,6 +58,22 @@ export class HttpAssetTicketsService {
       }
       return this.pageRows(this.peekTicketRowsByUser(normalizedUserId), query);
     }
+  }
+
+  async validateTicket(
+    request: AssetContracts.AssetTicketValidationRequestDTO
+  ): Promise<AssetContracts.AssetTicketValidationDTO> {
+    const response = await firstValueFrom(this.http.post<AssetContracts.AssetTicketValidationDTO>(
+      `${this.apiBaseUrl}/assets/tickets/validate`,
+      {
+        code: request.code.trim(),
+        userId: request.userId.trim()
+      }
+    ));
+    if (!response) {
+      throw new Error('Ticket validation returned an empty response.');
+    }
+    return response;
   }
 
   private peekTicketRowsByUser(userId: string): AssetContracts.AssetTicketDTO[] {

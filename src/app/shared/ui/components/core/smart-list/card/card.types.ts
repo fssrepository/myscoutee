@@ -16,6 +16,7 @@ export type InfoCardSurfaceTone =
   | 'pending'
   | 'published'
   | 'series'
+  | 'system'
   | 'waitlist'
   | 'review'
   | 'blocked'
@@ -171,6 +172,7 @@ export interface InfoCardOverlayAction {
   tone?: InfoCardOverlayTone | null;
   label?: string | null;
   icon?: string | null;
+  imageUrl?: string | null;
   leadingAccessory?: InfoCardOverlayAccessory | null;
   detailLabel?: string | null;
   detailIcon?: string | null;

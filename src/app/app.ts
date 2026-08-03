@@ -66,19 +66,29 @@ export class App implements OnDestroy {
   protected readonly installPromptModel = computed<PromptModel>(() => {
     const visible = this.installPromptVisible();
     const busy = this.installPromptBusy();
+    const branding = this.deploymentBranding();
     this.i18nService.revision();
+    const title = this.i18nService.translateParams(
+      'add.myscoutee.to.your.home.screen',
+      { productName: branding.productName }
+    );
     return {
       visible,
       busy,
       tone: 'info',
-      icon: {
-        kind: 'image',
-        src: 'assets/icon/android-chrome-192x192.png',
-        alt: ''
-      },
-      title: this.i18nService.translate('add.myscoutee.to.your.home.screen'),
-      description: this.i18nService.translate('install.prompt.description'),
-      ariaLabel: this.i18nService.translate('add.myscoutee.to.your.home.screen'),
+      icon: branding.logoUrl
+        ? {
+            kind: 'image',
+            src: branding.logoUrl,
+            alt: ''
+          }
+        : null,
+      title,
+      description: this.i18nService.translateParams(
+        'install.prompt.description',
+        { productName: branding.productName }
+      ),
+      ariaLabel: title,
       closeAriaLabel: this.i18nService.translate('dismiss', 'Dismiss'),
       action: {
         icon: 'add_to_home_screen',

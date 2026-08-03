@@ -6,6 +6,7 @@ import { SessionService } from '../base/services/session.service';
 
 export const DEMO_SESSION_HEADER = 'X-App-Session-Kind';
 export const DEMO_SESSION_VALUE = 'demo';
+export const DEMO_USER_HEADER = 'X-Demo-User-Id';
 
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
 
@@ -55,15 +56,18 @@ export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   const sessionService = inject(SessionService);
-  const isDemoRequest = sessionService.currentSession()?.kind === 'demo'
+  const session = sessionService.currentSession();
+  const isDemoRequest = session?.kind === 'demo'
     || isDemoSelectorRequest(req.url);
   if (!isDemoRequest) {
     return next(req);
   }
 
+  const demoUserId = session?.kind === 'demo' ? session.userId.trim() : '';
   return next(req.clone({
     setHeaders: {
-      [DEMO_SESSION_HEADER]: DEMO_SESSION_VALUE
+      [DEMO_SESSION_HEADER]: DEMO_SESSION_VALUE,
+      ...(demoUserId ? { [DEMO_USER_HEADER]: demoUserId } : {})
     }
   }));
 };

@@ -1,4 +1,4 @@
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, AssetTicketBuilder, PricingBuilder } from '../../../base/builders';
 import { AppUtils } from '../../../../app-utils';
 import { LocalActivityEventsMapper } from './event.mapper';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
@@ -718,7 +718,7 @@ export class LocalAssetTicketsMapper {
       .filter(record => record.type !== 'invitations')
       .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => this.toTicketDTO(LocalActivityEventsMapper.toDto(record))));
+      .map(record => this.toTicketDTO(record, LocalActivityEventsMapper.toDto(record))));
   }
 
   static pageRows(
@@ -743,9 +743,16 @@ export class LocalAssetTicketsMapper {
     return rows.map(row => ({ ...row }));
   }
 
-  private static toTicketDTO(dto: ActivityContracts.ActivityEventDTO): AssetContracts.AssetTicketDTO {
+  private static toTicketDTO(
+    record: ActivityContracts.ActivityEventRecord,
+    dto: ActivityContracts.ActivityEventDTO
+  ): AssetContracts.AssetTicketDTO {
+    const holderUserId = `${dto.userId ?? ''}`.trim();
     return {
       id: dto.id,
+      scanCode: AssetTicketBuilder.createDemoScanCode(dto.id, holderUserId),
+      holderUserId,
+      usedAtIso: `${record.ticketCheckInsByHolderUserId?.[holderUserId] ?? ''}`.trim() || null,
       type: dto.type === 'hosting' ? 'hosting' : 'events',
       status: dto.status,
       title: dto.title,

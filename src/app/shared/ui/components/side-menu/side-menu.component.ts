@@ -163,7 +163,6 @@ type NavigatorAdminMenuShortcutId =
 type NavigatorSettingsMenuItemId =
   | 'help'
   | 'feedback'
-  | 'global-identity'
   | 'report-bugs'
   | 'privacy'
   | 'terms'
@@ -474,30 +473,20 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
     items.push({
-        id: 'help',
-        label: 'Help',
-        icon: 'help_outline',
-        counter: this.helpCenterService.activeVersionLabel(),
-        disabled: !this.helpCenterService.hasActiveRevision(),
-        ariaLabel: 'Open help'
-      });
+      id: 'help',
+      label: 'Help',
+      icon: 'help_outline',
+      counter: this.helpCenterService.activeVersionLabel(),
+      disabled: !this.helpCenterService.hasActiveRevision(),
+      ariaLabel: 'Open help'
+    });
     if (!this.isPrivilegedWorkspaceMode()) {
-      items.push(
-        {
-          id: 'feedback',
-          label: 'Send Feedback',
-          icon: 'feedback',
-          ariaLabel: 'Send feedback'
-        },
-        {
-          id: 'global-identity',
-          label: 'global.identity.menu',
-          description: 'global.identity.menu.description',
-          icon: 'fingerprint',
-          palette: 'blue',
-          ariaLabel: 'global.identity.menu.open'
-        }
-      );
+      items.push({
+        id: 'feedback',
+        label: 'Send Feedback',
+        icon: 'feedback',
+        ariaLabel: 'Send feedback'
+      });
     }
     items.push(
       {
@@ -1314,7 +1303,6 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'help':
       case 'feedback':
-      case 'global-identity':
       case 'privacy':
       case 'terms':
         this.openSettingsPopup(event.id);

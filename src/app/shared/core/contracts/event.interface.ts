@@ -14,7 +14,7 @@ export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
 export type EventEditorMode = 'edit' | 'create';
 export type EventEditorTarget = 'events' | 'hosting';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
-export type EventRecordKind = 'main' | 'slot';
+export type EventRecordKind = 'main' | 'slot' | 'random-room';
 
 export interface EventSlotTemplateDTO {
   id: string;

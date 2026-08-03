@@ -24,4 +24,10 @@ export class AssetTicketsService extends BaseRouteModeService {
   async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
     return this.assetTicketsService.queryTicketPage(query);
   }
+
+  async validateTicket(
+    request: AssetContracts.AssetTicketValidationRequestDTO
+  ): Promise<AssetContracts.AssetTicketValidationDTO> {
+    return this.assetTicketsService.validateTicket(request);
+  }
 }

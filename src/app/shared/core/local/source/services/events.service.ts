@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../../app-utils';
 import type { ActivityPendingReason } from '../../../common/constants';
 import type {
   EventTournamentGroupDeleteRequestDTO,
@@ -55,6 +56,7 @@ import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersService } from './users.service';
 import {
@@ -99,6 +101,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly usersService = inject(LocalUsersService);
 
@@ -141,7 +144,23 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.resolveDemoActivityUserId(userId),
       query
     );
-    return this.withCheckoutResultStates(this.resolveDemoActivityUserId(userId), LocalActivityEventsMapper.toDtoPage(page));
+    return this.withCheckoutResultStates(
+      this.resolveDemoActivityUserId(userId),
+      this.withCreatorAvatarUrls(LocalActivityEventsMapper.toDtoPage(page))
+    );
+  }
+
+  private withCreatorAvatarUrls(page: ActivityEventPageResultDTO): ActivityEventPageResultDTO {
+    return {
+      ...page,
+      items: page.items.map(item => {
+        const creator = this.usersRepository.queryUserById(item.creatorUserId);
+        return {
+          ...item,
+          creatorAvatarUrl: AppUtils.firstImageUrl(creator?.images)
+        };
+      })
+    };
   }
 
   private async withCheckoutResultStates(
@@ -492,6 +511,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
     if (request.checkoutRequest) {
       await this.saveCheckoutBasketRecord({
@@ -541,6 +561,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       checkoutSessionId
     });
     await this.patchLocalUserActivityCounterDeltas(normalizedUserId, request.counterDelta ?? null);
+    if (resolvingInvitation && result) {
+      this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+    }
     await this.eventsRepository.flushToIndexedDb();
     return result;
   }
@@ -796,7 +819,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     sourceId: string,
     options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
+    const resolvingInvitation = this.isEventInvitation(userId, sourceId);
     this.eventsRepository.trashItem(userId, sourceId);
+    if (resolvingInvitation) {
+      this.markEventInvitationNotificationRead(userId, sourceId);
+    }
     await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
@@ -962,6 +989,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     let checkoutPayloadSaved = false;
     if (options.checkoutState) {
       if (options.basketItems?.length) {
@@ -992,7 +1020,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         });
       }
     }
-    const existingCheckoutMembership = checkoutPayloadSaved
+    const existingCheckoutMembership = checkoutPayloadSaved && !resolvingInvitation
       ? this.existingCheckoutMembershipRecord(normalizedUserId, normalizedSourceId, options.slotSourceId ?? null)
       : null;
     if (existingCheckoutMembership) {
@@ -1011,6 +1039,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         });
       }
       await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
+      if (resolvingInvitation) {
+        this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+      }
       await this.eventsRepository.flushToIndexedDb();
       if (options.skipLocalRouteDelay !== true) {
         await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
@@ -1038,11 +1069,38 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       });
     }
     await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
+    if (resolvingInvitation && result) {
+      this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+    }
     await this.eventsRepository.flushToIndexedDb();
     if (options.skipLocalRouteDelay !== true) {
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
     return result;
+  }
+
+  private isEventInvitation(userId: string, sourceId: string): boolean {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    return !!normalizedUserId
+      && !!normalizedSourceId
+      && this.eventsRepository.queryInvitationItemsByUser(normalizedUserId)
+        .some(record => record.id === normalizedSourceId);
+  }
+
+  private markEventInvitationNotificationRead(userId: string, sourceId: string): void {
+    const changed = this.notificationsRepository.markUnreadBySource(
+      userId,
+      'event-invite',
+      'event',
+      sourceId
+    );
+    if (changed > 0) {
+      this.usersService.syncRealtimeNotificationCount(
+        userId,
+        this.notificationsRepository.unreadCount(userId)
+      );
+    }
   }
 
   private existingCheckoutMembershipRecord(
@@ -1100,6 +1158,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     if (options.checkoutState) {
       await this.updateCheckoutBasketStateRecord({
         userId: normalizedUserId,
@@ -1114,6 +1173,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       removeMembershipOnly: options.removeMembershipOnly === true
     });
     await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
+    if (resolvingInvitation && record) {
+      this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+    }
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return record ? this.leftEventResult(record) : null;

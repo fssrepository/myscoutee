@@ -1609,6 +1609,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return item.kind === 'toggle';
   }
 
+  protected showActionRowToggleIndicator(item: AppMenuItem<TId, TContext>): boolean {
+    return this.isToggleItem(item) && this.resolveBoolean(item.showToggleIndicator);
+  }
+
   protected showTabsItemToggle(item: AppMenuItem<TId, TContext>): boolean {
     return this.currentModelMaxSelected() !== 1 && (item.kind === 'checkbox' || item.kind === 'toggle');
   }

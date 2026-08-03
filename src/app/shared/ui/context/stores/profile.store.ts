@@ -6,7 +6,6 @@ import type { UserDto } from '../../../core/contracts/user.interface';
 export type ProfileSettingsPopup =
   | 'help'
   | 'feedback'
-  | 'global-identity'
   | 'privacy'
   | 'terms'
   | 'report-user';

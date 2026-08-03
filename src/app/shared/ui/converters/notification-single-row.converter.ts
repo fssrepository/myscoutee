@@ -28,6 +28,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     const options = optionsArg[0] ?? {};
     const read = Boolean(`${notification.readAtIso ?? ''}`.trim());
     const senderName = `${notification.senderName ?? ''}`.trim();
+    const systemRandomRoom = this.isSystemRandomRoom(notification);
     const sourceLabel = this.sourceLabel(notification.category);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     return {
@@ -36,10 +37,13 @@ export class NotificationSingleRowConverter implements UiConverter<
       subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
       detail: notification.message,
       dateIso: notification.createdAtIso,
-      avatarUrl: `${notification.senderAvatarUrl ?? ''}`.trim() || null,
-      avatarInitials: senderName ? this.initials(senderName) : null,
+      avatarUrl: systemRandomRoom ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
+      avatarInitials: !systemRandomRoom && senderName ? this.initials(senderName) : null,
       avatarAriaLabel: senderName || sourceLabel,
-      icon: senderName ? null : this.categoryIcon(notification.category),
+      avatarToneClass: systemRandomRoom ? 'notification-system-avatar' : null,
+      icon: systemRandomRoom
+        ? 'auto_awesome'
+        : senderName ? null : this.categoryIcon(notification.category),
       surfaceTone: this.surfaceTone(notification.category, read),
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
@@ -51,12 +55,12 @@ export class NotificationSingleRowConverter implements UiConverter<
           tone: read ? 'muted' : this.badgeTone(notification.category),
           position: 'top-right'
         },
-        {
-          label: read ? 'Read' : 'New',
-          icon: read ? 'done_all' : 'fiber_new',
-          tone: read ? 'muted' : 'danger',
-          position: 'inline'
-        }
+        ...(read ? [{
+          label: 'Read',
+          icon: 'done_all',
+          tone: 'muted' as const,
+          position: 'inline' as const
+        }] : [])
       ],
       menuActions: read ? [] : ['markNotificationRead'],
       progressRing: options.progressRing === true,
@@ -65,6 +69,11 @@ export class NotificationSingleRowConverter implements UiConverter<
         payload: notification.payload ? { ...notification.payload } : null
       }
     };
+  }
+
+  private isSystemRandomRoom(notification: NotificationDto): boolean {
+    return notification.kind === 'event-random-groups'
+      || `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'random-room';
   }
 
   private surfaceTone(category: NotificationCategory, read: boolean): SingleRowSurfaceTone {

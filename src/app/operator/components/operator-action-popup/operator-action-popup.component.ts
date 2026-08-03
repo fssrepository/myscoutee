@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ViewChild,
   computed,
   effect,
@@ -23,7 +24,8 @@ import type {
   OperatorRevenueReportFilters,
   OperatorRevenueSyncState,
   OperatorSettlementDto,
-  OperatorSettlementFilters
+  OperatorSettlementFilters,
+  OperatorTlsCertificateMode
 } from '../../../shared/core/contracts';
 import {
   DEPLOYMENT_THEME_PRESETS
@@ -89,6 +91,11 @@ type OperatorPopupAction =
   | 'activate-firebase'
   | 'test-authentication'
   | 'test-messaging'
+  | 'toggle-tls-auto-renew'
+  | 'set-tls-mode'
+  | 'test-tls-domain'
+  | 'test-tls-certificate'
+  | 'save-tls'
   | 'synchronize-revenue'
   | 'requeue-revenue-report'
   | 'set-theme'
@@ -101,6 +108,7 @@ interface OperatorPopupActionContext {
   claimPath?: OperatorClaimPath;
   themePreset?: DeploymentThemePreset;
   providerId?: string | null;
+  tlsMode?: OperatorTlsCertificateMode;
   reportId?: string;
   socialLinkIndex?: number;
 }
@@ -133,6 +141,7 @@ export class OperatorActionPopupComponent {
   private readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly dialog = inject(DialogStore);
   private readonly i18n = inject(I18nService);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly claimPath = signal<OperatorClaimPath>('company');
   protected readonly requeueingReportId = signal<string | null>(null);
   private readonly revenueReportsSmartListRef = signal<
@@ -600,6 +609,126 @@ export class OperatorActionPopupComponent {
       }
     }));
   });
+  protected readonly configurationTlsModeItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => (['AUTOMATIC', 'MANUAL'] as const).map(tlsMode => ({
+    id: `operator-configuration-tls-mode-${tlsMode.toLowerCase()}`,
+    label: `operator.configuration.tls.mode.${tlsMode.toLowerCase()}`,
+    icon: tlsMode === 'AUTOMATIC' ? 'workspace_premium' : 'key',
+    kind: 'radio' as const,
+    active: this.workspace.tlsConfigurationDraft()?.mode === tlsMode,
+    checked: this.workspace.tlsConfigurationDraft()?.mode === tlsMode,
+    context: { action: 'set-tls-mode' as const, tlsMode }
+  })));
+  protected readonly configurationTlsAutoRenewItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => {
+    const draft = this.workspace.tlsConfigurationDraft();
+    const enabled = draft?.autoRenew === true;
+    return [{
+      id: 'operator-toggle-tls-auto-renew',
+      label: 'operator.configuration.tls.auto.renew',
+      kind: 'toggle',
+      layout: 'pill',
+      showToggleIndicator: true,
+      palette: 'teal',
+      active: enabled,
+      checked: enabled,
+      disabled: this.configurationTlsDisabled()
+        || draft?.enabled !== true
+        || draft?.mode !== 'AUTOMATIC',
+      closeOnSelect: false,
+      ariaLabel: 'operator.configuration.tls.auto.renew',
+      context: { action: 'toggle-tls-auto-renew' }
+    }];
+  });
+  protected readonly configurationTlsTestActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => {
+    const domainFeedback = this.workspace.tlsDomainFeedback();
+    const certificateFeedback = this.workspace.tlsCertificateFeedback();
+    return [{
+      id: 'operator-test-tls-domain',
+      label: 'operator.configuration.tls.test.domain',
+      icon: domainFeedback === 'success'
+        ? 'check_circle'
+        : domainFeedback === 'error'
+          ? 'error_outline'
+          : 'dns',
+      palette: domainFeedback === 'success'
+        ? 'green'
+        : domainFeedback === 'error'
+          ? 'red'
+          : 'blue',
+      layout: 'action',
+      disabled: this.configurationTlsDisabled()
+        || !this.workspace.tlsConfigurationDraft()?.enabled
+        || !this.workspace.tlsConfigurationReady()
+        || domainFeedback !== null,
+      progress: this.busyAction() === 'test-tls-domain'
+        ? { state: 'loading', durationMs: 3000 }
+        : domainFeedback
+          ? { state: domainFeedback, durationMs: 1000 }
+          : null,
+      context: { action: 'test-tls-domain' }
+    },
+    {
+      id: 'operator-test-tls-certificate',
+      label: 'operator.configuration.tls.test.certificate',
+      icon: certificateFeedback === 'success'
+        ? 'check_circle'
+        : certificateFeedback === 'error'
+          ? 'error_outline'
+          : 'verified_user',
+      palette: certificateFeedback === 'success'
+        ? 'green'
+        : certificateFeedback === 'error'
+          ? 'red'
+          : 'orange',
+      layout: 'action',
+      disabled: this.configurationTlsDisabled()
+        || !this.workspace.tlsConfigurationDraft()?.enabled
+        || !this.workspace.tlsConfigurationReady()
+        || certificateFeedback !== null,
+      progress: this.busyAction() === 'test-tls-certificate'
+        ? { state: 'loading', durationMs: 3000 }
+        : certificateFeedback
+          ? { state: certificateFeedback, durationMs: 1000 }
+          : null,
+      context: { action: 'test-tls-certificate' }
+    }];
+  });
+  protected readonly configurationTlsSaveActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => {
+    const saveFeedback = this.workspace.tlsSaveFeedback();
+    return [{
+      id: 'operator-save-tls',
+      label: this.workspace.tlsConfigurationDraft()?.enabled
+        ? 'operator.configuration.tls.save'
+        : 'operator.configuration.tls.disable',
+      icon: saveFeedback === 'success'
+        ? 'check_circle'
+        : saveFeedback === 'error'
+          ? 'error_outline'
+          : 'save',
+      palette: saveFeedback === 'success'
+        ? 'green'
+        : saveFeedback === 'error'
+          ? 'red'
+          : 'violet',
+      layout: 'action',
+      disabled: this.configurationTlsDisabled()
+        || !this.workspace.tlsConfigurationReady()
+        || saveFeedback !== null,
+      progress: this.busyAction() === 'save-tls'
+        ? { state: 'loading', durationMs: 3000 }
+        : saveFeedback
+          ? { state: saveFeedback, durationMs: 1000 }
+          : null,
+      context: { action: 'save-tls' }
+    }];
+  });
   protected readonly configurationPaymentProviderItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -870,12 +999,22 @@ export class OperatorActionPopupComponent {
     ];
   });
   private loadedKind: OperatorMenuKind | null = null;
+  private configurationCredentialsActive = false;
 
   constructor() {
-    effect(onCleanup => {
-      if (this.kind() === 'configuration') {
-        onCleanup(() => this.scrubConfigurationCredentialDrafts());
+    this.configurationCredentialsActive = this.kind() === 'configuration';
+    this.destroyRef.onDestroy(() => {
+      if (this.configurationCredentialsActive) {
+        this.scrubConfigurationCredentialDrafts();
+        this.configurationCredentialsActive = false;
       }
+    });
+    effect(() => {
+      const configurationActive = this.kind() === 'configuration';
+      if (this.configurationCredentialsActive && !configurationActive) {
+        this.scrubConfigurationCredentialDrafts();
+      }
+      this.configurationCredentialsActive = configurationActive;
     });
     effect(() => {
       const kind = this.kind();
@@ -1028,6 +1167,27 @@ export class OperatorActionPopupComponent {
       case 'test-messaging':
         await this.workspace.testConfiguration('FIREBASE_MESSAGING');
         return;
+      case 'toggle-tls-auto-renew': {
+        const draft = this.workspace.tlsConfigurationDraft();
+        if (draft?.enabled && draft.mode === 'AUTOMATIC') {
+          this.workspace.setTlsConfiguration({ autoRenew: !draft.autoRenew });
+        }
+        return;
+      }
+      case 'set-tls-mode':
+        if (context.tlsMode) {
+          this.workspace.setTlsConfiguration({ mode: context.tlsMode });
+        }
+        return;
+      case 'test-tls-domain':
+        await this.workspace.testTlsConfiguration('DOMAIN');
+        return;
+      case 'test-tls-certificate':
+        await this.workspace.testTlsConfiguration('CERTIFICATE');
+        return;
+      case 'save-tls':
+        await this.workspace.saveTlsConfiguration();
+        return;
       case 'synchronize-revenue':
         await this.workspace.synchronizeRevenue();
         return;
@@ -1069,6 +1229,10 @@ export class OperatorActionPopupComponent {
   }
 
   protected close(): void {
+    if (this.configurationCredentialsActive) {
+      this.scrubConfigurationCredentialDrafts();
+      this.configurationCredentialsActive = false;
+    }
     this.workspace.clearFeedback();
     this.menu.closePopup();
   }
@@ -1434,6 +1598,42 @@ export class OperatorActionPopupComponent {
     };
   }
 
+  protected configurationTlsModeTrigger(): AppMenuTrigger {
+    const mode =
+      this.workspace.tlsConfigurationDraft()?.mode ?? 'AUTOMATIC';
+    return {
+      label: `operator.configuration.tls.mode.${mode.toLowerCase()}`,
+      icon: mode === 'AUTOMATIC' ? 'workspace_premium' : 'key',
+      palette: mode === 'AUTOMATIC' ? 'green' : 'amber',
+      layout: 'field',
+      disabled: this.configurationTlsDisabled(),
+      ariaLabel: 'operator.configuration.tls.mode'
+    };
+  }
+
+  protected configurationTlsDisabled(): boolean {
+    return this.busy()
+      || this.workspace.tlsConfiguration()?.capability !== 'AVAILABLE';
+  }
+
+  protected toggleTlsEnabled(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.configurationTlsDisabled()) {
+      return;
+    }
+    this.workspace.setTlsConfiguration({
+      enabled: !this.workspace.tlsConfigurationDraft()?.enabled
+    });
+  }
+
+  protected showTlsSaveAction(): boolean {
+    const configuration = this.workspace.tlsConfiguration();
+    const draft = this.workspace.tlsConfigurationDraft();
+    return draft?.enabled === true
+      || Boolean(configuration?.enabled && draft && !draft.enabled);
+  }
+
   protected configurationDisabled(): boolean {
     return this.busy()
       || this.workspace.configuration()?.capability !== 'AVAILABLE';
@@ -1449,7 +1649,7 @@ export class OperatorActionPopupComponent {
     value: number | string | null
   ): void {
     if (value === null || `${value}`.trim() === '') {
-      this.workspace.setConfigurationBranding({ logoCharacterIndex: null });
+      this.workspace.setConfigurationBranding({ logoCharacterIndex: 0 });
       return;
     }
     this.workspace.setConfigurationBranding({
@@ -1570,7 +1770,7 @@ export class OperatorActionPopupComponent {
     }
     const index = branding.logoCharacterIndex;
     return !Number.isInteger(index)
-      || index < 0
+      || index < -1
       || index >= Array.from(branding.productName.trim()).length;
   }
 
@@ -1631,6 +1831,8 @@ export class OperatorActionPopupComponent {
         return 'operator.revenue.delivery.report.requeue.progress';
       case 'test-authentication':
       case 'test-messaging':
+      case 'test-tls-domain':
+      case 'test-tls-certificate':
         return 'operator.configuration.testing';
       case 'save-branding':
       case 'save-admin-emails':
@@ -1639,6 +1841,7 @@ export class OperatorActionPopupComponent {
       case 'register-payment':
       case 'register-firebase':
       case 'activate-firebase':
+      case 'save-tls':
         return 'operator.configuration.saving';
       case 'set-community':
         return 'operator.community.updating';

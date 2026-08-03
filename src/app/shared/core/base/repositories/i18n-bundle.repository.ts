@@ -15,6 +15,8 @@ export interface StoredI18nBundle {
   storedAt: number;
 }
 
+export type I18nBundleScope = 'real' | 'demo';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -22,9 +24,12 @@ export class I18nBundleRepository {
   private static readonly DEFAULT_LANGUAGE = 'en';
   private indexedDbOpenPromise: Promise<IDBDatabase | null> | null = null;
 
-  async firstStoredBundle(candidates: readonly string[]): Promise<StoredI18nBundle | null> {
+  async firstStoredBundle(
+    scope: I18nBundleScope,
+    candidates: readonly string[]
+  ): Promise<StoredI18nBundle | null> {
     for (const lang of candidates) {
-      const stored = await this.readStoredBundle(lang);
+      const stored = await this.readStoredBundle(scope, lang);
       if (stored && Object.keys(stored.data).length > 0) {
         return stored;
       }
@@ -32,26 +37,35 @@ export class I18nBundleRepository {
     return null;
   }
 
-  async readStoredBundle(lang: string): Promise<StoredI18nBundle | null> {
-    const stored = await this.readIndexedDbBundle(lang);
+  async readStoredBundle(
+    scope: I18nBundleScope,
+    lang: string
+  ): Promise<StoredI18nBundle | null> {
+    const stored = await this.readIndexedDbBundle(scope, lang);
     if (stored) {
-      this.writeLocalStorageBundle(stored);
+      this.writeLocalStorageBundle(scope, stored);
       return stored;
     }
-    return this.readLocalStorageBundle(lang);
+    return this.readLocalStorageBundle(scope, lang);
   }
 
-  async writeStoredBundle(bundle: StoredI18nBundle): Promise<void> {
-    await this.writeIndexedDbBundle(bundle);
-    this.writeLocalStorageBundle(bundle);
+  async writeStoredBundle(
+    scope: I18nBundleScope,
+    bundle: StoredI18nBundle
+  ): Promise<void> {
+    await this.writeIndexedDbBundle(scope, bundle);
+    this.writeLocalStorageBundle(scope, bundle);
   }
 
-  private readLocalStorageBundle(lang: string): StoredI18nBundle | null {
+  private readLocalStorageBundle(
+    scope: I18nBundleScope,
+    lang: string
+  ): StoredI18nBundle | null {
     if (!this.canUseLocalStorage()) {
       return null;
     }
     try {
-      const raw = localStorage.getItem(this.storageKey(lang));
+      const raw = localStorage.getItem(this.storageKey(scope, lang));
       if (!raw) {
         return null;
       }
@@ -62,25 +76,35 @@ export class I18nBundleRepository {
     }
   }
 
-  private writeLocalStorageBundle(bundle: StoredI18nBundle): void {
+  private writeLocalStorageBundle(
+    scope: I18nBundleScope,
+    bundle: StoredI18nBundle
+  ): void {
     if (!this.canUseLocalStorage()) {
       return;
     }
     try {
-      localStorage.setItem(this.storageKey(bundle.lang), JSON.stringify(bundle));
+      localStorage.setItem(
+        this.storageKey(scope, bundle.lang),
+        JSON.stringify(bundle)
+      );
     } catch {
       // Private-mode/quota failures should never block rendering.
     }
   }
 
-  private async readIndexedDbBundle(lang: string): Promise<StoredI18nBundle | null> {
+  private async readIndexedDbBundle(
+    scope: I18nBundleScope,
+    lang: string
+  ): Promise<StoredI18nBundle | null> {
     const db = await this.openIndexedDb();
     if (!db || !db.objectStoreNames.contains(APP_I18N_BUNDLES_STORE)) {
       return null;
     }
     return await new Promise<StoredI18nBundle | null>(resolve => {
       const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readonly');
-      const request = tx.objectStore(APP_I18N_BUNDLES_STORE).get(this.normalizeLanguage(lang));
+      const request = tx.objectStore(APP_I18N_BUNDLES_STORE)
+        .get(this.bundleKey(scope, lang));
       request.onsuccess = () => {
         resolve(this.normalizeStoredBundle(request.result, lang));
       };
@@ -90,14 +114,18 @@ export class I18nBundleRepository {
     });
   }
 
-  private async writeIndexedDbBundle(bundle: StoredI18nBundle): Promise<void> {
+  private async writeIndexedDbBundle(
+    scope: I18nBundleScope,
+    bundle: StoredI18nBundle
+  ): Promise<void> {
     const db = await this.openIndexedDb();
     if (!db || !db.objectStoreNames.contains(APP_I18N_BUNDLES_STORE)) {
       return;
     }
     await new Promise<void>(resolve => {
       const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readwrite');
-      tx.objectStore(APP_I18N_BUNDLES_STORE).put(bundle, bundle.lang);
+      tx.objectStore(APP_I18N_BUNDLES_STORE)
+        .put(bundle, this.bundleKey(scope, bundle.lang));
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
@@ -139,9 +167,15 @@ export class I18nBundleRepository {
     };
   }
 
-  private storageKey(lang: string): string {
+  private storageKey(scope: I18nBundleScope, lang: string): string {
     const normalizedLang = this.normalizeLanguage(lang) || I18nBundleRepository.DEFAULT_LANGUAGE;
-    return scopedStorageKey(`i18n.bundle.v1.${normalizedLang}`);
+    return scopedStorageKey(`i18n.bundle.v2.${scope}.${normalizedLang}`);
+  }
+
+  private bundleKey(scope: I18nBundleScope, lang: string): string {
+    const normalizedLang = this.normalizeLanguage(lang)
+      || I18nBundleRepository.DEFAULT_LANGUAGE;
+    return `${scope}:${normalizedLang}`;
   }
 
   private canUseLocalStorage(): boolean {

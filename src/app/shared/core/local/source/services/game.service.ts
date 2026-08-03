@@ -83,20 +83,22 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
         this.matchesSocialQuery(allUsers, card, request.leftQuery ?? null, request.rightQuery ?? null)
       );
       const pageSize = this.resolvePageSize(request.pageSize);
-      const offset = this.resolveOffset(request.cursor);
-      const page = filteredSocialCards.slice(offset, offset + pageSize);
+      const excludedSocialCardIds = this.normalizeIds(request.excludedSocialCardIds);
+      const unseenSocialCards = filteredSocialCards
+        .filter(card => !excludedSocialCardIds.has(card.id.trim()));
+      const offset = excludedSocialCardIds.size > 0 ? 0 : this.resolveOffset(request.cursor);
+      const page = unseenSocialCards.slice(offset, offset + pageSize);
       const nextOffset = offset + pageSize;
       return {
         cards: {
           filterCount: filteredSocialCards.length,
           cardUserIds: [],
           socialCards: page.map(card => ({ ...card })),
-          nextCursor: nextOffset < filteredSocialCards.length ? String(nextOffset) : null
+          nextCursor: nextOffset < unseenSocialCards.length ? String(nextOffset) : null
         }
       };
     }
     const pageSize = this.resolvePageSize(request.pageSize);
-    const offset = this.resolveOffset(request.cursor);
     const metUserIds = new Set(this.activityMembersRepository.queryMetUserIds(normalizedUserId));
     const socialCandidateUserIds = this.queryFriendsInCommonCandidateUserIds(normalizedUserId);
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
@@ -111,11 +113,15 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
           - this.homeUserScore(left, activeUserForRanking, latestActivityMsByUserId);
         return delta !== 0 ? delta : left.id.localeCompare(right.id);
       });
-    const cardUserIds = filtered
+    const excludedCardUserIds = this.normalizeIds(request.excludedCardUserIds);
+    const unseenUsers = filtered
+      .filter(user => !excludedCardUserIds.has(user.id.trim()));
+    const offset = excludedCardUserIds.size > 0 ? 0 : this.resolveOffset(request.cursor);
+    const cardUserIds = unseenUsers
       .slice(offset, offset + pageSize)
       .map(user => user.id);
     const nextOffset = offset + pageSize;
-    const nextCursor = nextOffset < filtered.length ? String(nextOffset) : null;
+    const nextCursor = nextOffset < unseenUsers.length ? String(nextOffset) : null;
 
     return {
       cards: {
@@ -151,6 +157,14 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       return 0;
     }
     return parsed;
+  }
+
+  private normalizeIds(values: readonly string[] | null | undefined): Set<string> {
+    return new Set(
+      (values ?? [])
+        .map(value => `${value ?? ''}`.trim())
+        .filter(value => value.length > 0)
+    );
   }
 
   private parseHeightCm(value: string): number | null {

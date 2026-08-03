@@ -316,6 +316,9 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private normalizeChatUserGender(value: unknown): ContractTypes.ChatUserGender {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'system') {
+      return 'system';
+    }
     return normalized === 'woman' ? 'woman' : 'man';
   }
 

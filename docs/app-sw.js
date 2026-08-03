@@ -1,12 +1,19 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-e4df55829f7c-20260727230848";
-const BUILD_ID = "e4df55829f7c-20260727230848";
+const CACHE_VERSION = "build-819aaac75f3e-20260731071400";
+const BUILD_ID = "819aaac75f3e-20260731071400";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
 const APP_CACHE_PREFIX = `${CACHE_PREFIX}-app-`;
 const PREVIOUS_APP_CACHE_LIMIT = 1;
+const DEPLOYMENT_CONFIGURATION_URL = './api/deployment/configuration';
+const DEPLOYMENT_BRANDING_CACHE_KEY = './__deployment-branding__';
+const DEFAULT_DEPLOYMENT_BRANDING = Object.freeze({
+  productName: 'MyScoutee',
+  homeLabel: 'Your preferences come first',
+  logoUrl: './assets/logo/heart.webp'
+});
 const PRECACHE_CORE_URLS = [
   './',
   './index.html',
@@ -23,109 +30,131 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-232LZJSP.js",
-  "./chunk-27KIEUDF.js",
-  "./chunk-2ETPG256.js",
-  "./chunk-2SJXTFUJ.js",
-  "./chunk-3K2DMEV4.js",
-  "./chunk-3O7FSA2B.js",
-  "./chunk-4J7AY6EG.js",
-  "./chunk-4RWFPIN7.js",
-  "./chunk-4ZGC273P.js",
-  "./chunk-54YUWOU5.js",
-  "./chunk-5NMNY4ZA.js",
-  "./chunk-5PQFHX7R.js",
-  "./chunk-64HDKRX7.js",
-  "./chunk-6BX32QMS.js",
-  "./chunk-6PS56TAN.js",
-  "./chunk-6SPED3UJ.js",
-  "./chunk-72JDJAJX.js",
-  "./chunk-7OJX6AHJ.js",
-  "./chunk-AKAALRLR.js",
-  "./chunk-B2W4NSSN.js",
-  "./chunk-B76YTRGS.js",
-  "./chunk-BRARPE73.js",
-  "./chunk-C3TNBN2F.js",
-  "./chunk-CABMKMHH.js",
-  "./chunk-CKEKQBO2.js",
-  "./chunk-CYPSAPP4.js",
-  "./chunk-D6KLXMFO.js",
-  "./chunk-DHMSPDOJ.js",
-  "./chunk-DIBTMBY7.js",
-  "./chunk-DL4RHNVN.js",
-  "./chunk-DUKMN2BG.js",
-  "./chunk-E4KE3QKB.js",
-  "./chunk-EVOM2LGA.js",
-  "./chunk-EWQRBHHZ.js",
-  "./chunk-F47TFN7L.js",
-  "./chunk-F7WXN6IS.js",
-  "./chunk-FCSV67U7.js",
-  "./chunk-FMYQK2GF.js",
-  "./chunk-G2O2MOK3.js",
-  "./chunk-G3XUYD3V.js",
-  "./chunk-GP432PHO.js",
-  "./chunk-GQVZMZXE.js",
-  "./chunk-GX5IFZAS.js",
-  "./chunk-HE5OIVJR.js",
-  "./chunk-HXOTV4RE.js",
-  "./chunk-I4LXVEQE.js",
-  "./chunk-I5CXX2KN.js",
-  "./chunk-IIC3TI2B.js",
-  "./chunk-IKQF6EBT.js",
+  "./chunk-2JQGQFAL.js",
+  "./chunk-2UV6X53A.js",
+  "./chunk-33M6HEXL.js",
+  "./chunk-35GNCASN.js",
+  "./chunk-3DYYZXAG.js",
+  "./chunk-3MQKUIC5.js",
+  "./chunk-3T4ESKWF.js",
+  "./chunk-3USE2JTN.js",
+  "./chunk-3W25JOAQ.js",
+  "./chunk-3WQRIAYP.js",
+  "./chunk-457P3FYT.js",
+  "./chunk-4EUH5KVZ.js",
+  "./chunk-4KKBXOW3.js",
+  "./chunk-54FF55S4.js",
+  "./chunk-5SF4MG7X.js",
+  "./chunk-6DTO44WU.js",
+  "./chunk-6MOCRDR2.js",
+  "./chunk-75B4PJTL.js",
+  "./chunk-7JIGC5G2.js",
+  "./chunk-7RHS5LXU.js",
+  "./chunk-7RULRLPF.js",
+  "./chunk-7RXY7V3K.js",
+  "./chunk-A4FNXKJJ.js",
+  "./chunk-ADHC72FY.js",
+  "./chunk-AE3A6G5D.js",
+  "./chunk-B7HOOEHU.js",
+  "./chunk-BAL6CU2X.js",
+  "./chunk-BEVL32SS.js",
+  "./chunk-BFWLL4PA.js",
+  "./chunk-BMHTCJN3.js",
+  "./chunk-BX6DUH4U.js",
+  "./chunk-C534OBA6.js",
+  "./chunk-C5TFMX3G.js",
+  "./chunk-CFH3CGIO.js",
+  "./chunk-CKD6VTGX.js",
+  "./chunk-CR73XBEO.js",
+  "./chunk-CXCKG3GM.js",
+  "./chunk-CZINRY7G.js",
+  "./chunk-DFZFLWLV.js",
+  "./chunk-DIRUAOUH.js",
+  "./chunk-DN53A4CA.js",
+  "./chunk-DR7HGAZB.js",
+  "./chunk-EBZ5FAZL.js",
+  "./chunk-EC7UEIVC.js",
+  "./chunk-ENBRBITE.js",
+  "./chunk-FDSDPRY4.js",
+  "./chunk-FFVSW7RO.js",
+  "./chunk-FOGLBNAW.js",
+  "./chunk-FTXBD7OX.js",
+  "./chunk-FX25TA6W.js",
+  "./chunk-FXQBLCMP.js",
+  "./chunk-G2YWNCXB.js",
+  "./chunk-G3DX3F7P.js",
+  "./chunk-GBTTJ3KG.js",
+  "./chunk-GIFOZYO4.js",
+  "./chunk-H4UGAIQW.js",
+  "./chunk-HEH2BHVM.js",
+  "./chunk-IBA5TFWJ.js",
   "./chunk-ILYEL5SY.js",
-  "./chunk-IQYUH2NB.js",
-  "./chunk-J4VN3LVX.js",
-  "./chunk-J6DOMUCJ.js",
-  "./chunk-JMNHMXLC.js",
-  "./chunk-JON337DW.js",
-  "./chunk-JW5CMASA.js",
-  "./chunk-KODEKGCS.js",
-  "./chunk-L44UQXWY.js",
-  "./chunk-LCLJ2F6V.js",
-  "./chunk-LEDXHFT3.js",
-  "./chunk-LM4XY6OH.js",
-  "./chunk-M3NVS7JV.js",
-  "./chunk-MMONNHTO.js",
-  "./chunk-NOJSUCLW.js",
-  "./chunk-NZCYFD2M.js",
-  "./chunk-OGPW47NL.js",
-  "./chunk-OZJE45NO.js",
-  "./chunk-PS2554JC.js",
-  "./chunk-Q3BQQV5K.js",
-  "./chunk-QHLOSQWA.js",
-  "./chunk-QNFICO2I.js",
-  "./chunk-R4QQ23Q5.js",
-  "./chunk-R7BJGNCR.js",
-  "./chunk-RJQDCZWF.js",
-  "./chunk-RMR6AOAQ.js",
-  "./chunk-RR3FTBWH.js",
+  "./chunk-INMIN77V.js",
+  "./chunk-IP52TFEU.js",
+  "./chunk-IPJVWINC.js",
+  "./chunk-ITRZ6P2X.js",
+  "./chunk-IVBSWB57.js",
+  "./chunk-JBAMI57E.js",
+  "./chunk-JBPMMTXU.js",
+  "./chunk-JHQHHZHX.js",
+  "./chunk-JJIR6S5G.js",
+  "./chunk-KB33S2EZ.js",
+  "./chunk-KEQHSSCE.js",
+  "./chunk-KH3VOHWG.js",
+  "./chunk-KJ5YMBND.js",
+  "./chunk-L2KHMXXT.js",
+  "./chunk-LGOPT6BH.js",
+  "./chunk-LZ7H6DUG.js",
+  "./chunk-MVYREXB4.js",
+  "./chunk-MY4XAO7L.js",
+  "./chunk-N3O56W4H.js",
+  "./chunk-N5JDFPU5.js",
+  "./chunk-NFODDYET.js",
+  "./chunk-NHGVOJG4.js",
+  "./chunk-NKG5MD3N.js",
+  "./chunk-NXINGLZB.js",
+  "./chunk-O4MB3NG2.js",
+  "./chunk-ONKBZNMX.js",
+  "./chunk-OVMUJ4TF.js",
+  "./chunk-PGP5N4AQ.js",
+  "./chunk-PMTIQTQK.js",
+  "./chunk-PREVIP3F.js",
+  "./chunk-QIAHTLUJ.js",
+  "./chunk-QQXEYJM4.js",
+  "./chunk-QQY265IP.js",
+  "./chunk-R5Z355S6.js",
   "./chunk-S24YZLS5.js",
-  "./chunk-S4CEPTAW.js",
-  "./chunk-SAH4I3LK.js",
-  "./chunk-SB4VWWAU.js",
-  "./chunk-SFBJRAVG.js",
-  "./chunk-TKUWF55N.js",
-  "./chunk-TUY4JIW3.js",
-  "./chunk-U6HVNEDZ.js",
-  "./chunk-ULAPRGQ4.js",
-  "./chunk-UTI6NKB2.js",
-  "./chunk-UWQWVN3Y.js",
-  "./chunk-VCTRVSNJ.js",
-  "./chunk-VILYZIF3.js",
-  "./chunk-VWYQ7PHI.js",
-  "./chunk-W2ZGGUTB.js",
-  "./chunk-W6OTKMCQ.js",
-  "./chunk-WEAM4W27.js",
-  "./chunk-X3IJSK44.js",
-  "./chunk-X7UY6B2E.js",
-  "./chunk-XBDNT23B.js",
-  "./chunk-XWKDHDFT.js",
-  "./chunk-YBLEAFXP.js",
-  "./chunk-YPGKKBGY.js",
-  "./chunk-Z2MNCWOG.js",
-  "./chunk-ZIXA72AR.js",
-  "./chunk-ZVHDCPA5.js",
-  "./main-6U4RVHII.js",
+  "./chunk-SHCKXQZJ.js",
+  "./chunk-SOBYN74T.js",
+  "./chunk-STDUBZSI.js",
+  "./chunk-SVZYC5VY.js",
+  "./chunk-SYC4CMD6.js",
+  "./chunk-SYZDL2UZ.js",
+  "./chunk-T3XGHTN7.js",
+  "./chunk-TELF2L5V.js",
+  "./chunk-TOIUSNUJ.js",
+  "./chunk-U6KS7NQE.js",
+  "./chunk-UDYGJGF3.js",
+  "./chunk-VNJROWVY.js",
+  "./chunk-W7BCUE45.js",
+  "./chunk-WF5RZFHW.js",
+  "./chunk-WMGJIHKJ.js",
+  "./chunk-WP2EZGVZ.js",
+  "./chunk-WU7L2SOR.js",
+  "./chunk-XTZLBTPL.js",
+  "./chunk-XVJUA2PQ.js",
+  "./chunk-XWLCDF3T.js",
+  "./chunk-Y3FQTAR7.js",
+  "./chunk-YF322YMZ.js",
+  "./chunk-YNSJGIVZ.js",
+  "./chunk-YXTEPRAB.js",
+  "./chunk-YZOGGRSB.js",
+  "./chunk-Z2TBYSTE.js",
+  "./chunk-Z7DIWZOW.js",
+  "./chunk-ZD4WMLIX.js",
+  "./chunk-ZEX2FEVC.js",
+  "./chunk-ZWHGTLLJ.js",
+  "./main-MZIYJEDJ.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -190,7 +219,7 @@ const PRECACHE_BUILD_URLS = [
   "./media/roboto-vietnamese-400-normal-R3IJFZXV.woff",
   "./media/roboto-vietnamese-500-normal-SNWSONII.woff",
   "./media/roboto-vietnamese-500-normal-VJX2WMYG.woff2",
-  "./styles-T3QTPFFJ.css"
+  "./styles-CESK6H4M.css"
 ];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
@@ -226,6 +255,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'DEPLOYMENT_BRANDING') {
+    event.waitUntil(
+      storeDeploymentBranding(event.data.branding)
+    );
   }
 });
 
@@ -243,7 +278,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
-    if (url.origin !== self.location.origin && url.hostname !== 'api.qrserver.com') {
+    if (url.origin !== self.location.origin) {
       return;
     }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
@@ -264,10 +299,6 @@ self.addEventListener('fetch', event => {
       return;
     }
   }
-
-  if (url.hostname === 'api.qrserver.com') {
-    event.respondWith(cacheFirst(request, MEDIA_CACHE));
-  }
 });
 
 self.addEventListener('push', event => {
@@ -275,16 +306,19 @@ self.addEventListener('push', event => {
   if (!payload) {
     return;
   }
-  event.waitUntil(
-    self.registration.showNotification(payload.title, {
+  event.waitUntil((async () => {
+    const branding = await deploymentBranding();
+    await self.registration.showNotification(
+      payload.title || branding.productName,
+      {
       body: payload.body,
-      icon: payload.icon || './assets/logo/heart.png',
-      badge: payload.badge || './assets/logo/heart.png',
+      icon: payload.icon || branding.logoUrl,
+      badge: payload.badge || branding.logoUrl,
       data: {
         url: payload.url || '/game'
       }
-    })
-  );
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
@@ -444,16 +478,21 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-function unavailableResponse(request) {
+async function unavailableResponse(request) {
   if (request.mode === 'navigate') {
-    return new Response('<!doctype html><title>MyScoutee</title><body>No network</body>', {
+    const branding = await deploymentBranding();
+    const productName = escapeHtml(branding.productName);
+    return new Response(
+      `<!doctype html><title>${productName}</title><body>${productName}</body>`,
+      {
       status: 503,
       statusText: 'Service Unavailable',
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store'
       }
-    });
+      }
+    );
   }
   return new Response('', {
     status: 503,
@@ -473,7 +512,7 @@ function parsePushPayload(event) {
     const notification = json.notification || {};
     const data = json.data || {};
     return {
-      title: notification.title || data.title || 'MyScoutee',
+      title: notification.title || data.title || '',
       body: notification.body || data.body || '',
       icon: notification.icon || data.icon || '',
       badge: notification.badge || data.badge || '',
@@ -481,13 +520,111 @@ function parsePushPayload(event) {
     };
   } catch {
     return {
-      title: 'MyScoutee',
+      title: '',
       body: event.data.text(),
       icon: '',
       badge: '',
       url: '/game'
     };
   }
+}
+
+async function deploymentBranding() {
+  const cache = await caches.open(API_CACHE);
+  const cached = await cache.match(DEPLOYMENT_BRANDING_CACHE_KEY);
+  if (cached) {
+    try {
+      return normalizeDeploymentBranding(await cached.json());
+    } catch {
+      await cache.delete(DEPLOYMENT_BRANDING_CACHE_KEY);
+    }
+  }
+  try {
+    const response = await fetch(DEPLOYMENT_CONFIGURATION_URL, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    if (response.ok) {
+      const branding = normalizeDeploymentBranding(await response.json());
+      await persistDeploymentBranding(cache, branding);
+      return branding;
+    }
+  } catch {
+    // Offline and cold-worker fallback uses the bundled product identity.
+  }
+  return { ...DEFAULT_DEPLOYMENT_BRANDING };
+}
+
+async function storeDeploymentBranding(value) {
+  const cache = await caches.open(API_CACHE);
+  await persistDeploymentBranding(
+    cache,
+    normalizeDeploymentBranding(value)
+  );
+}
+
+async function persistDeploymentBranding(cache, branding) {
+  await cache.put(
+    DEPLOYMENT_BRANDING_CACHE_KEY,
+    new Response(JSON.stringify(branding), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
+    })
+  );
+}
+
+function normalizeDeploymentBranding(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const productName = normalizedText(source.productName, 80)
+    || DEFAULT_DEPLOYMENT_BRANDING.productName;
+  const homeLabel = normalizedText(source.homeLabel, 120);
+  return {
+    productName,
+    homeLabel,
+    logoUrl: normalizedLogoUrl(source.logoUrl)
+  };
+}
+
+function normalizedLogoUrl(value) {
+  if (typeof value !== 'string') {
+    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+  }
+  const normalized = normalizedText(value, 4096);
+  if (!normalized) {
+    return '';
+  }
+  try {
+    const url = new URL(normalized, self.location.origin);
+    if (
+      (url.protocol === 'https:' || url.origin === self.location.origin)
+      && !url.username
+      && !url.password
+    ) {
+      return url.toString();
+    }
+  } catch {
+    // Fall through to the bundled logo.
+  }
+  return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+}
+
+function normalizedText(value, maximumLength) {
+  return typeof value === 'string'
+    ? Array.from(value.trim()).slice(0, maximumLength).join('')
+    : '';
+}
+
+function escapeHtml(value) {
+  return `${value ?? ''}`
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 async function openClient(targetUrl) {

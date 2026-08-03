@@ -37,6 +37,7 @@
           [row]="row"
           [groupLabel]="groupLabel"
           [cardRevision]="activitiesEventCardRevisionForRow(row)"
+          (profileClick)="openProfileView($event)"
           (mediaEndClick)="openActivityMembers(row)"
           (menuAction)="onActivityEventCardMenuAction(row, $event)"
           (menuRequest)="openMenu($event)"

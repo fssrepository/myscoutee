@@ -13,6 +13,10 @@ import type {
   OperatorConfigurationSaveRequestDto,
   OperatorConfigurationTestRequestDto,
   OperatorConfigurationTestResultDto,
+  OperatorTlsConfigurationDto,
+  OperatorTlsConfigurationUpdateDto,
+  OperatorTlsJobDto,
+  OperatorTlsTestRequestDto,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdateProgressHandler,
   OperatorLeaderboardDeploymentPageDto,
@@ -191,6 +195,22 @@ export class OperatorRegistryService extends BaseRouteModeService {
 
   activateFirebase(): Promise<OperatorConfigurationDto> {
     return this.registryService.activateFirebase();
+  }
+
+  loadTlsConfiguration(): Promise<OperatorTlsConfigurationDto> {
+    return this.registryService.loadTlsConfiguration();
+  }
+
+  saveTlsConfiguration(
+    request: OperatorTlsConfigurationUpdateDto
+  ): Promise<OperatorTlsJobDto> {
+    return this.registryService.saveTlsConfiguration(request);
+  }
+
+  testTlsConfiguration(
+    request: OperatorTlsTestRequestDto
+  ): Promise<OperatorTlsJobDto> {
+    return this.registryService.testTlsConfiguration(request);
   }
 
   loadRevenue(): Promise<OperatorRevenueDto> {

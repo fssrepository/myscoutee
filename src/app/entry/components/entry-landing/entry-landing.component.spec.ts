@@ -19,6 +19,10 @@ describe('EntryLandingComponent article lists', () => {
     'landing.articles.title': '{productName} articles',
     'landing.articles.count.one': '{count} article',
     'landing.articles.count.many': '{count} articles',
+    'landing.partners.title': 'For Partners',
+    'landing.partners.open.aria': 'Open partner overview',
+    'landing.preview.open.guide': 'Open preview guide',
+    'bug.report': 'Bug report',
     'close.articles': 'Close articles'
   };
   const socialLinks = signal([
@@ -151,11 +155,17 @@ describe('EntryLandingComponent article lists', () => {
     const fixture = TestBed.createComponent(EntryLandingComponent);
     fixture.detectChanges();
 
-    const partnerButton = fixture.nativeElement.querySelector('.entry-cta-partners') as HTMLButtonElement | null;
-    const bugReportButton = fixture.nativeElement.querySelector('.entry-cta-bug') as HTMLButtonElement | null;
+    const ctaMenu = fixture.nativeElement.querySelector(
+      'app-menu.entry-hero-cta-menu'
+    ) as HTMLElement | null;
+    const buttons = Array.from(
+      ctaMenu?.querySelectorAll<HTMLButtonElement>('.app-menu__button-row-item') ?? []
+    );
+    const partnerButton = buttons.find(button => button.textContent?.includes('For Partners')) ?? null;
+    const bugReportButton = buttons.find(button => button.textContent?.includes('Bug report')) ?? null;
+    expect(ctaMenu).not.toBeNull();
     expect(partnerButton).not.toBeNull();
-    expect(partnerButton?.textContent).toContain('For Partners');
-    expect(partnerButton?.getAttribute('aria-expanded')).toBe('false');
+    expect(partnerButton?.classList.contains('app-menu__palette--ink')).toBe(true);
     expect(bugReportButton?.parentElement).toBe(partnerButton?.parentElement);
     expect(bugReportButton?.nextElementSibling).toBe(partnerButton);
 
@@ -163,7 +173,6 @@ describe('EntryLandingComponent article lists', () => {
     fixture.detectChanges();
 
     expect(view(fixture.componentInstance).partnersPopupOpen).toBe(true);
-    expect(partnerButton?.getAttribute('aria-expanded')).toBe('true');
     expect(fixture.nativeElement.querySelector('.entry-shell')?.hasAttribute('inert')).toBe(true);
     const popupBody = fixture.nativeElement.querySelector('.entry-partners-popup-body') as HTMLElement | null;
     expect(popupBody).not.toBeNull();
@@ -199,7 +208,6 @@ describe('EntryLandingComponent article lists', () => {
     fixture.detectChanges();
 
     expect(view(fixture.componentInstance).partnersPopupOpen).toBe(false);
-    expect(partnerButton?.getAttribute('aria-expanded')).toBe('false');
     expect(fixture.nativeElement.querySelector('.entry-shell')?.hasAttribute('inert')).toBe(false);
     expect(fixture.nativeElement.querySelector('.entry-partners-popup-body')).toBeNull();
   });
