@@ -58,6 +58,7 @@ import { LocalActivityResourcesRepository } from '../repositories/activity-resou
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersService } from './users.service';
 import {
@@ -864,6 +865,30 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const eventChatAdded = changed && published
       ? this.chatsRepository.syncPublishedMainEventChat(published, userId)
       : false;
+    if (changed && published) {
+      if (eventChatAdded) {
+        this.appendEventLifecycleNotifications(
+          userId,
+          sourceId,
+          published,
+          'event-invite',
+          published.title,
+          `You were invited to ${published.title}.`,
+          'info',
+          true
+        );
+      } else {
+        this.appendEventLifecycleNotifications(
+          userId,
+          sourceId,
+          published,
+          'event-modified',
+          `${published.title} changed`,
+          'The event was modified and is available again.',
+          'info'
+        );
+      }
+    }
     const result = await this.withLocalMutationCounterDelta(
       this.localLifecycleResult(sourceId, 'publish', published, changed),
       userId,
@@ -880,6 +905,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.unpublishItem(userId, sourceId);
     const changed = !!beforeRecord && this.localEventStatus(beforeRecord) !== 'DR';
+    if (changed && beforeRecord) {
+      this.appendEventLifecycleNotifications(
+        userId,
+        sourceId,
+        beforeRecord,
+        'event-under-review',
+        `${beforeRecord.title} changed`,
+        'The event is under review.',
+        'warning'
+      );
+    }
     const result = await this.withLocalMutationCounterDelta(
       this.localLifecycleResult(
         sourceId,
@@ -1747,6 +1783,59 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   private localEventStatus(record: ActivityEventRecord | null | undefined): string {
     return `${record?.status ?? ''}`.trim().toUpperCase();
+  }
+
+  private appendEventLifecycleNotifications(
+    actorUserId: string,
+    sourceId: string,
+    event: ActivityEventRecord,
+    kind: string,
+    title: string,
+    message: string,
+    tone: 'info' | 'warning',
+    invitationOnly = false
+  ): void {
+    const actorId = actorUserId.trim();
+    const pendingUserIds = new Set((event.pendingMemberUserIds ?? []).map(id => id.trim()).filter(Boolean));
+    const invitedUserIds = new Set((event.invitedMemberUserIds ?? []).map(id => id.trim()).filter(Boolean));
+    const recipients = invitationOnly
+      ? [...invitedUserIds].filter(userId => pendingUserIds.has(userId))
+      : [
+          ...(event.acceptedMemberUserIds ?? []),
+          ...(event.pendingMemberUserIds ?? []),
+          ...(event.invitedMemberUserIds ?? [])
+        ];
+    const actor = this.usersRepository.queryUserById(actorId);
+    const createdAtIso = new Date().toISOString();
+    const uniqueRecipients = [...new Set(recipients.map(id => id.trim()).filter(id => id && id !== actorId))];
+    const records: NotificationRecord[] = uniqueRecipients.map(recipientUserId => ({
+      id: this.localNotificationId(kind, sourceId, recipientUserId),
+      recipientUserId,
+      kind,
+      category: 'event',
+      title,
+      message,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: actor?.name ?? null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId,
+      payload: {
+        eventId: sourceId,
+        eventScope: invitationOnly ? 'invitations' : 'lifecycle',
+        notification_tone: tone
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private localNotificationId(kind: string, sourceId: string, recipientUserId: string): string {
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${kind}:${sourceId}:${recipientUserId}:${occurrenceId}`;
   }
 
   private async withLocalMutationCounterDelta(

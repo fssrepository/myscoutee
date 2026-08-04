@@ -44,7 +44,7 @@ export class NotificationSingleRowConverter implements UiConverter<
       icon: systemRandomRoom
         ? 'auto_awesome'
         : senderName ? null : this.categoryIcon(notification.category),
-      surfaceTone: this.surfaceTone(notification.category, read),
+      surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
         {
@@ -52,7 +52,7 @@ export class NotificationSingleRowConverter implements UiConverter<
           icon: 'schedule',
           ariaLabel: timestamp,
           title: timestamp,
-          tone: read ? 'muted' : this.badgeTone(notification.category),
+          tone: read ? 'muted' : this.badgeTone(notification),
           position: 'top-right'
         },
         ...(read ? [{
@@ -76,11 +76,15 @@ export class NotificationSingleRowConverter implements UiConverter<
       || `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'random-room';
   }
 
-  private surfaceTone(category: NotificationCategory, read: boolean): SingleRowSurfaceTone {
+  private surfaceTone(notification: NotificationDto, read: boolean): SingleRowSurfaceTone {
     if (read) {
       return 'muted';
     }
-    switch (category) {
+    const contextualTone = this.contextualTone(notification);
+    if (contextualTone) {
+      return contextualTone;
+    }
+    switch (notification.category) {
       case 'chat':
       case 'event':
         return 'info';
@@ -97,8 +101,12 @@ export class NotificationSingleRowConverter implements UiConverter<
     }
   }
 
-  private badgeTone(category: NotificationCategory): SingleRowSurfaceTone {
-    switch (category) {
+  private badgeTone(notification: NotificationDto): SingleRowSurfaceTone {
+    const contextualTone = this.contextualTone(notification);
+    if (contextualTone) {
+      return contextualTone;
+    }
+    switch (notification.category) {
       case 'chat':
       case 'event':
         return 'info';
@@ -112,6 +120,20 @@ export class NotificationSingleRowConverter implements UiConverter<
         return 'success';
       default:
         return 'neutral';
+    }
+  }
+
+  private contextualTone(notification: NotificationDto): SingleRowSurfaceTone | null {
+    const requestedTone = `${notification.payload?.['notification_tone'] ?? ''}`.trim();
+    switch (requestedTone) {
+      case 'info':
+      case 'accent':
+      case 'success':
+      case 'warning':
+      case 'danger':
+        return requestedTone;
+      default:
+        return null;
     }
   }
 

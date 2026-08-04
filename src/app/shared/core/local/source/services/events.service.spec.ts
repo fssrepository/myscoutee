@@ -22,6 +22,8 @@ describe('LocalEventsService', () => {
   const queryInvitationItemsByUser = vi.fn();
   const requestJoin = vi.fn();
   const trashItem = vi.fn();
+  const publishItem = vi.fn();
+  const unpublishItem = vi.fn();
   const peekKnownItemById = vi.fn();
   const queryHostingItemsByUser = vi.fn();
   const queryEventItemsByUser = vi.fn();
@@ -31,7 +33,9 @@ describe('LocalEventsService', () => {
   const patchUserActivityCounterDeltas = vi.fn();
   const flushEvents = vi.fn();
   const markUnreadBySource = vi.fn();
+  const appendNotifications = vi.fn();
   const unreadCount = vi.fn();
+  const syncPublishedMainEventChat = vi.fn();
   const syncRealtimeNotificationCount = vi.fn();
 
   beforeEach(() => {
@@ -41,6 +45,8 @@ describe('LocalEventsService', () => {
     queryInvitationItemsByUser.mockReset().mockReturnValue([]);
     requestJoin.mockReset();
     trashItem.mockReset();
+    publishItem.mockReset();
+    unpublishItem.mockReset();
     peekKnownItemById.mockReset().mockReturnValue(null);
     queryHostingItemsByUser.mockReset().mockReturnValue([]);
     queryEventItemsByUser.mockReset().mockReturnValue([]);
@@ -50,7 +56,9 @@ describe('LocalEventsService', () => {
     patchUserActivityCounterDeltas.mockReset().mockResolvedValue(undefined);
     flushEvents.mockReset().mockResolvedValue(undefined);
     markUnreadBySource.mockReset().mockReturnValue(0);
+    appendNotifications.mockReset().mockReturnValue([]);
     unreadCount.mockReset().mockReturnValue(0);
+    syncPublishedMainEventChat.mockReset().mockReturnValue(false);
     syncRealtimeNotificationCount.mockReset();
     TestBed.configureTestingModule({
       providers: [
@@ -64,6 +72,8 @@ describe('LocalEventsService', () => {
             queryInvitationItemsByUser,
             requestJoin,
             trashItem,
+            publishItem,
+            unpublishItem,
             peekKnownItemById,
             queryHostingItemsByUser,
             queryEventItemsByUser,
@@ -75,7 +85,7 @@ describe('LocalEventsService', () => {
         {
           provide: LocalChatsRepository,
           useValue: {
-            syncPublishedMainEventChat: vi.fn()
+            syncPublishedMainEventChat
           }
         },
         { provide: LocalActivityResourcesRepository, useValue: {} },
@@ -85,7 +95,7 @@ describe('LocalEventsService', () => {
         { provide: LocalUsersRepository, useValue: { queryUserById } },
         {
           provide: LocalNotificationsRepository,
-          useValue: { markUnreadBySource, unreadCount }
+          useValue: { markUnreadBySource, append: appendNotifications, unreadCount }
         },
         { provide: LocalActivityMembersService, useValue: {} },
         {
@@ -190,6 +200,56 @@ describe('LocalEventsService', () => {
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('user-1', 4);
   });
 
+  it('creates first-publish invite notifications only for pending invitees', async () => {
+    const draft = lifecycleEvent('DR');
+    const published = lifecycleEvent('A');
+    peekKnownItemById.mockReturnValueOnce(draft).mockReturnValue(published);
+    syncPublishedMainEventChat.mockReturnValue(true);
+
+    await TestBed.inject(LocalEventsService).publishItem('host', 'event-1');
+
+    expect(appendNotifications).toHaveBeenCalledOnce();
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      recipientUserId: 'pending-invitee',
+      kind: 'event-invite',
+      payload: {
+        notification_tone: 'info'
+      }
+    });
+  });
+
+  it('uses warning for under-review and info for republish without notifying the actor', async () => {
+    const active = lifecycleEvent('A');
+    const draft = lifecycleEvent('DR');
+    peekKnownItemById.mockReturnValueOnce(active).mockReturnValue(draft);
+
+    await TestBed.inject(LocalEventsService).unpublishItem('host', 'event-1');
+
+    let records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['accepted-member', 'pending-invitee']);
+    expect(records[0]).toMatchObject({
+      kind: 'event-under-review',
+      payload: { notification_tone: 'warning' }
+    });
+
+    appendNotifications.mockClear();
+    peekKnownItemById.mockReturnValueOnce(draft).mockReturnValue(active);
+    syncPublishedMainEventChat.mockReturnValue(false);
+
+    await TestBed.inject(LocalEventsService).publishItem('host', 'event-1');
+
+    records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['accepted-member', 'pending-invitee']);
+    expect(records[0]).toMatchObject({
+      kind: 'event-modified',
+      payload: { notification_tone: 'info' }
+    });
+  });
+
   it('marks the related notification read after rejecting an invitation', async () => {
     queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
     markUnreadBySource.mockReturnValue(1);
@@ -246,5 +306,19 @@ function eventWithPromoCodes(id: string): ActivityEventRecord {
         }]
       }
     } as PricingConfig
+  } as ActivityEventRecord;
+}
+
+function lifecycleEvent(status: 'A' | 'DR'): ActivityEventRecord {
+  return {
+    id: 'event-1',
+    status,
+    title: 'Manual QA Event',
+    acceptedMemberUserIds: ['host', 'accepted-member'],
+    pendingMemberUserIds: ['pending-invitee'],
+    invitedMemberUserIds: ['pending-invitee'],
+    acceptedMembers: 2,
+    pendingMembers: 1,
+    capacityTotal: 8
   } as ActivityEventRecord;
 }

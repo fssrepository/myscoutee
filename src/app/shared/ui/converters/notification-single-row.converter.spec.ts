@@ -39,6 +39,19 @@ describe('NotificationSingleRowConverter badges', () => {
     expect(row.avatarToneClass).toBe('notification-system-avatar');
     expect(row.subtitle).toContain('MyScoutee System');
   });
+
+  it('uses the lifecycle context tone from the notification payload', () => {
+    const row = converter.convert(notification({
+      kind: 'event-definition-changed',
+      category: 'event',
+      payload: {
+        notification_tone: 'warning'
+      }
+    }));
+
+    expect(row.surfaceTone).toBe('warning');
+    expect(row.badges?.[0]?.tone).toBe('warning');
+  });
 });
 
 function notification(

@@ -72,15 +72,15 @@ export class LocalChatsRepository {
             ownerUserId,
             avatar: AppUtils.initialsFromText(event.title || 'Event'),
             title: event.title?.trim() || 'Event',
-            lastMessage: 'Event published.',
-            lastSenderId: participantUserIds.find(userId => userId !== ownerUserId) ?? ownerUserId,
+            lastMessage: '',
+            lastSenderId: null,
             unread: 0
           }),
           id: chatId,
           ownerUserId,
           title: event.title?.trim() || current?.title || 'Event',
           memberIds: [...participantUserIds],
-          unread: this.normalizeCounter((current?.unread ?? 0) + (isNewOwnerChat ? 1 : 0)),
+          unread: this.normalizeCounter(current?.unread ?? 0),
           dateIso: current?.dateIso ?? nowIso,
           channelType: 'mainEvent',
           ownerId: eventId

@@ -32,6 +32,61 @@ export class LocalNotificationsRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
+  append(records: readonly NotificationRecord[]): NotificationRecord[] {
+    const currentTable = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const seenIds = new Set(Object.keys(currentTable.byId));
+    const additions = records
+      .map(record => this.cloneRecord(record))
+      .filter(record => {
+        const id = record.id.trim();
+        const recipientUserId = record.recipientUserId.trim();
+        if (!id || !recipientUserId || seenIds.has(id)) {
+          return false;
+        }
+        seenIds.add(id);
+        return true;
+      });
+    if (additions.length === 0) {
+      return [];
+    }
+    this.memoryDb.write(state => {
+      const table = state[NOTIFICATIONS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      const nextIds = [...table.ids];
+      const nextIdsByRecipientUserId = { ...table.idsByRecipientUserId };
+      const affectedUserIds = new Set<string>();
+      additions.forEach(record => {
+        nextById[record.id] = record;
+        nextIds.push(record.id);
+        nextIdsByRecipientUserId[record.recipientUserId] = [
+          ...(nextIdsByRecipientUserId[record.recipientUserId] ?? []),
+          record.id
+        ];
+        affectedUserIds.add(record.recipientUserId);
+      });
+      const nextNotificationsTable = {
+        ...table,
+        byId: nextById,
+        ids: nextIds,
+        idsByRecipientUserId: nextIdsByRecipientUserId
+      };
+      let nextUsersTable = state[USERS_TABLE_NAME];
+      affectedUserIds.forEach(userId => {
+        nextUsersTable = this.withUserUnreadCount(
+          nextUsersTable,
+          userId,
+          this.unreadCountFromTable(nextNotificationsTable, userId)
+        );
+      });
+      return {
+        ...state,
+        [NOTIFICATIONS_TABLE_NAME]: nextNotificationsTable,
+        [USERS_TABLE_NAME]: nextUsersTable
+      };
+    });
+    return additions.map(record => this.cloneRecord(record));
+  }
+
   queryPage(
     userId: string,
     query: ListQuery<NotificationListFilters>
