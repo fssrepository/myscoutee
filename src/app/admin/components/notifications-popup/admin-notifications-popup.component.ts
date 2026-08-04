@@ -395,6 +395,7 @@ const PROCESS_RULE_ICONS: Record<string, string> = {
   'event-checkout-basket-purge': 'shopping_basket',
   'notification-outbox': 'notifications_active',
   'affinity-recompute': 'sync_alt',
+  'affinity-graph-layout': 'account_tree',
   'scheduled-messages': 'schedule_send',
   'account-purge': 'delete_sweep'
 };

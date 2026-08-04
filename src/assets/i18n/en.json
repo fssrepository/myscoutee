@@ -383,6 +383,8 @@
     "admin.jobs.rule.notification.outbox.description": "Sends queued in-app and push notifications.",
     "admin.jobs.rule.affinity.recompute": "Refresh affinities",
     "admin.jobs.rule.affinity.recompute.description": "Refreshes stored relationship scores after relevant profile and event changes.",
+    "admin.jobs.rule.affinity.graph.layout": "Rebuild affinity graph layout",
+    "admin.jobs.rule.affinity.graph.layout.description": "Materializes the current affinity graph for the admin graph view.",
     "admin.jobs.rule.scheduled.messages": "Send scheduled messages",
     "admin.jobs.rule.scheduled.messages.description": "Sends due messages and reminders, and handles scheduled inactivity actions.",
     "admin.jobs.rule.account.purge": "Finalize deleted accounts",

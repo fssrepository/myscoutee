@@ -383,6 +383,8 @@
     "admin.jobs.rule.notification.outbox.description": "Kiküldi a sorban álló alkalmazáson belüli és push értesítéseket.",
     "admin.jobs.rule.affinity.recompute": "Affinitások frissítése",
     "admin.jobs.rule.affinity.recompute.description": "Profil- és eseményváltozások után frissíti a tárolt kapcsolati pontszámokat.",
+    "admin.jobs.rule.affinity.graph.layout": "Affinitásgráf elrendezésének újraépítése",
+    "admin.jobs.rule.affinity.graph.layout.description": "Materializálja az aktuális affinitásgráfot az admin gráfnézethez.",
     "admin.jobs.rule.scheduled.messages": "Ütemezett üzenetek küldése",
     "admin.jobs.rule.scheduled.messages.description": "Kiküldi az esedékes üzeneteket és emlékeztetőket, és kezeli az időzített inaktivitási műveleteket.",
     "admin.jobs.rule.account.purge": "Törölt fiókok véglegesítése",

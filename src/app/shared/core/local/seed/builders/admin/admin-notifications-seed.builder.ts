@@ -156,6 +156,23 @@ export class AdminNotificationsSeedBuilder {
           startTime: '00:00'
         }),
         this.defaultNotificationRule({
+          ruleKey: 'affinity-graph-layout',
+          label: 'admin.jobs.rule.affinity.graph.layout',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.affinity.graph.layout.description',
+          actionKey: 'affinity.graph.layout.rebuild',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 245,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1440,
+          startTime: '00:00'
+        }),
+        this.defaultNotificationRule({
           ruleKey: 'scheduled-messages',
           label: 'admin.jobs.rule.scheduled.messages',
           category: 'admin.jobs.category.scheduled',
