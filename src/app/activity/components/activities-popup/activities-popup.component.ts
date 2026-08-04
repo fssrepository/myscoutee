@@ -1640,6 +1640,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
+    const sync = this.activitiesStore.eventBucketCountSync();
+    if (sync?.scope === scope) {
+      return sync.count;
+    }
     return this.countFrom(this.activitiesToolbarEventScopeCounts(), scope);
   }
 
@@ -3684,6 +3688,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>): void {
     let shouldMarkForCheck = false;
+
+    const primaryFilter = change.query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    if (
+      !change.initialLoading
+      && !change.loading
+      && primaryFilter === 'events'
+      && change.currentView !== 'week'
+      && change.currentView !== 'month'
+    ) {
+      this.activitiesStore.signalEventBucketCount(
+        change.query.filters?.eventScopeFilter ?? this.activitiesEventScope,
+        change.total
+      );
+    }
 
     if (this.activitiesInitialLoadPending !== change.initialLoading) {
       this.activitiesInitialLoadPending = change.initialLoading;
