@@ -93,7 +93,6 @@ export class LocalChatsRepository {
           if (ownerUserId === normalizedViewerUserId) {
             viewerChatAdded = true;
           }
-          nextUsersTable = this.applyStoredChatCounterDelta(nextUsersTable, ownerUserId, 'event', 1);
         }
       }
       const staleRecordKeys = currentTable.ids.filter(recordKey => {

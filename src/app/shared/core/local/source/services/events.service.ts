@@ -893,7 +893,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.localLifecycleResult(sourceId, 'publish', published, changed),
       userId,
       beforeCounters,
-      eventChatAdded ? { chats: 1, chat: { all: 1, event: 1 } } : null
+      null
     );
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);

@@ -126,7 +126,7 @@ describe('LocalChatsRepository chat pages', () => {
     expect(page.items.map(item => item.id)).toEqual(['chat-middle']);
   });
 
-  it('materializes an empty published-event channel and stored counters idempotently', () => {
+  it('materializes an empty published-event channel without changing attention counters', () => {
     const ownerUserId = 'user-publish-counter-test';
     const owner = user(ownerUserId);
     seedUser(owner);
@@ -153,9 +153,9 @@ describe('LocalChatsRepository chat pages', () => {
     expect(firstAdded).toBe(true);
     expect(repeatedAdded).toBe(false);
     const publishedOwner = memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId];
-    expect(publishedOwner.activities.chats).toBe(originalChats + 1);
-    expect(publishedOwner.activities.chat?.all).toBe(originalChats + 1);
-    expect(publishedOwner.activities.chat?.event).toBe(originalEventChats + 1);
+    expect(publishedOwner.activities.chats).toBe(originalChats);
+    expect(publishedOwner.activities.chat?.all).toBe(originalChats);
+    expect(publishedOwner.activities.chat?.event).toBe(originalEventChats);
   });
 
   it('keeps the empty published-event channel read when it is opened', () => {
@@ -178,7 +178,7 @@ describe('LocalChatsRepository chat pages', () => {
     expect(repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-read-test')).toMatchObject({
       unread: 0
     });
-    expect(memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId].activities.chats).toBe(originalChats + 1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId].activities.chats).toBe(originalChats);
   });
 
   function seedChats(records: ChatThreadRecord[]): void {
