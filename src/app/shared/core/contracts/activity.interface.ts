@@ -121,6 +121,10 @@ export interface IEventsService {
   saveActivityEvent(
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
+  trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
   queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
@@ -146,7 +150,6 @@ export interface IEventsService {
       totalAmount?: number | null;
       currency?: string | null;
       skipLocalRouteDelay?: boolean;
-      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
   leaveEvent(
@@ -158,7 +161,6 @@ export interface IEventsService {
       checkoutState?: EventCheckoutState | null;
       checkoutResultState?: EventCheckoutResultState | null;
       checkoutSessionId?: string | null;
-      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
 }
@@ -326,6 +328,8 @@ export interface EventParticipationActionResultDTO {
   paymentSessionId?: string | null;
   changed?: boolean;
   reason?: string | null;
+  /** Operation-owned unit directions (-1/+1), never a global before/after counter diff. */
+  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
 }
 
 export interface SubEventResourceCardDTO {
@@ -1586,7 +1590,6 @@ export interface EventCheckoutStateChangeRequest {
   resultState?: EventCheckoutResultState | null;
   pendingReason?: AppConstants.ActivityPendingReason;
   checkoutSessionId?: string | null;
-  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
   checkoutRequest?: EventCheckoutRequest | null;
 }
 

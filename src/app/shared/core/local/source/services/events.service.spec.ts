@@ -8,6 +8,7 @@ import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/act
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersService } from './activity-members.service';
@@ -21,6 +22,13 @@ describe('LocalEventsService', () => {
   const queryInvitationItemsByUser = vi.fn();
   const requestJoin = vi.fn();
   const trashItem = vi.fn();
+  const peekKnownItemById = vi.fn();
+  const queryHostingItemsByUser = vi.fn();
+  const queryEventItemsByUser = vi.fn();
+  const countUpcomingActiveEventItemsByUser = vi.fn();
+  const queryTrashedItemsByUser = vi.fn();
+  const queryUserById = vi.fn();
+  const patchUserActivityCounterDeltas = vi.fn();
   const flushEvents = vi.fn();
   const markUnreadBySource = vi.fn();
   const unreadCount = vi.fn();
@@ -33,6 +41,13 @@ describe('LocalEventsService', () => {
     queryInvitationItemsByUser.mockReset().mockReturnValue([]);
     requestJoin.mockReset();
     trashItem.mockReset();
+    peekKnownItemById.mockReset().mockReturnValue(null);
+    queryHostingItemsByUser.mockReset().mockReturnValue([]);
+    queryEventItemsByUser.mockReset().mockReturnValue([]);
+    countUpcomingActiveEventItemsByUser.mockReset().mockReturnValue(0);
+    queryTrashedItemsByUser.mockReset().mockReturnValue([]);
+    queryUserById.mockReset().mockReturnValue(null);
+    patchUserActivityCounterDeltas.mockReset().mockResolvedValue(undefined);
     flushEvents.mockReset().mockResolvedValue(undefined);
     markUnreadBySource.mockReset().mockReturnValue(0);
     unreadCount.mockReset().mockReturnValue(0);
@@ -49,14 +64,25 @@ describe('LocalEventsService', () => {
             queryInvitationItemsByUser,
             requestJoin,
             trashItem,
+            peekKnownItemById,
+            queryHostingItemsByUser,
+            queryEventItemsByUser,
+            countUpcomingActiveEventItemsByUser,
+            queryTrashedItemsByUser,
             flushToIndexedDb: flushEvents
+          }
+        },
+        {
+          provide: LocalChatsRepository,
+          useValue: {
+            syncPublishedMainEventChat: vi.fn()
           }
         },
         { provide: LocalActivityResourcesRepository, useValue: {} },
         { provide: LocalActivitySubEventStageRuntimeRepository, useValue: {} },
         { provide: LocalEventCheckoutBasketsRepository, useValue: {} },
         { provide: LocalEventFeedbackRepository, useValue: {} },
-        { provide: LocalUsersRepository, useValue: {} },
+        { provide: LocalUsersRepository, useValue: { queryUserById } },
         {
           provide: LocalNotificationsRepository,
           useValue: { markUnreadBySource, unreadCount }
@@ -64,7 +90,7 @@ describe('LocalEventsService', () => {
         { provide: LocalActivityMembersService, useValue: {} },
         {
           provide: LocalUsersService,
-          useValue: { syncRealtimeNotificationCount }
+          useValue: { syncRealtimeNotificationCount, patchUserActivityCounterDeltas }
         }
       ]
     });

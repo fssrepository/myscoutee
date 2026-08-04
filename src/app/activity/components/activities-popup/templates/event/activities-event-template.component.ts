@@ -1181,11 +1181,12 @@ export class ActivitiesEventsController {
 
   private async confirmActivityPublish(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const counterDelta = this.publishedEventCounterDelta(row);
-    const persistence = this.eventsService.publishItem(this.activeUser.id, row.id, {
-      counterDelta
-    });
-    await persistence;
+    const result = await this.eventsService.publishItem(this.activeUser.id, row.id);
+    if (!result || result.changed === false) {
+      throw new Error(result?.reason === 'forbidden'
+        ? 'You are not allowed to publish this event.'
+        : 'Unable to publish event.');
+    }
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
 
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
@@ -1194,23 +1195,24 @@ export class ActivitiesEventsController {
       this.patchVisiblePublicationState(row, 'A');
     }
 
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
+    this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
 
   private async confirmActivityUnpublish(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const counterDelta = this.unpublishedEventCounterDelta(row);
-    const persistence = this.eventsService.unpublishItem(this.activeUser.id, row.id, {
-      counterDelta
-    });
-    await persistence;
+    const result = await this.eventsService.unpublishItem(this.activeUser.id, row.id);
+    if (!result || result.changed === false) {
+      throw new Error(result?.reason === 'forbidden'
+        ? 'You are not allowed to unpublish this event.'
+        : 'Unable to unpublish event.');
+    }
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
     this.patchVisiblePublicationState(row, 'DR');
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
+    this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
@@ -1278,189 +1280,27 @@ export class ActivitiesEventsController {
     return 'Unable to delete event.';
   }
 
-  private acceptedInvitationCounterDelta(
-    _row: InfoCardData,
-    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
-  ): UserMenuCounterDeltasDto | null {
-    const activeUserId = this.activeUserId();
-    const movedToPending = activeUserId.length > 0
-      && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
-      && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
-    return this.acceptedInvitationCounterDeltaForMembership(movedToPending);
-  }
-
-  private acceptedInvitationCounterDeltaFromResult(
-    result: ActivityContracts.EventParticipationActionResultDTO
-  ): UserMenuCounterDeltasDto | null {
-    const membershipStatus = `${result.membershipStatus ?? ''}`.trim();
-    return this.acceptedInvitationCounterDeltaForMembership(membershipStatus !== 'accepted');
-  }
-
-  private acceptedInvitationCounterDeltaForMembership(
-    movedToPending: boolean
-  ): UserMenuCounterDeltasDto | null {
-    return this.activityCounterDeltaFromDeltas(
-      movedToPending
-        ? { invitations: -1 }
-        : { invitations: -1, events: 1 },
-      movedToPending
-        ? { invitations: -1, pending: 1 }
-        : { invitations: -1, active: 1 }
-    );
-  }
-
-  private trashedEventCounterDelta(
-    row: InfoCardData,
-    forcedType: ActivityContracts.ActivityEventRepositoryItemType | null = null
-  ): UserMenuCounterDeltasDto | null {
-    const primaryDelta: Record<string, number> = {};
-    const eventDelta: Record<string, number> = { all: -1, trash: 1 };
-    const type = forcedType ?? this.activityEventListTypeForRow(row);
-    if (type === 'invitations') {
-      primaryDelta['invitations'] = -1;
-      eventDelta['invitations'] = -1;
-    } else if (type === 'hosting') {
-      primaryDelta['hosting'] = -1;
-      eventDelta['hosting'] = -1;
-      if (this.isActivityDraftRow(row)) {
-        eventDelta['drafts'] = -1;
-      }
-    } else if (this.isActivityPendingParticipationRow(row)) {
-      eventDelta['pending'] = -1;
-    } else {
-      primaryDelta['events'] = -1;
-      eventDelta['active'] = -1;
-    }
-    return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
-  }
-
-  private leftEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
-    if (this.isActivityPendingParticipationRow(row)) {
-      return this.activityCounterDeltaFromDeltas(
-        {},
-        { all: -1, pending: -1, trash: 1 }
-      );
-    }
-    return this.activityCounterDeltaFromDeltas(
-      { events: -1 },
-      { active: -1, all: -1, trash: 1 }
-    );
-  }
-
-  private restoredEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
-    const primaryDelta: Record<string, number> = {};
-    const eventDelta: Record<string, number> = { all: 1, trash: -1 };
-    const type = this.activityEventListTypeForRow(row);
-    if (type === 'invitations') {
-      primaryDelta['invitations'] = 1;
-      eventDelta['invitations'] = 1;
-    } else if (type === 'hosting') {
-      primaryDelta['hosting'] = 1;
-      eventDelta['hosting'] = 1;
-      if (this.activityRestoredStatusCode(row) === 'DR' || this.activitiesEventScope === 'drafts') {
-        eventDelta['drafts'] = 1;
-      }
-    } else if (this.isActivityPendingParticipationRow(row)) {
-      eventDelta['pending'] = 1;
-    } else {
-      primaryDelta['events'] = 1;
-      eventDelta['active'] = 1;
-    }
-    return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
-  }
-
-  private restoredEventCounterDeltaFromResult(
-    row: InfoCardData,
-    result: ActivityContracts.EventParticipationActionResultDTO
-  ): UserMenuCounterDeltasDto | null {
-    const type = this.activityEventListTypeForRow(row);
-    if (type === 'hosting' || type === 'invitations') {
-      return this.restoredEventCounterDelta(row);
-    }
-    if (result.membershipStatus === 'pending') {
-      return this.activityCounterDeltaFromDeltas(
-        {},
-        { all: 1, pending: 1, trash: -1 }
-      );
-    }
-    if (result.membershipStatus === 'accepted') {
-      return this.activityCounterDeltaFromDeltas(
-        { events: 1 },
-        { all: 1, active: 1, trash: -1 }
-      );
-    }
-    return this.restoredEventCounterDelta(row);
-  }
-
-  private publishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
-    if (!this.isActivityDraftRow(row)) {
-      return null;
-    }
-    return this.activityCounterDeltaFromDeltas(
-      {},
-      { drafts: -1 }
-    );
-  }
-
-  private unpublishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
-    if (this.activityStatusCode(row) === 'DR') {
-      return null;
-    }
-    return this.activityCounterDeltaFromDeltas(
-      {},
-      { drafts: 1 }
-    );
-  }
-
-  private isActivityPendingParticipationRow(row: InfoCardData): boolean {
-    const activeUserId = this.activeUserId();
-    const dto = this.activityEventDTOForRow(row);
-    if (!activeUserId || !dto) {
-      return false;
-    }
-    if ((dto.acceptedMemberUserIds ?? []).includes(activeUserId)) {
-      return false;
-    }
-    return (dto.pendingRequestMemberUserIds ?? []).includes(activeUserId)
-      || (dto.pendingMemberUserIds ?? []).includes(activeUserId);
-  }
-
-  private activityRestoredStatusCode(row: InfoCardData): string {
-    const dto = this.activityEventDTOForRow(row);
-    const status = this.normalizeActivityStatusCode(dto?.status ?? row.status);
-    if (status !== 'T') {
-      return status;
-    }
-    const previous = this.normalizeActivityStatusCode(dto?.statusBeforeSuppression);
-    return ['UR', 'B', 'D', 'I', 'T'].includes(previous) ? 'A' : previous;
-  }
-
   private async confirmActivitySecondaryAction(row: InfoCardData, isRejectInvitation = false): Promise<void> {
     if (isRejectInvitation || (!this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row))) {
-      await this.confirmActivityLeave(row, isRejectInvitation);
+      await this.confirmActivityLeave(row);
       return;
     }
     const activeUserId = this.activeUserId();
-    const counterDelta = this.trashedEventCounterDelta(row, isRejectInvitation ? 'invitations' : null);
-    await this.persistActivityRowTrash(row, counterDelta);
+    const result = await this.persistActivityRowTrash(row);
     this.activitiesStore.emitActivityEventRemoval(row.id);
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
+    this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityLeave(row: InfoCardData, resolvingInvitation = false): Promise<void> {
+  private async confirmActivityLeave(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return;
     }
-    const counterDelta = resolvingInvitation
-      ? this.trashedEventCounterDelta(row, 'invitations')
-      : this.leftEventCounterDelta(row);
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
       removeMembershipOnly: true,
       checkoutState: 'cancelled',
-      checkoutResultState: 'deleted',
-      counterDelta
+      checkoutResultState: 'deleted'
     });
     if (!leaveResult
         || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
@@ -1468,7 +1308,7 @@ export class ActivitiesEventsController {
       throw new Error('Unable to leave event.');
     }
     if (leaveResult.changed !== false) {
-      this.signalActivityCounterDelta(activeUserId, counterDelta);
+      this.signalActivityCounterDelta(activeUserId, leaveResult.counterDelta ?? null);
     }
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
@@ -1528,8 +1368,6 @@ export class ActivitiesEventsController {
     const activeUserId = this.activeUserId();
     const { eventDetailDTO } = await this.buildAcceptedInvitationSaveResult(row, selection, context);
     const pendingReason = this.acceptedInvitationPendingReason(activeUserId, eventDetailDTO, selection);
-    const counterDelta = this.acceptedInvitationCounterDeltaForMembership(pendingReason !== null)
-      ?? this.acceptedInvitationCounterDelta(row, eventDetailDTO);
     const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, {
       slotSourceId: selection?.slotSourceId ?? null,
       optionalSubEventIds: selection?.optionalSubEventIds ?? [],
@@ -1545,17 +1383,15 @@ export class ActivitiesEventsController {
       lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
       totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
       currency: selection?.basketItems?.length ? selection.currency : undefined,
-      skipLocalRouteDelay: Boolean(selection?.paymentSessionId),
-      counterDelta
+      skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
     });
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }
     this.emitAcceptedCheckoutActivityEventSync(row, activeUserId, joinResult);
-    const resolvedDelta = this.acceptedInvitationCounterDeltaFromResult(joinResult) ?? counterDelta;
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterDelta(activeUserId, resolvedDelta);
+    this.signalActivityCounterDelta(activeUserId, joinResult.counterDelta ?? null);
     this.cdr.markForCheck();
   }
 
@@ -1834,25 +1670,26 @@ export class ActivitiesEventsController {
     return this.isActivityIdentityTrashed(this.activityEventListTypeForRow(row), row.id);
   }
 
-  private async persistActivityRowTrash(row: InfoCardData, counterDelta: UserMenuCounterDeltasDto | null): Promise<void> {
-    await this.eventsService.trashItem(this.activeUser.id, row.id, {
-      counterDelta
-    });
+  private async persistActivityRowTrash(row: InfoCardData): Promise<ActivityContracts.EventParticipationActionResultDTO> {
+    const result = await this.eventsService.trashItem(this.activeUser.id, row.id);
+    if (!result || result.changed === false) {
+      throw new Error(result?.reason === 'forbidden'
+        ? 'You are not allowed to delete this event.'
+        : 'Unable to delete event.');
+    }
+    return result;
   }
 
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const restoreResult = await this.eventsService.restoreItem(this.activeUser.id, row.id, {
-      counterDelta: this.restoredEventCounterDelta(row)
-    });
+    const restoreResult = await this.eventsService.restoreItem(this.activeUser.id, row.id);
     if (!restoreResult || restoreResult.changed === false || restoreResult.membershipStatus === 'unchanged') {
       throw new Error(restoreResult?.reason === 'forbidden'
         ? 'You are not allowed to restore this event.'
         : 'Unable to restore event participation.');
     }
-    const counterDelta = this.restoredEventCounterDeltaFromResult(row, restoreResult);
     this.activitiesStore.emitActivityEventRemoval(row.id);
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
+    this.signalActivityCounterDelta(activeUserId, restoreResult.counterDelta ?? null);
     this.cdr.markForCheck();
   }
 

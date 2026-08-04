@@ -54,9 +54,6 @@ import type {
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
-  UserMenuCounterDeltasDto
-} from '../../contracts/user.interface';
-import type {
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
@@ -626,35 +623,37 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
-  async trashItem(
-    userId: string,
-    sourceId: string,
-    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    await this.postVoid('/activities/events/trash', { userId: userId.trim(), sourceId: sourceId.trim() });
+  async trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/trash`,
+        { userId: userId.trim(), sourceId: sourceId.trim() }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
-  async publishItem(
-    userId: string,
-    sourceId: string,
-    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    await this.postVoid('/activities/events/publish', { userId: userId.trim(), sourceId: sourceId.trim() });
+  async publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/publish`,
+        { userId: userId.trim(), sourceId: sourceId.trim() }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
-  async unpublishItem(
-    userId: string,
-    sourceId: string,
-    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), sourceId: sourceId.trim() });
+  async unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/unpublish`,
+        { userId: userId.trim(), sourceId: sourceId.trim() }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
-  async restoreItem(
-    userId: string,
-    sourceId: string,
-    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<EventParticipationActionResultDTO | null> {
+  async restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     const response = await this.http
       .post<EventParticipationActionResultDTO | null>(
         `${this.apiBaseUrl}/activities/events/restore`,
@@ -822,7 +821,6 @@ export class HttpEventsService implements IEventsService {
       totalAmount?: number | null;
       currency?: string | null;
       skipLocalRouteDelay?: boolean;
-      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
@@ -865,7 +863,6 @@ export class HttpEventsService implements IEventsService {
       checkoutState?: EventCheckoutState | null;
       checkoutResultState?: EventCheckoutResultState | null;
       checkoutSessionId?: string | null;
-      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
@@ -884,8 +881,7 @@ export class HttpEventsService implements IEventsService {
           removeMembershipOnly: options.removeMembershipOnly === true,
           checkoutState: options.checkoutState ?? null,
           checkoutResultState: options.checkoutResultState ?? null,
-          checkoutSessionId: options.checkoutSessionId?.trim() || null,
-          counterDelta: options.counterDelta ?? null
+          checkoutSessionId: options.checkoutSessionId?.trim() || null
         }
       )
       .toPromise();
@@ -1360,7 +1356,8 @@ export class HttpEventsService implements IEventsService {
       full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
       paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null,
       changed: result.changed !== false && membershipStatus !== 'unchanged',
-      reason: `${result.reason ?? ''}`.trim() || null
+      reason: `${result.reason ?? ''}`.trim() || null,
+      counterDelta: result.counterDelta ?? null
     };
   }
 

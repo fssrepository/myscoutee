@@ -1955,15 +1955,13 @@ export class EventCheckoutPopupComponent {
       await this.cancelDraftCheckout(dialog);
       return;
     }
-    const counterDelta = this.checkoutCancelCounterDelta();
     const memberDelta = this.checkoutCancelMemberDelta();
     const leaveResult = await this.eventsService.leaveEvent(dialog.userId, dialog.record.id, {
       slotSourceId: this.selectedSlotSourceId,
       removeMembershipOnly: true,
       checkoutState: 'cancelled',
       checkoutResultState: 'deleted',
-      checkoutSessionId: this.checkoutSessionId,
-      counterDelta
+      checkoutSessionId: this.checkoutSessionId
     });
     if (!leaveResult
         || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
@@ -1971,7 +1969,7 @@ export class EventCheckoutPopupComponent {
       throw new Error('Unable to leave event.');
     }
     if (leaveResult.changed !== false) {
-      this.signalCheckoutCounterDelta(counterDelta);
+      this.signalCheckoutCounterDelta(leaveResult.counterDelta ?? null);
     }
     this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta, true);
     this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta, true);
@@ -2340,22 +2338,6 @@ export class EventCheckoutPopupComponent {
     return this.activeCheckoutBasketItems().some(item => pendingStates.includes(item.status));
   }
 
-  private checkoutSuccessCounterDelta(): UserMenuCounterDeltasDto {
-    return this.checkoutHasStoredPendingMembership()
-      ? { event: { pending: -1, active: 1 } }
-      : { events: 1, event: { all: 1, active: 1 } };
-  }
-
-  private checkoutCancelCounterDelta(): UserMenuCounterDeltasDto | null {
-    if (this.checkoutHasStoredPendingMembership()) {
-      return { event: { all: -1, pending: -1, trash: 1 } };
-    }
-    if (this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
-      return { events: -1, event: { all: -1, active: -1, trash: 1 } };
-    }
-    return null;
-  }
-
   private checkoutSuccessMemberDelta(): { acceptedMemberDelta: number; pendingMemberDelta: number } {
     return this.checkoutHasStoredPendingMembership()
       ? { acceptedMemberDelta: 1, pendingMemberDelta: -1 }
@@ -2703,19 +2685,17 @@ export class EventCheckoutPopupComponent {
     this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
     try {
-      const counterDelta = this.checkoutSuccessCounterDelta();
       const memberDelta = this.checkoutSuccessMemberDelta();
       const joinResult = await this.eventsService.payEventCheckout(this.buildCheckoutStateChangeRequest(
         'pay',
         'succeeded',
         null,
-        null,
-        counterDelta
+        null
       ));
       if (!joinResult || joinResult.membershipStatus !== 'accepted') {
         throw new Error(dialog.failureMessage);
       }
-      this.signalCheckoutCounterDelta(counterDelta);
+      this.signalCheckoutCounterDelta(joinResult.counterDelta ?? null);
       this.emitCheckoutActivityEventSync(dialog, joinResult);
       this.emitCheckoutMembershipSync(dialog.record.id, joinResult, memberDelta, false, 'succeeded');
       this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult, memberDelta);
@@ -3031,8 +3011,7 @@ export class EventCheckoutPopupComponent {
     checkoutState: ActivityContracts.EventCheckoutState,
     resultState: ActivityContracts.EventCheckoutResultState | null = null,
     pendingReason: AppConstants.ActivityPendingReason = null,
-    checkoutSessionId: string | null = null,
-    counterDelta: UserMenuCounterDeltasDto | null = null
+    checkoutSessionId: string | null = null
   ): ActivityContracts.EventCheckoutStateChangeRequest {
     const dialog = this.dialog();
     if (!dialog) {
@@ -3046,7 +3025,6 @@ export class EventCheckoutPopupComponent {
       resultState,
       pendingReason,
       checkoutSessionId,
-      counterDelta,
       checkoutRequest: checkoutState === 'pay'
         ? this.buildCheckoutRequest({
             checkoutState: 'confirmed',

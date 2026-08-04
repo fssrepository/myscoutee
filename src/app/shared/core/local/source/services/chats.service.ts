@@ -255,7 +255,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       return null;
     }
     const update = this.chatsRepository.markChatRead(chat, ownerUserId, messageIds, wholeChannel);
-    if (!update || update.messageIds.length === 0) {
+    if (!update) {
       return null;
     }
     await this.chatsRepository.flushToIndexedDb();

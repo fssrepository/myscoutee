@@ -40,6 +40,94 @@ export class LocalChatsRepository {
     return record ? LocalChatThreadMapper.cloneRecord(record) : null;
   }
 
+  syncPublishedMainEventChat(
+    event: ActivityContracts.ActivityEventRecord,
+    viewerUserId?: string | null
+  ): boolean {
+    const eventId = `${event?.id ?? ''}`.trim();
+    const normalizedViewerUserId = `${viewerUserId ?? ''}`.trim();
+    const participantUserIds = [...new Set([
+      ...(event?.acceptedMemberUserIds ?? []),
+      ...(event?.adminIds ?? [])
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))].sort();
+    if (!eventId || participantUserIds.length === 0) {
+      throw new Error('A published local event chat requires an event id and accepted participants.');
+    }
+
+    const chatId = `c-context-main-${eventId}`;
+    const nowIso = new Date().toISOString();
+    let viewerChatAdded = false;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      const nextIds = [...currentTable.ids];
+      let nextUsersTable = currentState[USERS_TABLE_NAME];
+      for (const ownerUserId of participantUserIds) {
+        const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, chatId);
+        const current = currentTable.byId[recordKey] ?? null;
+        const isNewOwnerChat = current == null;
+        const nextRecord: ChatThreadRecord = {
+          ...(current ?? {
+            id: chatId,
+            ownerUserId,
+            avatar: AppUtils.initialsFromText(event.title || 'Event'),
+            title: event.title?.trim() || 'Event',
+            lastMessage: 'Event published.',
+            lastSenderId: participantUserIds.find(userId => userId !== ownerUserId) ?? ownerUserId,
+            unread: 0
+          }),
+          id: chatId,
+          ownerUserId,
+          title: event.title?.trim() || current?.title || 'Event',
+          memberIds: [...participantUserIds],
+          unread: this.normalizeCounter((current?.unread ?? 0) + (isNewOwnerChat ? 1 : 0)),
+          dateIso: current?.dateIso ?? nowIso,
+          channelType: 'mainEvent',
+          ownerId: eventId
+        };
+        nextById[recordKey] = nextRecord;
+        if (!nextIds.includes(recordKey)) {
+          nextIds.push(recordKey);
+        }
+        if (isNewOwnerChat) {
+          if (ownerUserId === normalizedViewerUserId) {
+            viewerChatAdded = true;
+          }
+          nextUsersTable = this.applyStoredChatCounterDelta(nextUsersTable, ownerUserId, 'event', 1);
+        }
+      }
+      const staleRecordKeys = currentTable.ids.filter(recordKey => {
+        const current = currentTable.byId[recordKey];
+        return current?.channelType === 'mainEvent'
+          && `${current.ownerId ?? ''}`.trim() === eventId
+          && !participantUserIds.includes(`${current.ownerUserId ?? ''}`.trim());
+      });
+      for (const recordKey of staleRecordKeys) {
+        const current = currentTable.byId[recordKey];
+        const ownerUserId = `${current?.ownerUserId ?? ''}`.trim();
+        const unreadDelta = -this.normalizeCounter(current?.unread ?? 0);
+        delete nextById[recordKey];
+        if (ownerUserId && unreadDelta !== 0) {
+          nextUsersTable = this.applyStoredChatCounterDelta(
+            nextUsersTable,
+            ownerUserId,
+            'event',
+            unreadDelta
+          );
+        }
+      }
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: nextById,
+          ids: nextIds.filter(recordKey => !staleRecordKeys.includes(recordKey))
+        },
+        [USERS_TABLE_NAME]: nextUsersTable
+      };
+    });
+    return viewerChatAdded;
+  }
+
   queryActivitiesChatPage(
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>
@@ -420,7 +508,7 @@ export class LocalChatsRepository {
           .filter(Boolean)
       );
     }
-    if (targetIds.length === 0) {
+    if (targetIds.length === 0 && !wholeChannel) {
       return null;
     }
 
@@ -429,6 +517,7 @@ export class LocalChatsRepository {
     const changedIds: string[] = [];
     const previousUnread = Math.max(0, Math.trunc(Number(record.unread) || 0));
     let unread = previousUnread;
+    let changed = false;
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
@@ -461,10 +550,12 @@ export class LocalChatsRepository {
         changedIds.push(messageRecord.messageId);
         nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, nextMessageRecord);
       }
-      if (changedIds.length === 0) {
+      const clearWholeChannel = wholeChannel && previousUnread > 0;
+      if (changedIds.length === 0 && !clearWholeChannel) {
         return currentState;
       }
-      unread = this.normalizeCounter(previousUnread - changedIds.length);
+      changed = true;
+      unread = wholeChannel ? 0 : this.normalizeCounter(previousUnread - changedIds.length);
       const unreadDelta = unread - previousUnread;
       const currentUsersTable = currentState[USERS_TABLE_NAME];
       const currentUser = currentUsersTable.byId[normalizedOwnerUserId] ?? null;
@@ -510,7 +601,7 @@ export class LocalChatsRepository {
         [USERS_TABLE_NAME]: nextUsersTable
       };
     });
-    return changedIds.length > 0
+    return changed
       ? {
           messageIds: changedIds,
           unread,
@@ -518,6 +609,40 @@ export class LocalChatsRepository {
           readAtIso
         }
       : null;
+  }
+
+  private applyStoredChatCounterDelta(
+    table: AppMemorySchema[typeof USERS_TABLE_NAME],
+    userId: string,
+    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport',
+    delta: number
+  ): AppMemorySchema[typeof USERS_TABLE_NAME] {
+    const currentUser = table.byId[userId] ?? null;
+    if (!currentUser || delta === 0) {
+      return table;
+    }
+    const currentChat = currentUser.activities?.chat ?? {};
+    return {
+      ...table,
+      byId: {
+        ...table.byId,
+        [userId]: {
+          ...currentUser,
+          activities: {
+            ...currentUser.activities,
+            chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + delta),
+            chat: {
+              all: this.normalizeCounter((currentChat.all ?? currentUser.activities?.chats ?? 0) + delta),
+              event: this.normalizeCounter((currentChat.event ?? 0) + (context === 'event' ? delta : 0)),
+              subEvent: this.normalizeCounter((currentChat.subEvent ?? 0) + (context === 'subEvent' ? delta : 0)),
+              group: this.normalizeCounter((currentChat.group ?? 0) + (context === 'group' ? delta : 0)),
+              service: this.normalizeCounter((currentChat.service ?? 0) + (context === 'service' ? delta : 0)),
+              appSupport: this.normalizeCounter((currentChat.appSupport ?? 0) + (context === 'appSupport' ? delta : 0))
+            }
+          }
+        }
+      }
+    };
   }
 
   updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
