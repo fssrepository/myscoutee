@@ -175,8 +175,16 @@ describe('LocalEventsService', () => {
 
   it('marks the related notification read after accepting an invitation', async () => {
     queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
+    queryUserById.mockReturnValue({
+      id: 'user-1',
+      name: 'Riley Outside',
+      images: ['riley.webp']
+    });
     requestJoin.mockReturnValue({
       id: 'event-1',
+      title: 'Manual QA Event',
+      creatorUserId: 'host',
+      adminIds: ['host'],
       acceptedMembers: 1,
       pendingMembers: 0,
       capacityTotal: 10,
@@ -198,6 +206,72 @@ describe('LocalEventsService', () => {
     expect(requestJoin.mock.invocationCallOrder[0])
       .toBeLessThan(markUnreadBySource.mock.invocationCallOrder[0]);
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('user-1', 4);
+    expect(appendNotifications).toHaveBeenCalledOnce();
+    const acceptanceRecords = appendNotifications.mock.calls[0]?.[0];
+    expect(acceptanceRecords.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['host']);
+    expect(acceptanceRecords[0]).toMatchObject({
+      kind: 'event-invitation-accepted',
+      title: 'Event invitation accepted',
+      message: 'Riley Outside accepted the invitation to Manual QA Event.',
+      payload: {
+        memberUserId: 'user-1',
+        membershipAction: 'accepted',
+        notification_tone: 'accent'
+      }
+    });
+  });
+
+  it('notifies visible pending members when an invitation is accepted in an open event', async () => {
+    queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
+    queryUserById.mockReturnValue({ id: 'user-1', name: 'Riley Outside', images: [] });
+    requestJoin.mockReturnValue({
+      id: 'event-1',
+      title: 'Open Event',
+      creatorUserId: 'host',
+      adminIds: ['host'],
+      blindMode: 'Open Event',
+      acceptedMemberUserIds: ['host', 'user-1'],
+      pendingMemberUserIds: ['nova'],
+      invitedMemberUserIds: ['nova'],
+      acceptedMembers: 2,
+      pendingMembers: 1,
+      capacityTotal: 8
+    } as ActivityEventRecord);
+
+    await TestBed.inject(LocalEventsService).requestJoin('user-1', 'event-1', {
+      bookingConfirmed: true
+    });
+
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['host', 'nova']);
+  });
+
+  it('does not notify hidden ordinary members when an invitation is accepted in a blind event', async () => {
+    queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
+    queryUserById.mockReturnValue({ id: 'user-1', name: 'Riley Outside', images: [] });
+    requestJoin.mockReturnValue({
+      id: 'event-1',
+      title: 'Blind Event',
+      creatorUserId: 'host',
+      adminIds: ['host'],
+      blindMode: 'Blind Event',
+      acceptedMemberUserIds: ['host', 'accepted-member', 'user-1'],
+      pendingMemberUserIds: ['nova'],
+      invitedMemberUserIds: ['nova'],
+      acceptedMembers: 3,
+      pendingMembers: 1,
+      capacityTotal: 8
+    } as ActivityEventRecord);
+
+    await TestBed.inject(LocalEventsService).requestJoin('user-1', 'event-1', {
+      bookingConfirmed: true
+    });
+
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['host']);
   });
 
   it('creates first-publish invite notifications only for pending invitees', async () => {

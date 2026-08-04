@@ -581,6 +581,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
     if (resolvingInvitation && result) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+      if (result.membershipStatus === 'accepted' && record) {
+        this.appendInvitationAcceptedNotifications(record, normalizedUserId);
+      }
     }
     const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
       result,
@@ -1155,6 +1158,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     if (resolvingInvitation && result) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+      if (result.membershipStatus === 'accepted' && record) {
+        this.appendInvitationAcceptedNotifications(record, normalizedUserId);
+      }
     }
     const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
       result,
@@ -1827,6 +1833,63 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         eventId: sourceId,
         eventScope: invitationOnly ? 'invitations' : 'lifecycle',
         notification_tone: tone
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendInvitationAcceptedNotifications(
+    event: ActivityEventRecord,
+    acceptedUserId: string
+  ): void {
+    const memberUserId = acceptedUserId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!memberUserId || !eventId) {
+      return;
+    }
+    const member = this.usersRepository.queryUserById(memberUserId);
+    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(memberListOpen
+        ? [
+            ...(event.acceptedMemberUserIds ?? []),
+            ...(event.pendingMemberUserIds ?? []),
+            ...(event.invitedMemberUserIds ?? [])
+          ].map(userId => `${userId ?? ''}`.trim())
+        : [])
+    ].filter(userId => userId && userId !== memberUserId))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId('event-invitation-accepted', eventId, recipientUserId),
+      recipientUserId,
+      kind: 'event-invitation-accepted',
+      category: 'event',
+      title: 'Event invitation accepted',
+      message: `${memberName} accepted the invitation to ${eventTitle}.`,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: memberUserId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId,
+        memberName,
+        membershipAction: 'accepted',
+        acceptedAtIso: createdAtIso,
+        notification_tone: 'accent'
       }
     }));
     this.notificationsRepository.append(records);
