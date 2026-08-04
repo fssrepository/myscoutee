@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { RouteDelayService } from '../../../base/services/route-delay.service';
-import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { PricingConfig } from '../../../contracts/pricing.interface';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
@@ -17,6 +17,7 @@ import { LocalUsersService } from './users.service';
 describe('LocalEventsService', () => {
   const waitForRouteDelay = vi.fn();
   const queryEventRecordById = vi.fn();
+  const saveEventSnapshot = vi.fn();
   const queryInvitationItemsByUser = vi.fn();
   const requestJoin = vi.fn();
   const trashItem = vi.fn();
@@ -28,6 +29,7 @@ describe('LocalEventsService', () => {
   beforeEach(() => {
     waitForRouteDelay.mockReset().mockResolvedValue(undefined);
     queryEventRecordById.mockReset();
+    saveEventSnapshot.mockReset();
     queryInvitationItemsByUser.mockReset().mockReturnValue([]);
     requestJoin.mockReset();
     trashItem.mockReset();
@@ -43,6 +45,7 @@ describe('LocalEventsService', () => {
           provide: LocalEventsRepository,
           useValue: {
             queryEventRecordById,
+            saveEventSnapshot,
             queryInvitationItemsByUser,
             requestJoin,
             trashItem,
@@ -177,6 +180,29 @@ describe('LocalEventsService', () => {
     expect(trashItem.mock.invocationCallOrder[0])
       .toBeLessThan(markUnreadBySource.mock.invocationCallOrder[0]);
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('user-1', 3);
+  });
+
+  it('stores event editor local wall times as UTC instants', async () => {
+    queryEventRecordById.mockReturnValue(null);
+    saveEventSnapshot.mockImplementation(record => record);
+    const payload = new ActivityEventDetailDTO().apply({
+      id: 'event-1',
+      userId: 'host-1',
+      creatorUserId: 'host-1',
+      dateRange: {
+        startAt: '2026-08-06T18:00',
+        endAt: '2026-08-06T20:00',
+        precision: 'minute'
+      }
+    });
+
+    await TestBed.inject(LocalEventsService).saveActivityEvent(payload);
+
+    const record = saveEventSnapshot.mock.calls[0]?.[0] as ActivityEventRecord;
+    expect(record.startAtIso).toBe(new Date('2026-08-06T18:00').toISOString());
+    expect(record.endAtIso).toBe(new Date('2026-08-06T20:00').toISOString());
+    expect(payload.startAtIso).toBe('2026-08-06T18:00');
+    expect(payload.endAtIso).toBe('2026-08-06T20:00');
   });
 });
 

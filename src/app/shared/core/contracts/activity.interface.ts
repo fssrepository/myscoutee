@@ -790,6 +790,18 @@ export class ActivityEventDetailDTO {
     return new ActivityEventDetailDTO().apply(this);
   }
 
+  toPersistencePayload(): ActivityEventDetailDTO {
+    const payload = this.clone();
+    payload.startAtIso = ActivityEventDetailDTO.toIsoInstant(this.startAtIso);
+    payload.endAtIso = ActivityEventDetailDTO.toIsoInstant(this.endAtIso);
+    payload.dateRange = {
+      ...payload.dateRange,
+      startAt: payload.startAtIso,
+      endAt: payload.endAtIso
+    };
+    return payload;
+  }
+
   applyPolicies(items: readonly EventContracts.EventPolicyDTO[]): this {
     this.policies = ActivityEventDetailDTO.normalizePolicies(items);
     return this;
@@ -1129,6 +1141,15 @@ export class ActivityEventDetailDTO {
     const hours = `${value.getHours()}`.padStart(2, '0');
     const minutes = `${value.getMinutes()}`.padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private static toIsoInstant(value: unknown): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    const parsed = ActivityEventDetailDTO.parseDate(normalized);
+    return parsed ? parsed.toISOString() : normalized;
   }
 }
 

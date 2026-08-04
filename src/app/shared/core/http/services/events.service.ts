@@ -1116,8 +1116,9 @@ export class HttpEventsService implements IEventsService {
 
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     try {
+      const persistencePayload = payload.toPersistencePayload();
       const response = await this.http
-        .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
+        .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, persistencePayload)
         .toPromise();
       const detail = await this.loadSavedEventDetail(payload, response);
       return detail
@@ -1130,8 +1131,9 @@ export class HttpEventsService implements IEventsService {
 
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     try {
+      const persistencePayload = payload.toPersistencePayload();
       const response = await this.http
-        .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
+        .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, persistencePayload)
         .toPromise();
       return await this.loadSavedEventDetail(payload, response)
         ?? this.cloneDTOs(response ? [response] : [])[0]

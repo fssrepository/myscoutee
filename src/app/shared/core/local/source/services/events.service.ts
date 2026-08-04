@@ -729,7 +729,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
@@ -743,7 +743,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
