@@ -205,6 +205,7 @@ type ActivitiesPopupMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
+  private static readonly EVENT_ACTIVITY_POLL_INTERVAL_MS = 30000;
   private static readonly ADMIN_SUPPORT_BOARD_POLL_INTERVAL_MS = 30000;
 
   // ── injected ──────────────────────────────────────────────────────────────
@@ -1034,6 +1035,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesSmartListPollIntervalMs(): number {
+    if (
+      this.activitiesStore.activitiesOpen()
+      && this.isEventActivitiesPrimaryFilter()
+      && !this.isCalendarLayoutView()
+      && !this.dialogStore.dialog()
+      && !this.activitiesStore.eventChatSession()
+    ) {
+      return ActivitiesPopupComponent.EVENT_ACTIVITY_POLL_INTERVAL_MS;
+    }
     return this.activitiesStore.activitiesOpen()
       && this.isAdminServiceChatMode()
       && this.activitiesPrimaryFilter === 'chats'
