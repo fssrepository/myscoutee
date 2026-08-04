@@ -29,85 +29,90 @@
           }
 
           <section class="process-list-card">
-            <div class="process-list-table">
-              <div class="process-list-row process-list-head">
-                <span>{{ 'admin.jobs.table.process' | i18n }}</span>
-                <span>{{ 'admin.jobs.table.status' | i18n }}</span>
-                <span>{{ 'admin.jobs.table.last.run' | i18n }}</span>
-                <span>{{ 'admin.jobs.table.run.windows' | i18n }}</span>
-                <span>{{ 'admin.jobs.table.actions' | i18n }}</span>
-              </div>
-              @for (rule of filteredProcessRules(); track rule.ruleKey) {
-                  <div class="process-list-row" [ngClass]="statusClass(rule)">
-                    <span class="process-list-name">
-                      <span class="process-list-icon" [ngClass]="statusClass(rule)">
-                        <mat-icon>{{ processIcon(rule) }}</mat-icon>
-                      </span>
-                      <span>
-                        <strong>{{ processTitle(rule) | i18n }}</strong>
-                        <small>{{ actionLabel(rule.actionKey) | i18n }}</small>
-                      </span>
-                    </span>
-                    <span>
-                      <span class="process-status-pill" [ngClass]="statusClass(rule)">{{ rowStatusLabel(rule) | i18n }}</span>
-                    </span>
-                    <span>{{ shortDate(rule.runState.lastRunAtIso) | i18n }}</span>
-                    <span class="process-list-windows">
-                      <ng-container [ngTemplateOutlet]="intervalText" [ngTemplateOutletContext]="{ $implicit: rule }"></ng-container>
-                    </span>
-                    <span class="process-list-actions">
-                      <span class="process-list-action-buttons">
-                        <button
-                          type="button"
-                          class="process-icon-btn"
-                          [class.has-dirty]="isTimingDirty(rule) || isParameterDirty(rule)"
-                          (click)="openDetail(rule)"
-                          [attr.aria-label]="'admin.jobs.view.process' | i18n"
-                        >
-                          <mat-icon>{{ canManageProcess(rule) ? 'tune' : 'visibility' }}</mat-icon>
-                        </button>
-                        <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.suspend)">
-                          @if (isRowActionPending(rule, processRowAction.suspend)) {
-                            <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-                          }
-                          <button
-                            type="button"
-                            class="process-icon-btn"
-                            [class.is-suspended]="!rule.enabled"
-                            [disabled]="!canManageProcess(rule) || saving() || !!rowActionKey()"
-                            (click)="toggleSuspended(rule)"
-                            [attr.aria-label]="(rule.enabled ? 'admin.jobs.suspend.process' : 'admin.jobs.unsuspend.process') | i18n"
-                          >
-                            <mat-icon>{{ rule.enabled ? 'pause' : 'lock_open' }}</mat-icon>
-                          </button>
-                        </span>
-                        <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.run)">
-                          @if (isRowActionPending(rule, processRowAction.run)) {
-                            <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-                          }
-                          <button
-                            type="button"
-                            class="process-icon-btn process-icon-btn-primary"
-                            [class.is-running]="isProcessRunning(rule)"
-                            [disabled]="!rule.manualRunEnabled || !rule.enabled || isProcessRunning(rule) || !!runningRuleKey() || !!rowActionKey()"
-                            (click)="run(rule)"
-                            [attr.aria-label]="'admin.jobs.run.process' | i18n"
-                          >
-                            <mat-icon>{{ isProcessRunning(rule) ? 'sync' : 'play_arrow' }}</mat-icon>
-                          </button>
-                        </span>
-                      </span>
-                    </span>
-                    @if (isProcessRunning(rule)) {
-                      <span class="process-list-live-progress" [attr.aria-label]="('admin.jobs.runtime.progress' | i18n) + ' ' + progressValue(rule) + '%'">
-                        <span [style.width.%]="progressValue(rule)"></span>
-                      </span>
-                    }
-                  </div>
-              } @empty {
-                <div class="process-list-empty">{{ 'admin.jobs.empty.filter' | i18n }}</div>
-              }
+            <div class="process-list-row process-list-head">
+              <span>{{ 'admin.jobs.table.process' | i18n }}</span>
+              <span>{{ 'admin.jobs.table.status' | i18n }}</span>
+              <span>{{ 'admin.jobs.table.last.run' | i18n }}</span>
+              <span>{{ 'admin.jobs.table.run.windows' | i18n }}</span>
+              <span>{{ 'admin.jobs.table.actions' | i18n }}</span>
             </div>
+            <app-smart-list
+              #processSmartList
+              class="process-list-smart-list"
+              [config]="processListConfig"
+              [loadPage]="processListLoadPage"
+              [query]="processListQuery()"
+              [itemTemplate]="processRowTemplate"
+              (stateChange)="onProcessListStateChange($event)"
+            ></app-smart-list>
+            <ng-template #processRowTemplate let-rule>
+              <div class="process-list-row" [ngClass]="statusClass(rule)">
+                <span class="process-list-name">
+                  <span class="process-list-icon" [ngClass]="statusClass(rule)">
+                    <mat-icon>{{ processIcon(rule) }}</mat-icon>
+                  </span>
+                  <span>
+                    <strong>{{ processTitle(rule) | i18n }}</strong>
+                    <small>{{ actionLabel(rule.actionKey) | i18n }}</small>
+                  </span>
+                </span>
+                <span>
+                  <span class="process-status-pill" [ngClass]="statusClass(rule)">{{ rowStatusLabel(rule) | i18n }}</span>
+                </span>
+                <span>{{ shortDate(rule.runState.lastRunAtIso) | i18n }}</span>
+                <span class="process-list-windows">
+                  <ng-container [ngTemplateOutlet]="intervalText" [ngTemplateOutletContext]="{ $implicit: rule }"></ng-container>
+                </span>
+                <span class="process-list-actions">
+                  <span class="process-list-action-buttons">
+                    <button
+                      type="button"
+                      class="process-icon-btn"
+                      [class.has-dirty]="isTimingDirty(rule) || isParameterDirty(rule)"
+                      (click)="openDetail(rule)"
+                      [attr.aria-label]="'admin.jobs.view.process' | i18n"
+                    >
+                      <mat-icon>{{ canManageProcess(rule) ? 'tune' : 'visibility' }}</mat-icon>
+                    </button>
+                    <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.suspend)">
+                      @if (isRowActionPending(rule, processRowAction.suspend)) {
+                        <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
+                      }
+                      <button
+                        type="button"
+                        class="process-icon-btn"
+                        [class.is-suspended]="!rule.enabled"
+                        [disabled]="!canManageProcess(rule) || saving() || !!rowActionKey()"
+                        (click)="toggleSuspended(rule)"
+                        [attr.aria-label]="(rule.enabled ? 'admin.jobs.suspend.process' : 'admin.jobs.unsuspend.process') | i18n"
+                      >
+                        <mat-icon>{{ rule.enabled ? 'pause' : 'lock_open' }}</mat-icon>
+                      </button>
+                    </span>
+                    <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.run)">
+                      @if (isRowActionPending(rule, processRowAction.run)) {
+                        <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
+                      }
+                      <button
+                        type="button"
+                        class="process-icon-btn process-icon-btn-primary"
+                        [class.is-running]="isProcessRunning(rule)"
+                        [disabled]="!rule.manualRunEnabled || !rule.enabled || isProcessRunning(rule) || !!runningRuleKey() || !!rowActionKey()"
+                        (click)="run(rule)"
+                        [attr.aria-label]="'admin.jobs.run.process' | i18n"
+                      >
+                        <mat-icon>{{ isProcessRunning(rule) ? 'sync' : 'play_arrow' }}</mat-icon>
+                      </button>
+                    </span>
+                  </span>
+                </span>
+                @if (isProcessRunning(rule)) {
+                  <span class="process-list-live-progress" [attr.aria-label]="('admin.jobs.runtime.progress' | i18n) + ' ' + progressValue(rule) + '%'">
+                    <span [style.width.%]="progressValue(rule)"></span>
+                  </span>
+                }
+              </div>
+            </ng-template>
           </section>
 
           @if (detailOpen() && selectedRule(); as rule) {
