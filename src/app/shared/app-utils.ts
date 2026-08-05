@@ -283,6 +283,54 @@ export class AppUtils {
     return template.innerHTML;
   }
 
+  static removeManagedImageReferencesHtml(
+    html: string | null | undefined,
+    imageUrls: Iterable<string | null | undefined> | null | undefined
+  ): string {
+    const normalized = `${html ?? ''}`;
+    if (!normalized || typeof document === 'undefined') {
+      return normalized;
+    }
+    const removedGroups = new Set(
+      Array.from(imageUrls ?? [])
+        .map(imageUrl => this.managedImageGroupKey(`${imageUrl ?? ''}`))
+        .filter((groupKey): groupKey is string => Boolean(groupKey))
+    );
+    if (removedGroups.size === 0) {
+      return normalized;
+    }
+    const template = document.createElement('template');
+    template.innerHTML = normalized;
+    template.content.querySelectorAll<HTMLElement>('img, a[href]').forEach(element => {
+      const attribute = element.tagName.toLowerCase() === 'img' ? 'src' : 'href';
+      const reference = element.getAttribute(attribute) ?? '';
+      if (element.tagName.toLowerCase() === 'img' && !reference.trim()) {
+        element.remove();
+        return;
+      }
+      const groupKey = this.managedImageGroupKey(reference);
+      if (groupKey && removedGroups.has(groupKey)) {
+        element.remove();
+      }
+    });
+    template.content.querySelectorAll<HTMLElement>('figure').forEach(figure => {
+      if (!figure.textContent?.trim() && figure.children.length === 0) {
+        figure.remove();
+      }
+    });
+    return template.innerHTML;
+  }
+
+  static isHtmlTagPosition(html: string | null | undefined, offset: number): boolean {
+    const source = `${html ?? ''}`;
+    const normalizedOffset = Math.max(0, Math.min(source.length, Math.trunc(Number(offset)) || 0));
+    return source.lastIndexOf('<', normalizedOffset - 1) > source.lastIndexOf('>', normalizedOffset - 1);
+  }
+
+  static looksLikeHtmlFragment(value: string | null | undefined): boolean {
+    return /^<(?:!--|!doctype\b|\/?[a-z][a-z0-9:-]*(?:\s|>|\/))/i.test(`${value ?? ''}`.trim());
+  }
+
   static uniqueTrimmedStrings(values: Iterable<string | null | undefined> | null | undefined): string[] {
     return Array.from(new Set(
       Array.from(values ?? [])
@@ -301,6 +349,21 @@ export class AppUtils {
     } catch {
       return null;
     }
+  }
+
+  private static managedImageGroupKey(imageUrl: string): string | null {
+    const objectKey = this.mediaPublicObjectKey(imageUrl);
+    if (!objectKey?.startsWith('images/')) {
+      return null;
+    }
+    const slashIndex = objectKey.lastIndexOf('/');
+    if (slashIndex <= 0 || slashIndex >= objectKey.length - 1) {
+      return null;
+    }
+    const objectName = objectKey.slice(slashIndex + 1);
+    return /^(?:original|small\.webp|medium\.webp|large\.webp)$/.test(objectName)
+      ? objectKey.slice(0, slashIndex)
+      : null;
   }
 
   private static mediaVariantObjectKey(

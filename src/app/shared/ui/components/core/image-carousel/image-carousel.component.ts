@@ -3,12 +3,14 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  EventEmitter,
   forwardRef,
   HostBinding,
   HostListener,
   inject,
   Input,
   OnChanges,
+  Output,
   SimpleChanges,
   ViewChild
 } from '@angular/core';
@@ -56,6 +58,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @Input() ariaLabel = 'Image slots';
   @Input() uploadOwnerId = '';
   @Input() uploadEntityId = 'image';
+  @Output() readonly imageRemoved = new EventEmitter<string>();
 
   protected carouselIndex = 0;
   protected uploadingSlotIndex: number | null = null;
@@ -263,8 +266,12 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
         return;
       }
       const slots = this.imageSlots();
+      const replacedImageUrl = slots[normalizedSlotIndex];
       slots[normalizedSlotIndex] = result.imageUrl;
       this.updateUrls(slots);
+      if (replacedImageUrl && replacedImageUrl !== result.imageUrl) {
+        this.imageRemoved.emit(replacedImageUrl);
+      }
       this.focusImageUrl(result.imageUrl, normalizedSlotIndex);
     } finally {
       this.uploadingSlotIndex = null;
@@ -280,7 +287,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
     await this.copyToClipboard(imageUrl);
   }
 
-  protected removeSlot(_imageUrl: string, slotIndex: number, event?: Event): void {
+  protected removeSlot(imageUrl: string, slotIndex: number, event?: Event): void {
     event?.stopPropagation();
     if (this.isDisabled()) {
       return;
@@ -289,6 +296,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
     const slots = this.imageSlots();
     slots[this.clampSlotIndex(slotIndex)] = null;
     this.updateUrls(slots);
+    this.imageRemoved.emit(imageUrl);
   }
 
   protected isDisabled(): boolean {

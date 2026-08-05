@@ -25,6 +25,36 @@ describe('AppUtils media image variants', () => {
       external
     ]);
   });
+
+  it('removes image and link elements for every variant of a managed image group', () => {
+    const html = `<p>Body</p><figure><img src="${managedImageUrl('small')}" alt="Managed"></figure>`
+      + `<a href="${managedImageUrl('medium')}">Managed link</a>`
+      + '<img alt="Already broken">'
+      + '<img src="https://cdn.example.test/keep.jpg" alt="Keep">';
+
+    const rendered = AppUtils.removeManagedImageReferencesHtml(html, [managedImageUrl('large')]);
+    const template = document.createElement('template');
+    template.innerHTML = rendered;
+
+    expect(template.content.querySelectorAll('figure, a')).toHaveLength(0);
+    expect(Array.from(template.content.querySelectorAll('img')).map(image => image.getAttribute('src')))
+      .toEqual(['https://cdn.example.test/keep.jpg']);
+  });
+
+  it('detects paste positions inside an HTML tag without treating body text as markup', () => {
+    const html = '<p>Body</p>\n<img src="" alt="Managed">';
+    const attributeOffset = html.indexOf('src="') + 'src="'.length;
+
+    expect(AppUtils.isHtmlTagPosition(html, attributeOffset)).toBe(true);
+    expect(AppUtils.isHtmlTagPosition(html, html.indexOf('Body') + 2)).toBe(false);
+    expect(AppUtils.isHtmlTagPosition(html, html.length)).toBe(false);
+  });
+
+  it('recognizes copied plain-text HTML fragments from rendered code blocks', () => {
+    expect(AppUtils.looksLikeHtmlFragment('<p>Copied body</p>')).toBe(true);
+    expect(AppUtils.looksLikeHtmlFragment('<img src="/media/public?key=image">')).toBe(true);
+    expect(AppUtils.looksLikeHtmlFragment('Copied body')).toBe(false);
+  });
 });
 
 function managedImageUrl(variant: 'small' | 'medium' | 'large'): string {

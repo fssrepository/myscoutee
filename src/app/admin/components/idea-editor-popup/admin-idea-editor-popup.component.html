@@ -104,6 +104,7 @@
             slotImageVariant="medium"
             mediaFit="cover"
             [uploadOwnerId]="actorUserId()"
+            (imageRemoved)="removeDraftImage($event)"
             ariaLabel="Article image slots"
           ></app-image-carousel>
 

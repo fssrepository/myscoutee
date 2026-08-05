@@ -56,12 +56,28 @@ describe('ImageCarouselComponent media variants', () => {
       'data:image/png;base64,AAAA'
     );
   });
+
+  it('reports a removed slot while retaining the other image without replacement', () => {
+    const component = TestBed.createComponent(ImageCarouselComponent).componentInstance;
+    const view = component as unknown as ImageCarouselTestView;
+    const largeUrl = managedImageUrl('large');
+    const remainingUrl = largeUrl.replace('upload-1', 'upload-2');
+    const removed = vi.fn();
+    component.imageRemoved.subscribe(removed);
+
+    component.writeValue([largeUrl, remainingUrl]);
+    view.removeSlot(largeUrl, 0);
+
+    expect(removed).toHaveBeenCalledWith(largeUrl);
+    expect(view.imageSlots().slice(0, 2)).toEqual([remainingUrl, null]);
+  });
 });
 
 interface ImageCarouselTestView {
   imageSlots: () => Array<string | null>;
   selectedPreviewUrl: (slots: readonly (string | null)[]) => string | null;
   slotImageUrl: (imageUrl: string | null) => string | null;
+  removeSlot: (imageUrl: string, slotIndex: number) => void;
 }
 
 function managedImageUrl(variant: 'small' | 'medium' | 'large'): string {
