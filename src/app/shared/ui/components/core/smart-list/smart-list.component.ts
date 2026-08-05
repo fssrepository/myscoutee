@@ -562,6 +562,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.resetAndReload();
   }
 
+  public refreshVisibleItems(): Promise<void> {
+    return this.pollVisibleItems(this.visiblePollQuery());
+  }
+
   public scrollElement(): HTMLDivElement | null {
     return this.scrollHostRef?.nativeElement ?? null;
   }
