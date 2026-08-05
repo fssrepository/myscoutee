@@ -101,6 +101,8 @@
             name="ideaImages"
             [(ngModel)]="editDraft.imageUrls"
             [disabled]="saving"
+            slotImageVariant="medium"
+            mediaFit="cover"
             [uploadOwnerId]="actorUserId()"
             ariaLabel="Article image slots"
           ></app-image-carousel>
