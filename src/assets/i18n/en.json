@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.07.31.en.49",
+  "version": "2026.08.05.en.50",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -543,6 +543,8 @@
     "notifications.outbox.worker.description": "Delivers queued notification intents.",
     "affinity.recompute.worker": "Connection scores",
     "affinity.recompute.worker.description": "Processes stored recompute tasks.",
+    "affinity.graph.layout.rebuild": "Materialized graph layout",
+    "affinity.graph.layout.rebuild.description": "Rebuilds the materialized affinity graph layout used by admin views.",
     "scheduled.messages.worker": "Messages and reminders",
     "scheduled.messages.worker.description": "Processes due scheduled messages and reminders.",
     "users.deleted-account-purge": "Accounts past grace period",

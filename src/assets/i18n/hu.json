@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.31.hu.49",
+  "version": "2026.08.05.hu.50",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -543,6 +543,8 @@
     "notifications.outbox.worker.description": "Kiküldi a sorban álló értesítési intenteket.",
     "affinity.recompute.worker": "Kapcsolati pontszámok",
     "affinity.recompute.worker.description": "Feldolgozza a tárolt recompute taskokat.",
+    "affinity.graph.layout.rebuild": "Materializált gráfelrendezés",
+    "affinity.graph.layout.rebuild.description": "Újraépíti az admin nézetek által használt materializált affinitásgráf-elrendezést.",
     "scheduled.messages.worker": "Üzenetek és emlékeztetők",
     "scheduled.messages.worker.description": "Feldolgozza az esedékes ütemezett üzeneteket és emlékeztetőket.",
     "users.deleted-account-purge": "Türelmi időn túli fiókok",
