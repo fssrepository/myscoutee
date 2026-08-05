@@ -1,9 +1,11 @@
 import type { EventFeedbackPersistedState, EventFeedbackStatRecord } from '../entity/event.entity';
-import { EVENT_FEEDBACK_TABLE_NAME } from '../entity/event.entity';
+import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.entity';
+import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
+import type { AppMemorySchema } from '../../common/memory.schema';
 import { EventFeedbackDetailDto } from '../../../contracts/activity.interface';
 import type {
   EventFeedbackReceivedEventDto,
@@ -272,6 +274,21 @@ export class LocalEventFeedbackRepository {
         ...existing,
         answersByCardId: this.cloneEventFeedbackAnswersByCardId(existing.answersByCardId)
       });
+      const feedbackDeltas = new Map<string, FeedbackCounterDelta>();
+      const previousBucket = this.feedbackBucket(existing);
+      const nextBucket = this.feedbackBucket(nextRecord);
+      if (previousBucket !== nextBucket) {
+        this.addFeedbackCounterDelta(feedbackDeltas, normalizedUserId, previousBucket, -1);
+        this.addFeedbackCounterDelta(feedbackDeltas, normalizedUserId, nextBucket, 1);
+      }
+      const wasActiveSubmission = Boolean(existing.submittedAtIso?.trim()) && !existing.removed;
+      const isActiveSubmission = Boolean(nextRecord.submittedAtIso?.trim()) && !nextRecord.removed;
+      if (wasActiveSubmission !== isActiveSubmission) {
+        const ownEventDelta = isActiveSubmission ? 1 : -1;
+        for (const ownerUserId of this.feedbackAdminUserIds(current, normalizedEventId)) {
+          this.addFeedbackCounterDelta(feedbackDeltas, ownerUserId, 'ownEvents', ownEventDelta);
+        }
+      }
       return {
         ...current,
         [EVENT_FEEDBACK_TABLE_NAME]: {
@@ -280,9 +297,105 @@ export class LocalEventFeedbackRepository {
             [recordId]: nextRecord
           },
           ids: table.ids.includes(recordId) ? table.ids : [...table.ids, recordId]
-        }
+        },
+        [USERS_TABLE_NAME]: this.applyFeedbackCounterDeltas(current[USERS_TABLE_NAME], feedbackDeltas)
       };
     });
+  }
+
+  private feedbackBucket(record: EventFeedbackPersistedState): FeedbackCounterBucket {
+    if (record.removed) {
+      return 'removed';
+    }
+    return record.submittedAtIso?.trim() ? 'feedbacked' : 'pending';
+  }
+
+  private feedbackAdminUserIds(state: AppMemorySchema, eventId: string): string[] {
+    const userIds = new Set<string>();
+    const eventsTable = state[EVENTS_TABLE_NAME];
+    for (const recordId of eventsTable.ids) {
+      const event = eventsTable.byId[recordId];
+      if (!event || event.id.trim() !== eventId) {
+        continue;
+      }
+      const creatorUserId = event.creatorUserId?.trim();
+      if (creatorUserId) {
+        userIds.add(creatorUserId);
+      }
+      for (const adminUserId of event.adminIds ?? []) {
+        const normalizedAdminUserId = adminUserId.trim();
+        if (normalizedAdminUserId) {
+          userIds.add(normalizedAdminUserId);
+        }
+      }
+    }
+    return [...userIds];
+  }
+
+  private addFeedbackCounterDelta(
+    deltas: Map<string, FeedbackCounterDelta>,
+    userId: string,
+    bucket: FeedbackCounterBucket,
+    amount: number
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || amount === 0) {
+      return;
+    }
+    const current = deltas.get(normalizedUserId) ?? this.emptyFeedbackCounterDelta();
+    deltas.set(normalizedUserId, {
+      ...current,
+      [bucket]: current[bucket] + amount
+    });
+  }
+
+  private applyFeedbackCounterDeltas(
+    usersTable: AppMemorySchema[typeof USERS_TABLE_NAME],
+    deltas: ReadonlyMap<string, FeedbackCounterDelta>
+  ): AppMemorySchema[typeof USERS_TABLE_NAME] {
+    if (deltas.size === 0) {
+      return usersTable;
+    }
+    const byId = { ...usersTable.byId };
+    for (const [userId, delta] of deltas) {
+      const user = byId[userId];
+      if (!user) {
+        continue;
+      }
+      byId[userId] = this.withFeedbackCounterDelta(user, delta);
+    }
+    return { ...usersTable, byId };
+  }
+
+  private withFeedbackCounterDelta(user: UserRecord, delta: FeedbackCounterDelta): UserRecord {
+    const current = user.activities.eventFeedback;
+    const ownEvents = this.counter(current?.ownEvents) + delta.ownEvents;
+    const pending = this.counter(current?.pending) + delta.pending;
+    const feedbacked = this.counter(current?.feedbacked) + delta.feedbacked;
+    const removed = this.counter(current?.removed) + delta.removed;
+    const nextOwnEvents = Math.max(0, ownEvents);
+    const nextPending = Math.max(0, pending);
+    return {
+      ...user,
+      activities: {
+        ...user.activities,
+        feedback: nextPending + nextOwnEvents,
+        eventFeedback: {
+          ownEvents: nextOwnEvents,
+          pending: nextPending,
+          feedbacked: Math.max(0, feedbacked),
+          removed: Math.max(0, removed)
+        }
+      }
+    };
+  }
+
+  private counter(value: number | null | undefined): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private emptyFeedbackCounterDelta(): FeedbackCounterDelta {
+    return { ownEvents: 0, pending: 0, feedbacked: 0, removed: 0 };
   }
 
   private createEmptyEventFeedbackState(userId: string, eventId: string): EventFeedbackPersistedState {
@@ -328,4 +441,13 @@ export class LocalEventFeedbackRepository {
     }
     return next;
   }
+}
+
+type FeedbackCounterBucket = 'ownEvents' | 'pending' | 'feedbacked' | 'removed';
+
+interface FeedbackCounterDelta {
+  ownEvents: number;
+  pending: number;
+  feedbacked: number;
+  removed: number;
 }

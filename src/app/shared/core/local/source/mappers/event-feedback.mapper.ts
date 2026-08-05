@@ -72,7 +72,7 @@ export class LocalEventFeedbackMapper {
       organizerItems,
       receivedEvents,
       state,
-      counts: this.counts(allItems, organizerItems)
+      counts: this.counts(options.activeUser)
     });
   }
 
@@ -338,20 +338,22 @@ export class LocalEventFeedbackMapper {
     eventFeedbackUnlockDelayMs: number,
     nowMs: number
   ): boolean {
-    const startAtMs = this.eventStartAtMs(event);
-    return startAtMs !== null && nowMs >= startAtMs + eventFeedbackUnlockDelayMs;
+    const endAtMs = new Date(event.endAtIso ?? '').getTime();
+    return Number.isFinite(endAtMs) && nowMs >= endAtMs + eventFeedbackUnlockDelayMs;
   }
 
-  private static counts(
-    allItems: readonly EventFeedbackDto[],
-    organizerItems: readonly EventFeedbackDto[]
-  ): EventFeedbackPageCountsDto {
+  private static counts(activeUser: UserDto): EventFeedbackPageCountsDto {
+    const counters = activeUser.activities?.eventFeedback;
     return {
-      ownEvents: organizerItems.length,
-      pending: allItems.filter(item => !item.isRemoved && item.pendingCards > 0).length,
-      feedbacked: allItems.filter(item => item.isFeedbacked).length,
-      removed: allItems.filter(item => item.isRemoved).length
+      ownEvents: this.counter(counters?.ownEvents),
+      pending: this.counter(counters?.pending),
+      feedbacked: this.counter(counters?.feedbacked),
+      removed: this.counter(counters?.removed)
     };
+  }
+
+  private static counter(value: number | null | undefined): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private static toStatSection(

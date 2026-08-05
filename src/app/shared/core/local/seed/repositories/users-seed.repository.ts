@@ -342,10 +342,7 @@ export class SeedUsersRepository {
         user.id,
         SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
       ),
-      feedbackOwnEventsCount: this.countFeedbackReadyOwnEventsByUser(
-        user.id,
-        SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
-      )
+      feedbackOwnEventsCount: this.countSubmittedFeedbackForOwnedEventsByUser(user.id)
     });
   }
 
@@ -379,7 +376,9 @@ export class SeedUsersRepository {
     const supplies = Number.isFinite(sources.suppliesCount) ? normalizeCounter(sources.suppliesCount) : activities.supplies;
     const tickets = Number.isFinite(sources.ticketsCount) ? normalizeCounter(sources.ticketsCount) : activities.tickets;
     const contacts = Number.isFinite(sources.contactsCount) ? normalizeCounter(sources.contactsCount) : activities.contacts;
-    const feedback = Number.isFinite(sources.feedbackCount) ? normalizeCounter(sources.feedbackCount) : activities.feedback;
+    const fallbackFeedback = Number.isFinite(sources.feedbackCount)
+      ? normalizeCounter(sources.feedbackCount)
+      : normalizeCounter(activities.feedback);
     const event = activities.event;
     const asset = activities.asset;
     const eventFeedback = activities.eventFeedback;
@@ -404,11 +403,12 @@ export class SeedUsersRepository {
     const assetSupplies = Number.isFinite(sources.suppliesCount) ? supplies : normalizeCounter(asset?.supplies ?? supplies);
     const assetTickets = Number.isFinite(sources.ticketsCount) ? tickets : normalizeCounter(asset?.tickets ?? tickets);
     const eventFeedbackPending = Number.isFinite(sources.feedbackCount)
-      ? feedback
-      : normalizeCounter(eventFeedback?.pending ?? feedback);
+      ? fallbackFeedback
+      : normalizeCounter(eventFeedback?.pending ?? fallbackFeedback);
     const eventFeedbackOwnEvents = Number.isFinite(sources.feedbackOwnEventsCount)
       ? normalizeCounter(sources.feedbackOwnEventsCount)
       : normalizeCounter(eventFeedback?.ownEvents);
+    const feedback = eventFeedbackPending + eventFeedbackOwnEvents;
 
     return {
       ...user,
@@ -509,8 +509,8 @@ export class SeedUsersRepository {
       ) {
         return false;
       }
-      const startMs = new Date(item.startAtIso ?? '').getTime();
-      if (!Number.isFinite(startMs) || nowMs < startMs + feedbackUnlockDelayMs) {
+      const endMs = new Date(item.endAtIso ?? '').getTime();
+      if (!Number.isFinite(endMs) || nowMs < endMs + feedbackUnlockDelayMs) {
         return false;
       }
       const feedbackRecord = feedbackTable.byId[`${normalizedUserId}::${item.id}`];
@@ -524,18 +524,26 @@ export class SeedUsersRepository {
     }).length;
   }
 
-  private countFeedbackReadyOwnEventsByUser(userId: string, feedbackUnlockDelayMs: number): number {
+  private countSubmittedFeedbackForOwnedEventsByUser(userId: string): number {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return 0;
     }
-    const nowMs = Date.now();
-    return this.queryUserEventRecords(normalizedUserId).filter(item => {
-      if (!this.isEventAdminRecord(item, normalizedUserId) || item.status === 'T') {
-        return false;
-      }
-      const startMs = new Date(item.startAtIso ?? '').getTime();
-      return Number.isFinite(startMs) && nowMs >= startMs + feedbackUnlockDelayMs;
+    const ownedEventIds = new Set(
+      this.queryUserEventRecords(normalizedUserId)
+        .filter(item => this.isEventAdminRecord(item, normalizedUserId) && item.status !== 'T')
+        .map(item => item.id.trim())
+        .filter(Boolean)
+    );
+    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    return feedbackTable.ids.filter(id => {
+      const record = feedbackTable.byId[id];
+      return Boolean(
+        record
+        && ownedEventIds.has(record.eventId.trim())
+        && record.submittedAtIso?.trim()
+        && !record.removed
+      );
     }).length;
   }
 

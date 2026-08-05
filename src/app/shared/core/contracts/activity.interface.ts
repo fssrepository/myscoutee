@@ -1758,7 +1758,7 @@ export class EventFeedbackPageResultDto {
     this.receivedEvents = EventFeedbackPageResultDto.cloneReceivedEvents(result?.receivedEvents);
     this.state = EventFeedbackPageResultDto.cloneStateSnapshot(result?.state);
     this.counts = {
-      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents ?? organizerItems.length) || 0)),
+      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents) || 0)),
       pending: Math.max(0, Math.trunc(Number(result?.counts?.pending) || 0)),
       feedbacked: Math.max(0, Math.trunc(Number(result?.counts?.feedbacked) || 0)),
       removed: Math.max(0, Math.trunc(Number(result?.counts?.removed) || 0))
