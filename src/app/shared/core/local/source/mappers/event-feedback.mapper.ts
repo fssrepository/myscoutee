@@ -61,7 +61,7 @@ export class LocalEventFeedbackMapper {
       eventFeedbackUnlockDelayMs: unlockDelayMs,
       nowMs
     });
-    const organizerItems = this.toOrganizerItems(organizerEvents, receivedByEventId);
+    const organizerItems = this.toOrganizerItems(organizerEvents, receivedByEventId, unlockDelayMs, nowMs);
     const filtered = this.filterItems(query.filter, allItems, organizerItems);
     const pageItems = filtered.slice(query.page * query.pageSize, (query.page * query.pageSize) + query.pageSize);
 
@@ -264,10 +264,13 @@ export class LocalEventFeedbackMapper {
 
   private static toOrganizerItems(
     events: readonly ActivityEventDTO[],
-    receivedByEventId: Map<string, readonly EventFeedbackReceivedEntryDto[]>
+    receivedByEventId: Map<string, readonly EventFeedbackReceivedEntryDto[]>,
+    eventFeedbackUnlockDelayMs: number,
+    nowMs: number
   ): EventFeedbackDto[] {
     return events
       .filter(event => !this.isTrashedEvent(event) && !this.isInvitationEvent(event) && this.isEventAdmin(event))
+      .filter(event => this.isFeedbackUnlocked(event, eventFeedbackUnlockDelayMs, nowMs))
       .map(event => {
         const entries = receivedByEventId.get(event.id) ?? [];
         return {
@@ -286,7 +289,7 @@ export class LocalEventFeedbackMapper {
           isOwnEvent: true
         };
       })
-      .filter(item => item.eventId.length > 0 && item.totalCards > 0)
+      .filter(item => item.eventId.length > 0)
       .sort((left, right) =>
         this.compareDates(left.startAtMs, right.startAtMs, 'asc')
         || left.title.localeCompare(right.title)
@@ -328,6 +331,15 @@ export class LocalEventFeedbackMapper {
       this.compareDates(left.startAtMs, right.startAtMs, 'asc')
       || left.title.localeCompare(right.title)
     );
+  }
+
+  private static isFeedbackUnlocked(
+    event: ActivityEventDTO,
+    eventFeedbackUnlockDelayMs: number,
+    nowMs: number
+  ): boolean {
+    const startAtMs = this.eventStartAtMs(event);
+    return startAtMs !== null && nowMs >= startAtMs + eventFeedbackUnlockDelayMs;
   }
 
   private static counts(
@@ -628,6 +640,7 @@ export class LocalEventFeedbackMapper {
       targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
       primaryValue: answer.primaryValue?.trim() ?? '',
       secondaryValue: answer.secondaryValue?.trim() ?? '',
+      eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
       personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
       tags: [...(answer.tags ?? [])],
       submittedAtIso: answer.submittedAtIso?.trim() ?? ''

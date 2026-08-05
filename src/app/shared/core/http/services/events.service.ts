@@ -1640,6 +1640,7 @@ export class HttpEventsService implements IEventsService {
         targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
         primaryValue: answer.primaryValue?.trim() ?? '',
         secondaryValue: answer.secondaryValue?.trim() ?? '',
+        eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
         personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
         tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
         submittedAtIso: answer.submittedAtIso?.trim() ?? ''

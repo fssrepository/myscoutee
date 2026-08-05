@@ -48,7 +48,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
 
     const card = EventFeedbackInfoCardConverter.convert(item);
 
-    expect(card.menuActions).toEqual(['viewSubmittedFeedback']);
+    expect(card.menuActions).toEqual(['viewSubmittedFeedback', 'addOrganizerNote']);
   });
 
   it('hydrates the read-only detail from the persisted state answers', () => {
@@ -82,6 +82,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
           targetRole: 'Admin',
           primaryValue: 'good',
           secondaryValue: 'resources',
+          eventComment: 'A focused and welcoming event.',
           personalityTraitIds: ['reliable-one'],
           tags: [],
           submittedAtIso: '2026-07-23T18:00:00Z'
@@ -93,6 +94,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
 
     expect(persisted.submittedAtIso).toBe('2026-07-23T18:00:00Z');
     expect(persisted.cards[0]?.answerPrimary).toBe('good');
+    expect(persisted.cards[0]?.eventComment).toBe('A focused and welcoming event.');
     expect(persisted.cards[0]?.answerSecondary).toBe('resources');
     expect(persisted.cards[0]?.selectedTraitIds).toEqual(['reliable-one']);
   });

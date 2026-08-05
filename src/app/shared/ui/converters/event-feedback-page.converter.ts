@@ -136,7 +136,7 @@ export class EventFeedbackListPresentationConverter {
   private static emptyDescription(filter: EventFeedbackListFilter): string {
     switch (filter) {
       case 'own-events':
-        return 'No own events yet. Hosted events with received feedback will show here.';
+        return 'No feedback-ready own events yet.';
       case 'feedbacked':
         return 'No feedbacked events yet.';
       case 'removed':
@@ -390,6 +390,7 @@ export interface EventFeedbackOrganizerMessageItemData {
   dayLabel: string;
   timeLabel: string;
   organizerNote: string;
+  eventComment: string;
   overallLabel: string | null;
   improveLabel: string | null;
   traitLabels: string[];
@@ -433,6 +434,7 @@ export class EventFeedbackOrganizerMessageGroupConverter {
         dayLabel,
         timeLabel,
         organizerNote: entry.organizerNote.trim(),
+        eventComment: answer?.eventComment?.trim() ?? '',
         overallLabel: answer ? this.optionLabel(answer.primaryValue ?? '', APP_STATIC_DATA.eventFeedbackEventOverallOptions) : null,
         improveLabel: answer ? this.optionLabel(answer.secondaryValue ?? '', APP_STATIC_DATA.eventFeedbackHostImproveOptions) : null,
         traitLabels: answer

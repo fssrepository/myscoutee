@@ -48,7 +48,8 @@ export class EventFeedbackDetailConverter {
         traitOptions: [...APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions],
         selectedTraitIds: [...(source.selectedTraitIds ?? [])],
         answerPrimary: source.answerPrimary?.trim() ?? '',
-        answerSecondary: source.answerSecondary?.trim() ?? ''
+        answerSecondary: source.answerSecondary?.trim() ?? '',
+        eventComment: ''
       };
     }
 
@@ -75,7 +76,8 @@ export class EventFeedbackDetailConverter {
       traitOptions: [...APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions],
       selectedTraitIds: [...(source.selectedTraitIds ?? [])],
       answerPrimary: source.answerPrimary?.trim() ?? '',
-      answerSecondary: source.answerSecondary?.trim() ?? ''
+      answerSecondary: source.answerSecondary?.trim() ?? '',
+      eventComment: source.eventComment?.trim() ?? ''
     };
   }
 

@@ -56,9 +56,23 @@
                   }
                 </div>
               </div>
+
+              @if (card.kind === 'event' && card.eventComment) {
+                <div class="rated-feedback-text rated-feedback-text--opinion">
+                  <span>Your opinion about the event</span>
+                  <p>{{ card.eventComment }}</p>
+                </div>
+              }
             </article>
           }
         </div>
+
+        @if (detail()?.organizerNote) {
+          <aside class="rated-feedback-text rated-feedback-text--organizer-note">
+            <span>Note to organizer</span>
+            <p>{{ detail()?.organizerNote }}</p>
+          </aside>
+        }
       }
     </section>
   </app-popup>

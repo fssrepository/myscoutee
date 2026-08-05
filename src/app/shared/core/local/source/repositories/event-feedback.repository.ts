@@ -148,6 +148,10 @@ export class LocalEventFeedbackRepository {
       if (!cardId) {
         continue;
       }
+      const eventComment = card.kind === 'event' ? card.eventComment?.trim() ?? '' : '';
+      if ([...eventComment].length > 160) {
+        throw new Error('Event feedback comments may contain at most 160 characters.');
+      }
       nextAnswersByCardId[cardId] = {
         cardId,
         eventId: normalizedEventId,
@@ -156,6 +160,7 @@ export class LocalEventFeedbackRepository {
         targetRole: card.targetRole === 'Admin' || card.targetRole === 'Manager' ? card.targetRole : 'Member',
         primaryValue: card.answerPrimary?.trim() ?? '',
         secondaryValue: card.answerSecondary?.trim() ?? '',
+        eventComment,
         personalityTraitIds: (card.selectedTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
         tags: [],
         submittedAtIso
@@ -315,6 +320,7 @@ export class LocalEventFeedbackRepository {
         targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
         primaryValue: answer.primaryValue?.trim() ?? '',
         secondaryValue: answer.secondaryValue?.trim() ?? '',
+        eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
         personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
         tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
         submittedAtIso: answer.submittedAtIso?.trim() ?? ''

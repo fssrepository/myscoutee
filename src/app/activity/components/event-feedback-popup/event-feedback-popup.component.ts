@@ -127,6 +127,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   protected readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   protected readonly eventFeedbackNoteSubmitted = signal(false);
   protected readonly eventFeedbackNoteSubmitMessage = signal('');
+  protected readonly eventFeedbackNoteSaving = signal(false);
   private readonly eventFeedbackPageResult = signal<ActivityContracts.EventFeedbackPageResultDto | null>(null);
   protected readonly eventFeedbackDetailDto = signal<ActivityContracts.EventFeedbackDetailDto | null>(null);
   protected readonly eventFeedbackDetailValue = signal<ActivityContracts.EventFeedbackDetailDto>(
@@ -490,11 +491,11 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   }
 
   protected canSubmitEventFeedbackNote(): boolean {
-    return this.eventFeedbackNoteForm().text.trim().length >= 8;
+    return !this.eventFeedbackNoteSaving() && this.eventFeedbackNoteForm().text.trim().length >= 8;
   }
 
   private applyEventFeedbackNoteSubmitted(): void {
-    if (!this.canSubmitEventFeedbackNote()) {
+    if (this.eventFeedbackNoteForm().text.trim().length < 8) {
       return;
     }
     const noteForm = this.eventFeedbackNoteForm();
@@ -819,7 +820,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     });
   }
 
-  protected submitEventFeedbackNote(): void {
+  protected async submitEventFeedbackNote(): Promise<void> {
     if (!this.canSubmitEventFeedbackNote()) {
       return;
     }
@@ -830,8 +831,16 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     if (!userId || !eventId) {
       return;
     }
-    void this.eventsService.saveEventFeedbackNote({ userId, eventId, text });
-    this.applyEventFeedbackNoteSubmitted();
+    this.eventFeedbackNoteSaving.set(true);
+    this.eventFeedbackNoteSubmitMessage.set('');
+    try {
+      await this.eventsService.saveEventFeedbackNote({ userId, eventId, text });
+      this.applyEventFeedbackNoteSubmitted();
+    } catch {
+      this.eventFeedbackNoteSubmitMessage.set('The note could not be saved. Please try again.');
+    } finally {
+      this.eventFeedbackNoteSaving.set(false);
+    }
   }
 
   protected openOrganizerEventFeedback(eventId: string): void {

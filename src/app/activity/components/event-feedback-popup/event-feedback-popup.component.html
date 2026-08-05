@@ -200,8 +200,17 @@
                                   <span class="event-feedback-organizer-message-chip event-feedback-organizer-message-chip-trait">{{ traitLabel }}</span>
                                 }
                               </div>
+                              @if (message.eventComment) {
+                                <div class="event-feedback-organizer-message-opinion">
+                                  <strong>Event opinion</strong>
+                                  <p>{{ message.eventComment }}</p>
+                                </div>
+                              }
                               @if (message.organizerNote) {
-                                <p class="event-feedback-organizer-message-note">{{ message.organizerNote }}</p>
+                                <div class="event-feedback-organizer-message-note">
+                                  <strong>Note to organizer</strong>
+                                  <p>{{ message.organizerNote }}</p>
+                                </div>
                               }
                             </article>
                           }
@@ -226,6 +235,9 @@
                 <article class="editor-list-card support-card">
                   <h4>Organizer Feedback</h4>
                   <p>Add textual feedback for the event organizer of {{ eventFeedbackCurrentEventTitle() }}.</p>
+                  @if (eventFeedbackNoteSubmitMessage()) {
+                    <div class="support-submit-error">{{ eventFeedbackNoteSubmitMessage() }}</div>
+                  }
                   <form class="support-form" (ngSubmit)="submitEventFeedbackNote()">
                     <label>
                       <span>Feedback</span>

@@ -29,6 +29,7 @@ interface SeededActivityCountSources {
   ticketsCount?: number;
   contactsCount?: number;
   feedbackCount?: number;
+  feedbackOwnEventsCount?: number;
 }
 
 @Injectable({
@@ -340,6 +341,10 @@ export class SeedUsersRepository {
       feedbackCount: this.countPendingEventFeedbackByUser(
         user.id,
         SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
+      ),
+      feedbackOwnEventsCount: this.countFeedbackReadyOwnEventsByUser(
+        user.id,
+        SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
       )
     });
   }
@@ -401,6 +406,9 @@ export class SeedUsersRepository {
     const eventFeedbackPending = Number.isFinite(sources.feedbackCount)
       ? feedback
       : normalizeCounter(eventFeedback?.pending ?? feedback);
+    const eventFeedbackOwnEvents = Number.isFinite(sources.feedbackOwnEventsCount)
+      ? normalizeCounter(sources.feedbackOwnEventsCount)
+      : normalizeCounter(eventFeedback?.ownEvents);
 
     return {
       ...user,
@@ -434,7 +442,7 @@ export class SeedUsersRepository {
           tickets: assetTickets,
         },
         eventFeedback: {
-          ownEvents: normalizeCounter(eventFeedback?.ownEvents),
+          ownEvents: eventFeedbackOwnEvents,
           pending: eventFeedbackPending,
           feedbacked: normalizeCounter(eventFeedback?.feedbacked),
           removed: normalizeCounter(eventFeedback?.removed),
@@ -513,6 +521,21 @@ export class SeedUsersRepository {
         return false;
       }
       return !(feedbackRecord.submittedAtIso?.trim());
+    }).length;
+  }
+
+  private countFeedbackReadyOwnEventsByUser(userId: string, feedbackUnlockDelayMs: number): number {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 0;
+    }
+    const nowMs = Date.now();
+    return this.queryUserEventRecords(normalizedUserId).filter(item => {
+      if (!this.isEventAdminRecord(item, normalizedUserId) || item.status === 'T') {
+        return false;
+      }
+      const startMs = new Date(item.startAtIso ?? '').getTime();
+      return Number.isFinite(startMs) && nowMs >= startMs + feedbackUnlockDelayMs;
     }).length;
   }
 

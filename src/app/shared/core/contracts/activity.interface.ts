@@ -1611,6 +1611,7 @@ export interface SubmittedEventFeedbackAnswer {
   targetRole: AppConstants.ActivityMemberRole;
   primaryValue: string;
   secondaryValue: string;
+  eventComment: string;
   personalityTraitIds: string[];
   tags: string[];
   submittedAtIso: string;
@@ -1714,6 +1715,7 @@ export interface EventFeedbackCardDto {
   targetImageUrl?: string;
   answerPrimary?: string;
   answerSecondary?: string;
+  eventComment?: string;
   selectedTraitIds?: string[];
 }
 
@@ -2036,6 +2038,7 @@ export class EventFeedbackPageResultDto {
       targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
       primaryValue: answer.primaryValue?.trim() ?? '',
       secondaryValue: answer.secondaryValue?.trim() ?? '',
+      eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
       personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
       tags: [...(answer.tags ?? [])],
       submittedAtIso: answer.submittedAtIso?.trim() ?? ''
@@ -2085,12 +2088,14 @@ export class EventFeedbackDetailDto {
   readonly eventId: string;
   readonly title: string;
   readonly submittedAtIso: string;
+  readonly organizerNote: string;
   readonly cards: EventFeedbackCardDto[];
 
   constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
     this.eventId = result?.eventId?.trim() ?? '';
     this.title = result?.title?.trim() ?? '';
     this.submittedAtIso = result?.submittedAtIso?.trim() ?? '';
+    this.organizerNote = result?.organizerNote?.trim() ?? '';
     this.cards = EventFeedbackDetailDto.cloneCards(result?.cards);
   }
 
@@ -2119,6 +2124,7 @@ export class EventFeedbackDetailDto {
     return new EventFeedbackDetailDto({
       ...this,
       submittedAtIso: state?.submittedAtIso?.trim() || this.submittedAtIso,
+      organizerNote: state ? state.organizerNote?.trim() ?? '' : this.organizerNote,
       cards: this.cards.map(card => {
         const answer = answersByCardId[card.id]
           ?? answers.find(item =>
@@ -2132,6 +2138,7 @@ export class EventFeedbackDetailDto {
           ...card,
           answerPrimary: answer.primaryValue?.trim() ?? '',
           answerSecondary: answer.secondaryValue?.trim() ?? '',
+          eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
           selectedTraitIds: [...(answer.personalityTraitIds ?? [])]
             .map(traitId => traitId.trim())
             .filter(Boolean)
@@ -2147,6 +2154,7 @@ export class EventFeedbackDetailDto {
         ...card,
         answerPrimary: '',
         answerSecondary: '',
+        eventComment: '',
         selectedTraitIds: []
       }))
     });
@@ -2173,6 +2181,9 @@ export class EventFeedbackDetailDto {
           ...card,
           answerPrimary: EventFeedbackDetailDto.stringValue(inputCard['answerPrimary']),
           answerSecondary: EventFeedbackDetailDto.stringValue(inputCard['answerSecondary']),
+          eventComment: card.kind === 'event'
+            ? EventFeedbackDetailDto.stringValue(inputCard['eventComment'])
+            : '',
           selectedTraitIds: EventFeedbackDetailDto.normalizeSelectedTraitIds(inputCard['selectedTraitIds'])
         };
       })
@@ -2201,6 +2212,7 @@ export class EventFeedbackDetailDto {
       targetImageUrl: card.targetImageUrl?.trim() || undefined,
       answerPrimary: card.answerPrimary?.trim() ?? '',
       answerSecondary: card.answerSecondary?.trim() ?? '',
+      eventComment: card.kind === 'event' ? card.eventComment?.trim() ?? '' : '',
       selectedTraitIds: [...(card.selectedTraitIds ?? [])]
         .map(traitId => traitId.trim())
         .filter(Boolean)
