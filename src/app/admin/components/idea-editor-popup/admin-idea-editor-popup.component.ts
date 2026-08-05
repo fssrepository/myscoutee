@@ -24,6 +24,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/app-utils';
 import {
   IdeaPostsService,
   type IdeaPostAdminCountsDto,
@@ -186,6 +187,8 @@ export class AdminIdeaEditorPopupComponent {
   private adminPostIndex = new Map<string, IdeaPostDto>();
   private adminIdeaCardIndex = new Map<string, IdeaInfoCard>();
   private readonly featuredPendingIds = new Set<string>();
+  private articlePreviewHtmlSource = '';
+  private articlePreviewHtmlRendered = '';
 
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
     { id: 'all', label: 'All', icon: 'view_day' },
@@ -1285,7 +1288,15 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected articlePreviewHtml(post: Pick<IdeaPostDto, 'contentHtml'> | null): string {
-    return this.expandPlainImageLinksInHtml(post?.contentHtml ?? '');
+    const source = `${post?.contentHtml ?? ''}`;
+    if (source !== this.articlePreviewHtmlSource) {
+      this.articlePreviewHtmlSource = source;
+      this.articlePreviewHtmlRendered = AppUtils.mediaImageVariantHtml(
+        this.expandPlainImageLinksInHtml(source),
+        'large'
+      );
+    }
+    return this.articlePreviewHtmlRendered;
   }
 
   protected postStatusLabel(post: Pick<IdeaPostDto, 'published' | 'featured' | 'trashed'>): string {

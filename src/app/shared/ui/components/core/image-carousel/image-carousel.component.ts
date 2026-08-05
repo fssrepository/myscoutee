@@ -16,6 +16,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { MediaService } from '../../../../core';
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives';
 import { IndicatorComponent } from '../indicator';
 
@@ -208,7 +209,12 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   }
 
   protected selectedPreviewUrl(slots: readonly (string | null)[]): string | null {
-    return slots[this.previewSlotIndex(slots)] ?? null;
+    const imageUrl = slots[this.previewSlotIndex(slots)] ?? null;
+    return AppUtils.mediaImageVariantUrl(imageUrl, 'medium') || null;
+  }
+
+  protected slotImageUrl(imageUrl: string | null): string | null {
+    return AppUtils.mediaImageVariantUrl(imageUrl, 'small') || null;
   }
 
   protected isSelectedPreviewUploading(slots: readonly (string | null)[]): boolean {

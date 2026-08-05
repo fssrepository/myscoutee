@@ -263,6 +263,26 @@ export class AppUtils {
     );
   }
 
+  static mediaImageVariantHtml(
+    html: string | null | undefined,
+    variant: 'small' | 'medium' | 'large'
+  ): string {
+    const normalized = `${html ?? ''}`;
+    if (!normalized || typeof document === 'undefined') {
+      return normalized;
+    }
+    const template = document.createElement('template');
+    template.innerHTML = normalized;
+    template.content.querySelectorAll<HTMLImageElement>('img[src]').forEach(image => {
+      const sourceUrl = image.getAttribute('src');
+      const variantUrl = this.mediaImageVariantUrl(sourceUrl, variant);
+      if (variantUrl) {
+        image.setAttribute('src', variantUrl);
+      }
+    });
+    return template.innerHTML;
+  }
+
   static uniqueTrimmedStrings(values: Iterable<string | null | undefined> | null | undefined): string[] {
     return Array.from(new Set(
       Array.from(values ?? [])
