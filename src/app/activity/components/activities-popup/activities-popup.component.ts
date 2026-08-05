@@ -1640,10 +1640,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
-    const sync = this.activitiesStore.eventBucketCountSync();
-    if (sync?.scope === scope) {
-      return sync.count;
-    }
     return this.countFrom(this.activitiesToolbarEventScopeCounts(), scope);
   }
 
@@ -3697,9 +3693,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && change.currentView !== 'week'
       && change.currentView !== 'month'
     ) {
-      this.activitiesStore.signalEventBucketCount(
+      this.activityStore.signalUserEventBucketCount(
+        this.activeUser.id,
         change.query.filters?.eventScopeFilter ?? this.activitiesEventScope,
-        change.total
+        change.total,
+        this.activeUser.activities
       );
     }
 

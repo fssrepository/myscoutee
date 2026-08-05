@@ -1,9 +1,16 @@
 import { Injectable, signal, untracked } from '@angular/core';
 
-import { EventFeedbackDetailDto, type EventCheckoutResultState } from '../../../core/contracts/activity.interface';
+import {
+  EventFeedbackDetailDto,
+  type ActivitiesEventScope,
+  type EventCheckoutResultState
+} from '../../../core/contracts/activity.interface';
 import type * as AppDTOs from '../../../core/contracts';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
-import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
+import type {
+  UserMenuCounterDeltasDto,
+  UserMenuCountersDto
+} from '../../../core/contracts/user.interface';
 import {
   cloneAssetCounters,
   cloneChatCounters,
@@ -239,6 +246,51 @@ export class ActivityStore {
         ...normalizedPatch
       }
     }));
+  }
+
+  signalUserEventBucketCount(
+    userId: string,
+    scope: ActivitiesEventScope,
+    count: number,
+    baseCounters: Partial<ActivityCounters> | UserMenuCountersDto | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedCount = normalizeCounterValue(count);
+    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const event = cloneEventCounters(currentOverrides.event ?? baseCounters?.event);
+    const patch: Partial<ActivityCounters> = { event };
+
+    switch (scope) {
+      case 'all':
+        event.all = normalizedCount;
+        break;
+      case 'active-events':
+        event.active = normalizedCount;
+        patch.events = normalizedCount;
+        break;
+      case 'pending':
+        event.pending = normalizedCount;
+        break;
+      case 'invitations':
+        event.invitations = normalizedCount;
+        patch.invitations = normalizedCount;
+        break;
+      case 'my-events':
+        event.hosting = normalizedCount;
+        patch.hosting = normalizedCount;
+        break;
+      case 'drafts':
+        event.drafts = normalizedCount;
+        break;
+      case 'trash':
+        event.trash = normalizedCount;
+        break;
+    }
+
+    this.patchUserCounterOverrides(normalizedUserId, patch);
   }
 
   patchUserCounterDeltas(

@@ -169,10 +169,6 @@ export class ActivitiesPopupStore {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private readonly _activityEventSync = signal<ActivityEventSyncMessage | null>(null);
-  private readonly _eventBucketCountSync = signal<{
-    scope: ContractTypes.ActivitiesEventScope;
-    count: number;
-  } | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
   private readonly _eventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _stackedEventChatSession = signal<EventChatSession | null>(null);
@@ -207,7 +203,6 @@ export class ActivitiesPopupStore {
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activityEventSync = this._activityEventSync.asReadonly();
-  readonly eventBucketCountSync = this._eventBucketCountSync.asReadonly();
   readonly activityEventSave = computed(() => {
     const message = this._activityEventSync();
     return message?.kind === 'upsert' ? message.event : null;
@@ -281,7 +276,6 @@ export class ActivitiesPopupStore {
 
   closeActivities(): void {
     this.patchUiState({ open: false, adminServiceOnly: false, supportCaseFilter: 'all' });
-    this._eventBucketCountSync.set(null);
     this._eventChatSession.set(null);
     this._eventChatHeader.set(null);
     this._stackedEventChatSession.set(null);
@@ -331,13 +325,6 @@ export class ActivitiesPopupStore {
     this.patchUiState({
       eventScope: scope,
       hostingPublicationFilter: scope === 'drafts' ? 'drafts' : 'all'
-    });
-  }
-
-  signalEventBucketCount(scope: ContractTypes.ActivitiesEventScope, count: number): void {
-    this._eventBucketCountSync.set({
-      scope,
-      count: Math.max(0, Math.trunc(Number(count) || 0))
     });
   }
 
