@@ -249,7 +249,7 @@ export class LocalEventFeedbackMapper {
         title: event.title,
         subtitle: event.subtitle,
         timeframe: event.timeframe,
-        imageUrl: event.imageUrl?.trim() || `https://picsum.photos/seed/event-feedback-${event.id}/1200/700`,
+        imageUrl: event.imageUrl?.trim() || '',
         startAtMs: startMs,
         pendingCards,
         totalCards: cards.length,

@@ -59,7 +59,7 @@ export class EventFeedbackDetailConverter {
       targetUserId: source.targetUserId?.trim() || undefined,
       targetRole: 'Admin',
       icon: 'event_available',
-      imageUrl: source.eventImageUrl?.trim() || `https://picsum.photos/seed/event-feedback-card-${eventId}/1200/700`,
+      imageUrl: source.eventImageUrl?.trim() || '',
       toneClass: 'feedback-card-tone-event feedback-role-admin',
       heading: eventTitle,
       subheading: [eventLabel, eventSubtitle].filter(Boolean).join(' · '),

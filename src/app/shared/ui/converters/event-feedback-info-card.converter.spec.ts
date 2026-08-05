@@ -5,9 +5,32 @@ import {
   type EventFeedbackDto,
   type EventFeedbackStateDto
 } from '../../core/contracts/activity.interface';
+import { EventFeedbackDetailConverter } from './event-feedback-detail.converter';
 import { EventFeedbackInfoCardConverter } from './event-feedback-info-card.converter';
 
 describe('EventFeedbackInfoCardConverter submitted feedback', () => {
+  it('preserves an empty event image so the shared card renders its neutral placeholder', () => {
+    const eventId = 'manual-event';
+    const [card] = EventFeedbackDetailConverter.convert(new EventFeedbackDetailDto({
+      eventId,
+      title: 'Manual event',
+      cards: [{
+        id: `feedback-event-${eventId}`,
+        eventId,
+        kind: 'event',
+        eventTitle: 'Manual event',
+        eventSubtitle: '',
+        eventImageUrl: '',
+        eventTimeframe: '',
+        eventStartAtIso: '',
+        eventLabel: '',
+        targetName: 'Host'
+      }]
+    }));
+
+    expect(card?.imageUrl).toBe('');
+  });
+
   it('uses a submitted-rating menu action instead of pending actions', () => {
     const item: EventFeedbackDto = {
       eventId: 'event-1',
