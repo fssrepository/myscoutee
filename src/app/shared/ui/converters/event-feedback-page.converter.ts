@@ -210,7 +210,7 @@ export class EventFeedbackOrganizerItemConverter {
   ): EventFeedbackOrganizerItemData[] {
     return items
       .map(item => this.convert(item, options))
-      .filter(item => item.eventId.length > 0 && item.responseCount > 0);
+      .filter(item => item.eventId.length > 0);
   }
 
   private static numberOrNull(value: number | null | undefined): number | null {

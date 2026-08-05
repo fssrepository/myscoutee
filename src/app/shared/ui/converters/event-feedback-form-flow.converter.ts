@@ -77,6 +77,7 @@ export class EventFeedbackFormFlowConverter {
           {
             id: `${card.id}-traits`,
             kind: 'menu',
+            layout: 'wide' as const,
             label: card.traitQuestion,
             description: 'Pick up to 3',
             bind: ['cards', cardIndex, 'selectedTraitIds'],
