@@ -22,6 +22,7 @@ import { IndicatorComponent } from '../indicator';
 
 export type ImageCarouselMediaFit = 'default' | 'cover' | 'contain';
 export type ImageCarouselImagePosition = 'default' | 'center-top' | 'center';
+export type ImageCarouselSlotImageVariant = 'small' | 'medium';
 
 @Component({
   selector: 'app-image-carousel',
@@ -49,6 +50,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @Input() compact = false;
   @Input() autoSize = false;
   @Input() previewMode = false;
+  @Input() slotImageVariant: ImageCarouselSlotImageVariant = 'small';
   @Input() mediaFit: ImageCarouselMediaFit = 'default';
   @Input() imagePosition: ImageCarouselImagePosition = 'default';
   @Input() ariaLabel = 'Image slots';
@@ -214,7 +216,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   }
 
   protected slotImageUrl(imageUrl: string | null): string | null {
-    return AppUtils.mediaImageVariantUrl(imageUrl, 'small') || null;
+    return AppUtils.mediaImageVariantUrl(imageUrl, this.slotImageVariant) || null;
   }
 
   protected isSelectedPreviewUploading(slots: readonly (string | null)[]): boolean {

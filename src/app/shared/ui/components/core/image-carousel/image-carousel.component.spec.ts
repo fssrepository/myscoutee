@@ -33,6 +33,18 @@ describe('ImageCarouselComponent media variants', () => {
     expect(view.slotImageUrl(slots[0])).toBe(managedImageUrl('small'));
   });
 
+  it('requests a medium variant for a large editor slot when configured', () => {
+    const component = TestBed.createComponent(ImageCarouselComponent).componentInstance;
+    const view = component as unknown as ImageCarouselTestView;
+    const largeUrl = managedImageUrl('large');
+
+    component.slotImageVariant = 'medium';
+    component.writeValue([largeUrl]);
+
+    expect(view.imageSlots()[0]).toBe(largeUrl);
+    expect(view.slotImageUrl(largeUrl)).toBe(managedImageUrl('medium'));
+  });
+
   it('leaves external and local-mode images unchanged', () => {
     const component = TestBed.createComponent(ImageCarouselComponent).componentInstance;
     const view = component as unknown as ImageCarouselTestView;
