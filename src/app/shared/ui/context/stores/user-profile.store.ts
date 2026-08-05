@@ -57,7 +57,7 @@ export const DEFAULT_USER_IMPRESSION_CHANGE_FLAGS: UserImpressionChangeFlags = {
 
 export interface UserRealtimeProfilePatch {
   counterPatch: Partial<ActivityCounters>;
-  impressions: UserImpressionsDto | undefined;
+  impressions: UserImpressionsDto;
   changeFlags: UserImpressionChangeFlags | null;
   clearChangeFlags: boolean;
 }
@@ -577,7 +577,7 @@ export class UserProfileStore {
       return null;
     }
 
-    const impressions = patch.impressions ? cloneImpressions(patch.impressions) : null;
+    const impressions = cloneImpressions(patch.impressions);
     const currentUser = this._userProfilesByUserId()[normalizedUserId] ?? null;
     let nextUser: UserDto | null = null;
 
@@ -585,7 +585,7 @@ export class UserProfileStore {
       nextUser = cloneUserProfile({
         ...currentUser,
         activities: this.applyActivityCounterPatch(currentUser.activities, patch.counterPatch),
-        impressions: impressions ?? undefined
+        impressions
       });
       this._userProfilesByUserId.update(state => ({
         ...state,
@@ -594,17 +594,10 @@ export class UserProfileStore {
     }
 
     this._impressionsByUserId.update(state => {
-      if (impressions) {
-        return {
-          ...state,
-          [normalizedUserId]: impressions
-        };
-      }
-      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
-        return state;
-      }
-      const { [normalizedUserId]: _removed, ...rest } = state;
-      return rest;
+      return {
+        ...state,
+        [normalizedUserId]: impressions
+      };
     });
 
     this._impressionChangeFlagsByUserId.update(state => {

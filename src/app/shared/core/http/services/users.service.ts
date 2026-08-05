@@ -238,7 +238,7 @@ export class HttpUsersService implements UserService {
         'User realtime request timeout.',
         requestTimeoutMs
       );
-      if (!response || !response.counters) {
+      if (!response || !response.counters || !response.impressions) {
         return null;
       }
       return {
