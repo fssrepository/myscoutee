@@ -3,6 +3,94 @@ import { describe, expect, it, vi } from 'vitest';
 import { SmartListComponent } from './smart-list.component';
 
 describe('SmartListComponent list-page preloading', () => {
+  it('polls only the first configured page when diff-sync owns a multi-page cache', () => {
+    const component = {
+      config: { pollDelta: {} },
+      items: Array.from({ length: 60 }, (_value, index) => ({ id: `notification-${index}` })),
+      currentQuery: vi.fn(() => ({
+        page: 4,
+        pageSize: 1,
+        cursor: 'stale-cursor',
+        filters: { bucket: 'new' }
+      })),
+      resolveEffectivePageSize: vi.fn(() => 20)
+    };
+    const visiblePollQuery = Reflect.get(
+      SmartListComponent.prototype,
+      'visiblePollQuery'
+    ) as (this: typeof component) => {
+      page: number;
+      pageSize: number;
+      cursor?: string;
+      filters: { bucket: string };
+    };
+
+    const query = visiblePollQuery.call(component);
+
+    expect(query).toEqual({
+      page: 0,
+      pageSize: 20,
+      cursor: undefined,
+      filters: { bucket: 'new' }
+    });
+  });
+
+  it('applies only server-reported poll differences while preserving cached item references', () => {
+    const older = { id: 'older', value: 1, createdAt: 1 };
+    const unchanged = { id: 'unchanged', value: 1, createdAt: 2 };
+    const changed = { id: 'changed', value: 1, createdAt: 3 };
+    const component = {
+      config: { pollDelta: {} },
+      items: [changed, unchanged, older],
+      total: 3,
+      hasMore: false,
+      currentQuery: vi.fn(() => ({})),
+      cacheableConfig: vi.fn(() => ({
+        identity: (item: { id: string }) => item.id
+      })),
+      sortableConfig: vi.fn(() => ({})),
+      localSortKeyForItem: vi.fn((item: { createdAt: number }) => [-item.createdAt]),
+      visibleInsertionIndex: Reflect.get(
+        SmartListComponent.prototype,
+        'visibleInsertionIndex'
+      ),
+      cacheDirectSourceItems: vi.fn(),
+      syncGroups: vi.fn(),
+      finiteStepper: { syncBounds: vi.fn() },
+      emitState: vi.fn(),
+      emitRefresh: vi.fn(),
+      cdr: { markForCheck: vi.fn() },
+      refreshSurfaceSoon: vi.fn()
+    };
+    const syncVisiblePollDelta = Reflect.get(
+      SmartListComponent.prototype,
+      'syncVisiblePollDelta'
+    ) as (
+      this: typeof component,
+      delta: {
+        upserts: Array<{ id: string; value: number; createdAt: number }>;
+        removedIds: string[];
+        total: number;
+      }
+    ) => boolean;
+
+    const updated = { id: 'changed', value: 2, createdAt: 3 };
+    const inserted = { id: 'new', value: 1, createdAt: 4 };
+    const changedResult = syncVisiblePollDelta.call(
+      component,
+      {
+        upserts: [inserted, updated],
+        removedIds: [],
+        total: 4
+      }
+    );
+
+    expect(changedResult).toBe(true);
+    expect(component.items).toEqual([inserted, updated, unchanged, older]);
+    expect(component.items[2]).toBe(unchanged);
+    expect(component.items[3]).toBe(older);
+  });
+
   it('loads and exposes the next page even when the cached has-more flag is stale', async () => {
     const component = {
       currentViewMode: 'list',

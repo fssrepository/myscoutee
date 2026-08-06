@@ -106,13 +106,10 @@ import {
   EventSubeventDefinitionsPanelComponent
 } from '../event-subevent-definitions-panel';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
-
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import {
-  ActivityStore,
-  type ActivityCounters
+  ActivityStore
 } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 type EventEditorMenuContext =
@@ -1255,14 +1252,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const counterDelta: UserMenuCounterDeltasDto = {
-      event: { drafts: publishing ? -1 : 1 }
-    };
-    const counterBase = this.eventPublicationCounterBase();
-    if (publishing) {
-      await this.eventsService.publishItem(activeUserId, eventId, { counterDelta });
-    } else {
-      await this.eventsService.unpublishItem(activeUserId, eventId, { counterDelta });
+    const result = publishing
+      ? await this.eventsService.publishItem(activeUserId, eventId)
+      : await this.eventsService.unpublishItem(activeUserId, eventId);
+    if (!result || result.changed === false) {
+      throw new Error(result?.reason ?? 'Event publication state did not change.');
     }
 
     const status: ActivityContracts.ActivityEventStatus = publishing ? 'A' : 'DR';
@@ -1274,8 +1268,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.activitiesStore.emitActivityEventSaveResult(this.eventPublicationSync(status));
     this.activityStore.patchUserCounterDeltas(
       activeUserId,
-      counterDelta,
-      counterBase
+      result.counterDelta ?? {},
+      null
     );
     this.dialogStore.close();
     await this.reloadEventEditorAfterPublication(eventId, status);
@@ -1331,21 +1325,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.eventVisibilityReady.set(true);
       }
     }
-  }
-
-  private eventPublicationCounterBase(): Partial<ActivityCounters> {
-    const counters = this.userProfileStore.activeUserProfile()?.activities?.event;
-    return {
-      event: {
-        all: Math.max(0, Math.trunc(Number(counters?.all) || 0)),
-        active: Math.max(0, Math.trunc(Number(counters?.active) || 0)),
-        pending: Math.max(0, Math.trunc(Number(counters?.pending) || 0)),
-        invitations: Math.max(0, Math.trunc(Number(counters?.invitations) || 0)),
-        hosting: Math.max(0, Math.trunc(Number(counters?.hosting) || 0)),
-        drafts: Math.max(0, Math.trunc(Number(counters?.drafts) || 0)),
-        trash: Math.max(0, Math.trunc(Number(counters?.trash) || 0))
-      }
-    };
   }
 
   private eventPublicationSync(status: ActivityContracts.ActivityEventStatus): ActivityContracts.ActivityEventDTO {

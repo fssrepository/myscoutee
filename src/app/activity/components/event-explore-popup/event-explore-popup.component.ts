@@ -1290,14 +1290,12 @@ export class EventExplorePopupComponent {
       const slotSourceId = draft.basketItems
         .map(item => item.slotSourceId?.trim() ?? '')
         .find(Boolean) ?? null;
-      const counterDelta = this.checkoutDraftCancelCounterDelta(draft);
       const leaveResult = await this.eventsService.leaveEvent(activeUserId, sourceId, {
         slotSourceId,
         removeMembershipOnly: true,
         checkoutState: 'cancelled',
         checkoutResultState: 'deleted',
-        checkoutSessionId: draft.checkoutSessionId ?? null,
-        counterDelta
+        checkoutSessionId: draft.checkoutSessionId ?? null
       });
       if (!leaveResult
           || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
@@ -1305,7 +1303,7 @@ export class EventExplorePopupComponent {
         throw new Error('Unable to leave event.');
       }
       if (leaveResult.changed !== false) {
-        this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+        this.signalEventExploreCounterDelta(activeUserId, leaveResult.counterDelta ?? null);
       }
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
@@ -1316,14 +1314,6 @@ export class EventExplorePopupComponent {
       this.checkoutDraftReleaseSourceIds.delete(sourceId);
       this.cdr.markForCheck();
     }
-  }
-
-  private checkoutDraftCancelCounterDelta(draft: EventCheckoutDraft): UserMenuCounterDeltasDto {
-    const pendingReason = this.checkoutDraftPendingReason(draft);
-    if (pendingReason === 'waitlist' || pendingReason === 'approval') {
-      return { event: { all: -1, pending: -1, trash: 1 } };
-    }
-    return { events: -1, event: { all: -1, active: -1, trash: 1 } };
   }
 
   private checkoutDraftCancelMemberDelta(
@@ -2020,7 +2010,6 @@ export class EventExplorePopupComponent {
     const pendingReason = selection?.pendingReason ?? (this.isEventExploreSelectionFull(record, selection) ? 'waitlist' : null);
     const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
     const updatesExistingMember = Boolean(existingEntry && existingEntry.status !== 'deleted');
-    const counterDelta = updatesExistingMember ? null : this.eventExploreJoinCounterDelta(isAcceptedBooking);
     const optimisticExistingMembers = existingEntry?.status === 'deleted'
       ? existingMembers.filter(member => !(member.userId === activeUserId && member.status === 'deleted'))
       : existingMembers;
@@ -2050,8 +2039,7 @@ export class EventExplorePopupComponent {
         pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
         lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
         totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
-        currency: selection?.basketItems?.length ? selection.currency : undefined,
-        counterDelta
+        currency: selection?.basketItems?.length ? selection.currency : undefined
       });
       if (!joinResult || (joinResult.membershipStatus === 'unchanged' && !checkoutUpdateRequested)) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
@@ -2067,9 +2055,7 @@ export class EventExplorePopupComponent {
       this.activitiesStore.emitActivityEventSaveResult(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
-      if (counterDelta) {
-        this.signalEventExploreCounterDelta(activeUserId, counterDelta);
-      }
+      this.signalEventExploreCounterDelta(activeUserId, joinResult.counterDelta ?? null);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
         this.selectedMembers = displayMembers;
@@ -2082,13 +2068,10 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private eventExploreJoinCounterDelta(accepted: boolean): UserMenuCounterDeltasDto {
-    return accepted
-      ? { events: 1, event: { all: 1, active: 1 } }
-      : { events: 1, event: { all: 1, pending: 1 } };
-  }
-
-  private signalEventExploreCounterDelta(activeUserId: string, delta: UserMenuCounterDeltasDto): void {
+  private signalEventExploreCounterDelta(activeUserId: string, delta: UserMenuCounterDeltasDto | null): void {
+    if (!delta) {
+      return;
+    }
     this.activityStore.patchUserCounterDeltas(
       activeUserId,
       delta,

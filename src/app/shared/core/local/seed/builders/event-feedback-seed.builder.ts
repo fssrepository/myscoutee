@@ -234,6 +234,7 @@ export class SeedEventFeedbackBuilder {
       targetRole: card.targetRole ?? 'Member',
       primaryValue: primaryOption?.value ?? '',
       secondaryValue: secondaryOption?.value ?? '',
+      eventComment: card.kind === 'event' ? 'A welcoming event with a clear shared purpose.' : '',
       personalityTraitIds: this.seededTraitIds(card, seed),
       tags: [...tags],
       submittedAtIso

@@ -73,6 +73,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
   private ticketScannerDetectionFrame: number | null = null;
   private ticketScannerDetectBusy = false;
   private ticketScannerVideoElement: HTMLVideoElement | null = null;
+  private ticketScannerPendingFrameUrl = '';
   private ticketScannerGeneration = 0;
   private ticketQrGeneration = 0;
 
@@ -89,6 +90,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     return AssetTicketScanConverter.convert(payload, this.ticketPayloadUser(payload));
   });
   protected readonly ticketQrImageUrl = signal('');
+  protected readonly ticketScannerLastFrameUrl = signal('');
 
   constructor() {
     effect(() => {
@@ -97,11 +99,14 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
       const selectedCode = this.store.selectedTicketCodeValueRef();
       untracked(() => {
         if (mode === 'ticketScanner') {
-          this.startTicketScannerReading();
+          if (this.store.ticketScannerStateRef() === 'reading' && this.ticketScannerVideoElement) {
+            this.startTicketScannerReading();
+          }
           return;
         }
         this.invalidateTicketScannerSession();
         this.stopTicketScannerCamera();
+        this.clearTicketScannerFrame();
         if (mode === 'ticketCode' && row && !row.usedAtIso) {
           void this.renderTicketQrCode(selectedCode || row.scanCode);
         } else {
@@ -115,6 +120,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     this.ticketScannerVideoElement = null;
     this.invalidateTicketScannerSession();
     this.stopTicketScannerCamera();
+    this.clearTicketScannerFrame();
     this.clearTicketQrCode();
   }
 
@@ -144,17 +150,38 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.invalidateTicketScannerSession();
     this.stopTicketScannerCamera();
+    this.clearTicketScannerFrame();
     this.store.closeTicketScan();
   }
 
-  protected readonly retryTicketScanner = (event?: Event): void => {
+  protected readonly toggleTicketScannerCamera = (event?: Event): void => {
     event?.stopPropagation();
+    if (this.store.ticketScannerStateRef() === 'validating') {
+      return;
+    }
+    if (this.store.ticketScannerStateRef() === 'reading') {
+      this.invalidateTicketScannerSession();
+      this.stopTicketScannerCamera();
+      this.clearTicketScannerFrame();
+      this.store.pauseTicketScanner();
+      return;
+    }
     this.store.retryTicketScanner();
     this.startTicketScannerReading();
   };
 
   protected onTicketScannerVideoElementChange(element: HTMLVideoElement | null): void {
+    if (this.ticketScannerVideoElement === element) {
+      return;
+    }
     this.ticketScannerVideoElement = element;
+    if (
+      element
+      && this.store.ticketScanModeRef() === 'ticketScanner'
+      && this.store.ticketScannerStateRef() === 'reading'
+    ) {
+      this.startTicketScannerReading();
+    }
   }
 
   private selectedTicketPayload(): AssetContracts.TicketScanPayloadDTO | null {
@@ -233,6 +260,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
   private startTicketScannerReading(): void {
     const generation = ++this.ticketScannerGeneration;
     this.stopTicketScannerCamera();
+    this.clearTicketScannerFrame();
     void this.startTicketScannerSession(generation);
   }
 
@@ -333,6 +361,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     if (!this.scannerSessionIsCurrent(generation)) {
       return;
     }
+    this.ticketScannerPendingFrameUrl = this.captureTicketScannerFrame();
     this.ngZone.run(() => {
       this.store.applyTicketScannerValidating();
     });
@@ -351,18 +380,25 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
       }
       this.ngZone.run(() => {
         if (response.valid && response.reason === 'valid' && response.ticket) {
+          this.ticketScannerLastFrameUrl.set(this.ticketScannerPendingFrameUrl);
+          this.ticketScannerPendingFrameUrl = '';
           this.store.applyTicketScannerValid(response.ticket);
           return;
         }
         if (!response.valid && response.reason !== 'valid') {
+          this.clearTicketScannerFrame();
           this.store.applyTicketScannerInvalid(response.reason);
           return;
         }
+        this.clearTicketScannerFrame();
         this.store.applyTicketScannerError();
       });
     } catch {
       if (this.scannerSessionIsCurrent(generation, 'validating')) {
-        this.ngZone.run(() => this.store.applyTicketScannerError());
+        this.ngZone.run(() => {
+          this.clearTicketScannerFrame();
+          this.store.applyTicketScannerError();
+        });
       }
     }
   }
@@ -373,6 +409,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     }
     this.ngZone.run(() => this.store.applyTicketScannerError());
     this.stopTicketScannerCamera();
+    this.clearTicketScannerFrame();
   }
 
   private cancelTicketScannerDetectionLoop(): void {
@@ -398,6 +435,38 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
       this.ticketScannerMediaStream = null;
     }
     this.ticketScannerDetectBusy = false;
+  }
+
+  private captureTicketScannerFrame(): string {
+    const videoElement = this.ticketScannerVideoElement;
+    if (
+      typeof document === 'undefined'
+      || !videoElement
+      || videoElement.videoWidth <= 0
+      || videoElement.videoHeight <= 0
+    ) {
+      return '';
+    }
+    try {
+      const maxWidth = 960;
+      const scale = Math.min(1, maxWidth / videoElement.videoWidth);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(videoElement.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(videoElement.videoHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return '';
+      }
+      context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.78);
+    } catch {
+      return '';
+    }
+  }
+
+  private clearTicketScannerFrame(): void {
+    this.ticketScannerPendingFrameUrl = '';
+    this.ticketScannerLastFrameUrl.set('');
   }
 
   private async waitForTicketScannerVideo(): Promise<HTMLVideoElement | null> {

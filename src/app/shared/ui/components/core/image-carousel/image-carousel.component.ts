@@ -3,12 +3,14 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  EventEmitter,
   forwardRef,
   HostBinding,
   HostListener,
   inject,
   Input,
   OnChanges,
+  Output,
   SimpleChanges,
   ViewChild
 } from '@angular/core';
@@ -16,11 +18,13 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { MediaService } from '../../../../core';
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives';
 import { IndicatorComponent } from '../indicator';
 
 export type ImageCarouselMediaFit = 'default' | 'cover' | 'contain';
 export type ImageCarouselImagePosition = 'default' | 'center-top' | 'center';
+export type ImageCarouselSlotImageVariant = 'small' | 'medium';
 
 @Component({
   selector: 'app-image-carousel',
@@ -48,11 +52,13 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @Input() compact = false;
   @Input() autoSize = false;
   @Input() previewMode = false;
+  @Input() slotImageVariant: ImageCarouselSlotImageVariant = 'small';
   @Input() mediaFit: ImageCarouselMediaFit = 'default';
   @Input() imagePosition: ImageCarouselImagePosition = 'default';
   @Input() ariaLabel = 'Image slots';
   @Input() uploadOwnerId = '';
   @Input() uploadEntityId = 'image';
+  @Output() readonly imageRemoved = new EventEmitter<string>();
 
   protected carouselIndex = 0;
   protected uploadingSlotIndex: number | null = null;
@@ -208,7 +214,12 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   }
 
   protected selectedPreviewUrl(slots: readonly (string | null)[]): string | null {
-    return slots[this.previewSlotIndex(slots)] ?? null;
+    const imageUrl = slots[this.previewSlotIndex(slots)] ?? null;
+    return AppUtils.mediaImageVariantUrl(imageUrl, 'medium') || null;
+  }
+
+  protected slotImageUrl(imageUrl: string | null): string | null {
+    return AppUtils.mediaImageVariantUrl(imageUrl, this.slotImageVariant) || null;
   }
 
   protected isSelectedPreviewUploading(slots: readonly (string | null)[]): boolean {
@@ -255,8 +266,12 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
         return;
       }
       const slots = this.imageSlots();
+      const replacedImageUrl = slots[normalizedSlotIndex];
       slots[normalizedSlotIndex] = result.imageUrl;
       this.updateUrls(slots);
+      if (replacedImageUrl && replacedImageUrl !== result.imageUrl) {
+        this.imageRemoved.emit(replacedImageUrl);
+      }
       this.focusImageUrl(result.imageUrl, normalizedSlotIndex);
     } finally {
       this.uploadingSlotIndex = null;
@@ -272,7 +287,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
     await this.copyToClipboard(imageUrl);
   }
 
-  protected removeSlot(_imageUrl: string, slotIndex: number, event?: Event): void {
+  protected removeSlot(imageUrl: string, slotIndex: number, event?: Event): void {
     event?.stopPropagation();
     if (this.isDisabled()) {
       return;
@@ -281,6 +296,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
     const slots = this.imageSlots();
     slots[this.clampSlotIndex(slotIndex)] = null;
     this.updateUrls(slots);
+    this.imageRemoved.emit(imageUrl);
   }
 
   protected isDisabled(): boolean {

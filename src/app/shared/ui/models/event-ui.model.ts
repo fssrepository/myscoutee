@@ -39,4 +39,5 @@ export interface EventFeedbackCard {
   selectedTraitIds: string[];
   answerPrimary: string;
   answerSecondary: string;
+  eventComment: string;
 }

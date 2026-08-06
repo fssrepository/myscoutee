@@ -238,7 +238,7 @@ export class HttpUsersService implements UserService {
         'User realtime request timeout.',
         requestTimeoutMs
       );
-      if (!response || !response.counters) {
+      if (!response || !response.counters || !response.impressions) {
         return null;
       }
       return {
@@ -498,7 +498,12 @@ export class HttpUsersService implements UserService {
 
   private requiresServerProfileAuthority(): boolean {
     const kind = this.sessionService.currentSession()?.kind;
-    return kind === 'demo' || kind === 'operator-bootstrap';
+    return kind === 'operator-bootstrap'
+      || (kind === 'demo' && !this.isBrowserOffline());
+  }
+
+  private isBrowserOffline(): boolean {
+    return typeof navigator !== 'undefined' && navigator.onLine === false;
   }
 
   private readUserByIdFallback(userId: string): UserByIdQueryResponse | null {

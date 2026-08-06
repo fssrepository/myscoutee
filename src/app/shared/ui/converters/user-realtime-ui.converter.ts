@@ -20,7 +20,7 @@ export interface UserRealtimeUiPatchInput {
 
 export interface UserRealtimeUiPatch {
   counterPatch: Partial<ActivityCounters>;
-  impressions: UserImpressionsDto | undefined;
+  impressions: UserImpressionsDto;
   changeFlags: UserImpressionChangeFlags | null;
   clearChangeFlags: boolean;
 }
@@ -28,9 +28,9 @@ export interface UserRealtimeUiPatch {
 export class UserRealtimeUiConverter {
   static convert(input: UserRealtimeUiPatchInput): UserRealtimeUiPatch {
     const counterPatch = this.toCounterPatch(input.snapshot);
-    const impressions = input.snapshot.impressions
-      ? (input.suppressImpressionBadges ? this.toSeenImpressions(input.snapshot.impressions) : input.snapshot.impressions)
-      : undefined;
+    const impressions = input.suppressImpressionBadges
+      ? this.toSeenImpressions(input.snapshot.impressions)
+      : input.snapshot.impressions;
     return {
       counterPatch,
       impressions,

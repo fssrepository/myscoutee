@@ -32,6 +32,19 @@ describe('AssetPopupStore ticket validation state', () => {
     expect(store.ticketScannerResult()).toBeNull();
   });
 
+  it('pauses only an active scanner and keeps camera restart explicit', () => {
+    const store = new AssetPopupStore();
+    store.openTicketScanner();
+
+    store.pauseTicketScanner();
+    expect(store.ticketScannerState()).toBe('idle');
+
+    store.retryTicketScanner();
+    expect(store.ticketScannerState()).toBe('reading');
+    expect(store.ticketScannerResult()).toBeNull();
+    expect(store.ticketScannerReason()).toBeNull();
+  });
+
   it('keeps an open ticket popup in sync with the polled ticket row', () => {
     const store = new AssetPopupStore();
     const original = ticketRow();

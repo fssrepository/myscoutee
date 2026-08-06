@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   NotificationBucket,
-  NotificationListFilters
+  NotificationListFilters,
+  NotificationSyncRequestDto
 } from '../../../contracts/notification.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
@@ -30,6 +31,108 @@ export class LocalNotificationsRepository {
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
+  }
+
+  append(records: readonly NotificationRecord[]): NotificationRecord[] {
+    const currentTable = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const seenIds = new Set(Object.keys(currentTable.byId));
+    const additions = records
+      .map(record => this.cloneRecord(record))
+      .filter(record => {
+        const id = record.id.trim();
+        const recipientUserId = record.recipientUserId.trim();
+        if (!id || !recipientUserId || seenIds.has(id)) {
+          return false;
+        }
+        seenIds.add(id);
+        return true;
+      });
+    if (additions.length === 0) {
+      return [];
+    }
+    this.memoryDb.write(state => {
+      const table = state[NOTIFICATIONS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      const nextIds = [...table.ids];
+      const nextIdsByRecipientUserId = { ...table.idsByRecipientUserId };
+      const affectedUserIds = new Set<string>();
+      additions.forEach(record => {
+        nextById[record.id] = record;
+        nextIds.push(record.id);
+        nextIdsByRecipientUserId[record.recipientUserId] = [
+          ...(nextIdsByRecipientUserId[record.recipientUserId] ?? []),
+          record.id
+        ];
+        affectedUserIds.add(record.recipientUserId);
+      });
+      const nextNotificationsTable = {
+        ...table,
+        byId: nextById,
+        ids: nextIds,
+        idsByRecipientUserId: nextIdsByRecipientUserId
+      };
+      let nextUsersTable = state[USERS_TABLE_NAME];
+      affectedUserIds.forEach(userId => {
+        nextUsersTable = this.withUserUnreadCount(
+          nextUsersTable,
+          userId,
+          this.unreadCountFromTable(nextNotificationsTable, userId)
+        );
+      });
+      return {
+        ...state,
+        [NOTIFICATIONS_TABLE_NAME]: nextNotificationsTable,
+        [USERS_TABLE_NAME]: nextUsersTable
+      };
+    });
+    return additions.map(record => this.cloneRecord(record));
+  }
+
+  appendAggregated(record: NotificationRecord): NotificationRecord | null {
+    const normalized = this.cloneRecord(record);
+    const recipientUserId = normalized.recipientUserId.trim();
+    const aggregationGroup = `${normalized.payload?.['notification_aggregation_key'] ?? ''}`.trim();
+    if (!recipientUserId || !aggregationGroup) {
+      return this.append([normalized])[0] ?? null;
+    }
+    const currentTable = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const existing = (currentTable.idsByRecipientUserId[recipientUserId] ?? [])
+      .map(id => currentTable.byId[id])
+      .find(item => `${item?.payload?.['notification_aggregation_key'] ?? ''}`.trim() === aggregationGroup)
+      ?? null;
+    if (!existing) {
+      return this.append([{ ...normalized, occurrenceCount: 1 }])[0] ?? null;
+    }
+
+    const nextRecord: NotificationRecord = {
+      ...existing,
+      ...normalized,
+      id: existing.id,
+      readAtIso: null,
+      occurrenceCount: Math.max(1, Math.trunc(Number(existing.occurrenceCount ?? 1)) || 1) + 1,
+      revision: Math.max(1, Math.trunc(Number(existing.revision) || 1)) + 1,
+      payload: normalized.payload ? { ...normalized.payload } : null
+    };
+    this.memoryDb.write(state => {
+      const table = state[NOTIFICATIONS_TABLE_NAME];
+      const nextTable = {
+        ...table,
+        byId: {
+          ...table.byId,
+          [existing.id]: nextRecord
+        }
+      };
+      return {
+        ...state,
+        [NOTIFICATIONS_TABLE_NAME]: nextTable,
+        [USERS_TABLE_NAME]: this.withUserUnreadCount(
+          state[USERS_TABLE_NAME],
+          recipientUserId,
+          this.unreadCountFromTable(nextTable, recipientUserId)
+        )
+      };
+    });
+    return this.cloneRecord(nextRecord);
   }
 
   queryPage(
@@ -84,7 +187,8 @@ export class LocalNotificationsRepository {
     }
     const nextRecord: NotificationRecord = {
       ...currentRecord,
-      readAtIso: new Date().toISOString()
+      readAtIso: new Date().toISOString(),
+      revision: Math.max(1, Math.trunc(Number(currentRecord.revision) || 1)) + 1
     };
     this.memoryDb.write(state => {
       const table = state[NOTIFICATIONS_TABLE_NAME];
@@ -144,7 +248,11 @@ export class LocalNotificationsRepository {
       matchingIds.forEach(id => {
         const record = currentTable.byId[id];
         if (record) {
-          nextById[id] = { ...record, readAtIso };
+          nextById[id] = {
+            ...record,
+            readAtIso,
+            revision: Math.max(1, Math.trunc(Number(record.revision) || 1)) + 1
+          };
         }
       });
       const unreadCount = Math.max(
@@ -202,6 +310,68 @@ export class LocalNotificationsRepository {
 
   muted(userId: string): boolean {
     return this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME].mutedByUserId[userId.trim()] === true;
+  }
+
+  sync(
+    userId: string,
+    request: NotificationSyncRequestDto
+  ): {
+    upserts: NotificationRecord[];
+    removedIds: string[];
+    total: number;
+    unreadCount: number;
+    muted: boolean;
+  } {
+    const normalizedUserId = userId.trim();
+    const bucket = request.bucket === 'new' ? 'new' : 'all';
+    const table = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const records = (table.idsByRecipientUserId[normalizedUserId] ?? [])
+      .map(id => table.byId[id])
+      .filter((record): record is NotificationRecord => Boolean(record))
+      .filter(record => bucket === 'all' || !record.readAtIso)
+      .sort((left, right) => this.compareRecords(left, right));
+    const currentById = new Map(records.map(record => [record.id, record]));
+    const knownRevisions = new Map(
+      request.knownItems.map(item => [
+        `${item.id}`.trim(),
+        Math.max(1, Math.trunc(Number(item.revision) || 1))
+      ])
+    );
+    const removedIds = [...knownRevisions.keys()].filter(id => !currentById.has(id));
+    const upsertsById = new Map<string, NotificationRecord>();
+    for (const [id, revision] of knownRevisions.entries()) {
+      const current = currentById.get(id);
+      if (current && Math.max(1, Math.trunc(Number(current.revision) || 1)) !== revision) {
+        upsertsById.set(id, current);
+      }
+    }
+
+    const tail = request.loadedTail;
+    const windowLimit = Math.max(
+      1,
+      request.knownItems.length + Math.trunc(Number(request.limit) || 20)
+    );
+    const loadedWindow = tail?.createdAtIso && tail.id
+      ? records.filter(current => this.compareRecords(current, {
+          ...current,
+          id: tail.id,
+          createdAtIso: tail.createdAtIso
+        }) <= 0).slice(0, windowLimit)
+      : records.slice(0, Math.max(1, Math.trunc(Number(request.limit) || 20)));
+    for (const current of loadedWindow) {
+      const knownRevision = knownRevisions.get(current.id);
+      const currentRevision = Math.max(1, Math.trunc(Number(current.revision) || 1));
+      if (knownRevision === undefined || knownRevision !== currentRevision) {
+        upsertsById.set(current.id, current);
+      }
+    }
+    return {
+      upserts: [...upsertsById.values()].map(record => this.cloneRecord(record)),
+      removedIds,
+      total: records.length,
+      unreadCount: this.unreadCount(normalizedUserId),
+      muted: table.mutedByUserId[normalizedUserId] === true
+    };
   }
 
   private unreadCountFromTable(
@@ -328,7 +498,8 @@ export class LocalNotificationsRepository {
   private cloneRecord(record: NotificationRecord): NotificationRecord {
     return {
       ...record,
-      payload: record.payload ? { ...record.payload } : null
+      payload: record.payload ? { ...record.payload } : null,
+      revision: Math.max(1, Math.trunc(Number(record.revision) || 1))
     };
   }
 }

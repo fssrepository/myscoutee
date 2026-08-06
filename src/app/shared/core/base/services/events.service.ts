@@ -18,7 +18,6 @@ import type {
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
-import type { UserMenuCounterDeltasDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
@@ -339,36 +338,20 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     });
   }
 
-  trashItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    return this.eventsService.trashItem(userId, sourceId, options);
+  trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    return this.eventsService.trashItem(userId, sourceId);
   }
 
-  publishItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    return this.eventsService.publishItem(userId, sourceId, options);
+  publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    return this.eventsService.publishItem(userId, sourceId);
   }
 
-  unpublishItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    return this.eventsService.unpublishItem(userId, sourceId, options);
+  unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    return this.eventsService.unpublishItem(userId, sourceId);
   }
 
-  restoreItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<EventParticipationActionResultDTO | null> {
-    return this.eventsService.restoreItem(userId, sourceId, options);
+  restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    return this.eventsService.restoreItem(userId, sourceId);
   }
 
   takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -426,7 +409,6 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       totalAmount?: number | null;
       currency?: string | null;
       skipLocalRouteDelay?: boolean;
-      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
@@ -441,7 +423,6 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       checkoutState?: EventCheckoutState | null;
       checkoutResultState?: EventCheckoutResultState | null;
       checkoutSessionId?: string | null;
-      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.leaveEvent(userId, sourceId, options);

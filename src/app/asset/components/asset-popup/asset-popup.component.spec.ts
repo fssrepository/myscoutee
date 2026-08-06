@@ -31,11 +31,13 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     dbRevision();
     return 1;
   });
+  const signalUserTicketBucketCount = vi.fn();
 
   beforeEach(() => {
     activeUserId.set('owner-1');
     dbRevision.set(0);
     peekTicketCountByUser.mockClear();
+    signalUserTicketBucketCount.mockClear();
     TestBed.configureTestingModule({
       providers: [
         AssetAvailabilityPopupStore,
@@ -56,7 +58,10 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
         },
         {
           provide: ActivityStore,
-          useValue: {}
+          useValue: {
+            getUserCounterOverrides: () => ({}),
+            signalUserTicketBucketCount
+          }
         },
         {
           provide: AssetsService,
@@ -136,6 +141,33 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     expect(popupStore.ticketScanMode()).toBe('ticketScanner');
     expect(popupStore.ticketScannerState()).toBe('valid');
     expect(popupStore.ticketScannerResult()?.holderUserId).toBe('holder-1');
+  });
+
+  it('uses the shared activity signal for the completed 30-second Ticket poll result', () => {
+    const popupStore = TestBed.inject(AssetPopupStore);
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+
+    expect((component as any).ticketSmartListConfig.pollIntervalMs).toBe(30_000);
+
+    (component as any).onTicketSmartListStateChange({
+      items: [],
+      total: 2,
+      initialLoading: false,
+      loading: false,
+      query: {
+        filters: {
+          userId: 'owner-1',
+          order: 'upcoming'
+        }
+      }
+    });
+
+    expect(popupStore.ticketTotalCountRef()).toBe(2);
+    expect(signalUserTicketBucketCount).toHaveBeenCalledWith(
+      'owner-1',
+      2,
+      expect.any(Object)
+    );
   });
 });
 

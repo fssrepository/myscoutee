@@ -160,7 +160,10 @@ export class EventFeedbackInfoCardConverter {
       return [];
     }
     if (item.isFeedbacked) {
-      return ['viewSubmittedFeedback'];
+      return [
+        'viewSubmittedFeedback',
+        hasOrganizerNote ? 'editOrganizerNote' : 'addOrganizerNote'
+      ];
     }
     const actions: CardMenuActionId[] = [];
     if (this.isEventFeedbackStartAvailable(item)) {

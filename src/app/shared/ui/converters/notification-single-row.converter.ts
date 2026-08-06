@@ -14,6 +14,7 @@ import type {
 export interface NotificationSingleRowConverterOptions {
   locale?: string | null;
   progressRing?: boolean;
+  translate?: (key: string, fallback?: string | null) => string;
 }
 
 export class NotificationSingleRowConverter implements UiConverter<
@@ -31,11 +32,17 @@ export class NotificationSingleRowConverter implements UiConverter<
     const systemRandomRoom = this.isSystemRandomRoom(notification);
     const sourceLabel = this.sourceLabel(notification.category);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
+    const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
+    const statusBadgeKey = `${notification.payload?.['notification_status_badge_key'] ?? ''}`.trim();
+    const statusBadgeFallback = `${notification.payload?.['notification_status_badge_fallback'] ?? ''}`.trim();
+    const statusBadgeLabel = statusBadgeKey && options.translate
+      ? options.translate(statusBadgeKey, statusBadgeFallback)
+      : statusBadgeFallback;
     return {
       id: notification.id,
       title: notification.title,
       subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
-      detail: notification.message,
+      detail: this.message(notification, options),
       dateIso: notification.createdAtIso,
       avatarUrl: systemRandomRoom ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
       avatarInitials: !systemRandomRoom && senderName ? this.initials(senderName) : null,
@@ -44,15 +51,30 @@ export class NotificationSingleRowConverter implements UiConverter<
       icon: systemRandomRoom
         ? 'auto_awesome'
         : senderName ? null : this.categoryIcon(notification.category),
-      surfaceTone: this.surfaceTone(notification.category, read),
+      surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
+        ...(statusBadgeLabel ? [{
+          label: statusBadgeLabel,
+          ariaLabel: statusBadgeLabel,
+          title: statusBadgeLabel,
+          tone: this.payloadTone(notification.payload?.['notification_status_badge_tone']) ?? 'muted',
+          position: 'inline' as const
+        }] : []),
+        ...(occurrenceCount > 1 ? [{
+          label: `${occurrenceCount}`,
+          icon: 'repeat',
+          ariaLabel: `${occurrenceCount} matching notifications`,
+          title: `${occurrenceCount} matching notifications`,
+          tone: 'warning' as const,
+          position: 'inline' as const
+        }] : []),
         {
           label: timestamp,
           icon: 'schedule',
           ariaLabel: timestamp,
           title: timestamp,
-          tone: read ? 'muted' : this.badgeTone(notification.category),
+          tone: read ? 'muted' : this.badgeTone(notification),
           position: 'top-right'
         },
         ...(read ? [{
@@ -71,16 +93,30 @@ export class NotificationSingleRowConverter implements UiConverter<
     };
   }
 
+  private message(
+    notification: NotificationDto,
+    options: NotificationSingleRowConverterOptions
+  ): string {
+    const key = `${notification.payload?.['notification_message_key'] ?? ''}`.trim();
+    return key && options.translate
+      ? options.translate(key, notification.message)
+      : notification.message;
+  }
+
   private isSystemRandomRoom(notification: NotificationDto): boolean {
     return notification.kind === 'event-random-groups'
       || `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'random-room';
   }
 
-  private surfaceTone(category: NotificationCategory, read: boolean): SingleRowSurfaceTone {
+  private surfaceTone(notification: NotificationDto, read: boolean): SingleRowSurfaceTone {
     if (read) {
       return 'muted';
     }
-    switch (category) {
+    const contextualTone = this.contextualTone(notification);
+    if (contextualTone) {
+      return contextualTone;
+    }
+    switch (notification.category) {
       case 'chat':
       case 'event':
         return 'info';
@@ -97,8 +133,12 @@ export class NotificationSingleRowConverter implements UiConverter<
     }
   }
 
-  private badgeTone(category: NotificationCategory): SingleRowSurfaceTone {
-    switch (category) {
+  private badgeTone(notification: NotificationDto): SingleRowSurfaceTone {
+    const contextualTone = this.contextualTone(notification);
+    if (contextualTone) {
+      return contextualTone;
+    }
+    switch (notification.category) {
       case 'chat':
       case 'event':
         return 'info';
@@ -112,6 +152,24 @@ export class NotificationSingleRowConverter implements UiConverter<
         return 'success';
       default:
         return 'neutral';
+    }
+  }
+
+  private contextualTone(notification: NotificationDto): SingleRowSurfaceTone | null {
+    return this.payloadTone(notification.payload?.['notification_tone']);
+  }
+
+  private payloadTone(value: string | undefined): SingleRowSurfaceTone | null {
+    const requestedTone = `${value ?? ''}`.trim();
+    switch (requestedTone) {
+      case 'info':
+      case 'accent':
+      case 'success':
+      case 'warning':
+      case 'danger':
+        return requestedTone;
+      default:
+        return null;
     }
   }
 

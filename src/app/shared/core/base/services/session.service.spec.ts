@@ -156,6 +156,29 @@ describe('SessionService operator bootstrap session', () => {
     expect(firebaseRestore).not.toHaveBeenCalled();
   });
 
+  it('keeps a persisted Firebase session while the warmed client is offline', async () => {
+    const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
+      kind: 'firebase',
+      profile: {
+        id: 'firebase-user',
+        name: 'Firebase User',
+        email: 'firebase@example.com',
+        initials: 'FU'
+      }
+    }));
+
+    try {
+      await expect(TestBed.inject(SessionService).ensureSession()).resolves.toMatchObject({
+        kind: 'firebase',
+        profile: { id: 'firebase-user' }
+      });
+      expect(firebaseRestore).not.toHaveBeenCalled();
+    } finally {
+      offline.mockRestore();
+    }
+  });
+
   it('clears the bootstrap token on logout', async () => {
     bootstrapSignIn.mockResolvedValue(validBootstrapResponse());
     const service = TestBed.inject(SessionService);

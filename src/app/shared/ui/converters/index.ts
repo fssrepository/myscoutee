@@ -25,6 +25,7 @@ export {
 export {
   ActivityChatSingleRowConverter,
   activityChatSingleRowConverter,
+  type ActivityChatSingleRowData,
   type ActivityChatSingleRowConverterOptions
 } from './activity-chat-single-row.converter';
 export {

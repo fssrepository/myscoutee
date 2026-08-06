@@ -26,6 +26,8 @@ export interface EventChatHeaderState extends EventChatPopupRequest {
   eventId?: string | null;
   subEventId?: string | null;
   groupId?: string | null;
+  ownerStatus?: ContractTypes.ActivityEventStatus | null;
+  revision?: number | null;
   supportCase?: ContractTypes.ChatSupportCase | null;
   metrics?: ContractTypes.ChatMetricsDTO | null;
   navigationContext?: ContractTypes.ChatNavigationContextDTO | null;
@@ -69,6 +71,8 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     eventId: chat.eventId ?? null,
     subEventId: chat.subEventId ?? null,
     groupId: chat.groupId ?? null,
+    ownerStatus: chat.ownerStatus ?? null,
+    revision: Math.max(1, Math.trunc(Number(chat.revision) || 1)),
     supportCase: chat.supportCase
       ? {
           ...chat.supportCase,
@@ -104,6 +108,8 @@ export interface EventChatRowPatch {
   lastMessage?: string | null;
   lastSenderId?: string | null;
   dateIso?: string | null;
+  ownerStatus?: ContractTypes.ActivityEventStatus | null;
+  headerRevision?: number | null;
   revision: number;
 }
 

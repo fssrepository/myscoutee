@@ -121,6 +121,10 @@ export interface IEventsService {
   saveActivityEvent(
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
+  trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
   queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
@@ -146,7 +150,6 @@ export interface IEventsService {
       totalAmount?: number | null;
       currency?: string | null;
       skipLocalRouteDelay?: boolean;
-      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
   leaveEvent(
@@ -158,7 +161,6 @@ export interface IEventsService {
       checkoutState?: EventCheckoutState | null;
       checkoutResultState?: EventCheckoutResultState | null;
       checkoutSessionId?: string | null;
-      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
 }
@@ -172,6 +174,11 @@ export interface IChatsService {
     chat: ChatContracts.ChatDTO,
     query: ListQuery
   ): Promise<ChatContracts.ChatMessagesPageResultDTO>;
+  syncChatHeader(
+    chatId: string,
+    knownRevision: number,
+    signal?: AbortSignal
+  ): Promise<ChatContracts.ChatHeaderSyncResponseDTO>;
 }
 
 export interface IRatesService {
@@ -326,6 +333,8 @@ export interface EventParticipationActionResultDTO {
   paymentSessionId?: string | null;
   changed?: boolean;
   reason?: string | null;
+  /** Operation-owned unit directions (-1/+1), never a global before/after counter diff. */
+  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
 }
 
 export interface SubEventResourceCardDTO {
@@ -790,6 +799,18 @@ export class ActivityEventDetailDTO {
     return new ActivityEventDetailDTO().apply(this);
   }
 
+  toPersistencePayload(): ActivityEventDetailDTO {
+    const payload = this.clone();
+    payload.startAtIso = ActivityEventDetailDTO.toIsoInstant(this.startAtIso);
+    payload.endAtIso = ActivityEventDetailDTO.toIsoInstant(this.endAtIso);
+    payload.dateRange = {
+      ...payload.dateRange,
+      startAt: payload.startAtIso,
+      endAt: payload.endAtIso
+    };
+    return payload;
+  }
+
   applyPolicies(items: readonly EventContracts.EventPolicyDTO[]): this {
     this.policies = ActivityEventDetailDTO.normalizePolicies(items);
     return this;
@@ -1129,6 +1150,15 @@ export class ActivityEventDetailDTO {
     const hours = `${value.getHours()}`.padStart(2, '0');
     const minutes = `${value.getMinutes()}`.padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private static toIsoInstant(value: unknown): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    const parsed = ActivityEventDetailDTO.parseDate(normalized);
+    return parsed ? parsed.toISOString() : normalized;
   }
 }
 
@@ -1565,7 +1595,6 @@ export interface EventCheckoutStateChangeRequest {
   resultState?: EventCheckoutResultState | null;
   pendingReason?: AppConstants.ActivityPendingReason;
   checkoutSessionId?: string | null;
-  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
   checkoutRequest?: EventCheckoutRequest | null;
 }
 
@@ -1587,6 +1616,7 @@ export interface SubmittedEventFeedbackAnswer {
   targetRole: AppConstants.ActivityMemberRole;
   primaryValue: string;
   secondaryValue: string;
+  eventComment: string;
   personalityTraitIds: string[];
   tags: string[];
   submittedAtIso: string;
@@ -1690,6 +1720,7 @@ export interface EventFeedbackCardDto {
   targetImageUrl?: string;
   answerPrimary?: string;
   answerSecondary?: string;
+  eventComment?: string;
   selectedTraitIds?: string[];
 }
 
@@ -1732,7 +1763,7 @@ export class EventFeedbackPageResultDto {
     this.receivedEvents = EventFeedbackPageResultDto.cloneReceivedEvents(result?.receivedEvents);
     this.state = EventFeedbackPageResultDto.cloneStateSnapshot(result?.state);
     this.counts = {
-      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents ?? organizerItems.length) || 0)),
+      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents) || 0)),
       pending: Math.max(0, Math.trunc(Number(result?.counts?.pending) || 0)),
       feedbacked: Math.max(0, Math.trunc(Number(result?.counts?.feedbacked) || 0)),
       removed: Math.max(0, Math.trunc(Number(result?.counts?.removed) || 0))
@@ -2012,6 +2043,7 @@ export class EventFeedbackPageResultDto {
       targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
       primaryValue: answer.primaryValue?.trim() ?? '',
       secondaryValue: answer.secondaryValue?.trim() ?? '',
+      eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
       personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
       tags: [...(answer.tags ?? [])],
       submittedAtIso: answer.submittedAtIso?.trim() ?? ''
@@ -2061,12 +2093,14 @@ export class EventFeedbackDetailDto {
   readonly eventId: string;
   readonly title: string;
   readonly submittedAtIso: string;
+  readonly organizerNote: string;
   readonly cards: EventFeedbackCardDto[];
 
   constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
     this.eventId = result?.eventId?.trim() ?? '';
     this.title = result?.title?.trim() ?? '';
     this.submittedAtIso = result?.submittedAtIso?.trim() ?? '';
+    this.organizerNote = result?.organizerNote?.trim() ?? '';
     this.cards = EventFeedbackDetailDto.cloneCards(result?.cards);
   }
 
@@ -2095,6 +2129,7 @@ export class EventFeedbackDetailDto {
     return new EventFeedbackDetailDto({
       ...this,
       submittedAtIso: state?.submittedAtIso?.trim() || this.submittedAtIso,
+      organizerNote: state ? state.organizerNote?.trim() ?? '' : this.organizerNote,
       cards: this.cards.map(card => {
         const answer = answersByCardId[card.id]
           ?? answers.find(item =>
@@ -2108,6 +2143,7 @@ export class EventFeedbackDetailDto {
           ...card,
           answerPrimary: answer.primaryValue?.trim() ?? '',
           answerSecondary: answer.secondaryValue?.trim() ?? '',
+          eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
           selectedTraitIds: [...(answer.personalityTraitIds ?? [])]
             .map(traitId => traitId.trim())
             .filter(Boolean)
@@ -2123,6 +2159,7 @@ export class EventFeedbackDetailDto {
         ...card,
         answerPrimary: '',
         answerSecondary: '',
+        eventComment: '',
         selectedTraitIds: []
       }))
     });
@@ -2149,6 +2186,9 @@ export class EventFeedbackDetailDto {
           ...card,
           answerPrimary: EventFeedbackDetailDto.stringValue(inputCard['answerPrimary']),
           answerSecondary: EventFeedbackDetailDto.stringValue(inputCard['answerSecondary']),
+          eventComment: card.kind === 'event'
+            ? EventFeedbackDetailDto.stringValue(inputCard['eventComment'])
+            : '',
           selectedTraitIds: EventFeedbackDetailDto.normalizeSelectedTraitIds(inputCard['selectedTraitIds'])
         };
       })
@@ -2177,6 +2217,7 @@ export class EventFeedbackDetailDto {
       targetImageUrl: card.targetImageUrl?.trim() || undefined,
       answerPrimary: card.answerPrimary?.trim() ?? '',
       answerSecondary: card.answerSecondary?.trim() ?? '',
+      eventComment: card.kind === 'event' ? card.eventComment?.trim() ?? '' : '',
       selectedTraitIds: [...(card.selectedTraitIds ?? [])]
         .map(traitId => traitId.trim())
         .filter(Boolean)

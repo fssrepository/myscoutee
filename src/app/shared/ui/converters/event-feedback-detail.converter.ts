@@ -48,7 +48,8 @@ export class EventFeedbackDetailConverter {
         traitOptions: [...APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions],
         selectedTraitIds: [...(source.selectedTraitIds ?? [])],
         answerPrimary: source.answerPrimary?.trim() ?? '',
-        answerSecondary: source.answerSecondary?.trim() ?? ''
+        answerSecondary: source.answerSecondary?.trim() ?? '',
+        eventComment: ''
       };
     }
 
@@ -59,7 +60,7 @@ export class EventFeedbackDetailConverter {
       targetUserId: source.targetUserId?.trim() || undefined,
       targetRole: 'Admin',
       icon: 'event_available',
-      imageUrl: source.eventImageUrl?.trim() || `https://picsum.photos/seed/event-feedback-card-${eventId}/1200/700`,
+      imageUrl: source.eventImageUrl?.trim() || '',
       toneClass: 'feedback-card-tone-event feedback-role-admin',
       heading: eventTitle,
       subheading: [eventLabel, eventSubtitle].filter(Boolean).join(' · '),
@@ -75,7 +76,8 @@ export class EventFeedbackDetailConverter {
       traitOptions: [...APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions],
       selectedTraitIds: [...(source.selectedTraitIds ?? [])],
       answerPrimary: source.answerPrimary?.trim() ?? '',
-      answerSecondary: source.answerSecondary?.trim() ?? ''
+      answerSecondary: source.answerSecondary?.trim() ?? '',
+      eventComment: source.eventComment?.trim() ?? ''
     };
   }
 

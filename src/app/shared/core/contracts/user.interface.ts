@@ -197,7 +197,7 @@ export interface UserRealtimeCountersDto extends UserMenuCountersDto {
 export interface UserRealtimeLongPollResponseDto {
   userId: string;
   counters: UserRealtimeCountersDto;
-  impressions?: UserImpressionsDto;
+  impressions: UserImpressionsDto;
   cursor?: string | null;
   serverTsIso?: string;
 }

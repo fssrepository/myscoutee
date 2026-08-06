@@ -37,7 +37,8 @@ import type {
   EventChatSession
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivityResourceBuilder,
@@ -108,6 +109,10 @@ import {
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 import { mergeChatReadAvatars } from './chat-message-read-state';
+import {
+  UiPollCoordinator,
+  UiTaskScheduler
+} from '../../../shared/ui/scheduler';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -200,6 +205,12 @@ type EventChatViewSession = EventChatSession & {
   item: ChatDTO;
 };
 
+interface ChatHeaderPollState {
+  sessionKey: string;
+  chatId: string;
+  revision: number;
+}
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -236,6 +247,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly location = inject(Location);
   private readonly i18n = inject(I18nService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  private readonly pollCoordinator = inject(UiPollCoordinator);
   private readonly hostedSessionRef = signal<EventChatSession | null>(null);
   private readonly hostedHeaderRef = signal<EventChatHeaderState | null>(null);
   private closeHostedChatHandler: (() => void) | null = null;
@@ -266,6 +278,20 @@ export class EventChatPopupComponent implements OnDestroy {
       ...session,
       item: this.chatFromHeader(header)
     };
+  });
+  private readonly chatHeaderPollScheduler = new UiTaskScheduler<ChatHeaderPollState>({
+    intervalMs: () => this.session() ? this.chatsService.pollIntervalMs() : 0,
+    state: () => {
+      const session = this.session();
+      return {
+        sessionKey: session ? `${session.item.id}:${session.openedAtIso}` : '',
+        chatId: `${session?.item.id ?? ''}`.trim(),
+        revision: Math.max(1, Math.trunc(Number(session?.item.revision) || 1))
+      };
+    },
+    task: async ({ state, signal }) => this.pollChatHeader(state, signal),
+    pollCoordinator: this.pollCoordinator,
+    pollPriority: 'foreground'
   });
   protected readonly resourcePopupOutletInputs = computed(() => ({
     parentZIndex: this.currentChatPopupZIndex()
@@ -426,6 +452,7 @@ export class EventChatPopupComponent implements OnDestroy {
   };
   private messageLongPressTimer: ReturnType<typeof setTimeout> | null = null;
   private optimisticMessageSequence = 0;
+  private headerPollSessionKey: string | null = null;
 
   protected readonly trackByChatReader = (_index: number, reader: ContractTypes.ChatReadAvatar): string => reader.id;
 
@@ -471,6 +498,14 @@ export class EventChatPopupComponent implements OnDestroy {
     effect(() => {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
+      if (this.headerPollSessionKey !== sessionKey) {
+        this.headerPollSessionKey = sessionKey;
+        if (sessionKey) {
+          this.chatHeaderPollScheduler.restart();
+        } else {
+          this.chatHeaderPollScheduler.stop({ abort: true });
+        }
+      }
       if (session && this.loadedSessionKey === sessionKey) {
         this.syncSelectedChatHeader(session.item);
         this.cdr.markForCheck();
@@ -511,6 +546,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.chatHeaderPollScheduler.destroy();
     this.clearChatComposeResizeObserver();
     this.clearChatThreadScrollDismissListener();
     this.clearMessageLongPress();
@@ -523,6 +559,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected close(): void {
+    this.chatHeaderPollScheduler.stop({ abort: true });
+    this.headerPollSessionKey = null;
     this.chatThreadSmartList?.closeMenu();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
@@ -550,6 +588,8 @@ export class EventChatPopupComponent implements OnDestroy {
     const subtitle = this.selectedChatParentDisplayLabel(chatSession.item, this.selectedChatNavigationState);
     return {
       title,
+      headerTitleBadge: this.chatHeaderContext?.titleBadge?.label ?? null,
+      headerTitleBadgeTone: this.chatHeaderContext?.titleBadge?.tone ?? 'neutral',
       subtitle: subtitle || undefined,
       ariaLabel: title,
       closeAriaLabel: 'Close chat popup',
@@ -718,6 +758,8 @@ export class EventChatPopupComponent implements OnDestroy {
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
       subEventId: `${header.subEventId ?? ''}`.trim() || undefined,
       groupId: `${header.groupId ?? ''}`.trim() || undefined,
+      ownerStatus: header.ownerStatus ?? null,
+      revision: Math.max(1, Math.trunc(Number(header.revision) || 1)),
       supportCase: header.supportCase ? { ...header.supportCase } : header.supportCase,
       ownerUserId: header.ownerUserId ?? null,
       metrics: header.metrics
@@ -787,6 +829,38 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.activitiesStore.patchEventChatHeader(headerUpdater);
+  }
+
+  private async pollChatHeader(state: ChatHeaderPollState, signal?: AbortSignal): Promise<void> {
+    if (!state.chatId || !state.sessionKey) {
+      return;
+    }
+    const result = await this.chatsService.syncChatHeader(state.chatId, state.revision, signal);
+    const current = this.session();
+    const currentSessionKey = current ? `${current.item.id}:${current.openedAtIso}` : '';
+    if (!current || currentSessionKey !== state.sessionKey || !result.changed) {
+      return;
+    }
+    const synchronizedChat: ChatDTO = {
+      ...current.item,
+      ownerStatus: result.ownerStatus ?? current.item.ownerStatus ?? null,
+      revision: result.revision
+    };
+    const synchronizedHeader = eventChatHeaderStateFromChat(synchronizedChat);
+    this.patchCurrentEventChatHeader(header => ({
+      ...header,
+      ...synchronizedHeader,
+      parentZIndex: header.parentZIndex
+    }));
+    this.activitiesStore.emitEventChatRowPatch({
+      chatId: synchronizedChat.id,
+      ownerId: synchronizedChat.ownerId ?? null,
+      channelType: synchronizedChat.channelType ?? null,
+      ownerStatus: synchronizedChat.ownerStatus ?? null,
+      headerRevision: synchronizedChat.revision ?? result.revision
+    });
+    this.syncSelectedChatHeader(synchronizedChat);
+    this.cdr.markForCheck();
   }
 
   protected chatHeaderTitle(chatSession: EventChatViewSession): string {
@@ -1252,9 +1326,11 @@ export class EventChatPopupComponent implements OnDestroy {
       startAtIso: record?.startAtIso ?? null,
       endAtIso: record?.endAtIso ?? null,
       mode: record?.mode ?? null,
-      acceptedMembers: record?.acceptedMembers,
-      pendingMembers: record?.pendingMembers,
-      capacityTotal: record?.capacityTotal,
+      acceptedMembers: state?.metrics?.members?.accepted ?? record?.acceptedMembers,
+      pendingMembers: state?.metrics?.members?.pending
+        ?? state?.eventPendingMembers
+        ?? record?.pendingMembers,
+      capacityTotal: state?.metrics?.members?.capacityMax ?? record?.capacityTotal,
       resourceOwnerUserId: record?.creatorUserId ?? null,
       editorAction: this.selectedChatEventEditorAction(record, state)
     });
@@ -4475,6 +4551,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private clonePopupHeaderContext(context: AppUiTypes.PopupHeaderContext): AppUiTypes.PopupHeaderContext {
     return {
       ...context,
+      titleBadge: context.titleBadge ? { ...context.titleBadge } : null,
       controls: (context.controls ?? []).map(control => ({
         ...control,
         badge: control.badge ? { ...control.badge } : null,

@@ -234,7 +234,7 @@ describe('EntryLandingComponent article lists', () => {
     article.eagerDetail = {
       ...article.eagerDetail!,
       imageUrl: '/cover.webp',
-      contentHtml: '<p>Article body</p><img src="/cover.webp" alt="Body image">'
+      contentHtml: `<p>Article body</p><img src="${managedImageUrl('medium')}" alt="Body image">`
     };
     component.ideaCards = [article];
 
@@ -244,6 +244,7 @@ describe('EntryLandingComponent article lists', () => {
     expect(fixture.nativeElement.querySelector('.entry-ideas-article-image')).toBeNull();
     const bodyImages = fixture.nativeElement.querySelectorAll('.entry-ideas-article-html img');
     expect(bodyImages).toHaveLength(1);
+    expect(bodyImages[0].getAttribute('src')).toBe(managedImageUrl('large'));
     expect(getComputedStyle(bodyImages[0]).marginLeft).toBe('auto');
     expect(getComputedStyle(bodyImages[0]).marginRight).toBe('auto');
   });
@@ -281,6 +282,10 @@ function card(id: string, featured: boolean): InfoCardData<IdeaArticleDetailDto>
       featured
     }
   };
+}
+
+function managedImageUrl(variant: 'medium' | 'large'): string {
+  return `/api/media/public?key=${encodeURIComponent(`images/owner/article/upload-1/${variant}.webp`)}`;
 }
 
 function interpolate(

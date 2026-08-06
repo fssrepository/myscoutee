@@ -1,3 +1,5 @@
+import type { UiPollCoordinator, UiPollPriority } from './ui-poll-coordinator';
+
 export interface UiScheduledTaskContext<TState> {
   state: TState;
   signal?: AbortSignal;
@@ -7,6 +9,8 @@ export interface UiTaskSchedulerConfig<TState> {
   intervalMs: () => number;
   state: () => TState;
   task: (context: UiScheduledTaskContext<TState>) => void | Promise<void>;
+  pollCoordinator?: UiPollCoordinator;
+  pollPriority?: UiPollPriority;
 }
 
 export class UiTaskScheduler<TState> {
@@ -53,10 +57,19 @@ export class UiTaskScheduler<TState> {
       this.abortController = abortController;
       this.inFlight = true;
       try {
-        await this.config.task({
-          state: this.config.state(),
-          signal: abortController?.signal
-        });
+        const state = this.config.state();
+        if (this.config.pollCoordinator) {
+          await this.config.pollCoordinator.run(
+            this.config.pollPriority ?? 'background',
+            ({ signal }) => this.config.task({ state, signal }),
+            abortController?.signal
+          );
+        } else {
+          await this.config.task({
+            state,
+            signal: abortController?.signal
+          });
+        }
       } catch {
         // Scheduled work is background-only; keep the current UI state on failure.
       } finally {

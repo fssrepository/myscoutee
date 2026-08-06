@@ -50,7 +50,7 @@
                 [class.is-selected]="isSelected(slotIndex)"
                 [class.is-filled]="imageUrl"
                 [class.is-uploading]="isUploading(slotIndex)"
-                [appLazyBgImage]="imageUrl || null"
+                [appLazyBgImage]="slotImageUrl(imageUrl)"
               >
                 <span class="image-carousel__slot-index">{{ slotIndex + 1 }}</span>
 

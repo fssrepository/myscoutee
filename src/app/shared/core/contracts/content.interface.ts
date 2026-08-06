@@ -68,6 +68,7 @@ export interface IdeaPostSaveRequestDto {
   contentHtml: string;
   imageUrl: string;
   imageUrls: string[];
+  removedImageUrls?: string[];
   featured: boolean;
   published: boolean;
   submittedAtIso: string;

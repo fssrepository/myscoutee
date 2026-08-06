@@ -156,6 +156,17 @@
   padding: 0.52rem 0.58rem;
 }
 
+.support-submit-error {
+  border: 1px solid rgba(180, 35, 46, 0.32);
+  border-radius: 10px;
+  background: rgba(255, 235, 238, 0.96);
+  color: #a61f2b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 0.52rem 0.58rem;
+}
+
 .support-actions {
   display: flex;
   justify-content: flex-end;
@@ -736,11 +747,34 @@ app-smart-list.event-feedback-list-surface {
   color: #6846a0;
 }
 
+.event-feedback-organizer-message-opinion,
 .event-feedback-organizer-message-note {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.55rem 0.62rem;
+  border-radius: 12px;
+  background: rgba(76, 118, 176, 0.08);
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.45;
   color: rgba(33, 52, 82, 0.84);
+}
+
+.event-feedback-organizer-message-opinion strong,
+.event-feedback-organizer-message-note strong {
+  font-size: 0.66rem;
+  color: rgba(39, 69, 108, 0.7);
+  text-transform: uppercase;
+}
+
+.event-feedback-organizer-message-opinion p,
+.event-feedback-organizer-message-note p {
+  margin: 0;
+}
+
+.event-feedback-organizer-message-note {
+  background: rgba(237, 172, 76, 0.1);
 }
 
 .event-feedback-organizer-empty-copy {

@@ -1,5 +1,6 @@
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/event.entity';
+import { EVENT_TICKETS_TABLE_NAME } from '../local/source/entity/event-ticket.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../local/source/entity/content.entity';
 import { NOTIFICATIONS_TABLE_NAME } from '../local/source/entity/notification.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../local/source/entity/profile.entity';
@@ -63,6 +64,7 @@ export class AppMemoryDb {
     USER_FILTER_PREFERENCES_TABLE_NAME,
     CHATS_TABLE_NAME,
     CHAT_MESSAGES_TABLE_NAME,
+    EVENT_TICKETS_TABLE_NAME,
     EVENT_FEEDBACK_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
@@ -321,6 +323,10 @@ export class AppMemoryDb {
         idsByChatKey: {}
       },
       [EVENT_FEEDBACK_TABLE_NAME]: {
+        byId: {},
+        ids: []
+      },
+      [EVENT_TICKETS_TABLE_NAME]: {
         byId: {},
         ids: []
       },
@@ -829,6 +835,7 @@ export class AppMemoryDb {
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<AppMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const chatMessagesSource = source[CHAT_MESSAGES_TABLE_NAME] as Partial<AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
+    const eventTicketsSource = source[EVENT_TICKETS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_TICKETS_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
     const notificationsSource = source[NOTIFICATIONS_TABLE_NAME] as Partial<AppMemorySchema[typeof NOTIFICATIONS_TABLE_NAME]> | undefined;
@@ -950,6 +957,14 @@ export class AppMemoryDb {
         ids: Array.isArray(eventFeedbackSource?.ids)
           ? eventFeedbackSource.ids.map(id => String(id))
           : [...fallback[EVENT_FEEDBACK_TABLE_NAME].ids]
+      },
+      [EVENT_TICKETS_TABLE_NAME]: {
+        byId: eventTicketsSource?.byId && typeof eventTicketsSource.byId === 'object'
+          ? { ...eventTicketsSource.byId }
+          : { ...fallback[EVENT_TICKETS_TABLE_NAME].byId },
+        ids: Array.isArray(eventTicketsSource?.ids)
+          ? eventTicketsSource.ids.map(id => String(id))
+          : [...fallback[EVENT_TICKETS_TABLE_NAME].ids]
       },
       [HELP_CENTER_TABLE_NAME]: {
         seeded: helpCenterSource?.seeded === true || fallback[HELP_CENTER_TABLE_NAME].seeded === true,

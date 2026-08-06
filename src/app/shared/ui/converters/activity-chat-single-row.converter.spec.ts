@@ -24,6 +24,28 @@ describe('ActivityChatSingleRowConverter group context', () => {
 });
 
 describe('ActivityChatSingleRowConverter identity', () => {
+  it('shows the draft lifecycle as a compact inline Under review badge on a sub-event chat', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'optionalSubEvent',
+      ownerId: 'event-1:stage-1',
+      ownerStatus: 'DR'
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.badges).toEqual([expect.objectContaining({
+      label: 'Under review',
+      tone: 'warning',
+      position: 'inline'
+    })]);
+  });
+
   it('keeps service chats distinct when they belong to the same event', () => {
     const ownerId = 'event-1';
     const assetChatKey = ActivityChatSingleRowConverter.smartListKeyForIdentity(

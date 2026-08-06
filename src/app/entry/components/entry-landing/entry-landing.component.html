@@ -352,7 +352,7 @@
   <app-popup [model]="ideaArticlePopupModel(post)" [zIndex]="2450">
     <article class="entry-idea-article-popup-panel">
       <div class="entry-ideas-article-body">
-        <div class="entry-ideas-article-html" [innerHTML]="post.contentHtml"></div>
+        <div class="entry-ideas-article-html" [innerHTML]="articleContentHtml(post)"></div>
       </div>
     </article>
   </app-popup>

@@ -26,10 +26,23 @@
               <span>{{ popupModel.translateHeaderLabel === false ? popupModel.headerLabel : (popupModel.headerLabel | i18n) }}</span>
             </span>
           }
-          @if (popupModel.title) {
-            <h2 [attr.data-i18n-ignore]="popupModel.translateTitle === false ? '' : null">
-              {{ popupModel.translateTitle === false ? popupModel.title : (popupModel.title | i18n) }}
-            </h2>
+          @if (popupModel.title || popupModel.headerTitleBadge) {
+            <span class="ui-popup__title-line">
+              @if (popupModel.title) {
+                <h2 [attr.data-i18n-ignore]="popupModel.translateTitle === false ? '' : null">
+                  {{ popupModel.translateTitle === false ? popupModel.title : (popupModel.title | i18n) }}
+                </h2>
+              }
+              @if (popupModel.headerTitleBadge) {
+                <span
+                  class="ui-popup__badge ui-popup__badge--title"
+                  [attr.data-tone]="popupModel.headerTitleBadgeTone ?? 'neutral'"
+                  [attr.data-i18n-ignore]="popupModel.translateHeaderTitleBadge === false ? '' : null"
+                >
+                  {{ popupModel.translateHeaderTitleBadge === false ? popupModel.headerTitleBadge : (popupModel.headerTitleBadge | i18n) }}
+                </span>
+              }
+            </span>
           }
           @if (popupModel.subtitle) {
             <p class="ui-popup__subtitle" [attr.data-i18n-ignore]="popupModel.translateSubtitle === false ? '' : null">

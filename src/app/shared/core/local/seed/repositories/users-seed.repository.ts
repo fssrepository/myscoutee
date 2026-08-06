@@ -1,4 +1,5 @@
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
+import { EVENT_TICKETS_TABLE_NAME } from '../../source/entity/event-ticket.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord, UsersRecordCollection } from '../../source/entity/user.entity';
@@ -29,6 +30,7 @@ interface SeededActivityCountSources {
   ticketsCount?: number;
   contactsCount?: number;
   feedbackCount?: number;
+  feedbackOwnEventsCount?: number;
 }
 
 @Injectable({
@@ -80,6 +82,7 @@ export class SeedUsersRepository {
 
   seedDefaults(): UserRecord[] {
     if (this.initialized) {
+      this.synchronizeSeededTicketCounts();
       return this.queryUsersFromTable();
     }
     const state = this.memoryDb.read();
@@ -96,6 +99,7 @@ export class SeedUsersRepository {
         }));
       }
       this.initialized = true;
+      this.synchronizeSeededTicketCounts();
       return this.queryUsersFromTable();
     }
 
@@ -104,8 +108,47 @@ export class SeedUsersRepository {
       [USERS_TABLE_NAME]: this.buildUsersTable(seededUsers)
     }));
     this.initialized = true;
+    this.synchronizeSeededTicketCounts();
 
     return this.queryUsersFromTable();
+  }
+
+  private synchronizeSeededTicketCounts(): void {
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    let changed = false;
+    const byId: UsersRecordCollection['byId'] = { ...usersTable.byId };
+    for (const userId of usersTable.ids) {
+      const user = usersTable.byId[userId];
+      if (!user) {
+        continue;
+      }
+      const tickets = this.countTicketItemsByUser(userId);
+      if (user.activities.tickets === tickets && user.activities.asset?.tickets === tickets) {
+        continue;
+      }
+      byId[userId] = {
+        ...user,
+        activities: {
+          ...user.activities,
+          tickets,
+          asset: {
+            ...user.activities.asset,
+            tickets
+          }
+        }
+      };
+      changed = true;
+    }
+    if (!changed) {
+      return;
+    }
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [USERS_TABLE_NAME]: {
+        byId,
+        ids: [...usersTable.ids]
+      }
+    }));
   }
 
   seedDefaultUserFilterPreferencesForUser(userId: string): boolean {
@@ -340,7 +383,8 @@ export class SeedUsersRepository {
       feedbackCount: this.countPendingEventFeedbackByUser(
         user.id,
         SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
-      )
+      ),
+      feedbackOwnEventsCount: this.countSubmittedFeedbackForOwnedEventsByUser(user.id)
     });
   }
 
@@ -374,7 +418,9 @@ export class SeedUsersRepository {
     const supplies = Number.isFinite(sources.suppliesCount) ? normalizeCounter(sources.suppliesCount) : activities.supplies;
     const tickets = Number.isFinite(sources.ticketsCount) ? normalizeCounter(sources.ticketsCount) : activities.tickets;
     const contacts = Number.isFinite(sources.contactsCount) ? normalizeCounter(sources.contactsCount) : activities.contacts;
-    const feedback = Number.isFinite(sources.feedbackCount) ? normalizeCounter(sources.feedbackCount) : activities.feedback;
+    const fallbackFeedback = Number.isFinite(sources.feedbackCount)
+      ? normalizeCounter(sources.feedbackCount)
+      : normalizeCounter(activities.feedback);
     const event = activities.event;
     const asset = activities.asset;
     const eventFeedback = activities.eventFeedback;
@@ -399,8 +445,12 @@ export class SeedUsersRepository {
     const assetSupplies = Number.isFinite(sources.suppliesCount) ? supplies : normalizeCounter(asset?.supplies ?? supplies);
     const assetTickets = Number.isFinite(sources.ticketsCount) ? tickets : normalizeCounter(asset?.tickets ?? tickets);
     const eventFeedbackPending = Number.isFinite(sources.feedbackCount)
-      ? feedback
-      : normalizeCounter(eventFeedback?.pending ?? feedback);
+      ? fallbackFeedback
+      : normalizeCounter(eventFeedback?.pending ?? fallbackFeedback);
+    const eventFeedbackOwnEvents = Number.isFinite(sources.feedbackOwnEventsCount)
+      ? normalizeCounter(sources.feedbackOwnEventsCount)
+      : normalizeCounter(eventFeedback?.ownEvents);
+    const feedback = eventFeedbackPending + eventFeedbackOwnEvents;
 
     return {
       ...user,
@@ -434,7 +484,7 @@ export class SeedUsersRepository {
           tickets: assetTickets,
         },
         eventFeedback: {
-          ownEvents: normalizeCounter(eventFeedback?.ownEvents),
+          ownEvents: eventFeedbackOwnEvents,
           pending: eventFeedbackPending,
           feedbacked: normalizeCounter(eventFeedback?.feedbacked),
           removed: normalizeCounter(eventFeedback?.removed),
@@ -478,10 +528,11 @@ export class SeedUsersRepository {
   }
 
   private countTicketItemsByUser(userId: string): number {
-    return this.queryUserEventRecords(userId)
-      .filter(record => !this.eventInvitedMemberUserIds(record).includes(userId.trim()))
-      .filter(record => record.status !== 'T')
-      .filter(record => record.ticketing === true)
+    const normalizedUserId = userId.trim();
+    const table = this.memoryDb.read()[EVENT_TICKETS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter(ticket => ticket?.holderUserId === normalizedUserId && ticket.status === 'A')
       .length;
   }
 
@@ -501,8 +552,8 @@ export class SeedUsersRepository {
       ) {
         return false;
       }
-      const startMs = new Date(item.startAtIso ?? '').getTime();
-      if (!Number.isFinite(startMs) || nowMs < startMs + feedbackUnlockDelayMs) {
+      const endMs = new Date(item.endAtIso ?? '').getTime();
+      if (!Number.isFinite(endMs) || nowMs < endMs + feedbackUnlockDelayMs) {
         return false;
       }
       const feedbackRecord = feedbackTable.byId[`${normalizedUserId}::${item.id}`];
@@ -513,6 +564,29 @@ export class SeedUsersRepository {
         return false;
       }
       return !(feedbackRecord.submittedAtIso?.trim());
+    }).length;
+  }
+
+  private countSubmittedFeedbackForOwnedEventsByUser(userId: string): number {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 0;
+    }
+    const ownedEventIds = new Set(
+      this.queryUserEventRecords(normalizedUserId)
+        .filter(item => this.isEventAdminRecord(item, normalizedUserId) && item.status !== 'T')
+        .map(item => item.id.trim())
+        .filter(Boolean)
+    );
+    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    return feedbackTable.ids.filter(id => {
+      const record = feedbackTable.byId[id];
+      return Boolean(
+        record
+        && ownedEventIds.has(record.eventId.trim())
+        && record.submittedAtIso?.trim()
+        && !record.removed
+      );
     }).length;
   }
 

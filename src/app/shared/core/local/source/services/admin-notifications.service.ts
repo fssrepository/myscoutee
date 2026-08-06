@@ -281,6 +281,8 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
         return 12;
       case 'affinity-recompute':
         return 8;
+      case 'affinity-graph-layout':
+        return 1;
       case 'scheduled-messages':
         return 4;
       case 'account-purge':

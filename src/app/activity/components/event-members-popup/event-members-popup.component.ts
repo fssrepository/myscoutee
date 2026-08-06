@@ -922,19 +922,11 @@ export class EventMembersPopupComponent {
     }
     const previousMembers = this.currentOwnerMembers();
     const previousOwnerUserId = this.eventOwnerUserId();
-    const leavingAsAdmin = this.isActiveUserEventAdmin();
-    const sourceRecord = this.ownerRecord
-      ?? this.eventsService.peekKnownRecordById(activeUserId, this.ownerId);
-    const counterDelta = leavingAsAdmin
-      ? this.eventAdminLeaveCounterDelta(sourceRecord)
-      : this.eventParticipantLeaveCounterDelta(entry);
-
     await this.waitForMemberActionRender();
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, this.ownerId, {
       removeMembershipOnly: true,
       checkoutState: 'cancelled',
-      checkoutResultState: 'deleted',
-      counterDelta
+      checkoutResultState: 'deleted'
     });
     if (!leaveResult
         || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
@@ -958,44 +950,8 @@ export class EventMembersPopupComponent {
     this.applyCommittedMembers(nextMembers, previousMembers);
     this.emitEventLeaveMembersSync(leaveResult);
     if (leaveResult.changed !== false) {
-      this.patchEventLeaveCounterDelta(counterDelta);
+      this.patchEventLeaveCounterDelta(leaveResult.counterDelta ?? null);
     }
-  }
-
-  private eventAdminLeaveCounterDelta(
-    record: ActivityEventRecord | null
-  ): UserMenuCounterDeltasDto {
-    return {
-      hosting: -1,
-      event: {
-        all: -1,
-        hosting: -1,
-        ...(record?.status === 'DR' ? { drafts: -1 } : {}),
-        trash: 1
-      }
-    };
-  }
-
-  private eventParticipantLeaveCounterDelta(
-    entry: ActivityContracts.ActivityMemberDTO
-  ): UserMenuCounterDeltasDto {
-    if (entry.status === 'pending') {
-      return {
-        event: {
-          all: -1,
-          pending: -1,
-          trash: 1
-        }
-      };
-    }
-    return {
-      events: -1,
-      event: {
-        all: -1,
-        active: -1,
-        trash: 1
-      }
-    };
   }
 
   private emitEventLeaveMembersSync(
@@ -1017,9 +973,9 @@ export class EventMembersPopupComponent {
     });
   }
 
-  private patchEventLeaveCounterDelta(delta: UserMenuCounterDeltasDto): void {
+  private patchEventLeaveCounterDelta(delta: UserMenuCounterDeltasDto | null): void {
     const activeUserId = this.activeUserId();
-    if (!activeUserId) {
+    if (!activeUserId || !delta) {
       return;
     }
     this.activityStore.patchUserCounterDeltas(

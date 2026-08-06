@@ -4,6 +4,7 @@ export * from './chat.entity';
 export * from './content.entity';
 export * from './country-partition.entity';
 export * from './event.entity';
+export * from './event-ticket.entity';
 export * from './notification.entity';
 export * from './operator.entity';
 export * from './profile.entity';

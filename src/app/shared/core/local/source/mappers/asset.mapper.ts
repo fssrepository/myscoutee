@@ -1,4 +1,4 @@
-import { AssetCardBuilder, AssetDefaultsBuilder, AssetTicketBuilder, PricingBuilder } from '../../../base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { AppUtils } from '../../../../app-utils';
 import { LocalActivityEventsMapper } from './event.mapper';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
@@ -12,6 +12,7 @@ import type {
   AssetRecord,
   AssetRequestRecord
 } from '../entity/asset.entity';
+import type { EventTicketRecord } from '../entity/event-ticket.entity';
 
 import type * as AppDTOs from '../../../contracts';
 import * as AppConstants from '../../../common/constants';
@@ -713,12 +714,12 @@ export class LocalAssetsMapper {
 }
 
 export class LocalAssetTicketsMapper {
-  static toTicketDTOs(records: readonly ActivityContracts.ActivityEventRecord[]): AssetContracts.AssetTicketDTO[] {
+  static toTicketDTOs(
+    records: readonly { ticket: EventTicketRecord; event: ActivityContracts.ActivityEventRecord }[]
+  ): AssetContracts.AssetTicketDTO[] {
     return this.cloneDTOs(records
-      .filter(record => record.type !== 'invitations')
-      .filter(record => record.status !== 'T')
-      .filter(record => record.ticketing === true)
-      .map(record => this.toTicketDTO(record, LocalActivityEventsMapper.toDto(record))));
+      .filter(({ ticket }) => ticket.status === 'A')
+      .map(({ ticket, event }) => this.toTicketDTO(ticket, event, LocalActivityEventsMapper.toDto(event))));
   }
 
   static pageRows(
@@ -744,23 +745,24 @@ export class LocalAssetTicketsMapper {
   }
 
   private static toTicketDTO(
+    ticket: EventTicketRecord,
     record: ActivityContracts.ActivityEventRecord,
     dto: ActivityContracts.ActivityEventDTO
   ): AssetContracts.AssetTicketDTO {
-    const holderUserId = `${dto.userId ?? ''}`.trim();
     return {
       id: dto.id,
-      scanCode: AssetTicketBuilder.createDemoScanCode(dto.id, holderUserId),
-      holderUserId,
-      usedAtIso: `${record.ticketCheckInsByHolderUserId?.[holderUserId] ?? ''}`.trim() || null,
-      type: dto.type === 'hosting' ? 'hosting' : 'events',
+      scanCode: ticket.code,
+      holderUserId: ticket.holderUserId,
+      usedAtIso: `${ticket.usedAtIso ?? ''}`.trim() || null,
+      issuedAtIso: ticket.issuedAtIso,
+      type: 'events',
       status: dto.status,
       title: dto.title,
       subtitle: dto.subtitle,
       detail: dto.timeframe,
       dateIso: dto.startAtIso,
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
-      isAdmin: this.isTicketAdmin(dto),
+      isAdmin: false,
       startAt: dto.startAtIso,
       endAt: dto.endAtIso,
       imageUrl: dto.imageUrl,
@@ -768,14 +770,6 @@ export class LocalAssetTicketsMapper {
       avatarInitials: dto.creatorInitials,
       creatorInitials: dto.creatorInitials
     };
-  }
-
-  private static isTicketAdmin(dto: ActivityContracts.ActivityEventDTO): boolean {
-    const userId = `${dto.userId ?? ''}`.trim();
-    return !!userId && (
-      dto.creatorUserId === userId
-      || (dto.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
-    );
   }
 
   private static matchesTicketOrder(row: AssetContracts.AssetTicketDTO, order: AppConstants.AssetTicketOrder): boolean {

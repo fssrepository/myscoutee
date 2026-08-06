@@ -8,6 +8,7 @@ import type { AssetRequestsMemorySchema, AssetsMemorySchema } from '../source/en
 import type { ChatsMemorySchema } from '../source/entity/chat.entity';
 import type { HelpCenterMemorySchema, IdeaPostsMemorySchema } from '../source/entity/content.entity';
 import type { ActivityEventsMemorySchema, EventFeedbackMemorySchema } from '../source/entity/event.entity';
+import type { EventTicketsMemorySchema } from '../source/entity/event-ticket.entity';
 import type { NotificationsMemorySchema } from '../source/entity/notification.entity';
 import type { ContactsMemorySchema, ProfileExperiencesMemorySchema } from '../source/entity/profile.entity';
 import type { UserRatesMemorySchema } from '../source/entity/rate.entity';
@@ -25,6 +26,7 @@ export type AppMemorySchema = UsersMemorySchema
   & ChatsMemorySchema
   & NotificationsMemorySchema
   & EventFeedbackMemorySchema
+  & EventTicketsMemorySchema
   & HelpCenterMemorySchema
   & IdeaPostsMemorySchema
   & ContactsMemorySchema

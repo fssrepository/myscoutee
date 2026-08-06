@@ -65,7 +65,10 @@ import {
 } from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityEventFeedbackCounters
+} from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 
@@ -115,6 +118,10 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   private explanationContextActive = false;
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
   private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
+  private eventFeedbackRealtimeContextKey = '';
+  private eventFeedbackRealtimeCounters: ActivityEventFeedbackCounters | undefined;
+  private eventFeedbackRealtimeRefreshInFlight = false;
+  private eventFeedbackRealtimeRefreshQueued = false;
   protected readonly isPopupOpen = signal(false);
   protected readonly isStackedPopupOpen = signal(false);
   protected readonly stackedPopupMode = signal<EventFeedbackStackedPopupMode>(null);
@@ -127,6 +134,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   protected readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   protected readonly eventFeedbackNoteSubmitted = signal(false);
   protected readonly eventFeedbackNoteSubmitMessage = signal('');
+  protected readonly eventFeedbackNoteSaving = signal(false);
   private readonly eventFeedbackPageResult = signal<ActivityContracts.EventFeedbackPageResultDto | null>(null);
   protected readonly eventFeedbackDetailDto = signal<ActivityContracts.EventFeedbackDetailDto | null>(null);
   protected readonly eventFeedbackDetailValue = signal<ActivityContracts.EventFeedbackDetailDto>(
@@ -389,6 +397,24 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      const isOpen = this.isPopupOpen();
+      const userId = this.activeUserId();
+      const counters = this.activityStore.counterOverridesByUserId()[userId]?.eventFeedback;
+      const contextKey = `${isOpen ? 'open' : 'closed'}:${userId}`;
+      if (contextKey !== this.eventFeedbackRealtimeContextKey) {
+        this.eventFeedbackRealtimeContextKey = contextKey;
+        this.eventFeedbackRealtimeCounters = counters;
+        return;
+      }
+      if (!isOpen || !userId || counters === this.eventFeedbackRealtimeCounters) {
+        this.eventFeedbackRealtimeCounters = counters;
+        return;
+      }
+      this.eventFeedbackRealtimeCounters = counters;
+      this.queueEventFeedbackRealtimeRefresh();
+    });
+
+    effect(() => {
       const sync = this.activityStore.activityEventFeedbackSubmitSync();
       if (!sync || sync.updatedMs <= this.lastAppliedEventFeedbackSubmitUpdatedMs) {
         return;
@@ -400,6 +426,31 @@ export class EventFeedbackPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearExplanationContext();
+  }
+
+  private queueEventFeedbackRealtimeRefresh(): void {
+    if (!this.isPopupOpen()) {
+      return;
+    }
+    if (this.eventFeedbackRealtimeRefreshInFlight) {
+      this.eventFeedbackRealtimeRefreshQueued = true;
+      return;
+    }
+    const smartList = this.eventFeedbackSmartList;
+    if (!smartList) {
+      return;
+    }
+    this.eventFeedbackRealtimeRefreshInFlight = true;
+    void smartList.refreshVisibleItems()
+      .catch(() => undefined)
+      .finally(() => {
+        this.eventFeedbackRealtimeRefreshInFlight = false;
+        if (!this.eventFeedbackRealtimeRefreshQueued) {
+          return;
+        }
+        this.eventFeedbackRealtimeRefreshQueued = false;
+        this.queueEventFeedbackRealtimeRefresh();
+      });
   }
 
   protected openPopup(): void {
@@ -490,11 +541,11 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   }
 
   protected canSubmitEventFeedbackNote(): boolean {
-    return this.eventFeedbackNoteForm().text.trim().length >= 8;
+    return !this.eventFeedbackNoteSaving() && this.eventFeedbackNoteForm().text.trim().length >= 8;
   }
 
   private applyEventFeedbackNoteSubmitted(): void {
-    if (!this.canSubmitEventFeedbackNote()) {
+    if (this.eventFeedbackNoteForm().text.trim().length < 8) {
       return;
     }
     const noteForm = this.eventFeedbackNoteForm();
@@ -819,7 +870,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     });
   }
 
-  protected submitEventFeedbackNote(): void {
+  protected async submitEventFeedbackNote(): Promise<void> {
     if (!this.canSubmitEventFeedbackNote()) {
       return;
     }
@@ -830,8 +881,16 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     if (!userId || !eventId) {
       return;
     }
-    void this.eventsService.saveEventFeedbackNote({ userId, eventId, text });
-    this.applyEventFeedbackNoteSubmitted();
+    this.eventFeedbackNoteSaving.set(true);
+    this.eventFeedbackNoteSubmitMessage.set('');
+    try {
+      await this.eventsService.saveEventFeedbackNote({ userId, eventId, text });
+      this.applyEventFeedbackNoteSubmitted();
+    } catch {
+      this.eventFeedbackNoteSubmitMessage.set('The note could not be saved. Please try again.');
+    } finally {
+      this.eventFeedbackNoteSaving.set(false);
+    }
   }
 
   protected openOrganizerEventFeedback(eventId: string): void {

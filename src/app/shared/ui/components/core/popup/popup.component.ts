@@ -93,6 +93,7 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
         || Boolean(this.popupModel.secondarySubtitle?.trim())
         || Boolean(this.popupModel.headerLabel?.trim())
         || Boolean(this.popupModel.headerBadge?.trim())
+        || Boolean(this.popupModel.headerTitleBadge?.trim())
         || this.hasHeaderControls
         || this.hasHeaderActions
         || this.showClose
