@@ -105,6 +105,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       serviceContext: input.serviceContext,
       ownerId: eventId,
       eventId,
+      ownerStatus: 'A',
       subEventId: subEventId || undefined,
       ownerUserId: activeUserId
     };

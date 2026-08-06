@@ -37,6 +37,7 @@ describe('LocalEventsService', () => {
   const appendNotifications = vi.fn();
   const unreadCount = vi.fn();
   const syncPublishedMainEventChat = vi.fn();
+  const updateEventChatOwnerStatus = vi.fn();
   const syncRealtimeNotificationCount = vi.fn();
   const synchronizeTicketsForEvent = vi.fn();
   const synchronizeTicketForMemberChange = vi.fn();
@@ -62,6 +63,7 @@ describe('LocalEventsService', () => {
     appendNotifications.mockReset().mockReturnValue([]);
     unreadCount.mockReset().mockReturnValue(0);
     syncPublishedMainEventChat.mockReset().mockReturnValue(false);
+    updateEventChatOwnerStatus.mockReset().mockReturnValue(0);
     syncRealtimeNotificationCount.mockReset();
     synchronizeTicketsForEvent.mockReset();
     synchronizeTicketForMemberChange.mockReset();
@@ -90,7 +92,8 @@ describe('LocalEventsService', () => {
         {
           provide: LocalChatsRepository,
           useValue: {
-            syncPublishedMainEventChat
+            syncPublishedMainEventChat,
+            updateEventChatOwnerStatus
           }
         },
         { provide: LocalActivityResourcesRepository, useValue: {} },
@@ -316,6 +319,8 @@ describe('LocalEventsService', () => {
 
     await TestBed.inject(LocalEventsService).unpublishItem('host', 'event-1');
 
+    expect(updateEventChatOwnerStatus).toHaveBeenCalledWith('event-1', 'DR');
+
     let records = appendNotifications.mock.calls[0]?.[0];
     expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
       .toEqual(['accepted-member', 'pending-invitee']);
@@ -329,6 +334,8 @@ describe('LocalEventsService', () => {
     syncPublishedMainEventChat.mockReturnValue(false);
 
     await TestBed.inject(LocalEventsService).publishItem('host', 'event-1');
+
+    expect(updateEventChatOwnerStatus).toHaveBeenCalledWith('event-1', 'A');
 
     records = appendNotifications.mock.calls[0]?.[0];
     expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))

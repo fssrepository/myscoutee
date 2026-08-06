@@ -255,7 +255,7 @@ export class SideMenuComponent implements OnDestroy {
     state: () => this.userProfileStore.activeUserId().trim(),
     task: ({ state, signal }) => this.runUserRealtimeLongPollTick(state, signal),
     pollCoordinator: this.pollCoordinator,
-    pollPriority: 'background'
+    pollPriority: 'notification'
   });
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
@@ -2043,10 +2043,12 @@ export class SideMenuComponent implements OnDestroy {
         notifications: _notificationCount,
         ...nonNotificationCounters
       } = snapshot.counters;
-      this.userProfileStore.applyUserRealtimeSnapshot(userId, {
-        ...snapshot,
-        counters: nonNotificationCounters
-      });
+      if (!this.popupPresenceStore.visible()) {
+        this.userProfileStore.applyUserRealtimeSnapshot(userId, {
+          ...snapshot,
+          counters: nonNotificationCounters
+        });
+      }
       if (Number.isFinite(nextNotificationCount)) {
         this.notificationCenterStore.applyRealtimeUnreadCount(
           notificationSyncToken,

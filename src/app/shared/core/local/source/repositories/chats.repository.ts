@@ -83,7 +83,9 @@ export class LocalChatsRepository {
           unread: this.normalizeCounter(current?.unread ?? 0),
           dateIso: current?.dateIso ?? nowIso,
           channelType: 'mainEvent',
-          ownerId: eventId
+          ownerId: eventId,
+          eventId,
+          ownerStatus: 'A'
         };
         nextById[recordKey] = nextRecord;
         if (!nextIds.includes(recordKey)) {
@@ -125,6 +127,43 @@ export class LocalChatsRepository {
       };
     });
     return viewerChatAdded;
+  }
+
+  updateEventChatOwnerStatus(
+    eventId: string,
+    ownerStatus: ActivityContracts.ActivityEventStatus
+  ): number {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return 0;
+    }
+    let changed = 0;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      for (const recordKey of currentTable.ids) {
+        const current = currentTable.byId[recordKey];
+        if (`${current?.eventId ?? ''}`.trim() !== normalizedEventId || current.ownerStatus === ownerStatus) {
+          continue;
+        }
+        nextById[recordKey] = {
+          ...current,
+          memberIds: [...(current.memberIds ?? [])],
+          ownerStatus
+        };
+        changed += 1;
+      }
+      return changed === 0
+        ? currentState
+        : {
+            ...currentState,
+            [CHATS_TABLE_NAME]: {
+              ...currentTable,
+              byId: nextById
+            }
+          };
+    });
+    return changed;
   }
 
   queryActivitiesChatPage(

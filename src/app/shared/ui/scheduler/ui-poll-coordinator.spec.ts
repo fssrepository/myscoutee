@@ -48,4 +48,40 @@ describe('UiPollCoordinator', () => {
     expect(foregroundTask).toHaveBeenCalledOnce();
     popupPresenceStore.unregister(popupToken);
   });
+
+  it('keeps the notification lane running while a popup owns UI polling', async () => {
+    const popupToken = popupPresenceStore.register();
+    const backgroundTask = vi.fn();
+    const notificationTask = vi.fn();
+
+    await coordinator.run('background', backgroundTask);
+    await coordinator.run('notification', notificationTask);
+
+    expect(backgroundTask).not.toHaveBeenCalled();
+    expect(notificationTask).toHaveBeenCalledOnce();
+    popupPresenceStore.unregister(popupToken);
+  });
+
+  it('does not serialize notification polling behind a foreground UI task', async () => {
+    const order: string[] = [];
+    let releaseForeground: () => void = () => undefined;
+    const foregroundGate = new Promise<void>(resolve => {
+      releaseForeground = resolve;
+    });
+
+    const foreground = coordinator.run('foreground', async () => {
+      order.push('foreground:start');
+      await foregroundGate;
+      order.push('foreground:end');
+    });
+    const notification = coordinator.run('notification', () => {
+      order.push('notification');
+    });
+
+    await notification;
+    expect(order).toEqual(['foreground:start', 'notification']);
+    releaseForeground();
+    await foreground;
+    expect(order).toEqual(['foreground:start', 'notification', 'foreground:end']);
+  });
 });

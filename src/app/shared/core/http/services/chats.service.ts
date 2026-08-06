@@ -50,6 +50,7 @@ interface HttpChatDto {
   eventId?: string;
   subEventId?: string;
   groupId?: string;
+  ownerStatus?: ActivityContracts.ActivityEventStatus | null;
   distanceKm?: number;
   distanceMetersExact?: number;
   metrics?: ChatMetricsDTO | null;
@@ -678,6 +679,7 @@ export class HttpChatsService implements IChatsService {
       eventId: this.normalizeHttpText(item.eventId) || undefined,
       subEventId: this.normalizeHttpText(item.subEventId) || undefined,
       groupId: this.normalizeHttpText(item.groupId) || undefined,
+      ownerStatus: item.ownerStatus ?? null,
       distanceKm,
       distanceMetersExact,
       supportCase: this.mapSupportCase(item.supportCase),

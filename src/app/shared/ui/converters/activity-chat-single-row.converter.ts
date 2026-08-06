@@ -57,6 +57,7 @@ export class ActivityChatSingleRowConverter {
     const supportAssigneeName = dto.supportCase?.assignee?.name ?? null;
     const showSupportControls = options.adminServiceMode === true && Boolean(supportStatus);
     const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
+    const eventUnderReview = dto.ownerStatus === 'DR';
     const ownerId = `${dto.ownerId ?? ''}`.trim();
     const groupChannelLabel = channelType === 'groupSubEvent' ? this.groupChannelLabel(dto) : '';
     const groupParentLabel = channelType === 'groupSubEvent' ? this.groupParentLabel(dto) : '';
@@ -100,7 +101,14 @@ export class ActivityChatSingleRowConverter {
           tone: this.supportCaseBadgeTone(supportStatus),
           position: 'top-right'
         }]
-        : [],
+        : eventUnderReview
+          ? [{
+            label: options.translate?.('activities.chat.event.status.underReview') ?? 'Under review',
+            title: options.translate?.('activities.chat.event.status.underReview') ?? 'Under review',
+            tone: 'warning',
+            position: 'inline'
+          }]
+          : [],
       menuActions: showSupportControls
         ? this.supportCaseMenuActionIds(supportStatus)
         : [],

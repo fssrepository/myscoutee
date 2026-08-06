@@ -550,6 +550,8 @@ export class EventChatPopupComponent implements OnDestroy {
     const subtitle = this.selectedChatParentDisplayLabel(chatSession.item, this.selectedChatNavigationState);
     return {
       title,
+      headerTitleBadge: this.chatHeaderContext?.titleBadge?.label ?? null,
+      headerTitleBadgeTone: this.chatHeaderContext?.titleBadge?.tone ?? 'neutral',
       subtitle: subtitle || undefined,
       ariaLabel: title,
       closeAriaLabel: 'Close chat popup',
@@ -718,6 +720,7 @@ export class EventChatPopupComponent implements OnDestroy {
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
       subEventId: `${header.subEventId ?? ''}`.trim() || undefined,
       groupId: `${header.groupId ?? ''}`.trim() || undefined,
+      ownerStatus: header.ownerStatus ?? null,
       supportCase: header.supportCase ? { ...header.supportCase } : header.supportCase,
       ownerUserId: header.ownerUserId ?? null,
       metrics: header.metrics
@@ -4477,6 +4480,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private clonePopupHeaderContext(context: AppUiTypes.PopupHeaderContext): AppUiTypes.PopupHeaderContext {
     return {
       ...context,
+      titleBadge: context.titleBadge ? { ...context.titleBadge } : null,
       controls: (context.controls ?? []).map(control => ({
         ...control,
         badge: control.badge ? { ...control.badge } : null,

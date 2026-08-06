@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.06.hu.51",
+  "version": "2026.08.06.hu.52",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -52,6 +52,7 @@
     "activities.support.case.status.picked": "Felvett",
     "activities.support.case.status.solved": "Megoldott",
     "activities.support.case.status.warned": "Figyelmeztetett",
+    "activities.chat.event.status.underReview": "Under review",
     "add.myscoutee.to.your.home.screen": "{productName} hozzáadása a kezdőképernyőhöz",
     "add.help.section": "Súgó szakasz hozzáadása",
     "add.explanation.section": "Magyarázat szakasz hozzáadása",

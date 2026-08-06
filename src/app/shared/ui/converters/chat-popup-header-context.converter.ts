@@ -50,8 +50,11 @@ export class ChatPopupHeaderContextConverter {
     }
 
     return {
-      revision: this.chatHeaderRevision(chatId, title, memberIds),
+      revision: this.chatHeaderRevision(chatId, title, memberIds, chat.ownerStatus),
       title,
+      titleBadge: chat.ownerStatus === 'DR'
+        ? { label: 'activities.chat.event.status.underReview', tone: 'warning' }
+        : null,
       controls
     };
   }
@@ -93,7 +96,12 @@ export class ChatPopupHeaderContextConverter {
     return count === 1 ? '1 member' : `${count} members`;
   }
 
-  private static chatHeaderRevision(chatId: string, title: string, memberIds: readonly string[]): string {
-    return ['chat-header', chatId, title, ...memberIds].join(':');
+  private static chatHeaderRevision(
+    chatId: string,
+    title: string,
+    memberIds: readonly string[],
+    ownerStatus: ChatDTO['ownerStatus']
+  ): string {
+    return ['chat-header', chatId, title, ownerStatus ?? '', ...memberIds].join(':');
   }
 }

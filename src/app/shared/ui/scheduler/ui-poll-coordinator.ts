@@ -2,7 +2,9 @@ import { Injectable, effect, inject } from '@angular/core';
 
 import { PopupPresenceStore } from '../context/stores/popup-presence.store';
 
-export type UiPollPriority = 'background' | 'foreground';
+export type UiPollPriority = 'background' | 'foreground' | 'notification';
+
+type UiPollLane = 'ui' | 'notification';
 
 export interface UiPollTaskContext {
   signal?: AbortSignal;
@@ -21,7 +23,7 @@ interface QueuedPollTask {
 export class UiPollCoordinator {
   private readonly popupPresenceStore = inject(PopupPresenceStore);
   private readonly queue: QueuedPollTask[] = [];
-  private activeTask: QueuedPollTask | null = null;
+  private readonly activeTasks = new Map<UiPollLane, QueuedPollTask>();
   private nextTaskId = 0;
 
   constructor() {
@@ -30,8 +32,9 @@ export class UiPollCoordinator {
         return;
       }
       this.cancelQueuedBackgroundTasks();
-      if (this.activeTask?.priority === 'background') {
-        this.activeTask.controller?.abort();
+      const activeUiTask = this.activeTasks.get('ui');
+      if (activeUiTask?.priority === 'background') {
+        activeUiTask.controller?.abort();
       }
     });
   }
@@ -63,14 +66,19 @@ export class UiPollCoordinator {
   }
 
   private drain(): void {
-    if (this.activeTask) {
+    this.drainLane('notification');
+    this.drainLane('ui');
+  }
+
+  private drainLane(lane: UiPollLane): void {
+    if (this.activeTasks.has(lane)) {
       return;
     }
-    const nextTask = this.nextRunnableTask();
+    const nextTask = this.nextRunnableTask(lane);
     if (!nextTask) {
       return;
     }
-    this.activeTask = nextTask;
+    this.activeTasks.set(lane, nextTask);
     void this.execute(nextTask);
   }
 
@@ -83,20 +91,22 @@ export class UiPollCoordinator {
       // Polling is background synchronization; retain the last stable UI state.
     } finally {
       task.unbindExternalAbort();
-      if (this.activeTask?.id === task.id) {
-        this.activeTask = null;
+      const lane = this.lane(task.priority);
+      if (this.activeTasks.get(lane)?.id === task.id) {
+        this.activeTasks.delete(lane);
       }
       task.resolve();
       this.drain();
     }
   }
 
-  private nextRunnableTask(): QueuedPollTask | null {
-    while (this.queue.length > 0) {
-      const candidate = this.queue.shift() ?? null;
-      if (!candidate) {
+  private nextRunnableTask(lane: UiPollLane): QueuedPollTask | null {
+    while (true) {
+      const candidateIndex = this.queue.findIndex(candidate => this.lane(candidate.priority) === lane);
+      if (candidateIndex < 0) {
         return null;
       }
+      const [candidate] = this.queue.splice(candidateIndex, 1);
       if (candidate.controller?.signal.aborted) {
         candidate.unbindExternalAbort();
         candidate.resolve();
@@ -132,7 +142,7 @@ export class UiPollCoordinator {
     }
     const abort = () => {
       task.controller?.abort();
-      if (this.activeTask?.id === task.id) {
+      if (this.activeTasks.get(this.lane(task.priority))?.id === task.id) {
         return;
       }
       const index = this.queue.findIndex(candidate => candidate.id === task.id);
@@ -151,7 +161,17 @@ export class UiPollCoordinator {
       if (left.priority === right.priority) {
         return left.id - right.id;
       }
+      if (left.priority === 'notification') {
+        return -1;
+      }
+      if (right.priority === 'notification') {
+        return 1;
+      }
       return left.priority === 'foreground' ? -1 : 1;
     });
+  }
+
+  private lane(priority: UiPollPriority): UiPollLane {
+    return priority === 'notification' ? 'notification' : 'ui';
   }
 }

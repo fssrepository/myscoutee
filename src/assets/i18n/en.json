@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.08.06.en.51",
+  "version": "2026.08.06.en.52",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -52,6 +52,7 @@
     "activities.support.case.status.picked": "Picked",
     "activities.support.case.status.solved": "Solved",
     "activities.support.case.status.warned": "Warned",
+    "activities.chat.event.status.underReview": "Under review",
     "add.myscoutee.to.your.home.screen": "Add {productName} to your home screen",
     "add.help.section": "Add help section",
     "add.explanation.section": "Add explanation section",

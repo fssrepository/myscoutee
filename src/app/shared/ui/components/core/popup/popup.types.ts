@@ -22,6 +22,7 @@ export type PopupHeaderTone = 'default' | 'accent';
 export type PopupHeaderLayout = 'default' | 'article' | 'document';
 export type PopupHeaderPalette = 'default' | 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate' | 'teal';
 export type PopupHeaderTitleTone = 'palette' | 'neutral';
+export type PopupHeaderBadgeTone = 'neutral' | 'warning' | 'danger';
 export type PopupBodyLayout = 'default' | 'fill' | 'flush' | 'overflow';
 export type PopupControlAlign = 'start' | 'end';
 export type PopupToolbarMobileAlign = 'start' | 'center' | 'end';
@@ -74,6 +75,8 @@ export interface PopupModel<TContext = unknown> {
   headerLabel?: string | null;
   headerLabelIcon?: string | null;
   headerBadge?: string | null;
+  headerTitleBadge?: string | null;
+  headerTitleBadgeTone?: PopupHeaderBadgeTone;
   title?: string | null;
   subtitle?: string | null;
   secondarySubtitle?: string | null;
@@ -81,6 +84,7 @@ export interface PopupModel<TContext = unknown> {
   closeAriaLabel?: string | null;
   translateHeaderLabel?: boolean;
   translateHeaderBadge?: boolean;
+  translateHeaderTitleBadge?: boolean;
   translateTitle?: boolean;
   translateSubtitle?: boolean;
   translateSecondarySubtitle?: boolean;

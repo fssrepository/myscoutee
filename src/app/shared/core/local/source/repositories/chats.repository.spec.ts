@@ -148,7 +148,9 @@ describe('LocalChatsRepository chat pages', () => {
       lastSenderId: null,
       unread: 0,
       channelType: 'mainEvent',
-      ownerId: event.id
+      ownerId: event.id,
+      eventId: event.id,
+      ownerStatus: 'A'
     });
     expect(firstAdded).toBe(true);
     expect(repeatedAdded).toBe(false);
@@ -156,6 +158,58 @@ describe('LocalChatsRepository chat pages', () => {
     expect(publishedOwner.activities.chats).toBe(originalChats);
     expect(publishedOwner.activities.chat?.all).toBe(originalChats);
     expect(publishedOwner.activities.chat?.event).toBe(originalEventChats);
+  });
+
+  it('updates every physical chat copy for an event without replacing chat identity or content', () => {
+    const eventId = 'event-status-test';
+    const records: ChatThreadRecord[] = [
+      {
+        id: `c-context-main-${eventId}`,
+        ownerUserId: 'casey',
+        avatar: 'CB',
+        title: 'Main',
+        lastMessage: 'kept main message',
+        lastSenderId: 'nova',
+        memberIds: ['casey', 'nova'],
+        unread: 0,
+        channelType: 'mainEvent',
+        ownerId: eventId,
+        eventId,
+        ownerStatus: 'A'
+      },
+      {
+        id: `c-context-optional-${eventId}`,
+        ownerUserId: 'nova',
+        avatar: 'NS',
+        title: 'Optional',
+        lastMessage: 'kept optional message',
+        lastSenderId: 'casey',
+        memberIds: ['casey', 'nova'],
+        unread: 1,
+        channelType: 'optionalSubEvent',
+        ownerId: `${eventId}:optional-1`,
+        eventId,
+        ownerStatus: 'A'
+      }
+    ];
+    seedChats(records);
+
+    expect(repository.updateEventChatOwnerStatus(eventId, 'DR')).toBe(2);
+    expect(repository.queryChatItemById('casey', records[0].id)).toMatchObject({
+      id: records[0].id,
+      lastMessage: 'kept main message',
+      ownerStatus: 'DR'
+    });
+    expect(repository.queryChatItemById('nova', records[1].id)).toMatchObject({
+      id: records[1].id,
+      lastMessage: 'kept optional message',
+      unread: 1,
+      ownerStatus: 'DR'
+    });
+
+    expect(repository.updateEventChatOwnerStatus(eventId, 'A')).toBe(2);
+    expect(repository.queryChatItemById('casey', records[0].id)?.ownerStatus).toBe('A');
+    expect(repository.queryChatItemById('nova', records[1].id)?.ownerStatus).toBe('A');
   });
 
   it('keeps the empty published-event channel read when it is opened', () => {

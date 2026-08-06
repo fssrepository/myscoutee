@@ -375,6 +375,8 @@ export class SeedChatsBuilder {
       title: `${eventTitle} · Main Event`,
       lastMessage: `Main event channel for ${eventTitle}.`,
       ownerId: record.id,
+      eventId: record.id,
+      ownerStatus: record.status,
       channelType: 'mainEvent',
       memberIds,
       dateIso: record.startAtIso,
@@ -400,6 +402,8 @@ export class SeedChatsBuilder {
           ? 'Notification channel for cancellations, postponements, and urgent event updates.'
           : `Service chat with the organizer for ${eventTitle}.`,
         ownerId: record.id,
+        eventId: record.id,
+        ownerStatus: record.status,
         channelType: 'serviceEvent',
         memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
         dateIso: record.startAtIso,
@@ -430,6 +434,8 @@ export class SeedChatsBuilder {
       title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
       lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
       ownerId: this.subEventOwnerId(record.id, subEvent.id),
+      eventId: record.id,
+      ownerStatus: record.status,
       channelType: 'optionalSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
@@ -475,6 +481,8 @@ export class SeedChatsBuilder {
         title: `${groupName} · ${subEvent.name || stageLabel}`,
         lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
         ownerId: this.groupOwnerId(record.id, subEvent.id, groupId),
+        eventId: record.id,
+        ownerStatus: record.status,
         channelType: 'groupSubEvent',
         memberIds,
         dateIso: subEvent.startAt || record.startAtIso,
@@ -488,6 +496,8 @@ export class SeedChatsBuilder {
     title: string;
     lastMessage: string;
     ownerId: string;
+    eventId: string;
+    ownerStatus: ActivityEventRecord['status'];
     channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
     memberIds: string[];
     dateIso: string;
@@ -506,7 +516,9 @@ export class SeedChatsBuilder {
       unread: Math.max(0, Math.trunc(Number(input.unread) || 0)),
       dateIso: input.dateIso,
       channelType: input.channelType,
-      ownerId: input.ownerId
+      ownerId: input.ownerId,
+      eventId: input.eventId,
+      ownerStatus: input.ownerStatus
     };
   }
 

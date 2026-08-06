@@ -8,6 +8,7 @@ import type {
 } from '../../../contracts/chat.interface';
 import type * as AppConstants from '../../../common/constants';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
+import type { ActivityEventStatus } from '../../../contracts/activity.interface';
 
 export const CHATS_TABLE_NAME = APP_INDEXED_DB_KEYS.chats;
 export const CHAT_MESSAGES_TABLE_NAME = APP_INDEXED_DB_KEYS.chatMessages;
@@ -28,6 +29,7 @@ export interface ChatRecord {
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
   eventId?: string;
+  ownerStatus?: ActivityEventStatus | null;
   subEventId?: string;
   supportCase?: ChatSupportCase | null;
 }

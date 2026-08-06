@@ -884,6 +884,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ? this.chatsRepository.syncPublishedMainEventChat(published, userId)
       : false;
     if (changed && published) {
+      this.chatsRepository.updateEventChatOwnerStatus(sourceId, 'A');
       if (eventChatAdded) {
         this.appendEventLifecycleNotifications(
           userId,
@@ -925,6 +926,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     this.assetTicketsRepository.synchronizeForEvent(sourceId);
     const changed = !!beforeRecord && this.localEventStatus(beforeRecord) !== 'DR';
     if (changed && beforeRecord) {
+      this.chatsRepository.updateEventChatOwnerStatus(sourceId, 'DR');
       this.appendEventLifecycleNotifications(
         userId,
         sourceId,
