@@ -52,6 +52,16 @@ describe('NotificationSingleRowConverter badges', () => {
     expect(row.surfaceTone).toBe('warning');
     expect(row.badges?.[0]?.tone).toBe('warning');
   });
+
+  it('shows one repeat badge for an aggregated warning row', () => {
+    const row = converter.convert(notification({
+      occurrenceCount: 3,
+      payload: { notification_tone: 'warning' }
+    }));
+
+    expect(row.badges?.map(badge => badge.label)).toContain('3');
+    expect(row.badges?.find(badge => badge.label === '3')?.icon).toBe('repeat');
+  });
 });
 
 function notification(

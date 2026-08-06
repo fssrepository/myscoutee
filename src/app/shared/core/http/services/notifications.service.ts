@@ -160,7 +160,8 @@ export class HttpNotificationsService implements NotificationService {
       actionPath: `${value?.actionPath ?? ''}`.trim() || null,
       sourceType: `${value?.sourceType ?? ''}`.trim() || null,
       sourceId: `${value?.sourceId ?? ''}`.trim() || null,
-      payload
+      payload,
+      occurrenceCount: Math.max(1, Math.trunc(Number(value?.occurrenceCount ?? 1)) || 1)
     };
   }
 

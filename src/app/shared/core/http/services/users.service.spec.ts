@@ -63,6 +63,22 @@ describe('HttpUsersService demo authority boundary', () => {
     expect(readUser).not.toHaveBeenCalled();
   });
 
+  it('restores a warmed backend demo profile from cache only while offline', async () => {
+    const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const cached = cachedUserResponse();
+    get.mockReturnValue(throwError(() => new Error('network unavailable')));
+    readUser.mockReturnValue(cached);
+
+    try {
+      expect(TestBed.inject(HttpUsersService).peekCachedUserById('demo-user'))
+        .toEqual(cached.user);
+      await expect(TestBed.inject(HttpUsersService).queryUserById('demo-user'))
+        .resolves.toEqual(cached);
+    } finally {
+      offline.mockRestore();
+    }
+  });
+
   it('retains read-through offline resilience for a Firebase user without making it a demo authority', async () => {
     currentSession = {
       kind: 'firebase',

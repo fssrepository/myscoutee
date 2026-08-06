@@ -87,6 +87,52 @@ export class LocalNotificationsRepository {
     return additions.map(record => this.cloneRecord(record));
   }
 
+  appendAggregated(record: NotificationRecord): NotificationRecord | null {
+    const normalized = this.cloneRecord(record);
+    const recipientUserId = normalized.recipientUserId.trim();
+    const aggregationGroup = `${normalized.payload?.['notification_aggregation_key'] ?? ''}`.trim();
+    if (!recipientUserId || !aggregationGroup) {
+      return this.append([normalized])[0] ?? null;
+    }
+    const currentTable = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const existing = (currentTable.idsByRecipientUserId[recipientUserId] ?? [])
+      .map(id => currentTable.byId[id])
+      .find(item => `${item?.payload?.['notification_aggregation_key'] ?? ''}`.trim() === aggregationGroup)
+      ?? null;
+    if (!existing) {
+      return this.append([{ ...normalized, occurrenceCount: 1 }])[0] ?? null;
+    }
+
+    const nextRecord: NotificationRecord = {
+      ...existing,
+      ...normalized,
+      id: existing.id,
+      readAtIso: null,
+      occurrenceCount: Math.max(1, Math.trunc(Number(existing.occurrenceCount ?? 1)) || 1) + 1,
+      payload: normalized.payload ? { ...normalized.payload } : null
+    };
+    this.memoryDb.write(state => {
+      const table = state[NOTIFICATIONS_TABLE_NAME];
+      const nextTable = {
+        ...table,
+        byId: {
+          ...table.byId,
+          [existing.id]: nextRecord
+        }
+      };
+      return {
+        ...state,
+        [NOTIFICATIONS_TABLE_NAME]: nextTable,
+        [USERS_TABLE_NAME]: this.withUserUnreadCount(
+          state[USERS_TABLE_NAME],
+          recipientUserId,
+          this.unreadCountFromTable(nextTable, recipientUserId)
+        )
+      };
+    });
+    return this.cloneRecord(nextRecord);
+  }
+
   queryPage(
     userId: string,
     query: ListQuery<NotificationListFilters>

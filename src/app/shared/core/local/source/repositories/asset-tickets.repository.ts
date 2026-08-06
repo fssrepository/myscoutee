@@ -6,13 +6,16 @@ import { LocalAssetTicketsMapper } from '../mappers/asset.mapper';
 import { LocalActivityMembersRepository } from './activity-members.repository';
 import { LocalEventsRepository } from './events.repository';
 import { LocalUsersRepository } from './users.repository';
+import { LocalNotificationsRepository } from './notifications.repository';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../entity/activity.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import {
   EVENT_TICKETS_TABLE_NAME,
   type EventTicketRecord,
-  type EventTicketRecordCollection
+  type EventTicketRecordCollection,
+  type EventTicketReplayAuditRecord
 } from '../entity/event-ticket.entity';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 
 import type { AppMemorySchema } from '../../common/memory.schema';
@@ -27,6 +30,7 @@ export class LocalAssetTicketsRepository {
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
 
   peekTicketCountByUser(userId: string): number {
     return this.visibleTicketRecordsByUser(userId).length;
@@ -186,6 +190,9 @@ export class LocalAssetTicketsRepository {
       return this.invalid('revoked');
     }
     if (ticket.usedAtIso) {
+      const attemptedAtIso = new Date().toISOString();
+      this.persistReplayAudit(ticket, actorUserId, attemptedAtIso);
+      this.appendReplayWarning(ticket, event, actorUserId, attemptedAtIso);
       return this.invalid('already_used');
     }
 
@@ -255,6 +262,80 @@ export class LocalAssetTicketsRepository {
       };
     });
     return persisted ?? this.memoryDb.read()[EVENT_TICKETS_TABLE_NAME].byId[ticketId];
+  }
+
+  private persistReplayAudit(
+    ticket: EventTicketRecord,
+    actorUserId: string,
+    attemptedAtIso: string
+  ): void {
+    const audit: EventTicketReplayAuditRecord = {
+      id: `ticket-replay:${ticket.id}:${attemptedAtIso}:${actorUserId}`,
+      action: 'check-in-replay',
+      result: 'already_used',
+      actorUserId,
+      attemptedAtIso,
+      originalUsedAtIso: `${ticket.usedAtIso ?? ''}`,
+      originalUsedByUserId: `${ticket.usedByUserId ?? ''}`
+    };
+    this.memoryDb.write(state => {
+      const table = state[EVENT_TICKETS_TABLE_NAME];
+      const current = table.byId[ticket.id];
+      if (!current) {
+        return state;
+      }
+      return {
+        ...state,
+        [EVENT_TICKETS_TABLE_NAME]: {
+          ...table,
+          byId: {
+            ...table.byId,
+            [ticket.id]: {
+              ...current,
+              replayAudits: [...(current.replayAudits ?? []), audit]
+            }
+          }
+        }
+      };
+    });
+  }
+
+  private appendReplayWarning(
+    ticket: EventTicketRecord,
+    event: ActivityEventRecord,
+    actorUserId: string,
+    attemptedAtIso: string
+  ): void {
+    const actor = this.usersRepository.queryUserById(actorUserId);
+    const record: NotificationRecord = {
+      id: `event-ticket-replay-warning:${ticket.id}:${ticket.holderUserId}`,
+      recipientUserId: ticket.holderUserId,
+      kind: 'event-ticket-replay-warning',
+      category: 'event',
+      title: 'Ticket reuse warning',
+      message: `Your already-used ticket for ${event.title || 'Event'} was presented again.`,
+      createdAtIso: attemptedAtIso,
+      readAtIso: null,
+      senderUserId: actorUserId,
+      senderName: actor?.name ?? actorUserId,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: ticket.eventId,
+      occurrenceCount: 1,
+      payload: {
+        eventId: ticket.eventId,
+        eventTitle: event.title || 'Event',
+        eventScope: 'tickets',
+        ticketId: ticket.id,
+        ticketStatus: 'already-used',
+        usedAtIso: `${ticket.usedAtIso ?? ''}`,
+        actorUserId,
+        notification_tone: 'warning',
+        notification_aggregation_key: `event-ticket-replay:${ticket.id}`
+      }
+    };
+    this.notificationsRepository.appendAggregated(record);
   }
 
   private resolveEventRecord(eventId: string, preferredUserId = ''): ActivityEventRecord | null {

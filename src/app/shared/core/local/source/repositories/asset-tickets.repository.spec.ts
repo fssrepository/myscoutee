@@ -9,6 +9,7 @@ import {
 } from '../entity/activity.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { EVENT_TICKETS_TABLE_NAME, type EventTicketRecord } from '../entity/event-ticket.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../entity/notification.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { LocalAssetTicketsRepository } from './asset-tickets.repository';
 
@@ -75,6 +76,7 @@ describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
 
     const first = repository.validateTicket(request);
     const second = repository.validateTicket(request);
+    const third = repository.validateTicket(request);
 
     expect(first.valid).toBe(true);
     expect(first.ticket).toMatchObject({
@@ -90,6 +92,25 @@ describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
       reason: 'already_used',
       ticket: null
     });
+    expect(third).toEqual(second);
+    const persisted = allTickets()[0];
+    expect(persisted.usedAtIso).toBe(first.ticket?.usedAtIso);
+    expect(persisted.replayAudits).toHaveLength(2);
+    expect(persisted.replayAudits?.map(item => item.actorUserId)).toEqual([
+      'owner-1',
+      'owner-1'
+    ]);
+    const notifications = memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const holderNotifications = (notifications.idsByRecipientUserId['holder-1'] ?? [])
+      .map(id => notifications.byId[id]);
+    expect(holderNotifications).toHaveLength(1);
+    expect(holderNotifications[0]).toMatchObject({
+      kind: 'event-ticket-replay-warning',
+      senderUserId: 'owner-1',
+      occurrenceCount: 2,
+      readAtIso: null
+    });
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['holder-1'].activities.notifications).toBe(1);
   });
 
   it('requires the scanner actor to manage the event', () => {
