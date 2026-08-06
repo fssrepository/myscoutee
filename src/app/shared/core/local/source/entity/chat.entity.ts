@@ -30,6 +30,7 @@ export interface ChatRecord {
   ownerId?: string;
   eventId?: string;
   ownerStatus?: ActivityEventStatus | null;
+  revision?: number;
   subEventId?: string;
   supportCase?: ChatSupportCase | null;
 }

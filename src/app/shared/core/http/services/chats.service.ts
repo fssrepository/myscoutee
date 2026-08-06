@@ -6,6 +6,7 @@ import {
   Injectable,
   inject
 } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import {
   environment
@@ -17,6 +18,7 @@ import {
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
+  ChatHeaderSyncResponseDTO,
   ChatMemberSummaryDto,
   ChatMetricsDTO,
   ChatMessagesPageResultDTO,
@@ -51,6 +53,7 @@ interface HttpChatDto {
   subEventId?: string;
   groupId?: string;
   ownerStatus?: ActivityContracts.ActivityEventStatus | null;
+  revision?: number | null;
   distanceKm?: number;
   distanceMetersExact?: number;
   metrics?: ChatMetricsDTO | null;
@@ -328,6 +331,33 @@ export class HttpChatsService implements IChatsService {
     } catch {
       return { items: [], total: 0, nextCursor: null };
     }
+  }
+
+  async syncChatHeader(
+    chatId: string,
+    knownRevision: number,
+    signal?: AbortSignal
+  ): Promise<ChatHeaderSyncResponseDTO> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return { revision: 1, changed: false, ownerStatus: null };
+    }
+    const params = this.activeUserParams().set(
+      'knownRevision',
+      `${Math.max(1, Math.trunc(Number(knownRevision) || 1))}`
+    );
+    const response = await this.requestWithAbort(
+      this.http.get<ChatHeaderSyncResponseDTO>(
+        `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/header-sync`,
+        { params }
+      ),
+      signal
+    );
+    return {
+      revision: Math.max(1, Math.trunc(Number(response?.revision) || 1)),
+      changed: response?.changed === true,
+      ownerStatus: response?.ownerStatus ?? null
+    };
   }
 
   async queryChatMessagesPage(
@@ -680,6 +710,7 @@ export class HttpChatsService implements IChatsService {
       subEventId: this.normalizeHttpText(item.subEventId) || undefined,
       groupId: this.normalizeHttpText(item.groupId) || undefined,
       ownerStatus: item.ownerStatus ?? null,
+      revision: Math.max(1, Math.trunc(Number(item.revision) || 1)),
       distanceKm,
       distanceMetersExact,
       supportCase: this.mapSupportCase(item.supportCase),
@@ -1380,6 +1411,53 @@ export class HttpChatsService implements IChatsService {
 
   private activeUserParams(): HttpParams {
     return this.withUserId(new HttpParams(), this.activeUserId());
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let settled = false;
+      let subscription: { unsubscribe: () => void } | null = null;
+      const cleanup = () => signal?.removeEventListener('abort', onAbort);
+      const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        subscription?.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      subscription = request$.subscribe({
+        next: value => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+        complete: () => cleanup()
+      });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
   }
 
   private withUserId(params: HttpParams, userId: string): HttpParams {

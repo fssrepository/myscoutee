@@ -8,6 +8,7 @@ import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
+  ChatHeaderSyncResponseDTO,
   ChatMemberSummaryDto,
   ChatMetricBucketDTO,
   ChatMetricsDTO,
@@ -70,6 +71,28 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return {
       ...page,
       readReceipt
+    };
+  }
+
+  async syncChatHeader(
+    chatId: string,
+    knownRevision: number,
+    signal?: AbortSignal
+  ): Promise<ChatHeaderSyncResponseDTO> {
+    if (signal?.aborted) {
+      throw this.abortError();
+    }
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    if (signal?.aborted) {
+      throw this.abortError();
+    }
+    const chat = this.localChatForActiveUser(chatId);
+    const revision = Math.max(1, Math.trunc(Number(chat?.revision) || 1));
+    const changed = Boolean(chat) && revision !== Math.max(1, Math.trunc(Number(knownRevision) || 1));
+    return {
+      revision,
+      changed,
+      ownerStatus: changed ? chat?.ownerStatus ?? null : null
     };
   }
 
@@ -537,6 +560,12 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private localChatForActiveUser(chatId: string): ChatThreadRecord | null {
     const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
     return this.chatsRepository.queryChatItemById(activeUserId, `${chatId ?? ''}`.trim());
+  }
+
+  private abortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
   }
 
   private chatMemberOwner(chat: ChatThreadRecord): ActivityContracts.ActivityMemberOwnerRef | null {

@@ -26,6 +26,7 @@ export class LocalChatThreadMapper {
       ownerId: record.ownerId,
       eventId: record.eventId,
       ownerStatus: record.ownerStatus ?? null,
+      revision: Math.max(1, Math.trunc(Number(record.revision) || 1)),
       subEventId: record.subEventId,
       supportCase: this.cloneSupportCase(record.supportCase),
       ownerUserId: record.ownerUserId,

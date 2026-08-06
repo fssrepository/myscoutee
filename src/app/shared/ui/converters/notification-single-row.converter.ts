@@ -14,6 +14,7 @@ import type {
 export interface NotificationSingleRowConverterOptions {
   locale?: string | null;
   progressRing?: boolean;
+  translate?: (key: string, fallback?: string | null) => string;
 }
 
 export class NotificationSingleRowConverter implements UiConverter<
@@ -36,7 +37,7 @@ export class NotificationSingleRowConverter implements UiConverter<
       id: notification.id,
       title: notification.title,
       subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
-      detail: notification.message,
+      detail: this.message(notification, options),
       dateIso: notification.createdAtIso,
       avatarUrl: systemRandomRoom ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
       avatarInitials: !systemRandomRoom && senderName ? this.initials(senderName) : null,
@@ -78,6 +79,16 @@ export class NotificationSingleRowConverter implements UiConverter<
         payload: notification.payload ? { ...notification.payload } : null
       }
     };
+  }
+
+  private message(
+    notification: NotificationDto,
+    options: NotificationSingleRowConverterOptions
+  ): string {
+    const key = `${notification.payload?.['notification_message_key'] ?? ''}`.trim();
+    return key && options.translate
+      ? options.translate(key, notification.message)
+      : notification.message;
   }
 
   private isSystemRandomRoom(notification: NotificationDto): boolean {

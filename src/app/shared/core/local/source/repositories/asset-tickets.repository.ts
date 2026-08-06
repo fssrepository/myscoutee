@@ -313,7 +313,7 @@ export class LocalAssetTicketsRepository {
       kind: 'event-ticket-replay-warning',
       category: 'event',
       title: 'Ticket reuse warning',
-      message: `Your already-used ticket for ${event.title || 'Event'} was presented again.`,
+      message: 'notification.ticket.reuse.message',
       createdAtIso: attemptedAtIso,
       readAtIso: null,
       senderUserId: actorUserId,
@@ -331,6 +331,7 @@ export class LocalAssetTicketsRepository {
         ticketStatus: 'already-used',
         usedAtIso: `${ticket.usedAtIso ?? ''}`,
         actorUserId,
+        notification_message_key: 'notification.ticket.reuse.message',
         notification_tone: 'warning',
         notification_aggregation_key: `event-ticket-replay:${ticket.id}`
       }

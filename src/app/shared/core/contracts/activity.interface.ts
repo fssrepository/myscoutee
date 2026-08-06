@@ -174,6 +174,11 @@ export interface IChatsService {
     chat: ChatContracts.ChatDTO,
     query: ListQuery
   ): Promise<ChatContracts.ChatMessagesPageResultDTO>;
+  syncChatHeader(
+    chatId: string,
+    knownRevision: number,
+    signal?: AbortSignal
+  ): Promise<ChatContracts.ChatHeaderSyncResponseDTO>;
 }
 
 export interface IRatesService {

@@ -894,6 +894,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           published.title,
           `You were invited to ${published.title}.`,
           'info',
+          null,
           true
         );
       } else {
@@ -902,9 +903,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           sourceId,
           published,
           'event-modified',
-          `${published.title} changed`,
-          'The event was modified and is available again.',
-          'info'
+          published.title,
+          'notification.event.available.again.message',
+          'success',
+          'notification.event.available.again.message'
         );
       }
     }
@@ -932,9 +934,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         sourceId,
         beforeRecord,
         'event-under-review',
-        `${beforeRecord.title} changed`,
-        'The event is under review.',
-        'warning'
+        beforeRecord.title,
+        'notification.event.under.review.message',
+        'warning',
+        'notification.event.under.review.message'
       );
     }
     const result = await this.withLocalMutationCounterDelta(
@@ -1822,7 +1825,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     kind: string,
     title: string,
     message: string,
-    tone: 'info' | 'warning',
+    tone: 'info' | 'success' | 'warning',
+    messageKey: string | null = null,
     invitationOnly = false
   ): void {
     const actorId = actorUserId.trim();
@@ -1856,7 +1860,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       payload: {
         eventId: sourceId,
         eventScope: invitationOnly ? 'invitations' : 'lifecycle',
-        notification_tone: tone
+        notification_tone: tone,
+        ...(messageKey ? { notification_message_key: messageKey } : {})
       }
     }));
     this.notificationsRepository.append(records);

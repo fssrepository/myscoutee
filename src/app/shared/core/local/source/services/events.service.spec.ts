@@ -342,7 +342,10 @@ describe('LocalEventsService', () => {
       .toEqual(['accepted-member', 'pending-invitee']);
     expect(records[0]).toMatchObject({
       kind: 'event-modified',
-      payload: { notification_tone: 'info' }
+      payload: {
+        notification_message_key: 'notification.event.available.again.message',
+        notification_tone: 'success'
+      }
     });
   });
 

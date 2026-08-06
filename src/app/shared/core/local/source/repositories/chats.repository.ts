@@ -85,7 +85,8 @@ export class LocalChatsRepository {
           channelType: 'mainEvent',
           ownerId: eventId,
           eventId,
-          ownerStatus: 'A'
+          ownerStatus: 'A',
+          revision: Math.max(1, Math.trunc(Number(current?.revision) || 1))
         };
         nextById[recordKey] = nextRecord;
         if (!nextIds.includes(recordKey)) {
@@ -149,7 +150,8 @@ export class LocalChatsRepository {
         nextById[recordKey] = {
           ...current,
           memberIds: [...(current.memberIds ?? [])],
-          ownerStatus
+          ownerStatus,
+          revision: Date.now()
         };
         changed += 1;
       }

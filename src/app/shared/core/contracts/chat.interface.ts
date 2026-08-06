@@ -184,10 +184,17 @@ export interface ChatDTO {
   subEventId?: string;
   groupId?: string;
   ownerStatus?: ActivityEventStatus | null;
+  revision?: number;
   supportCase?: ChatSupportCase | null;
   ownerUserId?: string | null;
   metrics?: ChatMetricsDTO | null;
   navigationContext?: ChatNavigationContextDTO | null;
+}
+
+export interface ChatHeaderSyncResponseDTO {
+  revision: number;
+  changed: boolean;
+  ownerStatus?: ActivityEventStatus | null;
 }
 
 export interface ChatServiceEnsureInput {

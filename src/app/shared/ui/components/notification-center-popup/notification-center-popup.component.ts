@@ -8,6 +8,7 @@ import {
 import { from } from 'rxjs';
 
 import { AppUtils } from '../../../app-utils';
+import { I18nService } from '../../../core';
 import type {
   NotificationBucket,
   NotificationDto,
@@ -70,6 +71,7 @@ export class NotificationCenterPopupComponent {
 
   protected readonly store = inject(NotificationCenterStore);
   private readonly dialogStore = inject(DialogStore);
+  private readonly i18n = inject(I18nService);
   private readonly converter = new NotificationSingleRowConverter();
 
   protected readonly query = computed<Partial<ListQuery<NotificationListFilters>>>(() => ({
@@ -225,7 +227,8 @@ export class NotificationCenterPopupComponent {
 
   protected notificationRow(notification: NotificationDto): SingleRowData<NotificationDto> {
     return this.converter.convert(notification, {
-      progressRing: this.store.isMarkReadPending(notification.id)
+      progressRing: this.store.isMarkReadPending(notification.id),
+      translate: (key, fallback) => this.i18n.translate(key, fallback)
     });
   }
 

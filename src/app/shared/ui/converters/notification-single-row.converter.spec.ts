@@ -53,6 +53,21 @@ describe('NotificationSingleRowConverter badges', () => {
     expect(row.badges?.[0]?.tone).toBe('warning');
   });
 
+  it('resolves a write-side notification message key through the i18n bundle', () => {
+    const row = converter.convert(notification({
+      message: 'English transport fallback.',
+      payload: {
+        notification_message_key: 'notification.event.available.again.message'
+      }
+    }), {
+      translate: key => key === 'notification.event.available.again.message'
+        ? 'Az esemény újra elérhető.'
+        : key
+    });
+
+    expect(row.detail).toBe('Az esemény újra elérhető.');
+  });
+
   it('shows one repeat badge for an aggregated warning row', () => {
     const row = converter.convert(notification({
       occurrenceCount: 3,
