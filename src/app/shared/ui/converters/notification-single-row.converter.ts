@@ -33,6 +33,11 @@ export class NotificationSingleRowConverter implements UiConverter<
     const sourceLabel = this.sourceLabel(notification.category);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
+    const statusBadgeKey = `${notification.payload?.['notification_status_badge_key'] ?? ''}`.trim();
+    const statusBadgeFallback = `${notification.payload?.['notification_status_badge_fallback'] ?? ''}`.trim();
+    const statusBadgeLabel = statusBadgeKey && options.translate
+      ? options.translate(statusBadgeKey, statusBadgeFallback)
+      : statusBadgeFallback;
     return {
       id: notification.id,
       title: notification.title,
@@ -49,6 +54,13 @@ export class NotificationSingleRowConverter implements UiConverter<
       surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
+        ...(statusBadgeLabel ? [{
+          label: statusBadgeLabel,
+          ariaLabel: statusBadgeLabel,
+          title: statusBadgeLabel,
+          tone: this.payloadTone(notification.payload?.['notification_status_badge_tone']) ?? 'muted',
+          position: 'inline' as const
+        }] : []),
         ...(occurrenceCount > 1 ? [{
           label: `${occurrenceCount}`,
           icon: 'repeat',
@@ -144,7 +156,11 @@ export class NotificationSingleRowConverter implements UiConverter<
   }
 
   private contextualTone(notification: NotificationDto): SingleRowSurfaceTone | null {
-    const requestedTone = `${notification.payload?.['notification_tone'] ?? ''}`.trim();
+    return this.payloadTone(notification.payload?.['notification_tone']);
+  }
+
+  private payloadTone(value: string | undefined): SingleRowSurfaceTone | null {
+    const requestedTone = `${value ?? ''}`.trim();
     switch (requestedTone) {
       case 'info':
       case 'accent':

@@ -533,6 +533,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const joinRequestAlreadyPending = [
+      ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
+      ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
+    ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
     if (request.checkoutRequest) {
       await this.saveCheckoutBasketRecord({
@@ -589,6 +594,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       if (result.membershipStatus === 'accepted' && record) {
         this.appendInvitationAcceptedNotifications(record, normalizedUserId);
       }
+    }
+    if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
+      this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
     }
     const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
       result,
@@ -1098,6 +1106,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const joinRequestAlreadyPending = [
+      ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
+      ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
+    ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     let checkoutPayloadSaved = false;
     if (options.checkoutState) {
       if (options.basketItems?.length) {
@@ -1188,6 +1201,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       if (result.membershipStatus === 'accepted' && record) {
         this.appendInvitationAcceptedNotifications(record, normalizedUserId);
       }
+    }
+    if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
+      this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
     }
     const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
       result,
@@ -1281,6 +1297,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeLeave = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const cancellingJoinRequest = [
+      ...(eventBeforeLeave?.pendingMemberUserIds ?? []),
+      ...(eventBeforeLeave?.pendingRequestMemberUserIds ?? [])
+    ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     if (options.checkoutState) {
       await this.updateCheckoutBasketStateRecord({
         userId: normalizedUserId,
@@ -1296,6 +1317,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
     if (resolvingInvitation && record) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+    }
+    if (record && cancellingJoinRequest && eventBeforeLeave) {
+      this.appendJoinRequestAdminNotifications(eventBeforeLeave, normalizedUserId, true);
     }
     const result = await this.withLocalMutationCounterDelta(
       record ? this.leftEventResult(record) : null,
@@ -1919,6 +1943,72 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         membershipAction: 'accepted',
         acceptedAtIso: createdAtIso,
         notification_tone: 'accent'
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendJoinRequestAdminNotifications(
+    event: ActivityEventRecord,
+    memberUserId: string,
+    cancelled: boolean
+  ): void {
+    const normalizedMemberUserId = memberUserId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!normalizedMemberUserId || !eventId) {
+      return;
+    }
+    const member = this.usersRepository.queryUserById(normalizedMemberUserId);
+    const memberName = `${member?.name ?? normalizedMemberUserId}`.trim() || normalizedMemberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ].filter(userId => userId && userId !== normalizedMemberUserId))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const kind = cancelled
+      ? 'event-admin-join-request-cancelled'
+      : 'event-admin-join-request';
+    const action = cancelled ? 'cancelled' : 'requested';
+    const tone = cancelled ? 'warning' : 'accent';
+    const messageKey = cancelled
+      ? 'notification.event.join.cancelled.message'
+      : 'notification.event.join.requested.message';
+    const badgeKey = cancelled
+      ? 'notification.event.join.cancelled.badge'
+      : 'notification.event.join.pending.badge';
+    const badgeFallback = cancelled ? 'Cancelled' : 'Pending';
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId(kind, eventId, recipientUserId),
+      recipientUserId,
+      kind,
+      category: 'event-admin',
+      title: eventTitle,
+      message: cancelled ? 'Join request cancelled.' : 'Join request received.',
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: normalizedMemberUserId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId: normalizedMemberUserId,
+        memberName,
+        membershipAction: action,
+        notification_tone: tone,
+        notification_message_key: messageKey,
+        notification_status_badge_key: badgeKey,
+        notification_status_badge_fallback: badgeFallback,
+        notification_status_badge_tone: tone,
+        [cancelled ? 'cancelledAtIso' : 'requestedAtIso']: createdAtIso
       }
     }));
     this.notificationsRepository.append(records);
