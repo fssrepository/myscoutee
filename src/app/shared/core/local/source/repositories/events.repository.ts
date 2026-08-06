@@ -1926,8 +1926,8 @@ export class LocalEventsRepository {
       if (this.isEventAdminRecord(item, normalizedUserId)) {
         return false;
       }
-      const startMs = new Date(item.startAtIso ?? '').getTime();
-      if (!Number.isFinite(startMs) || nowMs < startMs + feedbackUnlockDelayMs) {
+      const endMs = new Date(item.endAtIso ?? '').getTime();
+      if (!Number.isFinite(endMs) || nowMs < endMs + feedbackUnlockDelayMs) {
         return false;
       }
       const feedbackRecord = feedbackTable.byId[`${normalizedUserId}::${item.id}`];

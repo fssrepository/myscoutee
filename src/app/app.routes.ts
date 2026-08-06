@@ -9,6 +9,32 @@ import type { UserDto } from './shared/core/contracts/user.interface';
 
 const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
 
+const entryAreaGuard: CanActivateFn = async () => {
+  const injector = inject(Injector);
+  const sessionService = inject(SessionService);
+  const router = inject(Router);
+  const session = await sessionService.ensureSession();
+  if (!session) {
+    return true;
+  }
+  if (session.kind === 'operator-bootstrap') {
+    return router.createUrlTree(['/operator']);
+  }
+
+  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const usersService = injector.get(UsersService);
+  const user = usersService.peekCachedUserById(
+    session.kind === 'demo' ? session.userId : session.profile.id
+  );
+  if (isAdminUser(user)) {
+    return router.createUrlTree(['/admin']);
+  }
+  if (isOperatorUser(user)) {
+    return router.createUrlTree(['/operator']);
+  }
+  return router.createUrlTree(['/game']);
+};
+
 const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   const injector = inject(Injector);
   const sessionService = inject(SessionService);
@@ -18,6 +44,24 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
     const { UsersService } = await import('./shared/core/base/services/users.service');
     const usersService = injector.get(UsersService);
     if (!usersService.localModeEnabled) {
+      if (isBrowserOffline()) {
+        if (session.kind === 'operator-bootstrap') {
+          return entryRedirect(router, state.url);
+        }
+        const cachedUser = usersService.peekCachedUserById(
+          session.kind === 'demo' ? session.userId : session.profile.id
+        );
+        if (isAdminUser(cachedUser)) {
+          return router.createUrlTree(['/admin']);
+        }
+        if (isOperatorUser(cachedUser)) {
+          return router.createUrlTree(['/operator']);
+        }
+        if (requiresProfileOnboarding(cachedUser)) {
+          return entryRedirect(router, state.url);
+        }
+        return true;
+      }
       const user = await usersService
         .loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000)
         .catch(() => null);
@@ -131,10 +175,15 @@ function isOperatorUser(user: UserDto | null | undefined): boolean {
   return hasOperatorRole(user);
 }
 
+function isBrowserOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
+    canActivate: [entryAreaGuard],
     loadComponent: loadEntryPage
   },
   {

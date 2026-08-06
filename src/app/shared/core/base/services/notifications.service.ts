@@ -4,7 +4,9 @@ import type {
   NotificationListFilters,
   NotificationPageResultDto,
   NotificationPreferencesResponseDto,
-  NotificationReadResponseDto
+  NotificationReadResponseDto,
+  NotificationSyncRequestDto,
+  NotificationSyncResponseDto
 } from '../../contracts/notification.interface';
 import type { ListQuery } from '../../contracts/list.interface';
 import { LocalNotificationsService } from '../../local/source/services/notifications.service';
@@ -54,6 +56,24 @@ export class NotificationsService extends BaseRouteModeService {
         payload: result.notification.payload ? { ...result.notification.payload } : null
       },
       unreadCount: Math.max(0, Math.trunc(Number(result.unreadCount) || 0))
+    };
+  }
+
+  async sync(
+    userId: string,
+    request: NotificationSyncRequestDto,
+    signal?: AbortSignal
+  ): Promise<NotificationSyncResponseDto> {
+    const result = await this.notificationService.sync(userId, request, signal);
+    return {
+      upserts: result.upserts.map(item => ({
+        ...item,
+        payload: item.payload ? { ...item.payload } : null
+      })),
+      removedIds: result.removedIds.map(id => `${id}`.trim()).filter(Boolean),
+      total: Math.max(0, Math.trunc(Number(result.total) || 0)),
+      unreadCount: Math.max(0, Math.trunc(Number(result.unreadCount) || 0)),
+      muted: result.muted === true
     };
   }
 

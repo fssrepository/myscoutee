@@ -74,6 +74,9 @@ export class SessionService {
     if (current.kind === 'operator-bootstrap') {
       return this.getOperatorBootstrapToken() ? current : null;
     }
+    if (this.isBrowserOffline()) {
+      return current;
+    }
     const restoredProfile = await (await this.firebaseAuthService()).restoreSessionProfile();
     if (!restoredProfile) {
       this.clearStoredSession();
@@ -177,6 +180,10 @@ export class SessionService {
   async restoreFirebaseSession(): Promise<AppSession | null> {
     if (this.firebaseBusyRef()) {
       return this.sessionRef();
+    }
+    const current = this.sessionRef();
+    if (current?.kind === 'firebase' && this.isBrowserOffline()) {
+      return current;
     }
     this.firebaseBusyRef.set(true);
     this.firebaseNoticeRef.set('');
@@ -365,6 +372,10 @@ export class SessionService {
       || hostname === '[::1]'
       || hostname === '::1'
       || hostname.endsWith('.localhost');
+  }
+
+  private isBrowserOffline(): boolean {
+    return typeof navigator !== 'undefined' && navigator.onLine === false;
   }
 
   private loadStoredSession(): AppSession | null {

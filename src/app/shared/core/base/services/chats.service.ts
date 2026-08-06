@@ -3,13 +3,18 @@ import { Injectable, inject } from '@angular/core';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
-import type { ChatDTO, ChatServiceEnsureInput } from '../../contracts/chat.interface';
+import type {
+  ChatDTO,
+  ChatHeaderSyncResponseDTO,
+  ChatServiceEnsureInput
+} from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 
 import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
+import { RouteDelayService } from './route-delay.service';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 type ChatMessagesLoadContext = {
@@ -25,6 +30,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   private readonly localChatsService = inject(LocalChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly routeDelay = inject(RouteDelayService);
 
   private get chatsService(): LocalChatsService | HttpChatsService {
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
@@ -62,6 +68,18 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       return [];
     }
     return this.chatsService.queryChatMembers(normalizedChatId);
+  }
+
+  async syncChatHeader(
+    chatId: string,
+    knownRevision: number,
+    signal?: AbortSignal
+  ): Promise<ChatHeaderSyncResponseDTO> {
+    return this.chatsService.syncChatHeader(chatId, knownRevision, signal);
+  }
+
+  pollIntervalMs(): number {
+    return this.routeDelay.resolveIntervalMs(ChatsService.CHAT_ROUTE, 30_000);
   }
 
   async queryChatMemberEntriesPage(

@@ -77,12 +77,24 @@ export class EventFeedbackFormFlowConverter {
           {
             id: `${card.id}-traits`,
             kind: 'menu',
+            layout: 'wide' as const,
             label: card.traitQuestion,
             description: 'Pick up to 3',
             bind: ['cards', cardIndex, 'selectedTraitIds'],
             required: true,
             config: this.inlineTabsMenuConfig(this.traitOptionModel(card))
-          }
+          },
+          ...(card.kind === 'event' ? [{
+            id: `${card.id}-comment`,
+            kind: 'textarea' as const,
+            layout: 'wide' as const,
+            label: 'Your opinion about the event',
+            description: 'Optional · up to 160 characters',
+            placeholder: 'What would you tell someone about this event?',
+            bind: ['cards', cardIndex, 'eventComment'] as const,
+            rows: 3,
+            maxLength: 160
+          }] : [])
         ]
       }))
     };

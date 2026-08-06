@@ -1,4 +1,5 @@
 import type * as AppConstants from '../common/constants';
+import type { ActivityEventStatus } from './activity.interface';
 import type { SubEventDTO } from './event.interface';
 
 export const RANDOM_ROOM_WELCOME_MESSAGE =
@@ -182,10 +183,18 @@ export interface ChatDTO {
   eventId?: string;
   subEventId?: string;
   groupId?: string;
+  ownerStatus?: ActivityEventStatus | null;
+  revision?: number;
   supportCase?: ChatSupportCase | null;
   ownerUserId?: string | null;
   metrics?: ChatMetricsDTO | null;
   navigationContext?: ChatNavigationContextDTO | null;
+}
+
+export interface ChatHeaderSyncResponseDTO {
+  revision: number;
+  changed: boolean;
+  ownerStatus?: ActivityEventStatus | null;
 }
 
 export interface ChatServiceEnsureInput {

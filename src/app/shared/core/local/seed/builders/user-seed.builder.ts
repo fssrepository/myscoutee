@@ -311,7 +311,7 @@ export class SeedUserBuilder {
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
     const normalizedBaseUsers = baseUsers.map(user => this.withStoredChatCounters(this.withResolvedLocationCoordinates(user)));
     if (baseUsers.length >= totalCount) {
-      return normalizedBaseUsers.slice(0, totalCount);
+      return this.withUniqueDemoPortraitUrls(normalizedBaseUsers.slice(0, totalCount));
     }
     const expanded: UserRecord[] = [...normalizedBaseUsers];
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
@@ -352,7 +352,60 @@ export class SeedUserBuilder {
         ...this.demoLifecycleStatusForIndex(index, totalCount)
       })));
     }
-    return expanded;
+    return this.withUniqueDemoPortraitUrls(expanded);
+  }
+
+  private static withUniqueDemoPortraitUrls(users: readonly UserRecord[]): UserRecord[] {
+    // Reserve future raw URLs so replacing one duplicate cannot collide with a later user.
+    const reservedPortraitUrls = new Set(
+      users.flatMap(user => (user.images ?? []).map(imageUrl => imageUrl.trim()).filter(Boolean))
+    );
+    const usedPortraitUrls = new Set<string>();
+
+    return users.map(user => ({
+      ...user,
+      images: (user.images ?? []).map(imageUrl => {
+        const normalizedImageUrl = imageUrl.trim();
+        if (!normalizedImageUrl || !usedPortraitUrls.has(normalizedImageUrl)) {
+          if (normalizedImageUrl) {
+            usedPortraitUrls.add(normalizedImageUrl);
+          }
+          return imageUrl;
+        }
+        const replacementImageUrl = this.nextAvailableDemoPortraitUrl(
+          user.gender,
+          normalizedImageUrl,
+          reservedPortraitUrls
+        );
+        if (!replacementImageUrl) {
+          return imageUrl;
+        }
+        reservedPortraitUrls.add(replacementImageUrl);
+        usedPortraitUrls.add(replacementImageUrl);
+        return replacementImageUrl;
+      })
+    }));
+  }
+
+  private static nextAvailableDemoPortraitUrl(
+    gender: UserRecord['gender'],
+    imageUrl: string,
+    reservedPortraitUrls: ReadonlySet<string>
+  ): string | null {
+    const indexMatch = imageUrl.match(/\/(\d+)\.jpg$/);
+    const initialIndex = Number.parseInt(indexMatch?.[1] ?? '', 10);
+    if (!Number.isFinite(initialIndex)) {
+      return null;
+    }
+    const folder = gender === 'woman' ? 'women' : 'men';
+    for (let offset = 1; offset <= 100; offset += 1) {
+      const candidateIndex = (initialIndex + offset * 9) % 100;
+      const candidateUrl = `https://randomuser.me/api/portraits/${folder}/${candidateIndex}.jpg`;
+      if (!reservedPortraitUrls.has(candidateUrl)) {
+        return candidateUrl;
+      }
+    }
+    return null;
   }
 
   private static buildUniquePrimaryPortraitStack(

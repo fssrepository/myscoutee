@@ -39,6 +39,44 @@ describe('NotificationSingleRowConverter badges', () => {
     expect(row.avatarToneClass).toBe('notification-system-avatar');
     expect(row.subtitle).toContain('MyScoutee System');
   });
+
+  it('uses the lifecycle context tone from the notification payload', () => {
+    const row = converter.convert(notification({
+      kind: 'event-definition-changed',
+      category: 'event',
+      payload: {
+        notification_tone: 'warning'
+      }
+    }));
+
+    expect(row.surfaceTone).toBe('warning');
+    expect(row.badges?.[0]?.tone).toBe('warning');
+  });
+
+  it('resolves a write-side notification message key through the i18n bundle', () => {
+    const row = converter.convert(notification({
+      message: 'English transport fallback.',
+      payload: {
+        notification_message_key: 'notification.event.available.again.message'
+      }
+    }), {
+      translate: key => key === 'notification.event.available.again.message'
+        ? 'Az esemény újra elérhető.'
+        : key
+    });
+
+    expect(row.detail).toBe('Az esemény újra elérhető.');
+  });
+
+  it('shows one repeat badge for an aggregated warning row', () => {
+    const row = converter.convert(notification({
+      occurrenceCount: 3,
+      payload: { notification_tone: 'warning' }
+    }));
+
+    expect(row.badges?.map(badge => badge.label)).toContain('3');
+    expect(row.badges?.find(badge => badge.label === '3')?.icon).toBe('repeat');
+  });
 });
 
 function notification(
@@ -53,6 +91,7 @@ function notification(
     message: 'A message arrived.',
     createdAtIso: '2026-07-31T08:00:00.000Z',
     readAtIso: null,
+    revision: 1,
     ...patch
   };
 }

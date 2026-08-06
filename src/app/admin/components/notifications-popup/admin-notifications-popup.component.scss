@@ -144,8 +144,10 @@
   border-radius: 8px;
   background: #fbfdff;
   padding: 0.58rem;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  overflow: hidden;
 }
 
 .process-list-toolbar {
@@ -155,10 +157,23 @@
   margin-bottom: 0.46rem;
 }
 
-.process-list-table {
+.process-list-smart-list {
+  flex: 1 1 auto;
   min-width: 0;
-  display: grid;
+  min-height: 0;
+}
+
+:host ::ng-deep .process-list-smart-list .smart-list__stage {
+  top: 0;
+}
+
+:host ::ng-deep .process-list-smart-list .smart-list.admin-job-process-list {
   gap: 0.28rem;
+  padding-right: 0.1rem;
+}
+
+:host ::ng-deep .process-list-smart-list .smart-list__item-shell {
+  min-width: 0;
 }
 
 .process-list-row {
@@ -1344,10 +1359,6 @@
     overflow-x: hidden;
   }
 
-  .process-list-table {
-    min-width: 0;
-  }
-
   .process-list-head {
     display: none;
   }
@@ -1360,8 +1371,8 @@
     padding: 0.64rem;
   }
 
-.process-list-row > span:nth-child(3),
-.process-list-row > span:nth-child(4) {
+  .process-list-row > span:nth-child(3),
+  .process-list-row > span:nth-child(4) {
     display: none;
   }
 

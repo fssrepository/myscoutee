@@ -1637,6 +1637,7 @@ export class SeedEventsBuilder {
       pendingMemberUserIds,
       invitedMemberUserIds,
       pendingRequestMemberUserIds,
+      ticketing: records.some(record => record.ticketing === true),
       capacityTotal: Math.max(preferred.capacityTotal, acceptedMemberUserIds.length)
     };
   }
@@ -1864,13 +1865,18 @@ export class SeedEventsBuilder {
         : seededMembers.pendingMemberUserIds
     });
     const compactMemberCounts = this.resolveCompactSeedMemberCounts(record, rawMembers);
-    const compactAcceptedMemberUserIds = rawMembers.acceptedMemberUserIds
-      .slice(0, compactMemberCounts.acceptedMembers);
+    const preserveExplicitAcceptedMembers = acceptedMemberUserIds.length > 0;
+    const preserveExplicitPendingMembers = pendingMemberUserIds.length > 0;
+    const compactAcceptedMemberUserIds = preserveExplicitAcceptedMembers
+      ? rawMembers.acceptedMemberUserIds
+      : rawMembers.acceptedMemberUserIds.slice(0, compactMemberCounts.acceptedMembers);
     const members = {
       acceptedMemberUserIds: compactAcceptedMemberUserIds,
       pendingMemberUserIds: rawMembers.pendingMemberUserIds
         .filter(userId => !compactAcceptedMemberUserIds.includes(userId))
-        .slice(0, compactMemberCounts.pendingMembers)
+        .slice(0, preserveExplicitPendingMembers
+          ? rawMembers.pendingMemberUserIds.length
+          : compactMemberCounts.pendingMembers)
     };
     const acceptedMembers = members.acceptedMemberUserIds.length;
     const pendingMembers = members.pendingMemberUserIds.length;
@@ -1953,6 +1959,14 @@ export class SeedEventsBuilder {
       upcomingSlots: [],
       acceptedMembers,
       pendingMembers,
+      acceptedMemberUserIds: [...members.acceptedMemberUserIds],
+      pendingMemberUserIds: [...members.pendingMemberUserIds],
+      invitedMemberUserIds: record.type === 'invitations'
+        ? [...members.pendingMemberUserIds]
+        : [],
+      pendingRequestMemberUserIds: record.type === 'invitations'
+        ? []
+        : [...members.pendingMemberUserIds],
       topics,
       subEventsEnabled,
       subEventDefinitions,

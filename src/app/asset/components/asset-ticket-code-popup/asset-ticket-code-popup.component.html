@@ -3,14 +3,19 @@
     <div class="ticket-code-sheet">
       <div class="ticket-scan-person-card ticket-scan-person-card-ticket ticket-code-info-card">
         <div class="ticket-scan-person-body">
-          <div class="ticket-scan-person-avatar" [style.backgroundImage]="avatarUrl ? 'url(' + avatarUrl + ')' : null">
-            @if (!avatarUrl) {
-              <span>{{ initials }}</span>
+          <div class="ticket-scan-person-identity">
+            <div class="ticket-scan-person-avatar" [style.backgroundImage]="avatarUrl ? 'url(' + avatarUrl + ')' : null">
+              @if (!avatarUrl) {
+                <span>{{ initials }}</span>
+              }
+            </div>
+            @if (roleBadgeLabel) {
+              <span class="ticket-scan-person-role-badge">{{ roleBadgeLabel | i18n }}</span>
             }
           </div>
           <div class="ticket-scan-person-meta">
             <p>{{ personLine }}</p>
-            <p>{{ roleEventLine }}</p>
+            <p>{{ eventLine }}</p>
             <p>{{ dateLine }}</p>
           </div>
         </div>

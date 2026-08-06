@@ -40,9 +40,15 @@ export interface PopupHeaderControl {
   menu?: PopupHeaderControlMenu | null;
 }
 
+export interface PopupHeaderTitleBadge {
+  label: string;
+  tone?: 'neutral' | 'warning' | 'danger';
+}
+
 export interface PopupHeaderContext {
   revision?: string | number;
   title?: string | null;
   subtitle?: string | null;
+  titleBadge?: PopupHeaderTitleBadge | null;
   controls?: PopupHeaderControl[];
 }

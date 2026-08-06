@@ -10,7 +10,8 @@ export interface AssetTicketScanViewModel {
   avatarUrl: string;
   initials: string;
   personLine: string;
-  roleEventLine: string;
+  roleBadgeLabel: string;
+  eventLine: string;
   dateLine: string;
 }
 
@@ -20,7 +21,8 @@ export class AssetTicketScanConverter {
       avatarUrl: '',
       initials: '',
       personLine: '',
-      roleEventLine: '',
+      roleBadgeLabel: '',
+      eventLine: '',
       dateLine: ''
     };
   }
@@ -39,9 +41,14 @@ export class AssetTicketScanConverter {
         || user?.initials?.trim()
         || AppUtils.initialsFromText(payload.holderName),
       personLine: `${payload.holderName}, ${payload.holderAge} · ${payload.holderCity}`,
-      roleEventLine: `${payload.holderRole} · ${payload.eventTitle}`,
+      roleBadgeLabel: this.contextualRoleBadge(payload.holderRole),
+      eventLine: payload.eventTitle,
       dateLine: payload.eventTimeframe || payload.eventDateLabel
     };
+  }
+
+  private static contextualRoleBadge(role: string): string {
+    return role.trim();
   }
 
   static async qrImageDataUrl(scanCode: string): Promise<string> {

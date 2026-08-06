@@ -414,6 +414,7 @@ export interface AssetTicketDTO {
   scanCode: string;
   holderUserId: string;
   usedAtIso: string | null;
+  issuedAtIso?: string | null;
   type: 'events' | 'hosting' | 'invitations';
   status?: string | null;
   title: string;

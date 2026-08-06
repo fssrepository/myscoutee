@@ -321,6 +321,37 @@ export interface SmartListCacheableConfig<T, TFilters extends SmartListFilters =
   equals?: (current: T, next: T, index: number, query: ListQuery<TFilters>) => boolean;
 }
 
+export interface SmartListPollDeltaKnownItem {
+  id: string;
+  revision: string | number;
+}
+
+export interface SmartListPollDeltaBoundary {
+  id: string;
+  position: string | number;
+}
+
+export interface SmartListPollDeltaSnapshot {
+  knownItems: readonly SmartListPollDeltaKnownItem[];
+  loadedTail: SmartListPollDeltaBoundary | null;
+}
+
+export interface SmartListPollDeltaResult<T> {
+  upserts: readonly T[];
+  removedIds: readonly string[];
+  total: number;
+}
+
+export interface SmartListPollDeltaConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
+  revision: (item: T, index: number, query: ListQuery<TFilters>) => string | number;
+  position: (item: T, index: number, query: ListQuery<TFilters>) => string | number;
+  load: (
+    query: ListQuery<TFilters>,
+    snapshot: SmartListPollDeltaSnapshot,
+    context?: SmartListLoadContext
+  ) => Observable<SmartListPollDeltaResult<T>>;
+}
+
 export interface SmartListSortableConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   sortKey?: (item: T, index: number, query: ListQuery<TFilters>) => SmartListLocalSortKey | null | undefined;
 }
@@ -342,6 +373,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   preloadOffsetPx?: number;
   showBackgroundLoadingProgress?: SmartListConfigValue<boolean, TFilters>;
   pollIntervalMs?: SmartListConfigValue<number | null, TFilters>;
+  pollDelta?: SmartListPollDeltaConfig<T, TFilters>;
   loadingDelayMs?: number;
   loadingWindowMs?: number;
   defaultView?: string;

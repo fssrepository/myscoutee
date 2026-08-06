@@ -3,6 +3,7 @@ export { SeedAssetBuilder, type SeedAssetTemplate } from './asset-seed.builder';
 export { SeedChatsBuilder } from './chats-seed.builder';
 export { SeedEventBuilder } from './event-seed.builder';
 export { SeedEventFeedbackBuilder } from './event-feedback-seed.builder';
+export { SeedEventTicketsBuilder } from './event-ticket-seed.builder';
 export { SeedEventsBuilder } from './events-seed.builder';
 export { SeedHelpCenterContentBuilder } from './help-center-content-seed.builder';
 export { SeedIdeaPostsBuilder } from './idea-posts-seed.builder';

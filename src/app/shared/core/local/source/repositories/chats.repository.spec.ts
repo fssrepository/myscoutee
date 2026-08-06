@@ -1,8 +1,11 @@
 import { CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { ChatThreadRecord } from '../entity/chat.entity';
+import { USERS_TABLE_NAME } from '../entity/user.entity';
+import type { UserRecord } from '../entity/user.entity';
 import { TestBed } from '@angular/core/testing';
 
 import type * as ContractTypes from '../../../contracts';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { LocalChatsRepository } from './chats.repository';
@@ -123,12 +126,136 @@ describe('LocalChatsRepository chat pages', () => {
     expect(page.items.map(item => item.id)).toEqual(['chat-middle']);
   });
 
+  it('materializes an empty published-event channel without changing attention counters', () => {
+    const ownerUserId = 'user-publish-counter-test';
+    const owner = user(ownerUserId);
+    seedUser(owner);
+    const originalChats = owner.activities.chats ?? 0;
+    const originalEventChats = owner.activities.chat?.event ?? 0;
+    const event = {
+      id: 'event-publish-chat-test',
+      title: 'Published Event',
+      acceptedMemberUserIds: [ownerUserId],
+      adminIds: [ownerUserId]
+    } as ActivityEventRecord;
+
+    const firstAdded = repository.syncPublishedMainEventChat(event, ownerUserId);
+    const repeatedAdded = repository.syncPublishedMainEventChat(event, ownerUserId);
+
+    const chatRecord = repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-chat-test');
+    expect(chatRecord).toMatchObject({
+      lastMessage: '',
+      lastSenderId: null,
+      unread: 0,
+      channelType: 'mainEvent',
+      ownerId: event.id,
+      eventId: event.id,
+      ownerStatus: 'A'
+    });
+    expect(firstAdded).toBe(true);
+    expect(repeatedAdded).toBe(false);
+    const publishedOwner = memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId];
+    expect(publishedOwner.activities.chats).toBe(originalChats);
+    expect(publishedOwner.activities.chat?.all).toBe(originalChats);
+    expect(publishedOwner.activities.chat?.event).toBe(originalEventChats);
+  });
+
+  it('updates every physical chat copy for an event without replacing chat identity or content', () => {
+    const eventId = 'event-status-test';
+    const records: ChatThreadRecord[] = [
+      {
+        id: `c-context-main-${eventId}`,
+        ownerUserId: 'casey',
+        avatar: 'CB',
+        title: 'Main',
+        lastMessage: 'kept main message',
+        lastSenderId: 'nova',
+        memberIds: ['casey', 'nova'],
+        unread: 0,
+        channelType: 'mainEvent',
+        ownerId: eventId,
+        eventId,
+        ownerStatus: 'A'
+      },
+      {
+        id: `c-context-optional-${eventId}`,
+        ownerUserId: 'nova',
+        avatar: 'NS',
+        title: 'Optional',
+        lastMessage: 'kept optional message',
+        lastSenderId: 'casey',
+        memberIds: ['casey', 'nova'],
+        unread: 1,
+        channelType: 'optionalSubEvent',
+        ownerId: `${eventId}:optional-1`,
+        eventId,
+        ownerStatus: 'A'
+      }
+    ];
+    seedChats(records);
+
+    expect(repository.updateEventChatOwnerStatus(eventId, 'DR')).toBe(2);
+    expect(repository.queryChatItemById('casey', records[0].id)).toMatchObject({
+      id: records[0].id,
+      lastMessage: 'kept main message',
+      ownerStatus: 'DR'
+    });
+    expect(repository.queryChatItemById('nova', records[1].id)).toMatchObject({
+      id: records[1].id,
+      lastMessage: 'kept optional message',
+      unread: 1,
+      ownerStatus: 'DR'
+    });
+
+    expect(repository.updateEventChatOwnerStatus(eventId, 'A')).toBe(2);
+    expect(repository.queryChatItemById('casey', records[0].id)?.ownerStatus).toBe('A');
+    expect(repository.queryChatItemById('nova', records[1].id)?.ownerStatus).toBe('A');
+  });
+
+  it('keeps the empty published-event channel read when it is opened', () => {
+    const ownerUserId = 'user-publish-read-test';
+    const owner = user(ownerUserId);
+    seedUser(owner);
+    const originalChats = owner.activities.chats ?? 0;
+    const event = {
+      id: 'event-publish-read-test',
+      title: 'Published Event',
+      acceptedMemberUserIds: [ownerUserId],
+      adminIds: [ownerUserId]
+    } as ActivityEventRecord;
+    repository.syncPublishedMainEventChat(event);
+    const chatRecord = repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-read-test');
+
+    const read = repository.markChatRead(chatRecord!, ownerUserId, [], true);
+
+    expect(read).toMatchObject({ messageIds: [], unread: 0 });
+    expect(repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-read-test')).toMatchObject({
+      unread: 0
+    });
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId].activities.chats).toBe(originalChats);
+  });
+
   function seedChats(records: ChatThreadRecord[]): void {
     memoryDb.write(state => ({
       ...state,
       [CHATS_TABLE_NAME]: {
         byId: Object.fromEntries(records.map(record => [recordKey(record), record])),
         ids: records.map(recordKey)
+      }
+    }));
+  }
+
+  function seedUser(record: UserRecord): void {
+    memoryDb.write(state => ({
+      ...state,
+      [USERS_TABLE_NAME]: {
+        byId: {
+          ...state[USERS_TABLE_NAME].byId,
+          [record.id]: record
+        },
+        ids: state[USERS_TABLE_NAME].ids.includes(record.id)
+          ? [...state[USERS_TABLE_NAME].ids]
+          : [...state[USERS_TABLE_NAME].ids, record.id]
       }
     }));
   }
@@ -180,4 +307,42 @@ function chat(
 
 function recordKey(record: ChatThreadRecord): string {
   return `${record.ownerUserId}:${record.id}`;
+}
+
+function user(id: string): UserRecord {
+  return {
+    id,
+    name: 'Publish Counter Test',
+    age: 30,
+    birthday: '1996-01-01',
+    city: 'Bratislava',
+    height: '180 cm',
+    physique: 'average',
+    languages: ['English'],
+    horoscope: 'Capricorn',
+    initials: 'PT',
+    gender: 'man',
+    statusText: '',
+    hostTier: '',
+    traitLabel: '',
+    completion: 100,
+    headline: '',
+    about: '',
+    profileStatus: 'public',
+    activities: {
+      game: 0,
+      chats: 3,
+      invitations: 0,
+      events: 0,
+      hosting: 0,
+      chat: {
+        all: 3,
+        event: 2,
+        subEvent: 1,
+        group: 0,
+        service: 0,
+        appSupport: 0
+      }
+    }
+  };
 }

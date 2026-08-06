@@ -2185,7 +2185,7 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'qr_code_scanner',
     title: 'Scan a ticket',
     blurb: 'Check in an attendee with a valid, unused ticket.',
-    contentHtml: '<p>The server checks that you can manage the event and that the ticket is active, eligible, unexpired, and unused. A successful scan checks in the named holder and uses the ticket once; another scan is rejected. The QR code contains only an anonymous ticket code.</p>'
+    contentHtml: '<p>Use the <strong>Camera on / Camera off</strong> toggle to start or stop the live stream. The server checks that you can manage the event and that the ticket is active, eligible, unexpired, and unused. A successful scan stops the camera, keeps the accepted frame visible, checks in the named holder and uses the ticket once; turning the camera on again and scanning the same QR is rejected. The QR code contains only an anonymous ticket code.</p>'
   }
 ];
 
@@ -2263,7 +2263,7 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'qr_code_scanner',
     title: 'Jegy beolvasása',
     blurb: 'Érvényes, még nem használt jeggyel léptesd be a résztvevőt.',
-    contentHtml: '<p>A szerver ellenőrzi, hogy kezelheted-e az eseményt, és a jegy aktív, jogosult résztvevőhöz tartozik, nem járt le és még nem használták. A sikeres beolvasás egyszer használhatóan belépteti a megnevezett tulajdonost; az újabb próbát elutasítja. A QR-kód csak egy személytelen jegyazonosítót tartalmaz.</p>'
+    contentHtml: '<p>A <strong>Kamera be / Kamera ki</strong> kapcsoló indítja vagy állítja le az élő képet. A szerver ellenőrzi, hogy kezelheted-e az eseményt, és a jegy aktív, jogosult résztvevőhöz tartozik, nem járt le és még nem használták. A sikeres beolvasás leállítja a kamerát, megtartja az elfogadott képkockát, egyszer használhatóan belépteti a megnevezett tulajdonost; a kamera újbóli bekapcsolása után ugyanazt a QR-kódot a rendszer elutasítja. A QR-kód csak egy személytelen jegyazonosítót tartalmaz.</p>'
   }
 ];
 

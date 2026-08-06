@@ -53,10 +53,13 @@ import {
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersService } from './users.service';
 import {
@@ -87,6 +90,21 @@ import type {
 import type { IEventsService } from '../../../contracts/activity.interface';
 import { LocalActivityMembersService } from './activity-members.service';
 
+interface LocalEventCounterSnapshot {
+  events: number;
+  invitations: number;
+  hosting: number;
+  event: {
+    all: number;
+    active: number;
+    pending: number;
+    invitations: number;
+    hosting: number;
+    drafts: number;
+    trash: number;
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -96,12 +114,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
   private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly usersService = inject(LocalUsersService);
 
@@ -511,7 +531,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const joinRequestAlreadyPending = [
+      ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
+      ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
+    ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
     if (request.checkoutRequest) {
       await this.saveCheckoutBasketRecord({
@@ -549,6 +575,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           pendingReason: null
         })
       : null;
+    if (result?.membershipStatus === 'accepted' && record) {
+      this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
+    }
     await this.updateCheckoutBasketStateRecord({
       userId: normalizedUserId,
       sourceId: normalizedSourceId,
@@ -560,12 +589,22 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       resultState: result?.membershipStatus === 'accepted' ? 'succeeded' : null,
       checkoutSessionId
     });
-    await this.patchLocalUserActivityCounterDeltas(normalizedUserId, request.counterDelta ?? null);
     if (resolvingInvitation && result) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+      if (result.membershipStatus === 'accepted' && record) {
+        this.appendInvitationAcceptedNotifications(record, normalizedUserId);
+      }
     }
+    if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
+      this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
+    }
+    const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
+      result,
+      normalizedUserId,
+      beforeCounters
+    );
     await this.eventsRepository.flushToIndexedDb();
-    return result;
+    return resultWithCounterDelta;
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -729,9 +768,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    if (savedRecord) {
+      this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
+    }
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
@@ -743,9 +785,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    if (savedRecord) {
+      this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
+    }
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
@@ -814,55 +859,120 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return `subevent-${Math.max(1, index + 1)}`;
   }
 
-  async trashItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
+  async trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const beforeCounters = this.localEventCounterSnapshot(userId);
+    const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     const resolvingInvitation = this.isEventInvitation(userId, sourceId);
     this.eventsRepository.trashItem(userId, sourceId);
+    this.assetTicketsRepository.synchronizeForEvent(sourceId);
     if (resolvingInvitation) {
       this.markEventInvitationNotificationRead(userId, sourceId);
     }
-    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
+    const result = await this.withLocalMutationCounterDelta(
+      this.localLifecycleResult(sourceId, 'trash', this.eventsRepository.peekKnownItemById(userId, sourceId),
+        !!beforeRecord && this.localEventStatus(beforeRecord) !== 'T'),
+      userId,
+      beforeCounters
+    );
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return result;
   }
 
-  async publishItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
+  async publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const beforeCounters = this.localEventCounterSnapshot(userId);
+    const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.publishItem(userId, sourceId);
-    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
+    const published = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (published) {
+      this.assetTicketsRepository.synchronizeForEvent(published.id);
+    }
+    const changed = !!beforeRecord && this.localEventStatus(beforeRecord) !== 'A';
+    const eventChatAdded = changed && published
+      ? this.chatsRepository.syncPublishedMainEventChat(published, userId)
+      : false;
+    if (changed && published) {
+      this.chatsRepository.updateEventChatOwnerStatus(sourceId, 'A');
+      if (eventChatAdded) {
+        this.appendEventLifecycleNotifications(
+          userId,
+          sourceId,
+          published,
+          'event-invite',
+          published.title,
+          `You were invited to ${published.title}.`,
+          'info',
+          null,
+          true
+        );
+      } else {
+        this.appendEventLifecycleNotifications(
+          userId,
+          sourceId,
+          published,
+          'event-modified',
+          published.title,
+          'notification.event.available.again.message',
+          'success',
+          'notification.event.available.again.message'
+        );
+      }
+    }
+    const result = await this.withLocalMutationCounterDelta(
+      this.localLifecycleResult(sourceId, 'publish', published, changed),
+      userId,
+      beforeCounters,
+      null
+    );
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return result;
   }
 
-  async unpublishItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
+  async unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const beforeCounters = this.localEventCounterSnapshot(userId);
+    const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.unpublishItem(userId, sourceId);
-    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
+    this.assetTicketsRepository.synchronizeForEvent(sourceId);
+    const changed = !!beforeRecord && this.localEventStatus(beforeRecord) !== 'DR';
+    if (changed && beforeRecord) {
+      this.chatsRepository.updateEventChatOwnerStatus(sourceId, 'DR');
+      this.appendEventLifecycleNotifications(
+        userId,
+        sourceId,
+        beforeRecord,
+        'event-under-review',
+        beforeRecord.title,
+        'notification.event.under.review.message',
+        'warning',
+        'notification.event.under.review.message'
+      );
+    }
+    const result = await this.withLocalMutationCounterDelta(
+      this.localLifecycleResult(
+        sourceId,
+        'unpublish',
+        this.eventsRepository.peekKnownItemById(userId, sourceId),
+        changed
+      ),
+      userId,
+      beforeCounters
+    );
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return result;
   }
 
-  async restoreItem(
-    userId: string,
-    sourceId: string,
-    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<EventParticipationActionResultDTO | null> {
+  async restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const beforeCounters = this.localEventCounterSnapshot(userId);
+    const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.restoreItem(userId, sourceId);
-    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
-    await this.eventsRepository.flushToIndexedDb();
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const restored = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (restored) {
+      this.assetTicketsRepository.synchronizeForEvent(restored.id);
+    }
     if (!restored) {
-      return {
+      const unavailable = await this.withLocalMutationCounterDelta({
         sourceId,
         slotSourceId: null,
         action: 'restore',
@@ -875,12 +985,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         paymentSessionId: null,
         changed: false,
         reason: 'restore-unavailable'
-      };
+      }, userId, beforeCounters);
+      await this.eventsRepository.flushToIndexedDb();
+      await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+      return unavailable;
     }
     const acceptedMembers = Math.max(0, Math.trunc(Number(restored.acceptedMembers) || 0));
     const pendingMembers = Math.max(0, Math.trunc(Number(restored.pendingMembers) || 0));
     const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(restored.capacityTotal) || 0));
-    return {
+    const result = await this.withLocalMutationCounterDelta({
       sourceId,
       slotSourceId: null,
       action: 'restore',
@@ -891,9 +1004,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       capacityTotal,
       full: capacityTotal > 0 && acceptedMembers >= capacityTotal,
       paymentSessionId: null,
-      changed: true,
+      changed: !!beforeRecord && this.localEventStatus(beforeRecord) === 'T',
       reason: null
-    };
+    }, userId, beforeCounters);
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return result;
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -981,7 +1097,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       totalAmount?: number | null;
       currency?: string | null;
       skipLocalRouteDelay?: boolean;
-      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
@@ -989,7 +1104,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const joinRequestAlreadyPending = [
+      ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
+      ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
+    ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     let checkoutPayloadSaved = false;
     if (options.checkoutState) {
       if (options.basketItems?.length) {
@@ -1038,15 +1159,19 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           checkoutSessionId: options.paymentSessionId ?? null
         });
       }
-      await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
       if (resolvingInvitation) {
         this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
       }
+      const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
+        result,
+        normalizedUserId,
+        beforeCounters
+      );
       await this.eventsRepository.flushToIndexedDb();
       if (options.skipLocalRouteDelay !== true) {
         await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
       }
-      return result;
+      return resultWithCounterDelta;
     }
     const record = this.eventsRepository.requestJoin(
       normalizedUserId,
@@ -1059,6 +1184,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const result = record
       ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
       : null;
+    if (result?.membershipStatus === 'accepted' && record) {
+      this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
+    }
     if (result?.membershipStatus === 'accepted' && options.checkoutState) {
       await this.updateCheckoutBasketStateRecord({
         userId: normalizedUserId,
@@ -1068,15 +1196,25 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         checkoutSessionId: options.paymentSessionId ?? null
       });
     }
-    await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
     if (resolvingInvitation && result) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+      if (result.membershipStatus === 'accepted' && record) {
+        this.appendInvitationAcceptedNotifications(record, normalizedUserId);
+      }
     }
+    if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
+      this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
+    }
+    const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
+      result,
+      normalizedUserId,
+      beforeCounters
+    );
     await this.eventsRepository.flushToIndexedDb();
     if (options.skipLocalRouteDelay !== true) {
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
-    return result;
+    return resultWithCounterDelta;
   }
 
   private isEventInvitation(userId: string, sourceId: string): boolean {
@@ -1150,7 +1288,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       checkoutState?: EventCheckoutState | null;
       checkoutResultState?: EventCheckoutResultState | null;
       checkoutSessionId?: string | null;
-      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
@@ -1158,7 +1295,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeLeave = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const cancellingJoinRequest = [
+      ...(eventBeforeLeave?.pendingMemberUserIds ?? []),
+      ...(eventBeforeLeave?.pendingRequestMemberUserIds ?? [])
+    ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     if (options.checkoutState) {
       await this.updateCheckoutBasketStateRecord({
         userId: normalizedUserId,
@@ -1172,13 +1315,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       slotSourceId: options.slotSourceId ?? null,
       removeMembershipOnly: options.removeMembershipOnly === true
     });
-    await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
     if (resolvingInvitation && record) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
     }
+    if (record && cancellingJoinRequest && eventBeforeLeave) {
+      this.appendJoinRequestAdminNotifications(eventBeforeLeave, normalizedUserId, true);
+    }
+    const result = await this.withLocalMutationCounterDelta(
+      record ? this.leftEventResult(record) : null,
+      normalizedUserId,
+      beforeCounters
+    );
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return record ? this.leftEventResult(record) : null;
+    return result;
   }
 
   private leftEventResult(record: ActivityEventRecord): EventParticipationActionResultDTO {
@@ -1648,15 +1798,332 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return Math.round((Number(value) || 0) * 100) / 100;
   }
 
-  private async patchLocalUserActivityCounterDeltas(
-    userId: string,
-    delta: UserMenuCounterDeltasDto | null
-  ): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !delta) {
+  private localEventCounterSnapshot(userId: string): LocalEventCounterSnapshot {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return {
+        events: 0,
+        invitations: 0,
+        hosting: 0,
+        event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, trash: 0 }
+      };
+    }
+    const invitationItems = this.eventsRepository.queryInvitationItemsByUser(normalizedUserId);
+    const hostingItems = this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
+      .filter(record => this.localEventStatus(record) !== 'T');
+    const memberItems = this.eventsRepository.queryEventItemsByUser(normalizedUserId)
+      .filter(record => this.localEventStatus(record) !== 'T');
+    const pending = memberItems.filter(record => this.localEventRecordHasPendingMember(record, normalizedUserId)).length;
+    const active = this.eventsRepository.countUpcomingActiveEventItemsByUser(normalizedUserId);
+    const invitations = invitationItems.length;
+    const hosting = hostingItems.length;
+    return {
+      events: active,
+      invitations,
+      hosting,
+      event: {
+        all: active + pending + invitations + hosting,
+        active,
+        pending,
+        invitations,
+        hosting,
+        drafts: hostingItems.filter(record => this.localEventStatus(record) === 'DR').length,
+        trash: this.eventsRepository.queryTrashedItemsByUser(normalizedUserId).length
+      }
+    };
+  }
+
+  private localEventRecordHasPendingMember(record: ActivityEventRecord, userId: string): boolean {
+    return (record.pendingRequestMemberUserIds ?? []).some(memberId => memberId.trim() === userId)
+      || (record.pendingMemberUserIds ?? []).some(memberId => memberId.trim() === userId);
+  }
+
+  private localEventStatus(record: ActivityEventRecord | null | undefined): string {
+    return `${record?.status ?? ''}`.trim().toUpperCase();
+  }
+
+  private appendEventLifecycleNotifications(
+    actorUserId: string,
+    sourceId: string,
+    event: ActivityEventRecord,
+    kind: string,
+    title: string,
+    message: string,
+    tone: 'info' | 'success' | 'warning',
+    messageKey: string | null = null,
+    invitationOnly = false
+  ): void {
+    const actorId = actorUserId.trim();
+    const pendingUserIds = new Set((event.pendingMemberUserIds ?? []).map(id => id.trim()).filter(Boolean));
+    const invitedUserIds = new Set((event.invitedMemberUserIds ?? []).map(id => id.trim()).filter(Boolean));
+    const recipients = invitationOnly
+      ? [...invitedUserIds].filter(userId => pendingUserIds.has(userId))
+      : [
+          ...(event.acceptedMemberUserIds ?? []),
+          ...(event.pendingMemberUserIds ?? []),
+          ...(event.invitedMemberUserIds ?? [])
+        ];
+    const actor = this.usersRepository.queryUserById(actorId);
+    const createdAtIso = new Date().toISOString();
+    const uniqueRecipients = [...new Set(recipients.map(id => id.trim()).filter(id => id && id !== actorId))];
+    const records: NotificationRecord[] = uniqueRecipients.map(recipientUserId => ({
+      id: this.localNotificationId(kind, sourceId, recipientUserId),
+      recipientUserId,
+      kind,
+      category: 'event',
+      title,
+      message,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: actor?.name ?? null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId,
+      payload: {
+        eventId: sourceId,
+        eventScope: invitationOnly ? 'invitations' : 'lifecycle',
+        notification_tone: tone,
+        ...(messageKey ? { notification_message_key: messageKey } : {})
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendInvitationAcceptedNotifications(
+    event: ActivityEventRecord,
+    acceptedUserId: string
+  ): void {
+    const memberUserId = acceptedUserId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!memberUserId || !eventId) {
       return;
     }
-    await this.usersService.patchUserActivityCounterDeltas(normalizedUserId, delta);
+    const member = this.usersRepository.queryUserById(memberUserId);
+    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(memberListOpen
+        ? [
+            ...(event.acceptedMemberUserIds ?? []),
+            ...(event.pendingMemberUserIds ?? []),
+            ...(event.invitedMemberUserIds ?? [])
+          ].map(userId => `${userId ?? ''}`.trim())
+        : [])
+    ].filter(userId => userId && userId !== memberUserId))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId('event-invitation-accepted', eventId, recipientUserId),
+      recipientUserId,
+      kind: 'event-invitation-accepted',
+      category: 'event',
+      title: 'Event invitation accepted',
+      message: `${memberName} accepted the invitation to ${eventTitle}.`,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: memberUserId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId,
+        memberName,
+        membershipAction: 'accepted',
+        acceptedAtIso: createdAtIso,
+        notification_tone: 'accent'
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendJoinRequestAdminNotifications(
+    event: ActivityEventRecord,
+    memberUserId: string,
+    cancelled: boolean
+  ): void {
+    const normalizedMemberUserId = memberUserId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!normalizedMemberUserId || !eventId) {
+      return;
+    }
+    const member = this.usersRepository.queryUserById(normalizedMemberUserId);
+    const memberName = `${member?.name ?? normalizedMemberUserId}`.trim() || normalizedMemberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ].filter(userId => userId && userId !== normalizedMemberUserId))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const kind = cancelled
+      ? 'event-admin-join-request-cancelled'
+      : 'event-admin-join-request';
+    const action = cancelled ? 'cancelled' : 'requested';
+    const tone = cancelled ? 'warning' : 'accent';
+    const messageKey = cancelled
+      ? 'notification.event.join.cancelled.message'
+      : 'notification.event.join.requested.message';
+    const badgeKey = cancelled
+      ? 'notification.event.join.cancelled.badge'
+      : 'notification.event.join.pending.badge';
+    const badgeFallback = cancelled ? 'Cancelled' : 'Pending';
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId(kind, eventId, recipientUserId),
+      recipientUserId,
+      kind,
+      category: 'event-admin',
+      title: eventTitle,
+      message: cancelled ? 'Join request cancelled.' : 'Join request received.',
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: normalizedMemberUserId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId: normalizedMemberUserId,
+        memberName,
+        membershipAction: action,
+        notification_tone: tone,
+        notification_message_key: messageKey,
+        notification_status_badge_key: badgeKey,
+        notification_status_badge_fallback: badgeFallback,
+        notification_status_badge_tone: tone,
+        [cancelled ? 'cancelledAtIso' : 'requestedAtIso']: createdAtIso
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private localNotificationId(kind: string, sourceId: string, recipientUserId: string): string {
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${kind}:${sourceId}:${recipientUserId}:${occurrenceId}`;
+  }
+
+  private async withLocalMutationCounterDelta(
+    result: EventParticipationActionResultDTO | null,
+    userId: string,
+    beforeCounters: LocalEventCounterSnapshot,
+    additionalDirections: UserMenuCounterDeltasDto | null = null
+  ): Promise<EventParticipationActionResultDTO | null> {
+    if (!result) {
+      return null;
+    }
+    const eventDelta = this.localEventCounterDelta(beforeCounters, this.localEventCounterSnapshot(userId));
+    if (eventDelta) {
+      await this.usersService.patchUserActivityCounterDeltas(userId, eventDelta);
+    }
+    return {
+      ...result,
+      counterDelta: this.mergeLocalCounterDirections(eventDelta, additionalDirections)
+    };
+  }
+
+  private mergeLocalCounterDirections(
+    first: UserMenuCounterDeltasDto | null,
+    second: UserMenuCounterDeltasDto | null
+  ): UserMenuCounterDeltasDto | null {
+    if (!first && !second) {
+      return null;
+    }
+    const merged: UserMenuCounterDeltasDto = { ...(first ?? {}), ...(second ?? {}) };
+    for (const group of ['chat', 'event', 'asset'] as const) {
+      const nested = { ...(first?.[group] ?? {}), ...(second?.[group] ?? {}) };
+      if (Object.keys(nested).length > 0) {
+        (merged as Record<string, unknown>)[group] = nested;
+      }
+    }
+    return merged;
+  }
+
+  private localEventCounterDelta(
+    before: LocalEventCounterSnapshot,
+    after: LocalEventCounterSnapshot
+  ): UserMenuCounterDeltasDto | null {
+    const delta: UserMenuCounterDeltasDto = {};
+    for (const key of ['events', 'invitations', 'hosting'] as const) {
+      const value = Math.sign(after[key] - before[key]);
+      if (value !== 0) {
+        delta[key] = value;
+      }
+    }
+    const event = this.localNestedCounterDelta(before.event, after.event, [
+      'all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash'
+    ]);
+    if (event) {
+      delta.event = event;
+    }
+    return Object.keys(delta).length > 0 ? delta : null;
+  }
+
+  private localNestedCounterDelta(
+    before: object | null | undefined,
+    after: object | null | undefined,
+    keys: readonly string[]
+  ): Record<string, number> | null {
+    const beforeValues = before as Partial<Record<string, unknown>> | null | undefined;
+    const afterValues = after as Partial<Record<string, unknown>> | null | undefined;
+    const delta: Record<string, number> = {};
+    for (const key of keys) {
+      const value = this.localCounterDirection(beforeValues?.[key], afterValues?.[key]);
+      if (value !== 0) {
+        delta[key] = value;
+      }
+    }
+    return Object.keys(delta).length > 0 ? delta : null;
+  }
+
+  private localCounterValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private localCounterDirection(before: unknown, after: unknown): -1 | 0 | 1 {
+    return Math.sign(this.localCounterValue(after) - this.localCounterValue(before)) as -1 | 0 | 1;
+  }
+
+  private localLifecycleResult(
+    sourceId: string,
+    action: string,
+    record: ActivityEventRecord | null,
+    changed: boolean
+  ): EventParticipationActionResultDTO {
+    const acceptedMembers = this.localCounterValue(record?.acceptedMembers);
+    const pendingMembers = this.localCounterValue(record?.pendingMembers);
+    const capacityTotal = Math.max(acceptedMembers, this.localCounterValue(record?.capacityTotal));
+    return {
+      sourceId: `${sourceId ?? ''}`.trim(),
+      slotSourceId: null,
+      action,
+      membershipStatus: record ? this.localEventStatus(record).toLowerCase() : 'unchanged',
+      pendingReason: null,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: record?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      paymentSessionId: null,
+      changed,
+      reason: record ? null : 'event-unavailable'
+    };
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {

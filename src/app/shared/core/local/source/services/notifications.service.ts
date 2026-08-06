@@ -6,7 +6,9 @@ import type {
   NotificationPreferencesRequestDto,
   NotificationPreferencesResponseDto,
   NotificationReadResponseDto,
-  NotificationService
+  NotificationService,
+  NotificationSyncRequestDto,
+  NotificationSyncResponseDto
 } from '../../../contracts/notification.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 import { LocalRouteDelayService } from './route-delay.service';
@@ -75,6 +77,33 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
     return {
       notification: LocalNotificationMapper.toDto(notification),
       unreadCount
+    };
+  }
+
+  async sync(
+    userId: string,
+    request: NotificationSyncRequestDto,
+    signal?: AbortSignal
+  ): Promise<NotificationSyncResponseDto> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        upserts: [],
+        removedIds: [],
+        total: 0,
+        unreadCount: 0,
+        muted: false
+      };
+    }
+    await this.repository.whenReady();
+    await this.waitForRouteDelay(LocalNotificationsService.ROUTE, signal);
+    const result = this.repository.sync(normalizedUserId, request);
+    return {
+      upserts: LocalNotificationMapper.toDtoList(result.upserts),
+      removedIds: result.removedIds,
+      total: result.total,
+      unreadCount: result.unreadCount,
+      muted: result.muted
     };
   }
 

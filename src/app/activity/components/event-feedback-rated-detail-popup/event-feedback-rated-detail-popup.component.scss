@@ -132,6 +132,39 @@
   margin-top: 0.65rem;
 }
 
+.rated-feedback-text {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  padding: 0.7rem;
+  border: 1px solid #c9daed;
+  border-radius: 0.65rem;
+  background: #f4f8fd;
+}
+
+.rated-feedback-text > span {
+  color: #536c8c;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.rated-feedback-text > p {
+  margin: 0;
+  color: #173e6d;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.rated-feedback-text--opinion {
+  border-color: #b9d5ef;
+  background: #eef7ff;
+}
+
+.rated-feedback-text--organizer-note {
+  border-color: #e7ca99;
+  background: #fff8eb;
+}
+
 .rated-feedback-trait-list {
   display: flex;
   flex-wrap: wrap;

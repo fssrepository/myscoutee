@@ -219,12 +219,9 @@ export class LocalUserRealtimeSnapshotBuilder {
   }
 
   private static increaseImpressions(
-    impressions: UserImpressionsDto | undefined,
+    impressions: UserImpressionsDto,
     increments: UserRealtimeCountersDto
-  ): UserImpressionsDto | undefined {
-    if (!impressions) {
-      return undefined;
-    }
+  ): UserImpressionsDto {
     return {
       host: this.increaseImpressionSection(impressions.host, {
         unreadCount: this.count(increments.events) + this.count(increments.hosting),
@@ -261,9 +258,9 @@ export class LocalUserRealtimeSnapshotBuilder {
       || Boolean(user.impressions?.host || user.impressions?.member);
   }
 
-  private static cloneImpressions(impressions: UserImpressionsDto | undefined): UserImpressionsDto | undefined {
+  private static cloneImpressions(impressions: UserImpressionsDto | undefined): UserImpressionsDto {
     if (!impressions) {
-      return undefined;
+      return {};
     }
     return {
       host: this.cloneImpressionSection(impressions.host),

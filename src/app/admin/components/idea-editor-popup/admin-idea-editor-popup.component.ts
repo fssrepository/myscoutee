@@ -24,6 +24,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/app-utils';
 import {
   IdeaPostsService,
   type IdeaPostAdminCountsDto,
@@ -114,6 +115,7 @@ interface IdeaPostDraft {
   excerpt: string;
   contentHtml: string;
   imageUrls: string[];
+  removedImageUrls: string[];
   featured: boolean;
   published: boolean;
   submittedAtLocal: string;
@@ -186,6 +188,8 @@ export class AdminIdeaEditorPopupComponent {
   private adminPostIndex = new Map<string, IdeaPostDto>();
   private adminIdeaCardIndex = new Map<string, IdeaInfoCard>();
   private readonly featuredPendingIds = new Set<string>();
+  private articlePreviewHtmlSource = '';
+  private articlePreviewHtmlRendered = '';
 
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
     { id: 'all', label: 'All', icon: 'view_day' },
@@ -562,6 +566,7 @@ export class AdminIdeaEditorPopupComponent {
       excerpt: '',
       contentHtml: this.defaultDraftHtml(targetLang),
       imageUrls: [],
+      removedImageUrls: [],
       featured: false,
       published: false,
       submittedAtLocal: this.toDateTimeLocal(new Date().toISOString()),
@@ -1269,23 +1274,46 @@ export class AdminIdeaEditorPopupComponent {
     if (!this.draft) {
       return;
     }
-    const pasted = this.htmlFromClipboardPayload(
-      event.clipboardData?.getData('text/html') ?? '',
-      event.clipboardData?.getData('text/plain') ?? ''
-    );
-    if (!pasted.trim()) {
-      return;
-    }
-    event.preventDefault();
     const textarea = event.target instanceof HTMLTextAreaElement ? event.target : null;
     const current = this.draft.contentHtml ?? '';
     const start = textarea?.selectionStart ?? current.length;
     const end = textarea?.selectionEnd ?? start;
+    const clipboardHtml = event.clipboardData?.getData('text/html') ?? '';
+    const clipboardText = event.clipboardData?.getData('text/plain') ?? '';
+    const pasted = AppUtils.isHtmlTagPosition(current, start)
+      ? clipboardText
+      : this.htmlFromClipboardPayload(clipboardHtml, clipboardText);
+    if (!pasted.trim()) {
+      return;
+    }
+    event.preventDefault();
     this.draft.contentHtml = this.formatHtmlFragment(`${current.slice(0, start)}${pasted}${current.slice(end)}`);
   }
 
+  protected removeDraftImage(imageUrl: string): void {
+    if (!this.draft) {
+      return;
+    }
+    this.draft.removedImageUrls = this.uniqueImageUrls([
+      ...this.draft.removedImageUrls,
+      imageUrl
+    ]);
+    this.draft.contentHtml = AppUtils.removeManagedImageReferencesHtml(
+      this.draft.contentHtml,
+      [imageUrl]
+    );
+  }
+
   protected articlePreviewHtml(post: Pick<IdeaPostDto, 'contentHtml'> | null): string {
-    return this.expandPlainImageLinksInHtml(post?.contentHtml ?? '');
+    const source = `${post?.contentHtml ?? ''}`;
+    if (source !== this.articlePreviewHtmlSource) {
+      this.articlePreviewHtmlSource = source;
+      this.articlePreviewHtmlRendered = AppUtils.mediaImageVariantHtml(
+        this.expandPlainImageLinksInHtml(source),
+        'large'
+      );
+    }
+    return this.articlePreviewHtmlRendered;
   }
 
   protected postStatusLabel(post: Pick<IdeaPostDto, 'published' | 'featured' | 'trashed'>): string {
@@ -1429,6 +1457,7 @@ export class AdminIdeaEditorPopupComponent {
         0,
         AdminIdeaEditorPopupComponent.IMAGE_LIMIT
       ),
+      removedImageUrls: [],
       featured: false,
       published: false,
       submittedAtLocal: this.toDateTimeLocal(post.submittedAtIso || post.updatedAtIso || post.createdAtIso),
@@ -1444,6 +1473,7 @@ export class AdminIdeaEditorPopupComponent {
       excerpt: '',
       contentHtml: this.defaultDraftHtml(this.draftContentLang),
       imageUrls: [...source.imageUrls],
+      removedImageUrls: [],
       featured: false,
       published: false,
       submittedAtLocal: source.submittedAtLocal,
@@ -1469,6 +1499,7 @@ export class AdminIdeaEditorPopupComponent {
       contentHtml: draft.contentHtml,
       imageUrl: imageUrls[0] ?? '',
       imageUrls,
+      removedImageUrls: [...draft.removedImageUrls],
       featured: false,
       published: false,
       submittedAtIso: this.fromDateTimeLocal(draft.submittedAtLocal)
@@ -1586,10 +1617,13 @@ export class AdminIdeaEditorPopupComponent {
 
   private htmlFromClipboardPayload(html: string, text: string): string {
     const normalizedHtml = `${html ?? ''}`.trim();
+    const normalizedText = `${text ?? ''}`.trim();
+    if (AppUtils.looksLikeHtmlFragment(normalizedText)) {
+      return normalizedText;
+    }
     if (normalizedHtml) {
       return normalizedHtml;
     }
-    const normalizedText = `${text ?? ''}`.trim();
     if (this.isEmbeddableImageUrl(normalizedText)) {
       return `<img src="${this.escapeHtmlAttribute(normalizedText)}" alt="">`;
     }

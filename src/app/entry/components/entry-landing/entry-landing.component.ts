@@ -7,6 +7,7 @@ import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
 import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
+import { AppUtils } from '../../../shared/app-utils';
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
@@ -244,6 +245,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;
   private ideasPopupArticleCount: number | null = null;
   private ideasPopupLoadGeneration = 0;
+  private articleContentHtmlSource = '';
+  private articleContentHtmlRendered = '';
 
   protected readonly entryFeaturedIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
     pageSize: 8,
@@ -671,6 +674,15 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return published.find(detail => detail.id === this.selectedIdeaId)
       ?? published[0]
       ?? null;
+  }
+
+  protected articleContentHtml(detail: Pick<IdeaArticleDetailDto, 'contentHtml'>): string {
+    const source = `${detail.contentHtml ?? ''}`;
+    if (source !== this.articleContentHtmlSource) {
+      this.articleContentHtmlSource = source;
+      this.articleContentHtmlRendered = AppUtils.mediaImageVariantHtml(source, 'large');
+    }
+    return this.articleContentHtmlRendered;
   }
 
   protected ideaCardDetail(card: InfoCardData | null | undefined): IdeaArticleDetailDto | null {

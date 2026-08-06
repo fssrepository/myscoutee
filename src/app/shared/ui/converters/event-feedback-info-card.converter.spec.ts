@@ -5,9 +5,32 @@ import {
   type EventFeedbackDto,
   type EventFeedbackStateDto
 } from '../../core/contracts/activity.interface';
+import { EventFeedbackDetailConverter } from './event-feedback-detail.converter';
 import { EventFeedbackInfoCardConverter } from './event-feedback-info-card.converter';
 
 describe('EventFeedbackInfoCardConverter submitted feedback', () => {
+  it('preserves an empty event image so the shared card renders its neutral placeholder', () => {
+    const eventId = 'manual-event';
+    const [card] = EventFeedbackDetailConverter.convert(new EventFeedbackDetailDto({
+      eventId,
+      title: 'Manual event',
+      cards: [{
+        id: `feedback-event-${eventId}`,
+        eventId,
+        kind: 'event',
+        eventTitle: 'Manual event',
+        eventSubtitle: '',
+        eventImageUrl: '',
+        eventTimeframe: '',
+        eventStartAtIso: '',
+        eventLabel: '',
+        targetName: 'Host'
+      }]
+    }));
+
+    expect(card?.imageUrl).toBe('');
+  });
+
   it('uses a submitted-rating menu action instead of pending actions', () => {
     const item: EventFeedbackDto = {
       eventId: 'event-1',
@@ -25,7 +48,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
 
     const card = EventFeedbackInfoCardConverter.convert(item);
 
-    expect(card.menuActions).toEqual(['viewSubmittedFeedback']);
+    expect(card.menuActions).toEqual(['viewSubmittedFeedback', 'addOrganizerNote']);
   });
 
   it('hydrates the read-only detail from the persisted state answers', () => {
@@ -59,6 +82,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
           targetRole: 'Admin',
           primaryValue: 'good',
           secondaryValue: 'resources',
+          eventComment: 'A focused and welcoming event.',
           personalityTraitIds: ['reliable-one'],
           tags: [],
           submittedAtIso: '2026-07-23T18:00:00Z'
@@ -70,6 +94,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
 
     expect(persisted.submittedAtIso).toBe('2026-07-23T18:00:00Z');
     expect(persisted.cards[0]?.answerPrimary).toBe('good');
+    expect(persisted.cards[0]?.eventComment).toBe('A focused and welcoming event.');
     expect(persisted.cards[0]?.answerSecondary).toBe('resources');
     expect(persisted.cards[0]?.selectedTraitIds).toEqual(['reliable-one']);
   });

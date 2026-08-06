@@ -205,4 +205,38 @@ describe('HttpEventsService', () => {
       subEventDefinitions: [{ id: 'stage-1', name: 'Opening round' }]
     });
   });
+
+  it('converts event editor local wall times to UTC instants before saving', async () => {
+    post.mockReturnValue(of({ id: 'event-1' }));
+    get.mockReturnValue(of({
+      id: 'event-1',
+      userId: 'host-1',
+      creatorUserId: 'host-1',
+      startAtIso: '2026-08-06T16:00:00.000Z',
+      endAtIso: '2026-08-06T18:00:00.000Z'
+    }));
+    const payload = new ActivityEventDetailDTO().apply({
+      id: 'event-1',
+      userId: 'host-1',
+      creatorUserId: 'host-1',
+      dateRange: {
+        startAt: '2026-08-06T18:00',
+        endAt: '2026-08-06T20:00',
+        precision: 'minute'
+      }
+    });
+
+    await TestBed.inject(HttpEventsService).saveActivityEvent(payload);
+
+    const request = post.mock.calls[0]?.[1] as ActivityEventDetailDTO;
+    expect(request.startAtIso).toBe(new Date('2026-08-06T18:00').toISOString());
+    expect(request.endAtIso).toBe(new Date('2026-08-06T20:00').toISOString());
+    expect(request.dateRange).toEqual({
+      startAt: request.startAtIso,
+      endAt: request.endAtIso,
+      precision: 'minute'
+    });
+    expect(payload.startAtIso).toBe('2026-08-06T18:00');
+    expect(payload.endAtIso).toBe('2026-08-06T20:00');
+  });
 });
