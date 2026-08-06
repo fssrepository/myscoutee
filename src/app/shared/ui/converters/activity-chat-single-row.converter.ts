@@ -10,6 +10,11 @@ import { AppUtils } from '../../app-utils';
 import type { SingleRowData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
+export interface ActivityChatSingleRowData extends SingleRowData {
+  chatRevision: number;
+  chatOwnerStatus?: import('../../core/contracts/activity.interface').ActivityEventStatus | null;
+}
+
 export interface ActivityChatSingleRowConverterOptions {
   activeUser: UserDto;
   resolveUserById?: (userId: string) => UserDto | null;
@@ -30,14 +35,14 @@ export class ActivityChatSingleRowConverter {
   static convert(
     dto: ChatDTO,
     options: ActivityChatSingleRowConverterOptions
-  ): SingleRowData {
+  ): ActivityChatSingleRowData {
     return this.convertWithResolvedOptions(dto, this.resolveOptions(options));
   }
 
   static convertList(
     dtos: readonly ChatDTO[],
     options: ActivityChatSingleRowConverterOptions
-  ): SingleRowData[] {
+  ): ActivityChatSingleRowData[] {
     const resolvedOptions = this.resolveOptions(options);
     return dtos.map(dto => this.convertWithResolvedOptions(dto, resolvedOptions));
   }
@@ -45,7 +50,7 @@ export class ActivityChatSingleRowConverter {
   private static convertWithResolvedOptions(
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
-  ): SingleRowData {
+  ): ActivityChatSingleRowData {
     const systemSender = this.isSystemRandomRoomSender(dto);
     const lastSender = systemSender ? null : this.resolveLastSender(dto, options);
     const unread = Math.max(0, Math.trunc(Number(dto.unread) || 0));
@@ -67,6 +72,8 @@ export class ActivityChatSingleRowConverter {
 
     return {
       id: dto.id,
+      chatRevision: Math.max(1, Math.trunc(Number(dto.revision) || 1)),
+      chatOwnerStatus: dto.ownerStatus ?? null,
       ownerId: ownerId || null,
       smartListKey: this.smartListKeyForIdentity(channelType, ownerId, dto.id),
       status: supportStatus ?? channelType,
@@ -106,7 +113,8 @@ export class ActivityChatSingleRowConverter {
             label: options.translate?.('activities.chat.event.status.underReview') ?? 'Under review',
             title: options.translate?.('activities.chat.event.status.underReview') ?? 'Under review',
             tone: 'warning',
-            position: 'inline'
+            position: 'inline',
+            className: 'event-chat-owner-status-badge'
           }]
           : [],
       menuActions: showSupportControls

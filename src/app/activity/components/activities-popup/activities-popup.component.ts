@@ -76,7 +76,6 @@ import {
   type CardMenuActionEvent,
   type ListQuery,
   type PageResult,
-  type SingleRowData,
   type SmartListConfig,
   type SmartListItemSelectEvent,
   type SmartListLocalSortKey,
@@ -88,7 +87,12 @@ import {
   type UiListConverter
 } from '../../../shared/ui';
 import {
+  UiPollCoordinator,
+  UiTaskScheduler
+} from '../../../shared/ui/scheduler';
+import {
   ActivityChatSingleRowConverter,
+  type ActivityChatSingleRowData,
   ActivityEventInfoCardConverter,
   ActivityEventInfoCardMenuConverter,
   ActivityRateImageCardConverter
@@ -161,7 +165,7 @@ type ActivitiesChatContextUnreadCounts = Partial<Record<ContractTypes.Activities
 type ActivityEventListType = ActivityContracts.ActivityEventRepositoryItemType;
 type ActivityEventListItem = InfoCardData;
 type ActivityRateListItem = ImageCardData;
-type ActivityChatListItem = SingleRowData;
+type ActivityChatListItem = ActivityChatSingleRowData;
 type ActivityListItem = ActivityEventListItem | ActivityRateListItem | ActivityChatListItem;
 type ActivitiesSmartListConverterQuery = ListQuery<ActivitiesSmartListFilters> & {
   context?: {
@@ -172,6 +176,16 @@ type ActivitiesSmartListConverterQuery = ListQuery<ActivitiesSmartListFilters> &
 interface ActivityDateTimeRange {
   startIso: string;
   endIso: string;
+}
+
+interface ActivityChatListPollState {
+  scopeKey: string;
+  targets: Array<{
+    chatId: string;
+    ownerId: string | null;
+    channelType: ContractTypes.ChatChannelType | null;
+    revision: number;
+  }>;
 }
 
 
@@ -217,6 +231,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityMembersService = inject(ActivityMembersService);
   protected readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
+  private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly eventsService = inject(EventsService);
   protected readonly usersService = inject(UsersService);
   protected readonly shareTokensService = inject(ShareTokensService);
@@ -323,6 +338,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastAppliedActivityRuntimeUpdatedMs = 0;
   private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
+  private activityChatListPollScopeKey: string | null = null;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
   protected get assetCards(): AppDTOs.AssetDTO[] {
@@ -481,6 +497,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<ActivityListItem, ActivitiesSmartListFilters>
     = (query, context) => from(this.loadActivitiesSmartListPage(query, context));
+  private readonly activityChatListPollScheduler = new UiTaskScheduler<ActivityChatListPollState>({
+    intervalMs: () => this.shouldPollActivityChatList() ? this.chatsService.pollIntervalMs() : 0,
+    state: () => this.activityChatListPollState(),
+    task: ({ state, signal }) => this.pollActivityChatList(state, signal),
+    pollCoordinator: this.pollCoordinator,
+    pollPriority: 'foreground'
+  });
   // ── Scroll / sticky ───────────────────────────────────────────────────────
   protected activitiesListScrollable  = true;
   protected activitiesStickyValue     = '';
@@ -860,6 +883,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      const scopeKey = this.activityChatListPollScope();
+      if (scopeKey === this.activityChatListPollScopeKey) {
+        return;
+      }
+      this.activityChatListPollScopeKey = scopeKey || null;
+      if (scopeKey) {
+        this.activityChatListPollScheduler.restart();
+      } else {
+        this.activityChatListPollScheduler.stop({ abort: true });
+      }
+    });
+
+    effect(() => {
       if (this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant') {
         this.activitiesStore.setActivitiesSecondaryFilter('recent');
       }
@@ -982,6 +1018,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.activityChatListPollScheduler.destroy();
     this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
     this.clearActivitiesExplanationContext();
@@ -1052,6 +1089,80 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && !this.activitiesStore.eventChatSession()
       ? ActivitiesPopupComponent.ADMIN_SUPPORT_BOARD_POLL_INTERVAL_MS
       : 0;
+  }
+
+  private shouldPollActivityChatList(): boolean {
+    return this.activitiesStore.activitiesOpen()
+      && this.activitiesPrimaryFilter === 'chats'
+      && !this.isAdminServiceChatMode()
+      && !this.isCalendarLayoutView()
+      && !this.dialogStore.dialog()
+      && !this.activitiesStore.eventChatSession();
+  }
+
+  private activityChatListPollState(): ActivityChatListPollState {
+    if (!this.shouldPollActivityChatList()) {
+      return { scopeKey: '', targets: [] };
+    }
+    return {
+      scopeKey: this.activityChatListPollScope(),
+      targets: (this.activitiesSmartList?.itemsSnapshot() ?? [])
+        .filter((row): row is ActivityChatListItem => this.isActivityChatRow(row))
+        .map(row => ({
+          chatId: `${row.id ?? ''}`.trim(),
+          ownerId: `${row.ownerId ?? ''}`.trim() || null,
+          channelType: this.activityChatChannelTypeFromRow(row),
+          revision: Math.max(1, Math.trunc(Number(row.chatRevision) || 1))
+        }))
+        .filter(target => target.chatId.length > 0)
+    };
+  }
+
+  private async pollActivityChatList(state: ActivityChatListPollState, signal?: AbortSignal): Promise<void> {
+    if (!state.scopeKey || state.scopeKey !== this.activityChatListPollScope()) {
+      return;
+    }
+    for (const target of state.targets) {
+      if (signal?.aborted || state.scopeKey !== this.activityChatListPollScope()) {
+        return;
+      }
+      const result = await this.chatsService.syncChatHeader(target.chatId, target.revision, signal);
+      if (!result.changed || signal?.aborted || state.scopeKey !== this.activityChatListPollScope()) {
+        continue;
+      }
+      this.activitiesStore.emitEventChatRowPatch({
+        chatId: target.chatId,
+        ownerId: target.ownerId,
+        channelType: target.channelType,
+        ownerStatus: result.ownerStatus ?? null,
+        headerRevision: result.revision
+      });
+    }
+  }
+
+  private activityChatListPollScope(): string {
+    if (!this.shouldPollActivityChatList()) {
+      return '';
+    }
+    return [
+      this.activeUser.id,
+      this.activitiesChatContextFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesView
+    ].join(':');
+  }
+
+  private activityChatChannelTypeFromRow(row: ActivityChatListItem): ContractTypes.ChatChannelType | null {
+    const status = `${row.status ?? ''}`.trim() as ContractTypes.ChatChannelType;
+    return status === 'general'
+      || status === 'mainEvent'
+      || status === 'optionalSubEvent'
+      || status === 'groupSubEvent'
+      || status === 'serviceEvent'
+      || status === 'appSupport'
+      || status === 'supportCase'
+      ? status
+      : null;
   }
 
   private applyEventChatRowPatch(patch: EventChatRowPatch): void {
@@ -1129,6 +1240,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (senderName && next.title !== senderName) {
         next = cloneNext();
         next.title = senderName;
+      }
+    }
+
+    if (patch.ownerStatus !== undefined || patch.headerRevision !== undefined) {
+      const ownerStatus = patch.ownerStatus === undefined
+        ? next.chatOwnerStatus ?? null
+        : patch.ownerStatus;
+      const headerRevision = patch.headerRevision === undefined
+        ? next.chatRevision
+        : Math.max(1, Math.trunc(Number(patch.headerRevision) || 1));
+      if (next.chatOwnerStatus !== ownerStatus || next.chatRevision !== headerRevision) {
+        next = cloneNext();
+        next.chatOwnerStatus = ownerStatus;
+        next.chatRevision = headerRevision;
+        const retainedBadges = (next.badges ?? []).filter(
+          badge => badge.className !== 'event-chat-owner-status-badge'
+        );
+        next.badges = ownerStatus === 'DR'
+          ? [...retainedBadges, {
+            label: this.i18nService.translate('activities.chat.event.status.underReview'),
+            title: this.i18nService.translate('activities.chat.event.status.underReview'),
+            tone: 'warning',
+            position: 'inline',
+            className: 'event-chat-owner-status-badge'
+          }]
+          : retainedBadges;
       }
     }
 

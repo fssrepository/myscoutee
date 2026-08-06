@@ -852,6 +852,13 @@ export class EventChatPopupComponent implements OnDestroy {
       ...synchronizedHeader,
       parentZIndex: header.parentZIndex
     }));
+    this.activitiesStore.emitEventChatRowPatch({
+      chatId: synchronizedChat.id,
+      ownerId: synchronizedChat.ownerId ?? null,
+      channelType: synchronizedChat.channelType ?? null,
+      ownerStatus: synchronizedChat.ownerStatus ?? null,
+      headerRevision: synchronizedChat.revision ?? result.revision
+    });
     this.syncSelectedChatHeader(synchronizedChat);
     this.cdr.markForCheck();
   }

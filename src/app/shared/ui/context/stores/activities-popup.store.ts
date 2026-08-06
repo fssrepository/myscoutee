@@ -108,6 +108,8 @@ export interface EventChatRowPatch {
   lastMessage?: string | null;
   lastSenderId?: string | null;
   dateIso?: string | null;
+  ownerStatus?: ContractTypes.ActivityEventStatus | null;
+  headerRevision?: number | null;
   revision: number;
 }
 
