@@ -1,4 +1,5 @@
 import { EVENTS_TABLE_NAME, EVENT_FEEDBACK_TABLE_NAME } from '../../source/entity/event.entity';
+import { EVENT_TICKETS_TABLE_NAME } from '../../source/entity/event-ticket.entity';
 import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../source/entity/profile.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
@@ -97,6 +98,7 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(USER_RATES_TABLE_NAME);
     expect(flushedTables).toContain(ACTIVITY_MEMBERS_TABLE_NAME);
     expect(flushedTables).toContain(EVENTS_TABLE_NAME);
+    expect(flushedTables).toContain(EVENT_TICKETS_TABLE_NAME);
     expect(flushedTables).toContain(ACTIVITY_RESOURCES_TABLE_NAME);
     expect(flushedTables).toContain(ASSETS_TABLE_NAME);
     expect(flushedTables.filter(tableName => tableName === EVENTS_TABLE_NAME).length).toBe(2);
@@ -144,6 +146,23 @@ describe('Demo bootstrap seeding', () => {
     expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
     expect(state[CHATS_TABLE_NAME].ids).not.toContain('admin-demo-ava:c-admin-service-help-u1');
     expect(state[EVENTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[EVENT_TICKETS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    for (const ticketId of state[EVENT_TICKETS_TABLE_NAME].ids) {
+      const ticket = state[EVENT_TICKETS_TABLE_NAME].byId[ticketId];
+      const event = Object.values(state[EVENTS_TABLE_NAME].byId)
+        .find(record => record.id === ticket.eventId);
+      expect(ticket.status).toBe('A');
+      expect(ticket.code).toMatch(/^DEMO-[0-9a-f]{32}$/);
+      expect(ticket.holderUserId).not.toBe(event?.creatorUserId);
+      expect(event?.adminIds ?? []).not.toContain(ticket.holderUserId);
+      const holder = state[USERS_TABLE_NAME].byId[ticket.holderUserId];
+      const holderTicketCount = state[EVENT_TICKETS_TABLE_NAME].ids
+        .map(id => state[EVENT_TICKETS_TABLE_NAME].byId[id])
+        .filter(item => item.status === 'A' && item.holderUserId === ticket.holderUserId)
+        .length;
+      expect(holder?.activities.tickets).toBe(holderTicketCount);
+      expect(holder?.activities.asset?.tickets).toBe(holderTicketCount);
+    }
     expect(state[ASSETS_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[ACTIVITY_RESOURCES_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBe(0);

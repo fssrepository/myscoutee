@@ -11,6 +11,7 @@ import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalEventsService } from './events.service';
 import { LocalUsersService } from './users.service';
@@ -37,6 +38,8 @@ describe('LocalEventsService', () => {
   const unreadCount = vi.fn();
   const syncPublishedMainEventChat = vi.fn();
   const syncRealtimeNotificationCount = vi.fn();
+  const synchronizeTicketsForEvent = vi.fn();
+  const synchronizeTicketForMemberChange = vi.fn();
 
   beforeEach(() => {
     waitForRouteDelay.mockReset().mockResolvedValue(undefined);
@@ -60,6 +63,8 @@ describe('LocalEventsService', () => {
     unreadCount.mockReset().mockReturnValue(0);
     syncPublishedMainEventChat.mockReset().mockReturnValue(false);
     syncRealtimeNotificationCount.mockReset();
+    synchronizeTicketsForEvent.mockReset();
+    synchronizeTicketForMemberChange.mockReset();
     TestBed.configureTestingModule({
       providers: [
         LocalEventsService,
@@ -93,6 +98,13 @@ describe('LocalEventsService', () => {
         { provide: LocalEventCheckoutBasketsRepository, useValue: {} },
         { provide: LocalEventFeedbackRepository, useValue: {} },
         { provide: LocalUsersRepository, useValue: { queryUserById } },
+        {
+          provide: LocalAssetTicketsRepository,
+          useValue: {
+            synchronizeForEvent: synchronizeTicketsForEvent,
+            synchronizeForMemberChange: synchronizeTicketForMemberChange
+          }
+        },
         {
           provide: LocalNotificationsRepository,
           useValue: { markUnreadBySource, append: appendNotifications, unreadCount }
@@ -281,6 +293,9 @@ describe('LocalEventsService', () => {
     syncPublishedMainEventChat.mockReturnValue(true);
 
     await TestBed.inject(LocalEventsService).publishItem('host', 'event-1');
+
+    expect(synchronizeTicketsForEvent).toHaveBeenCalledOnce();
+    expect(synchronizeTicketsForEvent).toHaveBeenCalledWith('event-1');
 
     expect(appendNotifications).toHaveBeenCalledOnce();
     const records = appendNotifications.mock.calls[0]?.[0];

@@ -58,6 +58,7 @@ import { LocalActivityResourcesRepository } from '../repositories/activity-resou
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import type { NotificationRecord } from '../entity/notification.entity';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersService } from './users.service';
@@ -120,6 +121,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
   private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly usersService = inject(LocalUsersService);
 
@@ -568,6 +570,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           pendingReason: null
         })
       : null;
+    if (result?.membershipStatus === 'accepted' && record) {
+      this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
+    }
     await this.updateCheckoutBasketStateRecord({
       userId: normalizedUserId,
       sourceId: normalizedSourceId,
@@ -758,6 +763,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    if (savedRecord) {
+      this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
+    }
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
@@ -772,6 +780,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    if (savedRecord) {
+      this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
+    }
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
@@ -845,6 +856,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     const resolvingInvitation = this.isEventInvitation(userId, sourceId);
     this.eventsRepository.trashItem(userId, sourceId);
+    this.assetTicketsRepository.synchronizeForEvent(sourceId);
     if (resolvingInvitation) {
       this.markEventInvitationNotificationRead(userId, sourceId);
     }
@@ -864,6 +876,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.publishItem(userId, sourceId);
     const published = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (published) {
+      this.assetTicketsRepository.synchronizeForEvent(published.id);
+    }
     const changed = !!beforeRecord && this.localEventStatus(beforeRecord) !== 'A';
     const eventChatAdded = changed && published
       ? this.chatsRepository.syncPublishedMainEventChat(published, userId)
@@ -907,6 +922,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(userId);
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.unpublishItem(userId, sourceId);
+    this.assetTicketsRepository.synchronizeForEvent(sourceId);
     const changed = !!beforeRecord && this.localEventStatus(beforeRecord) !== 'DR';
     if (changed && beforeRecord) {
       this.appendEventLifecycleNotifications(
@@ -939,6 +955,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     this.eventsRepository.restoreItem(userId, sourceId);
     const restored = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (restored) {
+      this.assetTicketsRepository.synchronizeForEvent(restored.id);
+    }
     if (!restored) {
       const unavailable = await this.withLocalMutationCounterDelta({
         sourceId,
@@ -1147,6 +1166,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const result = record
       ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
       : null;
+    if (result?.membershipStatus === 'accepted' && record) {
+      this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
+    }
     if (result?.membershipStatus === 'accepted' && options.checkoutState) {
       await this.updateCheckoutBasketStateRecord({
         userId: normalizedUserId,

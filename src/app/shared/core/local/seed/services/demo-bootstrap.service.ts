@@ -1,6 +1,7 @@
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../source/entity/profile.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
+import { EVENT_TICKETS_TABLE_NAME } from '../../source/entity/event-ticket.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
 import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
@@ -30,6 +31,7 @@ import { SeedAdminBootstrapRepository } from '../repositories/admin-bootstrap-se
 import { SeedContactsRepository } from '../repositories/contacts-seed.repository';
 import { SeedEventFeedbackRepository } from '../repositories/event-feedback-seed.repository';
 import { SeedEventsRepository } from '../repositories/events-seed.repository';
+import { SeedEventTicketsRepository } from '../repositories/event-tickets-seed.repository';
 import { SeedNotificationsRepository } from '../repositories/notifications-seed.repository';
 import { SeedProfileExperiencesRepository } from '../repositories/profile-experiences-seed.repository';
 import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.repository';
@@ -49,6 +51,7 @@ export class SeedDemoBootstrapService {
   private readonly adminSeed = inject(SeedAdminBootstrapRepository);
   private readonly chatsSeed = inject(SeedChatsRepository);
   private readonly eventsSeed = inject(SeedEventsRepository);
+  private readonly eventTicketsSeed = inject(SeedEventTicketsRepository);
   private readonly assetsSeed = inject(SeedAssetsRepository);
   private readonly eventFeedbackSeed = inject(SeedEventFeedbackRepository);
   private readonly usersRatingsSeed = inject(SeedUsersRatingsRepository);
@@ -468,8 +471,9 @@ export class SeedDemoBootstrapService {
       });
       await this.runBootstrapStep('events', async () => {
         const eventsChanged = this.eventsSeed.seedDefaults();
-        if (eventsChanged) {
-          await this.flushBootstrapTables([EVENTS_TABLE_NAME]);
+        const eventTicketsChanged = this.eventTicketsSeed.seedDefaults();
+        if (eventsChanged || eventTicketsChanged) {
+          await this.flushBootstrapTables([EVENTS_TABLE_NAME, EVENT_TICKETS_TABLE_NAME]);
         }
       });
       await this.runBootstrapStep('users', async () => {

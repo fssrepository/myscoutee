@@ -16,7 +16,7 @@ export class AssetTicketBuilder {
     row: AssetContracts.AssetTicketDTO,
     holder: TicketHolder
   ): AssetContracts.TicketScanPayloadDTO {
-    const issuedAtIso = `${row.startAt ?? row.dateIso}`.trim() || row.dateIso;
+    const issuedAtIso = `${row.issuedAtIso ?? row.startAt ?? row.dateIso}`.trim() || row.dateIso;
     const userId = row.holderUserId.trim() || holder.id?.trim() || '';
     const userName = holder.name?.trim() || 'Ticket Holder';
     const holderAge = Math.max(0, Math.trunc(Number(holder.age) || 0));

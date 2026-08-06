@@ -9,6 +9,7 @@ import { LocalActivityMembersRepository } from '../repositories/activity-members
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
 import type {
@@ -28,6 +29,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly localUsersRepository = inject(LocalUsersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
@@ -88,6 +90,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       records,
       capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
+    if (normalizedOwner.ownerType === 'event') {
+      this.assetTicketsRepository.synchronizeForEvent(normalizedOwner.ownerId);
+    }
     if (normalizedOwner.ownerType === 'group') {
       this.eventsRepository.syncTournamentStagePending(
         `${options?.eventId ?? ''}`.trim(),
@@ -263,6 +268,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       nextRecords,
       ownerSnapshot?.capacityTotal ?? null
     );
+    if (normalizedOwner.ownerType === 'event') {
+      this.assetTicketsRepository.synchronizeForMemberChange(
+        normalizedOwner.ownerId,
+        normalizedTargetUserId
+      );
+    }
     if (
       normalizedOwner.ownerType === 'event'
       && action === 'remove'

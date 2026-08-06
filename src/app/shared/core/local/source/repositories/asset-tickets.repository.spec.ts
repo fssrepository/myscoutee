@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 
-import { AssetTicketBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
@@ -9,10 +8,11 @@ import {
   type ActivityMemberRecord
 } from '../entity/activity.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
+import { EVENT_TICKETS_TABLE_NAME, type EventTicketRecord } from '../entity/event-ticket.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { LocalAssetTicketsRepository } from './asset-tickets.repository';
 
-describe('LocalAssetTicketsRepository ticket validation', () => {
+describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
   let memoryDb: LocalMemoryDb;
   let repository: LocalAssetTicketsRepository;
 
@@ -27,15 +27,49 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
     ]);
     seedEvents([eventRecord()]);
     repository = TestBed.inject(LocalAssetTicketsRepository);
+    repository.synchronizeForEvent('event-1', new Date('2035-04-17T12:00:00.000Z'));
   });
 
   afterEach(() => {
     TestBed.resetTestingModule();
   });
 
+  it('creates one physical ticket on publish and keeps list reads read-only', async () => {
+    const before = activeTickets();
+
+    const first = await repository.queryTicketPage({
+      userId: 'holder-1',
+      page: 0,
+      pageSize: 20,
+      order: 'upcoming'
+    });
+    const second = await repository.queryTicketPage({
+      userId: 'holder-1',
+      page: 0,
+      pageSize: 20,
+      order: 'upcoming'
+    });
+
+    expect(before).toHaveLength(1);
+    expect(first.items).toHaveLength(1);
+    expect(second.items[0]).toMatchObject({
+      id: 'event-1',
+      holderUserId: 'holder-1',
+      scanCode: first.items[0].scanCode,
+      issuedAtIso: '2035-04-17T12:00:00.000Z'
+    });
+    expect(allTickets()).toEqual(before);
+    expect(repository.peekTicketCountByUser('owner-1')).toBe(0);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['owner-1'].activities.tickets).toBe(0);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['owner-1'].activities.asset?.tickets).toBe(0);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['holder-1'].activities.tickets).toBe(1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['holder-1'].activities.asset?.tickets).toBe(1);
+  });
+
   it('atomically checks in an accepted holder once and rejects reuse', () => {
+    const ticket = activeTickets()[0];
     const request = {
-      code: AssetTicketBuilder.createDemoScanCode('event-1', 'holder-1'),
+      code: ticket.code,
       userId: 'owner-1'
     };
 
@@ -47,7 +81,8 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
       code: request.code,
       holderUserId: 'holder-1',
       holderName: 'Ticket Holder',
-      eventId: 'event-1'
+      eventId: 'event-1',
+      issuedAtIso: '2035-04-17T12:00:00.000Z'
     });
     expect(first.ticket?.usedAtIso).toBeTruthy();
     expect(second).toEqual({
@@ -59,7 +94,7 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
 
   it('requires the scanner actor to manage the event', () => {
     const response = repository.validateTicket({
-      code: AssetTicketBuilder.createDemoScanCode('event-1', 'holder-1'),
+      code: activeTickets()[0].code,
       userId: 'other-1'
     });
 
@@ -74,7 +109,7 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
     seedEventMembers([eventManagerRecord()]);
 
     const response = repository.validateTicket({
-      code: AssetTicketBuilder.createDemoScanCode('event-1', 'holder-1'),
+      code: activeTickets()[0].code,
       userId: 'other-1'
     });
 
@@ -83,6 +118,118 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
       holderUserId: 'holder-1',
       eventId: 'event-1'
     });
+  });
+
+  it('marks active tickets D when ticketing is disabled and creates a new QR after republish', () => {
+    const first = activeTickets()[0];
+    updateEvent({ status: 'DR', ticketing: false });
+    repository.synchronizeForEvent('event-1', new Date('2035-04-17T13:00:00.000Z'));
+
+    expect(activeTickets()).toEqual([]);
+    expect(allTickets()).toEqual([expect.objectContaining({
+      id: first.id,
+      code: first.code,
+      status: 'D'
+    })]);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['holder-1'].activities.tickets).toBe(0);
+
+    updateEvent({ status: 'A', ticketing: true });
+    repository.synchronizeForEvent('event-1', new Date('2035-04-17T14:00:00.000Z'));
+
+    const second = activeTickets()[0];
+    expect(allTickets()).toHaveLength(2);
+    expect(second.id).not.toBe(first.id);
+    expect(second.code).not.toBe(first.code);
+    expect(second.issuedAtIso).toBe('2035-04-17T14:00:00.000Z');
+  });
+
+  it('keeps an admin-preapproved invitation ticketless until the invitee accepts', () => {
+    clearTickets();
+    updateEvent({
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      acceptedMemberUserIds: ['holder-1'],
+      pendingMemberUserIds: ['other-1'],
+      invitedMemberUserIds: ['other-1'],
+      pendingRequestMemberUserIds: []
+    });
+
+    repository.synchronizeForMemberChange(
+      'event-1',
+      'other-1',
+      new Date('2035-04-17T15:00:00.000Z')
+    );
+    repository.synchronizeForMemberChange(
+      'event-1',
+      'other-1',
+      new Date('2035-04-17T15:01:00.000Z')
+    );
+
+    expect(repository.peekTicketCountByUser('other-1')).toBe(0);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.tickets).toBe(0);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.asset?.tickets).toBe(0);
+
+    updateEvent({
+      acceptedMembers: 2,
+      pendingMembers: 0,
+      acceptedMemberUserIds: ['holder-1', 'other-1'],
+      pendingMemberUserIds: [],
+      invitedMemberUserIds: []
+    });
+    repository.synchronizeForMemberChange(
+      'event-1',
+      'other-1',
+      new Date('2035-04-17T15:02:00.000Z')
+    );
+
+    expect(activeTickets()).toEqual([
+      expect.objectContaining({ holderUserId: 'other-1', status: 'A' })
+    ]);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.tickets).toBe(1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.asset?.tickets).toBe(1);
+  });
+
+  it('creates only the accepted join applicant ticket on the admin approval write', () => {
+    clearTickets();
+    updateEvent({
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      acceptedMemberUserIds: ['holder-1'],
+      pendingMemberUserIds: ['other-1'],
+      invitedMemberUserIds: [],
+      pendingRequestMemberUserIds: ['other-1']
+    });
+    repository.synchronizeForMemberChange(
+      'event-1',
+      'other-1',
+      new Date('2035-04-17T16:00:00.000Z')
+    );
+
+    expect(repository.peekTicketCountByUser('other-1')).toBe(0);
+
+    updateEvent({
+      acceptedMembers: 2,
+      pendingMembers: 0,
+      acceptedMemberUserIds: ['holder-1', 'other-1'],
+      pendingMemberUserIds: [],
+      pendingRequestMemberUserIds: []
+    });
+    repository.synchronizeForMemberChange(
+      'event-1',
+      'other-1',
+      new Date('2035-04-17T16:01:00.000Z')
+    );
+    repository.synchronizeForMemberChange(
+      'event-1',
+      'other-1',
+      new Date('2035-04-17T16:02:00.000Z')
+    );
+
+    expect(activeTickets()).toEqual([
+      expect.objectContaining({ holderUserId: 'other-1', status: 'A' })
+    ]);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.tickets).toBe(1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.asset?.tickets).toBe(1);
   });
 
   function seedUsers(users: UserDto[]): void {
@@ -116,6 +263,41 @@ describe('LocalAssetTicketsRepository ticket validation', () => {
         }
       }
     }));
+  }
+
+  function updateEvent(update: Partial<ActivityEventRecord>): void {
+    memoryDb.write(state => ({
+      ...state,
+      [EVENTS_TABLE_NAME]: {
+        ...state[EVENTS_TABLE_NAME],
+        byId: {
+          ...state[EVENTS_TABLE_NAME].byId,
+          'event-1': {
+            ...state[EVENTS_TABLE_NAME].byId['event-1'],
+            ...update
+          }
+        }
+      }
+    }));
+  }
+
+  function clearTickets(): void {
+    memoryDb.write(state => ({
+      ...state,
+      [EVENT_TICKETS_TABLE_NAME]: {
+        byId: {},
+        ids: []
+      }
+    }));
+  }
+
+  function allTickets(): EventTicketRecord[] {
+    const table = memoryDb.read()[EVENT_TICKETS_TABLE_NAME];
+    return table.ids.map(id => table.byId[id]);
+  }
+
+  function activeTickets(): EventTicketRecord[] {
+    return allTickets().filter(ticket => ticket.status === 'A');
   }
 });
 
@@ -239,7 +421,9 @@ function user(id: string, name: string): UserDto {
       chats: 0,
       invitations: 0,
       events: 0,
-      hosting: 0
+      hosting: 0,
+      tickets: 0,
+      asset: { tickets: 0 }
     }
   };
 }

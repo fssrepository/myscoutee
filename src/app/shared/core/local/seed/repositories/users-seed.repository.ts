@@ -1,4 +1,5 @@
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
+import { EVENT_TICKETS_TABLE_NAME } from '../../source/entity/event-ticket.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord, UsersRecordCollection } from '../../source/entity/user.entity';
@@ -81,6 +82,7 @@ export class SeedUsersRepository {
 
   seedDefaults(): UserRecord[] {
     if (this.initialized) {
+      this.synchronizeSeededTicketCounts();
       return this.queryUsersFromTable();
     }
     const state = this.memoryDb.read();
@@ -97,6 +99,7 @@ export class SeedUsersRepository {
         }));
       }
       this.initialized = true;
+      this.synchronizeSeededTicketCounts();
       return this.queryUsersFromTable();
     }
 
@@ -105,8 +108,47 @@ export class SeedUsersRepository {
       [USERS_TABLE_NAME]: this.buildUsersTable(seededUsers)
     }));
     this.initialized = true;
+    this.synchronizeSeededTicketCounts();
 
     return this.queryUsersFromTable();
+  }
+
+  private synchronizeSeededTicketCounts(): void {
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    let changed = false;
+    const byId: UsersRecordCollection['byId'] = { ...usersTable.byId };
+    for (const userId of usersTable.ids) {
+      const user = usersTable.byId[userId];
+      if (!user) {
+        continue;
+      }
+      const tickets = this.countTicketItemsByUser(userId);
+      if (user.activities.tickets === tickets && user.activities.asset?.tickets === tickets) {
+        continue;
+      }
+      byId[userId] = {
+        ...user,
+        activities: {
+          ...user.activities,
+          tickets,
+          asset: {
+            ...user.activities.asset,
+            tickets
+          }
+        }
+      };
+      changed = true;
+    }
+    if (!changed) {
+      return;
+    }
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [USERS_TABLE_NAME]: {
+        byId,
+        ids: [...usersTable.ids]
+      }
+    }));
   }
 
   seedDefaultUserFilterPreferencesForUser(userId: string): boolean {
@@ -486,10 +528,11 @@ export class SeedUsersRepository {
   }
 
   private countTicketItemsByUser(userId: string): number {
-    return this.queryUserEventRecords(userId)
-      .filter(record => !this.eventInvitedMemberUserIds(record).includes(userId.trim()))
-      .filter(record => record.status !== 'T')
-      .filter(record => record.ticketing === true)
+    const normalizedUserId = userId.trim();
+    const table = this.memoryDb.read()[EVENT_TICKETS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter(ticket => ticket?.holderUserId === normalizedUserId && ticket.status === 'A')
       .length;
   }
 
