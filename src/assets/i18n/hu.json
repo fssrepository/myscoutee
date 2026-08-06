@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.05.hu.50",
+  "version": "2026.08.06.hu.51",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2396,6 +2396,10 @@
     "asset.ticket.scan.reading": "QR-kód keresése...",
     "asset.ticket.scan.validating": "Jegy ellenőrzése...",
     "asset.ticket.scan.again": "Újabb beolvasás",
+    "asset.ticket.scan.camera.on": "Kamera be",
+    "asset.ticket.scan.camera.off": "Kamera ki",
+    "asset.ticket.scan.camera.turn.on": "Kamera bekapcsolása",
+    "asset.ticket.scan.camera.turn.off": "Kamera kikapcsolása",
     "asset.borrow.title": "{asset} kölcsönzése",
     "asset.assignment.quantity": "Hozzárendelt mennyiség",
     "asset.assignment.available": "Még hozzáadható: {count}",

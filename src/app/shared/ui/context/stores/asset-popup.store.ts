@@ -109,6 +109,12 @@ export class AssetPopupStore {
     this.ticketScannerReasonRef.set(null);
   }
 
+  pauseTicketScanner(): void {
+    if (this.ticketScannerStateRef() === 'reading') {
+      this.ticketScannerStateRef.set('idle');
+    }
+  }
+
   applyTicketScannerValidating(): void {
     this.ticketScannerResultRef.set(null);
     this.ticketScannerReasonRef.set(null);

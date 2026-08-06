@@ -28,25 +28,32 @@
           </div>
         }
       </div>
-      <div class="ticket-scanner-target">
+      <div class="ticket-scanner-target" [class.ticket-scanner-target-camera-off]="!cameraEnabled()">
         <video #ticketScannerVideo class="ticket-scanner-camera" autoplay playsinline muted></video>
+        @if (!cameraEnabled() && lastFrameUrl) {
+          <img class="ticket-scanner-last-frame" [src]="lastFrameUrl" alt="" />
+        }
         <div class="ticket-scanner-camera-overlay"></div>
         <div class="ticket-scanner-corners"></div>
+        @if (!cameraEnabled() && !lastFrameUrl) {
+          <div class="ticket-scanner-camera-off-mark" aria-hidden="true"></div>
+        }
+        @if (state === 'reading' || state === 'validating') {
+          <p
+            class="ticket-scanner-target-status"
+            [class.ticket-scanner-target-status-validating]="state === 'validating'"
+          >
+            {{ (state === 'reading' ? 'asset.ticket.scan.reading' : 'asset.ticket.scan.validating') | i18n }}
+          </p>
+        }
       </div>
     </div>
-    @if (state === 'reading') {
-      <p class="ticket-scanner-status">{{ 'asset.ticket.scan.reading' | i18n }}</p>
-    }
-    @if (state === 'validating') {
-      <p class="ticket-scanner-status">{{ 'asset.ticket.scan.validating' | i18n }}</p>
-    }
-    @if (state === 'valid') {
-      <p class="ticket-scanner-status ticket-scanner-status-valid">{{ 'asset.ticket.checked.in' | i18n }}</p>
-    }
-    @if (state !== 'reading' && state !== 'validating') {
-      <button type="button" class="link-btn neutral-btn ticket-scanner-retry-btn" (click)="retry($event)">
-        {{ 'asset.ticket.scan.again' | i18n }}
-      </button>
-    }
+    <app-menu
+      class="ticket-scanner-camera-menu"
+      kind="inline"
+      layout="row"
+      [items]="cameraToggleMenuItems()"
+      (itemSelect)="onCameraToggle($event)"
+    ></app-menu>
   </div>
 </div>

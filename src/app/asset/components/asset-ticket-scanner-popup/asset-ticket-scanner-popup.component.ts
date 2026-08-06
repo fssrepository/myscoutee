@@ -1,13 +1,18 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 
-import { I18nPipe } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  I18nPipe,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui';
 
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 
 @Component({
   selector: 'app-asset-ticket-scanner-popup',
   standalone: true,
-  imports: [I18nPipe],
+  imports: [AppMenuComponent, I18nPipe],
   templateUrl: './asset-ticket-scanner-popup.component.html',
   styleUrl: './asset-ticket-scanner-popup.component.scss'
 })
@@ -20,7 +25,8 @@ export class AssetTicketScannerPopupComponent implements AfterViewInit, OnDestro
   @Input() personLine = '';
   @Input() roleEventLine = '';
   @Input() dateLine = '';
-  @Input({ required: true }) retry!: (event?: Event) => void;
+  @Input() lastFrameUrl = '';
+  @Input({ required: true }) toggleCamera!: (event?: Event) => void;
 
   @Output() readonly videoElementChange = new EventEmitter<HTMLVideoElement | null>();
 
@@ -32,6 +38,33 @@ export class AssetTicketScannerPopupComponent implements AfterViewInit, OnDestro
 
   ngOnDestroy(): void {
     this.videoElementChange.emit(null);
+  }
+
+  protected cameraEnabled(): boolean {
+    return this.state === 'reading';
+  }
+
+  protected cameraToggleMenuItems(): readonly AppMenuItem<'ticket-camera-toggle'>[] {
+    const enabled = this.cameraEnabled();
+    return [{
+      id: 'ticket-camera-toggle',
+      label: enabled ? 'asset.ticket.scan.camera.on' : 'asset.ticket.scan.camera.off',
+      ariaLabel: enabled ? 'asset.ticket.scan.camera.turn.off' : 'asset.ticket.scan.camera.turn.on',
+      icon: enabled ? 'videocam' : 'videocam_off',
+      kind: 'toggle',
+      layout: 'pill',
+      surface: 'tinted',
+      palette: enabled ? 'green' : 'red',
+      active: enabled,
+      checked: enabled,
+      showToggleIndicator: true,
+      closeOnSelect: false,
+      disabled: this.state === 'validating'
+    }];
+  }
+
+  protected onCameraToggle(event: AppMenuItemSelectEvent<'ticket-camera-toggle'>): void {
+    this.toggleCamera(event.sourceEvent);
   }
 
   protected resultMessage(): string {

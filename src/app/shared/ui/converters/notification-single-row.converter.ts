@@ -31,6 +31,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     const systemRandomRoom = this.isSystemRandomRoom(notification);
     const sourceLabel = this.sourceLabel(notification.category);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
+    const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
     return {
       id: notification.id,
       title: notification.title,
@@ -47,6 +48,14 @@ export class NotificationSingleRowConverter implements UiConverter<
       surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
+        ...(occurrenceCount > 1 ? [{
+          label: `${occurrenceCount}`,
+          icon: 'repeat',
+          ariaLabel: `${occurrenceCount} matching notifications`,
+          title: `${occurrenceCount} matching notifications`,
+          tone: 'warning' as const,
+          position: 'inline' as const
+        }] : []),
         {
           label: timestamp,
           icon: 'schedule',

@@ -7,36 +7,6 @@
   min-height: 0;
 }
 
-.link-btn {
-  border: 1px solid rgba(23, 33, 54, 0.2);
-  border-radius: 999px;
-  background: #fff;
-  color: #1f3350;
-  font: inherit;
-  font-size: 0.83rem;
-  padding: 0.38rem 0.76rem;
-  cursor: pointer;
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    opacity 0.16s ease,
-    background 0.16s ease,
-    border-color 0.16s ease;
-}
-
-.link-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-
-.link-btn:not(:disabled):active {
-  transform: translateY(0);
-}
-
-.neutral-btn {
-  background: #f2f4fa;
-  border-color: rgba(23, 33, 54, 0.12);
-}
-
 .ticket-scanner-popup {
   min-height: 0;
   width: 100%;
@@ -179,8 +149,7 @@
   font-weight: 800;
 }
 
-.ticket-scanner-result-message-valid,
-.ticket-scanner-status-valid {
+.ticket-scanner-result-message-valid {
   color: #24704b;
 }
 
@@ -226,6 +195,88 @@
   pointer-events: none;
 }
 
+.ticket-scanner-target-camera-off {
+  background: #fff;
+  border-color: rgba(187, 48, 68, 0.5);
+}
+
+.ticket-scanner-target-camera-off::before,
+.ticket-scanner-target-camera-off .ticket-scanner-camera-overlay,
+.ticket-scanner-target-camera-off .ticket-scanner-corners {
+  display: none;
+}
+
+.ticket-scanner-target-camera-off .ticket-scanner-camera {
+  opacity: 0;
+}
+
+.ticket-scanner-last-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.ticket-scanner-camera-off-mark {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ticket-scanner-camera-off-mark::before,
+.ticket-scanner-camera-off-mark::after {
+  content: '';
+  position: absolute;
+  left: -10%;
+  top: calc(50% - 2px);
+  width: 120%;
+  height: 4px;
+  border-radius: 999px;
+  background: #c73046;
+  box-shadow: 0 0 8px rgba(199, 48, 70, 0.2);
+}
+
+.ticket-scanner-camera-off-mark::before {
+  transform: rotate(33.7deg);
+}
+
+.ticket-scanner-camera-off-mark::after {
+  transform: rotate(-33.7deg);
+}
+
+.ticket-scanner-target-status {
+  position: absolute;
+  top: 0.62rem;
+  left: 50%;
+  z-index: 8;
+  max-width: calc(100% - 5.5rem);
+  margin: 0;
+  padding: 0.3rem 0.68rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(43, 93, 157, 0.28);
+  border-radius: 999px;
+  background: rgba(245, 250, 255, 0.9);
+  box-shadow: 0 5px 13px rgba(16, 38, 69, 0.16);
+  color: #244f83;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.ticket-scanner-target-status-validating {
+  border-color: rgba(164, 109, 24, 0.3);
+  background: rgba(255, 248, 229, 0.92);
+  color: #956118;
+}
+
 .ticket-scanner-corners {
   position: absolute;
   inset: 0;
@@ -256,14 +307,8 @@
   border-top: 0;
 }
 
-.ticket-scanner-status {
-  margin: 0;
-  color: rgba(30, 58, 97, 0.86);
-  font-weight: 700;
-}
-
-.ticket-scanner-retry-btn {
-  min-width: 104px;
+.ticket-scanner-camera-menu {
+  min-width: 132px;
 }
 
 @keyframes ticket-scan-success-flash {

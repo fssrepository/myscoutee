@@ -21,7 +21,8 @@
         [personLine]="ticketScannerView().personLine"
         [roleEventLine]="ticketScannerView().roleEventLine"
         [dateLine]="ticketScannerView().dateLine"
-        [retry]="retryTicketScanner"
+        [lastFrameUrl]="ticketScannerLastFrameUrl()"
+        [toggleCamera]="toggleTicketScannerCamera"
         (videoElementChange)="onTicketScannerVideoElementChange($event)"
       ></app-asset-ticket-scanner-popup>
     }
