@@ -28,6 +28,7 @@ export interface NotificationDto {
   sourceId?: string | null;
   payload?: Readonly<Record<string, string>> | null;
   occurrenceCount?: number | null;
+  revision: number;
 }
 
 export interface NotificationListFilters {
@@ -54,6 +55,31 @@ export interface NotificationReadResponseDto {
   unreadCount: number;
 }
 
+export interface NotificationSyncKnownItemDto {
+  id: string;
+  revision: number;
+}
+
+export interface NotificationSyncBoundaryDto {
+  id: string;
+  createdAtIso: string;
+}
+
+export interface NotificationSyncRequestDto {
+  bucket: NotificationBucket;
+  limit: number;
+  knownItems: readonly NotificationSyncKnownItemDto[];
+  loadedTail: NotificationSyncBoundaryDto | null;
+}
+
+export interface NotificationSyncResponseDto {
+  upserts: NotificationDto[];
+  removedIds: string[];
+  total: number;
+  unreadCount: number;
+  muted: boolean;
+}
+
 export interface NotificationPreferencesRequestDto {
   muted: boolean;
 }
@@ -68,6 +94,11 @@ export interface NotificationService {
     query: ListQuery<NotificationListFilters>,
     signal?: AbortSignal
   ): Promise<NotificationPageResultDto>;
+  sync(
+    userId: string,
+    request: NotificationSyncRequestDto,
+    signal?: AbortSignal
+  ): Promise<NotificationSyncResponseDto>;
   markRead(
     userId: string,
     notificationId: string,

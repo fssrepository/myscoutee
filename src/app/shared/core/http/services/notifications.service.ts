@@ -12,7 +12,9 @@ import type {
   NotificationPreferencesRequestDto,
   NotificationPreferencesResponseDto,
   NotificationReadResponseDto,
-  NotificationService
+  NotificationService,
+  NotificationSyncRequestDto,
+  NotificationSyncResponseDto
 } from '../../contracts/notification.interface';
 import type { ListQuery } from '../../contracts/list.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -104,6 +106,54 @@ export class HttpNotificationsService implements NotificationService {
     };
   }
 
+  async sync(
+    userId: string,
+    request: NotificationSyncRequestDto,
+    signal?: AbortSignal
+  ): Promise<NotificationSyncResponseDto> {
+    let params = new HttpParams();
+    if (userId.trim()) {
+      params = params.set('userId', userId.trim());
+    }
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpNotificationsService.ROUTE,
+      this.requestWithAbort(
+        this.http.post<Partial<NotificationSyncResponseDto> | null>(
+          `${this.apiBaseUrl}${HttpNotificationsService.ROUTE}/sync`,
+          {
+            bucket: request.bucket === 'new' ? 'new' : 'all',
+            limit: Math.max(1, Math.min(100, Math.trunc(Number(request.limit) || 20))),
+            knownItems: request.knownItems.map(item => ({
+              id: `${item.id}`.trim(),
+              revision: Math.max(1, Math.trunc(Number(item.revision) || 1))
+            })),
+            loadedTail: request.loadedTail
+              ? {
+                  id: `${request.loadedTail.id}`.trim(),
+                  createdAtIso: `${request.loadedTail.createdAtIso}`.trim()
+                }
+              : null
+          },
+          { params }
+        ),
+        signal
+      ),
+      'Notification sync timed out.'
+    );
+    const upserts = (Array.isArray(response?.upserts) ? response.upserts : [])
+      .map(record => this.normalizeNotification(record))
+      .filter((record): record is NotificationDto => Boolean(record));
+    return {
+      upserts,
+      removedIds: (Array.isArray(response?.removedIds) ? response.removedIds : [])
+        .map(id => `${id}`.trim())
+        .filter(Boolean),
+      total: this.nonNegativeInteger(response?.total),
+      unreadCount: this.nonNegativeInteger(response?.unreadCount),
+      muted: response?.muted === true
+    };
+  }
+
   async updatePreferences(
     userId: string,
     request: NotificationPreferencesRequestDto,
@@ -161,7 +211,8 @@ export class HttpNotificationsService implements NotificationService {
       sourceType: `${value?.sourceType ?? ''}`.trim() || null,
       sourceId: `${value?.sourceId ?? ''}`.trim() || null,
       payload,
-      occurrenceCount: Math.max(1, Math.trunc(Number(value?.occurrenceCount ?? 1)) || 1)
+      occurrenceCount: Math.max(1, Math.trunc(Number(value?.occurrenceCount ?? 1)) || 1),
+      revision: Math.max(1, Math.trunc(Number(value?.revision ?? 1)) || 1)
     };
   }
 

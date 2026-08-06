@@ -20,6 +20,7 @@ export interface NotificationRecord {
   sourceId?: string | null;
   payload?: Readonly<Record<string, string>> | null;
   occurrenceCount?: number | null;
+  revision?: number;
 }
 
 export interface NotificationsRecordCollection {

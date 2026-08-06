@@ -15,7 +15,8 @@ export class LocalNotificationMapper {
       actionPath: record.actionPath ?? null,
       sourceType: record.sourceType ?? null,
       sourceId: record.sourceId ?? null,
-      payload: record.payload ? { ...record.payload } : null
+      payload: record.payload ? { ...record.payload } : null,
+      revision: Math.max(1, Math.trunc(Number(record.revision) || 1))
     };
   }
 
@@ -33,7 +34,8 @@ export class LocalNotificationMapper {
       actionPath: dto.actionPath ?? null,
       sourceType: dto.sourceType ?? null,
       sourceId: dto.sourceId ?? null,
-      payload: dto.payload ? { ...dto.payload } : null
+      payload: dto.payload ? { ...dto.payload } : null,
+      revision: Math.max(1, Math.trunc(Number(dto.revision) || 1))
     };
   }
 

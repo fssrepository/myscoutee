@@ -11,7 +11,8 @@ import { AppUtils } from '../../../app-utils';
 import type {
   NotificationBucket,
   NotificationDto,
-  NotificationListFilters
+  NotificationListFilters,
+  NotificationSyncRequestDto
 } from '../../../core/contracts/notification.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 import {
@@ -32,7 +33,8 @@ import {
 import {
   SmartListComponent,
   type SmartListConfig,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  type SmartListPollDeltaSnapshot
 } from '../core/smart-list';
 import {
   SingleRowComponent
@@ -118,6 +120,14 @@ export class NotificationCenterPopupComponent {
     snapMode: 'none',
     scrollPaddingTop: '0.5rem',
     pollIntervalMs: () => this.store.pollIntervalMs(),
+    pollDelta: {
+      revision: item => item.revision,
+      position: item => item.createdAtIso,
+      load: (query, snapshot, context) => from(this.store.sync(
+        this.notificationSyncRequest(query.filters?.bucket, query.pageSize, snapshot),
+        context?.signal
+      ))
+    },
     headerProgress: {
       enabled: true,
       placement: 'inline',
@@ -139,6 +149,27 @@ export class NotificationCenterPopupComponent {
     },
     trackBy: (_index, item) => item.id
   };
+
+  private notificationSyncRequest(
+    bucket: NotificationBucket | undefined,
+    pageSize: number,
+    snapshot: SmartListPollDeltaSnapshot
+  ): NotificationSyncRequestDto {
+    return {
+      bucket: bucket === 'new' ? 'new' as const : 'all' as const,
+      limit: Math.max(1, Math.trunc(Number(pageSize) || 20)),
+      knownItems: snapshot.knownItems.map(item => ({
+        id: item.id,
+        revision: Math.max(1, Math.trunc(Number(item.revision) || 1))
+      })),
+      loadedTail: snapshot.loadedTail
+        ? {
+            id: snapshot.loadedTail.id,
+            createdAtIso: `${snapshot.loadedTail.position}`
+          }
+        : null
+    };
+  }
 
   protected readonly loadPage: SmartListLoadPage<
     NotificationDto,

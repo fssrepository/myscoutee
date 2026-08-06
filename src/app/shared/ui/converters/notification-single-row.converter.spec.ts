@@ -76,6 +76,7 @@ function notification(
     message: 'A message arrived.',
     createdAtIso: '2026-07-31T08:00:00.000Z',
     readAtIso: null,
+    revision: 1,
     ...patch
   };
 }

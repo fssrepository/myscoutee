@@ -23,7 +23,8 @@ export class AssetTicketScannerPopupComponent implements AfterViewInit, OnDestro
   @Input() avatarUrl = '';
   @Input() initials = '';
   @Input() personLine = '';
-  @Input() roleEventLine = '';
+  @Input() roleBadgeLabel = '';
+  @Input() eventLine = '';
   @Input() dateLine = '';
   @Input() lastFrameUrl = '';
   @Input({ required: true }) toggleCamera!: (event?: Event) => void;

@@ -1604,7 +1604,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private visiblePollQuery(): ListQuery<TFilters> {
-    const pageSize = Math.max(1, this.items.length || this.resolveEffectivePageSize());
+    const pageSize = this.config.pollDelta
+      ? Math.max(1, this.resolveEffectivePageSize())
+      : Math.max(1, this.items.length || this.resolveEffectivePageSize());
     return {
       ...this.currentQuery(0),
       page: 0,
@@ -1615,9 +1617,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private async pollVisibleItems(query: ListQuery<TFilters>, signal?: AbortSignal): Promise<void> {
     const loader = this.resolveLoadPage();
+    const pollDelta = this.config.pollDelta;
     if (
       signal?.aborted
-      || !loader
+      || (!loader && !pollDelta)
       || this.currentViewMode !== 'list'
       || this.initialLoading
       || this.loading
@@ -1626,6 +1629,36 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     const sequence = this.loadSequence;
+    if (pollDelta) {
+      const currentQuery = this.currentQuery();
+      const identity = this.cacheableConfig()?.identity;
+      if (!identity) {
+        return;
+      }
+      const knownItems = this.items.map((item, index) => ({
+        id: `${identity(item, index, currentQuery)}`.trim(),
+        revision: pollDelta.revision(item, index, currentQuery)
+      })).filter(item => item.id.length > 0);
+      const tailIndex = this.items.length - 1;
+      const tailItem = tailIndex >= 0 ? this.items[tailIndex] : undefined;
+      const result = await firstValueFrom(pollDelta.load(query, {
+        knownItems,
+        loadedTail: tailItem === undefined
+          ? null
+          : {
+              id: `${identity(tailItem, tailIndex, currentQuery)}`.trim(),
+              position: pollDelta.position(tailItem, tailIndex, currentQuery)
+            }
+      }, { signal }));
+      if (signal?.aborted || sequence !== this.loadSequence || this.currentViewMode !== 'list') {
+        return;
+      }
+      this.syncVisiblePollDelta(result);
+      return;
+    }
+    if (!loader) {
+      return;
+    }
     const result = await firstValueFrom(loader(query, { signal }));
     if (signal?.aborted || sequence !== this.loadSequence || this.currentViewMode !== 'list') {
       return;
@@ -1641,7 +1674,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const hasMore = hasExplicitNextCursor
       ? (typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0)
       : (items.length > 0 && items.length < (total ?? items.length) && !loadedShortPage);
-    this.syncVisibleItems(items, {
+    const syncOptions = {
       total,
       hasMore,
       ...(hasExplicitNextCursor
@@ -1651,7 +1684,73 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
               : null
           }
         : {})
-    });
+    };
+    this.syncVisibleItems(items, syncOptions);
+  }
+
+  private syncVisiblePollDelta(
+    delta: { upserts: readonly T[]; removedIds: readonly string[]; total: number }
+  ): boolean {
+    const cacheable = this.cacheableConfig();
+    if (!cacheable?.identity) {
+      return false;
+    }
+
+    const query = this.currentQuery();
+    const removedIds = new Set(
+      (delta.removedIds ?? []).map(id => `${id}`.trim()).filter(Boolean)
+    );
+    let nextItems = removedIds.size === 0
+      ? this.items
+      : this.items.filter((item, index) =>
+          !removedIds.has(`${cacheable.identity?.(item, index, query) ?? ''}`.trim())
+        );
+    let itemsChanged = nextItems !== this.items;
+
+    for (const polledItem of delta.upserts ?? []) {
+      const polledIdentity = `${cacheable.identity(polledItem, 0, query) ?? ''}`.trim();
+      if (!polledIdentity) {
+        continue;
+      }
+      const currentIndex = nextItems.findIndex((item, index) =>
+        `${cacheable.identity?.(item, index, query) ?? ''}`.trim() === polledIdentity
+      );
+      if (currentIndex >= 0) {
+        if (!itemsChanged) {
+          nextItems = [...nextItems];
+          itemsChanged = true;
+        }
+        nextItems.splice(currentIndex, 1);
+        nextItems.splice(this.visibleInsertionIndex(polledItem, nextItems), 0, polledItem);
+        continue;
+      }
+      if (!itemsChanged) {
+        nextItems = [...nextItems];
+        itemsChanged = true;
+      }
+      nextItems.splice(this.visibleInsertionIndex(polledItem, nextItems), 0, polledItem);
+    }
+
+    const nextTotal = Number.isFinite(delta.total)
+      ? Math.max(nextItems.length, Math.trunc(Number(delta.total)))
+      : Math.max(nextItems.length, this.total);
+    const nextHasMore = nextItems.length < nextTotal;
+    const stateChanged = itemsChanged || nextTotal !== this.total || nextHasMore !== this.hasMore;
+    if (!stateChanged) {
+      return false;
+    }
+
+    this.items = nextItems;
+    this.total = nextTotal;
+    this.hasMore = nextHasMore;
+    this.cacheDirectSourceItems();
+    this.syncGroups();
+    this.finiteStepper.syncBounds();
+    this.emitState();
+    this.emitRefresh();
+    this.cdr.markForCheck();
+    this.refreshSurfaceSoon();
+    return true;
   }
 
   private async loadInitialListPages(): Promise<void> {
@@ -4499,19 +4598,19 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     return true;
   }
 
-  private visibleInsertionIndex(item: T): number {
+  private visibleInsertionIndex(item: T, items: readonly T[] = this.items): number {
     if (!this.sortableConfig()) {
-      return this.items.length;
+      return items.length;
     }
     const query = this.currentQuery();
-    const itemSortKey = this.localSortKeyForItem(item, query, this.items.length);
-    const index = this.items.findIndex((currentItem, currentIndex) =>
+    const itemSortKey = this.localSortKeyForItem(item, query, items.length);
+    const index = items.findIndex((currentItem, currentIndex) =>
       compareSmartListLocalSortKeys(
         itemSortKey,
         this.localSortKeyForItem(currentItem, query, currentIndex)
       ) < 0
     );
-    return index >= 0 ? index : this.items.length;
+    return index >= 0 ? index : items.length;
   }
 
   private visibleGroupAlreadyLoaded(item: T): boolean {

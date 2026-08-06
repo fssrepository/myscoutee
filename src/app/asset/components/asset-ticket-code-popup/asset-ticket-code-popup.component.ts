@@ -20,7 +20,8 @@ export class AssetTicketCodePopupComponent {
   @Input() avatarUrl = '';
   @Input() initials = '';
   @Input() personLine = '';
-  @Input() roleEventLine = '';
+  @Input() roleBadgeLabel = '';
+  @Input() eventLine = '';
   @Input() dateLine = '';
   @Input() qrImageUrl = '';
 

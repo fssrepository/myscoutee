@@ -4,7 +4,9 @@ import type {
   NotificationBucket,
   NotificationDto,
   NotificationListFilters,
-  NotificationPageResultDto
+  NotificationPageResultDto,
+  NotificationSyncRequestDto,
+  NotificationSyncResponseDto
 } from '../../../core/contracts/notification.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 import { NotificationsService } from '../../../core/base/services/notifications.service';
@@ -262,6 +264,35 @@ export class NotificationCenterStore {
     }
   }
 
+  async sync(
+    request: NotificationSyncRequestDto,
+    signal?: AbortSignal
+  ): Promise<NotificationSyncResponseDto> {
+    const userId = this.activeUserIdRef();
+    if (!userId) {
+      return {
+        upserts: [],
+        removedIds: [],
+        total: 0,
+        unreadCount: 0,
+        muted: false
+      };
+    }
+    const generation = this.generation;
+    const contextRevision = this.pageContextRevision;
+    const contextRequestSequence = ++this.pageContextRequestSequence;
+    const result = await this.notificationsService.sync(userId, request, signal);
+    if (
+      generation === this.generation
+      && userId === this.activeUserIdRef()
+      && contextRevision === this.pageContextRevision
+      && contextRequestSequence === this.pageContextRequestSequence
+    ) {
+      this.applySyncContext(result);
+    }
+    return result;
+  }
+
   async setMuted(muted: boolean, signal?: AbortSignal): Promise<boolean> {
     const userId = this.activeUserIdRef();
     if (!userId) {
@@ -284,6 +315,11 @@ export class NotificationCenterStore {
   private applyPageContext(page: NotificationPageResultDto): void {
     this.syncUnreadCount(page.context?.unreadCount ?? this.unreadCountRef());
     this.syncMuted(page.context?.muted === true);
+  }
+
+  private applySyncContext(result: NotificationSyncResponseDto): void {
+    this.syncUnreadCount(result.unreadCount);
+    this.syncMuted(result.muted === true);
   }
 
   private syncMuted(muted: boolean): void {
