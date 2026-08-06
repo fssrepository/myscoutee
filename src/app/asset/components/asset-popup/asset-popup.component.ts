@@ -947,9 +947,6 @@ export class AssetPopupComponent {
   }
 
   protected assetFilterCount(type: AppConstants.AssetFilterType): number {
-    if (type === AppConstants.ASSET_FILTER_TICKET && this.assetStore.ticketPopup()) {
-      return this.assetPopupStore.ticketTotalCountRef();
-    }
     const ownerUserId = this.userProfileStore.activeUserProfile()?.id?.trim()
       || this.userProfileStore.activeUserId().trim();
     const source = this.userProfileStore.getUserProfile(ownerUserId);
@@ -1782,6 +1779,18 @@ export class AssetPopupComponent {
 
   protected onTicketSmartListStateChange(change: SmartListStateChange<AssetContracts.AssetTicketDTO, AssetTicketListFilters>): void {
     this.assetPopupStore.updateTicketList(change.items, change.total);
+    if (change.initialLoading || change.loading) {
+      return;
+    }
+    const activeUser = this.userProfileStore.activeUserProfile();
+    const userId = change.query.filters?.userId?.trim()
+      || activeUser?.id?.trim()
+      || this.userProfileStore.activeUserId().trim();
+    this.activityStore.signalUserTicketBucketCount(
+      userId,
+      change.total,
+      activeUser?.activities
+    );
   }
 
   protected onAssetSmartListStateChange(change: SmartListStateChange<AppDTOs.AssetDTO, OwnedAssetListFilters>): void {

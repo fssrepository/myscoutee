@@ -293,6 +293,25 @@ export class ActivityStore {
     this.patchUserCounterOverrides(normalizedUserId, patch);
   }
 
+  signalUserTicketBucketCount(
+    userId: string,
+    count: number,
+    baseCounters: Partial<ActivityCounters> | UserMenuCountersDto | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedCount = normalizeCounterValue(count);
+    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const asset = cloneAssetCounters(currentOverrides.asset ?? baseCounters?.asset);
+    asset.tickets = normalizedCount;
+    this.patchUserCounterOverrides(normalizedUserId, {
+      tickets: normalizedCount,
+      asset
+    });
+  }
+
   patchUserCounterDeltas(
     userId: string,
     delta: UserMenuCounterDeltasDto | null | undefined,

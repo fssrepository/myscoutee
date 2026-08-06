@@ -62,7 +62,7 @@ import {
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
 import { FiniteStepper } from './finite-stepper';
-import { UiTaskScheduler } from '../../../scheduler';
+import { UiPollCoordinator, UiTaskScheduler } from '../../../scheduler';
 import { I18nPipe } from '../../../pipes';
 import type {
   ListDirection,
@@ -131,6 +131,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly itemTemplateInjector = inject(Injector);
   private readonly itemMenuDispatcher = inject(AppMenuDispatcher);
+  private readonly pollCoordinator = inject(UiPollCoordinator);
   private restoreAnchorSequence = 0;
   private readonly ngZone = inject(NgZone);
 
@@ -332,7 +333,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private readonly pollScheduler = new UiTaskScheduler<ListQuery<TFilters>>({
     intervalMs: () => this.resolvedPollIntervalMs(),
     state: () => this.visiblePollQuery(),
-    task: ({ state, signal }) => this.pollVisibleItems(state, signal)
+    task: ({ state, signal }) => this.pollVisibleItems(state, signal),
+    pollCoordinator: this.pollCoordinator,
+    pollPriority: 'foreground'
   });
 
   private suspendSnapReactivation = false;

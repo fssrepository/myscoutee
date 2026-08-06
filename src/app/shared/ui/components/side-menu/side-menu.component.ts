@@ -33,6 +33,7 @@ import {
   type AppMenuValueMap,
   HeaderCardComponent,
   type HeaderCardModel,
+  UiPollCoordinator,
   UiTaskScheduler,
   type UserImpressionChangeFlags
 } from '../..';
@@ -221,6 +222,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   private readonly popupPresenceStore = inject(PopupPresenceStore);
+  private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
@@ -251,7 +253,9 @@ export class SideMenuComponent implements OnDestroy {
   private readonly userRealtimeScheduler = new UiTaskScheduler<string>({
     intervalMs: () => this.userRealtimePollIntervalMs(),
     state: () => this.userProfileStore.activeUserId().trim(),
-    task: ({ state }) => this.runUserRealtimeLongPollTick(state)
+    task: ({ state, signal }) => this.runUserRealtimeLongPollTick(state, signal),
+    pollCoordinator: this.pollCoordinator,
+    pollPriority: 'background'
   });
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
@@ -2018,8 +2022,8 @@ export class SideMenuComponent implements OnDestroy {
     return isNavigatorHydrationRoute(routeUrl);
   }
 
-  private async runUserRealtimeLongPollTick(userId: string): Promise<void> {
-    if (!userId) {
+  private async runUserRealtimeLongPollTick(userId: string, signal?: AbortSignal): Promise<void> {
+    if (!userId || signal?.aborted) {
       return;
     }
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
@@ -2027,7 +2031,11 @@ export class SideMenuComponent implements OnDestroy {
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
       const snapshot = await this.usersService.pollUserRealtimeSnapshot(userId, cursor);
-      if (!snapshot || this.userProfileStore.activeUserId().trim() !== userId) {
+      if (
+        !snapshot
+        || this.userProfileStore.activeUserId().trim() !== userId
+        || signal?.aborted
+      ) {
         return;
       }
       const nextNotificationCount = Number(snapshot.counters?.notifications);

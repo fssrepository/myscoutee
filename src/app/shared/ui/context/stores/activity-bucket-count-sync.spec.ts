@@ -57,4 +57,28 @@ describe('activity event bucket count signal', () => {
       }
     });
   });
+
+  it('publishes the Ticket list count through the shared menu and asset signal', () => {
+    const store = new ActivityStore();
+
+    store.signalUserTicketBucketCount('user-1', 3, {
+      tickets: 1,
+      asset: {
+        cars: 2,
+        accommodation: 4,
+        supplies: 6,
+        tickets: 1
+      }
+    });
+
+    expect(store.getUserCounterOverrides('user-1')).toMatchObject({
+      tickets: 3,
+      asset: {
+        cars: 2,
+        accommodation: 4,
+        supplies: 6,
+        tickets: 3
+      }
+    });
+  });
 });
