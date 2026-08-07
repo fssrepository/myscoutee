@@ -1973,7 +1973,7 @@ export class EventCheckoutPopupComponent {
     }
     this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta, true);
     this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta, true);
-    this.activitiesStore.clearActivityEventSave();
+    this.activitiesStore.emitActivityEventRemoval(dialog.record.id);
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.paymentStep = false;
     this.checkoutSessionId = null;
@@ -2640,7 +2640,10 @@ export class EventCheckoutPopupComponent {
         await dialog.onSubmit(this.buildSelection(null, false, {
           checkoutState,
           pendingReason,
-          includeBasketPayload: selectionChanged || !this.runtimeCheckoutBasketExists()
+          // The join write is the authoritative persistence boundary. A basket
+          // assembled in this popup may only exist in the local draft store, so
+          // its presence must not suppress the physical basket payload.
+          includeBasketPayload: true
         }));
         await this.persistCheckoutDraft(false, pendingReason, checkoutState);
         this.refreshCheckoutBaseline();

@@ -33,6 +33,28 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(table.byKey[key]);
   }
 
+  async loadBasketsByEvents(
+    userId: string,
+    sourceIds: readonly string[]
+  ): Promise<Map<string, LocalEventCheckoutBasketRecord>> {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const normalizedSourceIds = [...new Set(
+      sourceIds.map(sourceId => `${sourceId ?? ''}`.trim()).filter(Boolean)
+    )];
+    if (!normalizedUserId || normalizedSourceIds.length === 0) {
+      return new Map<string, LocalEventCheckoutBasketRecord>();
+    }
+    const table = await this.readTable();
+    const basketsBySourceId = new Map<string, LocalEventCheckoutBasketRecord>();
+    for (const sourceId of normalizedSourceIds) {
+      const basket = this.activeBasket(table.byKey[this.recordKey(normalizedUserId, sourceId)]);
+      if (basket) {
+        basketsBySourceId.set(sourceId, basket);
+      }
+    }
+    return basketsBySourceId;
+  }
+
   async loadActiveItemsByEvent(sourceId: string): Promise<LocalEventCheckoutBasketItemRecord[]> {
     const normalizedSourceId = `${sourceId ?? ''}`.trim();
     if (!normalizedSourceId) {

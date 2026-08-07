@@ -3,7 +3,8 @@ import { Injectable, signal, untracked } from '@angular/core';
 import {
   EventFeedbackDetailDto,
   type ActivitiesEventScope,
-  type EventCheckoutResultState
+  type EventCheckoutResultState,
+  type ActivityCurrentUserMembershipStatus
 } from '../../../core/contracts/activity.interface';
 import type * as AppDTOs from '../../../core/contracts';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
@@ -100,6 +101,7 @@ export interface ActivityMembersSyncState {
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
   viewerMembershipRemoved?: boolean;
+  currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   memberStatusChange?: AppDTOs.AssetMemberStatusChangeDTO | null;
 }
 
@@ -478,6 +480,7 @@ export class ActivityStore {
       ...(payload.full === true ? { full: true } : {}),
       ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
       ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {}),
+      ...(payload.currentUserMembershipStatus ? { currentUserMembershipStatus: payload.currentUserMembershipStatus } : {}),
       ...(payload.memberStatusChange
         ? {
             memberStatusChange: {

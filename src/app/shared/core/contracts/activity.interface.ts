@@ -224,6 +224,16 @@ export type ActivityEventStatus =
   | 'D'
   | 'I';
 
+export type ActivityCurrentUserMembershipStatus =
+  | 'none'
+  | 'accepted'
+  | 'pending'
+  | 'invited'
+  | 'trashed'
+  | 'suppressed'
+  | 'deleted'
+  | 'unchanged';
+
 export interface ActivityEventRecord {
   id: string;
   userId: string;
@@ -274,6 +284,7 @@ export interface ActivityEventRecord {
   nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
   upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
   checkoutBasket?: EventCheckoutBasket | null;
+  checkoutResultState?: EventCheckoutResultState | null;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -281,6 +292,7 @@ export interface ActivityEventRecord {
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
+  currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   topics: string[];
   subEventsEnabled?: boolean;
   subEventDefinitions?: SubEventDefinitionDTO[];
@@ -480,6 +492,7 @@ export interface ActivityEventDTO {
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
+  currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   approvalRequired?: boolean;
   checkoutResultState?: EventCheckoutResultState | null;
   boost: number;

@@ -60,6 +60,7 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  ActivityCurrentUserMembershipStatus,
   ActivityMemberDTO,
   EventInvitationContextDTO,
   ActivityEventSubEventsQueryDTO,
@@ -1581,7 +1582,12 @@ export class HttpEventsService implements IEventsService {
         checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(record.checkoutBasket),
         acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
+        acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+        pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+        invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+        pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
         pendingReason: record.pendingReason ?? null,
+        currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(record.currentUserMembershipStatus),
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,
@@ -1611,8 +1617,23 @@ export class HttpEventsService implements IEventsService {
       pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])],
+      currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(item.currentUserMembershipStatus),
       checkoutResultState: this.normalizeCheckoutResultState(item.checkoutResultState)
     }));
+  }
+
+  private normalizeCurrentUserMembershipStatus(
+    value: unknown
+  ): ActivityCurrentUserMembershipStatus {
+    return value === 'accepted'
+      || value === 'pending'
+      || value === 'invited'
+      || value === 'trashed'
+      || value === 'suppressed'
+      || value === 'deleted'
+      || value === 'unchanged'
+      ? value
+      : 'none';
   }
 
   private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState | null {

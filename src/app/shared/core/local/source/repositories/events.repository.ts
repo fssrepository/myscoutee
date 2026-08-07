@@ -496,7 +496,10 @@ export class LocalEventsRepository {
       if (!record || this.isGeneratedSlotRecord(record)) {
         continue;
       }
-      const resolvedRecord = this.withResolvedSlotContext(record, table);
+      const resolvedRecord = this.withCurrentUserMembershipStatus(
+        this.withResolvedSlotContext(record, table),
+        normalizedUserId
+      );
       if (!this.shouldIncludeExploreRecord(resolvedRecord, normalizedUserId)) {
         continue;
       }
@@ -2599,6 +2602,30 @@ export class LocalEventsRepository {
       return false;
     }
     return true;
+  }
+
+  private withCurrentUserMembershipStatus(
+    record: ActivityEventRecord,
+    viewerUserId: string
+  ): ActivityEventRecord {
+    const normalizedUserId = viewerUserId.trim();
+    if (!normalizedUserId) {
+      return { ...record, currentUserMembershipStatus: 'none' };
+    }
+    const table = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const ownerKey = `event:${record.id.trim()}`;
+    const member = (table.idsByOwnerKey[ownerKey] ?? [])
+      .map(id => table.byId[id])
+      .find(entry => entry?.userId === normalizedUserId);
+    const currentUserMembershipStatus = member?.status === 'accepted'
+      ? 'accepted'
+      : member?.status === 'pending'
+        ? (this.isInvitationMember(member) ? 'invited' : 'pending')
+        : 'none';
+    return {
+      ...record,
+      currentUserMembershipStatus
+    };
   }
 
   private shouldPreferExploreRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {

@@ -630,10 +630,22 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_EXPLORE_ROUTE);
-    return this.eventsRepository.queryEventExplorePage({
+    const normalizedUserId = this.resolveDemoActivityUserId(query.userId);
+    const page = this.eventsRepository.queryEventExplorePage({
       ...query,
-      userId: this.resolveDemoActivityUserId(query.userId)
+      userId: normalizedUserId
     });
+    const basketsBySourceId = await this.eventCheckoutBasketsRepository.loadBasketsByEvents(
+      normalizedUserId,
+      page.records.map(record => record.id)
+    );
+    const records = page.records.map(record => ({
+      ...record,
+      checkoutResultState: this.checkoutBasketResultState(
+        LocalEventCheckoutBasketsMapper.toDto(basketsBySourceId.get(record.id) ?? null)
+      )
+    }));
+    return { ...page, records };
   }
 
   peekEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
