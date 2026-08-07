@@ -10,12 +10,12 @@ function buildDemoPortraitStack(
   seedIndex: number,
   count = 3
 ): string[] {
-  const normalizedCount = Math.max(1, Math.min(8, Math.trunc(count)));
+  const normalizedCount = Math.max(1, Math.min(3, Math.trunc(count)));
   const folder = gender === 'woman' ? 'women' : 'men';
   const normalizedSeed = ((Math.trunc(seedIndex) % 100) + 100) % 100;
   const indexes: number[] = [];
 
-  for (let offset = 0; offset < 8 && indexes.length < normalizedCount; offset += 1) {
+  for (let offset = 0; offset < 3 && indexes.length < normalizedCount; offset += 1) {
     const candidate = (normalizedSeed + offset * 17) % 100;
     if (!indexes.includes(candidate)) {
       indexes.push(candidate);
@@ -356,13 +356,17 @@ export class SeedUserBuilder {
   }
 
   private static withUniqueDemoPortraitUrls(users: readonly UserRecord[]): UserRecord[] {
+    const usersWithGallerySizes = users.map((user, index) => ({
+      ...user,
+      images: (user.images ?? []).slice(0, this.demoPortraitCountForIndex(index))
+    }));
     // Reserve future raw URLs so replacing one duplicate cannot collide with a later user.
     const reservedPortraitUrls = new Set(
-      users.flatMap(user => (user.images ?? []).map(imageUrl => imageUrl.trim()).filter(Boolean))
+      usersWithGallerySizes.flatMap(user => (user.images ?? []).map(imageUrl => imageUrl.trim()).filter(Boolean))
     );
     const usedPortraitUrls = new Set<string>();
 
-    return users.map(user => ({
+    return usersWithGallerySizes.map(user => ({
       ...user,
       images: (user.images ?? []).map(imageUrl => {
         const normalizedImageUrl = imageUrl.trim();
@@ -385,6 +389,17 @@ export class SeedUserBuilder {
         return replacementImageUrl;
       })
     }));
+  }
+
+  private static demoPortraitCountForIndex(index: number): 1 | 2 | 3 {
+    const positionInDistribution = Math.max(0, Math.trunc(index)) % 5;
+    if (positionInDistribution === 0) {
+      return 3;
+    }
+    if (positionInDistribution === 1) {
+      return 1;
+    }
+    return 2;
   }
 
   private static nextAvailableDemoPortraitUrl(
