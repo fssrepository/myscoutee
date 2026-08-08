@@ -25,9 +25,9 @@ export class AdminHelpSeedBuilder {
         attachmentId: 'admin-help:u1:events',
         attachmentType: 'event',
         attachmentEntityId: 'e1',
-        title: 'Alpine Weekend 2.0',
+        title: 'Alpine Cabin Supper',
         subtitle: 'Feb 27 - Mar 1',
-        description: 'Multi-day ski meetup with social dinner and pair game.',
+        description: 'A small ski group winds down over soup while wet gloves and boots dry by the stove.',
         previewUrl: eventPreviewUrl,
         text: 'Please check what I see on this event screen.',
         targetUrl: '/game?supportTarget=event&eventId=e1'

@@ -22,6 +22,7 @@ export interface ActivityInvitationSeedItem {
   avatar: string;
   inviter: string;
   description: string;
+  shortDescription?: string;
   when: string;
   unread: number;
   creatorUserId?: string;
@@ -42,6 +43,7 @@ export interface ActivityInvitationSeedItem {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: LocationCoordinates;
+  topics?: string[];
   policies?: EventPolicyDTO[];
   policiesEnabled?: boolean;
   pricing?: PricingConfig | null;

@@ -126,8 +126,8 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
     expect(state[EVENT_FEEDBACK_TABLE_NAME].ids.length).toBeGreaterThan(0);
-    expect(state[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId['u3']?.length).toBe(32);
-    expect(state[USERS_TABLE_NAME].byId['u3']?.activities.notifications).toBe(24);
+    expect(state[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId['u3']?.length).toBe(33);
+    expect(state[USERS_TABLE_NAME].byId['u3']?.activities.notifications).toBe(25);
     expect(state[EVENTS_TABLE_NAME].ids).toEqual(eventIdsBefore);
     expect(JSON.stringify(state[EVENTS_TABLE_NAME].byId)).toBe(eventRecordsBefore);
   });
@@ -625,7 +625,7 @@ describe('Demo bootstrap seeding', () => {
 
     const state = memoryDb.read();
     const brunchRotation = Object.values(state[EVENTS_TABLE_NAME].byId)
-      .find(record => record?.title === 'Brunch Rotation' && record.acceptedMembers > 0);
+      .find(record => record?.id === 'e9' && record.acceptedMembers > 0);
     expect(brunchRotation).toBeTruthy();
 
     const ownerKey = `event:${brunchRotation!.id}`;

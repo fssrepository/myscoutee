@@ -15,7 +15,7 @@ import {
   type ActivityEventRecord,
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
-import { demoEventPlaceholderUrl } from './demo-image-pool';
+import { demoEventPlaceholder, demoEventPlaceholderUrl } from './demo-image-pool';
 
 const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50);
 
@@ -383,8 +383,8 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
     {
       id: 'e1',
       avatar: 'SY',
-      title: 'Alpine Weekend 2.0',
-      shortDescription: 'Multi-day ski meetup with social dinner and pair game.',
+      title: 'Alpine Cabin Supper',
+      shortDescription: 'A small ski group winds down over soup while wet gloves and boots dry by the stove.',
       timeframe: 'Feb 27 - Mar 1',
       activity: 4,
       isAdmin: true
@@ -446,8 +446,8 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
     {
       id: 'e7',
       avatar: 'SY',
-      title: 'Coffee + Book Swap',
-      shortDescription: 'Small-circle meetup with curated intro prompts.',
+      title: 'Coffee and Book Swap',
+      shortDescription: 'Readers trade wrapped recommendations and open them over coffee in a small circle.',
       timeframe: 'Mar 16 · 9:30 AM - 11:30 AM',
       activity: 1,
       isAdmin: true,
@@ -646,8 +646,8 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
     {
       id: 'e5',
       avatar: 'SY',
-      title: 'Creative Studio Meetup',
-      shortDescription: 'Hands-on session and portfolio exchange for creators.',
+      title: 'Wheel-Thrown Pottery Lab',
+      shortDescription: 'Beginners center clay and compare forms at a row of working wheels.',
       timeframe: 'Mar 3 · 6:00 PM - 10:00 PM',
       activity: 2,
       isAdmin: false,
@@ -968,14 +968,22 @@ export class SeedEventsBuilder {
 
   static buildSeedInvitationItemsByUser(): Record<string, ActivityInvitationSeedItem[]> {
     return Object.fromEntries(
-      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
-        ...item,
-        pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
-        acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
-        pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
-        policiesEnabled: item.policiesEnabled === true,
-        policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies
-      }))])
+      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => {
+        const demo = demoEventPlaceholder(`demo-event-invitations:${userId}:${item.id}`);
+        return {
+          ...item,
+          description: demo.title,
+          shortDescription: demo.subtitle,
+          imageUrl: demo.imageUrl,
+          location: demo.location,
+          topics: [...demo.topics],
+          pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
+          pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
+          policiesEnabled: item.policiesEnabled === true,
+          policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies
+        };
+      })])
     );
   }
 
@@ -1002,6 +1010,19 @@ export class SeedEventsBuilder {
     ) as Record<string, ActivityEventSeedItem[]>;
 
     this.rebalanceSeedExploreItems(seeded);
+    for (const [userId, items] of Object.entries(seeded)) {
+      seeded[userId] = items.map(item => {
+        const demo = demoEventPlaceholder(`demo-event-events:${userId}:${item.id}`);
+        return {
+          ...item,
+          title: demo.title,
+          shortDescription: demo.subtitle,
+          imageUrl: demo.imageUrl,
+          location: demo.location,
+          topics: [...demo.topics]
+        };
+      });
+    }
     return seeded;
   }
 
@@ -1055,18 +1076,25 @@ export class SeedEventsBuilder {
     return Object.fromEntries(
       Object.entries(SEED_HOSTING_BY_USER).map(([userId, items]) => [
         userId,
-        items.map(item => ({
-          ...item,
-          pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
-          policiesEnabled: item.policiesEnabled === true,
-          policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
-          slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
-          subEventsEnabled: item.subEventsEnabled,
-          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
-          topics: item.topics ? [...item.topics] : item.topics,
-          acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
-          pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
-        }))
+        items.map(item => {
+          const demo = demoEventPlaceholder(`demo-event-hosting:${userId}:${item.id}`);
+          return {
+            ...item,
+            title: demo.title,
+            shortDescription: demo.subtitle,
+            imageUrl: demo.imageUrl,
+            location: demo.location,
+            topics: [...demo.topics],
+            pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+            policiesEnabled: item.policiesEnabled === true,
+            policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
+            slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
+            subEventsEnabled: item.subEventsEnabled,
+            subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
+            acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
+            pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
+          };
+        })
       ])
     );
   }
@@ -1095,7 +1123,7 @@ export class SeedEventsBuilder {
           type: 'invitations',
           avatar: item.avatar,
           title: item.description,
-          subtitle: item.inviter,
+          subtitle: item.shortDescription?.trim() || item.inviter,
           timeframe: item.when,
           inviter: item.inviter,
           unread: item.unread,
@@ -2241,8 +2269,7 @@ export class SeedEventsBuilder {
   private static buildRecordImageUrl(
     record: Pick<ActivityEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): string {
-    const normalizedSeed = this.recordSeedKey(record).toLowerCase().replace(/\s+/g, '-');
-    return demoEventPlaceholderUrl(`demo-event-${normalizedSeed}`);
+    return demoEventPlaceholderUrl(`demo-event-${record.type}:${record.userId}:${record.id}`);
   }
 
   private static buildRecordSourceLink(

@@ -11,7 +11,18 @@ export interface DemoAssetPlaceholder {
   status: string;
 }
 
+export interface DemoEventPlaceholder {
+  slot: number;
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  location: string;
+  topics: readonly string[];
+}
+
 type DemoAssetDefinition = Omit<DemoAssetPlaceholder, 'slot' | 'imageUrl' | 'visibility' | 'status'>;
+
+type DemoEventDefinition = Omit<DemoEventPlaceholder, 'slot' | 'imageUrl'>;
 
 const ASSET_PICSUM_IDS = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49] as const;
 const EVENT_PICSUM_IDS = [50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,87,88,89,90,91,92,93,94,95,96,98,99,100,101,102,103,104,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,139,140,141,142,143,144,145,146,147,149,151,152,153,154,155] as const;
@@ -814,39 +825,1042 @@ const ASSET_RECORD_BY_SLOT: Readonly<Record<number, { visibility: DemoAssetPlace
   }
 };
 
+const EVENT_DEFINITION_BY_SLOT: Readonly<Record<number, DemoEventDefinition>> = {
+  "1": {
+    "title": "Snowline Shuttle Briefing",
+    "subtitle": "A dawn transfer team checks skis, helmets, and warm layers before the road climbs.",
+    "location": "Austin · snowy timber-lodge pickup lane",
+    "topics": [
+      "#WinterSports",
+      "#Outdoors",
+      "#Travel"
+    ]
+  },
+  "2": {
+    "title": "Alpine Cabin Supper",
+    "subtitle": "A small ski group winds down over soup while wet gloves and boots dry by the stove.",
+    "location": "Austin · stone mountain refuge dining room",
+    "topics": [
+      "#WinterSports",
+      "#Outdoors",
+      "#Travel"
+    ]
+  },
+  "3": {
+    "title": "Glasshouse Padel Ladder",
+    "subtitle": "Rotating doubles play short ranking rounds on a bright converted conservatory court.",
+    "location": "Austin · sunlit glass-roof padel court",
+    "topics": [
+      "#Sports",
+      "#Tournament",
+      "#HealthyLifestyle"
+    ]
+  },
+  "4": {
+    "title": "Sunset Beach Volley Rotation",
+    "subtitle": "Casual teams rotate through quick games before sharing fruit at the sideline.",
+    "location": "San Diego · wide public beach volleyball court",
+    "topics": [
+      "#Sports",
+      "#Tournament",
+      "#HealthyLifestyle"
+    ]
+  },
+  "5": {
+    "title": "Rooftop Padel Open",
+    "subtitle": "Open pairs meet for a friendly evening bracket above the city.",
+    "location": "New York · fenced urban rooftop padel court",
+    "topics": [
+      "#Sports",
+      "#Tournament",
+      "#HealthyLifestyle"
+    ]
+  },
+  "6": {
+    "title": "Riverbridge Cargo-Bike Social",
+    "subtitle": "A relaxed ride pauses to compare practical cargo setups before following the riverside trail.",
+    "location": "Chicago · riverside path below a steel bridge",
+    "topics": [
+      "#Cycling",
+      "#Outdoors",
+      "#Community"
+    ]
+  },
+  "7": {
+    "title": "Sunrise Run and Market Brunch",
+    "subtitle": "An easy-pace run finishes beside a breakfast table with fruit, rolls, and coffee flasks.",
+    "location": "Chicago · tree-lined market square at sunrise",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "8": {
+    "title": "Riverside Relay Handoff",
+    "subtitle": "Small teams practice clean baton exchanges across a long community relay route.",
+    "location": "Austin · curving river trail beside a pedestrian bridge",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "9": {
+    "title": "Stadium Stair Pulse",
+    "subtitle": "A compact fitness group alternates stair climbs with recovery rounds.",
+    "location": "Los Angeles · open concrete neighborhood stadium",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "10": {
+    "title": "Rain-Window Track Intervals",
+    "subtitle": "A weatherproof evening session uses short intervals and paired pacing.",
+    "location": "Chicago · indoor oval track beside tall rain-streaked windows",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "11": {
+    "title": "Urban Photo Checkpoint Dash",
+    "subtitle": "Camera teams move between visual challenges without turning the meetup into a race.",
+    "location": "Los Angeles · geometric downtown pedestrian plaza",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "12": {
+    "title": "Underpass Strength Circuit",
+    "subtitle": "A coached outdoor circuit combines resistance bands, step boxes, and controlled carries.",
+    "location": "San Diego · clean concrete space beneath a broad overpass",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "13": {
+    "title": "Twilight Pacer Drills",
+    "subtitle": "Volunteer pacers rehearse starts, regroup points, and steady running formation.",
+    "location": "Austin · community athletics track at blue hour",
+    "topics": [
+      "#Running",
+      "#Fitness",
+      "#HealthyLifestyle"
+    ]
+  },
+  "14": {
+    "title": "Red Rock Overlook Hike",
+    "subtitle": "A measured desert climb ends at a broad overlook with time for water and route checks.",
+    "location": "Los Angeles · rust-colored canyon trail",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "15": {
+    "title": "Lakeside Walk Lab",
+    "subtitle": "Paired conversations alternate with quiet observation stops along the water.",
+    "location": "Phoenix · wooden boardwalk through lakeside reeds",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "16": {
+    "title": "Conservatory Sunset Stroll",
+    "subtitle": "Friends of friends explore outdoor garden rooms before the glasshouse closes.",
+    "location": "San Diego · botanical conservatory garden at sunset",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "17": {
+    "title": "Saguaro Bloom Trail",
+    "subtitle": "A careful morning walk follows seasonal desert flowers without leaving the marked path.",
+    "location": "Phoenix · Sonoran desert footpath after spring rain",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "18": {
+    "title": "Elevated-Rail Architecture Walk",
+    "subtitle": "The group studies steelwork, brick facades, and changing street proportions.",
+    "location": "Chicago · car-free street beneath an elevated railway",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "19": {
+    "title": "Cedar Mist Forest Loop",
+    "subtitle": "A quiet social hike follows a damp cedar path with frequent regroup stops.",
+    "location": "Seattle · misty evergreen forest trail",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "20": {
+    "title": "Mosaic Stairway City Walk",
+    "subtitle": "A hillside route connects colorful public steps, pocket gardens, and neighborhood overlooks.",
+    "location": "Los Angeles · steep urban garden stairway",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "21": {
+    "title": "Accessible Sunday Park Loop",
+    "subtitle": "A step-free loop keeps the pace conversational and the path comfortable for everyone.",
+    "location": "Phoenix · broad level path around a mature city park",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "22": {
+    "title": "Lantern Bluff Walk",
+    "subtitle": "An early-evening coastal walk uses hand lanterns for the return from the overlook.",
+    "location": "Los Angeles · grassy bluff above a rocky coast",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "23": {
+    "title": "Tidal Marsh Bird Walk",
+    "subtitle": "A patient boardwalk outing practices binocular use and quiet group movement.",
+    "location": "San Diego · open salt-marsh observation boardwalk",
+    "topics": [
+      "#Walking",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "24": {
+    "title": "Paddleboard Balance Clinic",
+    "subtitle": "Beginners rehearse stable stance and safe falls in calm shallow water.",
+    "location": "Austin · sheltered urban lake beach",
+    "topics": [
+      "#WaterSports",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "25": {
+    "title": "Canyon Reservoir Kayak Pairing",
+    "subtitle": "Paddlers match pace and practice turning before a short red-cliff route.",
+    "location": "Phoenix · calm reservoir below red canyon walls",
+    "topics": [
+      "#WaterSports",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "26": {
+    "title": "Lakefront Dinghy Rigging",
+    "subtitle": "A small sailing group learns to prepare lines and sails before leaving the harbor.",
+    "location": "Chicago · grassy lakefront sailing dock",
+    "topics": [
+      "#WaterSports",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "27": {
+    "title": "Riverside Canoe Picnic Launch",
+    "subtitle": "Friends pack a dry lunch and check life jackets before a gentle downstream paddle.",
+    "location": "Phoenix · tree-shaded river launch ramp",
+    "topics": [
+      "#WaterSports",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "28": {
+    "title": "Low-Tide Shore Survey",
+    "subtitle": "A waterfront meetup observes tide pools and returns every stone carefully.",
+    "location": "Seattle · rocky Pacific shoreline at low tide",
+    "topics": [
+      "#WaterSports",
+      "#Outdoors",
+      "#Nature"
+    ]
+  },
+  "29": {
+    "title": "Corner Bakery First Batch",
+    "subtitle": "Early arrivals share still-warm bread at the working table beside the ovens.",
+    "location": "Chicago · small neighborhood bakery after opening",
+    "topics": [
+      "#CoffeeMeetup",
+      "#Brunch",
+      "#Friends"
+    ]
+  },
+  "30": {
+    "title": "Greenhouse Brunch Table",
+    "subtitle": "A plant-filled brunch pairs seasonal plates with calm one-to-one introductions.",
+    "location": "San Diego · airy greenhouse cafe among hanging plants",
+    "topics": [
+      "#CoffeeMeetup",
+      "#Brunch",
+      "#Friends"
+    ]
+  },
+  "31": {
+    "title": "Brunch Rotation",
+    "subtitle": "Three compact tables rotate guests every twenty minutes using different cup colors as cues.",
+    "location": "Chicago · bright tiled all-day cafe",
+    "topics": [
+      "#CoffeeMeetup",
+      "#Brunch",
+      "#Friends"
+    ]
+  },
+  "32": {
+    "title": "Pour-Over Roastery Lab",
+    "subtitle": "A hands-on coffee session compares grind, timing, and aroma without brand-led presentation.",
+    "location": "San Diego · brick micro-roastery workshop counter",
+    "topics": [
+      "#CoffeeMeetup",
+      "#Brunch",
+      "#Friends"
+    ]
+  },
+  "33": {
+    "title": "Rooftop Tea and Citrus",
+    "subtitle": "A breezy late breakfast combines iced tea, citrus pastries, and a shaded skyline table.",
+    "location": "San Diego · quiet rooftop garden breakfast terrace",
+    "topics": [
+      "#CoffeeMeetup",
+      "#Brunch",
+      "#Friends"
+    ]
+  },
+  "34": {
+    "title": "Market Hall Breakfast Club",
+    "subtitle": "The group assembles a shared breakfast from several small independent counters.",
+    "location": "Chicago · historic indoor food hall in morning light",
+    "topics": [
+      "#CoffeeMeetup",
+      "#Brunch",
+      "#Friends"
+    ]
+  },
+  "35": {
+    "title": "Night Taco Window Crawl",
+    "subtitle": "A three-stop route compares fillings and handmade salsas at open street windows.",
+    "location": "Los Angeles · pedestrian food lane after dark",
+    "topics": [
+      "#Food",
+      "#Cooking",
+      "#Friends"
+    ]
+  },
+  "36": {
+    "title": "Handmade Pasta Table",
+    "subtitle": "Pairs roll dough, shape filled pasta, and share the first cooked batch.",
+    "location": "San Diego · community kitchen with long marble worktop",
+    "topics": [
+      "#Food",
+      "#Cooking",
+      "#Friends"
+    ]
+  },
+  "37": {
+    "title": "Night Food League",
+    "subtitle": "Teams sample three market stalls and compare aroma, texture, and presentation.",
+    "location": "Seattle · covered night market dining aisle",
+    "topics": [
+      "#Food",
+      "#Cooking",
+      "#Friends"
+    ]
+  },
+  "38": {
+    "title": "Friends Circle Supper",
+    "subtitle": "Close connections and plus-ones share a slow seasonal meal at one candlelit table.",
+    "location": "Chicago · converted farmhouse dining room",
+    "topics": [
+      "#Food",
+      "#Cooking",
+      "#Friends"
+    ]
+  },
+  "39": {
+    "title": "Cocoa and Spice Flight",
+    "subtitle": "A guided tasting matches dark cocoa with cinnamon, chile, citrus peel, and toasted nuts.",
+    "location": "San Diego · intimate stone-walled tasting room",
+    "topics": [
+      "#Food",
+      "#Cooking",
+      "#Friends"
+    ]
+  },
+  "40": {
+    "title": "Desert Porch Folk Session",
+    "subtitle": "Acoustic players trade short songs while listeners settle into porch chairs.",
+    "location": "Phoenix · adobe porch facing a desert dusk",
+    "topics": [
+      "#Music",
+      "#GoingOut",
+      "#Culture"
+    ]
+  },
+  "41": {
+    "title": "Jazz Rooftop Session",
+    "subtitle": "A compact trio plays beside low tables as the skyline moves into evening.",
+    "location": "Denver · brick rooftop music terrace",
+    "topics": [
+      "#Music",
+      "#GoingOut",
+      "#Culture"
+    ]
+  },
+  "42": {
+    "title": "Basement Vinyl Listening Circle",
+    "subtitle": "Each guest shares one record side in a focused, low-light listening room.",
+    "location": "Chicago · acoustically treated basement lounge",
+    "topics": [
+      "#Music",
+      "#GoingOut",
+      "#Culture"
+    ]
+  },
+  "43": {
+    "title": "Harbor Warehouse Percussion Lab",
+    "subtitle": "A rhythm workshop builds layered patterns with hand drums and found percussion.",
+    "location": "Seattle · open brick warehouse beside a harbor",
+    "topics": [
+      "#Music",
+      "#GoingOut",
+      "#Culture"
+    ]
+  },
+  "44": {
+    "title": "Courtyard String Social",
+    "subtitle": "A small string quartet performs close to a standing neighborhood audience.",
+    "location": "Los Angeles · leafy old-town courtyard at night",
+    "topics": [
+      "#Music",
+      "#GoingOut",
+      "#Culture"
+    ]
+  },
+  "45": {
+    "title": "Sunprint Garden Workshop",
+    "subtitle": "Participants arrange leaves and small objects for blue botanical contact prints.",
+    "location": "Austin · community garden worktable in clear sun",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "46": {
+    "title": "Creative Nights Gesture Circle",
+    "subtitle": "A clothed gesture model anchors fast charcoal studies and supportive critique.",
+    "location": "Seattle · high-ceiling neighborhood art studio",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "47": {
+    "title": "Wheel-Thrown Pottery Lab",
+    "subtitle": "Beginners center clay and compare forms at a row of working wheels.",
+    "location": "Nashville · daylit ceramic workshop",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "48": {
+    "title": "Coffee and Book Swap",
+    "subtitle": "Readers trade wrapped recommendations and open them over coffee in a small circle.",
+    "location": "Austin · independent cafe reading alcove",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "49": {
+    "title": "Risograph Zine Assembly",
+    "subtitle": "A print group layers two colors, folds pages, and binds a tiny shared edition.",
+    "location": "Austin · compact community print studio",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "50": {
+    "title": "Darkroom Contact Sheet Night",
+    "subtitle": "Analog photographers inspect fresh contact sheets under safe red light.",
+    "location": "Seattle · working photographic darkroom",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "51": {
+    "title": "Studio Friends Critique Wall",
+    "subtitle": "An invite-only group pins works in progress and discusses composition in short rounds.",
+    "location": "Seattle · loft studio with a long white review wall",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "52": {
+    "title": "Urban Photo Marathon",
+    "subtitle": "Camera teams solve composition challenges across arcades, reflections, and pedestrian bridges.",
+    "location": "Los Angeles · downtown passage with mirrored windows",
+    "topics": [
+      "#Creativity",
+      "#Art",
+      "#Culture"
+    ]
+  },
+  "53": {
+    "title": "Candlelit Sound Bath",
+    "subtitle": "A quiet evening session layers singing bowls and low resonant tones.",
+    "location": "Chicago · warm timber wellness room",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "54": {
+    "title": "Seaside Sunrise Yoga",
+    "subtitle": "A gentle standing sequence begins as first light reaches the water.",
+    "location": "San Diego · flat oceanfront deck at sunrise",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "55": {
+    "title": "Community Tai Chi Courtyard",
+    "subtitle": "Slow coordinated forms create a calm start in a sheltered civic courtyard.",
+    "location": "Seattle · pale stone courtyard with one mature tree",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "56": {
+    "title": "Desert Breathwork Circle",
+    "subtitle": "A guided breathing practice uses upright seating and a quiet sandstone setting.",
+    "location": "Phoenix · shaded desert pavilion",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "57": {
+    "title": "Aromatic Herb Blending Table",
+    "subtitle": "Participants combine dried herbs for simple calming sachets and steam bowls.",
+    "location": "San Diego · bright apothecary-style workshop without labels",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "58": {
+    "title": "Mobility Bands Clinic",
+    "subtitle": "A practical session explores shoulder, hip, and ankle range with light resistance.",
+    "location": "San Diego · sunlit neighborhood exercise room",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "59": {
+    "title": "Floating Dock Meditation",
+    "subtitle": "A short silent practice follows the movement of water beneath a stable dock.",
+    "location": "Seattle · wide wooden dock on a still forest lake",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "60": {
+    "title": "Restorative Stretch Hall",
+    "subtitle": "Long supported stretches use bolsters, blocks, and folded blankets.",
+    "location": "San Diego · renovated old gym with tall windows",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "61": {
+    "title": "Park Hammock Pause",
+    "subtitle": "A guided rest meetup alternates short journaling with quiet hammock time.",
+    "location": "Los Angeles · shady grove in a spacious public park",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "62": {
+    "title": "Quiet Tea Mindfulness",
+    "subtitle": "A small group practices attentive pouring, aroma, and unhurried silence.",
+    "location": "Chicago · minimal tatami-style community room",
+    "topics": [
+      "#Wellness",
+      "#MentalHealth",
+      "#HealthyLifestyle"
+    ]
+  },
+  "63": {
+    "title": "Repair Cafe Team Challenge",
+    "subtitle": "Small volunteer teams diagnose lamps, radios, and household devices in cooperative timed rounds.",
+    "location": "library makerspace repair bench",
+    "topics": [
+      "#Workshop",
+      "#Networking",
+      "#Technology"
+    ]
+  },
+  "64": {
+    "title": "Civic Mapping Team Qualifier",
+    "subtitle": "Mapping teams prepare mobility-gap evidence for a friendly multi-round civic challenge.",
+    "location": "municipal workshop room with large tables",
+    "topics": [
+      "#Workshop",
+      "#Networking",
+      "#Technology"
+    ]
+  },
+  "65": {
+    "title": "Cardboard Prototype Sprint",
+    "subtitle": "Small teams turn service ideas into testable tabletop models in one afternoon.",
+    "location": "Chicago · bright innovation studio",
+    "topics": [
+      "#Workshop",
+      "#Networking",
+      "#Technology"
+    ]
+  },
+  "66": {
+    "title": "Library Mentor Office Hours",
+    "subtitle": "Founders and career changers rotate through focused twenty-minute coaching tables.",
+    "location": "Seattle · modern public library mezzanine",
+    "topics": [
+      "#Workshop",
+      "#Networking",
+      "#Technology"
+    ]
+  },
+  "67": {
+    "title": "Little Havana Courtyard Potluck",
+    "subtitle": "Neighbors bring family dishes to one shaded courtyard table with open seating.",
+    "location": "Seattle · colorful tropical residential courtyard",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "68": {
+    "title": "Library Mentorship Milestone Map",
+    "subtitle": "A spring cohort marks completed projects and pairs up for its next shared task.",
+    "location": "Miami · sunlit library project room",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "69": {
+    "title": "Spring Festival Build Crew",
+    "subtitle": "Volunteers assemble reusable bunting, route arches, and lightweight decorations.",
+    "location": "Austin · covered civic workshop yard",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "70": {
+    "title": "Moonlight Beach Cleanup",
+    "subtitle": "An evening shoreline crew sorts recovered material under safe portable lights.",
+    "location": "Portland · broad urban beach after sunset",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "71": {
+    "title": "Hillside Community Garden Day",
+    "subtitle": "Neighbors repair raised beds, turn compost, and plant a shared herb row.",
+    "location": "Nashville · terraced neighborhood garden",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "72": {
+    "title": "Donation Bicycle Repair Bench",
+    "subtitle": "Volunteer mechanics prepare donated bicycles for new riders.",
+    "location": "Boston · open community cycle workshop",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "73": {
+    "title": "Desert Trail Stewardship",
+    "subtitle": "A morning crew clears loose branches and refreshes safe route markers.",
+    "location": "Chicago · dry desert trailhead beneath low mountains",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "74": {
+    "title": "Winter Coat Sorting Hall",
+    "subtitle": "A neighborhood drive organizes warm clothing by size before collection day.",
+    "location": "Denver · plain school assembly hall",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "75": {
+    "title": "Mangrove Seedling Crew",
+    "subtitle": "A waterfront team pots young mangroves for a supervised restoration site.",
+    "location": "Boston · shaded coastal nursery platform",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "76": {
+    "title": "Riverbank Native Planting",
+    "subtitle": "Volunteers stabilize a worn river edge with grasses and young shrubs.",
+    "location": "Austin · muddy urban riverbank in daylight",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "77": {
+    "title": "Food Rescue Packing Line",
+    "subtitle": "A fast volunteer shift turns surplus produce into balanced family boxes.",
+    "location": "Miami · clean warehouse packing room",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "78": {
+    "title": "Mobile Library Book Drive",
+    "subtitle": "Neighbors sort donated books and load rolling shelves for a weekend pop-up.",
+    "location": "Portland · community-center loading courtyard",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "79": {
+    "title": "Porch Concert Setup Crew",
+    "subtitle": "A block team lays cables, arranges chairs, and tests a tiny neighborhood stage.",
+    "location": "San Diego · wide residential porch and closed street",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "80": {
+    "title": "Public Mural Wall Prep",
+    "subtitle": "The crew cleans, primes, and grids a wall before the artists arrive.",
+    "location": "Seattle · sunny pedestrian underpass wall",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "81": {
+    "title": "Night Market Stall Build",
+    "subtitle": "Vendors and volunteers assemble modular counters before the evening crowd.",
+    "location": "Los Angeles · brick market square at late afternoon",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "82": {
+    "title": "Community Kitchen Batch Cook",
+    "subtitle": "A shared kitchen prepares soup, bread, and chopped vegetables for neighborhood delivery.",
+    "location": "Nashville · large stainless community kitchen",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "83": {
+    "title": "Harbor Lantern Parade Workshop",
+    "subtitle": "Families and volunteers build lightweight lantern forms for a waterfront procession.",
+    "location": "Boston · maritime community hall",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "84": {
+    "title": "Mountain Gear Swap Hall",
+    "subtitle": "Outdoor neighbors inspect, repair, and exchange clean seasonal equipment.",
+    "location": "Denver · timber recreation hall near foothills",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "85": {
+    "title": "Ferry Welcome Volunteer Team",
+    "subtitle": "A local crew prepares maps, water, and luggage help for arriving visitors.",
+    "location": "Chicago · covered ferry-terminal plaza",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "86": {
+    "title": "Inclusive Beach Access Setup",
+    "subtitle": "Volunteers install a temporary access mat and prepare adaptive beach equipment.",
+    "location": "San Diego · public beach access point in morning light",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "87": {
+    "title": "Rooftop Pollinator Garden Day",
+    "subtitle": "Residents refresh planters with herbs and flowers for urban bees and butterflies.",
+    "location": "Seattle · broad apartment rooftop garden",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "88": {
+    "title": "Community Makerspace Tool Sort",
+    "subtitle": "Members inventory donated hand tools and rebuild clear shared workstations.",
+    "location": "Portland · industrial neighborhood makerspace",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "89": {
+    "title": "Desert Water Refill Crew",
+    "subtitle": "A trail-support team cleans containers and prepares shaded refill points.",
+    "location": "Phoenix · sunlit desert service yard",
+    "topics": [
+      "#Community",
+      "#Volunteering",
+      "#Festival"
+    ]
+  },
+  "90": {
+    "title": "Terrace Newcomer Exchange",
+    "subtitle": "New arrivals use object-based prompts to start natural small-group conversations.",
+    "location": "Austin · layered city terrace with planted dividers",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "91": {
+    "title": "Neon Bowling Introductions",
+    "subtitle": "Pairs change lanes between short games and cheer unfamiliar teammates.",
+    "location": "San Diego · retro bowling hall with abstract neon light",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "92": {
+    "title": "Gallery Courtyard Mixer",
+    "subtitle": "A casual opening brings artists, neighbors, and first-time visitors around outdoor sculptures.",
+    "location": "Los Angeles · white-walled gallery courtyard",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "93": {
+    "title": "Desert Patio Language Exchange",
+    "subtitle": "Conversation partners switch between short rounds over mint tea.",
+    "location": "Phoenix · shaded adobe patio with woven chairs",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "94": {
+    "title": "Golden Hour Rooftop Meetup",
+    "subtitle": "Sunset check-in games lead into relaxed skyline conversations.",
+    "location": "Austin · open rooftop garden during golden hour",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "95": {
+    "title": "Greenhouse Neighbor Tea",
+    "subtitle": "Residents from nearby blocks meet among citrus trees and shared tea trays.",
+    "location": "Seattle · community greenhouse in soft rain",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "96": {
+    "title": "Bookshop Speed-Friending",
+    "subtitle": "Short paired conversations move through reading nooks instead of one crowded line.",
+    "location": "Austin · independent bookshop after closing",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "97": {
+    "title": "Telescope Lawn Social",
+    "subtitle": "A twilight gathering alternates constellation viewing with blanket conversations.",
+    "location": "Los Angeles · open science-center lawn at dusk",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "98": {
+    "title": "Riverside Picnic Pairings",
+    "subtitle": "Blanket groups reshuffle after each shared snack course.",
+    "location": "Seattle · grassy riverbank with mature trees",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "99": {
+    "title": "Museum After-Hours Trail",
+    "subtitle": "Conversation pairs follow light-and-shadow installations through a quiet museum wing.",
+    "location": "Austin · contemporary museum interior at night",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  },
+  "100": {
+    "title": "Community Dessert Social",
+    "subtitle": "Neighbors decorate small cakes together before sharing a long final table.",
+    "location": "Seattle · warm community kitchen dining room",
+    "topics": [
+      "#Social",
+      "#Friends",
+      "#Community"
+    ]
+  }
+};
+
 const EVENT_SLOT_BY_SEED: Readonly<Record<string, number>> = {
-  "demo-event-events:u1:e1:alpine-weekend-2.0": 2,
-  "demo-event-events:u1:e10:golden-hour-meetup": 94,
-  "demo-event-events:u1:e11:cross-month-community-relay": 12,
-  "demo-event-events:u1:e12:spring-cohort-journey": 68,
-  "demo-event-events:u1:e7:coffee-+-book-swap": 39,
-  "demo-event-events:u1:e9:brunch-rotation": 31,
-  "demo-event-events:u10:e2:urban-photo-marathon": 52,
-  "demo-event-events:u12:e8:lakeside-walk-lab": 15,
-  "demo-event-events:u2:checkout-paid-slots:checkout-demo-·-paid-multi-slot": 73,
-  "demo-event-events:u2:e13:afterwork-tasting-circle": 38,
-  "demo-event-events:u2:e4:sunrise-run-+-brunch": 7,
-  "demo-event-events:u2:waitlist-full-policy:full-house-supper-club": 36,
-  "demo-event-events:u3:active-tournament-slots:tournament-demo-·-active-slot-cup": 3,
-  "demo-event-events:u3:asset-join-demo-nagy-eszter:asset-join-demo-·-shuttle-seat": 69,
-  "demo-event-events:u3:checkout-free-slots:checkout-demo-·-free-multi-slot": 74,
-  "demo-event-events:u3:checkout-paid-policy:checkout-demo-·-paid-one-slot-policy": 75,
-  "demo-event-events:u3:e14:moonlight-boardwalk-mixer": 17,
-  "demo-event-events:u3:e3:night-food-league": 11,
-  "demo-event-events:u3:e5:creative-studio-meetup": 46,
-  "demo-event-events:u3:feedback-showcase-nagy-eszter-social:feedback-demo-·-social-lab": 76,
-  "demo-event-events:u3:feedback-showcase-nagy-eszter-studio:feedback-demo-·-studio-recap": 51,
-  "demo-event-events:u3:waitlist-full-free:tiny-vinyl-listening-room": 41,
-  "demo-event-events:u4:e6:sunset-beach-volley": 4,
-  "demo-event-hosting:u1:h1:weekly-padel-league": 5,
-  "demo-event-hosting:u1:h2:spring-city-festival-crew": 45,
-  "demo-event-hosting:u2:h3:sunday-bike-social": 6,
-  "demo-event-hosting:u3:h4:creative-nights-series": 98,
-  "demo-event-invitations:u1:i1:jazz-rooftop-session": 43,
-  "demo-event-invitations:u1:i2:open-padel-pairs": 13,
-  "demo-event-invitations:u1:i3:chat:-last-minute-ski-transfer": 1,
-  "demo-event-invitations:u2:i4:foodie-crawl-team": 37,
-  "demo-event-invitations:u3:i5:urban-photo-sprint": 9
+  "demo-event-events:u1:e1": 2,
+  "demo-event-events:u1:e10": 94,
+  "demo-event-events:u1:e11": 8,
+  "demo-event-events:u1:e12": 69,
+  "demo-event-events:u1:e7": 48,
+  "demo-event-events:u1:e9": 31,
+  "demo-event-events:u10:e2": 52,
+  "demo-event-events:u12:e8": 15,
+  "demo-event-events:u2:checkout-paid-slots": 97,
+  "demo-event-events:u2:e13": 38,
+  "demo-event-events:u2:e4": 7,
+  "demo-event-events:u2:waitlist-full-policy": 34,
+  "demo-event-events:u3:active-tournament-slots": 4,
+  "demo-event-events:u3:asset-join-demo-nagy-eszter": 67,
+  "demo-event-events:u3:checkout-free-slots": 72,
+  "demo-event-events:u3:checkout-paid-policy": 75,
+  "demo-event-events:u3:e14": 98,
+  "demo-event-events:u3:e3": 9,
+  "demo-event-events:u3:e5": 47,
+  "demo-event-events:u3:feedback-showcase-nagy-eszter-social": 100,
+  "demo-event-events:u3:feedback-showcase-nagy-eszter-studio": 51,
+  "demo-event-events:u3:waitlist-full-free": 42,
+  "demo-event-events:u4:e6": 13,
+  "demo-event-hosting:u1:h1": 3,
+  "demo-event-hosting:u1:h2": 80,
+  "demo-event-hosting:u2:h3": 6,
+  "demo-event-hosting:u3:h4": 46,
+  "demo-event-invitations:u1:i1": 41,
+  "demo-event-invitations:u1:i2": 5,
+  "demo-event-invitations:u1:i3": 1,
+  "demo-event-invitations:u2:i4": 37,
+  "demo-event-invitations:u3:i5": 11
 };
 
 export function demoAssetPlaceholder(seed: string): DemoAssetPlaceholder {
@@ -879,10 +1893,20 @@ function demoAssetSlot(seed: string): number {
   return candidates[candidateIndex] ?? 1;
 }
 
-export function demoEventPlaceholderUrl(seed: string): string {
+export function demoEventPlaceholder(seed: string): DemoEventPlaceholder {
   const normalized = seed.trim().toLowerCase();
   const slot = EVENT_SLOT_BY_SEED[normalized] ?? (stableIndex(normalized, EVENT_PICSUM_IDS.length) + 1);
-  return `https://picsum.photos/id/${EVENT_PICSUM_IDS[slot - 1]}/1200/700`;
+  const definition = EVENT_DEFINITION_BY_SLOT[slot] ?? EVENT_DEFINITION_BY_SLOT[1];
+  return {
+    ...definition,
+    topics: [...definition.topics],
+    slot,
+    imageUrl: `https://picsum.photos/id/${EVENT_PICSUM_IDS[slot - 1]}/1200/700`
+  };
+}
+
+export function demoEventPlaceholderUrl(seed: string): string {
+  return demoEventPlaceholder(seed).imageUrl;
 }
 
 function stableIndex(seed: string, length: number): number {
