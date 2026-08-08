@@ -163,7 +163,24 @@ describe('Demo bootstrap seeding', () => {
       expect(holder?.activities.tickets).toBe(holderTicketCount);
       expect(holder?.activities.asset?.tickets).toBe(holderTicketCount);
     }
-    expect(state[ASSETS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    const seededAssets = state[ASSETS_TABLE_NAME].ids
+      .map(id => state[ASSETS_TABLE_NAME].byId[id])
+      .filter(Boolean);
+    const assetCountsByDemoOwner = Array.from({ length: 50 }, (_, index) => `u${index + 1}`)
+      .map(userId => seededAssets.filter(asset => asset.ownerUserId === userId).length);
+    expect(seededAssets).toHaveLength(50);
+    expect(new Set(seededAssets.map(asset => asset.imageUrl)).size).toBe(50);
+    expect(seededAssets.every(asset => asset.imageUrl.startsWith('https://picsum.photos/id/'))).toBe(true);
+    expect(Object.fromEntries(
+      [0, 1, 2, 3].map(count => [count, assetCountsByDemoOwner.filter(value => value === count).length])
+    )).toEqual({ 0: 15, 1: 23, 2: 9, 3: 3 });
+    expect(Math.max(...assetCountsByDemoOwner)).toBe(3);
+    expect(state[ASSETS_TABLE_NAME].byId['u4:asset-transport-3']?.title).toBe('Family Road-Trip Minivan');
+    expect(Object.values(state[ACTIVITY_RESOURCES_TABLE_NAME].byId).some(resource =>
+      Object.values(resource.assetAssignmentIds ?? {}).some(assetIds =>
+        assetIds.includes('u4:asset-transport-3')
+      )
+    )).toBe(true);
     expect(state[ACTIVITY_RESOURCES_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBe(0);
     expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBe(0);

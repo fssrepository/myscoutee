@@ -7,14 +7,14 @@ export interface DemoAssetPlaceholder {
   subtitle: string;
   details: string;
   category: string;
+  visibility: 'Public' | 'Friends only' | 'Invitation only';
+  status: string;
 }
 
-type DemoAssetDefinition = Omit<DemoAssetPlaceholder, 'slot' | 'imageUrl'>;
+type DemoAssetDefinition = Omit<DemoAssetPlaceholder, 'slot' | 'imageUrl' | 'visibility' | 'status'>;
 
 const ASSET_PICSUM_IDS = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49] as const;
 const EVENT_PICSUM_IDS = [50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,87,88,89,90,91,92,93,94,95,96,98,99,100,101,102,103,104,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,139,140,141,142,143,144,145,146,147,149,151,152,153,154,155] as const;
-
-const PUBLIC_LOCAL_USER_IDS = ["u1","u2","u3","u4","u6","u7","u8","u10","u12","u13","u14","u15","u16","u18","u19","u20","u22","u24","u25","u26","u27","u28","u30","u31","u32","u34","u36","u37","u38","u39","u40","u42","u43","u44","u46","u48"] as const;
 
 const ASSET_SLOTS_BY_TEMPLATE: Readonly<Record<string, readonly number[]>> = {
   "asset-sup-1": [
@@ -420,6 +420,400 @@ const ASSET_DEFINITION_BY_SLOT: Readonly<Record<number, DemoAssetDefinition>> = 
   }
 };
 
+const ASSET_SLOT_BY_SEED: Readonly<Record<string, number>> = {
+  "u10-asset-sup-1": 1,
+  "u1-asset-sup-1": 2,
+  "u48-asset-sup-1": 3,
+  "u47-asset-sup-1": 4,
+  "u6-asset-sup-4": 5,
+  "u5-asset-sup-4": 6,
+  "u12-asset-sup-4": 7,
+  "u3-asset-sup-4": 8,
+  "u34-asset-sup-2": 9,
+  "u25-asset-sup-2": 10,
+  "u48-asset-sup-2": 11,
+  "u7-asset-sup-2": 12,
+  "u38-asset-sup-3": 13,
+  "u29-asset-sup-3": 14,
+  "u44-asset-sup-3": 15,
+  "u35-asset-sup-3": 16,
+  "u2-asset-acc-1": 17,
+  "u17-asset-acc-1": 18,
+  "u24-asset-acc-1": 19,
+  "u39-asset-acc-1": 20,
+  "u30-asset-acc-3": 21,
+  "u21-asset-acc-3": 22,
+  "u28-asset-acc-3": 23,
+  "u35-asset-acc-3": 24,
+  "u26-asset-acc-2": 25,
+  "u17-asset-acc-2": 26,
+  "u8-asset-acc-2": 27,
+  "u15-asset-acc-2": 28,
+  "u30-asset-acc-4": 29,
+  "u21-asset-acc-4": 30,
+  "u20-asset-acc-4": 31,
+  "u35-asset-acc-4": 32,
+  "u26-asset-transport-1": 33,
+  "u17-asset-transport-1": 34,
+  "u4-asset-transport-3": 35,
+  "u19-asset-transport-1": 36,
+  "u7-asset-transport-2": 37,
+  "u3-asset-transport-2": 38,
+  "u8-asset-transport-2": 39,
+  "u12-asset-transport-3": 40,
+  "u44-asset-transport-3": 41,
+  "u16-asset-transport-3": 42,
+  "u11-asset-transport-3": 43,
+  "u43-asset-transport-3": 44,
+  "u39-asset-transport-3": 45,
+  "u33-asset-transport-2": 46,
+  "u37-asset-transport-2": 47,
+  "u26-asset-transport-4": 48,
+  "u46-asset-transport-4": 49,
+  "u42-asset-transport-4": 50
+};
+
+const ASSET_TEMPLATE_IDS_BY_OWNER: Readonly<Record<string, readonly string[]>> = {
+  "u1": [
+    "asset-sup-1"
+  ],
+  "u2": [
+    "asset-acc-1"
+  ],
+  "u3": [
+    "asset-sup-4",
+    "asset-transport-2"
+  ],
+  "u4": [
+    "asset-transport-3"
+  ],
+  "u5": [
+    "asset-sup-4"
+  ],
+  "u6": [
+    "asset-sup-4"
+  ],
+  "u7": [
+    "asset-sup-2",
+    "asset-transport-2"
+  ],
+  "u8": [
+    "asset-acc-2",
+    "asset-transport-2"
+  ],
+  "u9": [],
+  "u10": [
+    "asset-sup-1"
+  ],
+  "u11": [
+    "asset-transport-3"
+  ],
+  "u12": [
+    "asset-sup-4",
+    "asset-transport-3"
+  ],
+  "u13": [],
+  "u14": [],
+  "u15": [
+    "asset-acc-2"
+  ],
+  "u16": [
+    "asset-transport-3"
+  ],
+  "u17": [
+    "asset-acc-1",
+    "asset-acc-2",
+    "asset-transport-1"
+  ],
+  "u18": [],
+  "u19": [
+    "asset-transport-1"
+  ],
+  "u20": [
+    "asset-acc-4"
+  ],
+  "u21": [
+    "asset-acc-3",
+    "asset-acc-4"
+  ],
+  "u22": [],
+  "u23": [],
+  "u24": [
+    "asset-acc-1"
+  ],
+  "u25": [
+    "asset-sup-2"
+  ],
+  "u26": [
+    "asset-acc-2",
+    "asset-transport-1",
+    "asset-transport-4"
+  ],
+  "u27": [],
+  "u28": [
+    "asset-acc-3"
+  ],
+  "u29": [
+    "asset-sup-3"
+  ],
+  "u30": [
+    "asset-acc-3",
+    "asset-acc-4"
+  ],
+  "u31": [],
+  "u32": [],
+  "u33": [
+    "asset-transport-2"
+  ],
+  "u34": [
+    "asset-sup-2"
+  ],
+  "u35": [
+    "asset-sup-3",
+    "asset-acc-3",
+    "asset-acc-4"
+  ],
+  "u36": [],
+  "u37": [
+    "asset-transport-2"
+  ],
+  "u38": [
+    "asset-sup-3"
+  ],
+  "u39": [
+    "asset-acc-1",
+    "asset-transport-3"
+  ],
+  "u40": [],
+  "u41": [],
+  "u42": [
+    "asset-transport-4"
+  ],
+  "u43": [
+    "asset-transport-3"
+  ],
+  "u44": [
+    "asset-sup-3",
+    "asset-transport-3"
+  ],
+  "u45": [],
+  "u46": [
+    "asset-transport-4"
+  ],
+  "u47": [
+    "asset-sup-1"
+  ],
+  "u48": [
+    "asset-sup-1",
+    "asset-sup-2"
+  ],
+  "u49": [],
+  "u50": []
+};
+
+const ASSET_RECORD_BY_SLOT: Readonly<Record<number, { visibility: DemoAssetPlaceholder['visibility']; status: string }>> = {
+  "1": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "2": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "3": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "4": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "5": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "6": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "7": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "8": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "9": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "10": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "11": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "12": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "13": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "14": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "15": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "16": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "17": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "18": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "19": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "20": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "21": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "22": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "23": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "24": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "25": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "26": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "27": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "28": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "29": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "30": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "31": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "32": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "33": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "34": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "35": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "36": {
+    "visibility": "Friends only",
+    "status": "A"
+  },
+  "37": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "38": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "39": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "40": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "41": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "42": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "43": {
+    "visibility": "Invitation only",
+    "status": "A"
+  },
+  "44": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "45": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "46": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "47": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "48": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "49": {
+    "visibility": "Public",
+    "status": "A"
+  },
+  "50": {
+    "visibility": "Public",
+    "status": "A"
+  }
+};
+
 const EVENT_SLOT_BY_SEED: Readonly<Record<string, number>> = {
   "demo-event-events:u1:e1:alpine-weekend-2.0": 2,
   "demo-event-events:u1:e10:golden-hour-meetup": 94,
@@ -461,7 +855,9 @@ export function demoAssetPlaceholder(seed: string): DemoAssetPlaceholder {
   return {
     ...definition,
     slot,
-    imageUrl: `https://picsum.photos/id/${ASSET_PICSUM_IDS[slot - 1]}/1200/700`
+    imageUrl: `https://picsum.photos/id/${ASSET_PICSUM_IDS[slot - 1]}/1200/700`,
+    visibility: ASSET_RECORD_BY_SLOT[slot]?.visibility ?? 'Public',
+    status: ASSET_RECORD_BY_SLOT[slot]?.status ?? 'A'
   };
 }
 
@@ -469,15 +865,17 @@ export function demoAssetPlaceholderUrl(seed: string): string {
   return demoAssetPlaceholder(seed).imageUrl;
 }
 
+export function demoAssetTemplateIds(ownerUserId: string): readonly string[] {
+  return ASSET_TEMPLATE_IDS_BY_OWNER[ownerUserId.trim().toLowerCase()] ?? [];
+}
+
 function demoAssetSlot(seed: string): number {
   const normalized = seed.trim().toLowerCase();
+  const exactSlot = ASSET_SLOT_BY_SEED[normalized];
+  if (exactSlot) return exactSlot;
   const template = Object.keys(ASSET_SLOTS_BY_TEMPLATE).find(key => normalized.includes(key));
   const candidates = template ? ASSET_SLOTS_BY_TEMPLATE[template] : [1];
-  const ownerId = normalized.match(/(u\d+)-asset-/)?.[1] ?? '';
-  const publicOwnerIndex = PUBLIC_LOCAL_USER_IDS.indexOf(ownerId as typeof PUBLIC_LOCAL_USER_IDS[number]);
-  const candidateIndex = publicOwnerIndex >= 0
-    ? publicOwnerIndex % candidates.length
-    : stableIndex(normalized, candidates.length);
+  const candidateIndex = stableIndex(normalized, candidates.length);
   return candidates[candidateIndex] ?? 1;
 }
 
