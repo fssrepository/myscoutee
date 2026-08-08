@@ -1,6 +1,7 @@
 import type { AssetPolicyRecord, AssetPricingConfigRecord } from '../../source/entity/asset.entity';
 
 import * as AppConstants from '../../../common/constants';
+import { demoAssetPlaceholderUrl } from './demo-image-pool';
 
 export interface SeedAssetTemplate {
   id: string;
@@ -147,13 +148,7 @@ export class SeedAssetBuilder {
   }
 
   static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {
-    const flavor = type === AppConstants.ASSET_TYPE_TRANSPORT
-      ? 'transport'
-      : type === AppConstants.ASSET_TYPE_ACCOMMODATION
-        ? 'property'
-        : 'gear';
-    const normalizedSeed = encodeURIComponent(`${type.toLowerCase()}-${flavor}-${seed || type.toLowerCase()}`);
-    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
+    return demoAssetPlaceholderUrl(seed || type.toLowerCase());
   }
 
   static defaultAssetSubtitle(type: AppConstants.AssetType): string {

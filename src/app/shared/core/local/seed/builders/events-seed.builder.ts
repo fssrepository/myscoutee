@@ -15,6 +15,7 @@ import {
   type ActivityEventRecord,
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
+import { demoEventPlaceholderUrl } from './demo-image-pool';
 
 const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50);
 
@@ -2240,8 +2241,8 @@ export class SeedEventsBuilder {
   private static buildRecordImageUrl(
     record: Pick<ActivityEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): string {
-    const normalizedSeed = encodeURIComponent(this.recordSeedKey(record).toLowerCase().replace(/\s+/g, '-'));
-    return `https://picsum.photos/seed/demo-event-${normalizedSeed}/1200/700`;
+    const normalizedSeed = this.recordSeedKey(record).toLowerCase().replace(/\s+/g, '-');
+    return demoEventPlaceholderUrl(`demo-event-${normalizedSeed}`);
   }
 
   private static buildRecordSourceLink(

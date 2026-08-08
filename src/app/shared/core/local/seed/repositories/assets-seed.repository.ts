@@ -13,6 +13,7 @@ import {
 } from '../../source/entity/asset.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { SeedAssetBuilder, type SeedAssetTemplate } from '../builders';
+import { demoAssetPlaceholder } from '../builders/demo-image-pool';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 import * as AppConstants from '../../../common/constants';
@@ -105,24 +106,48 @@ export class SeedAssetsRepository {
       );
       for (const [index, card] of sampleCards.entries()) {
         const id = `${ownerUserId}:${card.id}`;
-        const seededRequests = this.seedAssetRequests(id, card, owner, allUsers, createdAt);
+        const presentation = demoAssetPlaceholder(`${ownerUserId}-${card.id}`);
+        const seededCard: SeedAssetTemplate = {
+          ...card,
+          title: presentation.title,
+          subtitle: presentation.subtitle,
+          category: presentation.category,
+          details: presentation.details,
+          imageUrl: presentation.imageUrl
+        };
+        const seededRequests = this.seedAssetRequests(id, seededCard, owner, allUsers, createdAt);
         for (const request of seededRequests) {
           const upserted = this.upsertAssetRequest(nextRequestsTable, request);
           nextRequestsTable = upserted.table;
           changed = upserted.changed || changed;
         }
         if (ownerIdSet.has(id)) {
+          const existing = nextById[id];
+          if (existing && (
+            existing.title !== presentation.title
+            || existing.subtitle !== presentation.subtitle
+            || existing.category !== presentation.category
+            || existing.details !== presentation.details
+            || existing.imageUrl !== presentation.imageUrl
+          )) {
+            nextById[id] = {
+              ...existing,
+              title: presentation.title,
+              subtitle: presentation.subtitle,
+              category: presentation.category,
+              details: presentation.details,
+              imageUrl: presentation.imageUrl
+            };
+            changed = true;
+          }
           continue;
         }
         const createdMs = createdAt.getTime() + (index * 60_000);
         const createdAtIso = new Date(createdMs).toISOString();
-        const imageUrl = SeedAssetBuilder.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
         const record: AssetRecord = {
-          ...card,
+          ...seededCard,
           id,
-          category: card.category,
           city: owner.city || card.city,
-          imageUrl,
           sourceLink: '',
           ownerUserId,
           ownerName: owner.name,
