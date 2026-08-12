@@ -733,7 +733,7 @@ export class HttpUsersService implements UserService {
       profileFormVersion: user.profileFormVersion === undefined || user.profileFormVersion === null
         ? undefined
         : Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0)),
-      profileStatus: user.profileStatus,
+      status: `${user.status ?? ''}`.trim(),
       deletedAtIso: typeof user.deletedAtIso === 'string' ? user.deletedAtIso : null
     };
   }

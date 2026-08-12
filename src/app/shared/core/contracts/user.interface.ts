@@ -220,7 +220,7 @@ export interface UserSelectorListItemDto {
   statusText?: string;
   completion?: number;
   profileFormVersion?: number;
-  profileStatus?: UserDto['profileStatus'];
+  status?: string;
   deletedAtIso?: string | null;
 }
 

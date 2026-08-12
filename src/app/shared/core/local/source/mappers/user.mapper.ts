@@ -25,7 +25,7 @@ export class LocalUsersMapper {
       statusText: record.statusText,
       completion: record.completion,
       profileFormVersion: record.profileFormVersion,
-      profileStatus: record.profileStatus,
+      status: record.status,
       deletedAtIso: record.deletedAtIso ?? null
     };
   }

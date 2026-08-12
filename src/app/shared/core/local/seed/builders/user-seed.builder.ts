@@ -447,14 +447,14 @@ export class SeedUserBuilder {
   private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<UserRecord> {
     if (index === totalCount - 2) {
       return {
-        profileStatus: 'blocked',
+        status: 'B',
         statusText: 'Blocked',
         activities: { game: 0, chats: 1, invitations: 0, events: 0, hosting: 0 }
       };
     }
     if (index === totalCount - 1) {
       return {
-        profileStatus: 'deleted',
+        status: 'D',
         deletedAtIso: AppUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
         statusText: 'Deleted',
         activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }

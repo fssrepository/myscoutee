@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.08.06.en.53",
+  "version": "2026.08.12.en.54",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -170,6 +170,9 @@
     "demo.data.ready": "Demo data ready",
     "demo.admin.selector.subtitle": "Choose an admin profile.",
     "demo.selector.subtitle": "Choose a demo profile.",
+    "demo.selector.status.blocked": "Blocked",
+    "demo.selector.status.deleted": "Deleted",
+    "demo.selector.status.new": "New",
     "demo.session.ready": "Demo session ready",
     "drafts": "Drafts",
     "edit": "Edit",

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.06.hu.53",
+  "version": "2026.08.12.hu.54",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -170,6 +170,9 @@
     "demo.data.ready": "Demo adatok készen állnak",
     "demo.admin.selector.subtitle": "Válassz admin profilt.",
     "demo.selector.subtitle": "Válassz demo profilt.",
+    "demo.selector.status.blocked": "Letiltott",
+    "demo.selector.status.deleted": "Törölt",
+    "demo.selector.status.new": "Új",
     "demo.session.ready": "Demo munkamenet kész",
     "drafts": "Piszkozatok",
     "edit": "Szerkesztés",

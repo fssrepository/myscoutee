@@ -207,10 +207,10 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected userStatusClass(user: UserSelectorListItemDto): string {
-    switch (user.profileStatus) {
-      case 'blocked':
+    switch (`${user.status ?? ''}`.trim().toUpperCase()) {
+      case 'B':
         return 'demo-user-item-blocked';
-      case 'deleted':
+      case 'D':
         return 'demo-user-item-deleted';
       default:
         return this.isNewProfile(user) ? 'demo-user-item-new' : '';
@@ -218,13 +218,13 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected userStatusLabel(user: UserSelectorListItemDto): string {
-    switch (user.profileStatus) {
-      case 'blocked':
-        return 'Blocked';
-      case 'deleted':
-        return 'Deleted';
+    switch (`${user.status ?? ''}`.trim().toUpperCase()) {
+      case 'B':
+        return 'demo.selector.status.blocked';
+      case 'D':
+        return 'demo.selector.status.deleted';
       default:
-        return this.isNewProfile(user) ? 'New' : '';
+        return this.isNewProfile(user) ? 'demo.selector.status.new' : '';
     }
   }
 
