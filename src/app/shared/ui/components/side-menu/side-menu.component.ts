@@ -2027,6 +2027,7 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
+    const counterSyncToken = this.activityStore.captureUserCounterSyncToken(userId);
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -2043,11 +2044,20 @@ export class SideMenuComponent implements OnDestroy {
         notifications: _notificationCount,
         ...nonNotificationCounters
       } = snapshot.counters;
-      if (!this.popupPresenceStore.visible()) {
+      const nonNotificationSnapshot = {
+        ...snapshot,
+        counters: nonNotificationCounters
+      };
+      if (this.popupPresenceStore.visible()) {
+        this.userProfileStore.applyUserRealtimeCounters(
+          userId,
+          nonNotificationSnapshot,
+          counterSyncToken
+        );
+      } else {
         this.userProfileStore.applyUserRealtimeSnapshot(userId, {
-          ...snapshot,
-          counters: nonNotificationCounters
-        });
+          ...nonNotificationSnapshot
+        }, counterSyncToken);
       }
       if (Number.isFinite(nextNotificationCount)) {
         this.notificationCenterStore.applyRealtimeUnreadCount(

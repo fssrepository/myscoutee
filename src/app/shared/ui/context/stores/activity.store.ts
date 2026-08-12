@@ -151,11 +151,17 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'adminMetrics'
 ];
 
+export interface ActivityCounterSyncToken {
+  userId: string;
+  revision: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ActivityStore {
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
+  private readonly counterRevisionByUserId: Record<string, number> = {};
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityMembersSyncByOwnerId = signal<Readonly<Record<string, ActivityMembersSyncState>>>({});
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
@@ -196,18 +202,7 @@ export class ActivityStore {
   }
 
   setUserCounterOverride(userId: string, key: ActivityCounterKey, value: number): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    const normalizedValue = normalizeCounterValue(value);
-    this._counterOverridesByUserId.update(state => ({
-      ...state,
-      [normalizedUserId]: {
-        ...(state[normalizedUserId] ?? {}),
-        [key]: normalizedValue
-      }
-    }));
+    this.patchUserCounterOverrides(userId, { [key]: value });
   }
 
   patchUserCounterOverrides(userId: string, patch: Partial<ActivityCounters>): void {
@@ -215,6 +210,42 @@ export class ActivityStore {
     if (!normalizedUserId) {
       return;
     }
+    const normalizedPatch = this.normalizeCounterPatch(patch);
+    if (Object.keys(normalizedPatch).length === 0) {
+      return;
+    }
+    this.bumpCounterRevision(normalizedUserId);
+    this.writeCounterOverrides(normalizedUserId, normalizedPatch);
+  }
+
+  captureUserCounterSyncToken(userId: string): ActivityCounterSyncToken {
+    const normalizedUserId = userId.trim();
+    return {
+      userId: normalizedUserId,
+      revision: this.counterRevisionByUserId[normalizedUserId] ?? 0
+    };
+  }
+
+  applyRealtimeCounterOverrides(
+    token: ActivityCounterSyncToken,
+    patch: Partial<ActivityCounters>
+  ): boolean {
+    const normalizedUserId = token.userId.trim();
+    if (
+      !normalizedUserId
+      || token.revision !== (this.counterRevisionByUserId[normalizedUserId] ?? 0)
+    ) {
+      return false;
+    }
+    const normalizedPatch = this.normalizeCounterPatch(patch);
+    if (Object.keys(normalizedPatch).length === 0) {
+      return false;
+    }
+    this.writeCounterOverrides(normalizedUserId, normalizedPatch);
+    return true;
+  }
+
+  private normalizeCounterPatch(patch: Partial<ActivityCounters>): Partial<ActivityCounters> {
     const normalizedPatch: Partial<ActivityCounters> = {};
     for (const key of ACTIVITY_COUNTER_KEYS) {
       if (!Object.prototype.hasOwnProperty.call(patch, key)) {
@@ -238,16 +269,24 @@ export class ActivityStore {
     if (patch.eventFeedback) {
       normalizedPatch.eventFeedback = cloneEventFeedbackCounters(patch.eventFeedback);
     }
-    if (Object.keys(normalizedPatch).length === 0) {
-      return;
-    }
+    return normalizedPatch;
+  }
+
+  private writeCounterOverrides(
+    userId: string,
+    patch: Partial<ActivityCounters>
+  ): void {
     this._counterOverridesByUserId.update(state => ({
       ...state,
-      [normalizedUserId]: {
-        ...(state[normalizedUserId] ?? {}),
-        ...normalizedPatch
+      [userId]: {
+        ...(state[userId] ?? {}),
+        ...patch
       }
     }));
+  }
+
+  private bumpCounterRevision(userId: string): void {
+    this.counterRevisionByUserId[userId] = (this.counterRevisionByUserId[userId] ?? 0) + 1;
   }
 
   signalUserEventBucketCount(
@@ -419,6 +458,17 @@ export class ActivityStore {
     if (!normalizedUserId) {
       return;
     }
+    const current = this._counterOverridesByUserId()[normalizedUserId];
+    if (!current) {
+      return;
+    }
+    const clearedKeys = !keys || keys.length === 0
+      ? Object.keys(current)
+      : keys.filter(key => Object.prototype.hasOwnProperty.call(current, key));
+    if (clearedKeys.length === 0) {
+      return;
+    }
+    this.bumpCounterRevision(normalizedUserId);
     this._counterOverridesByUserId.update(state => {
       const current = state[normalizedUserId];
       if (!current) {
