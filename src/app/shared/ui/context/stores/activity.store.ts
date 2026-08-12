@@ -414,13 +414,7 @@ export class ActivityStore {
     if (Object.keys(normalizedPatch).length === 0) {
       return;
     }
-    this._counterOverridesByUserId.update(state => ({
-      ...state,
-      [normalizedUserId]: {
-        ...(state[normalizedUserId] ?? {}),
-        ...normalizedPatch
-      }
-    }));
+    this.patchUserCounterOverrides(normalizedUserId, normalizedPatch);
   }
 
   private applyNestedCounterDeltas<T extends object>(

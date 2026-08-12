@@ -38,6 +38,45 @@ describe('realtime activity counter synchronization', () => {
     expect(activityStore.getUserCounterOverride('user-1', 'tickets')).toBe(2);
   });
 
+  it('rejects a response captured before a newer operation-owned counter delta', () => {
+    const staleToken = activityStore.captureUserCounterSyncToken('user-1');
+    activityStore.patchUserCounterDeltas('user-1', {
+      invitations: -1,
+      event: {
+        pending: 1,
+        invitations: -1
+      }
+    }, {
+      invitations: 1,
+      event: {
+        all: 1,
+        active: 0,
+        pending: 0,
+        invitations: 1,
+        hosting: 0,
+        drafts: 0,
+        trash: 0
+      }
+    });
+
+    expect(userProfileStore.applyUserRealtimeCounters('user-1', {
+      userId: 'user-1',
+      counters: {
+        invitations: 1,
+        event: { pending: 0, invitations: 1 }
+      },
+      impressions: {},
+      cursor: 'stale-before-counter-delta'
+    }, staleToken)).toBe(false);
+    expect(activityStore.getUserCounterOverrides('user-1')).toMatchObject({
+      invitations: 0,
+      event: {
+        pending: 1,
+        invitations: 0
+      }
+    });
+  });
+
   it('invalidates an in-flight response when its user counters are cleared', () => {
     activityStore.setUserCounterOverride('user-1', 'tickets', 2);
     const staleToken = activityStore.captureUserCounterSyncToken('user-1');
