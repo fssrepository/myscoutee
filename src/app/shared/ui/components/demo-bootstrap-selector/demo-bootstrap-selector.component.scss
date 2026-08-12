@@ -215,6 +215,12 @@
   font-weight: 800;
 }
 
+.user-avatar.has-photo {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .user-avatar.user-color-woman {
   background: linear-gradient(180deg, #ff87b7 0%, #ec4b93 100%);
 }

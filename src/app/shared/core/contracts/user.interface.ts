@@ -215,6 +215,7 @@ export interface UserSelectorListItemDto {
   name: string;
   city: string;
   initials: string;
+  avatarUrl?: string;
   gender: AppConstants.UserGender;
   statusText?: string;
   completion?: number;

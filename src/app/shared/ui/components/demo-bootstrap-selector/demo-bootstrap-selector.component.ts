@@ -239,6 +239,10 @@ export class DemoBootstrapSelectorComponent {
     return this.isNewProfile(user) ? '' : `${user.initials ?? ''}`.trim();
   }
 
+  protected userAvatarUrl(user: UserSelectorListItemDto): string {
+    return this.isNewProfile(user) ? '' : `${user.avatarUrl ?? ''}`.trim();
+  }
+
   protected isNewProfile(user: UserSelectorListItemDto): boolean {
     return UserProfileState.isEmptyOnboardingProfile(user);
   }

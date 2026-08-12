@@ -724,6 +724,7 @@ export class HttpUsersService implements UserService {
       name: `${user.name ?? ''}`.trim(),
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),
+      avatarUrl: `${user.avatarUrl ?? ''}`.trim(),
       gender: normalizedGender,
       statusText: `${user.statusText ?? ''}`.trim(),
       completion: user.completion === undefined || user.completion === null

@@ -10,15 +10,19 @@
                 </p>
                 @if (submitting && selectedUser(); as user) {
                   <div class="demo-user-selected-session">
-                    @if (userAvatarLabel(user); as avatarLabel) {
+                    @if (userAvatarUrl(user) || userAvatarLabel(user)) {
                       <span class="demo-user-selected-avatar-wrap">
                         <span class="demo-user-selected-ring" aria-hidden="true"></span>
                         <span
                           class="user-avatar"
+                          [class.has-photo]="!!userAvatarUrl(user)"
                           [ngClass]="userAvatarClass(user)"
+                          [style.backgroundImage]="userAvatarUrl(user) ? 'url(' + userAvatarUrl(user) + ')' : null"
                           data-i18n-ignore
                           >
-                          {{ avatarLabel }}
+                          @if (!userAvatarUrl(user)) {
+                            {{ userAvatarLabel(user) }}
+                          }
                         </span>
                       </span>
                     }
@@ -89,13 +93,17 @@
                   [matRippleColor]="'rgba(72, 111, 196, 0.16)'"
                   (click)="requestUserSelect(user.id)"
                   >
-                  @if (userAvatarLabel(user); as avatarLabel) {
+                  @if (userAvatarUrl(user) || userAvatarLabel(user)) {
                     <span
                       class="user-avatar"
+                      [class.has-photo]="!!userAvatarUrl(user)"
                       [ngClass]="userAvatarClass(user)"
+                      [style.backgroundImage]="userAvatarUrl(user) ? 'url(' + userAvatarUrl(user) + ')' : null"
                       data-i18n-ignore
                       >
-                      {{ avatarLabel }}
+                      @if (!userAvatarUrl(user)) {
+                        {{ userAvatarLabel(user) }}
+                      }
                     </span>
                   }
                   @if (user.name.trim()) {
