@@ -24,6 +24,7 @@ import {
   type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState
 } from '../../context/stores/demo-bootstrap-selector.store';
+import { AppUtils } from '../../../app-utils';
 import {
   IndicatorComponent
 } from '../core/indicator';
@@ -240,7 +241,9 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected userAvatarUrl(user: UserSelectorListItemDto): string {
-    return this.isNewProfile(user) ? '' : `${user.avatarUrl ?? ''}`.trim();
+    return this.isNewProfile(user)
+      ? ''
+      : AppUtils.mediaImageVariantUrl(user.avatarUrl, 'small');
   }
 
   protected isNewProfile(user: UserSelectorListItemDto): boolean {

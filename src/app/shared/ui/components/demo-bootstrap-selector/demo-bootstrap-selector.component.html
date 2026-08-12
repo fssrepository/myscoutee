@@ -17,10 +17,11 @@
                           class="user-avatar"
                           [class.has-photo]="!!userAvatarUrl(user)"
                           [ngClass]="userAvatarClass(user)"
-                          [style.backgroundImage]="userAvatarUrl(user) ? 'url(' + userAvatarUrl(user) + ')' : null"
                           data-i18n-ignore
                           >
-                          @if (!userAvatarUrl(user)) {
+                          @if (userAvatarUrl(user); as avatarUrl) {
+                            <img [src]="avatarUrl" alt="" />
+                          } @else {
                             {{ userAvatarLabel(user) }}
                           }
                         </span>
@@ -98,10 +99,11 @@
                       class="user-avatar"
                       [class.has-photo]="!!userAvatarUrl(user)"
                       [ngClass]="userAvatarClass(user)"
-                      [style.backgroundImage]="userAvatarUrl(user) ? 'url(' + userAvatarUrl(user) + ')' : null"
                       data-i18n-ignore
                       >
-                      @if (!userAvatarUrl(user)) {
+                      @if (userAvatarUrl(user); as avatarUrl) {
+                        <img [src]="avatarUrl" alt="" />
+                      } @else {
                         {{ userAvatarLabel(user) }}
                       }
                     </span>
