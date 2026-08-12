@@ -4,6 +4,7 @@ import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
@@ -279,6 +280,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         normalizedOwner.ownerId,
         normalizedTargetUserId
       );
+      if (action === 'accept' && targetIsApprovalRequest && actorCanManage) {
+        this.appendMemberApprovedNotification(
+          normalizedOwner.ownerId,
+          normalizedTargetUserId,
+          normalizedActorUserId,
+          nowIso
+        );
+      }
     }
     if (
       normalizedOwner.ownerType === 'event'
@@ -299,6 +308,48 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       );
     }
     return this.entriesFromRecords(nextRecords, normalizedOwner);
+  }
+
+  private appendMemberApprovedNotification(
+    eventId: string,
+    memberUserId: string,
+    actorUserId: string,
+    approvedAtIso: string
+  ): void {
+    const event = this.eventsRepository.peekKnownItemById(actorUserId, eventId);
+    const eventTitle = `${event?.title ?? eventId}`.trim() || eventId;
+    const actor = this.localUsersRepository.queryUserById(actorUserId);
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const record: NotificationRecord = {
+      id: `event-member-approved:${eventId}:${memberUserId}:${occurrenceId}`,
+      recipientUserId: memberUserId,
+      kind: 'event-member-approved',
+      category: 'event-admin',
+      title: eventTitle,
+      message: `Your request to join ${eventTitle} was approved.`,
+      createdAtIso: approvedAtIso,
+      readAtIso: null,
+      senderUserId: actorUserId || null,
+      senderName: actor?.name ?? null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId,
+        membershipAction: 'approved',
+        senderUserId: actorUserId,
+        approvedAtIso,
+        notification_tone: 'success',
+        notification_status_badge_fallback: 'Approved',
+        notification_status_badge_tone: 'success'
+      }
+    };
+    this.notificationsRepository.append([record]);
   }
 
   private async finalizeNewlyAcceptedEventReservations(
