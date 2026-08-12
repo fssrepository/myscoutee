@@ -8,6 +8,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -28,6 +29,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
 
@@ -78,7 +80,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void actorUserId;
-    const existingRecordsById = this.existingRecordsById(normalizedOwner);
+    const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
+    const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
+    const existingRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
     const records = members.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,
       member,
@@ -91,6 +95,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
     if (normalizedOwner.ownerType === 'event') {
+      await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, members);
       this.assetTicketsRepository.synchronizeForEvent(normalizedOwner.ownerId);
     }
     if (normalizedOwner.ownerType === 'group') {
@@ -269,6 +274,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       ownerSnapshot?.capacityTotal ?? null
     );
     if (normalizedOwner.ownerType === 'event') {
+      await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, nextMembers);
       this.assetTicketsRepository.synchronizeForMemberChange(
         normalizedOwner.ownerId,
         normalizedTargetUserId
@@ -293,6 +299,27 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       );
     }
     return this.entriesFromRecords(nextRecords, normalizedOwner);
+  }
+
+  private async finalizeNewlyAcceptedEventReservations(
+    owner: ActivityMemberOwnerRef,
+    previousMembers: readonly ActivityMemberDTO[],
+    nextMembers: readonly ActivityMemberDTO[]
+  ): Promise<void> {
+    if (owner.ownerType !== 'event') {
+      return;
+    }
+    const previouslyAccepted = new Set(previousMembers
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId.trim())
+      .filter(Boolean));
+    const newlyAcceptedUserIds = [...new Set(nextMembers
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId.trim())
+      .filter(userId => userId && !previouslyAccepted.has(userId)))];
+    for (const userId of newlyAcceptedUserIds) {
+      await this.eventCheckoutBasketsRepository.finalizeAcceptedReservation(userId, owner.ownerId);
+    }
   }
 
   private canManageMembers(
