@@ -1606,7 +1606,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private visiblePollQuery(): ListQuery<TFilters> {
     const pageSize = this.config.pollDelta
       ? Math.max(1, this.resolveEffectivePageSize())
-      : Math.max(1, this.items.length || this.resolveEffectivePageSize());
+      : Math.max(1, this.items.length, this.resolveEffectivePageSize());
     return {
       ...this.currentQuery(0),
       page: 0,

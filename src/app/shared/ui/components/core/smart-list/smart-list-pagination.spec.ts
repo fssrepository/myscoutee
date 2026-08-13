@@ -3,6 +3,55 @@ import { describe, expect, it, vi } from 'vitest';
 import { SmartListComponent } from './smart-list.component';
 
 describe('SmartListComponent list-page preloading', () => {
+  it('polls at least one configured page when the visible window is only partially filled', () => {
+    const component = {
+      config: {},
+      items: [{ id: 'existing-ticket' }],
+      currentQuery: vi.fn(() => ({
+        page: 3,
+        pageSize: 1,
+        cursor: 'stale-cursor',
+        filters: { order: 'upcoming' }
+      })),
+      resolveEffectivePageSize: vi.fn(() => 18)
+    };
+    const visiblePollQuery = Reflect.get(
+      SmartListComponent.prototype,
+      'visiblePollQuery'
+    ) as (this: typeof component) => {
+      page: number;
+      pageSize: number;
+      cursor?: string;
+      filters: { order: string };
+    };
+
+    const query = visiblePollQuery.call(component);
+
+    expect(query).toEqual({
+      page: 0,
+      pageSize: 18,
+      cursor: undefined,
+      filters: { order: 'upcoming' }
+    });
+  });
+
+  it('polls the whole loaded window when it is larger than one configured page', () => {
+    const component = {
+      config: {},
+      items: Array.from({ length: 36 }, (_value, index) => ({ id: `ticket-${index}` })),
+      currentQuery: vi.fn(() => ({ page: 0, pageSize: 18 })),
+      resolveEffectivePageSize: vi.fn(() => 18)
+    };
+    const visiblePollQuery = Reflect.get(
+      SmartListComponent.prototype,
+      'visiblePollQuery'
+    ) as (this: typeof component) => { page: number; pageSize: number; cursor?: string };
+
+    const query = visiblePollQuery.call(component);
+
+    expect(query.pageSize).toBe(36);
+  });
+
   it('polls only the first configured page when diff-sync owns a multi-page cache', () => {
     const component = {
       config: { pollDelta: {} },
