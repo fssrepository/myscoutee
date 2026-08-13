@@ -43,6 +43,51 @@ export class LocalAssetTicketsRepository {
     );
   }
 
+  syncTickets(request: AssetContracts.AssetTicketSyncRequestDTO): AssetContracts.AssetTicketSyncResultDTO {
+    const rows = LocalAssetTicketsMapper.pageRows(
+      LocalAssetTicketsMapper.toTicketDTOs(this.visibleTicketRecordsByUser(request.userId)),
+      {
+        userId: request.userId,
+        page: 0,
+        pageSize: Number.MAX_SAFE_INTEGER,
+        order: request.order
+      }
+    );
+    const currentById = new Map(rows.items.map(row => [AssetTicketBuilder.identity(row), row]));
+    const knownRevisions = new Map(
+      request.knownItems.map(item => [`${item.id}`.trim(), `${item.revision}`])
+    );
+    const removedIds = [...knownRevisions.keys()].filter(id => !currentById.has(id));
+    const upsertsById = new Map<string, AssetContracts.AssetTicketDTO>();
+    for (const [id, revision] of knownRevisions.entries()) {
+      const current = currentById.get(id);
+      if (current && AssetTicketBuilder.revision(current) !== revision) {
+        upsertsById.set(id, current);
+      }
+    }
+
+    const limit = Math.max(1, Math.trunc(Number(request.limit) || 18));
+    const tailId = `${request.loadedTail?.id ?? ''}`.trim();
+    const tailIndex = tailId
+      ? rows.items.findIndex(row => AssetTicketBuilder.identity(row) === tailId)
+      : -1;
+    const windowLimit = tailIndex >= 0
+      ? Math.max(request.knownItems.length + limit, tailIndex + 1 + limit)
+      : (request.knownItems.length > 0 ? request.knownItems.length + limit : limit);
+    for (const current of rows.items.slice(0, windowLimit)) {
+      const id = AssetTicketBuilder.identity(current);
+      const knownRevision = knownRevisions.get(id);
+      if (knownRevision === undefined || knownRevision !== AssetTicketBuilder.revision(current)) {
+        upsertsById.set(id, current);
+      }
+    }
+    return {
+      upserts: LocalAssetTicketsMapper.cloneDTOs([...upsertsById.values()]),
+      removedIds,
+      total: rows.total
+    };
+  }
+
   synchronizeForEvent(eventId: string, now = new Date()): void {
     const normalizedEventId = eventId.trim();
     const event = this.resolveEventRecord(normalizedEventId);

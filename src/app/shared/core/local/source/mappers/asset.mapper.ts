@@ -751,6 +751,21 @@ export class LocalAssetTicketsMapper {
   ): AssetContracts.AssetTicketDTO {
     return {
       id: dto.id,
+      revision: [
+        ticket.id,
+        ticket.code,
+        ticket.status,
+        ticket.issuedAtIso,
+        ticket.usedAtIso,
+        dto.status,
+        dto.title,
+        dto.subtitle,
+        dto.timeframe,
+        dto.startAtIso,
+        dto.endAtIso,
+        dto.imageUrl,
+        dto.visibility
+      ].map(value => `${value ?? ''}`).join('\u001f'),
       scanCode: ticket.code,
       holderUserId: ticket.holderUserId,
       usedAtIso: `${ticket.usedAtIso ?? ''}`.trim() || null,

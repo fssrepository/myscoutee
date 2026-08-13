@@ -110,6 +110,7 @@ import {
   OperatorMenuStore
 } from '../../context/stores/operator-menu.store';
 import { isNavigatorHydrationRoute } from './navigator-hydration-route';
+import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
@@ -2048,13 +2049,7 @@ export class SideMenuComponent implements OnDestroy {
         ...snapshot,
         counters: nonNotificationCounters
       };
-      if (this.popupPresenceStore.visible()) {
-        this.userProfileStore.applyUserRealtimeCounters(
-          userId,
-          nonNotificationSnapshot,
-          counterSyncToken
-        );
-      } else {
+      if (shouldApplyUserRealtimeDomainSnapshot(this.popupPresenceStore.visible())) {
         this.userProfileStore.applyUserRealtimeSnapshot(userId, {
           ...nonNotificationSnapshot
         }, counterSyncToken);
