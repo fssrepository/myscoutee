@@ -130,6 +130,7 @@ import {
   ActivitiesRatesController,
   type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
+import { shouldApplyActivitiesEventBucketLoad } from './activities-event-bucket-state-policy';
 import {
   ActivityMembersBuilder,
   ActivitiesService,
@@ -3822,22 +3823,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>): void {
     let shouldMarkForCheck = false;
 
-    const primaryFilter = change.query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
-    if (
-      !change.initialLoading
-      && !change.loading
-      && primaryFilter === 'events'
-      && change.currentView !== 'week'
-      && change.currentView !== 'month'
-    ) {
-      this.activityStore.signalUserEventBucketCount(
-        this.activeUser.id,
-        change.query.filters?.eventScopeFilter ?? this.activitiesEventScope,
-        change.total,
-        this.activeUser.activities
-      );
-    }
-
     if (this.activitiesInitialLoadPending !== change.initialLoading) {
       this.activitiesInitialLoadPending = change.initialLoading;
       shouldMarkForCheck = true;
@@ -3900,6 +3885,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const page = await this.eventsService.loadActivityEvents(query, {
         signal: context?.signal
       });
+      const queryEventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
+      if (shouldApplyActivitiesEventBucketLoad({
+        currentPrimaryFilter: this.activitiesPrimaryFilter,
+        currentEventScope: this.activitiesEventScope,
+        queryPrimaryFilter: requestedPrimaryFilter,
+        queryEventScope,
+        aborted: context?.signal?.aborted === true,
+        currentView: query.view ?? null
+      })) {
+        this.activityStore.signalUserEventBucketCount(
+          this.activeUser.id,
+          queryEventScope,
+          page.total,
+          this.activeUser.activities
+        );
+      }
       return {
         items: this.activitiesSmartList?.convertItems(page.items) ?? [],
         total: page.total,
