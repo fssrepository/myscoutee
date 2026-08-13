@@ -2695,6 +2695,12 @@ export class EventCheckoutPopupComponent {
         null,
         null
       ));
+      const paymentUrl = AppUtils.normalizeHttpUrl(joinResult?.paymentUrl);
+      if (joinResult?.membershipStatus === 'payment_pending' && paymentUrl) {
+        this.checkoutSessionId = joinResult.paymentSessionId ?? null;
+        window.location.assign(paymentUrl);
+        return;
+      }
       if (!joinResult || joinResult.membershipStatus !== 'accepted') {
         throw new Error(dialog.failureMessage);
       }

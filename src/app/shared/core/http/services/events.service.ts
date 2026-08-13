@@ -1358,7 +1358,9 @@ export class HttpEventsService implements IEventsService {
       paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null,
       changed: result.changed !== false && membershipStatus !== 'unchanged',
       reason: `${result.reason ?? ''}`.trim() || null,
-      counterDelta: result.counterDelta ?? null
+      counterDelta: result.counterDelta ?? null,
+      paymentStatus: `${result.paymentStatus ?? ''}`.trim() || null,
+      paymentUrl: `${result.paymentUrl ?? ''}`.trim() || null
     };
   }
 

@@ -347,6 +347,8 @@ export interface EventParticipationActionResultDTO {
   reason?: string | null;
   /** Operation-owned unit directions (-1/+1), never a global before/after counter diff. */
   counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
+  paymentStatus?: string | null;
+  paymentUrl?: string | null;
 }
 
 export interface SubEventResourceCardDTO {
