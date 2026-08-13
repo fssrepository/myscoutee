@@ -17,7 +17,9 @@ import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type L
 import type {
   ActivityMemberDTO,
   ActivityMemberOwnerRef,
+  ActivityMemberSyncKnownItemDTO,
   ActivityMembersQueryOptions,
+  ActivityMembersSyncResultDTO,
   ActivityMembersSummaryDto
 } from '../../../contracts/activity.interface';
 
@@ -44,6 +46,32 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     return this.loadMembersByOwner(owner, options);
+  }
+
+  async syncMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    knownItems: readonly ActivityMemberSyncKnownItemDTO[],
+    options?: ActivityMembersQueryOptions,
+    signal?: AbortSignal
+  ): Promise<ActivityMembersSyncResultDTO> {
+    this.throwIfAborted(signal);
+    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
+    this.throwIfAborted(signal);
+    const current = await this.loadMembersByOwner(owner, options);
+    const currentById = new Map(current.map(member => [member.id, member] as const));
+    const knownRevisionsById = new Map(knownItems
+      .map(item => [`${item.id ?? ''}`.trim(), `${item.revision ?? ''}`] as const)
+      .filter(([id]) => id.length > 0));
+    const upserts = current.filter(member => {
+      const knownRevision = knownRevisionsById.get(member.id);
+      return knownRevision === undefined || knownRevision !== this.memberRevision(member);
+    });
+    const removedIds = [...knownRevisionsById.keys()].filter(id => !currentById.has(id));
+    return {
+      upserts,
+      removedIds,
+      total: current.length
+    };
   }
 
   async loadMembersByOwner(
@@ -578,5 +606,18 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private get localActivityMemberUsers(): UserDto[] {
     return (this.localUsersRepository.queryAllUsers() as UserDto[])
       .filter(user => user.id.trim().length > 0);
+  }
+
+  private memberRevision(member: ActivityMemberDTO): string {
+    return `${member.revision ?? member.actionAtIso ?? member.id}`;
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (!signal?.aborted) {
+      return;
+    }
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    throw error;
   }
 }

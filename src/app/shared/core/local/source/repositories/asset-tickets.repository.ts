@@ -295,6 +295,25 @@ export class LocalAssetTicketsRepository {
         usedAtIso,
         usedByUserId: actorUserId
       };
+      const membersTable = state[ACTIVITY_MEMBERS_TABLE_NAME];
+      const memberId = (membersTable.idsByOwnerKey[`event:${current.eventId}`] ?? [])
+        .find(id => {
+          const member = membersTable.byId[id];
+          return member?.userId === current.holderUserId
+            && member.status === 'accepted';
+        });
+      const currentMember = memberId ? membersTable.byId[memberId] : null;
+      const checkedInMember = currentMember && !currentMember.checkedInAtIso
+        ? {
+            ...currentMember,
+            attendanceStatus: 'checked-in' as const,
+            checkedInAtIso: usedAtIso,
+            checkedInByUserId: actorUserId,
+            checkedInTicketId: current.id,
+            updatedMs: new Date(usedAtIso).getTime(),
+            updatedAtIso: usedAtIso
+          }
+        : currentMember;
       return {
         ...state,
         [EVENT_TICKETS_TABLE_NAME]: {
@@ -303,7 +322,18 @@ export class LocalAssetTicketsRepository {
             ...table.byId,
             [ticketId]: persisted
           }
-        }
+        },
+        ...(memberId && checkedInMember
+          ? {
+              [ACTIVITY_MEMBERS_TABLE_NAME]: {
+                ...membersTable,
+                byId: {
+                  ...membersTable.byId,
+                  [memberId]: checkedInMember
+                }
+              }
+            }
+          : {})
       };
     });
     return persisted ?? this.memoryDb.read()[EVENT_TICKETS_TABLE_NAME].byId[ticketId];

@@ -1230,6 +1230,11 @@ export interface ActivityMemberDTO {
   avatarUrl: string;
   profile?: UserContracts.UserDto | null;
   involvements?: ActivityMemberInvolvementDTO[];
+  revision?: string | null;
+  attendanceStatus?: 'checked-in' | null;
+  checkedInAtIso?: string | null;
+  checkedInByUserId?: string | null;
+  checkedInTicketId?: string | null;
 }
 
 export interface ActivityMemberOwnerRef {
@@ -1241,6 +1246,17 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
   eventId?: string;
   subEventId?: string;
+}
+
+export interface ActivityMemberSyncKnownItemDTO {
+  id: string;
+  revision: string;
+}
+
+export interface ActivityMembersSyncResultDTO {
+  upserts: ActivityMemberDTO[];
+  removedIds: string[];
+  total: number;
 }
 
 export interface ActivityMembersPageResultDTO {

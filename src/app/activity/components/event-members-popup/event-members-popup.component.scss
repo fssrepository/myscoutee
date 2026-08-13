@@ -125,6 +125,10 @@
   border-color: rgba(57, 140, 94, 0.5);
 }
 
+.activity-members-popup-shell .member-card-tone-checked-in {
+  border-color: rgba(33, 128, 86, 0.82);
+}
+
 .activity-members-popup-shell .member-card-tone-invite-pending {
   border-color: rgba(177, 124, 48, 0.72);
 }
@@ -151,6 +155,12 @@
 .activity-members-popup-shell .member-status-member {
   background: linear-gradient(180deg, #ecfaef 0%, #dcf2e2 100%);
   color: #2a7644;
+}
+
+.activity-members-popup-shell .member-status-checked-in {
+  background: linear-gradient(180deg, #e5faee 0%, #ccefdc 100%);
+  color: #1e7048;
+  font-weight: 700;
 }
 
 .activity-members-popup-shell .member-status-invite-pending {

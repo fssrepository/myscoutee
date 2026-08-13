@@ -12,6 +12,34 @@ describe('ActivityMemberImageCardConverter', () => {
     expect(card.detail).toBe('Invitation Pending');
     expect(card.statusChip?.title).toBe('Invitation Pending');
   });
+
+  it('shows checked-in attendance without replacing the accepted member role', () => {
+    const member: ActivityMemberDTO = {
+      ...pendingInvitation(),
+      status: 'accepted',
+      pendingSource: null,
+      requestKind: null,
+      attendanceStatus: 'checked-in',
+      checkedInAtIso: '2026-08-13T12:34:56Z',
+      checkedInByUserId: 'casey',
+      checkedInTicketId: 'ticket-1'
+    };
+
+    const card = ActivityMemberImageCardConverter.convert(member, {
+      ownerType: 'event',
+      checkedInLabel: 'Beléptetve',
+      formatCheckedInAt: value => `formatted:${value}`
+    });
+
+    expect(card.subtitle).toBe('Member · Seattle');
+    expect(card.detail).toBe('Beléptetve · formatted:2026-08-13T12:34:56Z');
+    expect(card.statusChip).toMatchObject({
+      icon: 'how_to_reg',
+      label: 'Beléptetve',
+      palette: 'green',
+      className: 'member-status-checked-in'
+    });
+  });
 });
 
 function pendingInvitation(): ActivityMemberDTO {
