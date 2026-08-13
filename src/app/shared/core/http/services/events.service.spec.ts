@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { ActivityEventDetailDTO } from '../../contracts/activity.interface';
@@ -204,6 +204,48 @@ describe('HttpEventsService', () => {
       autoInviter: true,
       subEventDefinitions: [{ id: 'stage-1', name: 'Opening round' }]
     });
+  });
+
+  it('does not turn an event-list transport failure into an authoritative empty page', async () => {
+    post.mockReturnValue(throwError(() => new Error('backend restarting')));
+
+    await expect(TestBed.inject(HttpEventsService).queryActivitiesEventDTOPage('user-1', {
+      page: 0,
+      pageSize: 20,
+      filters: { eventScopeFilter: 'my-events' }
+    })).rejects.toThrow('backend restarting');
+  });
+
+  it('still returns a successful empty event page as empty', async () => {
+    post.mockReturnValue(of({ items: [], total: 0, nextCursor: null }));
+
+    await expect(TestBed.inject(HttpEventsService).queryActivitiesEventDTOPage('user-1', {
+      page: 0,
+      pageSize: 20,
+      filters: { eventScopeFilter: 'my-events' }
+    })).resolves.toEqual({ items: [], total: 0, nextCursor: null });
+  });
+
+  it('keeps legacy event-list read failures distinct from successful empty arrays', async () => {
+    get.mockReturnValue(throwError(() => new Error('backend unavailable')));
+
+    await expect(TestBed.inject(HttpEventsService).queryTrashedItemsByUser('user-1'))
+      .rejects.toThrow('backend unavailable');
+  });
+
+  it('keeps Explore poll failures distinct from a successful empty page', async () => {
+    post.mockReturnValue(throwError(() => new Error('backend unavailable')));
+
+    await expect(TestBed.inject(HttpEventsService).queryEventExplorePage({
+      userId: 'user-1',
+      view: 'day',
+      order: 'recent',
+      friendsOnly: false,
+      openSpotsOnly: false,
+      topic: '',
+      limit: 20,
+      excludedSourceIds: []
+    })).rejects.toThrow('backend unavailable');
   });
 
   it('converts event editor local wall times to UTC instants before saving', async () => {

@@ -164,11 +164,10 @@ export class HttpEventsService implements IEventsService {
       if (this.isAbortError(error)) {
         throw error;
       }
-      return {
-        items: [],
-        total: 0,
-        nextCursor: null
-      };
+      // A transport/server failure is not an authoritative empty page. Let
+      // SmartList's poll scheduler retain its last successful snapshot and
+      // retry on the next interval.
+      throw error;
     }
   }
 
@@ -607,12 +606,10 @@ export class HttpEventsService implements IEventsService {
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
         nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
       };
-    } catch {
-      return {
-        records: [],
-        total: 0,
-        nextCursor: null
-      };
+    } catch (error) {
+      // Preserve the distinction between a successful empty Explore page and
+      // an unavailable backend so a background poll cannot erase good data.
+      throw error;
     }
   }
 
@@ -940,8 +937,10 @@ export class HttpEventsService implements IEventsService {
             answersByCardId: this.cloneEventFeedbackAnswersByCardId(item.answersByCardId)
           })).filter(item => item.eventId)
         : [];
-    } catch {
-      return [];
+    } catch (error) {
+      // Callers that own retry/cache behavior must see read failures; [] is
+      // reserved for a successful response with no event records.
+      throw error;
     }
   }
 
