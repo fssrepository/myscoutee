@@ -29,6 +29,7 @@ import type {
   UserDto
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type * as AssetContracts from '../../contracts/asset.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import {
   bootstrapProcessStep,
@@ -224,6 +225,7 @@ export class HttpUsersService implements UserService {
         userId?: string;
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
+        offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
         cursor?: string | null;
         serverTsIso?: string;
       };
@@ -245,6 +247,12 @@ export class HttpUsersService implements UserService {
         userId: response.userId ?? normalizedUserId,
         counters: response.counters,
         impressions: response.impressions,
+        offlineTicketSnapshot: response.offlineTicketSnapshot
+          ? {
+              items: response.offlineTicketSnapshot.items.map(row => ({ ...row })),
+              total: Math.max(0, Math.trunc(Number(response.offlineTicketSnapshot.total) || 0))
+            }
+          : response.offlineTicketSnapshot,
         cursor: response.cursor,
         serverTsIso: response.serverTsIso
       };

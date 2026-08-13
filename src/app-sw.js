@@ -138,7 +138,7 @@ self.addEventListener('notificationclick', event => {
 });
 
 function isApiCacheable(url) {
-  return url.pathname.startsWith('/api/auth/me') || url.pathname.startsWith('/api/assets/tickets');
+  return url.pathname.startsWith('/api/auth/me');
 }
 
 function isLandingContentRequest(url) {

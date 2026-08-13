@@ -539,7 +539,7 @@ export class SideMenuComponent implements OnDestroy {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
-    if (!this.isOperatorMode()) {
+    if (!this.isOperatorMode() && this.runtimeStore.isOnline()) {
       items.push({
         id: 'notifications',
         label: 'Notifications',
@@ -763,7 +763,7 @@ export class SideMenuComponent implements OnDestroy {
               icon: 'qr_code_2',
               palette: 'blue',
               ariaLabel: AppConstants.ASSET_FILTER_TICKET,
-              disabled: primaryDisabled
+              disabled: this.isBlockedUser(user)
             },
             {
               id: 'contacts',
@@ -1426,8 +1426,8 @@ export class SideMenuComponent implements OnDestroy {
         ...ProfileHeaderCardConverter.convert(user, {
           admin: true,
           headline: this.i18n.translate('operator.workspace.title'),
-          showEdit: true,
-          editDisabled: !this.runtimeStore.isOnline(),
+          showEdit: this.runtimeStore.isOnline(),
+          editDisabled: false,
           editAriaLabel: this.i18n.translate('operator.profile.open')
         }),
         badgeLabel: this.i18n.translate('operator'),
@@ -1437,7 +1437,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     return ProfileHeaderCardConverter.convert(user, {
       admin,
-      showEdit: true,
+      showEdit: this.runtimeStore.isOnline(),
       editDisabled: admin ? !this.runtimeStore.isOnline() : !this.runtimeStore.isOnline() || this.isBlockedUser(user),
       editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
       showRing: !admin && this.showProfileSaveRing(),

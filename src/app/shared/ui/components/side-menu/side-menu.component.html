@@ -33,7 +33,7 @@
   </div>
 }
 
-@if (avatarVisible() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
+@if (avatarVisible() && runtimeStore.isOnline() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
   <div class="notification-attention-launcher">
     <app-menu
       class="notification-attention-menu"
@@ -64,7 +64,12 @@
     @if (ui.open) {
       <div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()" (click)="onCloseMenu()"></div>
     }
-    <aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()">
+    <aside
+      class="user-menu-panel"
+      [class.open]="ui.open"
+      [class.is-covered]="isCoveredByAssetPopup()"
+      [class.is-offline]="!runtimeStore.isOnline()"
+    >
       <div class="navigator-menu-header">
         <app-header-card
           class="navigator-menu-header-card"
@@ -72,6 +77,12 @@
           (edit)="openNavigatorHeaderProfile($event)"
         ></app-header-card>
         <div class="navigator-header-actions">
+          @if (!runtimeStore.isOnline()) {
+            <div class="navigator-offline-badge" role="status">
+              <mat-icon>cloud_off</mat-icon>
+              <span>Offline</span>
+            </div>
+          }
           <app-menu
             class="navigator-header-actions-menu"
             kind="inline"

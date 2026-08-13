@@ -1,4 +1,5 @@
 import type * as ActivityContracts from './activity.interface';
+import type * as AssetContracts from './asset.interface';
 import type * as AppConstants from '../common/constants';
 import type * as ProfileContracts from './profile.interface';
 
@@ -198,6 +199,7 @@ export interface UserRealtimeLongPollResponseDto {
   userId: string;
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;
+  offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
   cursor?: string | null;
   serverTsIso?: string;
 }
