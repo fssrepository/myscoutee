@@ -276,7 +276,7 @@ export class SeedAdminBootstrapRepository {
         id: 'admin-demo-noel',
         name: 'Noel Safety',
         initials: 'NS',
-        email: 'noel.admin@myscoutee.local',
+        email: 'admin2@myscoutee.local',
         images: this.demoAdminImages('admin-demo-noel')
       };
     }
@@ -284,7 +284,7 @@ export class SeedAdminBootstrapRepository {
       id: 'admin-demo-ava',
       name: 'Ava',
       initials: 'AM',
-      email: 'ava.admin@myscoutee.local',
+      email: 'admin1@myscoutee.local',
       images: this.demoAdminImages('admin-demo-ava')
     };
   }
