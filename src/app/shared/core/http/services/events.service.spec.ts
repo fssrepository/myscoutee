@@ -226,6 +226,32 @@ describe('HttpEventsService', () => {
     })).resolves.toEqual({ items: [], total: 0, nextCursor: null });
   });
 
+  it('returns the full stored event counter snapshot beside the selected bucket page', async () => {
+    post.mockReturnValue(of({
+      items: [],
+      total: 0,
+      nextCursor: null,
+      eventCounters: {
+        all: 0,
+        active: 0,
+        pending: 0,
+        invitations: 0,
+        hosting: 0,
+        drafts: 0,
+        trash: 0
+      }
+    }));
+
+    await expect(TestBed.inject(HttpEventsService).queryActivitiesEventDTOPage('user-1', {
+      page: 0,
+      pageSize: 20,
+      filters: { eventScopeFilter: 'active-events' }
+    })).resolves.toMatchObject({
+      total: 0,
+      eventCounters: { all: 0, active: 0, trash: 0 }
+    });
+  });
+
   it('keeps legacy event-list read failures distinct from successful empty arrays', async () => {
     get.mockReturnValue(throwError(() => new Error('backend unavailable')));
 

@@ -3894,12 +3894,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
         aborted: context?.signal?.aborted === true,
         currentView: query.view ?? null
       })) {
-        this.activityStore.signalUserEventBucketCount(
-          this.activeUser.id,
-          queryEventScope,
-          page.total,
-          this.activeUser.activities
-        );
+        if (page.context?.eventCounters) {
+          this.activityStore.signalUserEventCounterSnapshot(this.activeUser.id, page.context.eventCounters);
+        } else {
+          this.activityStore.signalUserEventBucketCount(
+            this.activeUser.id,
+            queryEventScope,
+            page.total,
+            this.activeUser.activities
+          );
+        }
       }
       return {
         items: this.activitiesSmartList?.convertItems(page.items) ?? [],

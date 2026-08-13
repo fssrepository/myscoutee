@@ -10,7 +10,8 @@ import type * as AppDTOs from '../../../core/contracts';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type {
   UserMenuCounterDeltasDto,
-  UserMenuCountersDto
+  UserMenuCountersDto,
+  UserEventCountersDto
 } from '../../../core/contracts/user.interface';
 import {
   cloneAssetCounters,
@@ -332,6 +333,23 @@ export class ActivityStore {
     }
 
     this.patchUserCounterOverrides(normalizedUserId, patch);
+  }
+
+  signalUserEventCounterSnapshot(
+    userId: string,
+    counters: UserEventCountersDto | null | undefined
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !counters) {
+      return;
+    }
+    const event = cloneEventCounters(counters);
+    this.patchUserCounterOverrides(normalizedUserId, {
+      events: event.active,
+      invitations: event.invitations,
+      hosting: event.hosting,
+      event
+    });
   }
 
   signalUserTicketBucketCount(

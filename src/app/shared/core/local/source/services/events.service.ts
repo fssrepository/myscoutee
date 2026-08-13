@@ -160,14 +160,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE, signal);
+    const resolvedUserId = this.resolveDemoActivityUserId(userId);
     const page = this.eventsRepository.queryActivitiesEventRecordPage(
-      this.resolveDemoActivityUserId(userId),
+      resolvedUserId,
       query
     );
-    return this.withCheckoutResultStates(
-      this.resolveDemoActivityUserId(userId),
+    const result = await this.withCheckoutResultStates(
+      resolvedUserId,
       this.withCreatorAvatarUrls(LocalActivityEventsMapper.toDtoPage(page))
     );
+    const eventCounters = this.usersRepository.queryUserById(resolvedUserId)?.activities?.event;
+    return {
+      ...result,
+      ...(eventCounters ? { eventCounters: { ...eventCounters } } : {})
+    };
   }
 
   private withCreatorAvatarUrls(page: ActivityEventPageResultDTO): ActivityEventPageResultDTO {

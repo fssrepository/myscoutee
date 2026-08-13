@@ -25,6 +25,7 @@ import {
   type ActivityEventDTO
 } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
+import type { UserEventCountersDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
@@ -89,6 +90,7 @@ type HttpActivityEventPageResponse = ActivityEventDTO[] | {
   records?: ActivityEventDTO[] | null;
   total?: number | null;
   nextCursor?: string | null;
+  eventCounters?: UserEventCountersDto | null;
 } | null;
 
 @Injectable({
@@ -155,10 +157,12 @@ export class HttpEventsService implements IEventsService {
           ? response.records
           : [];
       const items = this.cloneDTOs(responseItems);
+      const eventCounters = this.normalizeEventCounterSnapshot(response?.eventCounters);
       return {
         items,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,
-        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null,
+        ...(eventCounters ? { eventCounters } : {})
       };
     } catch (error) {
       if (this.isAbortError(error)) {
@@ -169,6 +173,26 @@ export class HttpEventsService implements IEventsService {
       // retry on the next interval.
       throw error;
     }
+  }
+
+  private normalizeEventCounterSnapshot(
+    value: UserEventCountersDto | null | undefined
+  ): UserEventCountersDto | null {
+    if (!value) {
+      return null;
+    }
+    const count = (candidate: unknown): number => Number.isFinite(candidate)
+      ? Math.max(0, Math.trunc(Number(candidate)))
+      : 0;
+    return {
+      all: count(value.all),
+      active: count(value.active),
+      pending: count(value.pending),
+      invitations: count(value.invitations),
+      hosting: count(value.hosting),
+      drafts: count(value.drafts),
+      trash: count(value.trash)
+    };
   }
 
   private toHttpEventsFilterRequest(

@@ -1181,6 +1181,7 @@ export interface ActivityEventPageResultDTO {
   items: ActivityEventDTO[];
   total: number;
   nextCursor?: string | null;
+  eventCounters?: UserContracts.UserEventCountersDto | null;
 }
 
 export interface ActivityEventExploreQuery {

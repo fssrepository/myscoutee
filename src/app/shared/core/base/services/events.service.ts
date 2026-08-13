@@ -18,6 +18,7 @@ import type {
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
+import type { UserEventCountersDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
@@ -124,7 +125,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   async loadActivityEvents(
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}
-  ): Promise<PageResult<ActivityEventDTO>> {
+  ): Promise<PageResult<ActivityEventDTO, { eventCounters?: UserEventCountersDto | null }>> {
     const activeUserId = this.resolveActiveUserId();
     const page = await this.queryActivitiesEventDTOPage(
       activeUserId,
@@ -141,13 +142,15 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       );
       return {
         items,
-        total: items.length
+        total: items.length,
+        context: { eventCounters: page.eventCounters }
       };
     }
     return {
       items: page.items,
       total: page.total,
-      nextCursor: page.nextCursor
+      nextCursor: page.nextCursor,
+      context: { eventCounters: page.eventCounters }
     };
   }
 
