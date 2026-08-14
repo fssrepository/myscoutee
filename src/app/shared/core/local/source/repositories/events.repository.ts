@@ -32,7 +32,7 @@ import {
 } from '../entity/activity.entity';
 import type * as ContractTypes from '../../../contracts';
 
-import type { LocationCoordinates } from '../../../contracts/user.interface';
+import type { LocationCoordinates, UserEventCountersDto } from '../../../contracts/user.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 import * as AppConstants from '../../../common/constants';
@@ -792,6 +792,71 @@ export class LocalEventsRepository {
       ...this.queryExploreItems(normalizedUserId)
     ];
     return known.find(record => record.id === normalizedItemId) ?? null;
+  }
+
+  synchronizeEventMemberProjection(eventId: string): ActivityEventRecord | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    this.memoryDb.write(state => {
+      const eventTable = state[EVENTS_TABLE_NAME];
+      const membersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const nextById = { ...eventTable.byId };
+      let changed = false;
+      for (const recordKey of eventTable.ids) {
+        const current = eventTable.byId[recordKey];
+        if (!current || current.id !== normalizedEventId) {
+          continue;
+        }
+        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(
+          membersTable,
+          normalizedEventId,
+          'accepted'
+        );
+        const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(
+          membersTable,
+          normalizedEventId,
+          'pending'
+        );
+        const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
+          membersTable,
+          normalizedEventId,
+          member => member.status === 'pending' && this.isInvitationMember(member)
+        );
+        const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
+          membersTable,
+          normalizedEventId,
+          member => member.status === 'pending' && !this.isInvitationMember(member)
+        );
+        const capacityTotal = Math.max(acceptedMemberUserIds.length, current.capacityTotal);
+        nextById[recordKey] = {
+          ...current,
+          acceptedMembers: acceptedMemberUserIds.length,
+          pendingMembers: pendingMemberUserIds.length,
+          acceptedMemberUserIds,
+          pendingMemberUserIds,
+          invitedMemberUserIds,
+          pendingRequestMemberUserIds,
+          capacityTotal,
+          full: this.directRecordFull(acceptedMemberUserIds.length, capacityTotal)
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...eventTable,
+              byId: nextById
+            }
+          }
+        : state;
+    });
+    this.materializeSlotRecords();
+    return this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedEventId)
+      ?? null;
   }
 
   queryEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
@@ -1915,6 +1980,48 @@ export class LocalEventsRepository {
     return this.queryEventRecordsByFilter(normalizedUserId, 'active-events')
       .filter(record => this.matchesActivitiesSecondaryFilter(record, 'recent'))
       .length;
+  }
+
+  queryUserEventCounterSnapshot(userId: string): {
+    events: number;
+    invitations: number;
+    hosting: number;
+    event: Required<UserEventCountersDto>;
+  } {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        events: 0,
+        invitations: 0,
+        hosting: 0,
+        event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, trash: 0 }
+      };
+    }
+    const invitations = this.queryInvitationItemsByUser(normalizedUserId).length;
+    const hostingItems = this.queryHostingItemsByUser(normalizedUserId)
+      .filter(record => this.normalizeEventStatus(record.status) !== 'T');
+    const memberItems = this.queryEventItemsByUser(normalizedUserId)
+      .filter(record => this.normalizeEventStatus(record.status) !== 'T');
+    const pending = memberItems.filter(record =>
+      (record.pendingRequestMemberUserIds ?? []).some(memberId => memberId.trim() === normalizedUserId)
+      || (record.pendingMemberUserIds ?? []).some(memberId => memberId.trim() === normalizedUserId)
+    ).length;
+    const active = this.countUpcomingActiveEventItemsByUser(normalizedUserId);
+    const hosting = hostingItems.length;
+    return {
+      events: active,
+      invitations,
+      hosting,
+      event: {
+        all: active + pending + invitations + hosting,
+        active,
+        pending,
+        invitations,
+        hosting,
+        drafts: hostingItems.filter(record => this.normalizeEventStatus(record.status) === 'DR').length,
+        trash: this.queryTrashedItemsByUser(normalizedUserId).length
+      }
+    };
   }
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {

@@ -1262,6 +1262,11 @@ export interface ActivityMembersSyncResultDTO {
   total: number;
 }
 
+export interface ActivityMemberActionResultDTO {
+  members: ActivityMemberDTO[];
+  counterOverrides: UserContracts.UserMenuCountersDto | null;
+}
+
 export interface ActivityMembersPageResultDTO {
   items: ActivityMemberDTO[];
   total: number;

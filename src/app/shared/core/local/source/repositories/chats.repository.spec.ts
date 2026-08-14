@@ -160,6 +160,48 @@ describe('LocalChatsRepository chat pages', () => {
     expect(publishedOwner.activities.chat?.event).toBe(originalEventChats);
   });
 
+  it('appends one event system message to every owner copy and updates stored attention counters once', () => {
+    const eventId = 'event-member-approval-chat-test';
+    const casey = user('casey');
+    const riley = user('riley');
+    seedUser(casey);
+    seedUser(riley);
+    repository.syncPublishedMainEventChat({
+      id: eventId,
+      title: 'Approval Event',
+      acceptedMemberUserIds: ['casey', 'riley'],
+      adminIds: ['casey']
+    } as ActivityEventRecord);
+
+    const sentAtIso = '2026-08-14T13:31:15.045Z';
+    expect(repository.appendEventSystemMessage(
+      eventId,
+      'Riley joined the event.',
+      'member-joined',
+      sentAtIso
+    )).toBe(2);
+    expect(repository.appendEventSystemMessage(
+      eventId,
+      'Riley joined the event.',
+      'member-joined',
+      sentAtIso
+    )).toBe(0);
+
+    for (const userId of ['casey', 'riley']) {
+      const chatRecord = repository.queryChatItemById(userId, `c-context-main-${eventId}`);
+      const storedUser = memoryDb.read()[USERS_TABLE_NAME].byId[userId];
+      expect(chatRecord).toMatchObject({
+        unread: 1,
+        lastMessage: 'Riley joined the event.',
+        lastSenderId: 'system'
+      });
+      expect(storedUser.activities.chats).toBe(1);
+      expect(storedUser.activities.chat?.all).toBe(1);
+      expect(storedUser.activities.chat?.event).toBe(1);
+      expect(repository.queryChatMessagesPage(chatRecord!, pageRequest({ pageSize: 10 })).total).toBe(1);
+    }
+  });
+
   it('updates every physical chat copy for an event without replacing chat identity or content', () => {
     const eventId = 'event-status-test';
     const records: ChatThreadRecord[] = [

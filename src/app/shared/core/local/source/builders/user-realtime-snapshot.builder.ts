@@ -3,7 +3,8 @@ import type {
   UserImpressionsDto,
   UserImpressionsSectionDto,
   UserRealtimeCountersDto,
-  UserRealtimeLongPollResponseDto
+  UserRealtimeLongPollResponseDto,
+  UserMenuCountersDto
 } from '../../../contracts/user.interface';
 
 type LocalRealtimeCounterKey =
@@ -52,6 +53,34 @@ export class LocalUserRealtimeSnapshotBuilder {
 
   static resetState(state: LocalUserRealtimeSnapshotState): LocalUserRealtimeSnapshotState {
     return this.buildInitialState(state.sourceUser);
+  }
+
+  static menuCountersForUser(user: UserDto): UserMenuCountersDto {
+    const {
+      impressionsHostChanged: _impressionsHostChanged,
+      impressionsMemberChanged: _impressionsMemberChanged,
+      ...counters
+    } = this.buildInitialSnapshot(user).counters;
+    return counters;
+  }
+
+  static rebaseState(
+    state: LocalUserRealtimeSnapshotState,
+    user: UserDto
+  ): LocalUserRealtimeSnapshotState {
+    if (state.sourceUser === user) {
+      return state;
+    }
+    const previousBase = this.buildInitialSnapshot(state.sourceUser).counters;
+    const nextBase = this.buildInitialSnapshot(user).counters;
+    return {
+      ...state,
+      sourceUser: user,
+      snapshot: {
+        ...state.snapshot,
+        counters: this.rebaseCounters(state.snapshot.counters, previousBase, nextBase)
+      }
+    };
   }
 
   static advanceState(
@@ -216,6 +245,68 @@ export class LocalUserRealtimeSnapshotBuilder {
     next.impressionsHostChanged = increments.impressionsHostChanged === true;
     next.impressionsMemberChanged = increments.impressionsMemberChanged === true;
     return next;
+  }
+
+  private static rebaseCounters(
+    current: UserRealtimeCountersDto,
+    previousBase: UserRealtimeCountersDto,
+    nextBase: UserRealtimeCountersDto
+  ): UserRealtimeCountersDto {
+    const next: UserRealtimeCountersDto = {
+      ...current,
+      impressionsHostChanged: current.impressionsHostChanged === true,
+      impressionsMemberChanged: current.impressionsMemberChanged === true
+    };
+    for (const key of [...LOCAL_REALTIME_COUNTER_KEYS, 'adminJobs', 'adminMetrics'] as const) {
+      next[key] = this.count(current[key])
+        + this.count(nextBase[key])
+        - this.count(previousBase[key]);
+      next[key] = this.count(next[key]);
+    }
+    next.chat = this.rebaseNestedCounters(
+      current.chat,
+      previousBase.chat,
+      nextBase.chat,
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport']
+    );
+    next.event = this.rebaseNestedCounters(
+      current.event,
+      previousBase.event,
+      nextBase.event,
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+    );
+    next.asset = this.rebaseNestedCounters(
+      current.asset,
+      previousBase.asset,
+      nextBase.asset,
+      ['cars', 'accommodation', 'supplies', 'tickets']
+    );
+    next.eventFeedback = this.rebaseNestedCounters(
+      current.eventFeedback,
+      previousBase.eventFeedback,
+      nextBase.eventFeedback,
+      ['ownEvents', 'pending', 'feedbacked', 'removed']
+    );
+    return next;
+  }
+
+  private static rebaseNestedCounters<T extends object>(
+    current: T | undefined,
+    previousBase: T | undefined,
+    nextBase: T | undefined,
+    keys: readonly (keyof T)[]
+  ): T {
+    const currentRecord = (current ?? {}) as Record<string, unknown>;
+    const previousRecord = (previousBase ?? {}) as Record<string, unknown>;
+    const nextRecord = (nextBase ?? {}) as Record<string, unknown>;
+    return Object.fromEntries(keys.map(key => {
+      const name = String(key);
+      return [name, this.count(
+        this.count(currentRecord[name])
+        + this.count(nextRecord[name])
+        - this.count(previousRecord[name])
+      )];
+    })) as T;
   }
 
   private static increaseImpressions(

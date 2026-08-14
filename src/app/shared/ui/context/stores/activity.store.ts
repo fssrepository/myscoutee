@@ -246,6 +246,32 @@ export class ActivityStore {
     return true;
   }
 
+  applyCanonicalCounterOverrides(
+    token: ActivityCounterSyncToken,
+    counters: UserMenuCountersDto
+  ): boolean {
+    return this.applyRealtimeCounterOverrides(token, {
+      game: normalizeCounterValue(counters.game),
+      chats: normalizeCounterValue(counters.chats),
+      invitations: normalizeCounterValue(counters.invitations),
+      events: normalizeCounterValue(counters.events),
+      hosting: normalizeCounterValue(counters.hosting),
+      cars: normalizeCounterValue(counters.cars),
+      accommodation: normalizeCounterValue(counters.accommodation),
+      supplies: normalizeCounterValue(counters.supplies),
+      tickets: normalizeCounterValue(counters.tickets),
+      contacts: normalizeCounterValue(counters.contacts),
+      feedback: normalizeCounterValue(counters.feedback),
+      notifications: normalizeCounterValue(counters.notifications),
+      chat: cloneChatCounters(counters.chat),
+      event: cloneEventCounters(counters.event),
+      asset: cloneAssetCounters(counters.asset),
+      eventFeedback: cloneEventFeedbackCounters(counters.eventFeedback),
+      adminJobs: normalizeCounterValue(counters.adminJobs),
+      adminMetrics: normalizeCounterValue(counters.adminMetrics)
+    });
+  }
+
   private normalizeCounterPatch(patch: Partial<ActivityCounters>): Partial<ActivityCounters> {
     const normalizedPatch: Partial<ActivityCounters> = {};
     for (const key of ACTIVITY_COUNTER_KEYS) {

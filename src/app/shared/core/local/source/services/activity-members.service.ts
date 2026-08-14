@@ -11,10 +11,18 @@ import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
+import {
+  LocalActivityMembersBuilder,
+  LocalUsersMapper,
+  type ActivityMemberProfileFallback,
+  type LocalActivityMembersOwnerSnapshot
+} from '../mappers';
+import { LocalUserRealtimeSnapshotBuilder } from '../builders';
 import type {
+  ActivityMemberActionResultDTO,
   ActivityMemberDTO,
   ActivityMemberOwnerRef,
   ActivityMemberSyncKnownItemDTO,
@@ -34,6 +42,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
@@ -136,6 +145,31 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   }
 
   async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    targetUserId: string,
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberActionResultDTO> {
+    const members = await this.applyMemberActionEntries(
+      owner,
+      actorUserId,
+      targetUserId,
+      action,
+      reason,
+      options
+    );
+    const actor = this.localUsersRepository.queryUserById(actorUserId.trim());
+    return {
+      members,
+      counterOverrides: actor
+        ? LocalUserRealtimeSnapshotBuilder.menuCountersForUser(LocalUsersMapper.toDto(actor))
+        : null
+    };
+  }
+
+  private async applyMemberActionEntries(
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
@@ -303,6 +337,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       ownerSnapshot?.capacityTotal ?? null
     );
     if (normalizedOwner.ownerType === 'event') {
+      const refreshedEvent = this.eventsRepository.synchronizeEventMemberProjection(normalizedOwner.ownerId);
+      this.synchronizeEventCountersForUsers([
+        ...previousMembers.map(member => member.userId),
+        ...nextMembers.map(member => member.userId),
+        normalizedActorUserId
+      ]);
       await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, nextMembers);
       this.assetTicketsRepository.synchronizeForMemberChange(
         normalizedOwner.ownerId,
@@ -313,6 +353,20 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           normalizedOwner.ownerId,
           normalizedTargetUserId,
           normalizedActorUserId,
+          nowIso
+        );
+      }
+      const systemMessage = this.eventMembershipSystemMessage(
+        action,
+        targetMember,
+        nextMembers.find(member => member.userId === normalizedTargetUserId) ?? null
+      );
+      if (refreshedEvent && systemMessage) {
+        this.chatsRepository.syncPublishedMainEventChat(refreshedEvent);
+        this.chatsRepository.appendEventSystemMessage(
+          normalizedOwner.ownerId,
+          systemMessage.text,
+          systemMessage.kind,
           nowIso
         );
       }
@@ -336,6 +390,51 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       );
     }
     return this.entriesFromRecords(nextRecords, normalizedOwner);
+  }
+
+  private synchronizeEventCountersForUsers(userIds: readonly string[]): void {
+    for (const userId of [...new Set(userIds.map(id => id.trim()).filter(Boolean))]) {
+      const user = this.localUsersRepository.queryUserById(userId);
+      if (!user) {
+        continue;
+      }
+      const counters = this.eventsRepository.queryUserEventCounterSnapshot(userId);
+      this.localUsersRepository.upsertUser({
+        ...user,
+        activities: {
+          ...user.activities,
+          events: counters.events,
+          invitations: counters.invitations,
+          hosting: counters.hosting,
+          event: { ...counters.event }
+        }
+      });
+    }
+  }
+
+  private eventMembershipSystemMessage(
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    previousMember: ActivityMemberDTO,
+    nextMember: ActivityMemberDTO | null
+  ): { text: string; kind: string } | null {
+    const user = this.localUsersRepository.queryUserById(previousMember.userId);
+    const displayName = `${user?.name ?? previousMember.name ?? previousMember.userId}`.trim();
+    if (!displayName) {
+      return null;
+    }
+    if (action === 'accept' && previousMember.status !== 'accepted' && nextMember?.status === 'accepted') {
+      return { text: `${displayName} joined the event.`, kind: 'member-joined' };
+    }
+    if (action === 'remove' && previousMember.status === 'accepted' && !nextMember) {
+      return { text: `${displayName} left the event.`, kind: 'member-left' };
+    }
+    if (action === 'disqualify' && previousMember.status === 'accepted' && nextMember?.status === 'disqualified') {
+      return { text: `${displayName} was disqualified from the event.`, kind: 'member-disqualify' };
+    }
+    if (action === 'reinstate' && previousMember.status === 'disqualified' && nextMember?.status === 'accepted') {
+      return { text: `${displayName} was reinstated to the event.`, kind: 'member-reinstate' };
+    }
+    return null;
   }
 
   private appendMemberApprovedNotification(

@@ -244,6 +244,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!state) {
       return null;
     }
+    const currentUser = this.usersRepository.queryUserById(normalizedUserId);
+    if (currentUser) {
+      state = LocalUserRealtimeSnapshotBuilder.rebaseState(
+        state,
+        LocalUsersMapper.toDto(currentUser)
+      );
+      this.realtimeStateByUserId[normalizedUserId] = state;
+    }
     const previousCursor = state.cursor;
     const nextCursor = this.resolveRealtimeCursor(normalizedUserId, parsedCursor);
     const advanced = nextCursor > previousCursor;

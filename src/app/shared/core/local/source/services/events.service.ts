@@ -1817,43 +1817,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   private localEventCounterSnapshot(userId: string): LocalEventCounterSnapshot {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return {
-        events: 0,
-        invitations: 0,
-        hosting: 0,
-        event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, trash: 0 }
-      };
-    }
-    const invitationItems = this.eventsRepository.queryInvitationItemsByUser(normalizedUserId);
-    const hostingItems = this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
-      .filter(record => this.localEventStatus(record) !== 'T');
-    const memberItems = this.eventsRepository.queryEventItemsByUser(normalizedUserId)
-      .filter(record => this.localEventStatus(record) !== 'T');
-    const pending = memberItems.filter(record => this.localEventRecordHasPendingMember(record, normalizedUserId)).length;
-    const active = this.eventsRepository.countUpcomingActiveEventItemsByUser(normalizedUserId);
-    const invitations = invitationItems.length;
-    const hosting = hostingItems.length;
-    return {
-      events: active,
-      invitations,
-      hosting,
-      event: {
-        all: active + pending + invitations + hosting,
-        active,
-        pending,
-        invitations,
-        hosting,
-        drafts: hostingItems.filter(record => this.localEventStatus(record) === 'DR').length,
-        trash: this.eventsRepository.queryTrashedItemsByUser(normalizedUserId).length
-      }
-    };
-  }
-
-  private localEventRecordHasPendingMember(record: ActivityEventRecord, userId: string): boolean {
-    return (record.pendingRequestMemberUserIds ?? []).some(memberId => memberId.trim() === userId)
-      || (record.pendingMemberUserIds ?? []).some(memberId => memberId.trim() === userId);
+    return this.eventsRepository.queryUserEventCounterSnapshot(`${userId ?? ''}`.trim());
   }
 
   private localEventStatus(record: ActivityEventRecord | null | undefined): string {

@@ -4,6 +4,7 @@ import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import type {
+  ActivityMemberActionResultDTO,
   ActivityMemberOwnerRef,
   ActivityMemberSyncKnownItemDTO,
   ActivityMembersQueryOptions,
@@ -200,14 +201,17 @@ export class HttpActivityMembersService {
     action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityMemberActionResultDTO> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedOwner || !normalizedTargetUserId) {
-      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+      return {
+        members: normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [],
+        counterOverrides: null
+      };
     }
     const response = await this.http
-      .post<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+      .post<ActivityMemberActionResultDTO | ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
         owner: normalizedOwner,
         actorUserId: actorUserId.trim(),
         targetUserId: normalizedTargetUserId,
@@ -217,9 +221,16 @@ export class HttpActivityMembersService {
         subEventId: `${options?.subEventId ?? ''}`.trim() || null
       })
       .toPromise();
-    const members = this.cloneEntries(Array.isArray(response) ? response : []);
+    const members = this.cloneEntries(Array.isArray(response)
+      ? response
+      : (Array.isArray(response?.members) ? response.members : []));
     this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
-    return this.cloneEntries(members);
+    return {
+      members: this.cloneEntries(members),
+      counterOverrides: !Array.isArray(response) && response?.counterOverrides
+        ? { ...response.counterOverrides }
+        : null
+    };
   }
 
   private ownerKey(owner: ActivityMemberOwnerRef): string {

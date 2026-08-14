@@ -196,14 +196,20 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (!normalizedOwner.ownerId.trim()) {
       return [];
     }
-    const members = this.presentMembers(await this.activityMembersService.applyMemberAction(
+    const actorUserId = this.userProfileStore.activeUserId().trim();
+    const counterSyncToken = this.activityStore.captureUserCounterSyncToken(actorUserId);
+    const result = await this.activityMembersService.applyMemberAction(
       normalizedOwner,
-      this.userProfileStore.activeUserId().trim(),
+      actorUserId,
       targetUserId,
       action,
       reason,
       options
-    ));
+    );
+    const members = this.presentMembers(result.members);
+    if (result.counterOverrides) {
+      this.activityStore.applyCanonicalCounterOverrides(counterSyncToken, result.counterOverrides);
+    }
     this.emitActivityMembersSyncForOwner(normalizedOwner);
     return members;
   }
