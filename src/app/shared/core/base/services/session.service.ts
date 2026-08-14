@@ -4,6 +4,7 @@ import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
+import { isFirebaseLoginEnabled } from '../../common/firebase-login-mode';
 
 type FirebaseAuthServiceInstance = import('./firebase-auth.service').FirebaseAuthService;
 type HttpOperatorBootstrapAuthServiceInstance =
@@ -61,7 +62,7 @@ export class SessionService {
     }
     return '';
   });
-  readonly authMode: AuthMode = environment.firebaseLoginEnabled ? 'firebase' : 'selector';
+  readonly authMode: AuthMode = isFirebaseLoginEnabled() ? 'firebase' : 'selector';
 
   currentSession(): AppSession | null {
     return this.sessionRef();
@@ -299,7 +300,7 @@ export class SessionService {
   }
 
   async getFirebaseIdToken(): Promise<string | null> {
-    if (!environment.firebaseLoginEnabled || this.sessionRef()?.kind !== 'firebase') {
+    if (!isFirebaseLoginEnabled() || this.sessionRef()?.kind !== 'firebase') {
       return null;
     }
     return (await this.firebaseAuthService()).getIdToken();

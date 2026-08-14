@@ -1444,8 +1444,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           partitionKey: availability.partitionKey ?? null,
           message: availability.message ?? null,
           securityGateEnabled: availability.securityGateEnabled === true,
-          locationRequired: false
-      }
+          locationRequired: availability.locationRequired === true
+        }
       : null;
     this.syncEntryAuthGateState();
   }
