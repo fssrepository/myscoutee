@@ -54,6 +54,7 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 interface ActivityInviteFilters {
   ownerId?: string;
   sort?: AppConstants.ActivityInviteSort;
@@ -82,6 +83,7 @@ export class AssetMemberPickerPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityInviteStore = inject(ActivityInvitePopupStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly assetPopupStore = inject(AssetPopupStore);
@@ -109,7 +111,9 @@ export class AssetMemberPickerPopupComponent {
   private localCandidates: ActivityContracts.ActivityMemberDTO[] = [];
   private isLocalCandidateSource = false;
   private inviteSelectionHydrated = false;
-  private inviteApplyHandler: ((selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]) => void | Promise<void>) | null = null;
+  private inviteApplyHandler: ((
+    selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]
+  ) => ActivityContracts.ActivityMembersInviteResultDTO | void | Promise<ActivityContracts.ActivityMembersInviteResultDTO | void>) | null = null;
   private closeOwnerPopupOnClose = false;
 
   @ViewChild('inviteSmartList')
@@ -403,10 +407,11 @@ export class AssetMemberPickerPopupComponent {
     this.confirmErrorMessage = '';
     this.cdr.markForCheck();
     try {
-      await this.applySelection(selected);
+      const result = await this.applySelection(selected);
       this.isConfirmPending = false;
       this.cdr.markForCheck();
       this.closeInvitePopup();
+      this.openInviteRejectionNotice(result);
     } catch {
       this.isConfirmPending = false;
       this.confirmErrorMessage = 'Unable to invite selected members.';
@@ -673,12 +678,34 @@ export class AssetMemberPickerPopupComponent {
     return this.selectedUserIds.some(userId => !this.persistedSelectedUserIds.has(userId));
   }
 
-  private async applySelection(selected: readonly ActivityContracts.ActivityMemberDTO[]): Promise<void> {
+  private async applySelection(
+    selected: readonly ActivityContracts.ActivityMemberDTO[]
+  ): Promise<ActivityContracts.ActivityMembersInviteResultDTO | void> {
     if (this.inviteApplyHandler) {
-      await Promise.resolve(this.inviteApplyHandler(selected));
+      return Promise.resolve(this.inviteApplyHandler(selected));
+    }
+    return this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
+  }
+
+  private openInviteRejectionNotice(
+    result: ActivityContracts.ActivityMembersInviteResultDTO | void
+  ): void {
+    const rejections = result?.rejections ?? [];
+    if (rejections.length === 0) {
       return;
     }
-    await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
+    const capacityRejected = rejections.some(rejection => rejection.reason === 'capacity-full');
+    this.dialogStore.openNotice(
+      capacityRejected
+        ? 'event.members.invite.capacity.full.message'
+        : 'event.members.invite.not.sent.message',
+      {
+        title: capacityRejected
+          ? 'event.members.invite.capacity.full.title'
+          : 'event.members.invite.not.sent.title',
+        confirmTone: capacityRejected ? 'warning' : 'danger'
+      }
+    );
   }
 
 }

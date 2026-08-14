@@ -33,6 +33,28 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(table.byKey[key]);
   }
 
+  async loadBasketsByEvents(
+    userId: string,
+    sourceIds: readonly string[]
+  ): Promise<Map<string, LocalEventCheckoutBasketRecord>> {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const normalizedSourceIds = [...new Set(
+      sourceIds.map(sourceId => `${sourceId ?? ''}`.trim()).filter(Boolean)
+    )];
+    if (!normalizedUserId || normalizedSourceIds.length === 0) {
+      return new Map<string, LocalEventCheckoutBasketRecord>();
+    }
+    const table = await this.readTable();
+    const basketsBySourceId = new Map<string, LocalEventCheckoutBasketRecord>();
+    for (const sourceId of normalizedSourceIds) {
+      const basket = this.activeBasket(table.byKey[this.recordKey(normalizedUserId, sourceId)]);
+      if (basket) {
+        basketsBySourceId.set(sourceId, basket);
+      }
+    }
+    return basketsBySourceId;
+  }
+
   async loadActiveItemsByEvent(sourceId: string): Promise<LocalEventCheckoutBasketItemRecord[]> {
     const normalizedSourceId = `${sourceId ?? ''}`.trim();
     if (!normalizedSourceId) {
@@ -112,6 +134,25 @@ export class LocalEventCheckoutBasketsRepository {
   async updateBasketState(
     request: LocalEventCheckoutBasketStatePatchRecord
   ): Promise<LocalEventCheckoutBasketRecord | null> {
+    return this.updateBasketStateMatching(request, item => this.isDisplayItem(item));
+  }
+
+  async finalizeAcceptedReservation(
+    userId: string,
+    sourceId: string
+  ): Promise<LocalEventCheckoutBasketRecord | null> {
+    return this.updateBasketStateMatching({
+      userId,
+      sourceId,
+      checkoutState: 'approved',
+      resultState: 'succeeded'
+    }, item => this.isReservationItem(item));
+  }
+
+  private async updateBasketStateMatching(
+    request: LocalEventCheckoutBasketStatePatchRecord,
+    shouldUpdate: (item: LocalEventCheckoutBasketItemRecord) => boolean
+  ): Promise<LocalEventCheckoutBasketRecord | null> {
     const userId = request.userId?.trim() ?? '';
     const sourceId = request.sourceId?.trim() ?? '';
     const key = this.recordKey(userId, sourceId);
@@ -123,6 +164,9 @@ export class LocalEventCheckoutBasketsRepository {
     if (!current) {
       return null;
     }
+    if (!current.items.some(item => shouldUpdate(item))) {
+      return this.activeBasket(current);
+    }
     const checkoutState = this.normalizeStatus(request.checkoutState);
     const resultState = request.resultState == null
       ? null
@@ -133,7 +177,7 @@ export class LocalEventCheckoutBasketsRepository {
       ...current,
       status: checkoutState,
       checkoutSessionId: checkoutSessionId ?? current.checkoutSessionId ?? null,
-      items: current.items.map(item => this.isDisplayItem(item)
+      items: current.items.map(item => shouldUpdate(item)
         ? {
             ...item,
             status: checkoutState,

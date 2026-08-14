@@ -1307,7 +1307,7 @@ export class EventExplorePopupComponent {
       }
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
-      this.activitiesStore.clearActivityEventSave();
+      this.activitiesStore.emitActivityEventRemoval(sourceId);
       this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
       this.locallyTrackedMembershipSourceIds.delete(sourceId);
     } finally {
@@ -1349,8 +1349,25 @@ export class EventExplorePopupComponent {
       pendingMembers,
       capacityTotal,
       ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
+      ...(matchingResult?.membershipStatus
+        ? { currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(matchingResult.membershipStatus) }
+        : {}),
       ...(memberDelta ?? {})
     });
+  }
+
+  private normalizeCurrentUserMembershipStatus(
+    value: string | null | undefined
+  ): ContractTypes.ActivityCurrentUserMembershipStatus {
+    return value === 'accepted'
+      || value === 'pending'
+      || value === 'invited'
+      || value === 'trashed'
+      || value === 'suppressed'
+      || value === 'deleted'
+      || value === 'unchanged'
+      ? value
+      : 'none';
   }
 
   private withEventExploreResultSummary(
@@ -1440,7 +1457,7 @@ export class EventExplorePopupComponent {
     return {
       ...card,
       menuActions: (card.menuActions ?? []).map(actionId =>
-        this.isEventExploreJoinMenuAction(actionId) ? 'continueBooking' : actionId
+        this.isEventExploreJoinMenuAction(actionId) ? 'continueBookingPending' : actionId
       )
     };
   }
@@ -1759,6 +1776,14 @@ export class EventExplorePopupComponent {
     if (this.hasPendingCheckoutDraft(record.id, userId)) {
       return true;
     }
+    if (record.currentUserMembershipStatus === 'accepted'
+        || record.currentUserMembershipStatus === 'pending'
+        || record.currentUserMembershipStatus === 'invited') {
+      return true;
+    }
+    if (record.currentUserMembershipStatus) {
+      return false;
+    }
     return this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
       .some(member => member.userId === userId);
   }
@@ -1769,6 +1794,15 @@ export class EventExplorePopupComponent {
   ): 'accepted' | 'pending' | 'none' {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
+      return 'none';
+    }
+    if (record.currentUserMembershipStatus === 'accepted') {
+      return 'accepted';
+    }
+    if (record.currentUserMembershipStatus === 'pending' || record.currentUserMembershipStatus === 'invited') {
+      return 'pending';
+    }
+    if (record.currentUserMembershipStatus) {
       return 'none';
     }
     const existingMember = this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
@@ -2049,7 +2083,7 @@ export class EventExplorePopupComponent {
       const nextRecord = this.withEventExploreMemberDelta(record, {
         acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
         pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
-      }, displayMembers, pendingReason);
+      }, displayMembers, pendingReason, this.normalizeCurrentUserMembershipStatus(joinResult.membershipStatus));
       this.locallyTrackedMembershipSourceIds.add(record.id);
       this.restoreVisibleEventExploreRecord(nextRecord);
       this.activitiesStore.emitActivityEventSaveResult(
@@ -2109,7 +2143,13 @@ export class EventExplorePopupComponent {
       acceptedMembers: Math.max(0, Math.trunc(Number(currentRecord.acceptedMembers) || 0) + acceptedMemberDelta),
       pendingMembers: Math.max(0, Math.trunc(Number(currentRecord.pendingMembers) || 0) + pendingMemberDelta),
       capacityTotal: currentRecord.capacityTotal,
-      full: sync.full === true ? true : currentRecord.full
+      full: sync.full === true ? true : currentRecord.full,
+      ...(sync.currentUserMembershipStatus ? { currentUserMembershipStatus: sync.currentUserMembershipStatus } : {}),
+      ...(sync.viewerMembershipRemoved ? {
+        checkoutBasket: null,
+        checkoutResultState: 'deleted' as const,
+        pendingReason: null
+      } : {})
     };
     this.eventExploreSmartList.replaceVisibleItems(currentItems, {
       total: this.eventExploreSmartList.cursorState().total
@@ -2473,7 +2513,8 @@ export class EventExplorePopupComponent {
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
       pendingMemberUserIds: [...summary.pendingMemberUserIds],
       pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
-      pendingReason: this.eventExplorePendingReasonFromMembers(members)
+      pendingReason: this.eventExplorePendingReasonFromMembers(members),
+      currentUserMembershipStatus: this.eventExploreCurrentUserMembershipStatusFromMembers(members)
     };
   }
 
@@ -2481,7 +2522,8 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord,
     memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number },
     members: readonly ActivityContracts.ActivityMemberDTO[] = [],
-    pendingReason: ActivityPendingReason = null
+    pendingReason: ActivityPendingReason = null,
+    currentUserMembershipStatus: ContractTypes.ActivityCurrentUserMembershipStatus = 'none'
   ): ActivityEventRecord {
     const acceptedMemberDelta = Math.trunc(Number(memberDelta.acceptedMemberDelta) || 0);
     const pendingMemberDelta = Math.trunc(Number(memberDelta.pendingMemberDelta) || 0);
@@ -2502,8 +2544,26 @@ export class EventExplorePopupComponent {
           .filter(userId => userId.length > 0),
         pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members)
       } : {}),
-      pendingReason: pendingReason ?? (hasMembers ? this.eventExplorePendingReasonFromMembers(members) : null)
+      pendingReason: pendingReason ?? (hasMembers ? this.eventExplorePendingReasonFromMembers(members) : null),
+      currentUserMembershipStatus
     };
+  }
+
+  private eventExploreCurrentUserMembershipStatusFromMembers(
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): ContractTypes.ActivityCurrentUserMembershipStatus {
+    const activeUserId = this.activeUserId.trim();
+    const member = members.find(item => item.userId.trim() === activeUserId);
+    if (member?.status === 'accepted') {
+      return 'accepted';
+    }
+    if (member?.status === 'pending') {
+      return member.requestKind === 'invite' ? 'invited' : 'pending';
+    }
+    if (member?.status === 'deleted') {
+      return 'deleted';
+    }
+    return 'none';
   }
 
   private eventExplorePendingReasonFromMembers(

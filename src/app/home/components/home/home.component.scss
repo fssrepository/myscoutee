@@ -39,6 +39,12 @@
   border-color: rgba(180, 52, 64, 0.28);
 }
 
+.game-page.game-page-status-offline {
+  background: linear-gradient(180deg, #cbd0d7 0%, #aeb5bf 100%);
+  border-color: rgba(35, 44, 57, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
 .game-page.game-page-reactivation-pending {
   min-height: calc(100vh - 2rem);
   border-color: transparent;
@@ -51,6 +57,31 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.72rem;
+}
+
+.game-offline-status {
+  margin-left: auto;
+  min-height: 32px;
+  padding: 0.34rem 0.72rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  background: linear-gradient(180deg, #4b535e 0%, #343b45 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(24, 30, 39, 0.22);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.game-offline-status .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
 }
 
 .game-brand {
@@ -135,6 +166,13 @@
   outline: none;
   border-color: rgba(46, 105, 177, 0.42);
   box-shadow: 0 0 0 3px rgba(108, 164, 232, 0.16);
+}
+
+.game-social-query-field input:disabled {
+  border-color: rgba(46, 54, 65, 0.16);
+  background: rgba(228, 231, 235, 0.82);
+  color: rgba(48, 56, 67, 0.48);
+  cursor: not-allowed;
 }
 
 .game-stack-progress-row {

@@ -5,6 +5,8 @@ import { from, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SessionService } from '../base/services/session.service';
 import { DEMO_SESSION_HEADER, DEMO_SESSION_VALUE } from './session-mode.interceptor';
+import { FirebaseSessionRegistryService } from './services/firebase-session-registry.service';
+import { isFirebaseLoginEnabled } from '../common/firebase-login-mode';
 
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
 
@@ -39,7 +41,7 @@ function isOperatorBootstrapLoginRequest(url: string): boolean {
 
 export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
   if (
-    !environment.firebaseLoginEnabled
+    !isFirebaseLoginEnabled()
     || req.headers.has('Authorization')
     || !isApiRequest(req.url)
     || isOperatorBootstrapLoginRequest(req.url)
@@ -62,7 +64,8 @@ export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
       return next(
         req.clone({
           setHeaders: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
+            [FirebaseSessionRegistryService.SESSION_ID_HEADER]: session.sessionId
           }
         })
       );

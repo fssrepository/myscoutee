@@ -4,7 +4,7 @@ import type { FormFlowControlModel } from './form-flow.types';
 import { FormFlowComponent } from './form-flow.component';
 import type { LinkInputConfig } from '../inputs/link-input';
 
-describe('FormFlowComponent link controls', () => {
+describe('FormFlowComponent controls', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
   });
@@ -36,6 +36,39 @@ describe('FormFlowComponent link controls', () => {
       required: true,
       maxLength: 2048
     }));
+
+    fixture.destroy();
+  });
+
+  it('keeps an empty number input empty and normalizes a pasted leading zero', () => {
+    TestBed.configureTestingModule({
+      imports: [FormFlowComponent]
+    });
+    const fixture = TestBed.createComponent(FormFlowComponent);
+    const component = fixture.componentInstance;
+    const componentView = component as unknown as {
+      controlNumberValue: (control: FormFlowControlModel) => number | null;
+      updateControlValue: (control: FormFlowControlModel, value: unknown) => void;
+    };
+    const control: FormFlowControlModel = {
+      id: 'height',
+      bind: 'height',
+      kind: 'number',
+      label: 'Height'
+    };
+    let emittedValue: unknown;
+    component.registerOnChange(value => emittedValue = value);
+
+    component.writeValue({ height: '' });
+    expect(componentView.controlNumberValue(control)).toBeNull();
+
+    componentView.updateControlValue(control, '0170');
+    expect(emittedValue).toEqual({ height: 170 });
+    expect(componentView.controlNumberValue(control)).toBe(170);
+
+    componentView.updateControlValue(control, '');
+    expect(emittedValue).toEqual({ height: '' });
+    expect(componentView.controlNumberValue(control)).toBeNull();
 
     fixture.destroy();
   });

@@ -130,6 +130,95 @@ export class LocalChatsRepository {
     return viewerChatAdded;
   }
 
+  appendEventSystemMessage(
+    eventId: string,
+    text: string,
+    messageKind: string,
+    sentAtIso: string
+  ): number {
+    const normalizedEventId = eventId.trim();
+    const normalizedText = text.trim();
+    const normalizedKind = messageKind.trim();
+    const normalizedSentAtIso = sentAtIso.trim();
+    if (!normalizedEventId || !normalizedText || !normalizedKind || !normalizedSentAtIso) {
+      return 0;
+    }
+    const messageId = `${normalizedKind}:${normalizedEventId}:${normalizedSentAtIso}`;
+    const sentAt = new Date(normalizedSentAtIso);
+    const time = Number.isFinite(sentAt.getTime())
+      ? sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : '';
+    let appended = 0;
+    this.memoryDb.write(currentState => {
+      const currentChatsTable = currentState[CHATS_TABLE_NAME];
+      const nextChatsById = { ...currentChatsTable.byId };
+      let nextMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      let nextUsersTable = currentState[USERS_TABLE_NAME];
+      for (const recordKey of currentChatsTable.ids) {
+        const current = currentChatsTable.byId[recordKey];
+        if (
+          current?.channelType !== 'mainEvent'
+          || `${current.ownerId ?? ''}`.trim() !== normalizedEventId
+        ) {
+          continue;
+        }
+        const chatKey = LocalChatMessageMapper.chatKey(current.ownerUserId, current.id);
+        const alreadyStored = (nextMessagesTable.idsByChatKey[chatKey] ?? [])
+          .some(id => nextMessagesTable.byId[id]?.messageId === messageId);
+        if (alreadyStored) {
+          continue;
+        }
+        const storedMessage = this.withAppendTimeline({
+          id: messageId,
+          sender: 'System',
+          senderAvatar: {
+            id: 'system',
+            initials: 'SYS',
+            gender: 'system'
+          },
+          text: normalizedText,
+          time,
+          sentAtIso: normalizedSentAtIso,
+          mine: false,
+          readBy: []
+        }, current, nextMessagesTable);
+        const messageRecord = LocalChatMessageMapper.toRecord(
+          current.ownerUserId,
+          current.id,
+          storedMessage
+        );
+        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, messageRecord);
+        nextChatsById[recordKey] = {
+          ...current,
+          lastMessage: storedMessage.text,
+          lastSenderId: storedMessage.senderAvatar.id,
+          dateIso: storedMessage.sentAtIso,
+          unread: this.normalizeCounter(current.unread) + 1,
+          revision: Math.max(1, Math.trunc(Number(current.revision) || 1)) + 1
+        };
+        nextUsersTable = this.applyStoredChatCounterDelta(
+          nextUsersTable,
+          current.ownerUserId,
+          'event',
+          1
+        );
+        appended += 1;
+      }
+      return appended === 0
+        ? currentState
+        : {
+            ...currentState,
+            [CHATS_TABLE_NAME]: {
+              ...currentChatsTable,
+              byId: nextChatsById
+            },
+            [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable,
+            [USERS_TABLE_NAME]: nextUsersTable
+          };
+    });
+    return appended;
+  }
+
   updateEventChatOwnerStatus(
     eventId: string,
     ownerStatus: ActivityContracts.ActivityEventStatus

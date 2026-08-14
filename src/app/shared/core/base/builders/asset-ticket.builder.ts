@@ -12,6 +12,35 @@ type TicketHolder = {
 };
 
 export class AssetTicketBuilder {
+  static identity(row: AssetContracts.AssetTicketDTO): string {
+    return `${row.type}:${row.id}`;
+  }
+
+  static revision(row: AssetContracts.AssetTicketDTO): string {
+    const explicit = `${row.revision ?? ''}`.trim();
+    if (explicit) {
+      return explicit;
+    }
+    return [
+      row.scanCode,
+      row.status,
+      row.usedAtIso,
+      row.issuedAtIso,
+      row.title,
+      row.subtitle,
+      row.detail,
+      row.dateIso,
+      row.startAt,
+      row.endAt,
+      row.imageUrl,
+      row.visibility
+    ].map(value => `${value ?? ''}`).join('\u001f');
+  }
+
+  static pollPosition(row: AssetContracts.AssetTicketDTO): string {
+    return row.dateIso;
+  }
+
   static createScanPayload(
     row: AssetContracts.AssetTicketDTO,
     holder: TicketHolder

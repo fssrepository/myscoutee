@@ -47,6 +47,45 @@ describe('HttpAssetTicketsService', () => {
     expect(options.params.get('order')).toBe('upcoming');
   });
 
+  it('uses the ticket sync endpoint with the SmartList known window', async () => {
+    post.mockReturnValue(of({
+      upserts: [{
+        id: 'event-b',
+        revision: 'revision-b',
+        scanCode: 'TKT-b',
+        holderUserId: 'holder-1',
+        usedAtIso: null,
+        type: 'events',
+        status: 'A',
+        title: 'Event B',
+        subtitle: '',
+        detail: '',
+        dateIso: '2030-04-18T19:00:00.000Z'
+      }],
+      removedIds: ['events:event-a'],
+      total: 1
+    }));
+
+    const result = await TestBed.inject(HttpAssetTicketsService).syncTickets({
+      userId: ' holder-1 ',
+      order: 'upcoming',
+      limit: 6,
+      knownItems: [{ id: 'events:event-a', revision: 'revision-a' }],
+      loadedTail: { id: 'events:event-a', dateIso: '2030-04-18T19:00:00.000Z' }
+    });
+
+    expect(post).toHaveBeenCalledWith('/api/assets/tickets/sync', {
+      userId: 'holder-1',
+      order: 'upcoming',
+      limit: 6,
+      knownItems: [{ id: 'events:event-a', revision: 'revision-a' }],
+      loadedTail: { id: 'events:event-a', dateIso: '2030-04-18T19:00:00.000Z' }
+    });
+    expect(result.removedIds).toEqual(['events:event-a']);
+    expect(result.upserts.map(row => row.id)).toEqual(['event-b']);
+    expect(result.total).toBe(1);
+  });
+
   it('posts the raw ticket code and scanner actor without using cached ticket data', async () => {
     post.mockReturnValue(of({
       valid: false,

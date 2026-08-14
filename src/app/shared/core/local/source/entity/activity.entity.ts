@@ -35,6 +35,10 @@ export interface ActivityMemberRecord {
   metWhere: string;
   avatarUrl: string;
   profile?: UserRecord | null;
+  attendanceStatus?: 'checked-in' | null;
+  checkedInAtIso?: string | null;
+  checkedInByUserId?: string | null;
+  checkedInTicketId?: string | null;
   ownerType: ActivityMemberOwnerType;
   ownerId: string;
   ownerKey: string;

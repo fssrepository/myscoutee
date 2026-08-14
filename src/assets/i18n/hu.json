@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.06.hu.53",
+  "version": "2026.08.14.hu.56",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -170,6 +170,9 @@
     "demo.data.ready": "Demo adatok készen állnak",
     "demo.admin.selector.subtitle": "Válassz admin profilt.",
     "demo.selector.subtitle": "Válassz demo profilt.",
+    "demo.selector.status.blocked": "Letiltott",
+    "demo.selector.status.deleted": "Törölt",
+    "demo.selector.status.new": "Új",
     "demo.session.ready": "Demo munkamenet kész",
     "drafts": "Piszkozatok",
     "edit": "Szerkesztés",
@@ -2081,6 +2084,10 @@
     "event.checkout.promo.required": "Adj meg egy promóciós kódot.",
     "event.checkout.promo.duplicate": "Ez a promóciós kód már alkalmazva van.",
     "event.checkout.promo.invalid": "Ez a promóciós kód nem érvényes ehhez az eseményhez.",
+    "event.members.invite.capacity.full.title": "Nincs szabad hely",
+    "event.members.invite.capacity.full.message": "A kijelölt tagot nem hívtuk meg, mert már minden hely foglalt.",
+    "event.members.invite.not.sent.title": "A meghívást nem küldtük el",
+    "event.members.invite.not.sent.message": "A kijelölt meghívást nem sikerült elküldeni.",
     "event.editor.create": "Esemény létrehozása",
     "event.editor.save.aria": "Esemény mentése",
     "event.editor.publish.question": "Közzéteszed az eseményt?",
@@ -3073,6 +3080,11 @@
     "global.identity.error.unavailable": "A hálózati identitás szinkronizálása ezen a telepítésen nem érhető el.",
     "global.identity.error.local.unavailable": "A kizárólag böngészőben futó munkaterületnek nincs megbízható telepítési kulcsa, ezért nem hozhat létre hálózati identitást.",
     "global.identity.error.failed": "A hálózati identitás kérése sikertelen.",
+    "auth.session.limit.reached": "Már két aktív munkamenet van használatban. Jelentkezz ki az egyikből, majd próbáld újra.",
+    "auth.session.registration.failed": "A biztonságos munkamenetet nem sikerült regisztrálni. Próbáld újra.",
+    "notification.security.login.title": "Biztonsági figyelmeztetés",
+    "notification.security.login.new.message": "Új bejelentkezés innen: {clientLabel}.",
+    "notification.security.login.blocked.message": "Blokkolt bejelentkezési kísérlet innen: {clientLabel}. Már két aktív munkamenet van használatban.",
     "operator.request.failed": "Az operátori kérés sikertelen."
   }
 }

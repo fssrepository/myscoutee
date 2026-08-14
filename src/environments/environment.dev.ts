@@ -6,6 +6,7 @@ export const environment = {
   apiBaseUrl: '/api',
   serviceWorkerEnabled: false,
   firebaseLoginEnabled: false,
+  firebaseLoginQaOverrideEnabled: true,
   firebaseMessagingEnabled: true,
   paymentIntegrationEnabled: false
 };

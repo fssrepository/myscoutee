@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
+import { isFirebaseLoginEnabled } from '../../common/firebase-login-mode';
 import { HttpAdminWorkspaceService } from '../../http/services/admin-workspace.service';
 import { LocalAdminWorkspaceService } from '../../local/source/services/admin-workspace.service';
 import type {
@@ -36,7 +36,7 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
   private readonly usersService = inject(UsersService);
 
   get isFirebaseAdminMode(): boolean {
-    return environment.firebaseLoginEnabled === true;
+    return isFirebaseLoginEnabled();
   }
 
   get shouldUseLocalAdminHelpSession(): boolean {

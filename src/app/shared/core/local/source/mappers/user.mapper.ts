@@ -18,11 +18,14 @@ export class LocalUsersMapper {
       name: record.name,
       city: record.city,
       initials: record.initials,
+      avatarUrl: (record.images ?? [])
+        .find(imageUrl => `${imageUrl ?? ''}`.trim())
+        ?.replace(/\/large\.webp$/, '/small.webp') ?? '',
       gender: record.gender,
       statusText: record.statusText,
       completion: record.completion,
       profileFormVersion: record.profileFormVersion,
-      profileStatus: record.profileStatus,
+      status: record.status,
       deletedAtIso: record.deletedAtIso ?? null
     };
   }

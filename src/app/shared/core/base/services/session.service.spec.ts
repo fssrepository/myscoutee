@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import type { FirebaseAuthRequestDto } from '../../contracts/user.interface';
+import { FirebaseSessionRegistryService } from '../../http/services/firebase-session-registry.service';
 import { HttpOperatorBootstrapAuthService } from '../../http/services/operator-bootstrap-auth.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { SessionService } from './session.service';
@@ -13,6 +14,9 @@ describe('SessionService operator bootstrap session', () => {
   const firebaseSignIn = vi.fn();
   const firebaseRestore = vi.fn();
   const firebaseSignOut = vi.fn();
+  const firebaseGetIdToken = vi.fn();
+  const registerLogin = vi.fn();
+  const registerDemoLogin = vi.fn();
 
   beforeEach(() => {
     localStorage.clear();
@@ -21,6 +25,21 @@ describe('SessionService operator bootstrap session', () => {
     firebaseSignIn.mockReset();
     firebaseRestore.mockReset().mockResolvedValue(null);
     firebaseSignOut.mockReset().mockResolvedValue(undefined);
+    firebaseGetIdToken.mockReset().mockResolvedValue('firebase-token');
+    registerLogin.mockReset().mockResolvedValue({
+      accepted: true,
+      existingSession: false,
+      outcome: 'ACCEPTED',
+      activeSessionCount: 1,
+      maxActiveSessions: 2
+    });
+    registerDemoLogin.mockReset().mockResolvedValue({
+      accepted: true,
+      existingSession: false,
+      outcome: 'ACCEPTED',
+      activeSessionCount: 1,
+      maxActiveSessions: 2
+    });
     TestBed.configureTestingModule({
       providers: [
         SessionService,
@@ -34,8 +53,12 @@ describe('SessionService operator bootstrap session', () => {
             signIn: firebaseSignIn,
             restoreSessionProfile: firebaseRestore,
             signOut: firebaseSignOut,
-            getIdToken: vi.fn()
+            getIdToken: firebaseGetIdToken
           }
+        },
+        {
+          provide: FirebaseSessionRegistryService,
+          useValue: { registerLogin, registerDemoLogin }
         }
       ]
     });
@@ -160,6 +183,7 @@ describe('SessionService operator bootstrap session', () => {
     const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
       kind: 'firebase',
+      sessionId: 'session:persisted-offline',
       profile: {
         id: 'firebase-user',
         name: 'Firebase User',
@@ -177,6 +201,37 @@ describe('SessionService operator bootstrap session', () => {
     } finally {
       offline.mockRestore();
     }
+  });
+
+  it('publishes a tracked demo session only after server registration accepts it', async () => {
+    let acceptRegistration!: (value: {
+      accepted: boolean;
+      existingSession: boolean;
+      outcome: string;
+      activeSessionCount: number;
+      maxActiveSessions: number;
+    }) => void;
+    registerDemoLogin.mockReturnValue(new Promise(resolve => {
+      acceptRegistration = resolve;
+    }));
+    const service = TestBed.inject(SessionService);
+
+    const login = service.startTrackedDemoSession('demo-user');
+
+    expect(service.currentSession()).toBeNull();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBeNull();
+    await vi.waitFor(() => expect(registerDemoLogin).toHaveBeenCalledOnce());
+
+    acceptRegistration({
+      accepted: true,
+      existingSession: false,
+      outcome: 'ACCEPTED',
+      activeSessionCount: 1,
+      maxActiveSessions: 2
+    });
+
+    await expect(login).resolves.toMatchObject({ kind: 'demo', userId: 'demo-user' });
+    expect(service.currentSession()).toMatchObject({ kind: 'demo', userId: 'demo-user' });
   });
 
   it('clears the bootstrap token on logout', async () => {

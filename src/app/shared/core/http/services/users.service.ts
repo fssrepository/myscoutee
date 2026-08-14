@@ -29,6 +29,7 @@ import type {
   UserDto
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type * as AssetContracts from '../../contracts/asset.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import {
   bootstrapProcessStep,
@@ -124,7 +125,7 @@ export class HttpUsersService implements UserService {
       partitionKey: typeof response?.partitionKey === 'string' ? response.partitionKey : null,
       message: typeof response?.message === 'string' ? response.message : null,
       securityGateEnabled: response?.securityGateEnabled === true,
-      locationRequired: false
+      locationRequired: response?.locationRequired === true
     };
   }
 
@@ -224,6 +225,7 @@ export class HttpUsersService implements UserService {
         userId?: string;
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
+        offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
         cursor?: string | null;
         serverTsIso?: string;
       };
@@ -245,6 +247,12 @@ export class HttpUsersService implements UserService {
         userId: response.userId ?? normalizedUserId,
         counters: response.counters,
         impressions: response.impressions,
+        offlineTicketSnapshot: response.offlineTicketSnapshot
+          ? {
+              items: response.offlineTicketSnapshot.items.map(row => ({ ...row })),
+              total: Math.max(0, Math.trunc(Number(response.offlineTicketSnapshot.total) || 0))
+            }
+          : response.offlineTicketSnapshot,
         cursor: response.cursor,
         serverTsIso: response.serverTsIso
       };
@@ -724,6 +732,7 @@ export class HttpUsersService implements UserService {
       name: `${user.name ?? ''}`.trim(),
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),
+      avatarUrl: `${user.avatarUrl ?? ''}`.trim(),
       gender: normalizedGender,
       statusText: `${user.statusText ?? ''}`.trim(),
       completion: user.completion === undefined || user.completion === null
@@ -732,7 +741,7 @@ export class HttpUsersService implements UserService {
       profileFormVersion: user.profileFormVersion === undefined || user.profileFormVersion === null
         ? undefined
         : Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0)),
-      profileStatus: user.profileStatus,
+      status: `${user.status ?? ''}`.trim(),
       deletedAtIso: typeof user.deletedAtIso === 'string' ? user.deletedAtIso : null
     };
   }

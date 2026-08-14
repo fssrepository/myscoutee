@@ -38,6 +38,7 @@ import { UserProfileStore } from '../../../ui/context/stores/user-profile.store'
 import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
 import { RouteDelayService } from './route-delay.service';
+import { OfflineCacheService } from './offline-cache.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -58,6 +59,7 @@ export class UsersService extends BaseRouteModeService {
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly offlineCache = inject(OfflineCacheService);
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/auth/me');
   }
@@ -443,7 +445,11 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
     try {
-      return await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
+      const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
+      if (snapshot?.offlineTicketSnapshot) {
+        this.offlineCache.writeTicketPage(normalizedUserId, 'upcoming', snapshot.offlineTicketSnapshot);
+      }
+      return snapshot;
     } catch {
       return null;
     }

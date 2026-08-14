@@ -1,10 +1,15 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import type {
+  ActivityMemberActionResultDTO,
+  ActivityMembersInviteResultDTO,
   ActivityMemberOwnerRef,
+  ActivityMemberSyncKnownItemDTO,
   ActivityMembersQueryOptions,
+  ActivityMembersSyncResultDTO,
   ActivityMembersSummaryDto
 } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
@@ -63,6 +68,46 @@ export class HttpActivityMembersService {
       }
       return this.peekMembersByOwner(normalizedOwner);
     }
+  }
+
+  async syncMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    knownItems: readonly ActivityMemberSyncKnownItemDTO[],
+    options?: ActivityMembersQueryOptions,
+    signal?: AbortSignal
+  ): Promise<ActivityMembersSyncResultDTO> {
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    if (!normalizedOwner) {
+      return { upserts: [], removedIds: [], total: 0 };
+    }
+    const response = await this.requestWithAbort(
+      this.http.post<ActivityMembersSyncResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/members/sync`,
+        {
+          owner: normalizedOwner,
+          knownItems: knownItems.map(item => ({
+            id: `${item.id ?? ''}`.trim(),
+            revision: `${item.revision ?? ''}`
+          })).filter(item => item.id.length > 0),
+          eventId: `${options?.eventId ?? ''}`.trim() || null,
+          subEventId: `${options?.subEventId ?? ''}`.trim() || null
+        }
+      ),
+      signal
+    );
+    const result: ActivityMembersSyncResultDTO = {
+      upserts: this.cloneEntries(Array.isArray(response?.upserts) ? response.upserts : []),
+      removedIds: Array.isArray(response?.removedIds)
+        ? response.removedIds.map(id => `${id ?? ''}`.trim()).filter(Boolean)
+        : [],
+      total: Math.max(0, Math.trunc(Number(response?.total) || 0))
+    };
+    this.applySyncToCache(normalizedOwner, result);
+    return {
+      upserts: this.cloneEntries(result.upserts),
+      removedIds: [...result.removedIds],
+      total: result.total
+    };
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
@@ -125,14 +170,18 @@ export class HttpActivityMembersService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     userIds: readonly string[]
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityMembersInviteResultDTO> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedUserIds = [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
     if (!normalizedOwner || normalizedOwner.ownerType !== 'event' || normalizedUserIds.length === 0) {
-      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+      return {
+        members: normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [],
+        invitedUserIds: [],
+        rejections: []
+      };
     }
     const response = await this.http
-      .post<ActivityContracts.ActivityMemberDTO[] | null>(
+      .post<ActivityMembersInviteResultDTO | ActivityContracts.ActivityMemberDTO[] | null>(
         `${this.apiBaseUrl}/activities/events/members/invite`,
         {
           owner: normalizedOwner,
@@ -141,13 +190,39 @@ export class HttpActivityMembersService {
         }
       )
       .toPromise();
-    const members = this.cloneEntries(Array.isArray(response) ? response : []);
+    const legacyMembers = Array.isArray(response) ? response : null;
+    const structuredResponse: ActivityMembersInviteResultDTO | null = response && !Array.isArray(response)
+      ? response
+      : null;
+    const members = this.cloneEntries(
+      legacyMembers ?? (Array.isArray(structuredResponse?.members) ? structuredResponse.members : [])
+    );
+    const memberUserIds = new Set(members.map(member => member.userId.trim()).filter(Boolean));
+    const invitedUserIds = legacyMembers
+      ? normalizedUserIds.filter(userId => memberUserIds.has(userId))
+      : this.normalizeUserIds(structuredResponse?.invitedUserIds);
+    const rejections = legacyMembers
+      ? normalizedUserIds
+        .filter(userId => !memberUserIds.has(userId))
+        .map(userId => ({ userId, reason: 'unknown' as const }))
+      : (Array.isArray(structuredResponse?.rejections) ? structuredResponse.rejections : [])
+        .map(rejection => ({
+          userId: `${rejection?.userId ?? ''}`.trim(),
+          reason: rejection?.reason === 'capacity-full' || rejection?.reason === 'already-member'
+            ? rejection.reason
+            : 'unknown' as const
+        }))
+        .filter(rejection => rejection.userId.length > 0);
     this.cacheMembers(
       normalizedOwner,
       members,
       this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null
     );
-    return this.cloneEntries(members);
+    return {
+      members: this.cloneEntries(members),
+      invitedUserIds,
+      rejections
+    };
   }
 
   async applyMemberAction(
@@ -157,14 +232,17 @@ export class HttpActivityMembersService {
     action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityMemberActionResultDTO> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedOwner || !normalizedTargetUserId) {
-      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+      return {
+        members: normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [],
+        counterOverrides: null
+      };
     }
     const response = await this.http
-      .post<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+      .post<ActivityMemberActionResultDTO | ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
         owner: normalizedOwner,
         actorUserId: actorUserId.trim(),
         targetUserId: normalizedTargetUserId,
@@ -174,9 +252,16 @@ export class HttpActivityMembersService {
         subEventId: `${options?.subEventId ?? ''}`.trim() || null
       })
       .toPromise();
-    const members = this.cloneEntries(Array.isArray(response) ? response : []);
+    const members = this.cloneEntries(Array.isArray(response)
+      ? response
+      : (Array.isArray(response?.members) ? response.members : []));
     this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
-    return this.cloneEntries(members);
+    return {
+      members: this.cloneEntries(members),
+      counterOverrides: !Array.isArray(response) && response?.counterOverrides
+        ? { ...response.counterOverrides }
+        : null
+    };
   }
 
   private ownerKey(owner: ActivityMemberOwnerRef): string {
@@ -229,6 +314,30 @@ export class HttpActivityMembersService {
       normalizedOwner,
       clonedMembers,
       capacityTotal ?? this.cachedSummariesByOwnerKey[ownerKey]?.capacityTotal ?? null
+    );
+  }
+
+  private applySyncToCache(
+    owner: ActivityMemberOwnerRef,
+    result: ActivityMembersSyncResultDTO
+  ): void {
+    const current = this.peekMembersByOwner(owner);
+    const removedIds = new Set(result.removedIds);
+    const upsertsById = new Map(result.upserts.map(member => [member.id, member] as const));
+    const next = current
+      .filter(member => !removedIds.has(member.id))
+      .map(member => upsertsById.get(member.id) ?? member);
+    const knownIds = new Set(next.map(member => member.id));
+    for (const upsert of result.upserts) {
+      if (!knownIds.has(upsert.id)) {
+        next.push(upsert);
+        knownIds.add(upsert.id);
+      }
+    }
+    this.cacheMembers(
+      owner,
+      next,
+      this.cachedSummariesByOwnerKey[this.ownerKey(owner)]?.capacityTotal ?? null
     );
   }
 
@@ -325,6 +434,53 @@ export class HttpActivityMembersService {
       return null;
     }
     return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let settled = false;
+      let subscription: { unsubscribe: () => void } | null = null;
+      const cleanup = () => signal?.removeEventListener('abort', onAbort);
+      const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        subscription?.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      subscription = request$.subscribe({
+        next: value => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+        complete: () => cleanup()
+      });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
   }
 
 }

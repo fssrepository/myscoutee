@@ -47,6 +47,7 @@ import {
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
 
 @Injectable({
@@ -63,10 +64,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private static readonly USER_REALTIME_LONG_POLL_DELAY_KEY = '/local/users/realtime/long-poll';
   private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
+  private static readonly OFFLINE_TICKET_SNAPSHOT_PAGE_SIZE = 18;
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -241,6 +244,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!state) {
       return null;
     }
+    const currentUser = this.usersRepository.queryUserById(normalizedUserId);
+    if (currentUser) {
+      state = LocalUserRealtimeSnapshotBuilder.rebaseState(
+        state,
+        LocalUsersMapper.toDto(currentUser)
+      );
+      this.realtimeStateByUserId[normalizedUserId] = state;
+    }
     const previousCursor = state.cursor;
     const nextCursor = this.resolveRealtimeCursor(normalizedUserId, parsedCursor);
     const advanced = nextCursor > previousCursor;
@@ -248,9 +259,19 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       state = LocalUserRealtimeSnapshotBuilder.advanceState(state, nextCursor);
       this.realtimeStateByUserId[normalizedUserId] = state;
     }
-    return LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
+    const snapshot = LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
       suppressImpressionChangeFlags: !advanced
     });
+    const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
+      userId: normalizedUserId,
+      page: 0,
+      pageSize: LocalUsersService.OFFLINE_TICKET_SNAPSHOT_PAGE_SIZE,
+      order: 'upcoming'
+    });
+    return {
+      ...snapshot,
+      offlineTicketSnapshot
+    };
   }
 
   private primeLocalRealtimeState(user: UserDto): void {

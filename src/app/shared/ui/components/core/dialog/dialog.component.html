@@ -2,7 +2,20 @@
   <section class="dialog" [style.z-index]="zIndex ?? null">
     <div class="dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
     <div class="dialog-panel" (click)="$event.stopPropagation()">
-      <h3>{{ state.title | i18n }}</h3>
+      <div class="dialog-header">
+        <h3>{{ state.title | i18n }}</h3>
+        @if (state.showClose) {
+          <button
+            type="button"
+            class="popup-close"
+            [disabled]="state.busy"
+            [attr.aria-label]="'close' | i18n"
+            (click)="cancel($event)"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
       @if (state.message) {
         <p>{{ state.message | i18n }}</p>
       }
@@ -12,14 +25,16 @@
       @if (state.errorMessage) {
         <p class="dialog-error">{{ state.errorMessage | i18n }}</p>
       }
-      <div class="dialog-actions" [class.dialog-actions-single]="!state.cancelLabel">
-        <app-menu
-          class="dialog-actions-menu"
-          kind="inline"
-          [items]="dialogActionItems(state)"
-          (itemSelect)="onDialogActionSelect($event)"
-        ></app-menu>
-      </div>
+      @if (state.showActions) {
+        <div class="dialog-actions" [class.dialog-actions-single]="!state.cancelLabel">
+          <app-menu
+            class="dialog-actions-menu"
+            kind="inline"
+            [items]="dialogActionItems(state)"
+            (itemSelect)="onDialogActionSelect($event)"
+          ></app-menu>
+        </div>
+      }
     </div>
   </section>
 }
