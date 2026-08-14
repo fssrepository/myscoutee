@@ -1267,6 +1267,19 @@ export interface ActivityMemberActionResultDTO {
   counterOverrides: UserContracts.UserMenuCountersDto | null;
 }
 
+export type ActivityMemberInviteRejectionReason = 'capacity-full' | 'already-member' | 'unknown';
+
+export interface ActivityMemberInviteRejectionDTO {
+  userId: string;
+  reason: ActivityMemberInviteRejectionReason;
+}
+
+export interface ActivityMembersInviteResultDTO {
+  members: ActivityMemberDTO[];
+  invitedUserIds: string[];
+  rejections: ActivityMemberInviteRejectionDTO[];
+}
+
 export interface ActivityMembersPageResultDTO {
   items: ActivityMemberDTO[];
   total: number;

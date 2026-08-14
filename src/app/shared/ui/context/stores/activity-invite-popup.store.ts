@@ -6,6 +6,7 @@ import {
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
+import type { ActivityMembersInviteResultDTO } from '../../../core/contracts/activity.interface';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
@@ -15,7 +16,7 @@ export interface ActivityInvitePopupState {
   title?: string;
   initialCandidates?: readonly ActivityMemberDTO[];
   initialSelection?: readonly ActivityMemberDTO[];
-  onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => void | Promise<void>;
+  onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => ActivityMembersInviteResultDTO | void | Promise<ActivityMembersInviteResultDTO | void>;
   closeOwnerPopupOnClose?: boolean;
 }
 
@@ -36,7 +37,7 @@ export class ActivityInvitePopupStore {
     title?: string;
     initialCandidates?: readonly ActivityMemberDTO[];
     initialSelection?: readonly ActivityMemberDTO[];
-    onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => void | Promise<void>;
+    onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => ActivityMembersInviteResultDTO | void | Promise<ActivityMembersInviteResultDTO | void>;
     closeOwnerPopupOnClose?: boolean;
   }): void {
     const normalizedOwnerId = payload.ownerId.trim();

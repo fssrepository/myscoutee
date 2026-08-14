@@ -5,6 +5,7 @@ import type { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type {
   ActivityMemberActionResultDTO,
+  ActivityMembersInviteResultDTO,
   ActivityMemberOwnerRef,
   ActivityMemberSyncKnownItemDTO,
   ActivityMembersQueryOptions,
@@ -169,14 +170,18 @@ export class HttpActivityMembersService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     userIds: readonly string[]
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityMembersInviteResultDTO> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedUserIds = [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
     if (!normalizedOwner || normalizedOwner.ownerType !== 'event' || normalizedUserIds.length === 0) {
-      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+      return {
+        members: normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [],
+        invitedUserIds: [],
+        rejections: []
+      };
     }
     const response = await this.http
-      .post<ActivityContracts.ActivityMemberDTO[] | null>(
+      .post<ActivityMembersInviteResultDTO | ActivityContracts.ActivityMemberDTO[] | null>(
         `${this.apiBaseUrl}/activities/events/members/invite`,
         {
           owner: normalizedOwner,
@@ -185,13 +190,39 @@ export class HttpActivityMembersService {
         }
       )
       .toPromise();
-    const members = this.cloneEntries(Array.isArray(response) ? response : []);
+    const legacyMembers = Array.isArray(response) ? response : null;
+    const structuredResponse: ActivityMembersInviteResultDTO | null = response && !Array.isArray(response)
+      ? response
+      : null;
+    const members = this.cloneEntries(
+      legacyMembers ?? (Array.isArray(structuredResponse?.members) ? structuredResponse.members : [])
+    );
+    const memberUserIds = new Set(members.map(member => member.userId.trim()).filter(Boolean));
+    const invitedUserIds = legacyMembers
+      ? normalizedUserIds.filter(userId => memberUserIds.has(userId))
+      : this.normalizeUserIds(structuredResponse?.invitedUserIds);
+    const rejections = legacyMembers
+      ? normalizedUserIds
+        .filter(userId => !memberUserIds.has(userId))
+        .map(userId => ({ userId, reason: 'unknown' as const }))
+      : (Array.isArray(structuredResponse?.rejections) ? structuredResponse.rejections : [])
+        .map(rejection => ({
+          userId: `${rejection?.userId ?? ''}`.trim(),
+          reason: rejection?.reason === 'capacity-full' || rejection?.reason === 'already-member'
+            ? rejection.reason
+            : 'unknown' as const
+        }))
+        .filter(rejection => rejection.userId.length > 0);
     this.cacheMembers(
       normalizedOwner,
       members,
       this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null
     );
-    return this.cloneEntries(members);
+    return {
+      members: this.cloneEntries(members),
+      invitedUserIds,
+      rejections
+    };
   }
 
   async applyMemberAction(

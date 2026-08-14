@@ -1,5 +1,6 @@
 
 import { Component, HostListener, Input, inject } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import { DialogStore, type DialogState, type DialogTone } from '../../../context/stores/dialog.store';
 import {
@@ -22,6 +23,8 @@ export interface DialogLocalConfig {
   confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
+  showActions?: boolean;
+  showClose?: boolean;
   busy?: boolean;
   errorMessage?: string;
   ringPerimeter?: number;
@@ -40,6 +43,8 @@ type RenderedDialogState = {
   confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
+  showActions: boolean;
+  showClose: boolean;
   busy: boolean;
   errorMessage: string;
   ringPerimeter: number;
@@ -48,7 +53,7 @@ type RenderedDialogState = {
 @Component({
   selector: 'app-dialog',
   standalone: true,
-  imports: [AppMenuComponent, I18nPipe],
+  imports: [MatIconModule, AppMenuComponent, I18nPipe],
   templateUrl: './dialog.component.html',
   styleUrl: './dialog.component.scss'
 })
@@ -89,6 +94,8 @@ export class DialogComponent {
         confirmPalette: dialog.confirmPalette ?? null,
         allowBackdropClose: dialog.allowBackdropClose !== false,
         allowEscapeClose: dialog.allowEscapeClose !== false,
+        showActions: dialog.showActions !== false,
+        showClose: dialog.showClose === true,
         busy: dialog.busy === true,
         errorMessage: dialog.errorMessage?.trim() ?? '',
         ringPerimeter: Number.isFinite(Number(dialog.ringPerimeter)) ? Math.max(0, Number(dialog.ringPerimeter)) : 100
@@ -212,6 +219,8 @@ export class DialogComponent {
       confirmPalette: state.confirmPalette,
       allowBackdropClose: state.allowBackdropClose,
       allowEscapeClose: state.allowEscapeClose,
+      showActions: state.showActions,
+      showClose: state.showClose,
       busy: state.busy,
       errorMessage: state.errorMessage,
       ringPerimeter: state.ringPerimeter

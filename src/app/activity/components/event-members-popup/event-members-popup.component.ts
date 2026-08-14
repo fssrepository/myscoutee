@@ -27,6 +27,7 @@ import {
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 import {
   ActivityMembersService,
+  ActivityInviteCandidatesService,
   ChatsService,
   EventsService,
   I18nService,
@@ -147,6 +148,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -1138,44 +1140,35 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
 
-  private async applyInvites(selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]): Promise<void> {
+  private async applyInvites(
+    selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]
+  ): Promise<ActivityContracts.ActivityMembersInviteResultDTO> {
     const previousMembers = this.currentOwnerMembers();
     const existingUserIds = new Set(previousMembers.map(member => member.userId));
     const additions = selectedCandidates.filter(candidate => !existingUserIds.has(candidate.userId));
     if (additions.length === 0) {
-      return;
+      return { members: previousMembers, invitedUserIds: [], rejections: [] };
     }
-    const activeUserId = this.activeUserId();
-    const nowIso = AppUtils.toIsoDateTime(new Date());
-    const nextPendingInvites = additions.map(candidate => ({
-        ...candidate,
-        status: 'pending' as const,
-        pendingSource: 'admin' as const,
-        requestKind: 'invite' as const,
-        invitedByActiveUser: true,
-        invitedByUserId: activeUserId,
-        statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
-        actionAtIso: nowIso
-      }));
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner?.ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
-      this.suppressedOwnerSyncId = this.ownerId;
-      let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
-      try {
-        normalizedMembers = await this.activityMembersService.inviteEventMembers(
-          owner,
-          additions.map(candidate => candidate.userId)
-        );
-      } catch (error) {
-        if (this.suppressedOwnerSyncId === this.ownerId) {
-          this.suppressedOwnerSyncId = null;
-        }
-        throw error;
-      }
-      this.applyCommittedMembers(normalizedMembers, previousMembers);
-      return;
+    if (!owner) {
+      return { members: previousMembers, invitedUserIds: [], rejections: [] };
     }
-    await this.commitMembers([...previousMembers, ...nextPendingInvites], previousMembers);
+    this.suppressedOwnerSyncId = this.ownerId;
+    let result: ActivityContracts.ActivityMembersInviteResultDTO;
+    try {
+      result = await this.activityInviteCandidatesService.applyInvites(
+        owner.ownerId,
+        selectedCandidates,
+        owner.ownerType
+      );
+    } catch (error) {
+      if (this.suppressedOwnerSyncId === this.ownerId) {
+        this.suppressedOwnerSyncId = null;
+      }
+      throw error;
+    }
+    this.applyCommittedMembers(result.members, previousMembers);
+    return result;
   }
 
   private openMembersPopup(

@@ -15,6 +15,8 @@ export interface DialogConfig {
   confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
+  showActions?: boolean;
+  showClose?: boolean;
   failureMessage?: string | null;
   ringPerimeter?: number;
   onConfirm?: (() => void | Promise<void>) | null;
@@ -33,6 +35,8 @@ export interface DialogState {
   confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
+  showActions: boolean;
+  showClose: boolean;
   busy: boolean;
   errorMessage: string;
   failureMessage: string;
@@ -63,6 +67,8 @@ export class DialogStore {
       confirmPalette: config.confirmPalette ?? null,
       allowBackdropClose: config.allowBackdropClose !== false,
       allowEscapeClose: config.allowEscapeClose !== false,
+      showActions: config.showActions !== false,
+      showClose: config.showClose === true,
       busy: false,
       errorMessage: '',
       failureMessage: config.failureMessage?.trim() || 'Unable to complete this action.',
@@ -81,6 +87,20 @@ export class DialogStore {
       message,
       cancelLabel: null,
       confirmLabel: options.confirmLabel?.trim() || 'OK'
+    });
+  }
+
+  openNotice(
+    message: string,
+    options: Omit<DialogConfig, 'message' | 'cancelLabel' | 'confirmLabel' | 'onConfirm'> = { title: 'Notice' }
+  ): void {
+    this.open({
+      ...options,
+      message,
+      cancelLabel: null,
+      showActions: false,
+      showClose: true,
+      onConfirm: null
     });
   }
 

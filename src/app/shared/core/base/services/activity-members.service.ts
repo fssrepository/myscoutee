@@ -18,6 +18,7 @@ import type {
   ActivityMemberOwnerRef,
   ActivityMemberSyncKnownItemDTO,
   ActivityMembersQueryOptions,
+  ActivityMembersInviteResultDTO,
   ActivityMembersSyncResultDTO,
   ActivityMembersSummaryDto
 } from '../../contracts/activity.interface';
@@ -169,20 +170,25 @@ export class ActivityMembersService extends BaseRouteModeService {
   async inviteEventMembers(
     owner: ActivityMemberOwnerRef,
     userIds: readonly string[]
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityMembersInviteResultDTO> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
     if (normalizedOwner.ownerType !== 'event' || !normalizedOwner.ownerId) {
-      return [];
+      return { members: [], invitedUserIds: [], rejections: [] };
     }
     const actorUserId = this.userProfileStore.activeUserId().trim()
       || this.userProfileStore.getActiveUserId().trim();
-    const members = this.presentMembers(await this.httpActivityMembersService.inviteEventMembers(
+    const result = await this.httpActivityMembersService.inviteEventMembers(
       normalizedOwner,
       actorUserId,
       userIds
-    ));
+    );
+    const members = this.presentMembers(result.members);
     this.emitActivityMembersSyncForOwner(normalizedOwner);
-    return members;
+    return {
+      members,
+      invitedUserIds: [...result.invitedUserIds],
+      rejections: result.rejections.map(rejection => ({ ...rejection }))
+    };
   }
 
   async applyMemberAction(

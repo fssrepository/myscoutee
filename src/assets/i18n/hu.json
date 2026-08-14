@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.12.hu.54",
+  "version": "2026.08.14.hu.55",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2084,6 +2084,10 @@
     "event.checkout.promo.required": "Adj meg egy promóciós kódot.",
     "event.checkout.promo.duplicate": "Ez a promóciós kód már alkalmazva van.",
     "event.checkout.promo.invalid": "Ez a promóciós kód nem érvényes ehhez az eseményhez.",
+    "event.members.invite.capacity.full.title": "Nincs szabad hely",
+    "event.members.invite.capacity.full.message": "A kijelölt tagot nem hívtuk meg, mert már minden hely foglalt.",
+    "event.members.invite.not.sent.title": "A meghívást nem küldtük el",
+    "event.members.invite.not.sent.message": "A kijelölt meghívást nem sikerült elküldeni.",
     "event.editor.create": "Esemény létrehozása",
     "event.editor.save.aria": "Esemény mentése",
     "event.editor.publish.question": "Közzéteszed az eseményt?",
