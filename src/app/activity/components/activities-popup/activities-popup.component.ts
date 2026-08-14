@@ -938,9 +938,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
-      if (this.eventEditorStore.isOpen()) {
-        return;
-      }
+      // Membership summaries are absolute, idempotent read-model updates. Keep
+      // the underlying Activities card current while an editor or Members
+      // surface is stacked above it; otherwise only a later poll repairs its
+      // capacity/pending badge.
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
       this.cdr.markForCheck();
@@ -3272,6 +3273,33 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || !!this.eventsService.peekKnownItemById(this.activeUser.id, (row as ActivityEventListItem).id);
   }
 
+  private activityEventDTOForRow(row: ActivityEventListItem): ActivityEventDTO | null {
+    const visibleSource = this.activitiesSmartList?.sourceItemSnapshot(this.activityRowIdentity(row));
+    if (this.isActivityEventDTOSource(visibleSource, row.id)) {
+      return visibleSource;
+    }
+    return this.activityEventDTOById(row.id);
+  }
+
+  private activityEventDTOById(eventId: string): ActivityEventDTO | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    const visibleSource = this.activitiesSmartList?.sourceItemsSnapshot()
+      .find(source => this.isActivityEventDTOSource(source, normalizedEventId));
+    if (this.isActivityEventDTOSource(visibleSource, normalizedEventId)) {
+      return visibleSource;
+    }
+    return this.eventsService.peekKnownItemById(this.activeUser.id, normalizedEventId) ?? null;
+  }
+
+  private isActivityEventDTOSource(source: unknown, eventId: string): source is ActivityEventDTO {
+    return source != null
+      && typeof source === 'object'
+      && `${(source as Partial<ActivityEventDTO>).id ?? ''}`.trim() === eventId;
+  }
+
   protected isActivityChatRow(row: ActivityListItem): boolean {
     return this.activitiesPrimaryFilter === 'chats' && !!row;
   }
@@ -3289,7 +3317,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isEventStyleActivity(row)) {
       return row;
     }
-    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
+    const dto = this.activityEventDTOForRow(row);
     if (dto) {
       return ActivityEventInfoCardConverter.convert(
         dto,
@@ -3391,7 +3419,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.activityEventListTypeForRow(row) !== 'invitations') {
       return row;
     }
-    const matchingDTO = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
+    const matchingDTO = this.activityEventDTOForRow(row);
     if (matchingDTO) {
       return ActivityEventInfoCardConverter.convert(
         matchingDTO,
@@ -3423,9 +3451,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const currentAcceptedMembers = hasCurrentAcceptedMembers
       ? Math.max(0, Math.trunc(Number(capacityParts[0]) || 0))
       : fallbackAcceptedMembers;
+    const eventDTO = this.activityEventDTOById(sync.id);
+    const knownCapacityTotal = Math.max(
+      0,
+      Math.trunc(Number(eventDTO?.capacityTotal) || 0),
+      Math.trunc(Number(eventDTO?.capacityMax) || 0)
+    );
     const currentCapacityTotal = Math.max(
       currentAcceptedMembers,
-      Math.trunc(Number(capacityParts[1]) || Number(sync.capacityTotal) || 0)
+      Math.trunc(Number(capacityParts[1]) || 0),
+      Math.trunc(Number(sync.capacityTotal) || 0),
+      knownCapacityTotal
     );
     const hasCurrentPendingMembers = this.activityPendingMembersById[sync.id] !== undefined;
     const fallbackPendingMembers = Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0));
@@ -3444,27 +3480,49 @@ export class ActivitiesPopupComponent implements OnDestroy {
     );
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
-    const patchRow = (row: ActivityListItem): ActivityListItem => {
-      if (row.id !== sync.id || !this.isEventStyleActivity(row)) {
-        return row;
-      }
-      const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
-      if (!dto) {
-        return row;
-      }
-      return ActivityEventInfoCardConverter.convert(this.patchActivityEventDTO(dto, {
+    const matchesEvent = (row: ActivityListItem): boolean =>
+      row.id === sync.id && this.isEventStyleActivity(row);
+    const patchedEventDTO = eventDTO
+      ? this.patchActivityEventDTO(eventDTO, {
           acceptedMembers,
           pendingMembers,
           capacityTotal
-        }), this.activityEventInfoCardConverterOptions());
-    };
-    this.activitiesSmartList?.patchVisibleItem(
-      row => row.id === sync.id && this.isEventStyleActivity(row),
-      row => patchRow(row)
-    );
+        })
+      : null;
+    const patchedFromSource = patchedEventDTO
+      ? this.activitiesSmartList?.patchConvertedVisibleItem(patchedEventDTO, {
+          predicate: row => matchesEvent(row)
+        }) === true
+      : false;
+    if (!patchedFromSource) {
+      this.activitiesSmartList?.patchVisibleItem(
+        row => matchesEvent(row),
+        row => this.patchActivityEventInfoCardMembers(row, acceptedMembers, pendingMembers, capacityTotal)
+      );
+    }
     this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
     this.bumpActivitiesEventCardRevision(`hosting:${sync.id}`);
     this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
+  }
+
+  private patchActivityEventInfoCardMembers(
+    row: ActivityListItem,
+    acceptedMembers: number,
+    pendingMembers: number,
+    capacityTotal: number
+  ): ActivityListItem {
+    const eventRow = row as ActivityEventListItem;
+    if (!eventRow.mediaEnd || eventRow.mediaEnd.interactive !== true) {
+      return row;
+    }
+    return {
+      ...eventRow,
+      mediaEnd: {
+        ...eventRow.mediaEnd,
+        label: `${acceptedMembers} / ${capacityTotal}`,
+        pendingCount: pendingMembers
+      }
+    };
   }
 
   private removeVisibleActivityMembershipRow(sourceId: string): boolean {
