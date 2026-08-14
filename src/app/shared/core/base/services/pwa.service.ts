@@ -18,6 +18,25 @@ interface AppVersionPayload {
   buildId?: unknown;
 }
 
+export type PwaDevServiceWorkerOverride = 'enabled' | 'disabled' | null;
+
+export function resolvePwaDevServiceWorkerOverride(
+  search: string,
+  production: boolean
+): PwaDevServiceWorkerOverride {
+  if (production) {
+    return null;
+  }
+  const override = new URLSearchParams(search).get('pwa');
+  if (override === 'on') {
+    return 'enabled';
+  }
+  if (override === 'off') {
+    return 'disabled';
+  }
+  return null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -351,13 +370,15 @@ export class PwaService {
   }
 
   private applyDevOverrideFromQuery(): void {
-    const params = new URLSearchParams(window.location.search);
-    const override = params.get('pwa');
-    if (override === 'on') {
+    const override = resolvePwaDevServiceWorkerOverride(
+      window.location.search,
+      environment.production
+    );
+    if (override === 'enabled') {
       localStorage.setItem(PwaService.DEV_OVERRIDE_STORAGE_KEY, 'enabled');
       return;
     }
-    if (override === 'off') {
+    if (override === 'disabled') {
       localStorage.removeItem(PwaService.DEV_OVERRIDE_STORAGE_KEY);
     }
   }

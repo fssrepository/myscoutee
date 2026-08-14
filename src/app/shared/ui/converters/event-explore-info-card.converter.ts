@@ -103,7 +103,7 @@ export class EventExploreInfoCardConverter {
     if (normalizedUserId && record.creatorUserId === normalizedUserId) {
       return ['view', 'notifyParticipants'];
     }
-    if (normalizedUserId && this.isPendingForActiveUser(record, normalizedUserId)) {
+    if (normalizedUserId && this.hasVisibleCheckoutBasket(record, normalizedUserId)) {
       return ['view', 'continueBookingPending', 'askOrganizer', 'shareEvent', 'reportOrganizer'];
     }
     const actions: CardMenuActionId[] = ['view'];
@@ -114,11 +114,10 @@ export class EventExploreInfoCardConverter {
     return actions;
   }
 
-  private static isPendingForActiveUser(record: ActivityEventRecord, activeUserId: string): boolean {
-    return (record.pendingMemberUserIds ?? []).some(userId => `${userId ?? ''}`.trim() === activeUserId)
-      || (record.pendingRequestMemberUserIds ?? []).some(userId => `${userId ?? ''}`.trim() === activeUserId)
-      || record.pendingReason === 'approval'
-      || record.pendingReason === 'waitlist';
+  private static hasVisibleCheckoutBasket(record: ActivityEventRecord, activeUserId: string): boolean {
+    return activeUserId.length > 0
+      && record.checkoutResultState != null
+      && record.checkoutResultState !== 'deleted';
   }
 
   private static creatorOverlayTone(record: ActivityEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {

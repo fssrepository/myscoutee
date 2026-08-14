@@ -25,6 +25,7 @@ import {
   type ActivityEventDTO
 } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
+import type { UserEventCountersDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
@@ -60,6 +61,7 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  ActivityCurrentUserMembershipStatus,
   ActivityMemberDTO,
   EventInvitationContextDTO,
   ActivityEventSubEventsQueryDTO,
@@ -88,6 +90,7 @@ type HttpActivityEventPageResponse = ActivityEventDTO[] | {
   records?: ActivityEventDTO[] | null;
   total?: number | null;
   nextCursor?: string | null;
+  eventCounters?: UserEventCountersDto | null;
 } | null;
 
 @Injectable({
@@ -154,21 +157,42 @@ export class HttpEventsService implements IEventsService {
           ? response.records
           : [];
       const items = this.cloneDTOs(responseItems);
+      const eventCounters = this.normalizeEventCounterSnapshot(response?.eventCounters);
       return {
         items,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,
-        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null,
+        ...(eventCounters ? { eventCounters } : {})
       };
     } catch (error) {
       if (this.isAbortError(error)) {
         throw error;
       }
-      return {
-        items: [],
-        total: 0,
-        nextCursor: null
-      };
+      // A transport/server failure is not an authoritative empty page. Let
+      // SmartList's poll scheduler retain its last successful snapshot and
+      // retry on the next interval.
+      throw error;
     }
+  }
+
+  private normalizeEventCounterSnapshot(
+    value: UserEventCountersDto | null | undefined
+  ): UserEventCountersDto | null {
+    if (!value) {
+      return null;
+    }
+    const count = (candidate: unknown): number => Number.isFinite(candidate)
+      ? Math.max(0, Math.trunc(Number(candidate)))
+      : 0;
+    return {
+      all: count(value.all),
+      active: count(value.active),
+      pending: count(value.pending),
+      invitations: count(value.invitations),
+      hosting: count(value.hosting),
+      drafts: count(value.drafts),
+      trash: count(value.trash)
+    };
   }
 
   private toHttpEventsFilterRequest(
@@ -606,12 +630,10 @@ export class HttpEventsService implements IEventsService {
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
         nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
       };
-    } catch {
-      return {
-        records: [],
-        total: 0,
-        nextCursor: null
-      };
+    } catch (error) {
+      // Preserve the distinction between a successful empty Explore page and
+      // an unavailable backend so a background poll cannot erase good data.
+      throw error;
     }
   }
 
@@ -939,8 +961,10 @@ export class HttpEventsService implements IEventsService {
             answersByCardId: this.cloneEventFeedbackAnswersByCardId(item.answersByCardId)
           })).filter(item => item.eventId)
         : [];
-    } catch {
-      return [];
+    } catch (error) {
+      // Callers that own retry/cache behavior must see read failures; [] is
+      // reserved for a successful response with no event records.
+      throw error;
     }
   }
 
@@ -1357,7 +1381,9 @@ export class HttpEventsService implements IEventsService {
       paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null,
       changed: result.changed !== false && membershipStatus !== 'unchanged',
       reason: `${result.reason ?? ''}`.trim() || null,
-      counterDelta: result.counterDelta ?? null
+      counterDelta: result.counterDelta ?? null,
+      paymentStatus: `${result.paymentStatus ?? ''}`.trim() || null,
+      paymentUrl: `${result.paymentUrl ?? ''}`.trim() || null
     };
   }
 
@@ -1581,7 +1607,12 @@ export class HttpEventsService implements IEventsService {
         checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(record.checkoutBasket),
         acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
+        acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+        pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+        invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+        pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
         pendingReason: record.pendingReason ?? null,
+        currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(record.currentUserMembershipStatus),
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,
@@ -1611,8 +1642,23 @@ export class HttpEventsService implements IEventsService {
       pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])],
+      currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(item.currentUserMembershipStatus),
       checkoutResultState: this.normalizeCheckoutResultState(item.checkoutResultState)
     }));
+  }
+
+  private normalizeCurrentUserMembershipStatus(
+    value: unknown
+  ): ActivityCurrentUserMembershipStatus {
+    return value === 'accepted'
+      || value === 'pending'
+      || value === 'invited'
+      || value === 'trashed'
+      || value === 'suppressed'
+      || value === 'deleted'
+      || value === 'unchanged'
+      ? value
+      : 'none';
   }
 
   private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState | null {

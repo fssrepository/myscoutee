@@ -1639,6 +1639,21 @@
   box-shadow: 0 -8px 22px rgba(13, 24, 40, 0.14);
 }
 
+:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__items,
+:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__item-row {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__item,
+:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__branch-back,
+:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__branch-action {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
 .app-menu__title {
   padding: 0.34rem 0.42rem 0.18rem;
   color: rgba(25, 45, 70, 0.7);

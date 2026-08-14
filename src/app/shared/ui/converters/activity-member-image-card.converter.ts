@@ -7,6 +7,8 @@ import type { UiListConverter } from './converter.types';
 export interface ActivityMemberImageCardConverterOptions {
   ownerType?: ActivityMemberOwnerType | null;
   menuOpen?: boolean;
+  checkedInLabel?: string;
+  formatCheckedInAt?: (value: string) => string;
 }
 
 export class ActivityMemberImageCardConverter {
@@ -16,16 +18,28 @@ export class ActivityMemberImageCardConverter {
   ): ImageCardData {
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
     const statusLabel = this.statusLabel(dto);
+    const checkedIn = this.isCheckedIn(dto);
+    const checkedInLabel = options.checkedInLabel?.trim() || 'Checked in';
+    const checkedInAt = `${dto.checkedInAtIso ?? ''}`.trim();
+    const checkedInDetail = checkedIn
+      ? [checkedInLabel, checkedInAt && options.formatCheckedInAt
+          ? options.formatCheckedInAt(checkedInAt)
+          : checkedInAt]
+          .filter(Boolean)
+          .join(' · ')
+      : null;
     const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
-    const statusChipLabel = dto.status === 'deleted' ? this.roleLabel(dto) : statusLabel;
+    const statusChipLabel = checkedIn
+      ? checkedInDetail || checkedInLabel
+      : (dto.status === 'deleted' ? this.roleLabel(dto) : statusLabel);
 
     return {
       id: dto.id,
       title: age > 0 ? `${dto.name}, ${age}` : dto.name,
       subtitle: `${this.roleLabel(dto)} · ${dto.city}`,
-      detail: pendingDetail,
+      detail: checkedInDetail || pendingDetail,
       imageUrl: dto.avatarUrl,
       placeholderIcon: 'highlight_off',
       placeholderLabel: dto.initials,
@@ -39,6 +53,7 @@ export class ActivityMemberImageCardConverter {
       ].filter(Boolean).join(' '),
       statusChip: {
         icon: this.statusIcon(dto),
+        label: checkedIn ? checkedInLabel : null,
         title: statusChipLabel,
         ariaLabel: statusChipLabel,
         palette: this.statusPalette(dto),
@@ -62,6 +77,9 @@ export class ActivityMemberImageCardConverter {
   }
 
   private static toneClass(dto: ActivityMemberDTO): string {
+    if (this.isCheckedIn(dto)) {
+      return 'member-card-tone-checked-in';
+    }
     if (dto.status === 'disqualified') {
       return 'member-card-tone-disqualified';
     }
@@ -81,6 +99,9 @@ export class ActivityMemberImageCardConverter {
   }
 
   private static statusClass(dto: ActivityMemberDTO): string {
+    if (this.isCheckedIn(dto)) {
+      return 'member-status-checked-in';
+    }
     if (dto.status === 'disqualified') {
       return 'member-status-disqualified';
     }
@@ -97,6 +118,9 @@ export class ActivityMemberImageCardConverter {
   }
 
   private static statusIcon(dto: ActivityMemberDTO): string {
+    if (this.isCheckedIn(dto)) {
+      return 'how_to_reg';
+    }
     if (dto.status === 'disqualified') {
       return 'gavel';
     }
@@ -138,6 +162,9 @@ export class ActivityMemberImageCardConverter {
   }
 
   private static statusPalette(dto: ActivityMemberDTO): AppMenuPalette {
+    if (this.isCheckedIn(dto)) {
+      return 'green';
+    }
     if (dto.status === 'disqualified') {
       return 'muted';
     }
@@ -178,6 +205,12 @@ export class ActivityMemberImageCardConverter {
       || dto.requestKind === 'approval'
       || dto.requestKind === 'waitlist'
       || (dto.requestKind == null && dto.pendingSource === 'member');
+  }
+
+  private static isCheckedIn(dto: ActivityMemberDTO): boolean {
+    return dto.status === 'accepted'
+      && dto.attendanceStatus === 'checked-in'
+      && `${dto.checkedInAtIso ?? ''}`.trim().length > 0;
   }
 }
 

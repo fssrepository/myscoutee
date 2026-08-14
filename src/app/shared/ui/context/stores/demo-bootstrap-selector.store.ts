@@ -16,7 +16,10 @@ export interface DemoBootstrapSelectorState {
   subtitle?: string;
   autoSelectUserId?: string;
   users?: readonly UserSelectorListItemDto[];
-  onSelect: (userId: string, mode: DemoBootstrapSelectorMode) => boolean | Promise<boolean>;
+  onSelect: (
+    userId: string,
+    mode: DemoBootstrapSelectorMode
+  ) => boolean | string | void | Promise<boolean | string | void>;
   onNewProfile?: () => boolean | Promise<boolean>;
   onClose?: () => void;
 }
@@ -38,7 +41,10 @@ export class DemoBootstrapSelectorStore {
     subtitle?: string;
     autoSelectUserId?: string;
     users?: readonly UserSelectorListItemDto[];
-    onSelect: (userId: string, mode: DemoBootstrapSelectorMode) => boolean | Promise<boolean>;
+    onSelect: (
+      userId: string,
+      mode: DemoBootstrapSelectorMode
+    ) => boolean | string | void | Promise<boolean | string | void>;
     onNewProfile?: () => boolean | Promise<boolean>;
     onClose?: () => void;
   }): void {
@@ -54,11 +60,11 @@ export class DemoBootstrapSelectorStore {
       autoSelectUserId: payload.autoSelectUserId?.trim() || undefined,
       users: payload.users?.map(user => ({ ...user })),
       onSelect: async (userId, selectedMode) => {
-        const accepted = await payload.onSelect(userId, selectedMode);
-        if (accepted !== false) {
+        const result = await payload.onSelect(userId, selectedMode);
+        if (result !== false && typeof result !== 'string') {
           this.closeDemoBootstrapSelector();
         }
-        return accepted;
+        return result;
       },
       onNewProfile: payload.onNewProfile
         ? async () => {

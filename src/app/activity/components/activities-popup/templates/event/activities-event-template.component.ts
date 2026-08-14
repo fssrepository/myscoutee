@@ -269,6 +269,14 @@ export class ActivitiesEventsController {
     if (fromHost) {
       return fromHost as ActivityContracts.ActivityEventDTO;
     }
+    const visibleSource = this.activitiesSmartList?.sourceItemSnapshot?.(this.activityRowIdentity(row));
+    if (
+      visibleSource
+      && typeof visibleSource === 'object'
+      && `${(visibleSource as Partial<ActivityContracts.ActivityEventDTO>).id ?? ''}`.trim() === row.id
+    ) {
+      return visibleSource as ActivityContracts.ActivityEventDTO;
+    }
     const activeUserId = this.activeUserId();
     return activeUserId
       ? this.eventsService.peekKnownItemById(activeUserId, row.id) ?? null
@@ -1218,6 +1226,14 @@ export class ActivitiesEventsController {
   }
 
   private patchVisiblePublicationState(row: InfoCardData, status: ActivityContracts.ActivityEventStatus): void {
+    const source = this.activityEventDTOForRow(row);
+    if (source) {
+      this.activitiesStore.emitActivityEventSync({
+        ...source,
+        status
+      });
+      return;
+    }
     const identity = this.activityRowIdentity(row);
     this.activitiesSmartList?.patchVisibleItem(
       (item: InfoCardData) => this.activityRowIdentity(item) === identity,

@@ -411,6 +411,7 @@ export interface AssetTicketPageQueryDTO {
 
 export interface AssetTicketDTO {
   id: string;
+  revision?: string | null;
   scanCode: string;
   holderUserId: string;
   usedAtIso: string | null;
@@ -433,6 +434,30 @@ export interface AssetTicketDTO {
 
 export interface AssetTicketPageResultDTO {
   items: AssetTicketDTO[];
+  total: number;
+}
+
+export interface AssetTicketSyncKnownItemDTO {
+  id: string;
+  revision: string;
+}
+
+export interface AssetTicketSyncBoundaryDTO {
+  id: string;
+  dateIso: string;
+}
+
+export interface AssetTicketSyncRequestDTO {
+  userId: string;
+  order: AppConstants.AssetTicketOrder;
+  limit: number;
+  knownItems: AssetTicketSyncKnownItemDTO[];
+  loadedTail: AssetTicketSyncBoundaryDTO | null;
+}
+
+export interface AssetTicketSyncResultDTO {
+  upserts: AssetTicketDTO[];
+  removedIds: string[];
   total: number;
 }
 

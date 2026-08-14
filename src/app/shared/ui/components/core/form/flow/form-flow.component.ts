@@ -372,6 +372,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected controlNumberValue(control: FormFlowControlModel): number | null {
     const value = this.controlValue(control);
+    if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
+      return null;
+    }
     const numberValue = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(numberValue) ? numberValue : null;
   }
@@ -409,12 +412,23 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     if (this.isControlDisabled(control)) {
       return;
     }
-    const nextValue = control.valueFormat === 'csv' ? this.csvStringValue(value) : value;
+    const formattedValue = control.valueFormat === 'csv' ? this.csvStringValue(value) : value;
+    const nextValue = control.kind === 'number'
+      ? this.normalizeNumberControlValue(formattedValue)
+      : formattedValue;
     this.formValue = this.writePath(this.formValue, control.bind, nextValue);
     this.onControlChange(this.formValue);
     this.onControlTouched();
     this.queuePercentEmit();
     this.cdr.markForCheck();
+  }
+
+  private normalizeNumberControlValue(value: unknown): unknown {
+    if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
+      return '';
+    }
+    const numberValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numberValue) ? numberValue : value;
   }
 
   protected updateDateControlValue(control: FormFlowControlModel, value: DateInputValue): void {

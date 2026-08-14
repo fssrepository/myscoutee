@@ -17,13 +17,13 @@ import {
 } from 'firebase/auth';
 import type { FirebaseApp } from 'firebase/app';
 
-import { environment } from '../../../../../environments/environment';
 import type {
   FirebaseAuthProfileDto,
   FirebaseAuthRequestDto,
   FirebaseEmailAuthMode
 } from '../../contracts/user.interface';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
+import { isFirebaseLoginEnabled } from '../../common/firebase-login-mode';
 import { FirebaseAppService } from './firebase-app.service';
 
 export interface FirebaseAuthSignInResult {
@@ -44,7 +44,7 @@ export class FirebaseAuthService {
   private firebaseAuthApp: FirebaseApp | null = null;
 
   get enabled(): boolean {
-    return environment.firebaseLoginEnabled;
+    return isFirebaseLoginEnabled();
   }
 
   loadStoredProfile(): FirebaseAuthProfileDto | null {

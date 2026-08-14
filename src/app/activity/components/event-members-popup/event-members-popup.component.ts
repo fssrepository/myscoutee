@@ -7,6 +7,7 @@ import {
   Component,
   HostListener,
   Input,
+  OnDestroy,
   TemplateRef,
   ViewChild,
   effect,
@@ -26,6 +27,7 @@ import {
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 import {
   ActivityMembersService,
+  ActivityInviteCandidatesService,
   ChatsService,
   EventsService,
   I18nService,
@@ -36,6 +38,8 @@ import {
   ImageCardComponent,
   PopupComponent,
   SmartListComponent,
+  UiPollCoordinator,
+  UiTaskScheduler,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -115,6 +119,14 @@ interface MemberInvolvementPopupState {
   rows: ActivityContracts.ActivityMemberInvolvementDTO[];
 }
 
+interface ActivityMembersListPollState {
+  owner: ActivityMemberOwnerRef | null;
+  ownerId: string;
+  eventId: string;
+  subEventId: string;
+  knownItems: Array<{ id: string; revision: string }>;
+}
+
 @Component({
   selector: 'app-event-members-popup',
   standalone: true,
@@ -129,13 +141,14 @@ interface MemberInvolvementPopupState {
   styleUrls: ['./event-members-popup.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventMembersPopupComponent {
+export class EventMembersPopupComponent implements OnDestroy {
   private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
 
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -145,6 +158,7 @@ export class EventMembersPopupComponent {
   private readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
+  private readonly pollCoordinator = inject(UiPollCoordinator);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberDTO[]>();
   private readonly pendingInitialMembersDelayOwnerIds = new Set<string>();
   private lastAppliedActivityMembersUpdatedMs = 0;
@@ -227,6 +241,13 @@ export class EventMembersPopupComponent {
   protected readonly membersSmartListLoaders: SmartListLoaders<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters> = {
     list: query => from(this.loadMembersPage(query))
   };
+  private readonly membersListPollScheduler = new UiTaskScheduler<ActivityMembersListPollState>({
+    intervalMs: () => this.shouldPollMembersList() ? this.activityMembersService.pollIntervalMs() : 0,
+    state: () => this.membersListPollState(),
+    task: ({ state, signal }) => this.pollMembersList(state, signal),
+    pollCoordinator: this.pollCoordinator,
+    pollPriority: 'foreground'
+  });
 
   constructor() {
     effect(() => {
@@ -270,6 +291,10 @@ export class EventMembersPopupComponent {
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSync(sync);
     });
+  }
+
+  ngOnDestroy(): void {
+    this.membersListPollScheduler.destroy();
   }
 
   protected membersPopupZIndex(): number {
@@ -358,8 +383,12 @@ export class EventMembersPopupComponent {
   ): void {
     this.selectedMembersVisible = [...change.items];
     if (!change.initialLoading) {
+      const becameReady = !this.membersListReady;
       this.membersListReady = true;
       this.flushPendingSummary();
+      if (becameReady && this.shouldPollMembersList()) {
+        this.membersListPollScheduler.restart();
+      }
     }
     this.cdr.markForCheck();
   }
@@ -384,6 +413,7 @@ export class EventMembersPopupComponent {
     if (this.ownerId) {
       this.invalidateMembersCacheForOwner(this.ownerId);
     }
+    this.membersListPollScheduler.stop({ abort: true });
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRef = null;
@@ -405,6 +435,7 @@ export class EventMembersPopupComponent {
     this.subtitle = 'Event';
     this.resetSummaryState();
     this.selectedMembersVisible = [];
+    this.membersListReady = false;
     this.membersSmartListQuery = {};
     this.cdr.markForCheck();
   }
@@ -838,7 +869,9 @@ export class EventMembersPopupComponent {
   protected memberImageCard(entry: ActivityContracts.ActivityMemberDTO): ImageCardData {
     return ActivityMemberImageCardConverter.convert(entry, {
       ownerType: this.ownerRef?.ownerType ?? 'event',
-      menuOpen: this.isActionMenuOpen(entry)
+      menuOpen: this.isActionMenuOpen(entry),
+      checkedInLabel: this.i18n.translate('asset.ticket.checked.in', 'Checked in'),
+      formatCheckedInAt: value => this.formatAttendanceDate(value)
     });
   }
 
@@ -1107,44 +1140,35 @@ export class EventMembersPopupComponent {
   }
 
 
-  private async applyInvites(selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]): Promise<void> {
+  private async applyInvites(
+    selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]
+  ): Promise<ActivityContracts.ActivityMembersInviteResultDTO> {
     const previousMembers = this.currentOwnerMembers();
     const existingUserIds = new Set(previousMembers.map(member => member.userId));
     const additions = selectedCandidates.filter(candidate => !existingUserIds.has(candidate.userId));
     if (additions.length === 0) {
-      return;
+      return { members: previousMembers, invitedUserIds: [], rejections: [] };
     }
-    const activeUserId = this.activeUserId();
-    const nowIso = AppUtils.toIsoDateTime(new Date());
-    const nextPendingInvites = additions.map(candidate => ({
-        ...candidate,
-        status: 'pending' as const,
-        pendingSource: 'admin' as const,
-        requestKind: 'invite' as const,
-        invitedByActiveUser: true,
-        invitedByUserId: activeUserId,
-        statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
-        actionAtIso: nowIso
-      }));
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner?.ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
-      this.suppressedOwnerSyncId = this.ownerId;
-      let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
-      try {
-        normalizedMembers = await this.activityMembersService.inviteEventMembers(
-          owner,
-          additions.map(candidate => candidate.userId)
-        );
-      } catch (error) {
-        if (this.suppressedOwnerSyncId === this.ownerId) {
-          this.suppressedOwnerSyncId = null;
-        }
-        throw error;
-      }
-      this.applyCommittedMembers(normalizedMembers, previousMembers);
-      return;
+    if (!owner) {
+      return { members: previousMembers, invitedUserIds: [], rejections: [] };
     }
-    await this.commitMembers([...previousMembers, ...nextPendingInvites], previousMembers);
+    this.suppressedOwnerSyncId = this.ownerId;
+    let result: ActivityContracts.ActivityMembersInviteResultDTO;
+    try {
+      result = await this.activityInviteCandidatesService.applyInvites(
+        owner.ownerId,
+        selectedCandidates,
+        owner.ownerType
+      );
+    } catch (error) {
+      if (this.suppressedOwnerSyncId === this.ownerId) {
+        this.suppressedOwnerSyncId = null;
+      }
+      throw error;
+    }
+    this.applyCommittedMembers(result.members, previousMembers);
+    return result;
   }
 
   private openMembersPopup(
@@ -1183,6 +1207,7 @@ export class EventMembersPopupComponent {
       ? providedInitialMembers
       : null;
     this.isOpen = true;
+    this.membersListPollScheduler.stop({ abort: true });
     this.ownerId = normalizedOwnerId;
     this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();
     this.lastEmittedMemberMetricBucketSignature = '';
@@ -1210,6 +1235,7 @@ export class EventMembersPopupComponent {
     this.pendingOnly = false;
     this.membersSmartList?.closeMenu();
     this.selectedMembersVisible = [];
+    this.membersListReady = false;
     this.invalidateMembersCacheForOwner(normalizedOwnerId);
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
@@ -1483,6 +1509,78 @@ export class EventMembersPopupComponent {
 
   private currentOwnerMembers(): ActivityContracts.ActivityMemberDTO[] {
     return [...(this.membersCacheByOwnerId.get(this.membersCacheKey(this.ownerId)) ?? [])];
+  }
+
+  private shouldPollMembersList(): boolean {
+    return this.isOpen
+      && this.membersListReady
+      && this.runtimeStore.isOnline()
+      && this.lookupRef?.type !== 'chat'
+      && this.ownerRef?.ownerType === 'event'
+      && this.ownerRef.ownerId === this.ownerId;
+  }
+
+  private membersListPollState(): ActivityMembersListPollState {
+    return {
+      owner: this.ownerRef ? { ...this.ownerRef } : null,
+      ownerId: this.ownerId,
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId,
+      knownItems: this.currentOwnerMembers().map(member => ({
+        id: member.id,
+        revision: `${member.revision ?? member.actionAtIso ?? member.id}`
+      }))
+    };
+  }
+
+  private async pollMembersList(
+    state: ActivityMembersListPollState,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const owner = state.owner;
+    if (!owner || !state.ownerId || signal?.aborted) {
+      return;
+    }
+    const result = await this.activityMembersService.syncMembersByOwner(
+      owner,
+      state.knownItems,
+      {
+        eventId: state.eventId,
+        subEventId: state.subEventId
+      },
+      signal
+    );
+    if (signal?.aborted
+        || !this.isOpen
+        || this.ownerId !== state.ownerId
+        || this.ownerRef?.ownerId !== state.ownerId) {
+      return;
+    }
+    if (result.upserts.length === 0 && result.removedIds.length === 0) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    const removedIds = new Set(result.removedIds);
+    const upsertsById = new Map(result.upserts.map(member => [member.id, member] as const));
+    const nextMembers = previousMembers
+      .filter(member => !removedIds.has(member.id))
+      .map(member => upsertsById.get(member.id) ?? member);
+    const existingIds = new Set(nextMembers.map(member => member.id));
+    for (const upsert of result.upserts) {
+      if (!existingIds.has(upsert.id)) {
+        nextMembers.push(upsert);
+        existingIds.add(upsert.id);
+      }
+    }
+    this.applyCommittedMembers(nextMembers, previousMembers);
+  }
+
+  private formatAttendanceDate(value: string): string {
+    const parsed = new Date(value);
+    if (!Number.isFinite(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toLocaleString(this.i18n.currentLanguage());
   }
 
   protected canApproveMember(entry: ActivityContracts.ActivityMemberDTO): boolean {

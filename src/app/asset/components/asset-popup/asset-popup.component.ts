@@ -25,7 +25,8 @@ import {
 } from '../../../shared/app-utils';
 import {
   AssetCardBuilder,
-  AssetDefaultsBuilder
+  AssetDefaultsBuilder,
+  AssetTicketBuilder
 } from '../../../shared/core/base/builders';
 import {
   AssetInfoCardConverter,
@@ -66,6 +67,8 @@ import {
   type SingleRowData,
   type SmartListConfig,
   type SmartListItemSelectEvent,
+  type SmartListPollDeltaSnapshot,
+  type SmartListPollDeltaResult,
   type SmartListStateChange,
   DialogComponent
 } from '../../../shared/ui';
@@ -226,6 +229,15 @@ export class AssetPopupComponent {
   protected readonly ticketSmartListConfig: SmartListConfig<AssetContracts.AssetTicketDTO, AssetTicketListFilters> = {
     pageSize: 18,
     pollIntervalMs: AssetPopupComponent.TICKET_POLL_INTERVAL_MS,
+    pollDelta: {
+      revision: row => AssetTicketBuilder.revision(row),
+      position: row => AssetTicketBuilder.pollPosition(row),
+      load: (query, snapshot, context) => from(this.syncTicketSmartList(
+        query,
+        snapshot,
+        context?.signal
+      ))
+    },
     defaultView: 'list',
     emptyLabel: 'No ticketed events',
     emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
@@ -247,7 +259,13 @@ export class AssetPopupComponent {
       'activities-scroll-list-event-snap': true,
       'tickets-scroll-list': true
     },
-    trackBy: (_index, row) => `${row.type}:${row.id}`,
+    cacheable: {
+      identity: row => AssetTicketBuilder.identity(row)
+    },
+    sortable: {
+      sortKey: (row, _index, query) => this.ticketSortKey(row, query.filters?.order)
+    },
+    trackBy: (_index, row) => AssetTicketBuilder.identity(row),
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: row => AssetTicketInfoCardConverter.groupLabel(row.dateIso)
   };
@@ -2623,6 +2641,49 @@ export class AssetPopupComponent {
       items: page.items.map(row => ({ ...row })),
       total: page.total
     };
+  }
+
+  private async syncTicketSmartList(
+    query: ListQuery<AssetTicketListFilters>,
+    snapshot: SmartListPollDeltaSnapshot,
+    signal?: AbortSignal
+  ): Promise<SmartListPollDeltaResult<AssetContracts.AssetTicketDTO>> {
+    const userId = query.filters?.userId?.trim() || this.userProfileStore.activeUserId().trim();
+    if (!userId || signal?.aborted) {
+      return { upserts: [], removedIds: [], total: 0 };
+    }
+    const result = await this.assetTicketsService.syncTickets({
+      userId,
+      order: query.filters?.order === 'past' ? 'past' : 'upcoming',
+      limit: Math.max(1, Math.trunc(Number(query.pageSize) || 18)),
+      knownItems: snapshot.knownItems.map(item => ({
+        id: item.id,
+        revision: `${item.revision}`
+      })),
+      loadedTail: snapshot.loadedTail
+        ? {
+            id: snapshot.loadedTail.id,
+            dateIso: `${snapshot.loadedTail.position}`
+          }
+        : null
+    }, signal);
+    return {
+      upserts: result.upserts.map(row => ({ ...row })),
+      removedIds: [...result.removedIds],
+      total: result.total
+    };
+  }
+
+  private ticketSortKey(
+    row: AssetContracts.AssetTicketDTO,
+    order: AppConstants.AssetTicketOrder | undefined
+  ): readonly (string | number)[] {
+    const timestamp = new Date(row.dateIso).getTime();
+    const sortableTimestamp = Number.isNaN(timestamp) ? 0 : timestamp;
+    return [
+      order === 'past' ? -sortableTimestamp : sortableTimestamp,
+      AssetTicketBuilder.identity(row)
+    ];
   }
 
   private async loadOwnedAssetSmartListPage(

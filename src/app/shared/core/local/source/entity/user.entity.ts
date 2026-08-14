@@ -109,6 +109,7 @@ export interface UserRecord {
   images?: string[];
   profileDetails?: UserProfileDetailGroupRecord[];
   impressions?: UserImpressionsRecord;
+  status?: string;
   profileStatus: ProfileStatus;
   previousProfileStatus?: ProfileStatus | null;
   deletedAtIso?: string | null;

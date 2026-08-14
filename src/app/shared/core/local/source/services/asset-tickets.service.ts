@@ -21,6 +21,14 @@ export class LocalAssetTicketsService extends LocalRouteDelayService {
     return this.assetTicketsRepository.queryTicketPage(query);
   }
 
+  async syncTickets(
+    request: AssetContracts.AssetTicketSyncRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AssetContracts.AssetTicketSyncResultDTO> {
+    await this.waitForRouteDelay(LocalAssetTicketsService.ASSET_TICKETS_ROUTE, signal);
+    return this.assetTicketsRepository.syncTickets(request);
+  }
+
   async validateTicket(
     request: AssetContracts.AssetTicketValidationRequestDTO
   ): Promise<AssetContracts.AssetTicketValidationDTO> {

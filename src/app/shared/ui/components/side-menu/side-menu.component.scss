@@ -177,6 +177,11 @@
   transform: translateX(0);
 }
 
+:host ::ng-deep .user-menu-panel.is-offline .navigator-menu-header-card .header-card {
+  background: linear-gradient(180deg, #cbd0d7 0%, #aeb5bf 100%);
+  border-color: rgba(35, 44, 57, 0.26);
+}
+
 .user-menu-panel.is-covered {
   visibility: hidden;
   pointer-events: none;
@@ -206,6 +211,30 @@
 
 .navigator-header-actions-menu {
   min-width: 0;
+}
+
+.navigator-offline-badge {
+  min-height: 30px;
+  padding: 0.28rem 0.62rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: linear-gradient(180deg, #4b535e 0%, #343b45 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(24, 30, 39, 0.2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.navigator-offline-badge .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
 }
 
 .user-menu-close-btn {

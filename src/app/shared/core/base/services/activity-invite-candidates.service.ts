@@ -30,6 +30,7 @@ import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import type * as AppConstants from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { partitionEventInvitesByCapacity } from './activity-invite-capacity.policy';
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
 
 @Injectable({
@@ -95,11 +96,11 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     ownerId: string,
     selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[],
     ownerType: AppConstants.ActivityMemberOwnerType = 'event'
-  ): Promise<void> {
+  ): Promise<ActivityContracts.ActivityMembersInviteResultDTO> {
     const normalizedOwnerId = ownerId.trim();
     const activeUserId = this.activeUserId();
     if (!normalizedOwnerId || !activeUserId || selectedCandidates.length === 0) {
-      return;
+      return { members: [], invitedUserIds: [], rejections: [] };
     }
     const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
       ownerType,
@@ -119,22 +120,48 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
         actionAtIso: nowIso
       }));
     if (additions.length === 0) {
-      return;
+      return { members: currentMembers, invitedUserIds: [], rejections: [] };
+    }
+    if (ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
+      return this.activityMembersService.inviteEventMembers(
+        ownerRef,
+        additions.map(candidate => candidate.userId)
+      );
     }
     const summary = this.activityMembersService.peekSummaryByOwner(ownerRef);
     const ownerRecord = ownerType === 'event'
       ? (this.eventsService.peekKnownRecordById(activeUserId, normalizedOwnerId)
         ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedOwnerId))
       : null;
-    const nextMembers = [...currentMembers, ...additions];
+    const capacityTotal = summary?.capacityTotal
+      ?? ownerRecord?.capacityTotal
+      ?? 0;
+    const capacityPartition = ownerType === 'event'
+      ? partitionEventInvitesByCapacity(currentMembers, additions, capacityTotal)
+      : { acceptedAdditions: additions, rejections: [] };
+    const { acceptedAdditions, rejections } = capacityPartition;
+    if (acceptedAdditions.length === 0) {
+      return {
+        members: currentMembers,
+        invitedUserIds: [],
+        rejections
+      };
+    }
+    const nextMembers = [...currentMembers, ...acceptedAdditions];
     await this.activityMembersService.replaceMembersByOwner(
       ownerRef,
       nextMembers,
-      summary?.capacityTotal
-        ?? ownerRecord?.capacityTotal
-        ?? Math.max(nextMembers.filter(member => member.status === 'accepted').length, 0)
+      capacityTotal > 0
+        ? capacityTotal
+        : Math.max(nextMembers.filter(member => member.status === 'accepted').length, 0)
     );
+    return {
+      members: this.activityMembersService.peekMembersByOwner(ownerRef),
+      invitedUserIds: acceptedAdditions.map(candidate => candidate.userId),
+      rejections
+    };
   }
+
 
   private resolveOwnerContext(
     activeUserId: string,

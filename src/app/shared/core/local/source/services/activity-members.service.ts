@@ -4,18 +4,30 @@ import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
+import {
+  LocalActivityMembersBuilder,
+  LocalUsersMapper,
+  type ActivityMemberProfileFallback,
+  type LocalActivityMembersOwnerSnapshot
+} from '../mappers';
+import { LocalUserRealtimeSnapshotBuilder } from '../builders';
 import type {
+  ActivityMemberActionResultDTO,
   ActivityMemberDTO,
   ActivityMemberOwnerRef,
+  ActivityMemberSyncKnownItemDTO,
   ActivityMembersQueryOptions,
+  ActivityMembersSyncResultDTO,
   ActivityMembersSummaryDto
 } from '../../../contracts/activity.interface';
 
@@ -28,7 +40,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
@@ -41,6 +55,32 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     return this.loadMembersByOwner(owner, options);
+  }
+
+  async syncMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    knownItems: readonly ActivityMemberSyncKnownItemDTO[],
+    options?: ActivityMembersQueryOptions,
+    signal?: AbortSignal
+  ): Promise<ActivityMembersSyncResultDTO> {
+    this.throwIfAborted(signal);
+    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
+    this.throwIfAborted(signal);
+    const current = await this.loadMembersByOwner(owner, options);
+    const currentById = new Map(current.map(member => [member.id, member] as const));
+    const knownRevisionsById = new Map(knownItems
+      .map(item => [`${item.id ?? ''}`.trim(), `${item.revision ?? ''}`] as const)
+      .filter(([id]) => id.length > 0));
+    const upserts = current.filter(member => {
+      const knownRevision = knownRevisionsById.get(member.id);
+      return knownRevision === undefined || knownRevision !== this.memberRevision(member);
+    });
+    const removedIds = [...knownRevisionsById.keys()].filter(id => !currentById.has(id));
+    return {
+      upserts,
+      removedIds,
+      total: current.length
+    };
   }
 
   async loadMembersByOwner(
@@ -78,7 +118,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void actorUserId;
-    const existingRecordsById = this.existingRecordsById(normalizedOwner);
+    const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
+    const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
+    const existingRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
     const records = members.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,
       member,
@@ -91,6 +133,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
     if (normalizedOwner.ownerType === 'event') {
+      await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, members);
       this.assetTicketsRepository.synchronizeForEvent(normalizedOwner.ownerId);
     }
     if (normalizedOwner.ownerType === 'group') {
@@ -102,6 +145,31 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   }
 
   async applyMemberAction(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    targetUserId: string,
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberActionResultDTO> {
+    const members = await this.applyMemberActionEntries(
+      owner,
+      actorUserId,
+      targetUserId,
+      action,
+      reason,
+      options
+    );
+    const actor = this.localUsersRepository.queryUserById(actorUserId.trim());
+    return {
+      members,
+      counterOverrides: actor
+        ? LocalUserRealtimeSnapshotBuilder.menuCountersForUser(LocalUsersMapper.toDto(actor))
+        : null
+    };
+  }
+
+  private async applyMemberActionEntries(
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
@@ -269,10 +337,39 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       ownerSnapshot?.capacityTotal ?? null
     );
     if (normalizedOwner.ownerType === 'event') {
+      const refreshedEvent = this.eventsRepository.synchronizeEventMemberProjection(normalizedOwner.ownerId);
+      this.synchronizeEventCountersForUsers([
+        ...previousMembers.map(member => member.userId),
+        ...nextMembers.map(member => member.userId),
+        normalizedActorUserId
+      ]);
+      await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, nextMembers);
       this.assetTicketsRepository.synchronizeForMemberChange(
         normalizedOwner.ownerId,
         normalizedTargetUserId
       );
+      if (action === 'accept' && targetIsApprovalRequest && actorCanManage) {
+        this.appendMemberApprovedNotification(
+          normalizedOwner.ownerId,
+          normalizedTargetUserId,
+          normalizedActorUserId,
+          nowIso
+        );
+      }
+      const systemMessage = this.eventMembershipSystemMessage(
+        action,
+        targetMember,
+        nextMembers.find(member => member.userId === normalizedTargetUserId) ?? null
+      );
+      if (refreshedEvent && systemMessage) {
+        this.chatsRepository.syncPublishedMainEventChat(refreshedEvent);
+        this.chatsRepository.appendEventSystemMessage(
+          normalizedOwner.ownerId,
+          systemMessage.text,
+          systemMessage.kind,
+          nowIso
+        );
+      }
     }
     if (
       normalizedOwner.ownerType === 'event'
@@ -293,6 +390,114 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       );
     }
     return this.entriesFromRecords(nextRecords, normalizedOwner);
+  }
+
+  private synchronizeEventCountersForUsers(userIds: readonly string[]): void {
+    for (const userId of [...new Set(userIds.map(id => id.trim()).filter(Boolean))]) {
+      const user = this.localUsersRepository.queryUserById(userId);
+      if (!user) {
+        continue;
+      }
+      const counters = this.eventsRepository.queryUserEventCounterSnapshot(userId);
+      this.localUsersRepository.upsertUser({
+        ...user,
+        activities: {
+          ...user.activities,
+          events: counters.events,
+          invitations: counters.invitations,
+          hosting: counters.hosting,
+          event: { ...counters.event }
+        }
+      });
+    }
+  }
+
+  private eventMembershipSystemMessage(
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    previousMember: ActivityMemberDTO,
+    nextMember: ActivityMemberDTO | null
+  ): { text: string; kind: string } | null {
+    const user = this.localUsersRepository.queryUserById(previousMember.userId);
+    const displayName = `${user?.name ?? previousMember.name ?? previousMember.userId}`.trim();
+    if (!displayName) {
+      return null;
+    }
+    if (action === 'accept' && previousMember.status !== 'accepted' && nextMember?.status === 'accepted') {
+      return { text: `${displayName} joined the event.`, kind: 'member-joined' };
+    }
+    if (action === 'remove' && previousMember.status === 'accepted' && !nextMember) {
+      return { text: `${displayName} left the event.`, kind: 'member-left' };
+    }
+    if (action === 'disqualify' && previousMember.status === 'accepted' && nextMember?.status === 'disqualified') {
+      return { text: `${displayName} was disqualified from the event.`, kind: 'member-disqualify' };
+    }
+    if (action === 'reinstate' && previousMember.status === 'disqualified' && nextMember?.status === 'accepted') {
+      return { text: `${displayName} was reinstated to the event.`, kind: 'member-reinstate' };
+    }
+    return null;
+  }
+
+  private appendMemberApprovedNotification(
+    eventId: string,
+    memberUserId: string,
+    actorUserId: string,
+    approvedAtIso: string
+  ): void {
+    const event = this.eventsRepository.peekKnownItemById(actorUserId, eventId);
+    const eventTitle = `${event?.title ?? eventId}`.trim() || eventId;
+    const actor = this.localUsersRepository.queryUserById(actorUserId);
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const record: NotificationRecord = {
+      id: `event-member-approved:${eventId}:${memberUserId}:${occurrenceId}`,
+      recipientUserId: memberUserId,
+      kind: 'event-member-approved',
+      category: 'event-admin',
+      title: eventTitle,
+      message: `Your request to join ${eventTitle} was approved.`,
+      createdAtIso: approvedAtIso,
+      readAtIso: null,
+      senderUserId: actorUserId || null,
+      senderName: actor?.name ?? null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId,
+        membershipAction: 'approved',
+        senderUserId: actorUserId,
+        approvedAtIso,
+        notification_tone: 'success',
+        notification_status_badge_fallback: 'Approved',
+        notification_status_badge_tone: 'success'
+      }
+    };
+    this.notificationsRepository.append([record]);
+  }
+
+  private async finalizeNewlyAcceptedEventReservations(
+    owner: ActivityMemberOwnerRef,
+    previousMembers: readonly ActivityMemberDTO[],
+    nextMembers: readonly ActivityMemberDTO[]
+  ): Promise<void> {
+    if (owner.ownerType !== 'event') {
+      return;
+    }
+    const previouslyAccepted = new Set(previousMembers
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId.trim())
+      .filter(Boolean));
+    const newlyAcceptedUserIds = [...new Set(nextMembers
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId.trim())
+      .filter(userId => userId && !previouslyAccepted.has(userId)))];
+    for (const userId of newlyAcceptedUserIds) {
+      await this.eventCheckoutBasketsRepository.finalizeAcceptedReservation(userId, owner.ownerId);
+    }
   }
 
   private canManageMembers(
@@ -500,5 +705,18 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private get localActivityMemberUsers(): UserDto[] {
     return (this.localUsersRepository.queryAllUsers() as UserDto[])
       .filter(user => user.id.trim().length > 0);
+  }
+
+  private memberRevision(member: ActivityMemberDTO): string {
+    return `${member.revision ?? member.actionAtIso ?? member.id}`;
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (!signal?.aborted) {
+      return;
+    }
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    throw error;
   }
 }

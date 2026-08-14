@@ -14,7 +14,14 @@ import {
 } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 import type { ActivityMemberOwnerType } from '../../common/constants';
-import type { ActivityMemberOwnerRef, ActivityMembersQueryOptions, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
+import type {
+  ActivityMemberOwnerRef,
+  ActivityMemberSyncKnownItemDTO,
+  ActivityMembersQueryOptions,
+  ActivityMembersInviteResultDTO,
+  ActivityMembersSyncResultDTO,
+  ActivityMembersSummaryDto
+} from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
@@ -74,6 +81,29 @@ export class ActivityMembersService extends BaseRouteModeService {
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
     return this.queryMembersByOwner(owner, options);
+  }
+
+  async syncMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    knownItems: readonly ActivityMemberSyncKnownItemDTO[],
+    options?: ActivityMembersQueryOptions,
+    signal?: AbortSignal
+  ): Promise<ActivityMembersSyncResultDTO> {
+    const result = await this.activityMembersService.syncMembersByOwner(
+      owner,
+      knownItems,
+      options,
+      signal
+    );
+    return {
+      upserts: this.presentMembers(result.upserts),
+      removedIds: [...result.removedIds],
+      total: result.total
+    };
+  }
+
+  pollIntervalMs(): number {
+    return this.routeDelay.resolveIntervalMs(ActivityMembersService.MEMBERS_ROUTE, 30_000);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
@@ -140,20 +170,25 @@ export class ActivityMembersService extends BaseRouteModeService {
   async inviteEventMembers(
     owner: ActivityMemberOwnerRef,
     userIds: readonly string[]
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityMembersInviteResultDTO> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
     if (normalizedOwner.ownerType !== 'event' || !normalizedOwner.ownerId) {
-      return [];
+      return { members: [], invitedUserIds: [], rejections: [] };
     }
     const actorUserId = this.userProfileStore.activeUserId().trim()
       || this.userProfileStore.getActiveUserId().trim();
-    const members = this.presentMembers(await this.httpActivityMembersService.inviteEventMembers(
+    const result = await this.httpActivityMembersService.inviteEventMembers(
       normalizedOwner,
       actorUserId,
       userIds
-    ));
+    );
+    const members = this.presentMembers(result.members);
     this.emitActivityMembersSyncForOwner(normalizedOwner);
-    return members;
+    return {
+      members,
+      invitedUserIds: [...result.invitedUserIds],
+      rejections: result.rejections.map(rejection => ({ ...rejection }))
+    };
   }
 
   async applyMemberAction(
@@ -167,14 +202,20 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (!normalizedOwner.ownerId.trim()) {
       return [];
     }
-    const members = this.presentMembers(await this.activityMembersService.applyMemberAction(
+    const actorUserId = this.userProfileStore.activeUserId().trim();
+    const counterSyncToken = this.activityStore.captureUserCounterSyncToken(actorUserId);
+    const result = await this.activityMembersService.applyMemberAction(
       normalizedOwner,
-      this.userProfileStore.activeUserId().trim(),
+      actorUserId,
       targetUserId,
       action,
       reason,
       options
-    ));
+    );
+    const members = this.presentMembers(result.members);
+    if (result.counterOverrides) {
+      this.activityStore.applyCanonicalCounterOverrides(counterSyncToken, result.counterOverrides);
+    }
     this.emitActivityMembersSyncForOwner(normalizedOwner);
     return members;
   }

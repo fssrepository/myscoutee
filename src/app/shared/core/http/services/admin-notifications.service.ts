@@ -141,6 +141,10 @@ export class HttpAdminNotificationsService {
         return null;
       }
       baseUrl.searchParams.set('token', token);
+      baseUrl.searchParams.set(
+        'sessionId',
+        this.sessionService.currentFirebaseSessionId()
+      );
     }
     return baseUrl.toString();
   }

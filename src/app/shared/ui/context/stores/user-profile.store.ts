@@ -18,6 +18,7 @@ import {
 import { hasOperatorRole } from '../../../core/common/user-role';
 import {
   ACTIVITY_COUNTER_KEYS,
+  type ActivityCounterSyncToken,
   type ActivityCounters
 } from './activity.store';
 import {
@@ -543,7 +544,26 @@ export class UserProfileStore {
     }
   }
 
-  applyUserRealtimeSnapshot(userId: string, snapshot: UserRealtimeLongPollResponseDto): void {
+  applyUserRealtimeCounters(
+    userId: string,
+    snapshot: UserRealtimeLongPollResponseDto,
+    counterSyncToken: ActivityCounterSyncToken
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || counterSyncToken.userId !== normalizedUserId) {
+      return false;
+    }
+    return this.activityStore.applyRealtimeCounterOverrides(
+      counterSyncToken,
+      UserRealtimeUiConverter.toCounterPatch(snapshot)
+    );
+  }
+
+  applyUserRealtimeSnapshot(
+    userId: string,
+    snapshot: UserRealtimeLongPollResponseDto,
+    counterSyncToken?: ActivityCounterSyncToken
+  ): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -559,8 +579,13 @@ export class UserProfileStore {
       suppressImpressionBadges: shouldIgnoreNextImpressionsSnapshot || isSeenCursor
     });
 
-    this.activityStore.patchUserCounterOverrides(normalizedUserId, uiPatch.counterPatch);
-    this.applyUserRealtimePatch(normalizedUserId, uiPatch);
+    const countersApplied = counterSyncToken
+      ? this.activityStore.applyRealtimeCounterOverrides(counterSyncToken, uiPatch.counterPatch)
+      : (this.activityStore.patchUserCounterOverrides(normalizedUserId, uiPatch.counterPatch), true);
+    this.applyUserRealtimePatch(normalizedUserId, {
+      ...uiPatch,
+      counterPatch: countersApplied ? uiPatch.counterPatch : {}
+    });
 
     if (nextCursor.length > 0) {
       this.realtimeCursorByUserId[normalizedUserId] = nextCursor;

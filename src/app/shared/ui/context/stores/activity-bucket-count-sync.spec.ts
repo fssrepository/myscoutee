@@ -58,6 +58,38 @@ describe('activity event bucket count signal', () => {
     });
   });
 
+  it('applies the full stored event snapshot so an Active poll also reconciles inclusive All', () => {
+    const store = new ActivityStore();
+
+    store.signalUserEventBucketCount('user-1', 'active-events', 0, baseCounters);
+    expect(store.getUserCounterOverrides('user-1').event?.all).toBe(7);
+
+    store.signalUserEventCounterSnapshot('user-1', {
+      all: 0,
+      active: 0,
+      pending: 0,
+      invitations: 0,
+      hosting: 0,
+      drafts: 0,
+      trash: 0
+    });
+
+    expect(store.getUserCounterOverrides('user-1')).toMatchObject({
+      events: 0,
+      invitations: 0,
+      hosting: 0,
+      event: {
+        all: 0,
+        active: 0,
+        pending: 0,
+        invitations: 0,
+        hosting: 0,
+        drafts: 0,
+        trash: 0
+      }
+    });
+  });
+
   it('publishes the Ticket list count through the shared menu and asset signal', () => {
     const store = new ActivityStore();
 

@@ -24,6 +24,7 @@ import {
   type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState
 } from '../../context/stores/demo-bootstrap-selector.store';
+import { AppUtils } from '../../../app-utils';
 import {
   IndicatorComponent
 } from '../core/indicator';
@@ -206,10 +207,10 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected userStatusClass(user: UserSelectorListItemDto): string {
-    switch (user.profileStatus) {
-      case 'blocked':
+    switch (`${user.status ?? ''}`.trim().toUpperCase()) {
+      case 'B':
         return 'demo-user-item-blocked';
-      case 'deleted':
+      case 'D':
         return 'demo-user-item-deleted';
       default:
         return this.isNewProfile(user) ? 'demo-user-item-new' : '';
@@ -217,13 +218,13 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected userStatusLabel(user: UserSelectorListItemDto): string {
-    switch (user.profileStatus) {
-      case 'blocked':
-        return 'Blocked';
-      case 'deleted':
-        return 'Deleted';
+    switch (`${user.status ?? ''}`.trim().toUpperCase()) {
+      case 'B':
+        return 'demo.selector.status.blocked';
+      case 'D':
+        return 'demo.selector.status.deleted';
       default:
-        return this.isNewProfile(user) ? 'New' : '';
+        return this.isNewProfile(user) ? 'demo.selector.status.new' : '';
     }
   }
 
@@ -237,6 +238,12 @@ export class DemoBootstrapSelectorComponent {
 
   protected userAvatarLabel(user: UserSelectorListItemDto): string {
     return this.isNewProfile(user) ? '' : `${user.initials ?? ''}`.trim();
+  }
+
+  protected userAvatarUrl(user: UserSelectorListItemDto): string {
+    return this.isNewProfile(user)
+      ? ''
+      : AppUtils.mediaImageVariantUrl(user.avatarUrl, 'small');
   }
 
   protected isNewProfile(user: UserSelectorListItemDto): boolean {
@@ -598,14 +605,18 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      const accepted = await request.onSelect(userId, mode);
+      const result = await request.onSelect(userId, mode);
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
-      if (accepted !== false) {
+      if (result !== false && typeof result !== 'string') {
         return;
       }
-      this.resetContextSelectionFailure('Unable to open selected demo user.');
+      this.resetContextSelectionFailure(
+        typeof result === 'string' && result.trim()
+          ? result.trim()
+          : 'Unable to open selected demo user.'
+      );
     } catch {
       if (this.isCurrentContextRequest(requestToken)) {
         this.resetContextSelectionFailure('Unable to open selected demo user.');

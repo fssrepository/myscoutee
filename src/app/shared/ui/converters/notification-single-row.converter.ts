@@ -40,7 +40,7 @@ export class NotificationSingleRowConverter implements UiConverter<
       : statusBadgeFallback;
     return {
       id: notification.id,
-      title: notification.title,
+      title: this.title(notification, options),
       subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
       detail: this.message(notification, options),
       dateIso: notification.createdAtIso,
@@ -98,9 +98,31 @@ export class NotificationSingleRowConverter implements UiConverter<
     options: NotificationSingleRowConverterOptions
   ): string {
     const key = `${notification.payload?.['notification_message_key'] ?? ''}`.trim();
-    return key && options.translate
+    const translated = key && options.translate
       ? options.translate(key, notification.message)
       : notification.message;
+    return this.interpolatePayload(translated, notification.payload);
+  }
+
+  private title(
+    notification: NotificationDto,
+    options: NotificationSingleRowConverterOptions
+  ): string {
+    const key = `${notification.payload?.['notification_title_key'] ?? ''}`.trim();
+    const translated = key && options.translate
+      ? options.translate(key, notification.title)
+      : notification.title;
+    return this.interpolatePayload(translated, notification.payload);
+  }
+
+  private interpolatePayload(
+    value: string,
+    payload: NotificationDto['payload']
+  ): string {
+    return `${value ?? ''}`.replace(/\{([A-Za-z0-9_.-]+)\}/g, (match, key: string) => {
+      const replacement = payload?.[key];
+      return replacement == null ? match : `${replacement}`;
+    });
   }
 
   private isSystemRandomRoom(notification: NotificationDto): boolean {

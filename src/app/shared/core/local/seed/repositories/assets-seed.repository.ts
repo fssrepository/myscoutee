@@ -13,6 +13,7 @@ import {
 } from '../../source/entity/asset.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { SeedAssetBuilder, type SeedAssetTemplate } from '../builders';
+import { demoAssetPlaceholder, demoAssetTemplateIds } from '../builders/demo-image-pool';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 import * as AppConstants from '../../../common/constants';
@@ -21,14 +22,11 @@ import * as AppConstants from '../../../common/constants';
   providedIn: 'root'
 })
 export class SeedAssetsRepository {
-  private static readonly DEFAULT_ASSET_LIMIT_PER_OWNER = 12;
-
   private readonly memoryDb = inject(LocalMemoryDb);
   private lastSeedToken = '';
 
   seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AssetRecord[]> {
-    const allUsers = seedUsers
-      .filter(user => user.profileStatus === 'public');
+    const allUsers = [...seedUsers];
     const normalizedOwnerIds = Array.from(new Set(
       (ownerUserIds ?? allUsers.map(user => user.id))
         .map(userId => `${userId ?? ''}`.trim())
@@ -81,15 +79,59 @@ export class SeedAssetsRepository {
     ownerUserIds: readonly string[],
     allUsers: readonly UserRecord[]
   ): { assetsTable: AssetsRecordCollection; requestsTable: AssetRequestsRecordCollection; changed: boolean } {
-    const sampleCards = SeedAssetBuilder.buildSampleAssetCards(allUsers)
-      .slice(0, SeedAssetsRepository.DEFAULT_ASSET_LIMIT_PER_OWNER);
+    const sampleCards = SeedAssetBuilder.buildSampleAssetCards(allUsers);
+    const sampleCardById = new Map(sampleCards.map(card => [card.id, card]));
+    const managedOwnerIds = new Set(ownerUserIds);
+    const managedTemplateIds = new Set(sampleCards.map(card => card.id));
+    const desiredSeedAssetIds = new Set(
+      ownerUserIds.flatMap(ownerUserId => (
+        demoAssetTemplateIds(ownerUserId).map(templateId => `${ownerUserId}:${templateId}`)
+      ))
+    );
     const usersById = new Map(allUsers.map(user => [user.id, user]));
     const nextById = { ...currentTable.byId };
-    const nextIds = [...currentTable.ids];
+    let nextIds = [...currentTable.ids];
     const nextIdSet = new Set(nextIds);
     const nextIdsByOwnerUserId = this.cloneOwnerUserIdIndex(currentTable.idsByOwnerUserId);
     let nextRequestsTable = this.cloneRequestsCollection(currentRequestsTable);
     let changed = false;
+
+    const isManagedSeedAssetId = (assetId: string): boolean => {
+      const separatorIndex = assetId.indexOf(':');
+      if (separatorIndex <= 0) return false;
+      return managedOwnerIds.has(assetId.slice(0, separatorIndex))
+        && managedTemplateIds.has(assetId.slice(separatorIndex + 1));
+    };
+    const staleSeedAssetIds = nextIds.filter(assetId => (
+      isManagedSeedAssetId(assetId) && !desiredSeedAssetIds.has(assetId)
+    ));
+    if (staleSeedAssetIds.length > 0) {
+      const staleSeedAssetIdSet = new Set(staleSeedAssetIds);
+      for (const assetId of staleSeedAssetIds) {
+        delete nextById[assetId];
+        nextIdSet.delete(assetId);
+      }
+      nextIds = nextIds.filter(assetId => !staleSeedAssetIdSet.has(assetId));
+      for (const [ownerUserId, assetIds] of Object.entries(nextIdsByOwnerUserId)) {
+        nextIdsByOwnerUserId[ownerUserId] = assetIds.filter(assetId => !staleSeedAssetIdSet.has(assetId));
+      }
+      changed = true;
+    }
+
+    const managedRequestIds = new Set(
+      nextRequestsTable.ids.filter(requestId => {
+        const request = nextRequestsTable.byId[requestId];
+        return Boolean(request && isManagedSeedAssetId(request.assetId));
+      })
+    );
+    if (managedRequestIds.size > 0) {
+      for (const requestId of managedRequestIds) delete nextRequestsTable.byId[requestId];
+      nextRequestsTable.ids = nextRequestsTable.ids.filter(requestId => !managedRequestIds.has(requestId));
+      for (const [ownerKey, requestIds] of Object.entries(nextRequestsTable.idsByOwnerKey)) {
+        nextRequestsTable.idsByOwnerKey[ownerKey] = requestIds.filter(requestId => !managedRequestIds.has(requestId));
+      }
+      changed = true;
+    }
 
     for (const ownerUserId of ownerUserIds) {
       const owner = usersById.get(ownerUserId);
@@ -103,32 +145,65 @@ export class SeedAssetsRepository {
         SEED_SCHEDULE_REFERENCE_DATE,
         environment.bootstrapOffsetInDays
       );
-      for (const [index, card] of sampleCards.entries()) {
+      const ownerCards = demoAssetTemplateIds(ownerUserId)
+        .map(templateId => sampleCardById.get(templateId))
+        .filter((card): card is SeedAssetTemplate => Boolean(card));
+      for (const [index, card] of ownerCards.entries()) {
         const id = `${ownerUserId}:${card.id}`;
-        const seededRequests = this.seedAssetRequests(id, card, owner, allUsers, createdAt);
+        const presentation = demoAssetPlaceholder(`${ownerUserId}-${card.id}`);
+        const seededCard: SeedAssetTemplate = {
+          ...card,
+          title: presentation.title,
+          subtitle: presentation.subtitle,
+          category: presentation.category,
+          details: presentation.details,
+          imageUrl: presentation.imageUrl
+        };
+        const seededRequests = this.seedAssetRequests(id, seededCard, owner, allUsers, createdAt);
         for (const request of seededRequests) {
           const upserted = this.upsertAssetRequest(nextRequestsTable, request);
           nextRequestsTable = upserted.table;
           changed = upserted.changed || changed;
         }
         if (ownerIdSet.has(id)) {
+          const existing = nextById[id];
+          if (existing && (
+            existing.title !== presentation.title
+            || existing.subtitle !== presentation.subtitle
+            || existing.category !== presentation.category
+            || existing.details !== presentation.details
+            || existing.imageUrl !== presentation.imageUrl
+            || existing.visibility !== presentation.visibility
+            || existing.status !== presentation.status
+            || existing.statusBeforeSuppression !== null
+          )) {
+            nextById[id] = {
+              ...existing,
+              title: presentation.title,
+              subtitle: presentation.subtitle,
+              category: presentation.category,
+              details: presentation.details,
+              imageUrl: presentation.imageUrl,
+              visibility: presentation.visibility,
+              status: presentation.status,
+              statusBeforeSuppression: null
+            };
+            changed = true;
+          }
           continue;
         }
         const createdMs = createdAt.getTime() + (index * 60_000);
         const createdAtIso = new Date(createdMs).toISOString();
-        const imageUrl = SeedAssetBuilder.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
         const record: AssetRecord = {
-          ...card,
+          ...seededCard,
           id,
-          category: card.category,
           city: owner.city || card.city,
-          imageUrl,
           sourceLink: '',
           ownerUserId,
           ownerName: owner.name,
-          visibility: index % 3 === 0 ? 'Friends only' : 'Public',
-          status: index === 0 ? 'UR' : index === 1 ? 'D' : 'A',
-          statusBeforeSuppression: index === 0 || index === 1 ? 'A' : null,
+          visibility: presentation.visibility,
+          status: presentation.status,
+          statusBeforeSuppression: null,
           pricing: SeedAssetBuilder.clonePricingConfig(card.pricing) ?? undefined,
           policies: (card.policies ?? []).map(policy => ({ ...policy })),
           requests: [],

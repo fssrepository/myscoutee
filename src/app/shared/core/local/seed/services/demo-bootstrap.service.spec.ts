@@ -126,8 +126,8 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
     expect(state[EVENT_FEEDBACK_TABLE_NAME].ids.length).toBeGreaterThan(0);
-    expect(state[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId['u3']?.length).toBe(32);
-    expect(state[USERS_TABLE_NAME].byId['u3']?.activities.notifications).toBe(24);
+    expect(state[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId['u3']?.length).toBe(33);
+    expect(state[USERS_TABLE_NAME].byId['u3']?.activities.notifications).toBe(25);
     expect(state[EVENTS_TABLE_NAME].ids).toEqual(eventIdsBefore);
     expect(JSON.stringify(state[EVENTS_TABLE_NAME].byId)).toBe(eventRecordsBefore);
   });
@@ -163,7 +163,24 @@ describe('Demo bootstrap seeding', () => {
       expect(holder?.activities.tickets).toBe(holderTicketCount);
       expect(holder?.activities.asset?.tickets).toBe(holderTicketCount);
     }
-    expect(state[ASSETS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    const seededAssets = state[ASSETS_TABLE_NAME].ids
+      .map(id => state[ASSETS_TABLE_NAME].byId[id])
+      .filter(Boolean);
+    const assetCountsByDemoOwner = Array.from({ length: 50 }, (_, index) => `u${index + 1}`)
+      .map(userId => seededAssets.filter(asset => asset.ownerUserId === userId).length);
+    expect(seededAssets).toHaveLength(50);
+    expect(new Set(seededAssets.map(asset => asset.imageUrl)).size).toBe(50);
+    expect(seededAssets.every(asset => asset.imageUrl.startsWith('https://picsum.photos/id/'))).toBe(true);
+    expect(Object.fromEntries(
+      [0, 1, 2, 3].map(count => [count, assetCountsByDemoOwner.filter(value => value === count).length])
+    )).toEqual({ 0: 15, 1: 23, 2: 9, 3: 3 });
+    expect(Math.max(...assetCountsByDemoOwner)).toBe(3);
+    expect(state[ASSETS_TABLE_NAME].byId['u4:asset-transport-3']?.title).toBe('Family Road-Trip Minivan');
+    expect(Object.values(state[ACTIVITY_RESOURCES_TABLE_NAME].byId).some(resource =>
+      Object.values(resource.assetAssignmentIds ?? {}).some(assetIds =>
+        assetIds.includes('u4:asset-transport-3')
+      )
+    )).toBe(true);
     expect(state[ACTIVITY_RESOURCES_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBe(0);
     expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBe(0);
@@ -608,7 +625,7 @@ describe('Demo bootstrap seeding', () => {
 
     const state = memoryDb.read();
     const brunchRotation = Object.values(state[EVENTS_TABLE_NAME].byId)
-      .find(record => record?.title === 'Brunch Rotation' && record.acceptedMembers > 0);
+      .find(record => record?.id === 'e9' && record.acceptedMembers > 0);
     expect(brunchRotation).toBeTruthy();
 
     const ownerKey = `event:${brunchRotation!.id}`;

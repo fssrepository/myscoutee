@@ -60,6 +60,54 @@ export class HttpAssetTicketsService {
     }
   }
 
+  async syncTickets(
+    request: AssetContracts.AssetTicketSyncRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AssetContracts.AssetTicketSyncResultDTO> {
+    const normalizedUserId = request.userId.trim();
+    if (!normalizedUserId || signal?.aborted) {
+      return { upserts: [], removedIds: [], total: 0 };
+    }
+    try {
+      const response = await firstValueFrom(this.http.post<AssetContracts.AssetTicketSyncResultDTO | null>(
+        `${this.apiBaseUrl}/assets/tickets/sync`,
+        {
+          userId: normalizedUserId,
+          order: request.order,
+          limit: Math.max(1, Math.trunc(Number(request.limit) || 18)),
+          knownItems: request.knownItems.map(item => ({
+            id: `${item.id}`.trim(),
+            revision: `${item.revision}`
+          })),
+          loadedTail: request.loadedTail
+            ? {
+                id: `${request.loadedTail.id}`.trim(),
+                dateIso: `${request.loadedTail.dateIso}`.trim()
+              }
+            : null
+        }
+      ));
+      if (signal?.aborted) {
+        return { upserts: [], removedIds: [], total: 0 };
+      }
+      const result = {
+        upserts: this.cloneRows(response?.upserts ?? []),
+        removedIds: (response?.removedIds ?? []).map(id => `${id}`.trim()).filter(Boolean),
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0
+      };
+      this.applySyncCache(normalizedUserId, request.order, result);
+      return {
+        upserts: this.cloneRows(result.upserts),
+        removedIds: [...result.removedIds],
+        total: result.total
+      };
+    } catch {
+      const cachedRows = this.offlineCache.readTicketPage(normalizedUserId, request.order)?.items
+        ?? this.peekTicketRowsByUser(normalizedUserId);
+      return this.syncFromRows(cachedRows, request);
+    }
+  }
+
   async validateTicket(
     request: AssetContracts.AssetTicketValidationRequestDTO
   ): Promise<AssetContracts.AssetTicketValidationDTO> {
@@ -114,6 +162,91 @@ export class HttpAssetTicketsService {
 
   private cloneRows(rows: readonly AssetContracts.AssetTicketDTO[]): AssetContracts.AssetTicketDTO[] {
     return rows.map(row => ({ ...row }));
+  }
+
+  private applySyncCache(
+    userId: string,
+    order: AppConstants.AssetTicketOrder,
+    result: AssetContracts.AssetTicketSyncResultDTO
+  ): void {
+    const removedIds = new Set(result.removedIds);
+    const rowsById = new Map(
+      this.peekTicketRowsByUser(userId)
+        .filter(row => !removedIds.has(this.ticketIdentity(row)))
+        .map(row => [this.ticketIdentity(row), row])
+    );
+    for (const row of result.upserts) {
+      rowsById.set(this.ticketIdentity(row), { ...row });
+    }
+    const rows = [...rowsById.values()]
+      .filter(row => this.matchesTicketOrder(row, order))
+      .sort((left, right) => this.compareTicketRows(left, right, order));
+    this.cachedRowsByUserId[userId] = this.cloneRows(rows);
+    this.offlineCache.writeTicketPage(userId, order, {
+      items: this.cloneRows(rows),
+      total: result.total
+    });
+  }
+
+  private syncFromRows(
+    sourceRows: readonly AssetContracts.AssetTicketDTO[],
+    request: AssetContracts.AssetTicketSyncRequestDTO
+  ): AssetContracts.AssetTicketSyncResultDTO {
+    const rows = sourceRows
+      .filter(row => this.matchesTicketOrder(row, request.order))
+      .sort((left, right) => this.compareTicketRows(left, right, request.order));
+    const currentById = new Map(rows.map(row => [this.ticketIdentity(row), row]));
+    const knownRevisions = new Map(request.knownItems.map(item => [item.id.trim(), `${item.revision}`]));
+    const removedIds = [...knownRevisions.keys()].filter(id => !currentById.has(id));
+    const limit = Math.max(1, Math.trunc(Number(request.limit) || 18));
+    const tailId = `${request.loadedTail?.id ?? ''}`.trim();
+    const tailIndex = tailId ? rows.findIndex(row => this.ticketIdentity(row) === tailId) : -1;
+    const windowLimit = tailIndex >= 0
+      ? Math.max(request.knownItems.length + limit, tailIndex + 1 + limit)
+      : (request.knownItems.length > 0 ? request.knownItems.length + limit : limit);
+    const upsertsById = new Map<string, AssetContracts.AssetTicketDTO>();
+    for (const row of rows.slice(0, windowLimit)) {
+      const id = this.ticketIdentity(row);
+      if (knownRevisions.get(id) !== this.ticketRevision(row)) {
+        upsertsById.set(id, row);
+      }
+    }
+    return {
+      upserts: this.cloneRows([...upsertsById.values()]),
+      removedIds,
+      total: rows.length
+    };
+  }
+
+  private ticketIdentity(row: AssetContracts.AssetTicketDTO): string {
+    return `${row.type}:${row.id}`;
+  }
+
+  private ticketRevision(row: AssetContracts.AssetTicketDTO): string {
+    return `${row.revision ?? ''}`.trim() || [
+      row.scanCode,
+      row.status,
+      row.usedAtIso,
+      row.issuedAtIso,
+      row.title,
+      row.subtitle,
+      row.detail,
+      row.dateIso,
+      row.startAt,
+      row.endAt,
+      row.imageUrl,
+      row.visibility
+    ].map(value => `${value ?? ''}`).join('\u001f');
+  }
+
+  private compareTicketRows(
+    left: AssetContracts.AssetTicketDTO,
+    right: AssetContracts.AssetTicketDTO,
+    order: AppConstants.AssetTicketOrder
+  ): number {
+    const comparison = this.toSortableDate(left.dateIso) - this.toSortableDate(right.dateIso)
+      || this.ticketIdentity(left).localeCompare(this.ticketIdentity(right));
+    return order === 'past' ? -comparison : comparison;
   }
 
   private matchesTicketOrder(row: AssetContracts.AssetTicketDTO, order: AppConstants.AssetTicketOrder): boolean {

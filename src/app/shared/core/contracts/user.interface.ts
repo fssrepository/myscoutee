@@ -1,4 +1,5 @@
 import type * as ActivityContracts from './activity.interface';
+import type * as AssetContracts from './asset.interface';
 import type * as AppConstants from '../common/constants';
 import type * as ProfileContracts from './profile.interface';
 
@@ -23,6 +24,20 @@ export interface FirebaseAuthRequestDto {
   emailMode?: FirebaseEmailAuthMode;
   email?: string;
   password?: string;
+}
+
+export interface UserSessionLoginRequestDto {
+  attemptId: string;
+  provider?: string;
+}
+
+export interface UserSessionLoginResponseDto {
+  accepted: boolean;
+  existingSession: boolean;
+  outcome: 'ACCEPTED' | 'BLOCKED_LIMIT' | string;
+  activeSessionCount: number;
+  maxActiveSessions: number;
+  message?: string | null;
 }
 
 export interface OperatorBootstrapAuthRequestDto {
@@ -198,6 +213,7 @@ export interface UserRealtimeLongPollResponseDto {
   userId: string;
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;
+  offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
   cursor?: string | null;
   serverTsIso?: string;
 }
@@ -215,11 +231,12 @@ export interface UserSelectorListItemDto {
   name: string;
   city: string;
   initials: string;
+  avatarUrl?: string;
   gender: AppConstants.UserGender;
   statusText?: string;
   completion?: number;
   profileFormVersion?: number;
-  profileStatus?: UserDto['profileStatus'];
+  status?: string;
   deletedAtIso?: string | null;
 }
 

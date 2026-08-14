@@ -107,6 +107,11 @@ export class LocalActivityMembersBuilder {
       metWhere: record.metWhere,
       avatarUrl: record.avatarUrl,
       involvements: this.toInvolvementEntries(involvementRecords),
+      revision: record.updatedAtIso,
+      attendanceStatus: record.attendanceStatus ?? null,
+      checkedInAtIso: record.checkedInAtIso ?? null,
+      checkedInByUserId: record.checkedInByUserId ?? null,
+      checkedInTicketId: record.checkedInTicketId ?? null,
       profile: resolveProfile(record.userId, {
         name: record.name,
         initials: record.initials,

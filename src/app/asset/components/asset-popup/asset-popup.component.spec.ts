@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
 
 import {
   ActivityResourcesService,
@@ -32,12 +33,14 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     return 1;
   });
   const signalUserTicketBucketCount = vi.fn();
+  const syncTickets = vi.fn();
 
   beforeEach(() => {
     activeUserId.set('owner-1');
     dbRevision.set(0);
     peekTicketCountByUser.mockClear();
     signalUserTicketBucketCount.mockClear();
+    syncTickets.mockReset().mockResolvedValue({ upserts: [], removedIds: [], total: 0 });
     TestBed.configureTestingModule({
       providers: [
         AssetAvailabilityPopupStore,
@@ -74,7 +77,8 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
           provide: AssetTicketsService,
           useValue: {
             peekTicketCountByUser,
-            queryTicketPage: async () => ({ items: [], total: 0 })
+            queryTicketPage: async () => ({ items: [], total: 0 }),
+            syncTickets
           }
         },
         {
@@ -169,7 +173,69 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
       expect.any(Object)
     );
   });
+
+  it('uses the existing SmartList delta contract for Ticket polling without changing SmartList core paging', async () => {
+    const row = ticketRow();
+    syncTickets.mockResolvedValue({
+      upserts: [row],
+      removedIds: ['events:removed-event'],
+      total: 1
+    });
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    const config = (component as any).ticketSmartListConfig;
+
+    const result = await firstValueFrom(config.pollDelta.load({
+      page: 0,
+      pageSize: 6,
+      filters: { userId: 'owner-1', order: 'upcoming' }
+    }, {
+      knownItems: [
+        { id: 'events:removed-event', revision: 'old-revision' },
+        { id: 'events:event-1', revision: 'same-revision' }
+      ],
+      loadedTail: {
+        id: 'events:event-1',
+        position: '2030-04-18T19:00:00.000Z'
+      }
+    }));
+
+    expect(syncTickets).toHaveBeenCalledWith({
+      userId: 'owner-1',
+      order: 'upcoming',
+      limit: 6,
+      knownItems: [
+        { id: 'events:removed-event', revision: 'old-revision' },
+        { id: 'events:event-1', revision: 'same-revision' }
+      ],
+      loadedTail: {
+        id: 'events:event-1',
+        dateIso: '2030-04-18T19:00:00.000Z'
+      }
+    }, undefined);
+    expect(result).toEqual({
+      upserts: [row],
+      removedIds: ['events:removed-event'],
+      total: 1
+    });
+    expect(config.cacheable.identity(row, 0, {})).toBe('events:event-1');
+  });
 });
+
+function ticketRow(): AssetContracts.AssetTicketDTO {
+  return {
+    id: 'event-1',
+    revision: 'new-revision',
+    scanCode: 'TKT-code',
+    holderUserId: 'owner-1',
+    usedAtIso: null,
+    type: 'events',
+    status: 'A',
+    title: 'Evening event',
+    subtitle: 'Main hall',
+    detail: 'Tonight',
+    dateIso: '2030-04-18T19:00:00.000Z'
+  };
+}
 
 function scanPayload(): AssetContracts.TicketScanPayloadDTO {
   return {

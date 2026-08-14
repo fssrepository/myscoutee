@@ -27,6 +27,7 @@ describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
       user('other-1', 'Other Member')
     ]);
     seedEvents([eventRecord()]);
+    seedEventMembers([eventHolderRecord()]);
     repository = TestBed.inject(LocalAssetTicketsRepository);
     repository.synchronizeForEvent('event-1', new Date('2035-04-17T12:00:00.000Z'));
   });
@@ -111,6 +112,16 @@ describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
       readAtIso: null
     });
     expect(memoryDb.read()[USERS_TABLE_NAME].byId['holder-1'].activities.notifications).toBe(1);
+    const attendance = memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME].byId['event:event-1:holder-1'];
+    expect(attendance).toMatchObject({
+      status: 'accepted',
+      actionAtIso: '2030-04-18T18:00:00.000Z',
+      attendanceStatus: 'checked-in',
+      checkedInAtIso: first.ticket?.usedAtIso,
+      checkedInByUserId: 'owner-1',
+      checkedInTicketId: persisted.id,
+      updatedAtIso: first.ticket?.usedAtIso
+    });
   });
 
   it('requires the scanner actor to manage the event', () => {
@@ -127,7 +138,7 @@ describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
   });
 
   it('allows an accepted event manager to validate a ticket', () => {
-    seedEventMembers([eventManagerRecord()]);
+    seedEventMembers([eventHolderRecord(), eventManagerRecord()]);
 
     const response = repository.validateTicket({
       code: activeTickets()[0].code,
@@ -348,6 +359,17 @@ function eventManagerRecord(): ActivityMemberRecord {
     updatedMs: 1,
     createdAtIso: '2030-04-18T18:00:00.000Z',
     updatedAtIso: '2030-04-18T18:00:00.000Z'
+  };
+}
+
+function eventHolderRecord(): ActivityMemberRecord {
+  return {
+    ...eventManagerRecord(),
+    id: 'event:event-1:holder-1',
+    userId: 'holder-1',
+    name: 'Ticket Holder',
+    initials: 'TH',
+    role: 'Member'
   };
 }
 
