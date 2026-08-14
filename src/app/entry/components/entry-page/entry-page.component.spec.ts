@@ -45,3 +45,22 @@ describe('EntryPageComponent operator authentication gate', () => {
     expect(component.showFirebaseAuthPopup).toBe(true);
   });
 });
+
+describe('EntryPageComponent browser location permission gate', () => {
+  it('waits for an explicit user action while browser permission is prompt', async () => {
+    const component = Object.create(EntryPageComponent.prototype) as {
+      grantedLocationEligibilityRequestToken: number;
+      queryGeolocationPermissionState: ReturnType<typeof vi.fn>;
+      requestCurrentLocation: ReturnType<typeof vi.fn>;
+      resolveBrowserLocationAccess: (requestToken: number) => Promise<void>;
+    };
+    component.grantedLocationEligibilityRequestToken = 7;
+    component.queryGeolocationPermissionState = vi.fn().mockResolvedValue('prompt');
+    component.requestCurrentLocation = vi.fn();
+
+    await component.resolveBrowserLocationAccess(7);
+
+    expect(component.queryGeolocationPermissionState).toHaveBeenCalledOnce();
+    expect(component.requestCurrentLocation).not.toHaveBeenCalled();
+  });
+});

@@ -196,7 +196,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly geolocationPermissionChangeHandler = (): void => {
     this.ngZone.run(() => {
       this.geolocationPermissionState = this.geolocationPermissionStatus?.state ?? null;
-      if (this.geolocationPermissionState === 'granted') {
+      if (this.geolocationPermissionState === 'granted' && !this.loginEligibilityBusy) {
         this.browserLocationAutoRequestAttempted = false;
       }
       this.syncEntryAuthGateState();
@@ -1524,8 +1524,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
     try {
-      await this.queryGeolocationPermissionState();
-      if (requestToken !== this.grantedLocationEligibilityRequestToken) {
+      const permissionState = await this.queryGeolocationPermissionState();
+      if (
+        requestToken !== this.grantedLocationEligibilityRequestToken
+        || permissionState !== 'granted'
+      ) {
         return;
       }
 

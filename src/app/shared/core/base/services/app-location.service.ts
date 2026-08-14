@@ -332,7 +332,13 @@ export class AppLocationService {
     coordinates: LocationCoordinates
   ): void {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
-    if (this.isLocalUserRouteEnabled() || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
+    if (
+      this.isLocalUserRouteEnabled()
+      || !this.isActiveFirebaseMemberSession(userId)
+      || !activeUser?.id?.trim()
+      || activeUser.admin === true
+      || !normalizedCoordinates
+    ) {
       return;
     }
 
@@ -342,6 +348,16 @@ export class AppLocationService {
     }
 
     void this.flushPendingLocationSync(userId, activeUser);
+  }
+
+  private isActiveFirebaseMemberSession(userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    const session = this.sessionService.currentSession();
+    return Boolean(
+      normalizedUserId
+      && session?.kind === 'firebase'
+      && session.profile.id.trim() === normalizedUserId
+    );
   }
 
   private async flushPendingLocationSync(

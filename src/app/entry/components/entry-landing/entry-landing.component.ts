@@ -525,7 +525,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected requestDemo(): void {
-    if (this.networkUnavailable || this.authUnavailable) {
+    if (this.networkUnavailable) {
       return;
     }
     this.demoRequested.emit();
