@@ -605,14 +605,18 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      const accepted = await request.onSelect(userId, mode);
+      const result = await request.onSelect(userId, mode);
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
-      if (accepted !== false) {
+      if (result !== false && typeof result !== 'string') {
         return;
       }
-      this.resetContextSelectionFailure('Unable to open selected demo user.');
+      this.resetContextSelectionFailure(
+        typeof result === 'string' && result.trim()
+          ? result.trim()
+          : 'Unable to open selected demo user.'
+      );
     } catch {
       if (this.isCurrentContextRequest(requestToken)) {
         this.resetContextSelectionFailure('Unable to open selected demo user.');

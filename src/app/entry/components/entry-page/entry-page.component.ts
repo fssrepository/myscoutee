@@ -105,7 +105,7 @@ interface EntryDemoUserSelectionEvent {
   userId: string;
   mode: DemoBootstrapSelectorMode;
   complete: () => void;
-  fail: () => void;
+  fail: (message?: string) => void;
 }
 
 interface EntryDemoNewProfileRequestEvent {
@@ -554,13 +554,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode,
       selectableModes,
-      onSelect: (userId, mode) => new Promise<boolean>(resolve => {
+      onSelect: (userId, mode) => new Promise<boolean | string>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({
             userId,
             mode,
             complete: () => resolve(true),
-            fail: () => resolve(false)
+            fail: message => resolve(message?.trim() || false)
           });
         });
       }),
@@ -598,9 +598,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       selection.complete();
       return;
     }
-    const session = this.sessionService.startDemoSession(normalizedUserId);
+    const session = await this.sessionService.startTrackedDemoSession(normalizedUserId);
     if (!session) {
-      selection.fail();
+      selection.fail(this.sessionService.firebaseNotice());
       return;
     }
     try {

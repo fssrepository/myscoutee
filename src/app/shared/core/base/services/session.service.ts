@@ -8,6 +8,8 @@ import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 type FirebaseAuthServiceInstance = import('./firebase-auth.service').FirebaseAuthService;
 type HttpOperatorBootstrapAuthServiceInstance =
   import('../../http/services/operator-bootstrap-auth.service').HttpOperatorBootstrapAuthService;
+type FirebaseSessionRegistryServiceInstance =
+  import('../../http/services/firebase-session-registry.service').FirebaseSessionRegistryService;
 
 export interface SupportSessionContext {
   kind: 'admin-support';
@@ -15,8 +17,8 @@ export interface SupportSessionContext {
 }
 
 export type AppSession =
-  | { kind: 'demo'; userId: string; supportContext?: SupportSessionContext }
-  | { kind: 'firebase'; profile: FirebaseAuthProfileDto }
+  | { kind: 'demo'; userId: string; sessionId?: string; supportContext?: SupportSessionContext }
+  | { kind: 'firebase'; profile: FirebaseAuthProfileDto; sessionId: string }
   | { kind: 'operator-bootstrap'; email: string; expiresAt: string };
 
 @Injectable({
@@ -37,6 +39,8 @@ export class SessionService {
   private readonly firebaseBusyRef = signal(false);
   private readonly firebaseNoticeRef = signal('');
   private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
+  private firebaseSessionRegistryServicePromise:
+    Promise<FirebaseSessionRegistryServiceInstance> | null = null;
   private operatorBootstrapAuthServicePromise:
     Promise<HttpOperatorBootstrapAuthServiceInstance> | null = null;
 
@@ -84,7 +88,8 @@ export class SessionService {
     }
       const nextSession: AppSession = {
         kind: 'firebase',
-        profile: restoredProfile
+        profile: restoredProfile,
+        sessionId: current.sessionId
       };
       this.persistSession(nextSession);
       void this.initializeFirebaseMessagingForSession(nextSession);
@@ -102,11 +107,48 @@ export class SessionService {
     const session: AppSession = {
       kind: 'demo',
       userId: normalizedUserId,
+      sessionId: this.newOpaqueId('session'),
       supportContext: this.normalizeSupportContext(options.supportContext)
     };
     localStorage.setItem(SessionService.DEMO_ACTIVE_USER_KEY, normalizedUserId);
     this.persistSession(session);
     return session;
+  }
+
+  async startTrackedDemoSession(userId: string): Promise<AppSession | null> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const session: Extract<AppSession, { kind: 'demo' }> & { sessionId: string } = {
+      kind: 'demo',
+      userId: normalizedUserId,
+      sessionId: this.newOpaqueId('session')
+    };
+    try {
+      const response = await (await this.firebaseSessionRegistryService()).registerDemoLogin(
+        session.sessionId,
+        session.userId,
+        {
+          attemptId: this.newOpaqueId('attempt'),
+          provider: 'demo'
+        }
+      );
+      if (response.accepted) {
+        localStorage.setItem(SessionService.DEMO_ACTIVE_USER_KEY, normalizedUserId);
+        this.persistSession(session);
+        return session;
+      }
+      this.firebaseNoticeRef.set('auth.session.limit.reached');
+    } catch (error) {
+      this.firebaseNoticeRef.set(
+        this.httpErrorStatus(error) === 409
+          ? 'auth.session.limit.reached'
+          : 'auth.session.registration.failed'
+      );
+    }
+    this.clearStoredSession();
+    return null;
   }
 
   async startFirebaseSession(request: FirebaseAuthRequestDto = { provider: 'google' }): Promise<AppSession | null> {
@@ -195,8 +237,12 @@ export class SessionService {
       }
       const session: AppSession = {
         kind: 'firebase',
-        profile
+        profile,
+        sessionId: this.newOpaqueId('session')
       };
+      if (!await this.registerFirebaseLogin(session, 'firebase')) {
+        return null;
+      }
       this.persistSession(session);
       void this.initializeFirebaseMessagingForSession(session);
       return session;
@@ -259,6 +305,11 @@ export class SessionService {
     return (await this.firebaseAuthService()).getIdToken();
   }
 
+  currentFirebaseSessionId(): string {
+    const current = this.sessionRef();
+    return current?.kind === 'firebase' ? current.sessionId.trim() : '';
+  }
+
   private async firebaseAuthService(): Promise<FirebaseAuthServiceInstance> {
     if (!this.firebaseAuthServicePromise) {
       this.firebaseAuthServicePromise = import('./firebase-auth.service')
@@ -275,6 +326,16 @@ export class SessionService {
       ).then(module => this.injector.get(module.HttpOperatorBootstrapAuthService));
     }
     return this.operatorBootstrapAuthServicePromise;
+  }
+
+  private async firebaseSessionRegistryService():
+    Promise<FirebaseSessionRegistryServiceInstance> {
+    if (!this.firebaseSessionRegistryServicePromise) {
+      this.firebaseSessionRegistryServicePromise = import(
+        '../../http/services/firebase-session-registry.service'
+      ).then(module => this.injector.get(module.FirebaseSessionRegistryService));
+    }
+    return this.firebaseSessionRegistryServicePromise;
   }
 
   private async startFirebaseSessionInternal(
@@ -300,8 +361,12 @@ export class SessionService {
     }
     const session: AppSession = {
       kind: 'firebase',
-      profile: result.profile
+      profile: result.profile,
+      sessionId: this.newOpaqueId('session')
     };
+    if (!await this.registerFirebaseLogin(session, request.provider)) {
+      return null;
+    }
     this.persistSession(session);
     void this.initializeFirebaseMessagingForSession(session);
     return session;
@@ -316,6 +381,40 @@ export class SessionService {
     }
     const { FirebaseMessagingService } = await import('./firebase-messaging.service');
     this.injector.get(FirebaseMessagingService).initialize();
+  }
+
+  private async registerFirebaseLogin(
+    session: Extract<AppSession, { kind: 'firebase' }>,
+    provider: string
+  ): Promise<boolean> {
+    const token = await (await this.firebaseAuthService()).getIdToken();
+    if (!token) {
+      this.firebaseNoticeRef.set('auth.session.registration.failed');
+      await (await this.firebaseAuthService()).signOut();
+      return false;
+    }
+    try {
+      const response = await (await this.firebaseSessionRegistryService()).registerLogin(
+        session.sessionId,
+        token,
+        {
+          attemptId: this.newOpaqueId('attempt'),
+          provider
+        }
+      );
+      if (response.accepted) {
+        return true;
+      }
+      this.firebaseNoticeRef.set('auth.session.limit.reached');
+    } catch (error) {
+      this.firebaseNoticeRef.set(
+        this.httpErrorStatus(error) === 409
+          ? 'auth.session.limit.reached'
+          : 'auth.session.registration.failed'
+      );
+    }
+    await (await this.firebaseAuthService()).signOut();
+    return false;
   }
 
   private persistSession(session: AppSession): void {
@@ -396,6 +495,9 @@ export class SessionService {
         return {
           kind: 'demo',
           userId: parsed.userId.trim(),
+          sessionId: typeof parsed.sessionId === 'string'
+            ? parsed.sessionId.trim() || undefined
+            : undefined,
           supportContext: this.normalizeSupportContext(
             (parsed as { supportContext?: Partial<SupportSessionContext> }).supportContext
           )
@@ -404,6 +506,8 @@ export class SessionService {
       if (
         parsed.kind === 'firebase' &&
         parsed.profile &&
+        typeof parsed.sessionId === 'string' &&
+        parsed.sessionId.trim().length > 0 &&
         typeof parsed.profile.id === 'string' &&
         typeof parsed.profile.name === 'string' &&
         typeof parsed.profile.email === 'string' &&
@@ -411,6 +515,7 @@ export class SessionService {
       ) {
         return {
           kind: 'firebase',
+          sessionId: parsed.sessionId.trim(),
           profile: {
             id: parsed.profile.id,
             name: parsed.profile.name,
@@ -497,6 +602,14 @@ export class SessionService {
     }
     const status = Number((error as { status?: unknown }).status);
     return Number.isFinite(status) ? status : null;
+  }
+
+  private newOpaqueId(prefix: 'session' | 'attempt'): string {
+    const randomUuid = typeof crypto !== 'undefined'
+      && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    return `${prefix}:${randomUuid}`;
   }
 
   private normalizeSupportContext(

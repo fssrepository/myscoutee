@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.08.14.en.55",
+  "version": "2026.08.14.en.56",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -3080,6 +3080,11 @@
     "global.identity.error.unavailable": "Network identity synchronization is not available from this deployment.",
     "global.identity.error.local.unavailable": "A browser-only workspace has no trusted deployment key, so it cannot create a network identity.",
     "global.identity.error.failed": "The network identity request failed.",
+    "auth.session.limit.reached": "Two sessions are already active. Sign out from one of them, then try again.",
+    "auth.session.registration.failed": "The secure session could not be registered. Please try again.",
+    "notification.security.login.title": "Security alert",
+    "notification.security.login.new.message": "New login from {clientLabel}.",
+    "notification.security.login.blocked.message": "Blocked login attempt from {clientLabel}: two sessions are already active.",
     "operator.request.failed": "The operator request failed."
   }
 }

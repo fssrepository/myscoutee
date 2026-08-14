@@ -5,6 +5,7 @@ import { from, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SessionService } from '../base/services/session.service';
 import { DEMO_SESSION_HEADER, DEMO_SESSION_VALUE } from './session-mode.interceptor';
+import { FirebaseSessionRegistryService } from './services/firebase-session-registry.service';
 
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
 
@@ -62,7 +63,8 @@ export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
       return next(
         req.clone({
           setHeaders: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
+            [FirebaseSessionRegistryService.SESSION_ID_HEADER]: session.sessionId
           }
         })
       );

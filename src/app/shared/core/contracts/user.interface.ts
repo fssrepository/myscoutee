@@ -26,6 +26,20 @@ export interface FirebaseAuthRequestDto {
   password?: string;
 }
 
+export interface UserSessionLoginRequestDto {
+  attemptId: string;
+  provider?: string;
+}
+
+export interface UserSessionLoginResponseDto {
+  accepted: boolean;
+  existingSession: boolean;
+  outcome: 'ACCEPTED' | 'BLOCKED_LIMIT' | string;
+  activeSessionCount: number;
+  maxActiveSessions: number;
+  message?: string | null;
+}
+
 export interface OperatorBootstrapAuthRequestDto {
   email: string;
   password: string;

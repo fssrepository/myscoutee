@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.14.hu.55",
+  "version": "2026.08.14.hu.56",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -3080,6 +3080,11 @@
     "global.identity.error.unavailable": "A hálózati identitás szinkronizálása ezen a telepítésen nem érhető el.",
     "global.identity.error.local.unavailable": "A kizárólag böngészőben futó munkaterületnek nincs megbízható telepítési kulcsa, ezért nem hozhat létre hálózati identitást.",
     "global.identity.error.failed": "A hálózati identitás kérése sikertelen.",
+    "auth.session.limit.reached": "Már két aktív munkamenet van használatban. Jelentkezz ki az egyikből, majd próbáld újra.",
+    "auth.session.registration.failed": "A biztonságos munkamenetet nem sikerült regisztrálni. Próbáld újra.",
+    "notification.security.login.title": "Biztonsági figyelmeztetés",
+    "notification.security.login.new.message": "Új bejelentkezés innen: {clientLabel}.",
+    "notification.security.login.blocked.message": "Blokkolt bejelentkezési kísérlet innen: {clientLabel}. Már két aktív munkamenet van használatban.",
     "operator.request.failed": "Az operátori kérés sikertelen."
   }
 }
