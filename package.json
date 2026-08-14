@@ -50,7 +50,7 @@
     "@angular/common": "^21.2.12",
     "@angular/compiler": "^21.2.12",
     "@angular/core": "^21.2.12",
-    "@angular/forms": "^21.2.12",
+    "@angular/forms": "^22.1.1",
     "@angular/platform-browser": "^21.2.12",
     "@angular/router": "^21.2.12",
     "@fontsource/roboto": "^5.2.10",
