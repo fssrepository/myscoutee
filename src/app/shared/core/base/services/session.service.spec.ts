@@ -17,6 +17,8 @@ describe('SessionService operator bootstrap session', () => {
   const firebaseGetIdToken = vi.fn();
   const registerLogin = vi.fn();
   const registerDemoLogin = vi.fn();
+  const revokeDemoSession = vi.fn();
+  const revokeFirebaseSession = vi.fn();
 
   beforeEach(() => {
     localStorage.clear();
@@ -40,6 +42,8 @@ describe('SessionService operator bootstrap session', () => {
       activeSessionCount: 1,
       maxActiveSessions: 2
     });
+    revokeDemoSession.mockReset().mockResolvedValue(undefined);
+    revokeFirebaseSession.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         SessionService,
@@ -58,7 +62,12 @@ describe('SessionService operator bootstrap session', () => {
         },
         {
           provide: FirebaseSessionRegistryService,
-          useValue: { registerLogin, registerDemoLogin }
+          useValue: {
+            registerLogin,
+            registerDemoLogin,
+            revokeDemoSession,
+            revokeFirebaseSession
+          }
         }
       ]
     });
@@ -232,6 +241,19 @@ describe('SessionService operator bootstrap session', () => {
 
     await expect(login).resolves.toMatchObject({ kind: 'demo', userId: 'demo-user' });
     expect(service.currentSession()).toMatchObject({ kind: 'demo', userId: 'demo-user' });
+  });
+
+  it('revokes a tracked demo session before logout completes', async () => {
+    const service = TestBed.inject(SessionService);
+    const session = await service.startTrackedDemoSession('demo-user');
+
+    await service.logout();
+
+    expect(revokeDemoSession).toHaveBeenCalledWith(
+      session?.kind === 'demo' ? session.sessionId : '',
+      'demo-user'
+    );
+    expect(service.currentSession()).toBeNull();
   });
 
   it('clears the bootstrap token on logout', async () => {
