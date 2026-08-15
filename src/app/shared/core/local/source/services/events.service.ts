@@ -1161,7 +1161,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         senderName: 'MyScoutee System',
         senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
         payload: {
-          ...this.localTournamentStagePayload(stages, result.subEventIndex + 1),
+          ...this.localTournamentSystemStagePayload(stages, result.subEventIndex + 1),
           eventId,
           eventTitle,
           eventScope: 'tournament-advancement',
@@ -1248,10 +1248,19 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       Math.max(1, Math.trunc(Number(stageIndex) || 0) + 1)
     );
     return {
-      notification_avatar_tone: 'stage',
-      notification_avatar_icon: 'emoji_events',
       stageIndex: `${normalizedIndex}`,
       stageTotal: `${normalizedTotal}`
+    };
+  }
+
+  private localTournamentSystemStagePayload(
+    stages: readonly { id?: string | null }[],
+    stageIndex: number
+  ): Record<string, string> {
+    return {
+      ...this.localTournamentStagePayload(stages, stageIndex),
+      notification_avatar_tone: 'stage',
+      notification_avatar_icon: 'emoji_events'
     };
   }
 

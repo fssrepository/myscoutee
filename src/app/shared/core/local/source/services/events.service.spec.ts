@@ -437,11 +437,12 @@ describe('LocalEventsService', () => {
       payload: {
         notification_title_key: 'notification.event.stage.finalized.title',
         notification_message_key: 'notification.event.stage.finalized.message',
-        notification_avatar_tone: 'stage',
         stageIndex: '1',
         stageTotal: '2'
       }
     });
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_tone');
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_icon');
     expect(records[2]).toMatchObject({
       recipientUserId: 'host',
       payload: {
@@ -460,7 +461,7 @@ describe('LocalEventsService', () => {
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 2);
   });
 
-  it('creates a stage-named local Start notification with the shared stage avatar context', async () => {
+  it('creates a stage-named local Start notification with the human actor avatar context', async () => {
     queryEventRecordById.mockReturnValue({
       id: 'event-1',
       title: 'Manual QA Tournament',
@@ -502,12 +503,17 @@ describe('LocalEventsService', () => {
         stageTitle: 'Final',
         notification_title_key: 'notification.event.stage.started.title',
         notification_message_key: 'notification.event.stage.started.message',
-        notification_avatar_tone: 'stage',
-        notification_avatar_icon: 'emoji_events',
         stageIndex: '2',
         stageTotal: '2'
       }
     });
+    expect(records[0]).toMatchObject({
+      senderUserId: 'host',
+      senderName: 'Casey Bridge',
+      senderAvatarUrl: '/casey.webp'
+    });
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_tone');
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_icon');
   });
 
   it('stores event editor local wall times as UTC instants', async () => {
