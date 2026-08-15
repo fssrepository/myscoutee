@@ -3256,6 +3256,11 @@ export class LocalEventsRepository {
     const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
     const capacityMax = Math.max(capacityMin, Math.trunc(Number(group.capacityMax) || capacityMin));
     const groupId = `${group.id ?? `${stage.id ?? 'stage'}-group-${groupIndex + 1}`}`.trim();
+    const memberOwnerId = this.groupMembershipOwnerId(
+      ownerSourceId,
+      `${stage.id ?? ''}`.trim(),
+      groupId
+    );
     const groupMembers = this.groupMemberRecordsFromTable(
       membersTable,
       ownerSourceId,
@@ -3272,6 +3277,8 @@ export class LocalEventsRepository {
       capacityMax,
       membersAccepted: accepted,
       membersPending: pending,
+      memberOwnerType: 'group',
+      memberOwnerId,
       resourceMetricsByType: this.groupResourceMetrics(stageRuntime, `${group.id ?? ''}`.trim())
     };
   }
@@ -3288,12 +3295,19 @@ export class LocalEventsRepository {
     if (!normalizedEventId || !normalizedSubEventId || !normalizedGroupId) {
       return [];
     }
-    const ownerId = normalizedGroupId === normalizedEventId || normalizedGroupId.startsWith(`${normalizedEventId}:`)
-      ? normalizedGroupId
-      : `${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`;
+    const ownerId = this.groupMembershipOwnerId(normalizedEventId, normalizedSubEventId, normalizedGroupId);
     return (table.idsByOwnerKey[`group:${ownerId}`] ?? [])
       .map(id => table.byId[id])
       .filter((member): member is ActivityMemberRecord => Boolean(member) && member.status !== 'deleted');
+  }
+
+  private groupMembershipOwnerId(eventId: string, subEventId: string, groupId: string): string {
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedGroupId = groupId.trim();
+    return normalizedGroupId === normalizedEventId || normalizedGroupId.startsWith(`${normalizedEventId}:`)
+      ? normalizedGroupId
+      : `${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`;
   }
 
   private stageRuntimeRecord(ownerId: string, subEventId: string): ActivitySubEventStageRuntimeRecord | null {

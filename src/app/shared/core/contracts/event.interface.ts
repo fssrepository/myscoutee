@@ -169,6 +169,8 @@ export interface EventTournamentGroupDTO {
   capacityMax: number;
   membersAccepted: number;
   membersPending: number;
+  memberOwnerType?: 'event' | 'group';
+  memberOwnerId?: string;
   resourceMetricsByType: Partial<Record<string, EventTournamentResourceMetricDTO>>;
 }
 

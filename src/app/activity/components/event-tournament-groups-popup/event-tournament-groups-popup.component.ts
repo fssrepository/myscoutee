@@ -1207,8 +1207,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private canInviteGroupMembers(group: ContractTypes.EventTournamentGroupDTO): boolean {
-    void group;
-    return this.canManageGroups();
+    return this.canManageGroups() && group.memberOwnerType !== 'event';
   }
 
   private canAddScoreToStage(stage: ContractTypes.EventTournamentStageDTO | null | undefined): boolean {
@@ -1464,12 +1463,14 @@ export class EventTournamentGroupsPopupComponent {
     const stageTitle = `${stage.title ?? ''}`.trim();
     const groupLabel = `${group.name ?? ''}`.trim();
     if (isMembersPopup) {
-      const memberOwnerId = this.groupMemberOwnerId(stage.subEventId, group.id);
+      const memberOwnerType = group.memberOwnerType === 'event' ? 'event' : 'group';
+      const memberOwnerId = `${group.memberOwnerId ?? ''}`.trim()
+        || this.groupMemberOwnerId(stage.subEventId, group.id);
       void this.activitiesStore.ensureEventMembersPopupLoaded();
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
         ownerId: memberOwnerId,
-        ownerType: 'group',
+        ownerType: memberOwnerType,
         parentOwnerId: this.eventId(),
         parentOwnerType: 'event',
         eventId: this.eventId(),
@@ -1562,6 +1563,7 @@ export class EventTournamentGroupsPopupComponent {
     const match = this.state?.stages.flatMap(stage => stage.groups.map(group => ({ stage, group })))
       .find(({ stage, group }) => (
         group.id === memberOwnerId
+        || `${group.memberOwnerId ?? ''}`.trim() === memberOwnerId
         || this.groupMemberOwnerId(stage.subEventId, group.id) === memberOwnerId
       )) ?? null;
     if (!match) {
