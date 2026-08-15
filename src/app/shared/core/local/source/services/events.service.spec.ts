@@ -21,6 +21,7 @@ describe('LocalEventsService', () => {
   const queryEventRecordById = vi.fn();
   const applyStageAction = vi.fn();
   const querySubEventLeaderboard = vi.fn();
+  const queryAcceptedTournamentStageMemberUserIds = vi.fn();
   const saveEventSnapshot = vi.fn();
   const queryInvitationItemsByUser = vi.fn();
   const requestJoin = vi.fn();
@@ -52,6 +53,7 @@ describe('LocalEventsService', () => {
     queryEventRecordById.mockReset();
     applyStageAction.mockReset();
     querySubEventLeaderboard.mockReset();
+    queryAcceptedTournamentStageMemberUserIds.mockReset().mockReturnValue([]);
     saveEventSnapshot.mockReset();
     queryInvitationItemsByUser.mockReset().mockReturnValue([]);
     requestJoin.mockReset();
@@ -87,6 +89,7 @@ describe('LocalEventsService', () => {
             queryEventRecordById,
             applyStageAction,
             querySubEventLeaderboard,
+            queryAcceptedTournamentStageMemberUserIds,
             saveEventSnapshot,
             queryInvitationItemsByUser,
             requestJoin,
@@ -482,7 +485,7 @@ describe('LocalEventsService', () => {
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 2);
   });
 
-  it('creates a stage-named local Start notification with the shared stage avatar context', async () => {
+  it('creates a stage-named local Start notification only for assigned stage members', async () => {
     queryEventRecordById.mockReturnValue({
       id: 'event-1',
       title: 'Manual QA Tournament',
@@ -502,6 +505,7 @@ describe('LocalEventsService', () => {
       action: 'start-tournament',
       stageStatus: 'A'
     });
+    queryAcceptedTournamentStageMemberUserIds.mockReturnValue(['host', 'riley']);
     appendNotifications.mockImplementation(records => records);
     unreadCount.mockReturnValue(1);
 
@@ -515,7 +519,7 @@ describe('LocalEventsService', () => {
 
     const records = appendNotifications.mock.calls[0]?.[0];
     expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
-      .toEqual(['nova', 'riley']);
+      .toEqual(['riley']);
     expect(records[0]).toMatchObject({
       kind: 'event-tournament-started',
       title: 'Final started',

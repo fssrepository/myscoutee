@@ -1097,11 +1097,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       sourceType: 'event',
       sourceId: eventId
     };
-    const participants = [...new Set([
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
+      eventId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
       `${event.creatorUserId ?? ''}`.trim(),
       ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
       ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
-    ].filter(userId => userId && userId !== actorId))];
+    ]).filter(userId => userId && userId !== actorId))];
     const records: NotificationRecord[] = participants.map(recipientUserId => ({
       ...commonRecord,
       id: this.localNotificationId(
@@ -1258,7 +1262,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         stageTitle,
         stageAction: result.action,
         notification_title_key: 'notification.event.stage.started.title',
-        notification_message_key: 'notification.event.stage.started.message'
+        notification_message_key: 'notification.event.stage.started.message',
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events'
       }
     }));
     const appended = this.notificationsRepository.append(records);

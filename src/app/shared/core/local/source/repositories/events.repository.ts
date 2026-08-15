@@ -1382,6 +1382,36 @@ export class LocalEventsRepository {
     };
   }
 
+  queryAcceptedTournamentStageMemberUserIds(eventId: string, subEventId: string): string[] {
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedEventId || !normalizedSubEventId) {
+      return [];
+    }
+    const record = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === normalizedEventId) ?? null;
+    if (!record) {
+      return [];
+    }
+    const stages = this.runtimeSubEvents(record);
+    const stage = stages.find(item => `${item.id ?? ''}`.trim() === normalizedSubEventId) ?? null;
+    if (!stage) {
+      return [];
+    }
+    const membersTable = this.normalizeActivityMembersCollection(
+      this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]
+    );
+    return this.normalizeUserIds(this.stageGroupsForDisplay(normalizedEventId, stage, stages, record)
+      .flatMap(group => this.groupMemberRecordsFromTable(
+        membersTable,
+        normalizedEventId,
+        normalizedSubEventId,
+        `${group.id ?? ''}`.trim()
+      ))
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId));
+  }
+
   queryTournamentGroups(query: ContractTypes.EventTournamentGroupsQueryDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
     const normalizedUserId = `${query.userId ?? ''}`.trim();
     const normalizedEventId = `${query.eventId ?? ''}`.trim();
