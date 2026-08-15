@@ -63,4 +63,25 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
       interactive: false
     });
   });
+
+  it('renders a tournament room with the trophy image in both card and system avatar sizes', () => {
+    const imageUrl = '/media/public?key=images/system/tournament-room/v1/large.webp';
+    const card = ActivityEventInfoCardConverter.convert({
+      id: 'random-room:event-1:stage-1:room-1',
+      title: 'Tournament Group R1',
+      eventType: 'tournament-room',
+      creatorName: 'MyScoutee System',
+      imageUrl,
+      status: 'A'
+    } as ActivityEventDTO);
+
+    expect(card.imageUrl).toBe(imageUrl);
+    expect(card.surfaceTone).toBe('system');
+    expect(card.leadingIcon?.icon).toBe('emoji_events');
+    expect(card.mediaStart).toMatchObject({
+      variant: 'avatar',
+      imageUrl,
+      interactive: false
+    });
+  });
 });

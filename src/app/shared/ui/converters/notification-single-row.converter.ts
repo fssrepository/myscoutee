@@ -29,7 +29,8 @@ export class NotificationSingleRowConverter implements UiConverter<
     const options = optionsArg[0] ?? {};
     const read = Boolean(`${notification.readAtIso ?? ''}`.trim());
     const senderName = `${notification.senderName ?? ''}`.trim();
-    const systemRandomRoom = this.isSystemRandomRoom(notification);
+    const systemRandomRoom = this.isSystemGeneratedRoom(notification);
+    const tournamentRoom = `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'tournament-room';
     const sourceLabel = this.sourceLabel(notification.category);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
@@ -49,7 +50,7 @@ export class NotificationSingleRowConverter implements UiConverter<
       avatarAriaLabel: senderName || sourceLabel,
       avatarToneClass: systemRandomRoom ? 'notification-system-avatar' : null,
       icon: systemRandomRoom
-        ? 'auto_awesome'
+        ? tournamentRoom ? 'emoji_events' : 'auto_awesome'
         : senderName ? null : this.categoryIcon(notification.category),
       surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
@@ -125,9 +126,11 @@ export class NotificationSingleRowConverter implements UiConverter<
     });
   }
 
-  private isSystemRandomRoom(notification: NotificationDto): boolean {
+  private isSystemGeneratedRoom(notification: NotificationDto): boolean {
     return notification.kind === 'event-random-groups'
-      || `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'random-room';
+      || ['random-room', 'tournament-room'].includes(
+        `${notification.payload?.['eventScope'] ?? ''}`.trim()
+      );
   }
 
   private surfaceTone(notification: NotificationDto, read: boolean): SingleRowSurfaceTone {

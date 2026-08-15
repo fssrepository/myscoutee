@@ -149,6 +149,17 @@ export class ActivityEventInfoCardConverter {
   }
 
   private static mediaStart(dto: ActivityEventDTO): InfoCardData['mediaStart'] {
+    if (dto.eventType === 'tournament-room') {
+      return {
+        variant: 'avatar',
+        shape: 'circle',
+        tone: 'selected',
+        imageUrl: dto.imageUrl?.trim() || null,
+        label: '',
+        ariaLabel: 'Tournament group',
+        interactive: false
+      };
+    }
     if (dto.eventType === 'random-room') {
       return {
         variant: 'badge',
@@ -256,7 +267,7 @@ export class ActivityEventInfoCardConverter {
       case 'DR':
         return 'draft';
       default:
-        if (dto.eventType === 'random-room') {
+        if (dto.eventType === 'random-room' || dto.eventType === 'tournament-room') {
           return 'system';
         }
         if (this.isInvited(dto, activeUserId)) {
@@ -318,6 +329,9 @@ export class ActivityEventInfoCardConverter {
     }
     if (this.isInvited(dto, activeUserId)) {
       return 'mail';
+    }
+    if (dto.eventType === 'tournament-room') {
+      return 'emoji_events';
     }
     if (dto.eventType === 'random-room') {
       return 'auto_awesome';
