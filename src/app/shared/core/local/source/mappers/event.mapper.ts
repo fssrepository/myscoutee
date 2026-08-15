@@ -17,6 +17,7 @@ import * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
+import { tournamentGroupCountForIncoming } from '../../../common/tournament-group-count';
 
 export interface SubEventResourceLookup {
   ownerId: string;
@@ -721,23 +722,12 @@ export class LocalActivityEventsMapper {
     if (!this.isTournamentStageDefinition(item)) {
       return 0;
     }
-    const groupCapacityMin = this.nonNegativeInteger(item.tournamentGroupCapacityMin);
-    const groupCapacityMax = Math.max(
-      groupCapacityMin,
-      this.nonNegativeInteger(item.tournamentGroupCapacityMax)
-    );
-    if (groupCapacityMin <= 0 && groupCapacityMax <= 0) {
-      return 0;
-    }
-    const capacityMax = this.nonNegativeInteger(incomingCapacityMax);
-    const divisor = Math.max(1, groupCapacityMax > 0 ? groupCapacityMax : groupCapacityMin);
-    const groupsNeededForMaximum = capacityMax > 0
-      ? Math.ceil(capacityMax / divisor)
-      : 0;
-    const groupsAllowedByMinimum = groupCapacityMin > 0
-      ? Math.max(1, Math.floor(capacityMax / groupCapacityMin))
-      : groupsNeededForMaximum;
-    return Math.min(groupsNeededForMaximum, groupsAllowedByMinimum);
+    return tournamentGroupCountForIncoming({
+      groupCapacityMin: item.tournamentGroupCapacityMin,
+      groupCapacityMax: item.tournamentGroupCapacityMax,
+      incomingCapacityMax,
+      stageCapacityMax: item.capacityMax
+    });
   }
 
   private static withSubEventResource(

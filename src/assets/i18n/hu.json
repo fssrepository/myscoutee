@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.14.hu.56",
+  "version": "2026.08.15.hu.57",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2053,6 +2053,7 @@
     "event.subevents.my.participation": "Részvételem",
     "event.subevents.group.capacity.min": "Minimum létszám",
     "event.subevents.group.capacity.max": "Maximum létszám",
+    "event.subevents.stage.groups.capacity.summary": "Csoportok: {groups} × {min}–{max} fő",
     "event.checkout.payment.summary": "Fizetési összegzés",
     "event.checkout.continue.booking": "Foglalás folytatása",
     "event.checkout.paying": "Fizetés...",

@@ -59,7 +59,8 @@ import {
   type EventSubeventRuntimeMenuItemId
 } from '../../../shared/ui/converters';
 import {
-  EventsService
+  EventsService,
+  I18nService
 } from '../../../shared/core';
 import {
   DialogStore
@@ -128,6 +129,7 @@ export class EventSubeventsListPopupComponent {
   private slotSectionSmartLists?: QueryList<SmartListComponent<SubEventDTO, EventSubeventsListFilters>>;
 
   private readonly eventsService = inject(EventsService);
+  private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
@@ -685,7 +687,8 @@ export class EventSubeventsListPopupComponent {
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
       hasMenuOptions: true,
-      menuTitle: item.name
+      menuTitle: item.name,
+      translateParams: (key, values, fallback) => this.i18n.translateParams(key, values, fallback)
     });
   }
 

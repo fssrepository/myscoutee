@@ -44,4 +44,21 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
 
     expect(card.menuBadgeCount).toBe(3);
   });
+
+  it('shows the compact tournament group and per-group capacity summary', () => {
+    const card = EventSubeventRuntimeInfoCardConverter.convert({
+      id: 'stage-qualifiers',
+      name: 'Qualifiers',
+      description: '',
+      startAt: '2027-03-05T12:00:00Z',
+      endAt: '2027-03-05T13:20:00Z',
+      groupsCount: 2,
+      tournamentGroupCapacityMin: 1,
+      tournamentGroupCapacityMax: 2
+    } as SubEventDTO, {
+      mode: 'Tournament'
+    });
+
+    expect(card.metaRows).toContain('Groups: 2 × 1–2 members');
+  });
 });

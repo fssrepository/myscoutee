@@ -36,6 +36,7 @@ import type { LocationCoordinates, UserEventCountersDto } from '../../../contrac
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 import * as AppConstants from '../../../common/constants';
+import { tournamentGroupCountForIncoming } from '../../../common/tournament-group-count';
 
 interface SubEventParticipantSlotCandidate {
   slot: ActivityContracts.SubEventsSlotDTO;
@@ -3787,9 +3788,8 @@ export class LocalEventsRepository {
       return 0;
     }
     const sequence = stages?.length ? stages : [stage];
-    let incomingCapacityMax = Math.max(
-      this.toNonNegativeInteger((eventRecord as { capacityMax?: number | null } | null | undefined)?.capacityMax),
-      this.toNonNegativeInteger(stage.capacityMax)
+    let incomingCapacityMax = this.toNonNegativeInteger(
+      (eventRecord as { capacityMax?: number | null } | null | undefined)?.capacityMax
     );
     for (const candidate of sequence) {
       const groupCount = this.autoTournamentGroupCountForIncoming(candidate, incomingCapacityMax);
@@ -3811,22 +3811,12 @@ export class LocalEventsRepository {
     if (!stage) {
       return 0;
     }
-    const groupMin = Math.max(0, Math.trunc(Number(stage.tournamentGroupCapacityMin) || 0));
-    const groupMax = Math.max(groupMin, Math.trunc(Number(stage.tournamentGroupCapacityMax) || groupMin));
-    if (groupMin > 0 || groupMax > 0) {
-      const divisor = Math.max(1, groupMax > 0 ? groupMax : groupMin);
-      const stageMax = incomingCapacityMax > 0
-        ? incomingCapacityMax
-        : Math.max(0, Math.trunc(Number(stage.capacityMax) || 0));
-      const groupsNeededForMaximum = stageMax > 0
-        ? Math.ceil(stageMax / divisor)
-        : 0;
-      const groupsAllowedByMinimum = groupMin > 0
-        ? Math.max(1, Math.floor(stageMax / groupMin))
-        : groupsNeededForMaximum;
-      return Math.min(groupsNeededForMaximum, groupsAllowedByMinimum);
-    }
-    return 0;
+    return tournamentGroupCountForIncoming({
+      groupCapacityMin: stage.tournamentGroupCapacityMin,
+      groupCapacityMax: stage.tournamentGroupCapacityMax,
+      incomingCapacityMax,
+      stageCapacityMax: stage.capacityMax
+    });
   }
 
   private hasTournamentGroupCapacityRule(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
