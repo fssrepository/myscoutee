@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.08.06.en.53",
+  "version": "2026.08.14.en.56",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -170,6 +170,9 @@
     "demo.data.ready": "Demo data ready",
     "demo.admin.selector.subtitle": "Choose an admin profile.",
     "demo.selector.subtitle": "Choose a demo profile.",
+    "demo.selector.status.blocked": "Blocked",
+    "demo.selector.status.deleted": "Deleted",
+    "demo.selector.status.new": "New",
     "demo.session.ready": "Demo session ready",
     "drafts": "Drafts",
     "edit": "Edit",
@@ -2081,6 +2084,10 @@
     "event.checkout.promo.required": "Enter a promo code.",
     "event.checkout.promo.duplicate": "This promo code is already applied.",
     "event.checkout.promo.invalid": "This promo code is not valid for this event.",
+    "event.members.invite.capacity.full.title": "No available places",
+    "event.members.invite.capacity.full.message": "The selected member was not invited because every place is already taken or reserved.",
+    "event.members.invite.not.sent.title": "Invitation not sent",
+    "event.members.invite.not.sent.message": "The selected invitation could not be sent.",
     "event.editor.create": "Create Event",
     "event.editor.save.aria": "Save event",
     "event.editor.publish.question": "Publish event?",
@@ -3073,6 +3080,11 @@
     "global.identity.error.unavailable": "Network identity synchronization is not available from this deployment.",
     "global.identity.error.local.unavailable": "A browser-only workspace has no trusted deployment key, so it cannot create a network identity.",
     "global.identity.error.failed": "The network identity request failed.",
+    "auth.session.limit.reached": "Two sessions are already active. Sign out from one of them, then try again.",
+    "auth.session.registration.failed": "The secure session could not be registered. Please try again.",
+    "notification.security.login.title": "Security alert",
+    "notification.security.login.new.message": "New login from {clientLabel}.",
+    "notification.security.login.blocked.message": "Blocked login attempt from {clientLabel}: two sessions are already active.",
     "operator.request.failed": "The operator request failed."
   }
 }
