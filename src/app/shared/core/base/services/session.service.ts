@@ -4,7 +4,10 @@ import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
-import { isFirebaseLoginEnabled } from '../../common/firebase-login-mode';
+import {
+  isFirebaseLoginEnabled,
+  resolveRuntimeAuthMode
+} from '../../common/firebase-login-mode';
 
 type FirebaseAuthServiceInstance = import('./firebase-auth.service').FirebaseAuthService;
 type HttpOperatorBootstrapAuthServiceInstance =
@@ -37,6 +40,7 @@ export class SessionService {
 
   private readonly injector = inject(Injector);
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
+  private readonly authModeRef = signal<AuthMode>('selector');
   private readonly firebaseBusyRef = signal(false);
   private readonly firebaseNoticeRef = signal('');
   private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
@@ -62,7 +66,16 @@ export class SessionService {
     }
     return '';
   });
-  readonly authMode: AuthMode = isFirebaseLoginEnabled() ? 'firebase' : 'selector';
+  get authMode(): AuthMode {
+    return this.authModeRef();
+  }
+
+  setFirebaseRuntimeAvailable(available: boolean): void {
+    this.authModeRef.set(resolveRuntimeAuthMode(
+      isFirebaseLoginEnabled(),
+      available
+    ));
+  }
 
   currentSession(): AppSession | null {
     return this.sessionRef();

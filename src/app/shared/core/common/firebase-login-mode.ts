@@ -1,4 +1,5 @@
 import { environment } from '../../../../environments/environment';
+import type { AuthMode } from './constants';
 
 export function resolveFirebaseLoginEnabled(
   configured: boolean,
@@ -24,4 +25,13 @@ const firebaseLoginEnabled = resolveFirebaseLoginEnabled(
 
 export function isFirebaseLoginEnabled(): boolean {
   return firebaseLoginEnabled;
+}
+
+export function resolveRuntimeAuthMode(
+  loginCapabilityEnabled: boolean,
+  firebaseRuntimeAvailable: boolean
+): AuthMode {
+  return loginCapabilityEnabled && firebaseRuntimeAvailable
+    ? 'firebase'
+    : 'selector';
 }

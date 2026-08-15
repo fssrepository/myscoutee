@@ -15,6 +15,7 @@ describe('EntryPageComponent operator authentication gate', () => {
       ensureHttpLoginAccessAllowed: ReturnType<typeof vi.fn>;
       ensureEntryConsent: ReturnType<typeof vi.fn>;
       openBundledLoginUnavailableInfo: ReturnType<typeof vi.fn>;
+      synchronizeDeploymentAuthMode: ReturnType<typeof vi.fn>;
       openEntryAuthPopup: (options: {
         forceAuthPopup?: boolean;
         bypassConsumerEligibility?: boolean;
@@ -32,6 +33,7 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.ensureHttpLoginAccessAllowed = vi.fn().mockResolvedValue(false);
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);
     component.openBundledLoginUnavailableInfo = vi.fn();
+    component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
 
     await component.openEntryAuthPopup({
       forceAuthPopup: true,
@@ -43,6 +45,39 @@ describe('EntryPageComponent operator authentication gate', () => {
     expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
     expect(component.ensureEntryConsent).toHaveBeenCalledOnce();
     expect(component.showFirebaseAuthPopup).toBe(true);
+  });
+
+  it('opens the dynamic demo selector when deployment Firebase is unavailable', async () => {
+    const component = Object.create(EntryPageComponent.prototype) as {
+      entryNetworkUnavailable: boolean;
+      loginEligibilityBusy: boolean;
+      sessionService: {
+        authMode: 'selector';
+        firebaseProfile: () => null;
+      };
+      synchronizeDeploymentAuthMode: ReturnType<typeof vi.fn>;
+      isLoginBlockedByLandingBundle: ReturnType<typeof vi.fn>;
+      isLoginLocationRequiredByLandingBundle: ReturnType<typeof vi.fn>;
+      ensureEntryConsent: ReturnType<typeof vi.fn>;
+      openDemoUserSelectorPopup: ReturnType<typeof vi.fn>;
+      openEntryAuthPopup: () => Promise<void>;
+    };
+    component.entryNetworkUnavailable = false;
+    component.loginEligibilityBusy = false;
+    component.sessionService = {
+      authMode: 'selector',
+      firebaseProfile: () => null
+    };
+    component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
+    component.isLoginBlockedByLandingBundle = vi.fn().mockReturnValue(false);
+    component.isLoginLocationRequiredByLandingBundle = vi.fn().mockReturnValue(false);
+    component.ensureEntryConsent = vi.fn().mockReturnValue(true);
+    component.openDemoUserSelectorPopup = vi.fn();
+
+    await component.openEntryAuthPopup();
+
+    expect(component.synchronizeDeploymentAuthMode).toHaveBeenCalledOnce();
+    expect(component.openDemoUserSelectorPopup).toHaveBeenCalledOnce();
   });
 });
 

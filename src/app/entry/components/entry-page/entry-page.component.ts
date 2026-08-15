@@ -30,6 +30,9 @@ import {
   APP_STORAGE_KEYS
 } from '../../../shared/core/common/storage-scope';
 import {
+  isFirebaseLoginEnabled
+} from '../../../shared/core/common/firebase-login-mode';
+import {
   hasOperatorRole
 } from '../../../shared/core/common/user-role';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts/content.interface';
@@ -48,6 +51,9 @@ import {
 import {
   HelpCenterService
 } from '../../../shared/core/base/services/help-center.service';
+import {
+  FirebaseAppService
+} from '../../../shared/core/base/services/firebase-app.service';
 import {
   I18nService
 } from '../../../shared/core/base/services/i18n.service';
@@ -143,6 +149,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly adminWorkspace = inject(AdminWorkspaceStore);
   private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
@@ -282,6 +289,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (this.entryNetworkUnavailable) {
       return;
     }
+    await this.synchronizeDeploymentAuthMode();
     if (
       !options.bypassConsumerEligibility
       && this.isLoginBlockedByLandingBundle()
@@ -485,9 +493,19 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
     this.syncLandingLoginAvailability(null, 'reset');
-    this.resolveBrowserLocationAccessIfNeeded(true);
     this.showFirebaseAuthPopup = false;
+    void this.synchronizeDeploymentAuthMode();
     void this.loadEntryContent();
+  }
+
+  private async synchronizeDeploymentAuthMode(): Promise<void> {
+    if (!isFirebaseLoginEnabled()) {
+      this.sessionService.setFirebaseRuntimeAvailable(false);
+      this.syncEntryAuthGateState();
+      return;
+    }
+    await this.firebaseAppService.ensureFirebaseRuntime();
+    this.syncEntryAuthGateState();
   }
 
   private ensureEntryConsent(): boolean {
