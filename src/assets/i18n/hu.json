@@ -2412,6 +2412,8 @@
     "notification.event.stage.finalized.message": "A(z) {stageTitle} szakasz lezárult.",
     "notification.event.stage.advanced.title": "Továbbjutottál: {nextStageTitle}",
     "notification.event.stage.advanced.message": "Továbbjutottál a(z) {stageTitle} szakaszból a(z) {nextStageTitle} szakaszba.",
+    "notification.event.stage.not-advanced.title": "Nem jutottál tovább: {stageTitle}",
+    "notification.event.stage.not-advanced.message": "Nem jutottál tovább a(z) {stageTitle} szakaszból a(z) {nextStageTitle} szakaszba.",
     "notification.event.tournament.finalized.title": "A verseny lezárult",
     "notification.event.tournament.finalized.message": "A(z) {stageTitle} szakasz lezárult. A teljes verseny véget ért. Nyisd meg az eredményeket a helyezések megtekintéséhez.",
     "notification.event.tournament.finalized.message.winner": "A(z) {stageTitle} szakasz lezárult. A teljes verseny véget ért. Győztes: {winnerNames}.",

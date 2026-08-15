@@ -1147,6 +1147,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       .flatMap(group => group.advancingMemberIds ?? [])
       .map(userId => `${userId ?? ''}`.trim())
       .filter(userId => userId && acceptedUserIds.has(userId)))];
+    const notAdvancingUserIds = [...new Set((leaderboard?.groups ?? [])
+      .flatMap(group => group.members ?? [])
+      .map(member => `${member?.id ?? ''}`.trim())
+      .filter(userId => userId
+        && acceptedUserIds.has(userId)
+        && !advancingUserIds.includes(userId)))];
     if (nextStage && advancingUserIds.length > 0) {
       const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
       records.push(...advancingUserIds.map(recipientUserId => ({
@@ -1170,6 +1176,32 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           notification_title_key: 'notification.event.stage.advanced.title',
           notification_message_key: 'notification.event.stage.advanced.message',
           notification_tone: 'success'
+        }
+      })));
+    }
+    if (nextStage && notAdvancingUserIds.length > 0) {
+      const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
+      records.push(...notAdvancingUserIds.map(recipientUserId => ({
+        ...commonRecord,
+        id: this.localNotificationId('event-stage-not-advanced', eventId, recipientUserId),
+        recipientUserId,
+        kind: 'event-stage-not-advanced',
+        title: `Did not advance from ${stageTitle}`,
+        message: `You did not advance from ${stageTitle} to ${nextStageTitle}.`,
+        createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+        senderUserId: null,
+        senderName: 'MyScoutee System',
+        senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+        payload: {
+          ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+          eventId,
+          eventTitle,
+          eventScope: 'tournament-advancement',
+          stageTitle,
+          nextStageTitle,
+          notification_title_key: 'notification.event.stage.not-advanced.title',
+          notification_message_key: 'notification.event.stage.not-advanced.message',
+          notification_tone: 'warning'
         }
       })));
     }

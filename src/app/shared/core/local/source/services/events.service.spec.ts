@@ -411,7 +411,14 @@ describe('LocalEventsService', () => {
       subEventId: 'qualifiers',
       title: 'Qualifiers',
       leaderboardType: 'Score',
-      groups: [{ advancingMemberIds: ['host', 'riley'] }]
+      groups: [{
+        advancingMemberIds: ['host', 'riley'],
+        members: [
+          { id: 'host', name: 'Casey Bridge' },
+          { id: 'nova', name: 'Nova Social' },
+          { id: 'riley', name: 'Riley Outside' }
+        ]
+      }]
     });
     appendNotifications.mockImplementation(records => records);
     unreadCount.mockImplementation(userId => userId === 'riley' ? 2 : 1);
@@ -431,7 +438,8 @@ describe('LocalEventsService', () => {
         'nova:event-stage-finalized',
         'riley:event-stage-finalized',
         'host:event-stage-advanced',
-        'riley:event-stage-advanced'
+        'riley:event-stage-advanced',
+        'nova:event-stage-not-advanced'
       ]);
     expect(records[0]).toMatchObject({
       payload: {
@@ -456,12 +464,25 @@ describe('LocalEventsService', () => {
         stageTotal: '2'
       }
     });
+    expect(records[4]).toMatchObject({
+      recipientUserId: 'nova',
+      payload: {
+        stageTitle: 'Qualifiers',
+        nextStageTitle: 'Final',
+        notification_title_key: 'notification.event.stage.not-advanced.title',
+        notification_message_key: 'notification.event.stage.not-advanced.message',
+        notification_tone: 'warning',
+        notification_avatar_tone: 'stage',
+        stageIndex: '1',
+        stageTotal: '2'
+      }
+    });
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('host', 1);
-    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('nova', 1);
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('nova', 2);
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 2);
   });
 
-  it('creates a stage-named local Start notification with the human actor avatar context', async () => {
+  it('creates a stage-named local Start notification with the shared stage avatar context', async () => {
     queryEventRecordById.mockReturnValue({
       id: 'event-1',
       title: 'Manual QA Tournament',
@@ -503,17 +524,12 @@ describe('LocalEventsService', () => {
         stageTitle: 'Final',
         notification_title_key: 'notification.event.stage.started.title',
         notification_message_key: 'notification.event.stage.started.message',
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events',
         stageIndex: '2',
         stageTotal: '2'
       }
     });
-    expect(records[0]).toMatchObject({
-      senderUserId: 'host',
-      senderName: 'Casey Bridge',
-      senderAvatarUrl: '/casey.webp'
-    });
-    expect(records[0].payload).not.toHaveProperty('notification_avatar_tone');
-    expect(records[0].payload).not.toHaveProperty('notification_avatar_icon');
   });
 
   it('stores event editor local wall times as UTC instants', async () => {
