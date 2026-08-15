@@ -1,4 +1,7 @@
-import { resolveFirebaseLoginEnabled } from './firebase-login-mode';
+import {
+  resolveFirebaseLoginEnabled,
+  resolveRuntimeAuthMode
+} from './firebase-login-mode';
 
 describe('Firebase login mode', () => {
   it('allows the explicit QA route only in an opted-in non-production build', () => {
@@ -13,5 +16,11 @@ describe('Firebase login mode', () => {
 
   it('keeps an explicitly configured Firebase deployment enabled', () => {
     expect(resolveFirebaseLoginEnabled(true, true, false, '')).toBe(true);
+  });
+
+  it('uses demo selection until the deployment Firebase runtime is active', () => {
+    expect(resolveRuntimeAuthMode(true, false)).toBe('selector');
+    expect(resolveRuntimeAuthMode(true, true)).toBe('firebase');
+    expect(resolveRuntimeAuthMode(false, true)).toBe('selector');
   });
 });

@@ -166,6 +166,7 @@ export class FirebaseAppService {
     reconciliation = start
       .catch(async () => {
         await this.clearOwnedFirebaseApp();
+        this.sessionService.setFirebaseRuntimeAvailable(false);
         return null;
       })
       .finally(() => {
@@ -181,11 +182,13 @@ export class FirebaseAppService {
     const config = await this.loadFirebaseConfig();
     if (!config) {
       await this.clearOwnedFirebaseApp();
+      this.sessionService.setFirebaseRuntimeAvailable(false);
       return null;
     }
     const fingerprint = this.firebaseConfigFingerprint(config);
     if (this.runtime?.fingerprint === fingerprint) {
       this.lastSuccessfulConfigCheckAt = Date.now();
+      this.sessionService.setFirebaseRuntimeAvailable(true);
       return this.runtime;
     }
     await this.clearOwnedFirebaseApp();
@@ -213,6 +216,7 @@ export class FirebaseAppService {
     };
     this.lastSuccessfulConfigCheckAt = Date.now();
     this.activeRuntimeRef.set(this.runtime);
+    this.sessionService.setFirebaseRuntimeAvailable(true);
     return this.runtime;
   }
 

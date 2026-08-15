@@ -55,4 +55,31 @@ export class FirebaseSessionRegistryService {
       }
     ));
   }
+
+  revokeDemoSession(sessionId: string, userId: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(
+      `${this.apiBaseUrl}/auth/me/logout`,
+      { userId },
+      {
+        headers: new HttpHeaders({
+          [FirebaseSessionRegistryService.SESSION_ID_HEADER]: sessionId,
+          'X-App-Session-Kind': 'demo',
+          'X-Demo-User-Id': userId
+        })
+      }
+    ));
+  }
+
+  revokeFirebaseSession(sessionId: string, userId: string, token: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(
+      `${this.apiBaseUrl}/auth/me/logout`,
+      { userId },
+      {
+        headers: new HttpHeaders({
+          Authorization: `Bearer ${token}`,
+          [FirebaseSessionRegistryService.SESSION_ID_HEADER]: sessionId
+        })
+      }
+    ));
+  }
 }

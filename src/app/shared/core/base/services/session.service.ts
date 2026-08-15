@@ -4,7 +4,10 @@ import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
-import { isFirebaseLoginEnabled } from '../../common/firebase-login-mode';
+import {
+  isFirebaseLoginEnabled,
+  resolveRuntimeAuthMode
+} from '../../common/firebase-login-mode';
 
 type FirebaseAuthServiceInstance = import('./firebase-auth.service').FirebaseAuthService;
 type HttpOperatorBootstrapAuthServiceInstance =
@@ -37,6 +40,7 @@ export class SessionService {
 
   private readonly injector = inject(Injector);
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
+  private readonly authModeRef = signal<AuthMode>('selector');
   private readonly firebaseBusyRef = signal(false);
   private readonly firebaseNoticeRef = signal('');
   private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
@@ -62,7 +66,16 @@ export class SessionService {
     }
     return '';
   });
-  readonly authMode: AuthMode = isFirebaseLoginEnabled() ? 'firebase' : 'selector';
+  get authMode(): AuthMode {
+    return this.authModeRef();
+  }
+
+  setFirebaseRuntimeAvailable(available: boolean): void {
+    this.authModeRef.set(resolveRuntimeAuthMode(
+      isFirebaseLoginEnabled(),
+      available
+    ));
+  }
 
   currentSession(): AppSession | null {
     return this.sessionRef();
@@ -254,9 +267,36 @@ export class SessionService {
 
   async logout(): Promise<void> {
     const current = this.sessionRef();
+    let firebaseToken: string | null = null;
+    if (current?.kind === 'firebase') {
+      try {
+        firebaseToken = await (await this.firebaseAuthService()).getIdToken();
+      } catch {
+        // Local logout must still complete if Firebase cannot return a token.
+      }
+    }
     this.firebaseNoticeRef.set('');
     this.clearStoredSession();
     localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
+    try {
+      const sessionId = current?.kind === 'demo' || current?.kind === 'firebase'
+        ? `${current.sessionId ?? ''}`.trim()
+        : '';
+      if (current?.kind === 'demo' && sessionId) {
+        await (await this.firebaseSessionRegistryService()).revokeDemoSession(
+          sessionId,
+          current.userId
+        );
+      } else if (current?.kind === 'firebase' && sessionId && firebaseToken) {
+        await (await this.firebaseSessionRegistryService()).revokeFirebaseSession(
+          sessionId,
+          current.profile.id,
+          firebaseToken
+        );
+      }
+    } catch {
+      // Keep logout resilient when the registry is offline or already revoked.
+    }
     if (current?.kind === 'firebase') {
       await (await this.firebaseAuthService()).signOut();
     }

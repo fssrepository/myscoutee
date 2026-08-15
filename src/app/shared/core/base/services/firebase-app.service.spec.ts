@@ -20,6 +20,7 @@ vi.mock('firebase/app', () => ({
 
 describe('FirebaseAppService reconciliation', () => {
   const fetchMock = vi.fn();
+  const setFirebaseRuntimeAvailable = vi.fn();
 
   beforeEach(() => {
     vi.mocked(deleteApp).mockReset();
@@ -33,6 +34,7 @@ describe('FirebaseAppService reconciliation', () => {
       automaticDataCollectionEnabled: false
     }) as FirebaseApp);
     fetchMock.mockReset();
+    setFirebaseRuntimeAvailable.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     TestBed.configureTestingModule({
       providers: [
@@ -42,7 +44,8 @@ describe('FirebaseAppService reconciliation', () => {
           useValue: {
             currentSession: () => ({
               kind: 'firebase'
-            })
+            }),
+            setFirebaseRuntimeAvailable
           }
         }
       ]
@@ -85,7 +88,9 @@ describe('FirebaseAppService reconciliation', () => {
     const service = TestBed.inject(FirebaseAppService);
 
     expect(await service.ensureFirebaseRuntime()).toBeNull();
+    expect(setFirebaseRuntimeAvailable).toHaveBeenLastCalledWith(false);
     expect((await service.ensureFirebaseRuntime())?.config.revision).toBe(3);
+    expect(setFirebaseRuntimeAvailable).toHaveBeenLastCalledWith(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

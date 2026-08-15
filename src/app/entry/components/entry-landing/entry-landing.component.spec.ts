@@ -133,6 +133,27 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(component).ideasPopupModel().subtitle).toBe('4 articles');
   });
 
+  it('keeps Start exploring active while only login eligibility is unavailable or awaiting location', () => {
+    const component = TestBed.createComponent(EntryLandingComponent).componentInstance;
+    const demoRequested = vi.fn();
+    component.demoRequested.subscribe(demoRequested);
+    component.networkUnavailable = false;
+
+    component.authUnavailable = true;
+    component.authLocationRequired = false;
+    view(component).requestDemo();
+
+    component.authUnavailable = false;
+    component.authLocationRequired = true;
+    view(component).requestDemo();
+
+    expect(demoRequested).toHaveBeenCalledTimes(2);
+
+    component.networkUnavailable = true;
+    view(component).requestDemo();
+    expect(demoRequested).toHaveBeenCalledTimes(2);
+  });
+
   it('uses deployment branding and singular count in the article popup', () => {
     branding.set({
       ...DEFAULT_DEPLOYMENT_BRANDING,
@@ -261,6 +282,7 @@ interface EntryLandingTestView {
   ideasPopupOpen: boolean;
   partnersPopupOpen: boolean;
   ideasPopupModel: () => { title?: string; subtitle?: string };
+  requestDemo: () => void;
 }
 
 function view(component: EntryLandingComponent): EntryLandingTestView {
