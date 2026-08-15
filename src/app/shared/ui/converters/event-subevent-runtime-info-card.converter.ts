@@ -70,7 +70,7 @@ export class EventSubeventRuntimeInfoCardConverter
       description: item.description || 'No description',
       detailRows: [],
       surfaceTone: isTournament ? 'stage-runtime' : 'draft',
-      accentHue: isTournament ? this.stageAccentHue(sequenceNumber, sequenceTotal) : null,
+      accentHue: isTournament ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal) : null,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : status.icon,
         tone: isTournament ? 'stage' : status.leadingTone
@@ -345,13 +345,6 @@ export class EventSubeventRuntimeInfoCardConverter
     return 'A';
   }
 
-  private static stageAccentHue(stageNumber: number, totalStages: number): number {
-    if (totalStages <= 1) {
-      return 210;
-    }
-    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
-    return Math.round(210 - (210 * ratio));
-  }
 }
 
 export const eventSubeventRuntimeInfoCardConverter = new EventSubeventRuntimeInfoCardConverter();

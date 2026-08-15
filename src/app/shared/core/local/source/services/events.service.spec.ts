@@ -19,6 +19,8 @@ import { LocalUsersService } from './users.service';
 describe('LocalEventsService', () => {
   const waitForRouteDelay = vi.fn();
   const queryEventRecordById = vi.fn();
+  const applyStageAction = vi.fn();
+  const querySubEventLeaderboard = vi.fn();
   const saveEventSnapshot = vi.fn();
   const queryInvitationItemsByUser = vi.fn();
   const requestJoin = vi.fn();
@@ -39,12 +41,17 @@ describe('LocalEventsService', () => {
   const syncPublishedMainEventChat = vi.fn();
   const updateEventChatOwnerStatus = vi.fn();
   const syncRealtimeNotificationCount = vi.fn();
+  const peekStageRuntimeRecord = vi.fn();
+  const replaceStageRuntimeRecord = vi.fn();
+  const flushStageRuntime = vi.fn();
   const synchronizeTicketsForEvent = vi.fn();
   const synchronizeTicketForMemberChange = vi.fn();
 
   beforeEach(() => {
     waitForRouteDelay.mockReset().mockResolvedValue(undefined);
     queryEventRecordById.mockReset();
+    applyStageAction.mockReset();
+    querySubEventLeaderboard.mockReset();
     saveEventSnapshot.mockReset();
     queryInvitationItemsByUser.mockReset().mockReturnValue([]);
     requestJoin.mockReset();
@@ -65,6 +72,9 @@ describe('LocalEventsService', () => {
     syncPublishedMainEventChat.mockReset().mockReturnValue(false);
     updateEventChatOwnerStatus.mockReset().mockReturnValue(0);
     syncRealtimeNotificationCount.mockReset();
+    peekStageRuntimeRecord.mockReset().mockReturnValue(null);
+    replaceStageRuntimeRecord.mockReset();
+    flushStageRuntime.mockReset().mockResolvedValue(undefined);
     synchronizeTicketsForEvent.mockReset();
     synchronizeTicketForMemberChange.mockReset();
     TestBed.configureTestingModule({
@@ -75,6 +85,8 @@ describe('LocalEventsService', () => {
           provide: LocalEventsRepository,
           useValue: {
             queryEventRecordById,
+            applyStageAction,
+            querySubEventLeaderboard,
             saveEventSnapshot,
             queryInvitationItemsByUser,
             requestJoin,
@@ -97,7 +109,14 @@ describe('LocalEventsService', () => {
           }
         },
         { provide: LocalActivityResourcesRepository, useValue: {} },
-        { provide: LocalActivitySubEventStageRuntimeRepository, useValue: {} },
+        {
+          provide: LocalActivitySubEventStageRuntimeRepository,
+          useValue: {
+            peekRecord: peekStageRuntimeRecord,
+            replaceRecord: replaceStageRuntimeRecord,
+            flushToIndexedDb: flushStageRuntime
+          }
+        },
         { provide: LocalEventCheckoutBasketsRepository, useValue: {} },
         { provide: LocalEventFeedbackRepository, useValue: {} },
         { provide: LocalUsersRepository, useValue: { queryUserById } },
@@ -365,6 +384,130 @@ describe('LocalEventsService', () => {
     expect(trashItem.mock.invocationCallOrder[0])
       .toBeLessThan(markUnreadBySource.mock.invocationCallOrder[0]);
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('user-1', 3);
+  });
+
+  it('emits finalized and later advancement notifications with backend-compatible i18n keys', async () => {
+    queryEventRecordById.mockReturnValue({
+      id: 'event-1',
+      title: 'Manual QA Tournament',
+      creatorUserId: 'host',
+      adminIds: ['host'],
+      acceptedMemberUserIds: ['host', 'nova', 'riley'],
+      subEvents: [
+        { id: 'qualifiers', name: 'Qualifiers' },
+        { id: 'final', name: 'Final' }
+      ]
+    } as ActivityEventRecord);
+    queryUserById.mockReturnValue({ id: 'host', name: 'Casey Bridge', images: ['/casey.webp'] });
+    applyStageAction.mockReturnValue({
+      sourceId: 'event-1',
+      subEventId: 'qualifiers',
+      subEventIndex: 0,
+      action: 'finalize-stage',
+      stageStatus: 'F'
+    });
+    querySubEventLeaderboard.mockReturnValue({
+      eventId: 'event-1',
+      subEventId: 'qualifiers',
+      title: 'Qualifiers',
+      leaderboardType: 'Score',
+      groups: [{ advancingMemberIds: ['host', 'riley'] }]
+    });
+    appendNotifications.mockImplementation(records => records);
+    unreadCount.mockImplementation(userId => userId === 'riley' ? 2 : 1);
+
+    await TestBed.inject(LocalEventsService).applyStageAction({
+      userId: 'host',
+      sourceId: 'event-1',
+      subEventId: 'qualifiers',
+      subEventIndex: 0,
+      action: 'finalize-stage'
+    });
+
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string; kind: string }) =>
+      `${record.recipientUserId}:${record.kind}`))
+      .toEqual([
+        'nova:event-stage-finalized',
+        'riley:event-stage-finalized',
+        'host:event-stage-advanced',
+        'riley:event-stage-advanced'
+      ]);
+    expect(records[0]).toMatchObject({
+      payload: {
+        notification_title_key: 'notification.event.stage.finalized.title',
+        notification_message_key: 'notification.event.stage.finalized.message',
+        notification_avatar_tone: 'stage',
+        stageIndex: '1',
+        stageTotal: '2'
+      }
+    });
+    expect(records[2]).toMatchObject({
+      recipientUserId: 'host',
+      payload: {
+        stageTitle: 'Qualifiers',
+        nextStageTitle: 'Final',
+        notification_title_key: 'notification.event.stage.advanced.title',
+        notification_message_key: 'notification.event.stage.advanced.message',
+        notification_tone: 'success',
+        notification_avatar_tone: 'stage',
+        stageIndex: '2',
+        stageTotal: '2'
+      }
+    });
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('host', 1);
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('nova', 1);
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 2);
+  });
+
+  it('creates a stage-named local Start notification with the shared stage avatar context', async () => {
+    queryEventRecordById.mockReturnValue({
+      id: 'event-1',
+      title: 'Manual QA Tournament',
+      creatorUserId: 'host',
+      adminIds: ['host'],
+      acceptedMemberUserIds: ['host', 'nova', 'riley'],
+      subEvents: [
+        { id: 'qualifiers', name: 'Qualifiers' },
+        { id: 'final', name: 'Final' }
+      ]
+    } as ActivityEventRecord);
+    queryUserById.mockReturnValue({ id: 'host', name: 'Casey Bridge', images: ['/casey.webp'] });
+    applyStageAction.mockReturnValue({
+      sourceId: 'event-1',
+      subEventId: 'final',
+      subEventIndex: 1,
+      action: 'start-tournament',
+      stageStatus: 'A'
+    });
+    appendNotifications.mockImplementation(records => records);
+    unreadCount.mockReturnValue(1);
+
+    await TestBed.inject(LocalEventsService).applyStageAction({
+      userId: 'host',
+      sourceId: 'event-1',
+      subEventId: 'final',
+      subEventIndex: 1,
+      action: 'start-tournament'
+    });
+
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['nova', 'riley']);
+    expect(records[0]).toMatchObject({
+      kind: 'event-tournament-started',
+      title: 'Final started',
+      message: 'Final has started. Groups are ready.',
+      payload: {
+        stageTitle: 'Final',
+        notification_title_key: 'notification.event.stage.started.title',
+        notification_message_key: 'notification.event.stage.started.message',
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events',
+        stageIndex: '2',
+        stageTotal: '2'
+      }
+    });
   });
 
   it('stores event editor local wall times as UTC instants', async () => {

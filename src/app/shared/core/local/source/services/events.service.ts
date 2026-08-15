@@ -1043,6 +1043,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     await this.waitForEventMutationDelay();
+    const event = this.eventsRepository.queryEventRecordById(request.userId, request.sourceId);
     const result = this.eventsRepository.applyStageAction(request);
     if (result?.subEventId) {
       const existing = this.activitySubEventStageRuntimeRepository.peekRecord({
@@ -1059,9 +1060,199 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         stageFinalizedByUserId: result.stageFinalizedByUserId ?? null
       }, existing));
     }
+    if (event && result?.action === 'finalize-stage' && result.stageStatus === 'F') {
+      this.appendLocalStageFinalizedNotifications(event, result, request.userId);
+    }
+    if (event && result?.action === 'start-tournament' && result.stageStatus === 'A') {
+      this.appendLocalStageStartedNotifications(event, result, request.userId);
+    }
     await this.eventsRepository.flushToIndexedDb();
     await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
     return result;
+  }
+
+  private appendLocalStageFinalizedNotifications(
+    event: ActivityEventRecord,
+    result: ActivityEventStageActionResultDTO,
+    actorUserId: string
+  ): void {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    const finalizedAtMs = Date.now();
+    const nextStage = stages[result.subEventIndex + 1] ?? null;
+    const finalStage = !nextStage;
+    const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
+    const commonRecord = {
+      category: 'event' as const,
+      readAtIso: null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId
+    };
+    const participants = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ].filter(userId => userId && userId !== actorId))];
+    const records: NotificationRecord[] = participants.map(recipientUserId => ({
+      ...commonRecord,
+      id: this.localNotificationId(
+        finalStage ? 'event-tournament-finalized' : 'event-stage-finalized',
+        eventId,
+        recipientUserId
+      ),
+      recipientUserId,
+      kind: finalStage ? 'event-tournament-finalized' : 'event-stage-finalized',
+      title: finalStage ? 'Tournament finalized' : `${stageTitle} finalized`,
+      message: finalStage
+        ? `${stageTitle} is complete. The tournament has been finalized. Open the event results to review the standings.`
+        : `${stageTitle} has been finalized.`,
+      createdAtIso: new Date(finalizedAtMs).toISOString(),
+      senderUserId: actorId || null,
+      senderName: `${actor?.name ?? actorId}`.trim() || null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      payload: {
+        ...stagePayload,
+        eventId,
+        eventTitle,
+        eventScope: 'event-participants',
+        stageTitle,
+        stageAction: result.action,
+        notification_title_key: finalStage
+          ? 'notification.event.tournament.finalized.title'
+          : 'notification.event.stage.finalized.title',
+        notification_message_key: finalStage
+          ? 'notification.event.tournament.finalized.message'
+          : 'notification.event.stage.finalized.message',
+        notification_tone: finalStage ? 'success' : 'info',
+        ...(finalStage ? { tournamentComplete: 'true' } : {})
+      }
+    }));
+
+    const leaderboard = nextStage
+      ? this.eventsRepository.querySubEventLeaderboard(result.sourceId, `${stage.id ?? ''}`.trim())
+      : null;
+    const acceptedUserIds = new Set((event.acceptedMemberUserIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(Boolean));
+    const advancingUserIds = [...new Set((leaderboard?.groups ?? [])
+      .flatMap(group => group.advancingMemberIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId && acceptedUserIds.has(userId)))];
+    if (nextStage && advancingUserIds.length > 0) {
+      const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
+      records.push(...advancingUserIds.map(recipientUserId => ({
+        ...commonRecord,
+        id: this.localNotificationId('event-stage-advanced', eventId, recipientUserId),
+        recipientUserId,
+        kind: 'event-stage-advanced',
+        title: `Advanced to ${nextStageTitle}`,
+        message: `You advanced from ${stageTitle} to ${nextStageTitle}.`,
+        createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+        senderUserId: null,
+        senderName: 'MyScoutee System',
+        senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+        payload: {
+          ...this.localTournamentStagePayload(stages, result.subEventIndex + 1),
+          eventId,
+          eventTitle,
+          eventScope: 'tournament-advancement',
+          stageTitle,
+          nextStageTitle,
+          notification_title_key: 'notification.event.stage.advanced.title',
+          notification_message_key: 'notification.event.stage.advanced.message',
+          notification_tone: 'success'
+        }
+      })));
+    }
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(
+        recipientUserId,
+        this.notificationsRepository.unreadCount(recipientUserId)
+      );
+    });
+  }
+
+  private appendLocalStageStartedNotifications(
+    event: ActivityEventRecord,
+    result: ActivityEventStageActionResultDTO,
+    actorUserId: string
+  ): void {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    const participants = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ].filter(userId => userId && userId !== actorId))];
+    const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
+    const records: NotificationRecord[] = participants.map(recipientUserId => ({
+      id: this.localNotificationId('event-tournament-started', eventId, recipientUserId),
+      recipientUserId,
+      kind: 'event-tournament-started',
+      category: 'event',
+      title: `${stageTitle} started`,
+      message: `${stageTitle} has started. Groups are ready.`,
+      createdAtIso: new Date().toISOString(),
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: `${actor?.name ?? actorId}`.trim() || null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        ...stagePayload,
+        eventId,
+        eventTitle,
+        eventScope: 'event-participants',
+        stageTitle,
+        stageAction: result.action,
+        notification_title_key: 'notification.event.stage.started.title',
+        notification_message_key: 'notification.event.stage.started.message'
+      }
+    }));
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(
+        recipientUserId,
+        this.notificationsRepository.unreadCount(recipientUserId)
+      );
+    });
+  }
+
+  private localTournamentStagePayload(
+    stages: readonly { id?: string | null }[],
+    stageIndex: number
+  ): Record<string, string> {
+    const normalizedTotal = Math.max(1, stages.length);
+    const normalizedIndex = Math.min(
+      normalizedTotal,
+      Math.max(1, Math.trunc(Number(stageIndex) || 0) + 1)
+    );
+    return {
+      notification_avatar_tone: 'stage',
+      notification_avatar_icon: 'emoji_events',
+      stageIndex: `${normalizedIndex}`,
+      stageTotal: `${normalizedTotal}`
+    };
   }
 
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
