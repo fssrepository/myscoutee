@@ -66,6 +66,7 @@ export class LocalActivityEventsMapper {
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,
       creatorCity: record.creatorCity,
+      organizerUserId: record.organizerUserId ?? record.creatorUserId,
       visibility: record.visibility,
       startAtIso: record.startAtIso,
       endAtIso: record.endAtIso,

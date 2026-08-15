@@ -64,24 +64,29 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     });
   });
 
-  it('renders a tournament room with the trophy image in both card and system avatar sizes', () => {
+  it('uses the standard clickable organizer avatar over the tournament card image', () => {
     const imageUrl = '/media/public?key=images/system/tournament-room/v1/large.webp';
     const card = ActivityEventInfoCardConverter.convert({
       id: 'random-room:event-1:stage-1:room-1',
       title: 'Tournament Group R1',
       eventType: 'tournament-room',
-      creatorName: 'MyScoutee System',
+      creatorUserId: '',
+      organizerUserId: 'casey',
+      creatorName: 'Casey Bridge',
+      creatorInitials: 'CB',
+      creatorAvatarUrl: '/media/casey.webp',
       imageUrl,
       status: 'A'
     } as ActivityEventDTO);
 
     expect(card.imageUrl).toBe(imageUrl);
+    expect(card.ownerUserId).toBe('casey');
     expect(card.surfaceTone).toBe('system');
     expect(card.leadingIcon?.icon).toBe('emoji_events');
     expect(card.mediaStart).toMatchObject({
       variant: 'avatar',
-      imageUrl,
-      interactive: false
+      imageUrl: '/media/casey.webp',
+      interactive: true
     });
   });
 });

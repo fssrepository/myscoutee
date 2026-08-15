@@ -180,7 +180,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return {
       ...page,
       items: page.items.map(item => {
-        const creator = this.usersRepository.queryUserById(item.creatorUserId);
+        const creator = this.usersRepository.queryUserById(
+          item.organizerUserId?.trim() || item.creatorUserId
+        );
         return {
           ...item,
           creatorAvatarUrl: AppUtils.firstImageUrl(creator?.images)

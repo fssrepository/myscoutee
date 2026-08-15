@@ -37,6 +37,7 @@ export class ActivityEventInfoCardConverter {
     const invited = this.isInvited(dto, activeUserId);
     const trashView = options.trashView === true;
     const title = dto.title;
+    const profileUserId = this.profileUserId(dto);
 
     return {
       id: dto.id,
@@ -44,8 +45,8 @@ export class ActivityEventInfoCardConverter {
       dateIso: dto.startAtIso,
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
       status,
-      ownerId: dto.creatorUserId,
-      ownerUserId: dto.creatorUserId,
+      ownerId: profileUserId,
+      ownerUserId: profileUserId,
       groupLabel: options.groupLabel ?? null,
       title,
       surfaceTone: trashView ? 'deleted' : this.surfaceTone(status, dto, activeUserId),
@@ -149,17 +150,6 @@ export class ActivityEventInfoCardConverter {
   }
 
   private static mediaStart(dto: ActivityEventDTO): InfoCardData['mediaStart'] {
-    if (dto.eventType === 'tournament-room') {
-      return {
-        variant: 'avatar',
-        shape: 'circle',
-        tone: 'selected',
-        imageUrl: dto.imageUrl?.trim() || null,
-        label: '',
-        ariaLabel: 'Tournament group',
-        interactive: false
-      };
-    }
     if (dto.eventType === 'random-room') {
       return {
         variant: 'badge',
@@ -176,8 +166,12 @@ export class ActivityEventInfoCardConverter {
       imageUrl: dto.creatorAvatarUrl?.trim() || null,
       label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
       ariaLabel: `View ${dto.creatorName || 'organizer'} profile`,
-      interactive: Boolean(dto.creatorUserId?.trim())
+      interactive: Boolean(this.profileUserId(dto))
     };
+  }
+
+  private static profileUserId(dto: ActivityEventDTO): string {
+    return `${dto.organizerUserId ?? ''}`.trim() || `${dto.creatorUserId ?? ''}`.trim();
   }
 
   private static rowType(dto: ActivityEventDTO): 'events' | 'hosting' | 'invitations' {

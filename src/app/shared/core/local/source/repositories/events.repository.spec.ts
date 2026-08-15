@@ -53,6 +53,32 @@ describe('LocalEventsRepository event membership pages', () => {
       .toEqual([]);
   });
 
+  it('keeps a tournament organizer profile in Active Events without granting room ownership', () => {
+    seedUsers([
+      user('casey', 'Casey Bridge'),
+      user('nova', 'Nova Social')
+    ]);
+    seedEvents([
+      eventRecord({
+        id: 'tournament-room-1',
+        userId: 'room-system',
+        type: 'events',
+        creatorUserId: '',
+        organizerUserId: 'casey',
+        creatorName: 'Casey Bridge',
+        eventType: 'tournament-room',
+        acceptedMembers: 2,
+        acceptedMemberUserIds: ['casey', 'nova']
+      })
+    ]);
+
+    const active = repository.queryActivitiesEventRecordPage('casey', eventsPage('active-events')).records;
+    const hosting = repository.queryActivitiesEventRecordPage('casey', eventsPage('my-events')).records;
+
+    expect(active.map(item => item.id)).toEqual(['tournament-room-1']);
+    expect(hosting).toEqual([]);
+  });
+
   function seedUsers(users: UserDto[]): void {
     memoryDb.write(state => ({
       ...state,

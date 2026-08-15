@@ -254,6 +254,7 @@ export interface ActivityEventRecord {
   creatorInitials: string;
   creatorGender: AppConstants.UserGender;
   creatorCity: string;
+  organizerUserId?: string | null;
   visibility: AppConstants.EventVisibility;
   blindMode: EventContracts.EventBlindMode;
   startAtIso: string;
@@ -474,6 +475,7 @@ export interface ActivityEventDTO {
   creatorInitials: string;
   creatorAvatarUrl?: string | null;
   creatorCity: string;
+  organizerUserId?: string | null;
   visibility: AppConstants.EventVisibility;
   startAtIso: string;
   endAtIso: string;
