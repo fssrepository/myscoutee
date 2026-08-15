@@ -220,46 +220,30 @@
   font-size: 0.86rem;
 }
 
-.event-tournament-history-list {
-  display: grid;
-  gap: 0.44rem;
-}
-
-.event-tournament-history-item {
-  display: grid;
-  grid-template-columns: minmax(4rem, auto) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.58rem;
-  padding: 0.58rem 0.66rem;
-  border: 1px solid rgba(67, 103, 146, 0.16);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.76);
-  color: #254568;
-}
-
-.event-tournament-history-item strong,
-.event-tournament-history-item span,
-.event-tournament-history-item time {
+.event-tournament-table-history {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.event-tournament-history-item strong {
-  color: #214a72;
-  font-size: 0.82rem;
+.event-tournament-table-history th:first-child,
+.event-tournament-table-history td:first-child {
+  width: 4.5rem;
+  text-align: left;
+}
+
+.event-tournament-table-history th:last-child,
+.event-tournament-table-history td:last-child {
+  width: 7rem;
+  text-align: left;
+}
+
+.event-tournament-table-score-history td:first-child {
   font-weight: 900;
 }
 
-.event-tournament-history-item span,
-.event-tournament-history-item time {
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.event-tournament-history-item time {
-  color: rgba(37, 69, 104, 0.68);
+.event-tournament-table-fifa-history th:nth-child(2),
+.event-tournament-table-fifa-history td:nth-child(2) {
+  width: 5.5rem;
+  text-align: center;
 }
 
 .event-tournament-history-empty {
@@ -297,8 +281,29 @@
     min-width: 520px;
   }
 
-  .event-tournament-history-item {
-    grid-template-columns: minmax(0, 1fr);
+  .event-tournament-table.event-tournament-table-history {
+    min-width: 0;
+  }
+
+  .event-tournament-table-history th,
+  .event-tournament-table-history td {
+    padding: 0.42rem 0.3rem;
+    font-size: 0.69rem;
+  }
+
+  .event-tournament-table-history th:first-child,
+  .event-tournament-table-history td:first-child {
+    width: 3.6rem;
+  }
+
+  .event-tournament-table-history th:last-child,
+  .event-tournament-table-history td:last-child {
+    width: 6.1rem;
+  }
+
+  .event-tournament-table-fifa-history th:nth-child(2),
+  .event-tournament-table-fifa-history td:nth-child(2) {
+    width: 4.2rem;
   }
 
 }
