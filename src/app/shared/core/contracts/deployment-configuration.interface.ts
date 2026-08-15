@@ -41,7 +41,7 @@ export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
   homeLabel: 'Your preferences come first',
   logoUrl: 'assets/logo/heart.webp',
   logoCharacterIndex: 0,
-  themePreset: 'AURORA',
+  themePreset: 'VIOLET',
   revision: 0
 };
 

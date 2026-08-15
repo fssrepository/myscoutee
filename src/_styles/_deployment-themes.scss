@@ -44,7 +44,16 @@
   );
 }
 
-:root,
+[data-deployment-theme='aquarius'] {
+  --deployment-brand-primary: #127b86;
+  --deployment-brand-secondary: #18a09e;
+  --deployment-brand-accent: #4bc6ae;
+  --deployment-brand-soft: #d8f8ee;
+  --deployment-brand-text: #17646d;
+  --deployment-brand-shadow: rgba(18, 123, 134, 0.24);
+  @include deployment-semantic-theme;
+}
+
 [data-deployment-theme='aurora'] {
   --deployment-brand-primary: #7446f2;
   --deployment-brand-secondary: #d93f93;
@@ -56,12 +65,12 @@
 }
 
 [data-deployment-theme='ocean'] {
-  --deployment-brand-primary: #176fc1;
-  --deployment-brand-secondary: #1597b8;
-  --deployment-brand-accent: #42c4c7;
-  --deployment-brand-soft: #d8f6ff;
-  --deployment-brand-text: #16486c;
-  --deployment-brand-shadow: rgba(23, 111, 193, 0.24);
+  --deployment-brand-primary: #1f3a63;
+  --deployment-brand-secondary: #315fcf;
+  --deployment-brand-accent: #3d85e7;
+  --deployment-brand-soft: #eef5ff;
+  --deployment-brand-text: #173456;
+  --deployment-brand-shadow: rgba(31, 58, 99, 0.28);
   @include deployment-semantic-theme;
 }
 
@@ -85,6 +94,7 @@
   @include deployment-semantic-theme;
 }
 
+:root,
 [data-deployment-theme='violet'] {
   --deployment-brand-primary: #6941c6;
   --deployment-brand-secondary: #8c57d8;
@@ -122,16 +132,6 @@
   --deployment-brand-soft: #e6edf4;
   --deployment-brand-text: #304157;
   --deployment-brand-shadow: rgba(64, 86, 111, 0.24);
-  @include deployment-semantic-theme;
-}
-
-[data-deployment-theme='aquarius'] {
-  --deployment-brand-primary: #127b86;
-  --deployment-brand-secondary: #18a09e;
-  --deployment-brand-accent: #4bc6ae;
-  --deployment-brand-soft: #d8f8ee;
-  --deployment-brand-text: #17646d;
-  --deployment-brand-shadow: rgba(18, 123, 134, 0.24);
   @include deployment-semantic-theme;
 }
 

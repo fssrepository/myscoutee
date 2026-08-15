@@ -24,7 +24,7 @@ export interface OperatorBootstrapSeedResult {
 }
 
 export class SeedOperatorRegistryBuilder {
-  static readonly SEED_VERSION = 'operator-workspace-v7';
+  static readonly SEED_VERSION = 'operator-workspace-v8';
   static readonly PRIMARY_BASE_URL = 'https://registry.myscoutee.invalid';
   static readonly PRIMARY_SCOPE = 'demo:primary';
 
@@ -148,7 +148,7 @@ export class SeedOperatorRegistryBuilder {
             homeLabel: 'Your preferences come first',
             logoUrl: 'assets/logo/heart.webp',
             logoCharacterIndex: 0,
-            themePreset: 'OCEAN',
+            themePreset: 'VIOLET',
             revision: 0
           },
           payment: {

@@ -3,7 +3,7 @@ import { SeedOperatorRegistryBuilder } from '../../seed/builders/operator-regist
 import { LocalOperatorRegistryMapper } from './operator-registry.mapper';
 
 describe('LocalOperatorRegistryMapper', () => {
-  it('migrates only the v6 local default theme from Aurora to Ocean', () => {
+  it('migrates the v6 local default theme from Aurora to Violet', () => {
     const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
       new Date('2026-08-15T18:50:00.000Z')
     );
@@ -16,12 +16,28 @@ describe('LocalOperatorRegistryMapper', () => {
       initial
     );
 
-    expect(initial.seedVersion).toBe('operator-workspace-v7');
-    expect(initial.configuration.branding.themePreset).toBe('OCEAN');
-    expect(migrated.configuration.branding.themePreset).toBe('OCEAN');
+    expect(initial.seedVersion).toBe('operator-workspace-v8');
+    expect(initial.configuration.branding.themePreset).toBe('VIOLET');
+    expect(migrated.configuration.branding.themePreset).toBe('VIOLET');
   });
 
-  it('preserves a manually selected non-default theme during the v7 migration', () => {
+  it('migrates the v7 Ocean default to Violet', () => {
+    const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
+      new Date('2026-08-15T18:50:00.000Z')
+    );
+    const previousDefault = structuredClone(initial);
+    previousDefault.seedVersion = 'operator-workspace-v7';
+    previousDefault.configuration.branding.themePreset = 'OCEAN';
+
+    const migrated = LocalOperatorRegistryMapper.toSeedRecord(
+      { registryRecord: previousDefault },
+      initial
+    );
+
+    expect(migrated.configuration.branding.themePreset).toBe('VIOLET');
+  });
+
+  it('preserves a manually selected non-default theme during the v8 migration', () => {
     const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
       new Date('2026-08-15T18:50:00.000Z')
     );

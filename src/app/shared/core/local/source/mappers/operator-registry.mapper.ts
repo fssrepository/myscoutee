@@ -110,9 +110,13 @@ export class LocalOperatorRegistryMapper {
     const refreshSeedOwnedData =
       `${existing.seedVersion ?? ''}`.trim() !== initialRecord.seedVersion;
     const migrateDefaultTheme =
-      `${existing.seedVersion ?? ''}`.trim() === 'operator-workspace-v6'
-      && initialRecord.seedVersion === 'operator-workspace-v7'
-      && existing.configuration?.branding?.themePreset === 'AURORA';
+      initialRecord.seedVersion === 'operator-workspace-v8'
+      && (
+        (`${existing.seedVersion ?? ''}`.trim() === 'operator-workspace-v6'
+          && existing.configuration?.branding?.themePreset === 'AURORA')
+        || (`${existing.seedVersion ?? ''}`.trim() === 'operator-workspace-v7'
+          && existing.configuration?.branding?.themePreset === 'OCEAN')
+      );
     const storedLedger = existing.ledger?.length
       ? structuredClone(existing.ledger)
       : existing.leaderboard?.length
@@ -282,7 +286,7 @@ export class LocalOperatorRegistryMapper {
           ?? initial.branding.logoCharacterIndex,
         themePreset:
           (migrateDefaultTheme ? initial.branding.themePreset : branding.themePreset)
-          ?? (branding.theme === 'DEFAULT' ? 'AURORA' : initial.branding.themePreset),
+          ?? initial.branding.themePreset,
         revision: branding.revision ?? initial.branding.revision
       },
       payment: {
