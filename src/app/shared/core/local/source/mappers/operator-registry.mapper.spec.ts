@@ -3,6 +3,40 @@ import { SeedOperatorRegistryBuilder } from '../../seed/builders/operator-regist
 import { LocalOperatorRegistryMapper } from './operator-registry.mapper';
 
 describe('LocalOperatorRegistryMapper', () => {
+  it('migrates only the v6 local default theme from Aurora to Ocean', () => {
+    const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
+      new Date('2026-08-15T18:50:00.000Z')
+    );
+    const previousDefault = structuredClone(initial);
+    previousDefault.seedVersion = 'operator-workspace-v6';
+    previousDefault.configuration.branding.themePreset = 'AURORA';
+
+    const migrated = LocalOperatorRegistryMapper.toSeedRecord(
+      { registryRecord: previousDefault },
+      initial
+    );
+
+    expect(initial.seedVersion).toBe('operator-workspace-v7');
+    expect(initial.configuration.branding.themePreset).toBe('OCEAN');
+    expect(migrated.configuration.branding.themePreset).toBe('OCEAN');
+  });
+
+  it('preserves a manually selected non-default theme during the v7 migration', () => {
+    const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
+      new Date('2026-08-15T18:50:00.000Z')
+    );
+    const customized = structuredClone(initial);
+    customized.seedVersion = 'operator-workspace-v6';
+    customized.configuration.branding.themePreset = 'FOREST';
+
+    const migrated = LocalOperatorRegistryMapper.toSeedRecord(
+      { registryRecord: customized },
+      initial
+    );
+
+    expect(migrated.configuration.branding.themePreset).toBe('FOREST');
+  });
+
   it('seeds signed release metadata in the canonical package contract', () => {
     const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
       new Date('2026-07-30T09:00:00.000Z')
