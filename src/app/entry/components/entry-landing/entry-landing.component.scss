@@ -212,10 +212,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 14px;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
-    var(--deployment-hero-background);
-  background-size: 18px 18px, auto;
+  background: var(--deployment-hero-background);
   color: var(--deployment-hero-text);
   padding: 1.5rem;
   margin-bottom: 0.9rem;
@@ -1242,10 +1239,7 @@ app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
 }
 
 .entry-hero {
-  background:
-    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-    var(--deployment-hero-background);
-  background-size: 18px 18px, auto;
+  background: var(--deployment-hero-background);
 }
 
 .entry-hero-lead {
