@@ -1031,9 +1031,34 @@ app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
   font-size: 1.04rem;
 }
 
-.entry-footer-links a {
+.entry-footer-links a,
+.entry-footer-text-action {
   color: var(--deployment-footer-text);
   text-decoration: none;
+}
+
+.entry-footer-text-action {
+  appearance: none;
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .entry-footer-links :is(a, .entry-footer-text-action):hover {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+}
+
+.entry-footer-text-action:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }
 
 .entry-footer-links a.entry-footer-link-disabled {
