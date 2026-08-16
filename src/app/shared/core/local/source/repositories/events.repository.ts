@@ -2150,13 +2150,14 @@ export class LocalEventsRepository {
     const directRecords = table.ids
       .map(id => this.normalizePersistedEventRecord(table.byId[id]))
       .filter((record): record is ActivityEventRecord => Boolean(record))
+      .filter(record => this.isRootActivityRecord(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
       .map(record => this.withResolvedSlotContext(record, table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
-      .filter(record => !this.isGeneratedSlotRecord(record))
+      .filter(record => this.isRootActivityRecord(record))
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
@@ -2208,7 +2209,7 @@ export class LocalEventsRepository {
     for (const id of table.ids) {
       const record = this.normalizePersistedEventRecord(table.byId[id]);
       const recordUserId = record?.userId?.trim() ?? '';
-      if (!record || !userIdSet.has(recordUserId)) {
+      if (!record || !this.isRootActivityRecord(record) || !userIdSet.has(recordUserId)) {
         continue;
       }
       if (!this.shouldIncludeUserDirectRecord(record, recordUserId, preferredRecordByEventId.get(record.id))) {
@@ -2226,7 +2227,7 @@ export class LocalEventsRepository {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
         .filter(record => record.creatorUserId !== userId)
-        .filter(record => !this.isGeneratedSlotRecord(record))
+        .filter(record => this.isRootActivityRecord(record))
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
         .filter(record => this.hasTrackedUserParticipation(record, userId))
@@ -4381,6 +4382,12 @@ export class LocalEventsRepository {
 
   private isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
     return Boolean(record?.generated) || record?.eventType === 'slot' || Boolean(record?.parentEventId);
+  }
+
+  private isRootActivityRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return Boolean(record)
+      && !this.isGeneratedSlotRecord(record)
+      && record?.eventType !== 'tournament-room';
   }
 
   private isSlotParentRecord(record: ActivityEventRecord | null | undefined): boolean {
