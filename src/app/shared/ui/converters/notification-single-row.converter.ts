@@ -51,7 +51,7 @@ export class NotificationSingleRowConverter implements UiConverter<
       avatarInitials: !systemRandomRoom && !stageAvatar && senderName ? this.initials(senderName) : null,
       avatarAriaLabel: senderName || sourceLabel,
       avatarToneClass: stageAvatar
-        ? 'notification-stage-avatar'
+        ? this.stageAvatarToneClass(notification)
         : systemRandomRoom ? 'notification-system-avatar' : null,
       accentHue: stageAvatar ? this.stageAccentHue(notification) : null,
       icon: stageAvatar
@@ -142,6 +142,19 @@ export class NotificationSingleRowConverter implements UiConverter<
 
   private hasStageAvatar(notification: NotificationDto): boolean {
     return `${notification.payload?.['notification_avatar_tone'] ?? ''}`.trim() === 'stage';
+  }
+
+  private stageAvatarToneClass(notification: NotificationDto): string {
+    switch (`${notification.kind ?? ''}`.trim()) {
+      case 'event-stage-advanced':
+      case 'event-tournament-won':
+        return 'notification-stage-avatar notification-stage-avatar--positive';
+      case 'event-stage-not-advanced':
+      case 'event-tournament-not-won':
+        return 'notification-stage-avatar notification-stage-avatar--negative';
+      default:
+        return 'notification-stage-avatar';
+    }
   }
 
   private stageAccentHue(notification: NotificationDto): number {

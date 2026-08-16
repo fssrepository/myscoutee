@@ -70,10 +70,29 @@ describe('NotificationSingleRowConverter badges', () => {
 
     expect(row.avatarUrl).toBeNull();
     expect(row.avatarInitials).toBeNull();
-    expect(row.avatarToneClass).toBe('notification-stage-avatar');
+    expect(row.avatarToneClass).toBe('notification-stage-avatar notification-stage-avatar--positive');
     expect(row.icon).toBe('emoji_events');
     expect(row.accentHue).toBe(0);
     expect(row.surfaceTone).toBe('success');
+  });
+
+  it('crosses only a negative tournament result stage avatar', () => {
+    const row = converter.convert(notification({
+      kind: 'event-tournament-not-won',
+      category: 'event',
+      senderName: 'MyScoutee System',
+      payload: {
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events',
+        stageIndex: '2',
+        stageTotal: '2',
+        notification_tone: 'warning'
+      }
+    }));
+
+    expect(row.avatarToneClass).toBe('notification-stage-avatar notification-stage-avatar--negative');
+    expect(row.icon).toBe('emoji_events');
+    expect(row.accentHue).toBe(0);
   });
 
   it('resolves a write-side notification message key through the i18n bundle', () => {

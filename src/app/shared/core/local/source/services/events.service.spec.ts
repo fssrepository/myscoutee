@@ -485,6 +485,91 @@ describe('LocalEventsService', () => {
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 2);
   });
 
+  it('keeps manual Final closure separate from short system winner results', async () => {
+    queryEventRecordById.mockReturnValue({
+      id: 'event-1',
+      title: 'Manual QA Tournament',
+      creatorUserId: 'host',
+      adminIds: ['host'],
+      acceptedMemberUserIds: ['host', 'nova', 'riley'],
+      subEvents: [{ id: 'final', name: 'Final' }]
+    } as ActivityEventRecord);
+    queryAcceptedTournamentStageMemberUserIds.mockReturnValue(['host', 'riley']);
+    queryUserById.mockReturnValue({ id: 'host', name: 'Casey Bridge', images: ['/casey.webp'] });
+    applyStageAction.mockReturnValue({
+      sourceId: 'event-1',
+      subEventId: 'final',
+      subEventIndex: 0,
+      action: 'finalize-stage',
+      stageStatus: 'F'
+    });
+    querySubEventLeaderboard.mockReturnValue({
+      eventId: 'event-1',
+      subEventId: 'final',
+      title: 'Final',
+      leaderboardType: 'Score',
+      groups: [{
+        advancingMemberIds: ['riley'],
+        members: [
+          { id: 'host', name: 'Casey Bridge' },
+          { id: 'riley', name: 'Riley Outside' }
+        ]
+      }]
+    });
+    appendNotifications.mockImplementation(records => records);
+
+    await TestBed.inject(LocalEventsService).applyStageAction({
+      userId: 'host',
+      sourceId: 'event-1',
+      subEventId: 'final',
+      subEventIndex: 0,
+      action: 'finalize-stage'
+    });
+
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string; kind: string }) =>
+      `${record.recipientUserId}:${record.kind}`))
+      .toEqual([
+        'riley:event-stage-finalized',
+        'riley:event-tournament-won',
+        'host:event-tournament-not-won'
+      ]);
+    expect(records[0]).toMatchObject({
+      senderUserId: 'host',
+      senderName: 'Casey Bridge',
+      payload: {
+        notification_title_key: 'notification.event.stage.finalized.title',
+        notification_message_key: 'notification.event.stage.finalized.message'
+      }
+    });
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_tone');
+    expect(records[1]).toMatchObject({
+      senderUserId: null,
+      senderName: 'MyScoutee System',
+      payload: {
+        notification_title_key: 'notification.event.tournament.won.title',
+        notification_message_key: 'notification.event.tournament.won.message',
+        notification_tone: 'success',
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events',
+        stageTitle: 'Final',
+        stageIndex: '1',
+        stageTotal: '1'
+      }
+    });
+    expect(records[2]).toMatchObject({
+      senderUserId: null,
+      senderName: 'MyScoutee System',
+      payload: {
+        notification_title_key: 'notification.event.tournament.not-won.title',
+        notification_message_key: 'notification.event.tournament.not-won.message',
+        notification_tone: 'warning',
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events'
+      }
+    });
+  });
+
   it('creates a stage-named local Start notification only for assigned stage members', async () => {
     queryEventRecordById.mockReturnValue({
       id: 'event-1',

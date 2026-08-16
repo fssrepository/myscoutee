@@ -129,6 +129,7 @@
 }
 
 .ui-single-row__avatar.notification-stage-avatar {
+  position: relative;
   color: hsl(var(--ui-single-row-accent-hue, 210) 72% 30%);
   border: 1px solid hsl(var(--ui-single-row-accent-hue, 210) 54% 58% / 0.58);
   background:
@@ -139,6 +140,24 @@
       hsl(var(--ui-single-row-accent-hue, 210) 64% 86%) 100%
     );
   box-shadow: 0 4px 12px hsl(var(--ui-single-row-accent-hue, 210) 42% 36% / 0.2);
+}
+
+.ui-single-row__avatar.notification-stage-avatar--positive {
+  box-shadow:
+    0 0 0 3px hsl(var(--ui-single-row-accent-hue, 210) 78% 70% / 0.2),
+    0 0 17px hsl(var(--ui-single-row-accent-hue, 210) 86% 54% / 0.46),
+    0 5px 13px hsl(var(--ui-single-row-accent-hue, 210) 42% 34% / 0.25);
+}
+
+.ui-single-row__avatar.notification-stage-avatar--negative::after {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 2px;
+  border-radius: 999px;
+  background: hsl(var(--ui-single-row-accent-hue, 210) 74% 28% / 0.82);
+  box-shadow: 0 0 0 1px hsl(var(--ui-single-row-accent-hue, 210) 88% 96% / 0.72);
+  transform: rotate(-45deg);
 }
 
 .ui-single-row__avatar--circle {

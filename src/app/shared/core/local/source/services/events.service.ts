@@ -1101,24 +1101,19 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       eventId,
       `${stage.id ?? ''}`.trim()
     );
-    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
+    const stageParticipantUserIds = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
       `${event.creatorUserId ?? ''}`.trim(),
       ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
       ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
-    ]).filter(userId => userId && userId !== actorId))];
-    const records: NotificationRecord[] = participants.map(recipientUserId => ({
+    ]).filter(Boolean))];
+    const manualRecipients = stageParticipantUserIds.filter(userId => userId !== actorId);
+    const records: NotificationRecord[] = manualRecipients.map(recipientUserId => ({
       ...commonRecord,
-      id: this.localNotificationId(
-        finalStage ? 'event-tournament-finalized' : 'event-stage-finalized',
-        eventId,
-        recipientUserId
-      ),
+      id: this.localNotificationId('event-stage-finalized', eventId, recipientUserId),
       recipientUserId,
-      kind: finalStage ? 'event-tournament-finalized' : 'event-stage-finalized',
-      title: finalStage ? 'Tournament finalized' : `${stageTitle} finalized`,
-      message: finalStage
-        ? `${stageTitle} is complete. The tournament has been finalized. Open the event results to review the standings.`
-        : `${stageTitle} has been finalized.`,
+      kind: 'event-stage-finalized',
+      title: `${stageTitle} finalized`,
+      message: `${stageTitle} has been finalized.`,
       createdAtIso: new Date(finalizedAtMs).toISOString(),
       senderUserId: actorId || null,
       senderName: `${actor?.name ?? actorId}`.trim() || null,
@@ -1127,36 +1122,86 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         ...stagePayload,
         eventId,
         eventTitle,
-        eventScope: 'event-participants',
+        eventScope: 'event-stage-participants',
         stageTitle,
         stageAction: result.action,
-        notification_title_key: finalStage
-          ? 'notification.event.tournament.finalized.title'
-          : 'notification.event.stage.finalized.title',
-        notification_message_key: finalStage
-          ? 'notification.event.tournament.finalized.message'
-          : 'notification.event.stage.finalized.message',
-        notification_tone: finalStage ? 'success' : 'info',
-        ...(finalStage ? { tournamentComplete: 'true' } : {})
+        notification_title_key: 'notification.event.stage.finalized.title',
+        notification_message_key: 'notification.event.stage.finalized.message',
+        notification_tone: 'info'
       }
     }));
 
-    const leaderboard = nextStage
-      ? this.eventsRepository.querySubEventLeaderboard(result.sourceId, `${stage.id ?? ''}`.trim())
-      : null;
+    const leaderboard = this.eventsRepository.querySubEventLeaderboard(
+      result.sourceId,
+      `${stage.id ?? ''}`.trim()
+    );
     const acceptedUserIds = new Set((event.acceptedMemberUserIds ?? [])
       .map(userId => `${userId ?? ''}`.trim())
       .filter(Boolean));
-    const advancingUserIds = [...new Set((leaderboard?.groups ?? [])
+    const leaderboardWinnerUserIds = [...new Set((leaderboard?.groups ?? [])
       .flatMap(group => group.advancingMemberIds ?? [])
       .map(userId => `${userId ?? ''}`.trim())
-      .filter(userId => userId && acceptedUserIds.has(userId)))];
+      .filter(Boolean))];
+    const advancingUserIds = leaderboardWinnerUserIds.filter(userId => acceptedUserIds.has(userId));
     const notAdvancingUserIds = [...new Set((leaderboard?.groups ?? [])
       .flatMap(group => group.members ?? [])
       .map(member => `${member?.id ?? ''}`.trim())
       .filter(userId => userId
         && acceptedUserIds.has(userId)
         && !advancingUserIds.includes(userId)))];
+    if (finalStage) {
+      const finalistUserIds = new Set(stageParticipantUserIds);
+      const winnerUserIds = leaderboardWinnerUserIds.filter(userId => finalistUserIds.has(userId));
+      const nonWinnerUserIds = stageParticipantUserIds.filter(userId => !winnerUserIds.includes(userId));
+      if (winnerUserIds.length > 0) {
+        records.push(...winnerUserIds.map(recipientUserId => ({
+          ...commonRecord,
+          id: this.localNotificationId('event-tournament-won', eventId, recipientUserId),
+          recipientUserId,
+          kind: 'event-tournament-won',
+          title: 'Won the tournament',
+          message: `You won in ${stageTitle}.`,
+          createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+          senderUserId: null,
+          senderName: 'MyScoutee System',
+          senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+          payload: {
+            ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+            eventId,
+            eventTitle,
+            eventScope: 'tournament-outcome',
+            stageTitle,
+            notification_title_key: 'notification.event.tournament.won.title',
+            notification_message_key: 'notification.event.tournament.won.message',
+            notification_tone: 'success',
+            tournamentComplete: 'true'
+          }
+        })));
+        records.push(...nonWinnerUserIds.map(recipientUserId => ({
+          ...commonRecord,
+          id: this.localNotificationId('event-tournament-not-won', eventId, recipientUserId),
+          recipientUserId,
+          kind: 'event-tournament-not-won',
+          title: 'Did not win the tournament',
+          message: `You did not win in ${stageTitle}.`,
+          createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+          senderUserId: null,
+          senderName: 'MyScoutee System',
+          senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+          payload: {
+            ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+            eventId,
+            eventTitle,
+            eventScope: 'tournament-outcome',
+            stageTitle,
+            notification_title_key: 'notification.event.tournament.not-won.title',
+            notification_message_key: 'notification.event.tournament.not-won.message',
+            notification_tone: 'warning',
+            tournamentComplete: 'true'
+          }
+        })));
+      }
+    }
     if (nextStage && advancingUserIds.length > 0) {
       const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
       records.push(...advancingUserIds.map(recipientUserId => ({
@@ -1233,11 +1278,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
     const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
     const actor = this.usersRepository.queryUserById(actorId);
-    const participants = [...new Set([
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
+      eventId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
       `${event.creatorUserId ?? ''}`.trim(),
       ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
       ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
-    ].filter(userId => userId && userId !== actorId))];
+    ]).filter(userId => userId && userId !== actorId))];
     const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
     const records: NotificationRecord[] = participants.map(recipientUserId => ({
       id: this.localNotificationId('event-tournament-started', eventId, recipientUserId),
