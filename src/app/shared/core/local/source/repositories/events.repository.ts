@@ -36,7 +36,10 @@ import type { LocationCoordinates, UserEventCountersDto } from '../../../contrac
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 import * as AppConstants from '../../../common/constants';
-import { tournamentGroupCountForIncoming } from '../../../common/tournament-group-count';
+import {
+  tournamentCurrentStageFromSubEvents,
+  tournamentGroupCountForIncoming
+} from '../../../common/tournament-group-count';
 
 interface SubEventParticipantSlotCandidate {
   slot: ActivityContracts.SubEventsSlotDTO;
@@ -1213,7 +1216,8 @@ export class LocalEventsRepository {
         nextById[id] = {
           ...current,
           autoInviter: actionTarget.action === 'start-tournament' ? false : current.autoInviter,
-          subEvents
+          subEvents,
+          currentStage: tournamentCurrentStageFromSubEvents(subEvents)
         };
         changed = true;
       }

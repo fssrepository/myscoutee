@@ -16,6 +16,14 @@ export type EventEditorTarget = 'events' | 'hosting';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
 export type EventRecordKind = 'main' | 'slot' | 'random-room' | 'tournament-room';
 
+export interface TournamentCurrentStageDTO {
+  id: string;
+  name: string;
+  stageNumber: number;
+  totalStages: number;
+  status: TournamentStageStatus | string;
+}
+
 export interface EventSlotTemplateDTO {
   id: string;
   startAt: string;

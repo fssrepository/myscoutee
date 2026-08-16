@@ -17,7 +17,10 @@ import * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import { tournamentGroupCountForIncoming } from '../../../common/tournament-group-count';
+import {
+  tournamentCurrentStageFromSubEvents,
+  tournamentGroupCountForIncoming
+} from '../../../common/tournament-group-count';
 
 export interface SubEventResourceLookup {
   ownerId: string;
@@ -79,6 +82,7 @@ export class LocalActivityEventsMapper {
       capacityMax: record.capacityMax,
       eventType: record.eventType,
       mode: ActivityEventDetailDTO.normalizeMode(record.mode),
+      currentStage: record.currentStage ? { ...record.currentStage } : null,
       slotsEnabled: record.slotsEnabled === true,
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
@@ -1010,6 +1014,7 @@ export class LocalActivityEventDetailsMapper {
         payload.mode
           ?? this.inferredEventMode(subEvents)
       ),
+      currentStage: tournamentCurrentStageFromSubEvents(subEvents),
       rating,
       boost,
       affinity
@@ -1078,6 +1083,7 @@ export class LocalActivityEventDetailsMapper {
       subEventDefinitions: record.subEventDefinitions ?? [],
       subEvents: record.subEvents ?? [],
       mode: this.normalizeEventMode(record.mode),
+      currentStage: record.currentStage ? { ...record.currentStage } : null,
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity,

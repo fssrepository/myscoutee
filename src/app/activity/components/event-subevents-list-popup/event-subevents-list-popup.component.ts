@@ -62,6 +62,7 @@ import {
   EventsService,
   I18nService
 } from '../../../shared/core';
+import { tournamentCurrentStageFromSubEvents } from '../../../shared/core/common/tournament-group-count';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
@@ -803,6 +804,16 @@ export class EventSubeventsListPopupComponent {
     item.stageFinalizedByUserId = `${result.stageFinalizedByUserId ?? ''}`.trim() || null;
     if (this.event && result.autoInviter !== undefined && result.autoInviter !== null) {
       this.event.autoInviter = result.autoInviter === true;
+    }
+    const eventId = `${this.event?.id ?? result.sourceId ?? ''}`.trim();
+    if (eventId) {
+      this.activityStore.emitActivityEventRuntimeSync({
+        eventId,
+        subEventId: resultId || itemId,
+        activityDelta: 0,
+        currentStage: tournamentCurrentStageFromSubEvents(this.items),
+        source: 'stage'
+      });
     }
     this.cdr.markForCheck();
   }

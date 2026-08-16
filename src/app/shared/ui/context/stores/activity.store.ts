@@ -118,7 +118,8 @@ export interface ActivityEventRuntimeSyncState {
   eventId: string;
   subEventId: string;
   activityDelta: number;
-  source: 'members' | 'resources' | 'groups';
+  currentStage?: AppDTOs.TournamentCurrentStageDTO | null;
+  source: 'members' | 'resources' | 'groups' | 'stage';
 }
 
 export type ActivityChatMetricBucketType = 'members' | 'transport' | 'accommodation' | 'supplies';
@@ -695,6 +696,7 @@ export class ActivityStore {
       activityDelta: Number.isFinite(Number(payload.activityDelta))
         ? Math.trunc(Number(payload.activityDelta))
         : 0,
+      currentStage: payload.currentStage ? { ...payload.currentStage } : payload.currentStage,
       source: payload.source
     });
   }

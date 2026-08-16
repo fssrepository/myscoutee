@@ -17,6 +17,11 @@ export interface ActivityEventInfoCardConverterOptions {
   groupLabel?: string | null;
   trashView?: boolean;
   state?: InfoCardData['state'];
+  translateParams?: (
+    key: string,
+    values: Record<string, string | number>,
+    fallback?: string | null
+  ) => string;
 }
 
 export interface ActivityEventInfoCardSummaryOptions {
@@ -53,6 +58,7 @@ export class ActivityEventInfoCardConverter {
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
+        ...this.currentStageMetaRows(dto, options),
         AppUtils.dateTimeRangeLabel(dto.startAtIso, dto.endAtIso, dto.timeframe || 'Date unavailable'),
         ...this.locationMetaRows(dto)
       ],
@@ -129,6 +135,22 @@ export class ActivityEventInfoCardConverter {
       ? `${location} · ${distanceLabel}`
       : location || distanceLabel;
     return line ? [line] : [];
+  }
+
+  private static currentStageMetaRows(
+    dto: ActivityEventDTO,
+    options: ActivityEventInfoCardConverterOptions
+  ): string[] {
+    const stage = dto.currentStage;
+    const stageName = `${stage?.name ?? ''}`.trim();
+    if (!stageName) {
+      return [];
+    }
+    const current = Math.max(1, Math.trunc(Number(stage?.stageNumber) || 1));
+    const total = Math.max(current, Math.trunc(Number(stage?.totalStages) || current));
+    const values = { stage: stageName, current, total };
+    const fallback = `Current stage: ${stageName} · ${current}/${total}`;
+    return [options.translateParams?.('event.tournament.current.stage', values, fallback) ?? fallback];
   }
 
   private static distanceLabel(dto: ActivityEventDTO): string {

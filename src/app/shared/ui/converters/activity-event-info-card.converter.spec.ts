@@ -89,4 +89,24 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
       interactive: true
     });
   });
+
+  it('renders the persisted tournament stage as a separate card row', () => {
+    const card = ActivityEventInfoCardConverter.convert({
+      id: 'event-1',
+      title: 'Tournament',
+      startAtIso: '2026-08-16T12:00:00Z',
+      endAtIso: '2026-08-16T18:00:00Z',
+      currentStage: {
+        id: 'final',
+        name: 'Final',
+        stageNumber: 2,
+        totalStages: 2,
+        status: 'A'
+      }
+    } as ActivityEventDTO, {
+      translateParams: (_key, values) => `Current stage: ${values['stage']} · ${values['current']}/${values['total']}`
+    });
+
+    expect(card.metaRows?.[0]).toBe('Current stage: Final · 2/2');
+  });
 });

@@ -2054,6 +2054,7 @@
     "event.subevents.group.capacity.min": "Minimum capacity",
     "event.subevents.group.capacity.max": "Maximum capacity",
     "event.subevents.stage.groups.capacity.summary": "Groups: {groups} × {min}–{max} members",
+    "event.tournament.current.stage": "Current stage: {stage} · {current}/{total}",
     "event.checkout.payment.summary": "Payment summary",
     "event.checkout.continue.booking": "Continue booking",
     "event.checkout.paying": "Paying...",
