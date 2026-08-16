@@ -96,12 +96,12 @@
 
 :root,
 [data-deployment-theme='violet'] {
-  --deployment-brand-primary: #6941c6;
-  --deployment-brand-secondary: #8c57d8;
-  --deployment-brand-accent: #c36be3;
-  --deployment-brand-soft: #f2ddff;
-  --deployment-brand-text: #4b3286;
-  --deployment-brand-shadow: rgba(105, 65, 198, 0.24);
+  --deployment-brand-primary: #4f5de7;
+  --deployment-brand-secondary: #8458eb;
+  --deployment-brand-accent: #f1569a;
+  --deployment-brand-soft: #e9edff;
+  --deployment-brand-text: #1f3a63;
+  --deployment-brand-shadow: rgba(79, 93, 231, 0.26);
   @include deployment-semantic-theme;
 }
 
