@@ -84,6 +84,7 @@ export interface SubEventDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
 }
 
 export interface SubEventGroupDTO {

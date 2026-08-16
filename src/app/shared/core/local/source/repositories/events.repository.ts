@@ -304,7 +304,31 @@ export class LocalEventsRepository {
   }
 
   private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
-    return stageIndex >= 0 && stageIndex < stages.length;
+    if (stageIndex < 0 || stageIndex >= stages.length) {
+      return false;
+    }
+    return stages.slice(stageIndex + 1)
+      .filter(stage => this.isTournamentSubEvent(stage))
+      .every(stage => {
+        const status = this.normalizeStageStatus(stage.stageStatus);
+        const pristineActive = status === 'A'
+          && !`${stage.stageStatusUpdatedAt ?? ''}`.trim()
+          && !`${stage.stageFinalizedAt ?? ''}`.trim();
+        return status === 'RS' || pristineActive;
+      });
+  }
+
+  private nextStageResultRevision(
+    stage: ContractTypes.SubEventDTO,
+    nextStatus: ContractTypes.TournamentStageStatus
+  ): number {
+    let revision = Math.max(0, Math.trunc(Number(stage.stageResultRevision) || 0));
+    if (revision === 0 && this.normalizeStageStatus(stage.stageStatus) === 'F') {
+      revision = 1;
+    }
+    return nextStatus === 'F' && this.normalizeStageStatus(stage.stageStatus) !== 'F'
+      ? revision + 1
+      : revision;
   }
 
   private isStageInScheduleWindow(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
@@ -342,6 +366,7 @@ export class LocalEventsRepository {
       stageStatusUpdatedAt: `${stage.stageStatusUpdatedAt ?? ''}`.trim() || null,
       stageFinalizedAt: `${stage.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${stage.stageFinalizedByUserId ?? ''}`.trim() || null,
+      stageResultRevision: Math.max(0, Math.trunc(Number(stage.stageResultRevision) || 0)),
       autoInviter: autoInviter ?? null
     };
   }
@@ -1141,13 +1166,15 @@ export class LocalEventsRepository {
       const targetStageId = `${preferredSubEvents[preferredIndex]?.id ?? ''}`.trim();
       if (normalizedSlotSourceId) {
         const nextStatus = this.stageActionNextStatus(actionTarget, preferredSubEvents[preferredIndex]);
+        const stageResultRevision = this.nextStageResultRevision(preferredSubEvents[preferredIndex], nextStatus);
         const updatedStage = {
           ...preferredSubEvents[preferredIndex],
           stageStatus: nextStatus,
           stageStatusReason: actionTarget.reason,
           stageStatusUpdatedAt: nowIso,
           stageFinalizedAt: nextStatus === 'F' ? nowIso : null,
-          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null
+          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null,
+          stageResultRevision
         };
         result = this.toStageActionResult(
           runtimeOwnerId,
@@ -1195,13 +1222,15 @@ export class LocalEventsRepository {
           continue;
         }
         const nextStatus = this.stageActionNextStatus(actionTarget, subEvents[stageIndex]);
+        const stageResultRevision = this.nextStageResultRevision(subEvents[stageIndex], nextStatus);
         const updatedStage = {
           ...subEvents[stageIndex],
           stageStatus: nextStatus,
           stageStatusReason: actionTarget.reason,
           stageStatusUpdatedAt: nowIso,
           stageFinalizedAt: nextStatus === 'F' ? nowIso : null,
-          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null
+          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null,
+          stageResultRevision
         };
         subEvents[stageIndex] = updatedStage;
         if (!result) {
@@ -1304,6 +1333,7 @@ export class LocalEventsRepository {
         stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
         stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
         stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
+        stageResultRevision: state?.stageResultRevision ?? item.stageResultRevision,
         groupsCount
       };
     });
@@ -3585,6 +3615,7 @@ export class LocalEventsRepository {
       stageStatusUpdatedAt: existing?.stageStatusUpdatedAt ?? null,
       stageFinalizedAt: existing?.stageFinalizedAt ?? null,
       stageFinalizedByUserId: existing?.stageFinalizedByUserId ?? null,
+      stageResultRevision: existing?.stageResultRevision ?? null,
       groupsCount: Math.max(0, groupsCount),
       groupResourceMetricsByAssetOwnerId: LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceMetrics(
         existing?.groupResourceMetricsByAssetOwnerId

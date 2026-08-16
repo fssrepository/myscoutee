@@ -802,6 +802,7 @@ export class EventSubeventsListPopupComponent {
     item.stageStatusUpdatedAt = `${result.stageStatusUpdatedAt ?? ''}`.trim() || null;
     item.stageFinalizedAt = `${result.stageFinalizedAt ?? ''}`.trim() || null;
     item.stageFinalizedByUserId = `${result.stageFinalizedByUserId ?? ''}`.trim() || null;
+    item.stageResultRevision = Math.max(0, Math.trunc(Number(result.stageResultRevision) || 0));
     if (this.event && result.autoInviter !== undefined && result.autoInviter !== null) {
       this.event.autoInviter = result.autoInviter === true;
     }

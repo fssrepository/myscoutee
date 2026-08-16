@@ -331,6 +331,7 @@ export interface ActivityEventStageActionResultDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
   autoInviter?: boolean | null;
 }
 
@@ -455,6 +456,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
   groupsCount?: number | null;
 }
 
@@ -998,7 +1000,8 @@ export class ActivityEventDetailDTO {
         stageStatusReason: `${item.stageStatusReason ?? ''}`.trim() || undefined,
         stageStatusUpdatedAt: `${item.stageStatusUpdatedAt ?? ''}`.trim() || undefined,
         stageFinalizedAt: `${item.stageFinalizedAt ?? ''}`.trim() || undefined,
-        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined
+        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined,
+        stageResultRevision: ActivityEventDetailDTO.optionalNonNegativeInteger(item.stageResultRevision)
       };
     });
   }

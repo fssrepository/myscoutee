@@ -789,6 +789,7 @@ export class LocalActivityEventsMapper {
       stageStatusUpdatedAt: `${stageRuntime.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
       stageFinalizedAt: `${stageRuntime.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
       stageFinalizedByUserId: `${stageRuntime.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
+      stageResultRevision: stageRuntime.stageResultRevision ?? item.stageResultRevision,
       groupsCount: stageRuntime.groupsCount ?? item.groupsCount,
       groupsPending: item.groupsPending
     };
@@ -1324,7 +1325,8 @@ export class LocalActivityEventDetailsMapper {
         stageStatusReason: `${item.stageStatusReason ?? ''}`.trim() || undefined,
         stageStatusUpdatedAt: `${item.stageStatusUpdatedAt ?? ''}`.trim() || undefined,
         stageFinalizedAt: `${item.stageFinalizedAt ?? ''}`.trim() || undefined,
-        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined
+        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined,
+        stageResultRevision: this.optionalNonNegativeInteger(item.stageResultRevision)
       };
     });
   }

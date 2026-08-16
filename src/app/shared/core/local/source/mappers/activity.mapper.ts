@@ -505,6 +505,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || null,
       stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || null,
+      stageResultRevision: this.normalizeCount(state?.stageResultRevision),
       groupsCount: this.normalizeCount(state?.groupsCount)
     };
   }
@@ -530,6 +531,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageStatusUpdatedAt: `${normalized.stageStatusUpdatedAt ?? ''}`.trim() || null,
       stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
+      stageResultRevision: normalized.stageResultRevision ?? existing?.stageResultRevision ?? null,
       groupsCount: normalized.groupsCount ?? existing?.groupsCount ?? null,
       groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
         existing?.groupResourceMetricsByAssetOwnerId
@@ -555,6 +557,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageStatusUpdatedAt: record.stageStatusUpdatedAt,
       stageFinalizedAt: record.stageFinalizedAt,
       stageFinalizedByUserId: record.stageFinalizedByUserId,
+      stageResultRevision: record.stageResultRevision,
       groupsCount: record.groupsCount
     }, record);
     return normalized ? { ...normalized } : null;

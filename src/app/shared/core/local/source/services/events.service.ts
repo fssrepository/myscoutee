@@ -1057,7 +1057,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         stageStatusReason: result.stageStatusReason ?? null,
         stageStatusUpdatedAt: result.stageStatusUpdatedAt ?? null,
         stageFinalizedAt: result.stageFinalizedAt ?? null,
-        stageFinalizedByUserId: result.stageFinalizedByUserId ?? null
+        stageFinalizedByUserId: result.stageFinalizedByUserId ?? null,
+        stageResultRevision: result.stageResultRevision ?? null
       }, existing));
     }
     if (event && result?.action === 'finalize-stage' && result.stageStatus === 'F') {
@@ -1089,6 +1090,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const finalizedAtMs = Date.now();
     const nextStage = stages[result.subEventIndex + 1] ?? null;
     const finalStage = !nextStage;
+    const resultRevision = Math.max(1, Math.trunc(Number(result.stageResultRevision) || 0));
+    const resultRevisionIdentity = resultRevision > 1
+      ? `${eventId}:result-revision:${resultRevision}`
+      : eventId;
     const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
     const commonRecord = {
       category: 'event' as const,
@@ -1109,7 +1114,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const manualRecipients = stageParticipantUserIds.filter(userId => userId !== actorId);
     const records: NotificationRecord[] = manualRecipients.map(recipientUserId => ({
       ...commonRecord,
-      id: this.localNotificationId('event-stage-finalized', eventId, recipientUserId),
+      id: this.localNotificationId('event-stage-finalized', resultRevisionIdentity, recipientUserId),
       recipientUserId,
       kind: 'event-stage-finalized',
       title: `${stageTitle} finalized`,
@@ -1127,7 +1132,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         stageAction: result.action,
         notification_title_key: 'notification.event.stage.finalized.title',
         notification_message_key: 'notification.event.stage.finalized.message',
-        notification_tone: 'info'
+        notification_tone: 'info',
+        ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
       }
     }));
 
@@ -1156,7 +1162,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       if (winnerUserIds.length > 0) {
         records.push(...winnerUserIds.map(recipientUserId => ({
           ...commonRecord,
-          id: this.localNotificationId('event-tournament-won', eventId, recipientUserId),
+          id: this.localNotificationId('event-tournament-won', resultRevisionIdentity, recipientUserId),
           recipientUserId,
           kind: 'event-tournament-won',
           title: 'Won the tournament',
@@ -1174,12 +1180,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
             notification_title_key: 'notification.event.tournament.won.title',
             notification_message_key: 'notification.event.tournament.won.message',
             notification_tone: 'success',
-            tournamentComplete: 'true'
+            tournamentComplete: 'true',
+            ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
           }
         })));
         records.push(...nonWinnerUserIds.map(recipientUserId => ({
           ...commonRecord,
-          id: this.localNotificationId('event-tournament-not-won', eventId, recipientUserId),
+          id: this.localNotificationId('event-tournament-not-won', resultRevisionIdentity, recipientUserId),
           recipientUserId,
           kind: 'event-tournament-not-won',
           title: 'Did not win the tournament',
@@ -1197,7 +1204,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
             notification_title_key: 'notification.event.tournament.not-won.title',
             notification_message_key: 'notification.event.tournament.not-won.message',
             notification_tone: 'warning',
-            tournamentComplete: 'true'
+            tournamentComplete: 'true',
+            ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
           }
         })));
       }
@@ -1206,7 +1214,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
       records.push(...advancingUserIds.map(recipientUserId => ({
         ...commonRecord,
-        id: this.localNotificationId('event-stage-advanced', eventId, recipientUserId),
+        id: this.localNotificationId('event-stage-advanced', resultRevisionIdentity, recipientUserId),
         recipientUserId,
         kind: 'event-stage-advanced',
         title: `Advanced to ${nextStageTitle}`,
@@ -1224,7 +1232,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           nextStageTitle,
           notification_title_key: 'notification.event.stage.advanced.title',
           notification_message_key: 'notification.event.stage.advanced.message',
-          notification_tone: 'success'
+          notification_tone: 'success',
+          ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
         }
       })));
     }
@@ -1232,7 +1241,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
       records.push(...notAdvancingUserIds.map(recipientUserId => ({
         ...commonRecord,
-        id: this.localNotificationId('event-stage-not-advanced', eventId, recipientUserId),
+        id: this.localNotificationId('event-stage-not-advanced', resultRevisionIdentity, recipientUserId),
         recipientUserId,
         kind: 'event-stage-not-advanced',
         title: `Did not advance from ${stageTitle}`,
@@ -1250,7 +1259,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           nextStageTitle,
           notification_title_key: 'notification.event.stage.not-advanced.title',
           notification_message_key: 'notification.event.stage.not-advanced.message',
-          notification_tone: 'warning'
+          notification_tone: 'warning',
+          ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
         }
       })));
     }
