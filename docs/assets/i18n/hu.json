@@ -2054,6 +2054,7 @@
     "event.subevents.group.capacity.min": "Minimum létszám",
     "event.subevents.group.capacity.max": "Maximum létszám",
     "event.subevents.stage.groups.capacity.summary": "Csoportok: {groups} × {min}–{max} fő",
+    "event.tournament.current.stage": "Aktuális szakasz: {stage} · {current}/{total}",
     "event.checkout.payment.summary": "Fizetési összegzés",
     "event.checkout.continue.booking": "Foglalás folytatása",
     "event.checkout.paying": "Fizetés...",
