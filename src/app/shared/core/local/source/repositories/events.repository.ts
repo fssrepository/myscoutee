@@ -559,6 +559,23 @@ export class LocalEventsRepository {
     );
   }
 
+  isTournamentAdmissionLocked(eventId: string): boolean {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return false;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = this.computePreferredEventRecords(table)
+      .find(item => item.id === normalizedEventId);
+    const firstTournamentStage = (record?.subEvents ?? [])
+      .find(stage => this.isGeneratedTournamentStage(stage));
+    if (!firstTournamentStage) {
+      return false;
+    }
+    const status = this.normalizeStageStatus(firstTournamentStage.stageStatus);
+    return status === 'A' || status === 'SR' || status === 'F' || status === 'S';
+  }
+
   querySubEventsByEventId(
     userId: string,
     eventId: string,
@@ -1245,6 +1262,9 @@ export class LocalEventsRepository {
         nextById[id] = {
           ...current,
           autoInviter: actionTarget.action === 'start-tournament' ? false : current.autoInviter,
+          visibility: actionTarget.action === 'start-tournament' && preferredIndex === 0
+            ? 'Invitation only'
+            : current.visibility,
           subEvents,
           currentStage: tournamentCurrentStageFromSubEvents(subEvents)
         };

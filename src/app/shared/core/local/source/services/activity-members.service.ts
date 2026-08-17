@@ -228,6 +228,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     if (!targetMember || !actionAllowed) {
       return previousMembers;
     }
+    if (normalizedOwner.ownerType === 'event'
+        && action === 'accept'
+        && targetIsApprovalRequest
+        && this.eventsRepository.isTournamentAdmissionLocked(normalizedOwner.ownerId)) {
+      throw new Error('event.tournament.registration.closed.message');
+    }
 
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextMembers = previousMembers.map(member => {

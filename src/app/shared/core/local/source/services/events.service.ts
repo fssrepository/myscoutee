@@ -542,6 +542,29 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === normalizedUserId);
+    if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
+      const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
+      const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
+      const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
+      const result = await this.withLocalMutationCounterDelta({
+        sourceId: normalizedSourceId,
+        slotSourceId: request.slotSourceId?.trim() || null,
+        action: 'join',
+        membershipStatus: 'unchanged',
+        pendingReason: null,
+        acceptedMembers,
+        pendingMembers,
+        capacityTotal,
+        full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+        paymentSessionId: request.checkoutSessionId?.trim() || null,
+        changed: false,
+        reason: 'tournament-registration-closed'
+      }, normalizedUserId, beforeCounters);
+      await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+      return result;
+    }
     const joinRequestAlreadyPending = [
       ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
       ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
@@ -1424,6 +1447,31 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === normalizedUserId);
+    if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
+      const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
+      const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
+      const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
+      const result = await this.withLocalMutationCounterDelta({
+        sourceId: normalizedSourceId,
+        slotSourceId: options.slotSourceId?.trim() || null,
+        action: 'join',
+        membershipStatus: 'unchanged',
+        pendingReason: null,
+        acceptedMembers,
+        pendingMembers,
+        capacityTotal,
+        full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+        paymentSessionId: options.paymentSessionId?.trim() || null,
+        changed: false,
+        reason: 'tournament-registration-closed'
+      }, normalizedUserId, beforeCounters);
+      if (options.skipLocalRouteDelay !== true) {
+        await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+      }
+      return result;
+    }
     const joinRequestAlreadyPending = [
       ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
       ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
