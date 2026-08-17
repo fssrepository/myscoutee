@@ -2413,6 +2413,8 @@
     "notification.event.stage.started.message": "A(z) {stageTitle} szakasz elindult. A csoportok elkészültek.",
     "notification.event.stage.finalized.title": "Lezárult: {stageTitle}",
     "notification.event.stage.finalized.message": "A(z) {stageTitle} szakasz lezárult.",
+    "notification.event.stage.scores-under-review.title": "Pontok felülvizsgálata: {stageTitle}",
+    "notification.event.stage.scores-under-review.message": "A(z) {stageTitle} szakasz pontozását újranyitották, az eredmény felülvizsgálat alatt áll.",
     "notification.event.stage.advanced.title": "Továbbjutottál: {nextStageTitle}",
     "notification.event.stage.advanced.message": "Továbbjutottál a(z) {stageTitle} szakaszból a(z) {nextStageTitle} szakaszba.",
     "notification.event.stage.not-advanced.title": "Nem jutottál tovább: {stageTitle}",

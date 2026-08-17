@@ -2413,6 +2413,8 @@
     "notification.event.stage.started.message": "{stageTitle} has started. Groups are ready.",
     "notification.event.stage.finalized.title": "{stageTitle} finalized",
     "notification.event.stage.finalized.message": "{stageTitle} has been finalized.",
+    "notification.event.stage.scores-under-review.title": "{stageTitle} scores under review",
+    "notification.event.stage.scores-under-review.message": "{stageTitle} scores were reopened and are under review.",
     "notification.event.stage.advanced.title": "Advanced to {nextStageTitle}",
     "notification.event.stage.advanced.message": "You advanced from {stageTitle} to {nextStageTitle}.",
     "notification.event.stage.not-advanced.title": "Did not advance from {stageTitle}",

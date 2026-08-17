@@ -1090,6 +1090,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (event && result?.action === 'start-tournament' && result.stageStatus === 'A') {
       this.appendLocalStageStartedNotifications(event, result, request.userId);
     }
+    if (event && result?.action === 'reopen-scores' && result.stageStatus === 'SR') {
+      this.appendLocalStageScoresUnderReviewNotifications(event, result, request.userId);
+    }
     await this.eventsRepository.flushToIndexedDb();
     await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
     return result;
@@ -1347,6 +1350,74 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         notification_message_key: 'notification.event.stage.started.message',
         notification_avatar_tone: 'stage',
         notification_avatar_icon: 'emoji_events'
+      }
+    }));
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(
+        recipientUserId,
+        this.notificationsRepository.unreadCount(recipientUserId)
+      );
+    });
+  }
+
+  private appendLocalStageScoresUnderReviewNotifications(
+    event: ActivityEventRecord,
+    result: ActivityEventStageActionResultDTO,
+    actorUserId: string
+  ): void {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
+      eventId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ]).filter(userId => userId && userId !== actorId))];
+    const resultRevision = Math.max(1, Math.trunc(Number(result.stageResultRevision) || 0));
+    const resultRevisionIdentity = `${eventId}:result-revision:${resultRevision}`;
+    const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
+    const records: NotificationRecord[] = participants.map(recipientUserId => ({
+      id: this.localNotificationId(
+        'event-stage-scores-under-review',
+        resultRevisionIdentity,
+        recipientUserId
+      ),
+      recipientUserId,
+      kind: 'event-stage-scores-under-review',
+      category: 'event',
+      title: `${stageTitle} scores under review`,
+      message: `${stageTitle} scores were reopened and are under review.`,
+      createdAtIso: new Date().toISOString(),
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: `${actor?.name ?? actorId}`.trim() || null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        ...stagePayload,
+        eventId,
+        eventTitle,
+        eventScope: 'event-stage-participants',
+        stageTitle,
+        stageAction: result.action,
+        notification_title_key: 'notification.event.stage.scores-under-review.title',
+        notification_message_key: 'notification.event.stage.scores-under-review.message',
+        notification_tone: 'info',
+        ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
       }
     }));
     const appended = this.notificationsRepository.append(records);

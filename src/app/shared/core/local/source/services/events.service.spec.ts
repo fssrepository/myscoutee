@@ -485,6 +485,63 @@ describe('LocalEventsService', () => {
     expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 2);
   });
 
+  it('notifies other stage participants when scores are reopened for review', async () => {
+    queryEventRecordById.mockReturnValue({
+      id: 'event-1',
+      title: 'Manual QA Tournament',
+      creatorUserId: 'host',
+      adminIds: ['host'],
+      acceptedMemberUserIds: ['host', 'nova', 'riley'],
+      subEvents: [
+        { id: 'qualifiers', name: 'Qualifiers' },
+        { id: 'final', name: 'Final' }
+      ]
+    } as ActivityEventRecord);
+    queryAcceptedTournamentStageMemberUserIds.mockReturnValue(['host', 'nova', 'riley']);
+    queryUserById.mockReturnValue({ id: 'host', name: 'Casey Bridge', images: ['/casey.webp'] });
+    applyStageAction.mockReturnValue({
+      sourceId: 'event-1',
+      subEventId: 'qualifiers',
+      subEventIndex: 0,
+      action: 'reopen-scores',
+      stageStatus: 'SR',
+      stageResultRevision: 1
+    });
+    appendNotifications.mockImplementation(records => records);
+    unreadCount.mockReturnValue(1);
+
+    await TestBed.inject(LocalEventsService).applyStageAction({
+      userId: 'host',
+      sourceId: 'event-1',
+      subEventId: 'qualifiers',
+      subEventIndex: 0,
+      action: 'reopen-scores'
+    });
+
+    const records = appendNotifications.mock.calls[0]?.[0];
+    expect(records.map((record: { recipientUserId: string }) => record.recipientUserId))
+      .toEqual(['nova', 'riley']);
+    expect(records[0]).toMatchObject({
+      kind: 'event-stage-scores-under-review',
+      title: 'Qualifiers scores under review',
+      message: 'Qualifiers scores were reopened and are under review.',
+      senderUserId: 'host',
+      senderName: 'Casey Bridge',
+      payload: {
+        stageTitle: 'Qualifiers',
+        notification_title_key: 'notification.event.stage.scores-under-review.title',
+        notification_message_key: 'notification.event.stage.scores-under-review.message',
+        notification_tone: 'info',
+        stageIndex: '1',
+        stageTotal: '2'
+      }
+    });
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_tone');
+    expect(records[0].payload).not.toHaveProperty('notification_avatar_icon');
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('nova', 1);
+    expect(syncRealtimeNotificationCount).toHaveBeenCalledWith('riley', 1);
+  });
+
   it('keeps manual Final closure separate from short system winner results', async () => {
     queryEventRecordById.mockReturnValue({
       id: 'event-1',
