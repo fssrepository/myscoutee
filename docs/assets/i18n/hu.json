@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.08.15.hu.57",
+  "version": "2026.08.17.hu.58",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2090,6 +2090,8 @@
     "event.members.invite.capacity.full.message": "A kijelölt tagot nem hívtuk meg, mert már minden hely foglalt.",
     "event.members.invite.not.sent.title": "A meghívást nem küldtük el",
     "event.members.invite.not.sent.message": "A kijelölt meghívást nem sikerült elküldeni.",
+    "event.tournament.registration.closed.title": "A jelentkezés lezárult",
+    "event.tournament.registration.closed.message": "A versenyre való jelentkezés az első szakasz indulásakor lezárult.",
     "event.editor.create": "Esemény létrehozása",
     "event.editor.save.aria": "Esemény mentése",
     "event.editor.publish.question": "Közzéteszed az eseményt?",
