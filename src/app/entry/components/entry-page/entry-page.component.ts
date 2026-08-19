@@ -616,7 +616,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       selection.complete();
       return;
     }
-    const session = await this.sessionService.startTrackedDemoSession(normalizedUserId);
+    const session = this.usersService.localModeEnabled
+      ? this.sessionService.startDemoSession(normalizedUserId)
+      : await this.sessionService.startTrackedDemoSession(normalizedUserId);
     if (!session) {
       selection.fail(this.sessionService.firebaseNotice());
       return;
