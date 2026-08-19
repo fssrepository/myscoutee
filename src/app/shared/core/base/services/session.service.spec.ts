@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { environment } from '../../../../../environments/environment';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import type { FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import { FirebaseSessionRegistryService } from '../../http/services/firebase-session-registry.service';
@@ -8,6 +9,7 @@ import { FirebaseAuthService } from './firebase-auth.service';
 import { SessionService } from './session.service';
 
 describe('SessionService operator bootstrap session', () => {
+  const originalActivitiesDataSource = environment.activitiesDataSource;
   const installerEmail =
     'operator-0123456789abcdef01234567@deployment.invalid';
   const bootstrapSignIn = vi.fn();
@@ -21,6 +23,7 @@ describe('SessionService operator bootstrap session', () => {
   const revokeFirebaseSession = vi.fn();
 
   beforeEach(() => {
+    environment.activitiesDataSource = originalActivitiesDataSource;
     localStorage.clear();
     sessionStorage.clear();
     bootstrapSignIn.mockReset();
@@ -74,6 +77,7 @@ describe('SessionService operator bootstrap session', () => {
   });
 
   afterEach(() => {
+    environment.activitiesDataSource = originalActivitiesDataSource;
     TestBed.resetTestingModule();
     localStorage.clear();
     sessionStorage.clear();
@@ -244,6 +248,7 @@ describe('SessionService operator bootstrap session', () => {
   });
 
   it('revokes a tracked demo session before logout completes', async () => {
+    environment.activitiesDataSource = 'http';
     const service = TestBed.inject(SessionService);
     const session = await service.startTrackedDemoSession('demo-user');
 
@@ -254,6 +259,19 @@ describe('SessionService operator bootstrap session', () => {
       'demo-user'
     );
     expect(service.currentSession()).toBeNull();
+  });
+
+  it('logs out a local demo session without contacting the session registry', async () => {
+    environment.activitiesDataSource = 'local';
+    const service = TestBed.inject(SessionService);
+    service.startDemoSession('demo-user');
+
+    await service.logout();
+
+    expect(revokeDemoSession).not.toHaveBeenCalled();
+    expect(revokeFirebaseSession).not.toHaveBeenCalled();
+    expect(service.currentSession()).toBeNull();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBeNull();
   });
 
   it('clears the bootstrap token on logout', async () => {
