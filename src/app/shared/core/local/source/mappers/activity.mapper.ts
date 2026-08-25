@@ -271,6 +271,8 @@ export class LocalActivityMembersBuilder {
         return 'Pending';
       case 'disqualified':
         return 'Disqualified';
+      case 'removed':
+        return 'Removed';
       case 'deleted':
         return 'Deleted';
     }

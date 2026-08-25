@@ -1393,12 +1393,19 @@ export class LocalEventsRepository {
     );
     const groups = this.stageGroupsForDisplay(normalizedEventId, stage, subEvents, record).map((group, groupIndex) => {
       const groupId = `${group.id ?? `${normalizedSubEventId}-group-${groupIndex + 1}`}`.trim();
-      const persistedMembers = this.groupMemberRecordsFromTable(
+      const groupMemberRecords = this.groupMemberRecordsFromTable(
         membersTable,
         normalizedEventId,
         normalizedSubEventId,
         groupId
-      ).filter(member => member.status === 'accepted');
+      );
+      const persistedMembers = groupMemberRecords.filter(member => member.status === 'accepted');
+      const terminalMemberStates = new Map(groupMemberRecords
+        .filter(member => member.status === 'disqualified' || member.status === 'removed')
+        .map(member => [member.userId, member.status === 'disqualified' ? 'DQ' : 'R'] as const));
+      const terminalMemberNames = new Map(groupMemberRecords
+        .filter(member => member.status === 'disqualified' || member.status === 'removed')
+        .map(member => [member.userId, member.name.trim() || member.userId] as const));
       const memberCount = Math.max(
         persistedMembers.length,
         2,
@@ -1423,8 +1430,8 @@ export class LocalEventsRepository {
         members,
         scoreEntries: scoreEntries.map(entry => ({ ...entry })),
         fifaMatches: fifaMatches.map(match => ({ ...match })),
-        scoreRows: this.localScoreRows(members, scoreEntries),
-        fifaRows: this.localFifaRows(members, fifaMatches)
+        scoreRows: this.localScoreRows(members, scoreEntries, terminalMemberStates, terminalMemberNames),
+        fifaRows: this.localFifaRows(members, fifaMatches, terminalMemberStates, terminalMemberNames)
       };
     });
     return {
@@ -3380,6 +3387,13 @@ export class LocalEventsRepository {
     if (!normalizedEventId || !normalizedSubEventId || !normalizedGroupId) {
       return [];
     }
+    const randomRoomOwnerId = `random-room:${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`;
+    const randomRoomMembers = (table.idsByOwnerKey[`event:${randomRoomOwnerId}`] ?? [])
+      .map(id => table.byId[id])
+      .filter((member): member is ActivityMemberRecord => Boolean(member) && member.status !== 'deleted');
+    if (randomRoomMembers.length > 0) {
+      return randomRoomMembers;
+    }
     const ownerId = this.groupMembershipOwnerId(normalizedEventId, normalizedSubEventId, normalizedGroupId);
     return (table.idsByOwnerKey[`group:${ownerId}`] ?? [])
       .map(id => table.byId[id])
@@ -3754,7 +3768,9 @@ export class LocalEventsRepository {
 
   private localScoreRows(
     members: readonly ContractTypes.SubEventLeaderboardMember[],
-    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[]
+    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[],
+    terminalMemberStates: ReadonlyMap<string, 'DQ' | 'R'> = new Map(),
+    terminalMemberNames: ReadonlyMap<string, string> = new Map()
   ): ContractTypes.SubEventLeaderboardScoreStandingRow[] {
     const rows = new Map<string, ContractTypes.SubEventLeaderboardScoreStandingRow>();
     for (const member of members) {
@@ -3762,28 +3778,53 @@ export class LocalEventsRepository {
         memberId: member.id,
         memberName: member.name,
         total: 0,
-        updates: 0
+        updates: 0,
+        positionLabel: '',
+        participantState: 'A'
       });
     }
     for (const entry of entries) {
-      const row = rows.get(entry.memberId);
+      let row = rows.get(entry.memberId);
+      if (!row && terminalMemberStates.has(entry.memberId)) {
+        row = {
+          memberId: entry.memberId,
+          memberName: terminalMemberNames.get(entry.memberId) ?? entry.memberId,
+          total: 0,
+          updates: 0,
+          positionLabel: '',
+          participantState: (terminalMemberStates.get(entry.memberId) ?? 'R') as 'DQ' | 'R'
+        };
+        rows.set(entry.memberId, row);
+      }
       if (!row) {
         continue;
       }
       row.total += Math.trunc(Number(entry.value) || 0);
       row.updates += 1;
     }
-    return [...rows.values()].sort((left, right) => {
+    const sorted = [...rows.values()].sort((left, right) => {
+      const participantOrder = left.participantState.localeCompare(right.participantState);
+      if (participantOrder !== 0) {
+        return participantOrder;
+      }
       if (left.total !== right.total) {
         return right.total - left.total;
       }
       return left.memberName.localeCompare(right.memberName);
     });
+    let activePosition = 0;
+    return sorted.map(row => ({
+      ...row,
+      positionLabel: row.participantState === 'A' ? `${++activePosition}` : row.participantState,
+      participantState: row.participantState as 'A' | 'DQ' | 'R'
+    }));
   }
 
   private localFifaRows(
     members: readonly ContractTypes.SubEventLeaderboardMember[],
-    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[]
+    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[],
+    terminalMemberStates: ReadonlyMap<string, 'DQ' | 'R'> = new Map(),
+    terminalMemberNames: ReadonlyMap<string, string> = new Map()
   ): ContractTypes.SubEventLeaderboardFifaStandingRow[] {
     const rows = new Map<string, ContractTypes.SubEventLeaderboardFifaStandingRow>();
     for (const member of members) {
@@ -3797,12 +3838,22 @@ export class LocalEventsRepository {
         losses: 0,
         goalsFor: 0,
         goalsAgainst: 0,
-        goalDiff: 0
+        goalDiff: 0,
+        positionLabel: '',
+        participantState: 'A'
       });
     }
     for (const match of matches) {
-      const home = rows.get(match.homeMemberId);
-      const away = rows.get(match.awayMemberId);
+      let home = rows.get(match.homeMemberId);
+      let away = rows.get(match.awayMemberId);
+      if (!home && terminalMemberStates.has(match.homeMemberId)) {
+        home = this.localTerminalFifaRow(match.homeMemberId, terminalMemberStates, terminalMemberNames);
+        rows.set(match.homeMemberId, home);
+      }
+      if (!away && terminalMemberStates.has(match.awayMemberId)) {
+        away = this.localTerminalFifaRow(match.awayMemberId, terminalMemberStates, terminalMemberNames);
+        rows.set(match.awayMemberId, away);
+      }
       if (!home || !away) {
         continue;
       }
@@ -3830,7 +3881,11 @@ export class LocalEventsRepository {
     for (const row of rows.values()) {
       row.goalDiff = row.goalsFor - row.goalsAgainst;
     }
-    return [...rows.values()].sort((left, right) => {
+    const sorted = [...rows.values()].sort((left, right) => {
+      const participantOrder = left.participantState.localeCompare(right.participantState);
+      if (participantOrder !== 0) {
+        return participantOrder;
+      }
       if (left.points !== right.points) {
         return right.points - left.points;
       }
@@ -3842,6 +3897,33 @@ export class LocalEventsRepository {
       }
       return left.memberName.localeCompare(right.memberName);
     });
+    let activePosition = 0;
+    return sorted.map(row => ({
+      ...row,
+      positionLabel: row.participantState === 'A' ? `${++activePosition}` : row.participantState,
+      participantState: row.participantState as 'A' | 'DQ' | 'R'
+    }));
+  }
+
+  private localTerminalFifaRow(
+    memberId: string,
+    terminalMemberStates: ReadonlyMap<string, 'DQ' | 'R'>,
+    terminalMemberNames: ReadonlyMap<string, string>
+  ): ContractTypes.SubEventLeaderboardFifaStandingRow {
+    return {
+      memberId,
+      memberName: terminalMemberNames.get(memberId) ?? memberId,
+      points: 0,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+      positionLabel: '',
+      participantState: (terminalMemberStates.get(memberId) ?? 'R') as 'DQ' | 'R'
+    };
   }
 
   private localAdvancingMemberIds(

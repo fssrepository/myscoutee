@@ -1256,7 +1256,9 @@ export class HttpEventsService implements IEventsService {
             memberId: `${row.memberId ?? ''}`.trim(),
             memberName: `${row.memberName ?? 'Member'}`.trim() || 'Member',
             total: Math.trunc(Number(row.total) || 0),
-            updates: Math.max(0, Math.trunc(Number(row.updates) || 0))
+            updates: Math.max(0, Math.trunc(Number(row.updates) || 0)),
+            positionLabel: `${row.positionLabel ?? ''}`.trim(),
+            participantState: (row.participantState === 'DQ' || row.participantState === 'R' ? row.participantState : 'A') as 'A' | 'DQ' | 'R'
           })).filter(row => row.memberId),
           fifaRows: (group.fifaRows ?? []).map(row => ({
             memberId: `${row.memberId ?? ''}`.trim(),
@@ -1268,7 +1270,9 @@ export class HttpEventsService implements IEventsService {
             losses: Math.max(0, Math.trunc(Number(row.losses) || 0)),
             goalsFor: Math.trunc(Number(row.goalsFor) || 0),
             goalsAgainst: Math.trunc(Number(row.goalsAgainst) || 0),
-            goalDiff: Math.trunc(Number(row.goalDiff) || 0)
+            goalDiff: Math.trunc(Number(row.goalDiff) || 0),
+            positionLabel: `${row.positionLabel ?? ''}`.trim(),
+            participantState: (row.participantState === 'DQ' || row.participantState === 'R' ? row.participantState : 'A') as 'A' | 'DQ' | 'R'
           })).filter(row => row.memberId)
         };
       })

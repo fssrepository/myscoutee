@@ -132,6 +132,8 @@ export interface SubEventLeaderboardScoreStandingRow {
   memberName: string;
   total: number;
   updates: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R';
   isPlaceholder?: boolean;
 }
 
@@ -146,6 +148,8 @@ export interface SubEventLeaderboardFifaStandingRow {
   goalsFor: number;
   goalsAgainst: number;
   goalDiff: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R';
   isPlaceholder?: boolean;
 }
 

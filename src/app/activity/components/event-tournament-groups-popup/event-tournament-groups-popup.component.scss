@@ -174,6 +174,16 @@
   font-weight: 900;
 }
 
+.event-tournament-table tbody tr[data-participant-state='DQ'] td:first-child {
+  color: #9b2538;
+  box-shadow: inset 3px 0 0 rgba(155, 37, 56, 0.72);
+}
+
+.event-tournament-table tbody tr[data-participant-state='R'] td:first-child {
+  color: #8a5b11;
+  box-shadow: inset 3px 0 0 rgba(138, 91, 17, 0.72);
+}
+
 .event-tournament-table tr.is-advance td {
   background: rgba(61, 173, 99, 0.12);
   font-weight: 800;
