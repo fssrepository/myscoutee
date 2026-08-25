@@ -56,10 +56,11 @@
                         </tr>
                       </thead>
                       <tbody>
-                        @for (row of scoreRows(group); track trackByMemberId($index, row); let rowIndex = $index) {
+                        @for (row of scoreRows(group); track trackByMemberId($index, row)) {
                           <tr
-                            [class.is-advance]="isAdvanceRow(group, rowIndex)"
+                            [class.is-advance]="isAdvanceRow(group, row)"
                             [attr.data-member-palette]="leaderboardMemberPalette(group, row.memberId)"
+                            [attr.data-participant-state]="row.participantState"
                             data-motion="none"
                             tabindex="0"
                             role="button"
@@ -67,7 +68,7 @@
                             (keydown.enter)="openMemberHistory(group.id, row.memberId, $event)"
                             (keydown.space)="openMemberHistory(group.id, row.memberId, $event); $event.preventDefault()"
                           >
-                            <td>{{ rowIndex + 1 }}</td>
+                            <td>{{ row.positionLabel }}</td>
                             <td>{{ row.memberName }}</td>
                             <td>{{ row.total }}</td>
                             <td>{{ row.updates }}</td>
@@ -92,10 +93,11 @@
                         </tr>
                       </thead>
                       <tbody>
-                        @for (row of fifaRows(group); track trackByMemberId($index, row); let rowIndex = $index) {
+                        @for (row of fifaRows(group); track trackByMemberId($index, row)) {
                           <tr
-                            [class.is-advance]="isAdvanceRow(group, rowIndex)"
+                            [class.is-advance]="isAdvanceRow(group, row)"
                             [attr.data-member-palette]="leaderboardMemberPalette(group, row.memberId)"
+                            [attr.data-participant-state]="row.participantState"
                             data-motion="none"
                             tabindex="0"
                             role="button"
@@ -103,7 +105,7 @@
                             (keydown.enter)="openMemberHistory(group.id, row.memberId, $event)"
                             (keydown.space)="openMemberHistory(group.id, row.memberId, $event); $event.preventDefault()"
                           >
-                            <td>{{ rowIndex + 1 }}</td>
+                            <td>{{ row.positionLabel }}</td>
                             <td>{{ row.memberName }}</td>
                             <td>{{ row.points }}</td>
                             <td>{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
@@ -123,28 +125,50 @@
                   </header>
                   @if (selectedStageMode() === 'Score') {
                     @if (scoreHistory(group).length > 0) {
-                      <div class="event-tournament-history-list">
-                        @for (entry of scoreHistory(group); track trackById($index, entry)) {
-                          <article class="event-tournament-history-item">
-                            <strong>{{ scoreValueLabel(entry.value) }}</strong>
-                            <span>{{ entry.note || 'No note' }}</span>
-                            <time>{{ entry.createdAtMs | date:'MM/dd HH:mm' }}</time>
-                          </article>
-                        }
+                      <div class="event-tournament-table-wrap">
+                        <table class="event-tournament-table event-tournament-table-history event-tournament-table-score-history">
+                          <thead>
+                            <tr>
+                              <th>Score</th>
+                              <th>Note</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (entry of scoreHistory(group); track trackById($index, entry)) {
+                              <tr>
+                                <td>{{ scoreValueLabel(entry.value) }}</td>
+                                <td>{{ entry.note || 'No note' }}</td>
+                                <td>{{ entry.createdAtMs | date:'MM/dd HH:mm' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
                       </div>
                     } @else {
                       <p class="event-tournament-history-empty">No score updates yet.</p>
                     }
                   } @else {
                     @if (fifaHistory(group).length > 0) {
-                      <div class="event-tournament-history-list">
-                        @for (match of fifaHistory(group); track trackById($index, match)) {
-                          <article class="event-tournament-history-item event-tournament-history-match">
-                            <strong>{{ memberName(group, match.homeMemberId) }} - {{ memberName(group, match.awayMemberId) }}</strong>
-                            <span>{{ match.homeScore }} : {{ match.awayScore }}</span>
-                            <time>{{ match.createdAtMs | date:'MM/dd HH:mm' }}</time>
-                          </article>
-                        }
+                      <div class="event-tournament-table-wrap">
+                        <table class="event-tournament-table event-tournament-table-history event-tournament-table-fifa-history">
+                          <thead>
+                            <tr>
+                              <th>Match</th>
+                              <th>Result</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (match of fifaHistory(group); track trackById($index, match)) {
+                              <tr>
+                                <td>{{ memberName(group, match.homeMemberId) }} - {{ memberName(group, match.awayMemberId) }}</td>
+                                <td>{{ match.homeScore }} : {{ match.awayScore }}</td>
+                                <td>{{ match.createdAtMs | date:'MM/dd HH:mm' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
                       </div>
                     } @else {
                       <p class="event-tournament-history-empty">No matches yet.</p>

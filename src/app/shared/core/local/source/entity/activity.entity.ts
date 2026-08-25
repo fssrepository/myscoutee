@@ -147,6 +147,7 @@ export interface ActivitySubEventStageRuntimeRecord {
   stageStatusUpdatedAt: string | null;
   stageFinalizedAt: string | null;
   stageFinalizedByUserId: string | null;
+  stageResultRevision: number | null;
   groupsCount: number | null;
   groupResourceMetricsByAssetOwnerId: Record<
     string,

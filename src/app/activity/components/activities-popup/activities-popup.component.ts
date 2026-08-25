@@ -2329,6 +2329,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private applyActivityEventRuntimeSync(sync: {
     eventId: string;
     activityDelta: number;
+    currentStage?: ActivityEventDTO['currentStage'];
   }): void {
     const smartList = this.activitiesSmartList;
     const eventId = `${sync.eventId ?? ''}`.trim();
@@ -2349,7 +2350,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       activity: Math.max(
         0,
         Math.trunc(Number(source.activity) || 0) + Math.trunc(Number(sync.activityDelta) || 0)
-      )
+      ),
+      currentStage: sync.currentStage === undefined
+        ? source.currentStage
+        : sync.currentStage ? { ...sync.currentStage } : null
     }, {
       predicate: row => this.isEventStyleActivity(row) && row.id === eventId
     });
@@ -2423,7 +2427,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   ) {
     return {
       activeUserId: this.activeUser.id,
-      trashView: eventScope === 'trash'
+      trashView: eventScope === 'trash',
+      translateParams: (
+        key: string,
+        values: Record<string, string | number>,
+        fallback?: string | null
+      ) => this.i18nService.translateParams(key, values, fallback)
     };
   }
 

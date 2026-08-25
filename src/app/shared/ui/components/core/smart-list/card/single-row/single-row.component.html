@@ -1,6 +1,7 @@
 <article
   class="motion-static"
   [ngClass]="rootClassList()"
+  [style.--ui-single-row-accent-hue]="rowAccentHue()"
   [attr.role]="isClickable() ? 'button' : null"
   [attr.tabindex]="isClickable() ? 0 : null"
   [attr.aria-label]="ariaLabel"

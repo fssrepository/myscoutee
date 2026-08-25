@@ -14,7 +14,15 @@ export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
 export type EventEditorMode = 'edit' | 'create';
 export type EventEditorTarget = 'events' | 'hosting';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
-export type EventRecordKind = 'main' | 'slot' | 'random-room';
+export type EventRecordKind = 'main' | 'slot' | 'random-room' | 'tournament-room';
+
+export interface TournamentCurrentStageDTO {
+  id: string;
+  name: string;
+  stageNumber: number;
+  totalStages: number;
+  status: TournamentStageStatus | string;
+}
 
 export interface EventSlotTemplateDTO {
   id: string;
@@ -76,6 +84,7 @@ export interface SubEventDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
 }
 
 export interface SubEventGroupDTO {
@@ -123,6 +132,8 @@ export interface SubEventLeaderboardScoreStandingRow {
   memberName: string;
   total: number;
   updates: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -137,6 +148,8 @@ export interface SubEventLeaderboardFifaStandingRow {
   goalsFor: number;
   goalsAgainst: number;
   goalDiff: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -169,6 +182,8 @@ export interface EventTournamentGroupDTO {
   capacityMax: number;
   membersAccepted: number;
   membersPending: number;
+  memberOwnerType?: 'event' | 'group';
+  memberOwnerId?: string;
   resourceMetricsByType: Partial<Record<string, EventTournamentResourceMetricDTO>>;
 }
 
@@ -210,6 +225,11 @@ export interface EventTournamentStageGroupsQueryDTO {
   eventId: string;
   slotId?: string | null;
   stageId: string;
+}
+
+export interface EventTournamentStageSnapshotDTO {
+  groups: EventTournamentGroupDTO[];
+  leaderboard: SubEventLeaderboardState | null;
 }
 
 export interface EventTournamentGroupUpsertRequestDTO {

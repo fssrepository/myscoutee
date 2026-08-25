@@ -241,17 +241,37 @@ export class HttpActivityMembersService {
         counterOverrides: null
       };
     }
-    const response = await this.http
-      .post<ActivityMemberActionResultDTO | ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
-        owner: normalizedOwner,
-        actorUserId: actorUserId.trim(),
-        targetUserId: normalizedTargetUserId,
-        action,
-        reason: reason?.trim() || null,
-        eventId: `${options?.eventId ?? ''}`.trim() || null,
-        subEventId: `${options?.subEventId ?? ''}`.trim() || null
-      })
-      .toPromise();
+    let response: ActivityMemberActionResultDTO | ActivityContracts.ActivityMemberDTO[] | null | undefined;
+    try {
+      response = await this.http
+        .post<ActivityMemberActionResultDTO | ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+          owner: normalizedOwner,
+          actorUserId: actorUserId.trim(),
+          targetUserId: normalizedTargetUserId,
+          action,
+          reason: reason?.trim() || null,
+          eventId: `${options?.eventId ?? ''}`.trim() || null,
+          subEventId: `${options?.subEventId ?? ''}`.trim() || null
+        })
+        .toPromise();
+    } catch (error) {
+      const errorRecord = error as {
+        message?: unknown;
+        error?: { message?: unknown; detail?: unknown; reason?: unknown } | string | null;
+      };
+      const remoteError = typeof errorRecord?.error === 'string'
+        ? errorRecord.error
+        : [
+            errorRecord?.message,
+            errorRecord?.error?.message,
+            errorRecord?.error?.detail,
+            errorRecord?.error?.reason
+          ].map(value => `${value ?? ''}`).join(' ');
+      if (remoteError.includes('tournament-registration-closed')) {
+        throw new Error('event.tournament.registration.closed.message');
+      }
+      throw error;
+    }
     const members = this.cloneEntries(Array.isArray(response)
       ? response
       : (Array.isArray(response?.members) ? response.members : []));

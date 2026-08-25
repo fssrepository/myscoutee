@@ -36,6 +36,10 @@ import type { LocationCoordinates, UserEventCountersDto } from '../../../contrac
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 import * as AppConstants from '../../../common/constants';
+import {
+  tournamentCurrentStageFromSubEvents,
+  tournamentGroupCountForIncoming
+} from '../../../common/tournament-group-count';
 
 interface SubEventParticipantSlotCandidate {
   slot: ActivityContracts.SubEventsSlotDTO;
@@ -300,7 +304,31 @@ export class LocalEventsRepository {
   }
 
   private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
-    return stageIndex >= 0 && stageIndex < stages.length;
+    if (stageIndex < 0 || stageIndex >= stages.length) {
+      return false;
+    }
+    return stages.slice(stageIndex + 1)
+      .filter(stage => this.isTournamentSubEvent(stage))
+      .every(stage => {
+        const status = this.normalizeStageStatus(stage.stageStatus);
+        const pristineActive = status === 'A'
+          && !`${stage.stageStatusUpdatedAt ?? ''}`.trim()
+          && !`${stage.stageFinalizedAt ?? ''}`.trim();
+        return status === 'RS' || pristineActive;
+      });
+  }
+
+  private nextStageResultRevision(
+    stage: ContractTypes.SubEventDTO,
+    nextStatus: ContractTypes.TournamentStageStatus
+  ): number {
+    let revision = Math.max(0, Math.trunc(Number(stage.stageResultRevision) || 0));
+    if (revision === 0 && this.normalizeStageStatus(stage.stageStatus) === 'F') {
+      revision = 1;
+    }
+    return nextStatus === 'F' && this.normalizeStageStatus(stage.stageStatus) !== 'F'
+      ? revision + 1
+      : revision;
   }
 
   private isStageInScheduleWindow(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
@@ -338,6 +366,7 @@ export class LocalEventsRepository {
       stageStatusUpdatedAt: `${stage.stageStatusUpdatedAt ?? ''}`.trim() || null,
       stageFinalizedAt: `${stage.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${stage.stageFinalizedByUserId ?? ''}`.trim() || null,
+      stageResultRevision: Math.max(0, Math.trunc(Number(stage.stageResultRevision) || 0)),
       autoInviter: autoInviter ?? null
     };
   }
@@ -528,6 +557,44 @@ export class LocalEventsRepository {
       this.withResolvedSlotContext(record, table),
       viewerCoordinates
     );
+  }
+
+  queryGeneratedTournamentRoomsByParent(parentEventId: string): ActivityEventRecord[] {
+    const normalizedParentEventId = parentEventId.trim();
+    if (!normalizedParentEventId) {
+      return [];
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivityEventRecord => Boolean(record))
+      .filter(record => record.parentEventId?.trim() === normalizedParentEventId)
+      .filter(record => record.generated === true && record.eventType === 'tournament-room')
+      .map(record => ({
+        ...record,
+        adminIds: [...(record.adminIds ?? [])],
+        acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+        pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+        invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+        pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])]
+      }));
+  }
+
+  isTournamentAdmissionLocked(eventId: string): boolean {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return false;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = this.computePreferredEventRecords(table)
+      .find(item => item.id === normalizedEventId);
+    const firstTournamentStage = (record?.subEvents ?? [])
+      .find(stage => this.isGeneratedTournamentStage(stage));
+    if (!firstTournamentStage) {
+      return false;
+    }
+    const status = this.normalizeStageStatus(firstTournamentStage.stageStatus);
+    return status === 'A' || status === 'SR' || status === 'F' || status === 'S';
   }
 
   querySubEventsByEventId(
@@ -1137,13 +1204,15 @@ export class LocalEventsRepository {
       const targetStageId = `${preferredSubEvents[preferredIndex]?.id ?? ''}`.trim();
       if (normalizedSlotSourceId) {
         const nextStatus = this.stageActionNextStatus(actionTarget, preferredSubEvents[preferredIndex]);
+        const stageResultRevision = this.nextStageResultRevision(preferredSubEvents[preferredIndex], nextStatus);
         const updatedStage = {
           ...preferredSubEvents[preferredIndex],
           stageStatus: nextStatus,
           stageStatusReason: actionTarget.reason,
           stageStatusUpdatedAt: nowIso,
           stageFinalizedAt: nextStatus === 'F' ? nowIso : null,
-          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null
+          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null,
+          stageResultRevision
         };
         result = this.toStageActionResult(
           runtimeOwnerId,
@@ -1191,13 +1260,15 @@ export class LocalEventsRepository {
           continue;
         }
         const nextStatus = this.stageActionNextStatus(actionTarget, subEvents[stageIndex]);
+        const stageResultRevision = this.nextStageResultRevision(subEvents[stageIndex], nextStatus);
         const updatedStage = {
           ...subEvents[stageIndex],
           stageStatus: nextStatus,
           stageStatusReason: actionTarget.reason,
           stageStatusUpdatedAt: nowIso,
           stageFinalizedAt: nextStatus === 'F' ? nowIso : null,
-          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null
+          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null,
+          stageResultRevision
         };
         subEvents[stageIndex] = updatedStage;
         if (!result) {
@@ -1212,7 +1283,11 @@ export class LocalEventsRepository {
         nextById[id] = {
           ...current,
           autoInviter: actionTarget.action === 'start-tournament' ? false : current.autoInviter,
-          subEvents
+          visibility: actionTarget.action === 'start-tournament' && preferredIndex === 0
+            ? 'Invitation only'
+            : current.visibility,
+          subEvents,
+          currentStage: tournamentCurrentStageFromSubEvents(subEvents)
         };
         changed = true;
       }
@@ -1299,6 +1374,7 @@ export class LocalEventsRepository {
         stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
         stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
         stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
+        stageResultRevision: state?.stageResultRevision ?? item.stageResultRevision,
         groupsCount
       };
     });
@@ -1338,12 +1414,19 @@ export class LocalEventsRepository {
     );
     const groups = this.stageGroupsForDisplay(normalizedEventId, stage, subEvents, record).map((group, groupIndex) => {
       const groupId = `${group.id ?? `${normalizedSubEventId}-group-${groupIndex + 1}`}`.trim();
-      const persistedMembers = this.groupMemberRecordsFromTable(
+      const groupMemberRecords = this.groupMemberRecordsFromTable(
         membersTable,
         normalizedEventId,
         normalizedSubEventId,
         groupId
-      ).filter(member => member.status === 'accepted');
+      );
+      const persistedMembers = groupMemberRecords.filter(member => member.status === 'accepted');
+      const terminalMemberStates = new Map(groupMemberRecords
+        .filter(member => member.status === 'disqualified' || member.status === 'removed')
+        .map(member => [member.userId, member.status === 'disqualified' ? 'DQ' : 'R'] as const));
+      const terminalMemberNames = new Map(groupMemberRecords
+        .filter(member => member.status === 'disqualified' || member.status === 'removed')
+        .map(member => [member.userId, member.name.trim() || member.userId] as const));
       const memberCount = Math.max(
         persistedMembers.length,
         2,
@@ -1368,8 +1451,8 @@ export class LocalEventsRepository {
         members,
         scoreEntries: scoreEntries.map(entry => ({ ...entry })),
         fifaMatches: fifaMatches.map(match => ({ ...match })),
-        scoreRows: this.localScoreRows(members, scoreEntries),
-        fifaRows: this.localFifaRows(members, fifaMatches)
+        scoreRows: this.localScoreRows(members, scoreEntries, terminalMemberStates, terminalMemberNames),
+        fifaRows: this.localFifaRows(members, fifaMatches, terminalMemberStates, terminalMemberNames)
       };
     });
     return {
@@ -1379,6 +1462,36 @@ export class LocalEventsRepository {
       leaderboardType,
       groups
     };
+  }
+
+  queryAcceptedTournamentStageMemberUserIds(eventId: string, subEventId: string): string[] {
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedEventId || !normalizedSubEventId) {
+      return [];
+    }
+    const record = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === normalizedEventId) ?? null;
+    if (!record) {
+      return [];
+    }
+    const stages = this.runtimeSubEvents(record);
+    const stage = stages.find(item => `${item.id ?? ''}`.trim() === normalizedSubEventId) ?? null;
+    if (!stage) {
+      return [];
+    }
+    const membersTable = this.normalizeActivityMembersCollection(
+      this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]
+    );
+    return this.normalizeUserIds(this.stageGroupsForDisplay(normalizedEventId, stage, stages, record)
+      .flatMap(group => this.groupMemberRecordsFromTable(
+        membersTable,
+        normalizedEventId,
+        normalizedSubEventId,
+        `${group.id ?? ''}`.trim()
+      ))
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId));
   }
 
   queryTournamentGroups(query: ContractTypes.EventTournamentGroupsQueryDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
@@ -1427,6 +1540,20 @@ export class LocalEventsRepository {
         stageRuntime,
         membersTable
       ));
+  }
+
+  queryTournamentStageSnapshot(
+    query: ContractTypes.EventTournamentStageGroupsQueryDTO
+  ): ContractTypes.EventTournamentStageSnapshotDTO {
+    const eventId = `${query.eventId ?? ''}`.trim();
+    const stageId = `${query.stageId ?? ''}`.trim();
+    if (!eventId || !stageId) {
+      return { groups: [], leaderboard: null };
+    }
+    return {
+      groups: this.queryTournamentStageGroups(query),
+      leaderboard: this.querySubEventLeaderboard(eventId, stageId)
+    };
   }
 
   queryTournamentStagePending(ownerSourceId: string, stageId: string): number {
@@ -2119,13 +2246,14 @@ export class LocalEventsRepository {
     const directRecords = table.ids
       .map(id => this.normalizePersistedEventRecord(table.byId[id]))
       .filter((record): record is ActivityEventRecord => Boolean(record))
+      .filter(record => this.isRootActivityRecord(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
       .map(record => this.withResolvedSlotContext(record, table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
-      .filter(record => !this.isGeneratedSlotRecord(record))
+      .filter(record => this.isRootActivityRecord(record))
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
@@ -2177,7 +2305,7 @@ export class LocalEventsRepository {
     for (const id of table.ids) {
       const record = this.normalizePersistedEventRecord(table.byId[id]);
       const recordUserId = record?.userId?.trim() ?? '';
-      if (!record || !userIdSet.has(recordUserId)) {
+      if (!record || !this.isRootActivityRecord(record) || !userIdSet.has(recordUserId)) {
         continue;
       }
       if (!this.shouldIncludeUserDirectRecord(record, recordUserId, preferredRecordByEventId.get(record.id))) {
@@ -2195,7 +2323,7 @@ export class LocalEventsRepository {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
         .filter(record => record.creatorUserId !== userId)
-        .filter(record => !this.isGeneratedSlotRecord(record))
+        .filter(record => this.isRootActivityRecord(record))
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
         .filter(record => this.hasTrackedUserParticipation(record, userId))
@@ -3255,6 +3383,11 @@ export class LocalEventsRepository {
     const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
     const capacityMax = Math.max(capacityMin, Math.trunc(Number(group.capacityMax) || capacityMin));
     const groupId = `${group.id ?? `${stage.id ?? 'stage'}-group-${groupIndex + 1}`}`.trim();
+    const memberOwnerId = this.groupMembershipOwnerId(
+      ownerSourceId,
+      `${stage.id ?? ''}`.trim(),
+      groupId
+    );
     const groupMembers = this.groupMemberRecordsFromTable(
       membersTable,
       ownerSourceId,
@@ -3271,6 +3404,8 @@ export class LocalEventsRepository {
       capacityMax,
       membersAccepted: accepted,
       membersPending: pending,
+      memberOwnerType: 'group',
+      memberOwnerId,
       resourceMetricsByType: this.groupResourceMetrics(stageRuntime, `${group.id ?? ''}`.trim())
     };
   }
@@ -3287,12 +3422,26 @@ export class LocalEventsRepository {
     if (!normalizedEventId || !normalizedSubEventId || !normalizedGroupId) {
       return [];
     }
-    const ownerId = normalizedGroupId === normalizedEventId || normalizedGroupId.startsWith(`${normalizedEventId}:`)
-      ? normalizedGroupId
-      : `${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`;
+    const randomRoomOwnerId = `random-room:${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`;
+    const randomRoomMembers = (table.idsByOwnerKey[`event:${randomRoomOwnerId}`] ?? [])
+      .map(id => table.byId[id])
+      .filter((member): member is ActivityMemberRecord => Boolean(member) && member.status !== 'deleted');
+    if (randomRoomMembers.length > 0) {
+      return randomRoomMembers;
+    }
+    const ownerId = this.groupMembershipOwnerId(normalizedEventId, normalizedSubEventId, normalizedGroupId);
     return (table.idsByOwnerKey[`group:${ownerId}`] ?? [])
       .map(id => table.byId[id])
       .filter((member): member is ActivityMemberRecord => Boolean(member) && member.status !== 'deleted');
+  }
+
+  private groupMembershipOwnerId(eventId: string, subEventId: string, groupId: string): string {
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedGroupId = groupId.trim();
+    return normalizedGroupId === normalizedEventId || normalizedGroupId.startsWith(`${normalizedEventId}:`)
+      ? normalizedGroupId
+      : `${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`;
   }
 
   private stageRuntimeRecord(ownerId: string, subEventId: string): ActivitySubEventStageRuntimeRecord | null {
@@ -3535,6 +3684,7 @@ export class LocalEventsRepository {
       stageStatusUpdatedAt: existing?.stageStatusUpdatedAt ?? null,
       stageFinalizedAt: existing?.stageFinalizedAt ?? null,
       stageFinalizedByUserId: existing?.stageFinalizedByUserId ?? null,
+      stageResultRevision: existing?.stageResultRevision ?? null,
       groupsCount: Math.max(0, groupsCount),
       groupResourceMetricsByAssetOwnerId: LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceMetrics(
         existing?.groupResourceMetricsByAssetOwnerId
@@ -3653,7 +3803,9 @@ export class LocalEventsRepository {
 
   private localScoreRows(
     members: readonly ContractTypes.SubEventLeaderboardMember[],
-    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[]
+    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[],
+    terminalMemberStates: ReadonlyMap<string, 'DQ' | 'R'> = new Map(),
+    terminalMemberNames: ReadonlyMap<string, string> = new Map()
   ): ContractTypes.SubEventLeaderboardScoreStandingRow[] {
     const rows = new Map<string, ContractTypes.SubEventLeaderboardScoreStandingRow>();
     for (const member of members) {
@@ -3661,28 +3813,53 @@ export class LocalEventsRepository {
         memberId: member.id,
         memberName: member.name,
         total: 0,
-        updates: 0
+        updates: 0,
+        positionLabel: '',
+        participantState: member.name === '-----' ? 'V' : 'A'
       });
     }
     for (const entry of entries) {
-      const row = rows.get(entry.memberId);
+      let row = rows.get(entry.memberId);
+      if (!row && terminalMemberStates.has(entry.memberId)) {
+        row = {
+          memberId: entry.memberId,
+          memberName: terminalMemberNames.get(entry.memberId) ?? entry.memberId,
+          total: 0,
+          updates: 0,
+          positionLabel: '',
+          participantState: (terminalMemberStates.get(entry.memberId) ?? 'R') as 'DQ' | 'R'
+        };
+        rows.set(entry.memberId, row);
+      }
       if (!row) {
         continue;
       }
       row.total += Math.trunc(Number(entry.value) || 0);
       row.updates += 1;
     }
-    return [...rows.values()].sort((left, right) => {
+    const sorted = [...rows.values()].sort((left, right) => {
+      const participantOrder = left.participantState.localeCompare(right.participantState);
+      if (participantOrder !== 0) {
+        return participantOrder;
+      }
       if (left.total !== right.total) {
         return right.total - left.total;
       }
       return left.memberName.localeCompare(right.memberName);
     });
+    let activePosition = 0;
+    return sorted.map(row => ({
+      ...row,
+      positionLabel: row.participantState === 'A' ? `${++activePosition}` : row.participantState,
+      participantState: row.participantState as 'A' | 'DQ' | 'R' | 'V'
+    }));
   }
 
   private localFifaRows(
     members: readonly ContractTypes.SubEventLeaderboardMember[],
-    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[]
+    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[],
+    terminalMemberStates: ReadonlyMap<string, 'DQ' | 'R'> = new Map(),
+    terminalMemberNames: ReadonlyMap<string, string> = new Map()
   ): ContractTypes.SubEventLeaderboardFifaStandingRow[] {
     const rows = new Map<string, ContractTypes.SubEventLeaderboardFifaStandingRow>();
     for (const member of members) {
@@ -3696,12 +3873,22 @@ export class LocalEventsRepository {
         losses: 0,
         goalsFor: 0,
         goalsAgainst: 0,
-        goalDiff: 0
+        goalDiff: 0,
+        positionLabel: '',
+        participantState: member.name === '-----' ? 'V' : 'A'
       });
     }
     for (const match of matches) {
-      const home = rows.get(match.homeMemberId);
-      const away = rows.get(match.awayMemberId);
+      let home = rows.get(match.homeMemberId);
+      let away = rows.get(match.awayMemberId);
+      if (!home && terminalMemberStates.has(match.homeMemberId)) {
+        home = this.localTerminalFifaRow(match.homeMemberId, terminalMemberStates, terminalMemberNames);
+        rows.set(match.homeMemberId, home);
+      }
+      if (!away && terminalMemberStates.has(match.awayMemberId)) {
+        away = this.localTerminalFifaRow(match.awayMemberId, terminalMemberStates, terminalMemberNames);
+        rows.set(match.awayMemberId, away);
+      }
       if (!home || !away) {
         continue;
       }
@@ -3729,7 +3916,11 @@ export class LocalEventsRepository {
     for (const row of rows.values()) {
       row.goalDiff = row.goalsFor - row.goalsAgainst;
     }
-    return [...rows.values()].sort((left, right) => {
+    const sorted = [...rows.values()].sort((left, right) => {
+      const participantOrder = left.participantState.localeCompare(right.participantState);
+      if (participantOrder !== 0) {
+        return participantOrder;
+      }
       if (left.points !== right.points) {
         return right.points - left.points;
       }
@@ -3741,6 +3932,33 @@ export class LocalEventsRepository {
       }
       return left.memberName.localeCompare(right.memberName);
     });
+    let activePosition = 0;
+    return sorted.map(row => ({
+      ...row,
+      positionLabel: row.participantState === 'A' ? `${++activePosition}` : row.participantState,
+      participantState: row.participantState as 'A' | 'DQ' | 'R' | 'V'
+    }));
+  }
+
+  private localTerminalFifaRow(
+    memberId: string,
+    terminalMemberStates: ReadonlyMap<string, 'DQ' | 'R'>,
+    terminalMemberNames: ReadonlyMap<string, string>
+  ): ContractTypes.SubEventLeaderboardFifaStandingRow {
+    return {
+      memberId,
+      memberName: terminalMemberNames.get(memberId) ?? memberId,
+      points: 0,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+      positionLabel: '',
+      participantState: (terminalMemberStates.get(memberId) ?? 'R') as 'DQ' | 'R'
+    };
   }
 
   private localAdvancingMemberIds(
@@ -3752,7 +3970,10 @@ export class LocalEventsRepository {
     const rows = stage.tournamentLeaderboardType === 'Fifa'
       ? this.localFifaRows(members, fifaMatches)
       : this.localScoreRows(members, scoreEntries);
-    return rows.map(row => row.memberId).filter(Boolean);
+    return rows
+      .filter(row => row.participantState === 'A')
+      .map(row => row.memberId)
+      .filter(Boolean);
   }
 
   private localGeneratedGroups(
@@ -3787,9 +4008,8 @@ export class LocalEventsRepository {
       return 0;
     }
     const sequence = stages?.length ? stages : [stage];
-    let incomingCapacityMax = Math.max(
-      this.toNonNegativeInteger((eventRecord as { capacityMax?: number | null } | null | undefined)?.capacityMax),
-      this.toNonNegativeInteger(stage.capacityMax)
+    let incomingCapacityMax = this.toNonNegativeInteger(
+      (eventRecord as { capacityMax?: number | null } | null | undefined)?.capacityMax
     );
     for (const candidate of sequence) {
       const groupCount = this.autoTournamentGroupCountForIncoming(candidate, incomingCapacityMax);
@@ -3811,22 +4031,12 @@ export class LocalEventsRepository {
     if (!stage) {
       return 0;
     }
-    const groupMin = Math.max(0, Math.trunc(Number(stage.tournamentGroupCapacityMin) || 0));
-    const groupMax = Math.max(groupMin, Math.trunc(Number(stage.tournamentGroupCapacityMax) || groupMin));
-    if (groupMin > 0 || groupMax > 0) {
-      const divisor = Math.max(1, groupMax > 0 ? groupMax : groupMin);
-      const stageMax = incomingCapacityMax > 0
-        ? incomingCapacityMax
-        : Math.max(0, Math.trunc(Number(stage.capacityMax) || 0));
-      const groupsNeededForMaximum = stageMax > 0
-        ? Math.ceil(stageMax / divisor)
-        : 0;
-      const groupsAllowedByMinimum = groupMin > 0
-        ? Math.max(1, Math.floor(stageMax / groupMin))
-        : groupsNeededForMaximum;
-      return Math.min(groupsNeededForMaximum, groupsAllowedByMinimum);
-    }
-    return 0;
+    return tournamentGroupCountForIncoming({
+      groupCapacityMin: stage.tournamentGroupCapacityMin,
+      groupCapacityMax: stage.tournamentGroupCapacityMax,
+      incomingCapacityMax,
+      stageCapacityMax: stage.capacityMax
+    });
   }
 
   private hasTournamentGroupCapacityRule(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
@@ -4347,6 +4557,12 @@ export class LocalEventsRepository {
 
   private isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
     return Boolean(record?.generated) || record?.eventType === 'slot' || Boolean(record?.parentEventId);
+  }
+
+  private isRootActivityRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return Boolean(record)
+      && !this.isGeneratedSlotRecord(record)
+      && record?.eventType !== 'tournament-room';
   }
 
   private isSlotParentRecord(record: ActivityEventRecord | null | undefined): boolean {

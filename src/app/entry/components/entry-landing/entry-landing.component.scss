@@ -212,10 +212,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 14px;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
-    var(--deployment-hero-background);
-  background-size: 18px 18px, auto;
+  background: var(--deployment-hero-background);
   color: var(--deployment-hero-text);
   padding: 1.5rem;
   margin-bottom: 0.9rem;
@@ -1031,9 +1028,34 @@ app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
   font-size: 1.04rem;
 }
 
-.entry-footer-links a {
+.entry-footer-links a,
+.entry-footer-text-action {
   color: var(--deployment-footer-text);
   text-decoration: none;
+}
+
+.entry-footer-text-action {
+  appearance: none;
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .entry-footer-links :is(a, .entry-footer-text-action):hover {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+}
+
+.entry-footer-text-action:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }
 
 .entry-footer-links a.entry-footer-link-disabled {
@@ -1217,10 +1239,7 @@ app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
 }
 
 .entry-hero {
-  background:
-    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-    var(--deployment-hero-background);
-  background-size: 18px 18px, auto;
+  background: var(--deployment-hero-background);
 }
 
 .entry-hero-lead {

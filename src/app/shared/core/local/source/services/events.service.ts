@@ -10,6 +10,7 @@ import type {
   EventTournamentGroupUpsertRequestDTO,
   EventSlotOccurrenceDTO,
   EventTournamentStageGroupsQueryDTO,
+  EventTournamentStageSnapshotDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../../contracts/event.interface';
@@ -180,7 +181,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return {
       ...page,
       items: page.items.map(item => {
-        const creator = this.usersRepository.queryUserById(item.creatorUserId);
+        const creator = this.usersRepository.queryUserById(
+          item.organizerUserId?.trim() || item.creatorUserId
+        );
         return {
           ...item,
           creatorAvatarUrl: AppUtils.firstImageUrl(creator?.images)
@@ -540,6 +543,29 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === normalizedUserId);
+    if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
+      const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
+      const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
+      const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
+      const result = await this.withLocalMutationCounterDelta({
+        sourceId: normalizedSourceId,
+        slotSourceId: request.slotSourceId?.trim() || null,
+        action: 'join',
+        membershipStatus: 'unchanged',
+        pendingReason: null,
+        acceptedMembers,
+        pendingMembers,
+        capacityTotal,
+        full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+        paymentSessionId: request.checkoutSessionId?.trim() || null,
+        changed: false,
+        reason: 'tournament-registration-closed'
+      }, normalizedUserId, beforeCounters);
+      await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+      return result;
+    }
     const joinRequestAlreadyPending = [
       ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
       ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
@@ -1041,6 +1067,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     await this.waitForEventMutationDelay();
+    const event = this.eventsRepository.queryEventRecordById(request.userId, request.sourceId);
     const result = this.eventsRepository.applyStageAction(request);
     if (result?.subEventId) {
       const existing = this.activitySubEventStageRuntimeRepository.peekRecord({
@@ -1054,12 +1081,379 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         stageStatusReason: result.stageStatusReason ?? null,
         stageStatusUpdatedAt: result.stageStatusUpdatedAt ?? null,
         stageFinalizedAt: result.stageFinalizedAt ?? null,
-        stageFinalizedByUserId: result.stageFinalizedByUserId ?? null
+        stageFinalizedByUserId: result.stageFinalizedByUserId ?? null,
+        stageResultRevision: result.stageResultRevision ?? null
       }, existing));
+    }
+    if (event && result?.action === 'finalize-stage' && result.stageStatus === 'F') {
+      this.appendLocalStageFinalizedNotifications(event, result, request.userId);
+    }
+    if (event && result?.action === 'start-tournament' && result.stageStatus === 'A') {
+      this.appendLocalStageStartedNotifications(event, result, request.userId);
+    }
+    if (event && result?.action === 'reopen-scores' && result.stageStatus === 'SR') {
+      this.appendLocalStageScoresUnderReviewNotifications(event, result, request.userId);
     }
     await this.eventsRepository.flushToIndexedDb();
     await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
     return result;
+  }
+
+  private appendLocalStageFinalizedNotifications(
+    event: ActivityEventRecord,
+    result: ActivityEventStageActionResultDTO,
+    actorUserId: string
+  ): void {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    const finalizedAtMs = Date.now();
+    const nextStage = stages[result.subEventIndex + 1] ?? null;
+    const finalStage = !nextStage;
+    const resultRevision = Math.max(1, Math.trunc(Number(result.stageResultRevision) || 0));
+    const resultRevisionIdentity = resultRevision > 1
+      ? `${eventId}:result-revision:${resultRevision}`
+      : eventId;
+    const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
+    const commonRecord = {
+      category: 'event' as const,
+      readAtIso: null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId
+    };
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
+      eventId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const stageParticipantUserIds = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ]).filter(Boolean))];
+    const manualRecipients = stageParticipantUserIds.filter(userId => userId !== actorId);
+    const records: NotificationRecord[] = manualRecipients.map(recipientUserId => ({
+      ...commonRecord,
+      id: this.localNotificationId('event-stage-finalized', resultRevisionIdentity, recipientUserId),
+      recipientUserId,
+      kind: 'event-stage-finalized',
+      title: `${stageTitle} finalized`,
+      message: `${stageTitle} has been finalized.`,
+      createdAtIso: new Date(finalizedAtMs).toISOString(),
+      senderUserId: actorId || null,
+      senderName: `${actor?.name ?? actorId}`.trim() || null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      payload: {
+        ...stagePayload,
+        eventId,
+        eventTitle,
+        eventScope: 'event-stage-participants',
+        stageTitle,
+        stageAction: result.action,
+        notification_title_key: 'notification.event.stage.finalized.title',
+        notification_message_key: 'notification.event.stage.finalized.message',
+        notification_tone: 'info',
+        ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+      }
+    }));
+
+    const leaderboard = this.eventsRepository.querySubEventLeaderboard(
+      result.sourceId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const acceptedUserIds = new Set((event.acceptedMemberUserIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(Boolean));
+    const leaderboardWinnerUserIds = [...new Set((leaderboard?.groups ?? [])
+      .flatMap(group => group.advancingMemberIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(Boolean))];
+    const advancingUserIds = leaderboardWinnerUserIds.filter(userId => acceptedUserIds.has(userId));
+    const notAdvancingUserIds = [...new Set((leaderboard?.groups ?? [])
+      .flatMap(group => group.members ?? [])
+      .map(member => `${member?.id ?? ''}`.trim())
+      .filter(userId => userId
+        && acceptedUserIds.has(userId)
+        && !advancingUserIds.includes(userId)))];
+    if (finalStage) {
+      const finalistUserIds = new Set(stageParticipantUserIds);
+      const winnerUserIds = leaderboardWinnerUserIds.filter(userId => finalistUserIds.has(userId));
+      const nonWinnerUserIds = stageParticipantUserIds.filter(userId => !winnerUserIds.includes(userId));
+      if (winnerUserIds.length > 0) {
+        records.push(...winnerUserIds.map(recipientUserId => ({
+          ...commonRecord,
+          id: this.localNotificationId('event-tournament-won', resultRevisionIdentity, recipientUserId),
+          recipientUserId,
+          kind: 'event-tournament-won',
+          title: 'Won the tournament',
+          message: `You won in ${stageTitle}.`,
+          createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+          senderUserId: null,
+          senderName: 'MyScoutee System',
+          senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+          payload: {
+            ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+            eventId,
+            eventTitle,
+            eventScope: 'tournament-outcome',
+            stageTitle,
+            notification_title_key: 'notification.event.tournament.won.title',
+            notification_message_key: 'notification.event.tournament.won.message',
+            notification_tone: 'success',
+            tournamentComplete: 'true',
+            ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+          }
+        })));
+        records.push(...nonWinnerUserIds.map(recipientUserId => ({
+          ...commonRecord,
+          id: this.localNotificationId('event-tournament-not-won', resultRevisionIdentity, recipientUserId),
+          recipientUserId,
+          kind: 'event-tournament-not-won',
+          title: 'Did not win the tournament',
+          message: `You did not win in ${stageTitle}.`,
+          createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+          senderUserId: null,
+          senderName: 'MyScoutee System',
+          senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+          payload: {
+            ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+            eventId,
+            eventTitle,
+            eventScope: 'tournament-outcome',
+            stageTitle,
+            notification_title_key: 'notification.event.tournament.not-won.title',
+            notification_message_key: 'notification.event.tournament.not-won.message',
+            notification_tone: 'warning',
+            tournamentComplete: 'true',
+            ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+          }
+        })));
+      }
+    }
+    if (nextStage && advancingUserIds.length > 0) {
+      const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
+      records.push(...advancingUserIds.map(recipientUserId => ({
+        ...commonRecord,
+        id: this.localNotificationId('event-stage-advanced', resultRevisionIdentity, recipientUserId),
+        recipientUserId,
+        kind: 'event-stage-advanced',
+        title: `Advanced to ${nextStageTitle}`,
+        message: `You advanced from ${stageTitle} to ${nextStageTitle}.`,
+        createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+        senderUserId: null,
+        senderName: 'MyScoutee System',
+        senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+        payload: {
+          ...this.localTournamentSystemStagePayload(stages, result.subEventIndex + 1),
+          eventId,
+          eventTitle,
+          eventScope: 'tournament-advancement',
+          stageTitle,
+          nextStageTitle,
+          notification_title_key: 'notification.event.stage.advanced.title',
+          notification_message_key: 'notification.event.stage.advanced.message',
+          notification_tone: 'success',
+          ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+        }
+      })));
+    }
+    if (nextStage && notAdvancingUserIds.length > 0) {
+      const nextStageTitle = `${nextStage.name ?? 'the next stage'}`.trim() || 'the next stage';
+      records.push(...notAdvancingUserIds.map(recipientUserId => ({
+        ...commonRecord,
+        id: this.localNotificationId('event-stage-not-advanced', resultRevisionIdentity, recipientUserId),
+        recipientUserId,
+        kind: 'event-stage-not-advanced',
+        title: `Did not advance from ${stageTitle}`,
+        message: `You did not advance from ${stageTitle} to ${nextStageTitle}.`,
+        createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+        senderUserId: null,
+        senderName: 'MyScoutee System',
+        senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+        payload: {
+          ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+          eventId,
+          eventTitle,
+          eventScope: 'tournament-advancement',
+          stageTitle,
+          nextStageTitle,
+          notification_title_key: 'notification.event.stage.not-advanced.title',
+          notification_message_key: 'notification.event.stage.not-advanced.message',
+          notification_tone: 'warning',
+          ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+        }
+      })));
+    }
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(
+        recipientUserId,
+        this.notificationsRepository.unreadCount(recipientUserId)
+      );
+    });
+  }
+
+  private appendLocalStageStartedNotifications(
+    event: ActivityEventRecord,
+    result: ActivityEventStageActionResultDTO,
+    actorUserId: string
+  ): void {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
+      eventId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ]).filter(userId => userId && userId !== actorId))];
+    const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
+    const records: NotificationRecord[] = participants.map(recipientUserId => ({
+      id: this.localNotificationId('event-tournament-started', eventId, recipientUserId),
+      recipientUserId,
+      kind: 'event-tournament-started',
+      category: 'event',
+      title: `${stageTitle} started`,
+      message: `${stageTitle} has started. Groups are ready.`,
+      createdAtIso: new Date().toISOString(),
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: `${actor?.name ?? actorId}`.trim() || null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        ...stagePayload,
+        eventId,
+        eventTitle,
+        eventScope: 'event-participants',
+        stageTitle,
+        stageAction: result.action,
+        notification_title_key: 'notification.event.stage.started.title',
+        notification_message_key: 'notification.event.stage.started.message',
+        notification_avatar_tone: 'stage',
+        notification_avatar_icon: 'emoji_events'
+      }
+    }));
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(
+        recipientUserId,
+        this.notificationsRepository.unreadCount(recipientUserId)
+      );
+    });
+  }
+
+  private appendLocalStageScoresUnderReviewNotifications(
+    event: ActivityEventRecord,
+    result: ActivityEventStageActionResultDTO,
+    actorUserId: string
+  ): void {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
+      eventId,
+      `${stage.id ?? ''}`.trim()
+    );
+    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ]).filter(userId => userId && userId !== actorId))];
+    const resultRevision = Math.max(1, Math.trunc(Number(result.stageResultRevision) || 0));
+    const resultRevisionIdentity = `${eventId}:result-revision:${resultRevision}`;
+    const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
+    const records: NotificationRecord[] = participants.map(recipientUserId => ({
+      id: this.localNotificationId(
+        'event-stage-scores-under-review',
+        resultRevisionIdentity,
+        recipientUserId
+      ),
+      recipientUserId,
+      kind: 'event-stage-scores-under-review',
+      category: 'event',
+      title: `${stageTitle} scores under review`,
+      message: `${stageTitle} scores were reopened and are under review.`,
+      createdAtIso: new Date().toISOString(),
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: `${actor?.name ?? actorId}`.trim() || null,
+      senderAvatarUrl: actor?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        ...stagePayload,
+        eventId,
+        eventTitle,
+        eventScope: 'event-stage-participants',
+        stageTitle,
+        stageAction: result.action,
+        notification_title_key: 'notification.event.stage.scores-under-review.title',
+        notification_message_key: 'notification.event.stage.scores-under-review.message',
+        notification_tone: 'info',
+        ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+      }
+    }));
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(
+        recipientUserId,
+        this.notificationsRepository.unreadCount(recipientUserId)
+      );
+    });
+  }
+
+  private localTournamentStagePayload(
+    stages: readonly { id?: string | null }[],
+    stageIndex: number
+  ): Record<string, string> {
+    const normalizedTotal = Math.max(1, stages.length);
+    const normalizedIndex = Math.min(
+      normalizedTotal,
+      Math.max(1, Math.trunc(Number(stageIndex) || 0) + 1)
+    );
+    return {
+      stageIndex: `${normalizedIndex}`,
+      stageTotal: `${normalizedTotal}`
+    };
+  }
+
+  private localTournamentSystemStagePayload(
+    stages: readonly { id?: string | null }[],
+    stageIndex: number
+  ): Record<string, string> {
+    return {
+      ...this.localTournamentStagePayload(stages, stageIndex),
+      notification_avatar_tone: 'stage',
+      notification_avatar_icon: 'emoji_events'
+    };
   }
 
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
@@ -1075,6 +1469,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async queryTournamentStageGroups(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentGroupDTO[]> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryTournamentStageGroups(query);
+  }
+
+  async queryTournamentStageSnapshot(
+    query: EventTournamentStageGroupsQueryDTO
+  ): Promise<EventTournamentStageSnapshotDTO> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryTournamentStageSnapshot(query);
   }
 
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
@@ -1125,6 +1526,31 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === normalizedUserId);
+    if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
+      const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
+      const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
+      const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
+      const result = await this.withLocalMutationCounterDelta({
+        sourceId: normalizedSourceId,
+        slotSourceId: options.slotSourceId?.trim() || null,
+        action: 'join',
+        membershipStatus: 'unchanged',
+        pendingReason: null,
+        acceptedMembers,
+        pendingMembers,
+        capacityTotal,
+        full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+        paymentSessionId: options.paymentSessionId?.trim() || null,
+        changed: false,
+        reason: 'tournament-registration-closed'
+      }, normalizedUserId, beforeCounters);
+      if (options.skipLocalRouteDelay !== true) {
+        await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+      }
+      return result;
+    }
     const joinRequestAlreadyPending = [
       ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
       ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])

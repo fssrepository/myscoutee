@@ -17,6 +17,11 @@ export interface ActivityEventInfoCardConverterOptions {
   groupLabel?: string | null;
   trashView?: boolean;
   state?: InfoCardData['state'];
+  translateParams?: (
+    key: string,
+    values: Record<string, string | number>,
+    fallback?: string | null
+  ) => string;
 }
 
 export interface ActivityEventInfoCardSummaryOptions {
@@ -37,6 +42,7 @@ export class ActivityEventInfoCardConverter {
     const invited = this.isInvited(dto, activeUserId);
     const trashView = options.trashView === true;
     const title = dto.title;
+    const profileUserId = this.profileUserId(dto);
 
     return {
       id: dto.id,
@@ -44,14 +50,15 @@ export class ActivityEventInfoCardConverter {
       dateIso: dto.startAtIso,
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
       status,
-      ownerId: dto.creatorUserId,
-      ownerUserId: dto.creatorUserId,
+      ownerId: profileUserId,
+      ownerUserId: profileUserId,
       groupLabel: options.groupLabel ?? null,
       title,
       surfaceTone: trashView ? 'deleted' : this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
+        ...this.currentStageMetaRows(dto, options),
         AppUtils.dateTimeRangeLabel(dto.startAtIso, dto.endAtIso, dto.timeframe || 'Date unavailable'),
         ...this.locationMetaRows(dto)
       ],
@@ -130,6 +137,22 @@ export class ActivityEventInfoCardConverter {
     return line ? [line] : [];
   }
 
+  private static currentStageMetaRows(
+    dto: ActivityEventDTO,
+    options: ActivityEventInfoCardConverterOptions
+  ): string[] {
+    const stage = dto.currentStage;
+    const stageName = `${stage?.name ?? ''}`.trim();
+    if (!stageName) {
+      return [];
+    }
+    const current = Math.max(1, Math.trunc(Number(stage?.stageNumber) || 1));
+    const total = Math.max(current, Math.trunc(Number(stage?.totalStages) || current));
+    const values = { stage: stageName, current, total };
+    const fallback = `Current stage: ${stageName} · ${current}/${total}`;
+    return [options.translateParams?.('event.tournament.current.stage', values, fallback) ?? fallback];
+  }
+
   private static distanceLabel(dto: ActivityEventDTO): string {
     const distanceKm = Number(dto.distanceKm);
     if (!Number.isFinite(distanceKm)) {
@@ -165,8 +188,12 @@ export class ActivityEventInfoCardConverter {
       imageUrl: dto.creatorAvatarUrl?.trim() || null,
       label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
       ariaLabel: `View ${dto.creatorName || 'organizer'} profile`,
-      interactive: Boolean(dto.creatorUserId?.trim())
+      interactive: Boolean(this.profileUserId(dto))
     };
+  }
+
+  private static profileUserId(dto: ActivityEventDTO): string {
+    return `${dto.organizerUserId ?? ''}`.trim() || `${dto.creatorUserId ?? ''}`.trim();
   }
 
   private static rowType(dto: ActivityEventDTO): 'events' | 'hosting' | 'invitations' {
@@ -256,7 +283,7 @@ export class ActivityEventInfoCardConverter {
       case 'DR':
         return 'draft';
       default:
-        if (dto.eventType === 'random-room') {
+        if (dto.eventType === 'random-room' || dto.eventType === 'tournament-room') {
           return 'system';
         }
         if (this.isInvited(dto, activeUserId)) {
@@ -318,6 +345,9 @@ export class ActivityEventInfoCardConverter {
     }
     if (this.isInvited(dto, activeUserId)) {
       return 'mail';
+    }
+    if (dto.eventType === 'tournament-room') {
+      return 'emoji_events';
     }
     if (dto.eventType === 'random-room') {
       return 'auto_awesome';

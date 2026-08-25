@@ -124,7 +124,6 @@ describe('EntryLandingComponent article lists', () => {
     component.ideaCount = 4;
     fixture.detectChanges();
 
-    expect(view(component).showHowItWorksCta()).toBe(true);
     expect(fixture.nativeElement.querySelector('#articles')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.entry-ideas-more-btn')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.entry-ideas-carousel-smart-list')).toBeNull();
@@ -172,23 +171,31 @@ describe('EntryLandingComponent article lists', () => {
     });
   });
 
-  it('opens a concise partner role overview and keeps the two economics separate', () => {
+  it('keeps the hero focused and opens the partner overview from the footer', () => {
     const fixture = TestBed.createComponent(EntryLandingComponent);
     fixture.detectChanges();
 
     const ctaMenu = fixture.nativeElement.querySelector(
       'app-menu.entry-hero-cta-menu'
     ) as HTMLElement | null;
-    const buttons = Array.from(
+    const heroButtons = Array.from(
       ctaMenu?.querySelectorAll<HTMLButtonElement>('.app-menu__button-row-item') ?? []
     );
-    const partnerButton = buttons.find(button => button.textContent?.includes('For Partners')) ?? null;
-    const bugReportButton = buttons.find(button => button.textContent?.includes('Bug report')) ?? null;
+    const partnerButton = fixture.nativeElement.querySelector(
+      '.entry-footer-partners-action'
+    ) as HTMLButtonElement | null;
+    const bugReportButton = fixture.nativeElement.querySelector(
+      '.entry-footer-bug-report-action'
+    ) as HTMLButtonElement | null;
     expect(ctaMenu).not.toBeNull();
+    expect(heroButtons).toHaveLength(1);
+    expect(ctaMenu?.textContent).not.toContain('For Partners');
+    expect(ctaMenu?.textContent).not.toContain('Bug report');
+    expect(ctaMenu?.textContent).not.toContain('see.how.it.works');
     expect(partnerButton).not.toBeNull();
-    expect(partnerButton?.classList.contains('app-menu__palette--ink')).toBe(true);
+    expect(bugReportButton).not.toBeNull();
     expect(bugReportButton?.parentElement).toBe(partnerButton?.parentElement);
-    expect(bugReportButton?.nextElementSibling).toBe(partnerButton);
+    expect(partnerButton?.nextElementSibling).toBe(bugReportButton);
 
     partnerButton?.click();
     fixture.detectChanges();
@@ -231,6 +238,23 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(fixture.componentInstance).partnersPopupOpen).toBe(false);
     expect(fixture.nativeElement.querySelector('.entry-shell')?.hasAttribute('inert')).toBe(false);
     expect(fixture.nativeElement.querySelector('.entry-partners-popup-body')).toBeNull();
+  });
+
+  it('opens the preview guide from the footer bug-report link', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.detectChanges();
+
+    const bugReportButton = fixture.nativeElement.querySelector(
+      '.entry-footer-bug-report-action'
+    ) as HTMLButtonElement | null;
+    expect(bugReportButton).not.toBeNull();
+
+    bugReportButton?.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.entry-preview-guide-body')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.entry-preview-guide-report-btn')?.getAttribute('href'))
+      .toBe('https://github.com/fssrepository/myscoutee/issues');
   });
 
   it('renders deployment-controlled social links with the generic icon fallback', () => {
@@ -277,7 +301,6 @@ interface EntryLandingTestView {
   entryIdeaSmartListConfig: SmartListConfig<InfoCardData<IdeaArticleDetailDto>>;
   onFeaturedIdeaCardAction: (card: InfoCardData<IdeaArticleDetailDto>, actionId: string) => void;
   selectedIdeaDetail: () => IdeaArticleDetailDto | null;
-  showHowItWorksCta: () => boolean;
   openIdeasPopup: () => void;
   ideasPopupOpen: boolean;
   partnersPopupOpen: boolean;

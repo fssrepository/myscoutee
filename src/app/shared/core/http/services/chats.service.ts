@@ -902,17 +902,19 @@ export class HttpChatsService implements IChatsService {
   ): ContractTypes.ChatMessageDto {
     const senderAvatar = message.senderAvatar ?? null;
     const systemRandomRoomWelcome = this.isRandomRoomWelcomeMessage(message);
+    const systemTournamentRoomWelcome = this.isTournamentRoomWelcomeMessage(message);
+    const systemRoomWelcome = systemRandomRoomWelcome || systemTournamentRoomWelcome;
     const senderId = this.normalizeHttpText(message.senderId) || this.normalizeHttpText(senderAvatar?.id);
-    const senderName = systemRandomRoomWelcome
+    const senderName = systemRoomWelcome
       ? 'MyScoutee System'
       : this.normalizeHttpText(message.senderName) || this.normalizeHttpText(message.sender) || senderId || 'User';
     const senderInitials = this.normalizeHttpText(message.senderInitials)
       || this.normalizeHttpText(senderAvatar?.initials)
       || AppUtils.initialsFromText(senderName || senderId || 'User');
-    const senderGender = systemRandomRoomWelcome
+    const senderGender = systemRoomWelcome
       ? 'system'
       : this.normalizeHttpGender(message.senderGender ?? senderAvatar?.gender);
-    const senderImageUrl = systemRandomRoomWelcome
+    const senderImageUrl = systemRoomWelcome
       ? null
       : this.normalizeHttpMediaUrl(message.senderImageUrl, 'small')
         ?? this.resolveHttpChatAvatarImageUrl(senderId, senderAvatar);
@@ -1023,6 +1025,11 @@ export class HttpChatsService implements IChatsService {
   private isRandomRoomWelcomeMessage(message: HttpChatMessageDto): boolean {
     return this.normalizeHttpText(message.id) === 'system:random-room-welcome'
       || this.normalizeHttpText(message.clientId) === 'random-room-welcome';
+  }
+
+  private isTournamentRoomWelcomeMessage(message: HttpChatMessageDto): boolean {
+    return this.normalizeHttpText(message.id) === 'system:tournament-room-welcome'
+      || this.normalizeHttpText(message.clientId) === 'tournament-room-welcome';
   }
 
   private normalizeSupportCaseStatus(value: unknown): ContractTypes.SupportCaseStatus | null {

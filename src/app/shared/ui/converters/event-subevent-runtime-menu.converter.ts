@@ -230,7 +230,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (this.canReopenScores(item)) {
+    if (this.canReopenScores(item, options.siblings, options.subEventIndex)) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'reopen-scores',
@@ -421,8 +421,23 @@ export class EventSubeventRuntimeMenuConverter {
     };
   }
 
-  private static canReopenScores(item: SubEventDTO): boolean {
-    return this.stageStatus(item) === 'F';
+  private static canReopenScores(
+    item: SubEventDTO,
+    siblings: readonly SubEventDTO[],
+    subEventIndex: number
+  ): boolean {
+    if (this.stageStatus(item) !== 'F') {
+      return false;
+    }
+    return siblings.slice(Math.max(0, subEventIndex) + 1)
+      .filter(stage => this.isTournamentStage(stage))
+      .every(stage => {
+        const status = this.stageStatus(stage);
+        const pristineActive = status === 'A'
+          && !`${stage.stageStatusUpdatedAt ?? ''}`.trim()
+          && !`${stage.stageFinalizedAt ?? ''}`.trim();
+        return status === 'RS' || pristineActive;
+      });
   }
 
   private static isStageInScheduleWindow(item: SubEventDTO, nowMs: number): boolean {

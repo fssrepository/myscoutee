@@ -267,8 +267,9 @@ export class SessionService {
 
   async logout(): Promise<void> {
     const current = this.sessionRef();
+    const sessionRegistryEnabled = environment.activitiesDataSource === 'http';
     let firebaseToken: string | null = null;
-    if (current?.kind === 'firebase') {
+    if (sessionRegistryEnabled && current?.kind === 'firebase') {
       try {
         firebaseToken = await (await this.firebaseAuthService()).getIdToken();
       } catch {
@@ -278,24 +279,26 @@ export class SessionService {
     this.firebaseNoticeRef.set('');
     this.clearStoredSession();
     localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
-    try {
-      const sessionId = current?.kind === 'demo' || current?.kind === 'firebase'
-        ? `${current.sessionId ?? ''}`.trim()
-        : '';
-      if (current?.kind === 'demo' && sessionId) {
-        await (await this.firebaseSessionRegistryService()).revokeDemoSession(
-          sessionId,
-          current.userId
-        );
-      } else if (current?.kind === 'firebase' && sessionId && firebaseToken) {
-        await (await this.firebaseSessionRegistryService()).revokeFirebaseSession(
-          sessionId,
-          current.profile.id,
-          firebaseToken
-        );
+    if (sessionRegistryEnabled) {
+      try {
+        const sessionId = current?.kind === 'demo' || current?.kind === 'firebase'
+          ? `${current.sessionId ?? ''}`.trim()
+          : '';
+        if (current?.kind === 'demo' && sessionId) {
+          await (await this.firebaseSessionRegistryService()).revokeDemoSession(
+            sessionId,
+            current.userId
+          );
+        } else if (current?.kind === 'firebase' && sessionId && firebaseToken) {
+          await (await this.firebaseSessionRegistryService()).revokeFirebaseSession(
+            sessionId,
+            current.profile.id,
+            firebaseToken
+          );
+        }
+      } catch {
+        // Keep logout resilient when the registry is offline or already revoked.
       }
-    } catch {
-      // Keep logout resilient when the registry is offline or already revoked.
     }
     if (current?.kind === 'firebase') {
       await (await this.firebaseAuthService()).signOut();

@@ -429,6 +429,7 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   avatarUrl?: string | null;
   avatarShape?: SingleRowAvatarShape | null;
   avatarAriaLabel?: string | null;
+  accentHue?: number | null;
   icon?: string | null;
   toneClass?: string | null;
   surfaceTone?: SingleRowSurfaceTone | null;

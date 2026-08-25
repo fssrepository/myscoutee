@@ -2075,6 +2075,9 @@ export class EventExplorePopupComponent {
         totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
         currency: selection?.basketItems?.length ? selection.currency : undefined
       });
+      if (joinResult?.reason === 'tournament-registration-closed') {
+        throw new Error('event.tournament.registration.closed.message');
+      }
       if (!joinResult || (joinResult.membershipStatus === 'unchanged' && !checkoutUpdateRequested)) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }

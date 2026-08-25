@@ -146,6 +146,35 @@ describe('ActivityChatSingleRowConverter member summaries', () => {
     expect(row.icon).toBeNull();
   });
 
+  it('renders a tournament room with its managed trophy avatar and tournament welcome text', () => {
+    const imageUrl = '/media/public?key=images/system/tournament-room/v1/large.webp';
+    const welcome = 'Welcome to your tournament group for QA TOURNAMENT-002.';
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      avatar: imageUrl,
+      channelType: 'mainEvent',
+      ownerId: 'random-room:source-event:stage:group:1',
+      eventId: 'random-room:source-event:stage:group:1',
+      title: 'Tournament Group R1',
+      lastMessage: welcome,
+      lastSenderId: ''
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('MyScoutee System');
+    expect(row.subtitle).toBe('Tournament Group R1');
+    expect(row.detail).toBe(welcome);
+    expect(row.avatarUrl).toBe(imageUrl);
+    expect(row.icon).toBeNull();
+    expect(row.avatarToneClass).toBeNull();
+  });
+
   it('uses the API member summary for the last sender without a profile cache resolver', () => {
     const row = ActivityChatSingleRowConverter.convert({
       ...groupChat(),

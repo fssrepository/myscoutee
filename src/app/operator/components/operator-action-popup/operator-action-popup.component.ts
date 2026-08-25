@@ -1566,7 +1566,7 @@ export class OperatorActionPopupComponent {
 
   protected configurationThemeTrigger(): AppMenuTrigger {
     const themePreset =
-      this.workspace.configurationDraft()?.branding.themePreset ?? 'AURORA';
+      this.workspace.configurationDraft()?.branding.themePreset ?? 'VIOLET';
     return {
       label: `operator.configuration.branding.theme.${themePreset.toLowerCase()}`,
       icon: 'palette',

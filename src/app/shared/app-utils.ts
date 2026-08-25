@@ -702,6 +702,20 @@ export class AppUtils {
     return Math.min(max, Math.max(min, value));
   }
 
+  static tournamentStageAccentHue(stageNumber: number, totalStages: number): number {
+    const normalizedStageNumber = Math.max(1, Math.trunc(Number(stageNumber) || 1));
+    const normalizedTotalStages = Math.max(normalizedStageNumber, Math.trunc(Number(totalStages) || 1));
+    if (normalizedTotalStages <= 1) {
+      return 210;
+    }
+    const ratio = this.clampNumber(
+      (normalizedStageNumber - 1) / (normalizedTotalStages - 1),
+      0,
+      1
+    );
+    return Math.round(210 - (210 * ratio));
+  }
+
   static dateOnly(value: Date): Date {
     return new Date(value.getFullYear(), value.getMonth(), value.getDate());
   }
