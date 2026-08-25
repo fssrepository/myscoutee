@@ -108,7 +108,7 @@ interface ScoreRow {
   total: number;
   updates: number;
   positionLabel: string;
-  participantState: 'A' | 'DQ' | 'R';
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -124,7 +124,7 @@ interface FifaRow {
   goalsAgainst: number;
   goalDiff: number;
   positionLabel: string;
-  participantState: 'A' | 'DQ' | 'R';
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -200,7 +200,7 @@ export class EventTournamentGroupsPopupComponent {
       this.state = this.contextState(request);
       this.selectedStageId = this.resolveSelectedStageId(this.selectedStageId);
       this.leaderboardState = null;
-      void this.loadGroupsForSelectedStage();
+      void this.loadSelectedStageData();
     });
 
     effect(() => {
@@ -407,7 +407,7 @@ export class EventTournamentGroupsPopupComponent {
     this.selectedGroupId = null;
     this.openGroupIds = [];
     this.leaderboardState = null;
-    void this.loadGroupsForStage(stageId);
+    void this.loadSelectedStageData();
     this.cdr.markForCheck();
   }
 
@@ -415,9 +415,6 @@ export class EventTournamentGroupsPopupComponent {
     const groupId = event.item.context?.groupId ?? event.id;
     this.selectedGroupId = groupId;
     this.openGroupIds = event.open ? [groupId] : [];
-    if (event.open && this.selectedStageId && !this.leaderboardState && !this.leaderboardLoading) {
-      void this.loadLeaderboardForStage(this.selectedStageId);
-    }
     this.cdr.markForCheck();
   }
 
@@ -583,7 +580,6 @@ export class EventTournamentGroupsPopupComponent {
       return;
     }
     this.isMutating = true;
-    let reloadLeaderboardStageId: string | null = null;
     try {
       const nextState = await this.eventsService.saveTournamentGroup({
         actorUserId: this.activeUserId(),
@@ -610,7 +606,6 @@ export class EventTournamentGroupsPopupComponent {
           }
         }
         this.leaderboardState = null;
-        reloadLeaderboardStageId = stageId;
         await this.loadGroupsForStage(stageId);
         this.emitGroupsUpdate(stageId);
       }
@@ -618,9 +613,6 @@ export class EventTournamentGroupsPopupComponent {
     } finally {
       this.isMutating = false;
       this.cdr.markForCheck();
-    }
-    if (reloadLeaderboardStageId) {
-      void this.loadLeaderboardForStage(reloadLeaderboardStageId);
     }
   }
 
@@ -976,7 +968,7 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
-  private async loadGroupsForSelectedStage(): Promise<void> {
+  private async loadSelectedStageData(): Promise<void> {
     const stageId = this.selectedStageId ?? this.viewModel().selectedStage?.subEventId ?? null;
     if (!stageId) {
       return;
@@ -997,7 +989,7 @@ export class EventTournamentGroupsPopupComponent {
     this.leaderboardState = null;
     this.cdr.markForCheck();
     try {
-      const groups = await this.eventsService.queryTournamentStageGroups({
+      const snapshot = await this.eventsService.queryTournamentStageSnapshot({
         eventId,
         slotId: request?.slotId ?? null,
         stageId: normalizedStageId
@@ -1005,8 +997,9 @@ export class EventTournamentGroupsPopupComponent {
       if (sequence !== this.loadSequence) {
         return;
       }
-      this.state = this.stateWithStageGroups(this.state, normalizedStageId, groups);
+      this.state = this.stateWithStageGroups(this.state, normalizedStageId, snapshot.groups);
       this.selectedStageId = normalizedStageId;
+      this.leaderboardState = snapshot.leaderboard;
       this.emitGroupsUpdate(normalizedStageId);
       const selectedStage = this.stageById(normalizedStageId);
       if (this.selectedGroupId && selectedStage?.groups.some(group => group.id === this.selectedGroupId)) {
@@ -1288,7 +1281,6 @@ export class EventTournamentGroupsPopupComponent {
       failureMessage: 'Group delete failed.',
       onConfirm: async () => {
         this.isMutating = true;
-        let reloadLeaderboardStageId: string | null = null;
         try {
           const nextState = await this.eventsService.deleteTournamentGroup({
             actorUserId: this.activeUserId(),
@@ -1304,16 +1296,12 @@ export class EventTournamentGroupsPopupComponent {
             this.selectedGroupId = nextGroup?.id ?? null;
             this.openGroupIds = nextGroup ? [nextGroup.id] : [];
             this.leaderboardState = null;
-            reloadLeaderboardStageId = nextGroup ? stage.subEventId : null;
             await this.loadGroupsForStage(stage.subEventId);
             this.emitGroupsUpdate(stage.subEventId);
           }
         } finally {
           this.isMutating = false;
           this.cdr.markForCheck();
-        }
-        if (reloadLeaderboardStageId) {
-          void this.loadLeaderboardForStage(reloadLeaderboardStageId);
         }
       }
     });

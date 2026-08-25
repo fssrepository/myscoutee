@@ -133,7 +133,7 @@ export interface SubEventLeaderboardScoreStandingRow {
   total: number;
   updates: number;
   positionLabel: string;
-  participantState: 'A' | 'DQ' | 'R';
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -149,7 +149,7 @@ export interface SubEventLeaderboardFifaStandingRow {
   goalsAgainst: number;
   goalDiff: number;
   positionLabel: string;
-  participantState: 'A' | 'DQ' | 'R';
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -225,6 +225,11 @@ export interface EventTournamentStageGroupsQueryDTO {
   eventId: string;
   slotId?: string | null;
   stageId: string;
+}
+
+export interface EventTournamentStageSnapshotDTO {
+  groups: EventTournamentGroupDTO[];
+  leaderboard: SubEventLeaderboardState | null;
 }
 
 export interface EventTournamentGroupUpsertRequestDTO {

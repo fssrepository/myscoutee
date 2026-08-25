@@ -13,6 +13,7 @@ import type {
   EventTournamentGroupDTO,
   EventTournamentGroupUpsertRequestDTO,
   EventTournamentStageGroupsQueryDTO,
+  EventTournamentStageSnapshotDTO,
   EventTournamentStageDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
@@ -764,6 +765,21 @@ export class HttpEventsService implements IEventsService {
     return this.normalizeTournamentGroupList(response, normalizedStageId);
   }
 
+  async queryTournamentStageSnapshot(
+    query: EventTournamentStageGroupsQueryDTO
+  ): Promise<EventTournamentStageSnapshotDTO> {
+    const normalizedEventId = query.eventId.trim();
+    const normalizedStageId = query.stageId.trim();
+    if (!normalizedEventId || !normalizedStageId) {
+      return { groups: [], leaderboard: null };
+    }
+    const [groups, leaderboard] = await Promise.all([
+      this.queryTournamentStageGroups(query),
+      this.querySubEventLeaderboard(normalizedEventId, normalizedStageId).catch(() => null)
+    ]);
+    return { groups, leaderboard };
+  }
+
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
     const response = await this.http
       .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group`, {
@@ -1258,7 +1274,9 @@ export class HttpEventsService implements IEventsService {
             total: Math.trunc(Number(row.total) || 0),
             updates: Math.max(0, Math.trunc(Number(row.updates) || 0)),
             positionLabel: `${row.positionLabel ?? ''}`.trim(),
-            participantState: (row.participantState === 'DQ' || row.participantState === 'R' ? row.participantState : 'A') as 'A' | 'DQ' | 'R'
+            participantState: (row.participantState === 'DQ' || row.participantState === 'R' || row.participantState === 'V'
+              ? row.participantState
+              : 'A') as 'A' | 'DQ' | 'R' | 'V'
           })).filter(row => row.memberId),
           fifaRows: (group.fifaRows ?? []).map(row => ({
             memberId: `${row.memberId ?? ''}`.trim(),
@@ -1272,7 +1290,9 @@ export class HttpEventsService implements IEventsService {
             goalsAgainst: Math.trunc(Number(row.goalsAgainst) || 0),
             goalDiff: Math.trunc(Number(row.goalDiff) || 0),
             positionLabel: `${row.positionLabel ?? ''}`.trim(),
-            participantState: (row.participantState === 'DQ' || row.participantState === 'R' ? row.participantState : 'A') as 'A' | 'DQ' | 'R'
+            participantState: (row.participantState === 'DQ' || row.participantState === 'R' || row.participantState === 'V'
+              ? row.participantState
+              : 'A') as 'A' | 'DQ' | 'R' | 'V'
           })).filter(row => row.memberId)
         };
       })

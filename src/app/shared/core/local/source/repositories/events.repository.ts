@@ -1521,6 +1521,20 @@ export class LocalEventsRepository {
       ));
   }
 
+  queryTournamentStageSnapshot(
+    query: ContractTypes.EventTournamentStageGroupsQueryDTO
+  ): ContractTypes.EventTournamentStageSnapshotDTO {
+    const eventId = `${query.eventId ?? ''}`.trim();
+    const stageId = `${query.stageId ?? ''}`.trim();
+    if (!eventId || !stageId) {
+      return { groups: [], leaderboard: null };
+    }
+    return {
+      groups: this.queryTournamentStageGroups(query),
+      leaderboard: this.querySubEventLeaderboard(eventId, stageId)
+    };
+  }
+
   queryTournamentStagePending(ownerSourceId: string, stageId: string): number {
     return this.queryTournamentStageGroups({
       eventId: `${ownerSourceId ?? ''}`.trim(),
@@ -3780,7 +3794,7 @@ export class LocalEventsRepository {
         total: 0,
         updates: 0,
         positionLabel: '',
-        participantState: 'A'
+        participantState: member.name === '-----' ? 'V' : 'A'
       });
     }
     for (const entry of entries) {
@@ -3816,7 +3830,7 @@ export class LocalEventsRepository {
     return sorted.map(row => ({
       ...row,
       positionLabel: row.participantState === 'A' ? `${++activePosition}` : row.participantState,
-      participantState: row.participantState as 'A' | 'DQ' | 'R'
+      participantState: row.participantState as 'A' | 'DQ' | 'R' | 'V'
     }));
   }
 
@@ -3840,7 +3854,7 @@ export class LocalEventsRepository {
         goalsAgainst: 0,
         goalDiff: 0,
         positionLabel: '',
-        participantState: 'A'
+        participantState: member.name === '-----' ? 'V' : 'A'
       });
     }
     for (const match of matches) {
@@ -3901,7 +3915,7 @@ export class LocalEventsRepository {
     return sorted.map(row => ({
       ...row,
       positionLabel: row.participantState === 'A' ? `${++activePosition}` : row.participantState,
-      participantState: row.participantState as 'A' | 'DQ' | 'R'
+      participantState: row.participantState as 'A' | 'DQ' | 'R' | 'V'
     }));
   }
 
@@ -3935,7 +3949,10 @@ export class LocalEventsRepository {
     const rows = stage.tournamentLeaderboardType === 'Fifa'
       ? this.localFifaRows(members, fifaMatches)
       : this.localScoreRows(members, scoreEntries);
-    return rows.map(row => row.memberId).filter(Boolean);
+    return rows
+      .filter(row => row.participantState === 'A')
+      .map(row => row.memberId)
+      .filter(Boolean);
   }
 
   private localGeneratedGroups(

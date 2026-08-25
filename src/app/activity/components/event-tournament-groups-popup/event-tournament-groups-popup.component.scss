@@ -184,6 +184,11 @@
   box-shadow: inset 3px 0 0 rgba(138, 91, 17, 0.72);
 }
 
+.event-tournament-table tbody tr[data-participant-state='V'] td:first-child {
+  color: #687687;
+  box-shadow: inset 3px 0 0 rgba(104, 118, 135, 0.58);
+}
+
 .event-tournament-table tr.is-advance td {
   background: rgba(61, 173, 99, 0.12);
   font-weight: 800;

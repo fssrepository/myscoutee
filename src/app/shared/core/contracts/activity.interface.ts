@@ -128,6 +128,7 @@ export interface IEventsService {
   applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
   queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
+  queryTournamentStageSnapshot(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentStageSnapshotDTO>;
   saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
