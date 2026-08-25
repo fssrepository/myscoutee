@@ -16,6 +16,11 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   hasMenuOptions?: boolean;
   menuBadgeCount?: number | null;
   menuTitle?: string | null;
+  translateParams?: (
+    key: string,
+    values: Record<string, string | number>,
+    fallback: string
+  ) => string;
 }
 
 export class EventSubeventRuntimeInfoCardConverter
@@ -44,7 +49,7 @@ export class EventSubeventRuntimeInfoCardConverter
           mode
         })
       : Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
-    const capacityDetailRow = this.capacityDetailRow(item, mode);
+    const capacityDetailRow = this.capacityDetailRow(item, mode, options);
 
     return {
       id: `${options.cardId ?? item.id ?? ''}`.trim(),
@@ -65,7 +70,7 @@ export class EventSubeventRuntimeInfoCardConverter
       description: item.description || 'No description',
       detailRows: [],
       surfaceTone: isTournament ? 'stage-runtime' : 'draft',
-      accentHue: isTournament ? this.stageAccentHue(sequenceNumber, sequenceTotal) : null,
+      accentHue: isTournament ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal) : null,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : status.icon,
         tone: isTournament ? 'stage' : status.leadingTone
@@ -168,10 +173,13 @@ export class EventSubeventRuntimeInfoCardConverter
       || normalized === 'S';
   }
 
-  private static capacityDetailRow(item: SubEventDTO, mode: EventMode): string | null {
+  private static capacityDetailRow(
+    item: SubEventDTO,
+    mode: EventMode,
+    options: EventSubeventRuntimeInfoCardConverterOptions
+  ): string | null {
     if (mode === 'Tournament') {
-      const groupCapacity = this.tournamentGroupCapacityLabel(item);
-      return groupCapacity ? `Group capacity ${groupCapacity}` : null;
+      return this.tournamentGroupCapacitySummary(item, options);
     }
     if (!item.optional) {
       return null;
@@ -181,13 +189,22 @@ export class EventSubeventRuntimeInfoCardConverter
     return max > 0 || accepted > 0 ? `Capacity ${max > 0 ? `${accepted} / ${max}` : `${accepted}`}` : null;
   }
 
-  private static tournamentGroupCapacityLabel(item: SubEventDTO): string | null {
+  private static tournamentGroupCapacitySummary(
+    item: SubEventDTO,
+    options: EventSubeventRuntimeInfoCardConverterOptions
+  ): string | null {
+    const groups = this.nonNegativeInteger(item.groupsCount);
     const configuredMin = this.nonNegativeInteger(item.tournamentGroupCapacityMin);
     const configuredMax = Math.max(configuredMin, this.nonNegativeInteger(item.tournamentGroupCapacityMax));
-    if (configuredMin > 0 || configuredMax > 0) {
-      return `${configuredMin} - ${configuredMax}`;
+    if (groups <= 0 || (configuredMin <= 0 && configuredMax <= 0)) {
+      return null;
     }
-    return null;
+    const fallback = `Groups: ${groups} × ${configuredMin}–${configuredMax} members`;
+    return options.translateParams?.(
+      'event.subevents.stage.groups.capacity.summary',
+      { groups, min: configuredMin, max: configuredMax },
+      fallback
+    ) ?? fallback;
   }
 
   private static nonNegativeInteger(value: unknown): number {
@@ -328,13 +345,6 @@ export class EventSubeventRuntimeInfoCardConverter
     return 'A';
   }
 
-  private static stageAccentHue(stageNumber: number, totalStages: number): number {
-    if (totalStages <= 1) {
-      return 210;
-    }
-    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
-    return Math.round(210 - (210 * ratio));
-  }
 }
 
 export const eventSubeventRuntimeInfoCardConverter = new EventSubeventRuntimeInfoCardConverter();

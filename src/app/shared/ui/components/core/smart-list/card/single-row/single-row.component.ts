@@ -113,6 +113,11 @@ export class SingleRowComponent {
     return AppUtils.mediaImageVariantUrl(this.row?.avatarUrl, 'small');
   }
 
+  protected rowAccentHue(): string | null {
+    const hue = Math.trunc(Number(this.row?.accentHue));
+    return Number.isFinite(hue) ? `${AppUtils.clampNumber(hue, 0, 360)}` : null;
+  }
+
   protected inlineBadges(): readonly SingleRowBadge[] {
     return this.badgesFor('inline');
   }

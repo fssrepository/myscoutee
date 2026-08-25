@@ -135,6 +135,18 @@
 
         <section class="entry-footer-links">
           <h3>Explore</h3>
+          <button
+            type="button"
+            class="entry-footer-text-action entry-footer-partners-action"
+            [attr.aria-label]="'landing.partners.open.aria' | i18n: 'Open partner overview'"
+            (click)="openPartnersPopup($event)"
+            >{{ 'landing.partners.title' | i18n: 'For Partners' }}</button>
+          <button
+            type="button"
+            class="entry-footer-text-action entry-footer-bug-report-action"
+            [attr.aria-label]="'landing.preview.open.guide' | i18n: 'Open preview guide'"
+            (click)="openPreviewGuide($event)"
+            >{{ 'bug.report' | i18n: 'Bug report' }}</button>
           <a
             href="#"
             [class.entry-footer-link-disabled]="networkUnavailable"

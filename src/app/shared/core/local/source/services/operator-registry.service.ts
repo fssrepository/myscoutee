@@ -1414,7 +1414,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   ): OperatorConfigurationSaveRequestDto['branding']['themePreset'] {
     return DEPLOYMENT_THEME_PRESETS.includes(value)
       ? value
-      : 'AURORA';
+      : DEFAULT_DEPLOYMENT_BRANDING.themePreset;
   }
 
   private requireClaimVerificationRequest(

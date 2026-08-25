@@ -99,3 +99,60 @@ describe('EntryPageComponent browser location permission gate', () => {
     expect(component.requestCurrentLocation).not.toHaveBeenCalled();
   });
 });
+
+describe('EntryPageComponent demo session routing', () => {
+  it('starts a local demo session without registering it through the backend', async () => {
+    const startDemoSession = vi.fn().mockReturnValue({
+      kind: 'demo',
+      userId: 'demo-user',
+      sessionId: 'local-session'
+    });
+    const startTrackedDemoSession = vi.fn();
+    const navigateByUrl = vi.fn().mockResolvedValue(true);
+    const complete = vi.fn();
+    const fail = vi.fn();
+    const component = Object.create(EntryPageComponent.prototype) as {
+      usersService: {
+        localModeEnabled: boolean;
+        peekCachedUserById: ReturnType<typeof vi.fn>;
+      };
+      sessionService: {
+        startDemoSession: typeof startDemoSession;
+        startTrackedDemoSession: typeof startTrackedDemoSession;
+        firebaseNotice: ReturnType<typeof vi.fn>;
+      };
+      router: { navigateByUrl: typeof navigateByUrl };
+      memberRedirectUrl: ReturnType<typeof vi.fn>;
+      onDemoUserSelected: (selection: {
+        userId: string;
+        mode: 'member';
+        complete: () => void;
+        fail: (message?: string) => void;
+      }) => Promise<void>;
+    };
+    component.usersService = {
+      localModeEnabled: true,
+      peekCachedUserById: vi.fn().mockReturnValue(null)
+    };
+    component.sessionService = {
+      startDemoSession,
+      startTrackedDemoSession,
+      firebaseNotice: vi.fn().mockReturnValue('')
+    };
+    component.router = { navigateByUrl };
+    component.memberRedirectUrl = vi.fn().mockReturnValue('/game');
+
+    await component.onDemoUserSelected({
+      userId: 'demo-user',
+      mode: 'member',
+      complete,
+      fail
+    });
+
+    expect(startDemoSession).toHaveBeenCalledWith('demo-user');
+    expect(startTrackedDemoSession).not.toHaveBeenCalled();
+    expect(navigateByUrl).toHaveBeenCalledWith('/game');
+    expect(complete).toHaveBeenCalledOnce();
+    expect(fail).not.toHaveBeenCalled();
+  });
+});

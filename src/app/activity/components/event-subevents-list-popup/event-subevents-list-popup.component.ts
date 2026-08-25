@@ -59,8 +59,10 @@ import {
   type EventSubeventRuntimeMenuItemId
 } from '../../../shared/ui/converters';
 import {
-  EventsService
+  EventsService,
+  I18nService
 } from '../../../shared/core';
+import { tournamentCurrentStageFromSubEvents } from '../../../shared/core/common/tournament-group-count';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
@@ -128,6 +130,7 @@ export class EventSubeventsListPopupComponent {
   private slotSectionSmartLists?: QueryList<SmartListComponent<SubEventDTO, EventSubeventsListFilters>>;
 
   private readonly eventsService = inject(EventsService);
+  private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
@@ -685,7 +688,8 @@ export class EventSubeventsListPopupComponent {
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
       hasMenuOptions: true,
-      menuTitle: item.name
+      menuTitle: item.name,
+      translateParams: (key, values, fallback) => this.i18n.translateParams(key, values, fallback)
     });
   }
 
@@ -798,8 +802,19 @@ export class EventSubeventsListPopupComponent {
     item.stageStatusUpdatedAt = `${result.stageStatusUpdatedAt ?? ''}`.trim() || null;
     item.stageFinalizedAt = `${result.stageFinalizedAt ?? ''}`.trim() || null;
     item.stageFinalizedByUserId = `${result.stageFinalizedByUserId ?? ''}`.trim() || null;
+    item.stageResultRevision = Math.max(0, Math.trunc(Number(result.stageResultRevision) || 0));
     if (this.event && result.autoInviter !== undefined && result.autoInviter !== null) {
       this.event.autoInviter = result.autoInviter === true;
+    }
+    const eventId = `${this.event?.id ?? result.sourceId ?? ''}`.trim();
+    if (eventId) {
+      this.activityStore.emitActivityEventRuntimeSync({
+        eventId,
+        subEventId: resultId || itemId,
+        activityDelta: 0,
+        currentStage: tournamentCurrentStageFromSubEvents(this.items),
+        source: 'stage'
+      });
     }
     this.cdr.markForCheck();
   }

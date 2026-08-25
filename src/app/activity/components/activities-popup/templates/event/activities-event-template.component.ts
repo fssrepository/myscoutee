@@ -652,6 +652,9 @@ export class ActivitiesEventsController {
       currency: selection?.basketItems?.length ? selection.currency : undefined,
       skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
     });
+    if (joinResult?.reason === 'tournament-registration-closed') {
+      throw new Error('event.tournament.registration.closed.message');
+    }
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to continue booking.');
     }
@@ -1401,6 +1404,9 @@ export class ActivitiesEventsController {
       currency: selection?.basketItems?.length ? selection.currency : undefined,
       skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
     });
+    if (joinResult?.reason === 'tournament-registration-closed') {
+      throw new Error('event.tournament.registration.closed.message');
+    }
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }

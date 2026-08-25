@@ -4,7 +4,6 @@ import type {
   ChatMemberSummaryDto,
   SupportCaseStatus
 } from '../../core/contracts/chat.interface';
-import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import { AppUtils } from '../../app-utils';
 import type { SingleRowData } from '../components/core/smart-list/card';
@@ -51,7 +50,8 @@ export class ActivityChatSingleRowConverter {
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
   ): ActivityChatSingleRowData {
-    const systemSender = this.isSystemRandomRoomSender(dto);
+    const systemSender = this.isSystemGeneratedRoomSender(dto);
+    const systemAvatarUrl = systemSender ? this.systemAvatarUrl(dto.avatar) : null;
     const lastSender = systemSender ? null : this.resolveLastSender(dto, options);
     const unread = Math.max(0, Math.trunc(Number(dto.unread) || 0));
     const memberCount = this.resolveMemberCount(dto, options);
@@ -66,9 +66,7 @@ export class ActivityChatSingleRowConverter {
     const ownerId = `${dto.ownerId ?? ''}`.trim();
     const groupChannelLabel = channelType === 'groupSubEvent' ? this.groupChannelLabel(dto) : '';
     const groupParentLabel = channelType === 'groupSubEvent' ? this.groupParentLabel(dto) : '';
-    const lastMessage = systemSender
-      ? RANDOM_ROOM_WELCOME_MESSAGE
-      : dto.lastMessage?.trim() || '';
+    const lastMessage = dto.lastMessage?.trim() || '';
 
     return {
       id: dto.id,
@@ -86,15 +84,15 @@ export class ActivityChatSingleRowConverter {
       detail: groupParentLabel || lastMessage,
       metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
       unread: showSupportControls ? 0 : unread,
-      avatarUrl: systemSender ? null : this.personAvatarUrl(lastSender),
+      avatarUrl: systemSender ? systemAvatarUrl : this.personAvatarUrl(lastSender),
       avatarInitials: systemSender
         ? null
         : lastSender?.initials || AppUtils.initialsFromText(lastSender?.name ?? dto.title),
-      avatarToneClass: systemSender
+      avatarToneClass: systemSender && !systemAvatarUrl
         ? 'notification-system-avatar'
         : lastSender ? `user-color-${lastSender.gender}` : null,
       avatarAriaLabel: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
-      icon: systemSender ? 'auto_awesome' : null,
+      icon: systemSender && !systemAvatarUrl ? 'auto_awesome' : null,
       memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),
       surfaceTone: showSupportControls
@@ -335,11 +333,16 @@ export class ActivityChatSingleRowConverter {
     return members[0] ?? null;
   }
 
-  private static isSystemRandomRoomSender(dto: ChatDTO): boolean {
+  private static isSystemGeneratedRoomSender(dto: ChatDTO): boolean {
     const eventId = `${dto.eventId ?? dto.ownerId ?? ''}`.trim();
     return this.normalizeChannelType(dto) === 'mainEvent'
       && eventId.startsWith('random-room:')
       && !`${dto.lastSenderId ?? ''}`.trim();
+  }
+
+  private static systemAvatarUrl(value: string | null | undefined): string | null {
+    const normalized = `${value ?? ''}`.trim();
+    return /^(?:https?:\/\/|\/|data:image\/)/i.test(normalized) ? normalized : null;
   }
 
   private static resolveMemberCount(

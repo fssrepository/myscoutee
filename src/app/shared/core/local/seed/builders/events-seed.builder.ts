@@ -16,6 +16,7 @@ import {
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
 import { demoEventPlaceholder, demoEventPlaceholderUrl } from './demo-image-pool';
+import { tournamentCurrentStageFromSubEvents } from '../../../common/tournament-group-count';
 
 const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50);
 
@@ -1723,7 +1724,8 @@ export class SeedEventsBuilder {
         ...item,
         pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing
       })),
-      subEvents: ActivityEventDetailDTO.normalizeSubEvents(record.subEvents ?? [])
+      subEvents: ActivityEventDetailDTO.normalizeSubEvents(record.subEvents ?? []),
+      currentStage: record.currentStage ? { ...record.currentStage } : null
     };
   }
 
@@ -2001,6 +2003,7 @@ export class SeedEventsBuilder {
       subEventDefinitions,
       subEvents,
       mode: record.seed?.mode ?? SeedEventBuilder.inferredEventModeFromDefinitions(subEventDefinitions),
+      currentStage: tournamentCurrentStageFromSubEvents(subEvents),
       rating,
       boost: Number.isFinite(record.seed?.boost)
         ? Number(record.seed?.boost)

@@ -128,6 +128,7 @@ export interface IEventsService {
   applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
   queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
+  queryTournamentStageSnapshot(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentStageSnapshotDTO>;
   saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
@@ -254,6 +255,7 @@ export interface ActivityEventRecord {
   creatorInitials: string;
   creatorGender: AppConstants.UserGender;
   creatorCity: string;
+  organizerUserId?: string | null;
   visibility: AppConstants.EventVisibility;
   blindMode: EventContracts.EventBlindMode;
   startAtIso: string;
@@ -298,6 +300,7 @@ export interface ActivityEventRecord {
   subEventDefinitions?: SubEventDefinitionDTO[];
   subEvents?: EventContracts.SubEventDTO[];
   mode?: EventContracts.EventMode;
+  currentStage?: EventContracts.TournamentCurrentStageDTO | null;
   rating: number;
   boost: number;
   affinity: number;
@@ -329,6 +332,7 @@ export interface ActivityEventStageActionResultDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
   autoInviter?: boolean | null;
 }
 
@@ -453,6 +457,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
   groupsCount?: number | null;
 }
 
@@ -474,6 +479,7 @@ export interface ActivityEventDTO {
   creatorInitials: string;
   creatorAvatarUrl?: string | null;
   creatorCity: string;
+  organizerUserId?: string | null;
   visibility: AppConstants.EventVisibility;
   startAtIso: string;
   endAtIso: string;
@@ -486,6 +492,7 @@ export interface ActivityEventDTO {
   capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
   mode?: EventContracts.EventMode;
+  currentStage?: EventContracts.TournamentCurrentStageDTO | null;
   slotsEnabled?: boolean;
   acceptedMembers: number;
   pendingMembers: number;
@@ -617,6 +624,7 @@ export class ActivityEventDetailDTO {
   subEventDefinitions: SubEventDefinitionDTO[] = [];
   subEvents: EventContracts.SubEventDTO[] = [];
   mode: EventContracts.EventMode = 'Casual';
+  currentStage: EventContracts.TournamentCurrentStageDTO | null = null;
   rating = 0;
   boost = 0;
   affinity = 0;
@@ -692,6 +700,7 @@ export class ActivityEventDetailDTO {
     this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
     this.applySubEvents(update.subEvents ?? this.subEvents);
     this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
+    this.currentStage = update.currentStage ? { ...update.currentStage } : update.currentStage === null ? null : this.currentStage;
     this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
     this.boost = ActivityEventDetailDTO.nonNegativeInteger(update.boost ?? this.boost);
     this.affinity = ActivityEventDetailDTO.nonNegativeInteger(update.affinity ?? this.affinity);
@@ -992,7 +1001,8 @@ export class ActivityEventDetailDTO {
         stageStatusReason: `${item.stageStatusReason ?? ''}`.trim() || undefined,
         stageStatusUpdatedAt: `${item.stageStatusUpdatedAt ?? ''}`.trim() || undefined,
         stageFinalizedAt: `${item.stageFinalizedAt ?? ''}`.trim() || undefined,
-        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined
+        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined,
+        stageResultRevision: ActivityEventDetailDTO.optionalNonNegativeInteger(item.stageResultRevision)
       };
     });
   }

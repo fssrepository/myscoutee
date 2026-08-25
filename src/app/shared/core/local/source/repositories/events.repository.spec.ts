@@ -53,6 +53,41 @@ describe('LocalEventsRepository event membership pages', () => {
       .toEqual([]);
   });
 
+  it('keeps a tournament room nested under its parent instead of listing it as an activity event', () => {
+    seedUsers([
+      user('casey', 'Casey Bridge'),
+      user('nova', 'Nova Social')
+    ]);
+    seedEvents([
+      eventRecord({
+        id: 'tournament-1',
+        userId: 'casey',
+        creatorUserId: 'casey',
+        acceptedMembers: 2,
+        acceptedMemberUserIds: ['casey', 'nova']
+      }),
+      eventRecord({
+        id: 'tournament-room-1',
+        userId: 'room-system',
+        type: 'events',
+        creatorUserId: '',
+        organizerUserId: 'casey',
+        creatorName: 'Casey Bridge',
+        eventType: 'tournament-room',
+        generated: true,
+        parentEventId: 'tournament-1',
+        acceptedMembers: 2,
+        acceptedMemberUserIds: ['casey', 'nova']
+      })
+    ]);
+
+    const active = repository.queryActivitiesEventRecordPage('casey', eventsPage('active-events')).records;
+    const hosting = repository.queryActivitiesEventRecordPage('casey', eventsPage('my-events')).records;
+
+    expect(active).toEqual([]);
+    expect(hosting.map(item => item.id)).toEqual(['tournament-1']);
+  });
+
   function seedUsers(users: UserDto[]): void {
     memoryDb.write(state => ({
       ...state,

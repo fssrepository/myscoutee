@@ -17,6 +17,10 @@ import * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
+import {
+  tournamentCurrentStageFromSubEvents,
+  tournamentGroupCountForIncoming
+} from '../../../common/tournament-group-count';
 
 export interface SubEventResourceLookup {
   ownerId: string;
@@ -65,6 +69,7 @@ export class LocalActivityEventsMapper {
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,
       creatorCity: record.creatorCity,
+      organizerUserId: record.organizerUserId ?? record.creatorUserId,
       visibility: record.visibility,
       startAtIso: record.startAtIso,
       endAtIso: record.endAtIso,
@@ -77,6 +82,7 @@ export class LocalActivityEventsMapper {
       capacityMax: record.capacityMax,
       eventType: record.eventType,
       mode: ActivityEventDetailDTO.normalizeMode(record.mode),
+      currentStage: record.currentStage ? { ...record.currentStage } : null,
       slotsEnabled: record.slotsEnabled === true,
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
@@ -721,23 +727,12 @@ export class LocalActivityEventsMapper {
     if (!this.isTournamentStageDefinition(item)) {
       return 0;
     }
-    const groupCapacityMin = this.nonNegativeInteger(item.tournamentGroupCapacityMin);
-    const groupCapacityMax = Math.max(
-      groupCapacityMin,
-      this.nonNegativeInteger(item.tournamentGroupCapacityMax)
-    );
-    if (groupCapacityMin <= 0 && groupCapacityMax <= 0) {
-      return 0;
-    }
-    const capacityMax = this.nonNegativeInteger(incomingCapacityMax);
-    const divisor = Math.max(1, groupCapacityMax > 0 ? groupCapacityMax : groupCapacityMin);
-    const groupsNeededForMaximum = capacityMax > 0
-      ? Math.ceil(capacityMax / divisor)
-      : 0;
-    const groupsAllowedByMinimum = groupCapacityMin > 0
-      ? Math.max(1, Math.floor(capacityMax / groupCapacityMin))
-      : groupsNeededForMaximum;
-    return Math.min(groupsNeededForMaximum, groupsAllowedByMinimum);
+    return tournamentGroupCountForIncoming({
+      groupCapacityMin: item.tournamentGroupCapacityMin,
+      groupCapacityMax: item.tournamentGroupCapacityMax,
+      incomingCapacityMax,
+      stageCapacityMax: item.capacityMax
+    });
   }
 
   private static withSubEventResource(
@@ -794,6 +789,7 @@ export class LocalActivityEventsMapper {
       stageStatusUpdatedAt: `${stageRuntime.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
       stageFinalizedAt: `${stageRuntime.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
       stageFinalizedByUserId: `${stageRuntime.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
+      stageResultRevision: stageRuntime.stageResultRevision ?? item.stageResultRevision,
       groupsCount: stageRuntime.groupsCount ?? item.groupsCount,
       groupsPending: item.groupsPending
     };
@@ -1019,6 +1015,7 @@ export class LocalActivityEventDetailsMapper {
         payload.mode
           ?? this.inferredEventMode(subEvents)
       ),
+      currentStage: tournamentCurrentStageFromSubEvents(subEvents),
       rating,
       boost,
       affinity
@@ -1087,6 +1084,7 @@ export class LocalActivityEventDetailsMapper {
       subEventDefinitions: record.subEventDefinitions ?? [],
       subEvents: record.subEvents ?? [],
       mode: this.normalizeEventMode(record.mode),
+      currentStage: record.currentStage ? { ...record.currentStage } : null,
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity,
@@ -1327,7 +1325,8 @@ export class LocalActivityEventDetailsMapper {
         stageStatusReason: `${item.stageStatusReason ?? ''}`.trim() || undefined,
         stageStatusUpdatedAt: `${item.stageStatusUpdatedAt ?? ''}`.trim() || undefined,
         stageFinalizedAt: `${item.stageFinalizedAt ?? ''}`.trim() || undefined,
-        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined
+        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined,
+        stageResultRevision: this.optionalNonNegativeInteger(item.stageResultRevision)
       };
     });
   }

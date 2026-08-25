@@ -2,6 +2,7 @@ import type {
   NotificationCategory,
   NotificationDto
 } from '../../core/contracts/notification.interface';
+import { AppUtils } from '../../app-utils';
 import type {
   SingleRowData,
   SingleRowSurfaceTone
@@ -29,7 +30,9 @@ export class NotificationSingleRowConverter implements UiConverter<
     const options = optionsArg[0] ?? {};
     const read = Boolean(`${notification.readAtIso ?? ''}`.trim());
     const senderName = `${notification.senderName ?? ''}`.trim();
-    const systemRandomRoom = this.isSystemRandomRoom(notification);
+    const systemRandomRoom = this.isSystemGeneratedRoom(notification);
+    const stageAvatar = this.hasStageAvatar(notification);
+    const tournamentRoom = `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'tournament-room';
     const sourceLabel = this.sourceLabel(notification.category);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
@@ -44,12 +47,17 @@ export class NotificationSingleRowConverter implements UiConverter<
       subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
       detail: this.message(notification, options),
       dateIso: notification.createdAtIso,
-      avatarUrl: systemRandomRoom ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
-      avatarInitials: !systemRandomRoom && senderName ? this.initials(senderName) : null,
+      avatarUrl: systemRandomRoom || stageAvatar ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
+      avatarInitials: !systemRandomRoom && !stageAvatar && senderName ? this.initials(senderName) : null,
       avatarAriaLabel: senderName || sourceLabel,
-      avatarToneClass: systemRandomRoom ? 'notification-system-avatar' : null,
-      icon: systemRandomRoom
-        ? 'auto_awesome'
+      avatarToneClass: stageAvatar
+        ? this.stageAvatarToneClass(notification)
+        : systemRandomRoom ? 'notification-system-avatar' : null,
+      accentHue: stageAvatar ? this.stageAccentHue(notification) : null,
+      icon: stageAvatar
+        ? `${notification.payload?.['notification_avatar_icon'] ?? ''}`.trim() || 'emoji_events'
+        : systemRandomRoom
+        ? tournamentRoom ? 'emoji_events' : 'auto_awesome'
         : senderName ? null : this.categoryIcon(notification.category),
       surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
@@ -125,9 +133,35 @@ export class NotificationSingleRowConverter implements UiConverter<
     });
   }
 
-  private isSystemRandomRoom(notification: NotificationDto): boolean {
+  private isSystemGeneratedRoom(notification: NotificationDto): boolean {
     return notification.kind === 'event-random-groups'
-      || `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'random-room';
+      || ['random-room', 'tournament-room'].includes(
+        `${notification.payload?.['eventScope'] ?? ''}`.trim()
+      );
+  }
+
+  private hasStageAvatar(notification: NotificationDto): boolean {
+    return `${notification.payload?.['notification_avatar_tone'] ?? ''}`.trim() === 'stage';
+  }
+
+  private stageAvatarToneClass(notification: NotificationDto): string {
+    switch (`${notification.kind ?? ''}`.trim()) {
+      case 'event-stage-advanced':
+      case 'event-tournament-won':
+        return 'notification-stage-avatar notification-stage-avatar--positive';
+      case 'event-stage-not-advanced':
+      case 'event-tournament-not-won':
+        return 'notification-stage-avatar notification-stage-avatar--negative';
+      default:
+        return 'notification-stage-avatar';
+    }
+  }
+
+  private stageAccentHue(notification: NotificationDto): number {
+    return AppUtils.tournamentStageAccentHue(
+      Number(notification.payload?.['stageIndex']),
+      Number(notification.payload?.['stageTotal'])
+    );
   }
 
   private surfaceTone(notification: NotificationDto, read: boolean): SingleRowSurfaceTone {

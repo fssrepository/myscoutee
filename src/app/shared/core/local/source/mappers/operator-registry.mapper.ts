@@ -109,6 +109,14 @@ export class LocalOperatorRegistryMapper {
     }
     const refreshSeedOwnedData =
       `${existing.seedVersion ?? ''}`.trim() !== initialRecord.seedVersion;
+    const migrateDefaultTheme =
+      initialRecord.seedVersion === 'operator-workspace-v8'
+      && (
+        (`${existing.seedVersion ?? ''}`.trim() === 'operator-workspace-v6'
+          && existing.configuration?.branding?.themePreset === 'AURORA')
+        || (`${existing.seedVersion ?? ''}`.trim() === 'operator-workspace-v7'
+          && existing.configuration?.branding?.themePreset === 'OCEAN')
+      );
     const storedLedger = existing.ledger?.length
       ? structuredClone(existing.ledger)
       : existing.leaderboard?.length
@@ -165,7 +173,8 @@ export class LocalOperatorRegistryMapper {
       configuration: this.normalizeConfiguration(
         existing.configuration,
         initialRecord.configuration,
-        refreshSeedOwnedData
+        refreshSeedOwnedData,
+        migrateDefaultTheme
       ),
       tlsConfiguration: this.normalizeTlsConfiguration(
         existing.tlsConfiguration,
@@ -207,7 +216,8 @@ export class LocalOperatorRegistryMapper {
   private static normalizeConfiguration(
     existing: OperatorConfigurationDto | null | undefined,
     initial: OperatorConfigurationDto,
-    refreshSeedOwnedData: boolean
+    refreshSeedOwnedData: boolean,
+    migrateDefaultTheme = false
   ): OperatorConfigurationDto {
     if (!existing) {
       return structuredClone(initial);
@@ -275,8 +285,8 @@ export class LocalOperatorRegistryMapper {
           branding.logoCharacterIndex
           ?? initial.branding.logoCharacterIndex,
         themePreset:
-          branding.themePreset
-          ?? (branding.theme === 'DEFAULT' ? 'AURORA' : initial.branding.themePreset),
+          (migrateDefaultTheme ? initial.branding.themePreset : branding.themePreset)
+          ?? initial.branding.themePreset,
         revision: branding.revision ?? initial.branding.revision
       },
       payment: {

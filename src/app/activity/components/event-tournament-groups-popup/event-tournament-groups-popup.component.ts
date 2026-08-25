@@ -107,6 +107,8 @@ interface ScoreRow {
   memberName: string;
   total: number;
   updates: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -121,6 +123,8 @@ interface FifaRow {
   goalsFor: number;
   goalsAgainst: number;
   goalDiff: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R' | 'V';
   isPlaceholder?: boolean;
 }
 
@@ -196,7 +200,7 @@ export class EventTournamentGroupsPopupComponent {
       this.state = this.contextState(request);
       this.selectedStageId = this.resolveSelectedStageId(this.selectedStageId);
       this.leaderboardState = null;
-      void this.loadGroupsForSelectedStage();
+      void this.loadSelectedStageData();
     });
 
     effect(() => {
@@ -403,7 +407,7 @@ export class EventTournamentGroupsPopupComponent {
     this.selectedGroupId = null;
     this.openGroupIds = [];
     this.leaderboardState = null;
-    void this.loadGroupsForStage(stageId);
+    void this.loadSelectedStageData();
     this.cdr.markForCheck();
   }
 
@@ -411,9 +415,6 @@ export class EventTournamentGroupsPopupComponent {
     const groupId = event.item.context?.groupId ?? event.id;
     this.selectedGroupId = groupId;
     this.openGroupIds = event.open ? [groupId] : [];
-    if (event.open && this.selectedStageId && !this.leaderboardState && !this.leaderboardLoading) {
-      void this.loadLeaderboardForStage(this.selectedStageId);
-    }
     this.cdr.markForCheck();
   }
 
@@ -494,119 +495,12 @@ export class EventTournamentGroupsPopupComponent {
 
   protected scoreRows(group: ContractTypes.EventTournamentGroupDTO): ScoreRow[] {
     const leaderboardGroup = this.leaderboardGroup(group.id);
-    if (leaderboardGroup?.scoreRows?.length) {
-      return leaderboardGroup.scoreRows.map(row => ({ ...row })).sort((left, right) => {
-        const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
-        if (memberOrder !== 0) {
-          return memberOrder;
-        }
-        if (left.total !== right.total) {
-          return right.total - left.total;
-        }
-        return left.memberName.localeCompare(right.memberName);
-      });
-    }
-    const rows = this.membersForGroup(group).map(member => ({
-      memberId: member.id,
-      memberName: member.name,
-      total: 0,
-      updates: 0
-    }));
-    for (const entry of leaderboardGroup?.scoreEntries ?? []) {
-      const row = rows.find(item => item.memberId === entry.memberId);
-      if (!row) {
-        continue;
-      }
-      row.total += Math.trunc(Number(entry.value) || 0);
-      row.updates += 1;
-    }
-    return rows.sort((left, right) => {
-      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
-      if (memberOrder !== 0) {
-        return memberOrder;
-      }
-      if (left.total !== right.total) {
-        return right.total - left.total;
-      }
-      return left.memberName.localeCompare(right.memberName);
-    });
+    return leaderboardGroup?.scoreRows?.map(row => ({ ...row })) ?? [];
   }
 
   protected fifaRows(group: ContractTypes.EventTournamentGroupDTO): FifaRow[] {
     const leaderboardGroup = this.leaderboardGroup(group.id);
-    if (leaderboardGroup?.fifaRows?.length) {
-      return leaderboardGroup.fifaRows.map(row => ({ ...row })).sort((left, right) => {
-        const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
-        if (memberOrder !== 0) {
-          return memberOrder;
-        }
-        if (left.points !== right.points) {
-          return right.points - left.points;
-        }
-        if (left.goalDiff !== right.goalDiff) {
-          return right.goalDiff - left.goalDiff;
-        }
-        return left.memberName.localeCompare(right.memberName);
-      });
-    }
-    const rows = this.membersForGroup(group).map(member => ({
-      memberId: member.id,
-      memberName: member.name,
-      points: 0,
-      played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDiff: 0
-    }));
-    for (const match of leaderboardGroup?.fifaMatches ?? []) {
-      const home = rows.find(row => row.memberId === match.homeMemberId);
-      const away = rows.find(row => row.memberId === match.awayMemberId);
-      if (!home || !away) {
-        continue;
-      }
-      home.played += 1;
-      away.played += 1;
-      home.goalsFor += match.homeScore;
-      home.goalsAgainst += match.awayScore;
-      away.goalsFor += match.awayScore;
-      away.goalsAgainst += match.homeScore;
-      if (match.homeScore > match.awayScore) {
-        home.wins += 1;
-        home.points += 3;
-        away.losses += 1;
-      } else if (match.homeScore < match.awayScore) {
-        away.wins += 1;
-        away.points += 3;
-        home.losses += 1;
-      } else {
-        home.draws += 1;
-        away.draws += 1;
-        home.points += 1;
-        away.points += 1;
-      }
-    }
-    for (const row of rows) {
-      row.goalDiff = row.goalsFor - row.goalsAgainst;
-    }
-    return rows.sort((left, right) => {
-      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
-      if (memberOrder !== 0) {
-        return memberOrder;
-      }
-      if (left.points !== right.points) {
-        return right.points - left.points;
-      }
-      if (left.goalDiff !== right.goalDiff) {
-        return right.goalDiff - left.goalDiff;
-      }
-      if (left.goalsFor !== right.goalsFor) {
-        return right.goalsFor - left.goalsFor;
-      }
-      return left.memberName.localeCompare(right.memberName);
-    });
+    return leaderboardGroup?.fifaRows?.map(row => ({ ...row })) ?? [];
   }
 
   protected scoreHistory(group: ContractTypes.EventTournamentGroupDTO): ContractTypes.SubEventLeaderboardScoreEntry[] {
@@ -639,16 +533,10 @@ export class EventTournamentGroupsPopupComponent {
     return this.membersForGroup(group).find(member => member.id === memberId)?.name ?? 'Member';
   }
 
-  protected isAdvanceRow(group: ContractTypes.EventTournamentGroupDTO, rowIndex: number): boolean {
-    const stage = this.viewModel().selectedStage;
+  protected isAdvanceRow(group: ContractTypes.EventTournamentGroupDTO, row: ScoreRow | FifaRow): boolean {
     const leaderboardGroup = this.leaderboardGroup(group.id);
     const advancingIds = (leaderboardGroup?.advancingMemberIds ?? []).map(id => id.trim()).filter(Boolean);
-    const rows = this.selectedStageMode() === 'Fifa' ? this.fifaRows(group) : this.scoreRows(group);
-    const row = rows[rowIndex] ?? null;
-    if (row && advancingIds.length > 0) {
-      return advancingIds.includes(row.memberId);
-    }
-    return rowIndex < Math.max(0, Math.trunc(Number(stage?.advancePerGroup) || 0));
+    return row.participantState === 'A' && advancingIds.includes(row.memberId);
   }
 
   protected scoreValueLabel(value: number): string {
@@ -692,7 +580,6 @@ export class EventTournamentGroupsPopupComponent {
       return;
     }
     this.isMutating = true;
-    let reloadLeaderboardStageId: string | null = null;
     try {
       const nextState = await this.eventsService.saveTournamentGroup({
         actorUserId: this.activeUserId(),
@@ -719,7 +606,6 @@ export class EventTournamentGroupsPopupComponent {
           }
         }
         this.leaderboardState = null;
-        reloadLeaderboardStageId = stageId;
         await this.loadGroupsForStage(stageId);
         this.emitGroupsUpdate(stageId);
       }
@@ -727,9 +613,6 @@ export class EventTournamentGroupsPopupComponent {
     } finally {
       this.isMutating = false;
       this.cdr.markForCheck();
-    }
-    if (reloadLeaderboardStageId) {
-      void this.loadLeaderboardForStage(reloadLeaderboardStageId);
     }
   }
 
@@ -1085,7 +968,7 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
-  private async loadGroupsForSelectedStage(): Promise<void> {
+  private async loadSelectedStageData(): Promise<void> {
     const stageId = this.selectedStageId ?? this.viewModel().selectedStage?.subEventId ?? null;
     if (!stageId) {
       return;
@@ -1106,7 +989,7 @@ export class EventTournamentGroupsPopupComponent {
     this.leaderboardState = null;
     this.cdr.markForCheck();
     try {
-      const groups = await this.eventsService.queryTournamentStageGroups({
+      const snapshot = await this.eventsService.queryTournamentStageSnapshot({
         eventId,
         slotId: request?.slotId ?? null,
         stageId: normalizedStageId
@@ -1114,8 +997,9 @@ export class EventTournamentGroupsPopupComponent {
       if (sequence !== this.loadSequence) {
         return;
       }
-      this.state = this.stateWithStageGroups(this.state, normalizedStageId, groups);
+      this.state = this.stateWithStageGroups(this.state, normalizedStageId, snapshot.groups);
       this.selectedStageId = normalizedStageId;
+      this.leaderboardState = snapshot.leaderboard;
       this.emitGroupsUpdate(normalizedStageId);
       const selectedStage = this.stageById(normalizedStageId);
       if (this.selectedGroupId && selectedStage?.groups.some(group => group.id === this.selectedGroupId)) {
@@ -1207,8 +1091,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private canInviteGroupMembers(group: ContractTypes.EventTournamentGroupDTO): boolean {
-    void group;
-    return this.canManageGroups();
+    return this.canManageGroups() && group.memberOwnerType !== 'event';
   }
 
   private canAddScoreToStage(stage: ContractTypes.EventTournamentStageDTO | null | undefined): boolean {
@@ -1398,7 +1281,6 @@ export class EventTournamentGroupsPopupComponent {
       failureMessage: 'Group delete failed.',
       onConfirm: async () => {
         this.isMutating = true;
-        let reloadLeaderboardStageId: string | null = null;
         try {
           const nextState = await this.eventsService.deleteTournamentGroup({
             actorUserId: this.activeUserId(),
@@ -1414,16 +1296,12 @@ export class EventTournamentGroupsPopupComponent {
             this.selectedGroupId = nextGroup?.id ?? null;
             this.openGroupIds = nextGroup ? [nextGroup.id] : [];
             this.leaderboardState = null;
-            reloadLeaderboardStageId = nextGroup ? stage.subEventId : null;
             await this.loadGroupsForStage(stage.subEventId);
             this.emitGroupsUpdate(stage.subEventId);
           }
         } finally {
           this.isMutating = false;
           this.cdr.markForCheck();
-        }
-        if (reloadLeaderboardStageId) {
-          void this.loadLeaderboardForStage(reloadLeaderboardStageId);
         }
       }
     });
@@ -1464,12 +1342,14 @@ export class EventTournamentGroupsPopupComponent {
     const stageTitle = `${stage.title ?? ''}`.trim();
     const groupLabel = `${group.name ?? ''}`.trim();
     if (isMembersPopup) {
-      const memberOwnerId = this.groupMemberOwnerId(stage.subEventId, group.id);
+      const memberOwnerType = group.memberOwnerType === 'event' ? 'event' : 'group';
+      const memberOwnerId = `${group.memberOwnerId ?? ''}`.trim()
+        || this.groupMemberOwnerId(stage.subEventId, group.id);
       void this.activitiesStore.ensureEventMembersPopupLoaded();
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
         ownerId: memberOwnerId,
-        ownerType: 'group',
+        ownerType: memberOwnerType,
         parentOwnerId: this.eventId(),
         parentOwnerType: 'event',
         eventId: this.eventId(),
@@ -1550,7 +1430,7 @@ export class EventTournamentGroupsPopupComponent {
     const pendingMembers = members.filter(member => member.status === 'pending');
     this.state = this.updateGroupCounts(this.state, stageId, groupId, acceptedMembers.length, pendingMembers.length);
     this.emitGroupsUpdate(stageId);
-    this.syncLeaderboardMembers(groupId, acceptedMembers);
+    void this.loadLeaderboardForStage(stageId);
     this.cdr.markForCheck();
   }
 
@@ -1562,6 +1442,7 @@ export class EventTournamentGroupsPopupComponent {
     const match = this.state?.stages.flatMap(stage => stage.groups.map(group => ({ stage, group })))
       .find(({ stage, group }) => (
         group.id === memberOwnerId
+        || `${group.memberOwnerId ?? ''}`.trim() === memberOwnerId
         || this.groupMemberOwnerId(stage.subEventId, group.id) === memberOwnerId
       )) ?? null;
     if (!match) {
@@ -1657,136 +1538,6 @@ export class EventTournamentGroupsPopupComponent {
           }
         : stage)
     };
-  }
-
-  private syncLeaderboardMembers(
-    groupId: string,
-    acceptedMembers: readonly ContractTypes.ActivityMemberDTO[]
-  ): void {
-    if (!this.leaderboardState) {
-      return;
-    }
-    const nextMembers = acceptedMembers
-      .map(member => ({
-        id: member.userId.trim() || member.id.trim(),
-        name: member.name.trim() || 'Member'
-      }))
-      .filter(member => member.id.length > 0);
-    this.leaderboardState = {
-      ...this.leaderboardState,
-      groups: this.leaderboardState.groups.map(group => group.groupId === groupId
-        ? {
-            ...group,
-            memberCount: nextMembers.length,
-            advancingMemberIds: group.advancingMemberIds.filter(memberId => nextMembers.some(member => member.id === memberId)),
-            members: nextMembers,
-            scoreRows: this.scoreRowsForMembers(nextMembers, group.scoreEntries),
-            fifaRows: this.fifaRowsForMembers(nextMembers, group.fifaMatches)
-          }
-        : group)
-    };
-  }
-
-  private scoreRowsForMembers(
-    members: readonly ContractTypes.SubEventLeaderboardMember[],
-    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[]
-  ): ContractTypes.SubEventLeaderboardScoreStandingRow[] {
-    const rows = new Map<string, ContractTypes.SubEventLeaderboardScoreStandingRow>();
-    for (const member of members) {
-      rows.set(member.id, {
-        memberId: member.id,
-        memberName: member.name,
-        total: 0,
-        updates: 0
-      });
-    }
-    for (const entry of entries) {
-      const row = rows.get(entry.memberId);
-      if (!row) {
-        continue;
-      }
-      row.total += Math.trunc(Number(entry.value) || 0);
-      row.updates += 1;
-    }
-    return [...rows.values()].sort((left, right) => {
-      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
-      if (memberOrder !== 0) {
-        return memberOrder;
-      }
-      if (left.total !== right.total) {
-        return right.total - left.total;
-      }
-      return left.memberName.localeCompare(right.memberName);
-    });
-  }
-
-  private fifaRowsForMembers(
-    members: readonly ContractTypes.SubEventLeaderboardMember[],
-    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[]
-  ): ContractTypes.SubEventLeaderboardFifaStandingRow[] {
-    const rows = new Map<string, ContractTypes.SubEventLeaderboardFifaStandingRow>();
-    for (const member of members) {
-      rows.set(member.id, {
-        memberId: member.id,
-        memberName: member.name,
-        points: 0,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        goalDiff: 0
-      });
-    }
-    for (const match of matches) {
-      const home = rows.get(match.homeMemberId);
-      const away = rows.get(match.awayMemberId);
-      if (!home || !away) {
-        continue;
-      }
-      home.played += 1;
-      away.played += 1;
-      home.goalsFor += match.homeScore;
-      home.goalsAgainst += match.awayScore;
-      away.goalsFor += match.awayScore;
-      away.goalsAgainst += match.homeScore;
-      if (match.homeScore > match.awayScore) {
-        home.wins += 1;
-        home.points += 3;
-        away.losses += 1;
-      } else if (match.homeScore < match.awayScore) {
-        away.wins += 1;
-        away.points += 3;
-        home.losses += 1;
-      } else {
-        home.draws += 1;
-        away.draws += 1;
-        home.points += 1;
-        away.points += 1;
-      }
-      home.goalDiff = home.goalsFor - home.goalsAgainst;
-      away.goalDiff = away.goalsFor - away.goalsAgainst;
-    }
-    return [...rows.values()].sort((left, right) => {
-      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
-      if (memberOrder !== 0) {
-        return memberOrder;
-      }
-      if (left.points !== right.points) {
-        return right.points - left.points;
-      }
-      if (left.goalDiff !== right.goalDiff) {
-        return right.goalDiff - left.goalDiff;
-      }
-      return left.memberName.localeCompare(right.memberName);
-    });
-  }
-
-  private realMembersFirst(leftName: string, rightName: string): number {
-    const leftPlaceholder = leftName.trim() === '-----';
-    const rightPlaceholder = rightName.trim() === '-----';
-    return leftPlaceholder === rightPlaceholder ? 0 : leftPlaceholder ? 1 : -1;
   }
 
   private openEntryForm(
