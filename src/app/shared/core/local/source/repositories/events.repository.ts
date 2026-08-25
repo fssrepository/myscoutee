@@ -559,6 +559,27 @@ export class LocalEventsRepository {
     );
   }
 
+  queryGeneratedTournamentRoomsByParent(parentEventId: string): ActivityEventRecord[] {
+    const normalizedParentEventId = parentEventId.trim();
+    if (!normalizedParentEventId) {
+      return [];
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivityEventRecord => Boolean(record))
+      .filter(record => record.parentEventId?.trim() === normalizedParentEventId)
+      .filter(record => record.generated === true && record.eventType === 'tournament-room')
+      .map(record => ({
+        ...record,
+        adminIds: [...(record.adminIds ?? [])],
+        acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+        pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+        invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+        pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])]
+      }));
+  }
+
   isTournamentAdmissionLocked(eventId: string): boolean {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {

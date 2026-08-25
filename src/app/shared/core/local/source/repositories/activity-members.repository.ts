@@ -525,6 +525,61 @@ export class LocalActivityMembersRepository {
     this.writeOwnerRecords(normalizedOwner, records, capacityTotal);
   }
 
+  markAcceptedEventMembersRemoved(
+    eventIds: readonly string[],
+    targetUserId: string,
+    nowIso: string
+  ): ActivityMemberRecord[] {
+    const normalizedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
+    const normalizedTargetUserId = targetUserId.trim();
+    if (normalizedEventIds.size === 0 || !normalizedTargetUserId) {
+      return [];
+    }
+    const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const affected = currentTable.ids
+      .map(id => currentTable.byId[id])
+      .filter((record): record is ActivityMemberRecord => Boolean(record))
+      .filter(record => record.ownerType === 'event')
+      .filter(record => normalizedEventIds.has(record.ownerId.trim()))
+      .filter(record => record.userId.trim() === normalizedTargetUserId && record.status === 'accepted')
+      .map(record => this.cloneRecord(record));
+    if (affected.length === 0) {
+      return [];
+    }
+    const affectedIds = new Set(affected.map(record => record.id));
+    const updatedMs = Date.parse(nowIso) || Date.now();
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const nextById = { ...table.byId };
+      for (const id of affectedIds) {
+        const record = nextById[id];
+        if (!record) {
+          continue;
+        }
+        nextById[id] = {
+          ...record,
+          status: 'removed',
+          statusText: 'Removed from this tournament group.',
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso,
+          updatedAtIso: nowIso,
+          updatedMs
+        };
+      }
+      return {
+        ...state,
+        [ACTIVITY_MEMBERS_TABLE_NAME]: {
+          ...table,
+          byId: nextById
+        }
+      };
+    });
+    return affected;
+  }
+
   normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {
     const ownerType = owner?.ownerType;
     const ownerId = owner?.ownerId?.trim() ?? '';
@@ -611,6 +666,7 @@ export class LocalActivityMembersRepository {
     return (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is ActivityMemberRecord => Boolean(record))
+      .filter(record => record.status !== 'deleted' && record.status !== 'removed')
       .filter(record => options?.pendingOnly === true ? record.status === 'pending' : true)
       .map(record => this.cloneRecord(record));
   }
