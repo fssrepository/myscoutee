@@ -347,7 +347,6 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         this.removeGeneratedTournamentRoomParticipation(
           normalizedOwner.ownerId,
           targetMember,
-          normalizedActorUserId,
           nowIso
         );
       }
@@ -373,7 +372,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       const systemMessage = this.eventMembershipSystemMessage(
         action,
         targetMember,
-        nextMembers.find(member => member.userId === normalizedTargetUserId) ?? null
+        nextMembers.find(member => member.userId === normalizedTargetUserId) ?? null,
+        normalizedActorUserId
       );
       if (refreshedEvent && systemMessage) {
         this.chatsRepository.syncPublishedMainEventChat(refreshedEvent);
@@ -381,6 +381,15 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           normalizedOwner.ownerId,
           systemMessage.text,
           systemMessage.kind,
+          nowIso
+        );
+      }
+      if (refreshedEvent && action === 'remove' && targetMember.status === 'accepted') {
+        this.appendEventMemberRemovedNotifications(
+          refreshedEvent,
+          targetMember,
+          normalizedActorUserId,
+          nextMembers.filter(member => member.status === 'accepted'),
           nowIso
         );
       }
@@ -409,7 +418,6 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private removeGeneratedTournamentRoomParticipation(
     parentEventId: string,
     removedMember: ActivityMemberDTO,
-    actorUserId: string,
     removedAtIso: string
   ): void {
     const rooms = this.eventsRepository.queryGeneratedTournamentRoomsByParent(parentEventId);
@@ -426,16 +434,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
     const affectedRoomIds = new Set(removedRoomRecords.map(record => record.ownerId.trim()).filter(Boolean));
     const removedUser = this.localUsersRepository.queryUserById(removedMember.userId);
-    const actor = this.localUsersRepository.queryUserById(actorUserId);
     const removedMemberName = `${removedUser?.name ?? removedMember.name ?? removedMember.userId}`.trim();
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     for (const room of rooms.filter(candidate => affectedRoomIds.has(candidate.id))) {
       const refreshedRoom = this.eventsRepository.synchronizeEventMemberProjection(room.id) ?? room;
-      const remainingMembers = this.activityMembersRepository.peekRecordsByOwner({
-        ownerType: 'event',
-        ownerId: room.id
-      }).filter(member => member.status === 'accepted');
       this.chatsRepository.syncPublishedMainEventChat(refreshedRoom);
       this.chatsRepository.appendEventSystemMessage(
         room.id,
@@ -443,62 +444,76 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         'member-removed',
         removedAtIso
       );
-
-      const commonPayload = {
-        eventId: room.id,
-        parentEventId,
-        eventTitle: room.title,
-        eventScope: 'tournament-room',
-        memberUserId: removedMember.userId,
-        memberName: removedMemberName,
-        membershipAction: 'removed',
-        senderUserId: actorUserId,
-        removedAtIso,
-        removalOccurrenceId: occurrenceId,
-        notification_tone: 'warning'
-      };
-      const notifications: NotificationRecord[] = [];
-      if (removedMember.userId !== actorUserId) {
-        notifications.push({
-          id: `event-tournament-room-member-removed:${room.id}:${removedMember.userId}:${occurrenceId}:target`,
-          recipientUserId: removedMember.userId,
-          kind: 'event-tournament-room-member-removed',
-          category: 'event',
-          title: room.title,
-          message: `You were removed from ${room.title}.`,
-          createdAtIso: removedAtIso,
-          readAtIso: null,
-          senderUserId: actorUserId || null,
-          senderName: actor?.name ?? null,
-          senderAvatarUrl: actor?.images?.[0] ?? null,
-          actionPath: '/game',
-          sourceType: 'event',
-          sourceId: room.id,
-          payload: { ...commonPayload, recipientRole: 'removed-member' }
-        });
-      }
-      for (const peer of remainingMembers.filter(member =>
-        member.userId !== actorUserId && member.userId !== removedMember.userId)) {
-        notifications.push({
-          id: `event-tournament-room-member-removed:${room.id}:${removedMember.userId}:${occurrenceId}:peer:${peer.userId}`,
-          recipientUserId: peer.userId,
-          kind: 'event-tournament-room-member-removed',
-          category: 'event',
-          title: room.title,
-          message: `${removedMemberName} was removed from ${room.title}.`,
-          createdAtIso: removedAtIso,
-          readAtIso: null,
-          senderUserId: actorUserId || null,
-          senderName: actor?.name ?? null,
-          senderAvatarUrl: actor?.images?.[0] ?? null,
-          actionPath: '/game',
-          sourceType: 'event',
-          sourceId: room.id,
-          payload: { ...commonPayload, recipientRole: 'room-peer' }
-        });
-      }
-      this.notificationsRepository.append(notifications);
     }
+  }
+
+  private appendEventMemberRemovedNotifications(
+    event: { id: string; title: string },
+    removedMember: ActivityMemberDTO,
+    actorUserId: string,
+    remainingMembers: readonly ActivityMemberDTO[],
+    removedAtIso: string
+  ): void {
+    const removedUser = this.localUsersRepository.queryUserById(removedMember.userId);
+    const actor = this.localUsersRepository.queryUserById(actorUserId);
+    const memberName = `${removedUser?.name ?? removedMember.name ?? removedMember.userId}`.trim();
+    const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const commonPayload = {
+      eventId: event.id,
+      parentEventId: event.id,
+      eventTitle,
+      eventScope: 'members',
+      memberUserId: removedMember.userId,
+      memberName,
+      membershipAction: 'removed',
+      senderUserId: actorUserId,
+      removedAtIso,
+      removalOccurrenceId: occurrenceId,
+      notification_tone: 'warning'
+    };
+    const notifications: NotificationRecord[] = [];
+    if (removedMember.userId !== actorUserId) {
+      notifications.push({
+        id: `event-member-removed:${event.id}:${removedMember.userId}:${occurrenceId}:target`,
+        recipientUserId: removedMember.userId,
+        kind: 'event-member-removed',
+        category: 'event',
+        title: eventTitle,
+        message: `You were removed from ${eventTitle}.`,
+        createdAtIso: removedAtIso,
+        readAtIso: null,
+        senderUserId: actorUserId || null,
+        senderName: actor?.name ?? null,
+        senderAvatarUrl: actor?.images?.[0] ?? null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: event.id,
+        payload: { ...commonPayload, recipientRole: 'removed-member' }
+      });
+    }
+    for (const participant of remainingMembers.filter(member =>
+      member.userId !== actorUserId && member.userId !== removedMember.userId)) {
+      notifications.push({
+        id: `event-member-removed:${event.id}:${removedMember.userId}:${occurrenceId}:participant:${participant.userId}`,
+        recipientUserId: participant.userId,
+        kind: 'event-member-removed',
+        category: 'event',
+        title: eventTitle,
+        message: `${memberName} was removed from ${eventTitle}.`,
+        createdAtIso: removedAtIso,
+        readAtIso: null,
+        senderUserId: actorUserId || null,
+        senderName: actor?.name ?? null,
+        senderAvatarUrl: actor?.images?.[0] ?? null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: event.id,
+        payload: { ...commonPayload, recipientRole: 'event-participant' }
+      });
+    }
+    this.notificationsRepository.append(notifications);
   }
 
   private synchronizeEventCountersForUsers(userIds: readonly string[]): void {
@@ -524,7 +539,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private eventMembershipSystemMessage(
     action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
     previousMember: ActivityMemberDTO,
-    nextMember: ActivityMemberDTO | null
+    nextMember: ActivityMemberDTO | null,
+    actorUserId: string
   ): { text: string; kind: string } | null {
     const user = this.localUsersRepository.queryUserById(previousMember.userId);
     const displayName = `${user?.name ?? previousMember.name ?? previousMember.userId}`.trim();
@@ -535,7 +551,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       return { text: `${displayName} joined the event.`, kind: 'member-joined' };
     }
     if (action === 'remove' && previousMember.status === 'accepted' && !nextMember) {
-      return { text: `${displayName} left the event.`, kind: 'member-left' };
+      return previousMember.userId === actorUserId
+        ? { text: `${displayName} left the event.`, kind: 'member-left' }
+        : { text: `${displayName} was removed from the event.`, kind: 'member-removed' };
     }
     if (action === 'disqualify' && previousMember.status === 'accepted' && nextMember?.status === 'disqualified') {
       return { text: `${displayName} was disqualified from the event.`, kind: 'member-disqualify' };
