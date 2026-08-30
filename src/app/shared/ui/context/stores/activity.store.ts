@@ -7,6 +7,7 @@ import {
   type ActivityCurrentUserMembershipStatus
 } from '../../../core/contracts/activity.interface';
 import type * as AppDTOs from '../../../core/contracts';
+import type { AssetType } from '../../../core/common/constants';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type {
   UserMenuCounterDeltasDto,
@@ -111,6 +112,8 @@ export interface ActivityResourceSyncState {
   ownerId: string;
   subEventId: string;
   assetOwnerUserId: string;
+  resourceType?: AssetType;
+  readAtIso?: string;
 }
 
 export interface ActivityEventRuntimeSyncState {
@@ -675,7 +678,9 @@ export class ActivityStore {
       updatedMs,
       ownerId,
       subEventId,
-      assetOwnerUserId
+      assetOwnerUserId,
+      resourceType: payload.resourceType,
+      readAtIso: payload.readAtIso
     });
   }
 

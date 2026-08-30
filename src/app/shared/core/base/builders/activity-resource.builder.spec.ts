@@ -73,9 +73,47 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
     expect(metrics.Transport).toEqual({
       accepted: 0,
-      pending: 1,
+      pending: 2,
       capacityMin: 0,
       capacityMax: 4
+    });
+  });
+
+  it('persists a supplies assignment itself as one open pending item', () => {
+    const ownerId = 'event-1:stage-1:stage-1:group:1';
+    const card = {
+      id: 'supplies-1',
+      type: 'Supplies',
+      capacityTotal: 6,
+      requests: []
+    } as AssetDTO;
+    const metrics = ActivityResourceBuilder.buildPersistedResourceMetrics({
+      ownerId,
+      subEventId: 'stage-1',
+      assetOwnerUserId: 'owner-1',
+      assetAssignmentIds: { Supplies: ['supplies-1'] },
+      assetSettingsByType: {
+        Supplies: {
+          'supplies-1': {
+            capacityMin: 0,
+            capacityMax: 6,
+            quantity: 1,
+            addedByUserId: 'owner-1',
+            routeEnabled: false,
+            routes: []
+          }
+        }
+      },
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {}
+    }, [card]);
+
+    expect(metrics.Supplies).toEqual({
+      accepted: 0,
+      pending: 1,
+      capacityMin: 0,
+      capacityMax: 6
     });
   });
 });

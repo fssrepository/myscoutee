@@ -17,6 +17,7 @@ import {
 } from './route-delay.service';
 
 import type * as AppDTOs from '../../contracts';
+import type { AssetType } from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
 const ACTIVITY_SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
@@ -73,10 +74,37 @@ export class ActivityResourcesService extends BaseRouteModeService {
       return null;
     }
     const state = await this.activityResourcesService.querySubEventResourceState(ref);
-    if (state) {
-      this.activityStore.emitActivityResourceSync(ref);
-    }
     return state;
+  }
+
+  async markResourceTypeRead(
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    resourceType: AssetType,
+    userId: string | null | undefined = this.activeAssetOwnerUserId()
+  ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
+    const normalizedOwnerId = this.normalizeId(ownerId);
+    const normalizedSubEventId = this.normalizeId(subEventId);
+    const normalizedUserId = this.normalizeId(userId);
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedUserId) {
+      return null;
+    }
+    const receipt = await this.activityResourcesService.markResourceTypeRead({
+      ownerId: normalizedOwnerId,
+      subEventId: normalizedSubEventId,
+      resourceType,
+      userId: normalizedUserId
+    });
+    if (receipt) {
+      this.activityStore.emitActivityResourceSync({
+        ownerId: receipt.ownerId,
+        subEventId: receipt.subEventId,
+        assetOwnerUserId: receipt.userId,
+        resourceType: receipt.resourceType,
+        readAtIso: receipt.readAtIso
+      });
+    }
+    return receipt;
   }
 
   async querySupplyContributionPage(
@@ -116,7 +144,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
       ownerId: normalizedState.ownerId,
       subEventId: normalizedState.subEventId,
       assetOwnerUserId: normalizedState.assetOwnerUserId
-    }, signal);
+    }, signal, this.activeAssetOwnerUserId());
     if (savedState) {
       this.activityStore.emitActivityResourceSync({
         ownerId: savedState.ownerId,

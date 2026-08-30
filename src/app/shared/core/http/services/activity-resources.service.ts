@@ -51,6 +51,23 @@ export class HttpActivityResourcesService {
     }
   }
 
+  async markResourceTypeRead(
+    request: AppDTOs.ActivitySubEventResourceReadRequestDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
+    const response = await this.http
+      .post<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null>(
+        `${this.apiBaseUrl}/activities/events/subevent-resources/read`,
+        {
+          ownerId: request.ownerId.trim(),
+          subEventId: request.subEventId.trim(),
+          resourceType: request.resourceType,
+          userId: request.userId.trim()
+        }
+      )
+      .toPromise();
+    return response ?? null;
+  }
+
   async querySupplyContributionPage(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
     assetId: string,
@@ -83,7 +100,8 @@ export class HttpActivityResourcesService {
 
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    _actorUserId?: string | null
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     const normalizedState = ActivityResourceBuilder.normalizeState(state, state);
     if (!normalizedState) {

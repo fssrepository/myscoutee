@@ -865,6 +865,14 @@ export class EventResourcePopupComponent {
     this.hydrateOwnedAssetsForResourcePopup();
     this.resourcePopupStore.openResourcePopup(context, type);
     this.closeAssignPopup(false);
+    if (context.groupId) {
+      void this.activityResourcesService.markResourceTypeRead(
+        context.ownerId,
+        context.subEvent.id,
+        type,
+        this.activeUser().id
+      );
+    }
     if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }

@@ -37,6 +37,35 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return record ? this.toState(record) : null;
   }
 
+  async markResourceTypeRead(
+    request: AppDTOs.ActivitySubEventResourceReadRequestDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
+    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
+    const scope = this.groupRuntimeScope(request.ownerId, request.subEventId);
+    const userId = request.userId.trim();
+    if (!scope || !userId || !AppConstants.ASSET_TYPES.includes(request.resourceType)) {
+      return null;
+    }
+    const readAtIso = this.stageRuntimeRepository.markResourceTypeRead(
+      { ownerId: scope.runtimeOwnerId, subEventId: scope.subEventId },
+      scope.groupId,
+      userId,
+      request.resourceType
+    );
+    if (!readAtIso) {
+      return null;
+    }
+    await this.stageRuntimeRepository.flushToIndexedDb();
+    return {
+      ownerId: request.ownerId.trim(),
+      subEventId: scope.subEventId,
+      groupId: scope.groupId,
+      resourceType: request.resourceType,
+      userId,
+      readAtIso
+    };
+  }
+
   async querySupplyContributionPage(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
     assetId: string,
@@ -49,7 +78,8 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
 
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    actorUserId?: string | null
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE, signal, 'Activity resources request aborted.');
     const normalizedState = LocalActivityResourcesMapper.normalizeState(state, state);
@@ -65,7 +95,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     const savedRecord = await this.repository.replaceSubEventResourceRecord(
       LocalActivityResourcesMapper.toRecord(normalizedState, existing)
     );
-    const groupMetricsByType = this.persistGroupRuntimeMetrics(normalizedState);
+    const groupMetricsByType = this.persistGroupRuntimeMetrics(normalizedState, actorUserId);
     await this.repository.flushToIndexedDb();
     const savedState = savedRecord ? this.toState(savedRecord) : null;
     return savedState
@@ -74,7 +104,8 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
   }
 
   private persistGroupRuntimeMetrics(
-    state: AppDTOs.ActivitySubEventResourceStateDTO
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId?: string | null
   ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
     const scope = this.groupRuntimeScope(state.ownerId, state.subEventId);
     if (!scope || !state.assetOwnerUserId.trim()) {
@@ -85,7 +116,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       subEventId: scope.subEventId
     };
     const existing = this.stageRuntimeRepository.peekRecord(ref);
-    const runtime = existing
+    let runtime = existing
       ? LocalActivitySubEventStageRuntimeMapper.cloneRecord(existing)
       : LocalActivitySubEventStageRuntimeMapper.toRecord({
           ...ref,
@@ -96,18 +127,44 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
           stageFinalizedByUserId: null,
           groupsCount: null
         });
+    const existingMetricsByType = runtime.groupResourceMetricsByAssetOwnerId?.[scope.groupId]?.[state.assetOwnerUserId] ?? {};
+    const nextMetricsByType = ActivityResourceBuilder.cloneResourceMetricsByType(
+      state.resourceMetricsByType
+    );
+    const changedTypes = AppConstants.ASSET_TYPES.filter(type => !this.sameResourceMetric(
+      existingMetricsByType[type],
+      nextMetricsByType[type]
+    ));
+    if (changedTypes.length > 0 && existing) {
+      runtime = this.stageRuntimeRepository.clearResourceTypeReads(
+        ref,
+        scope.groupId,
+        changedTypes
+      ) ?? runtime;
+    }
+    const normalizedActorUserId = `${actorUserId ?? ''}`.trim();
     const byGroup = LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceMetrics(
       runtime.groupResourceMetricsByAssetOwnerId
     );
     const byAssetOwner = { ...(byGroup[scope.groupId] ?? {}) };
-    byAssetOwner[state.assetOwnerUserId] = ActivityResourceBuilder.cloneResourceMetricsByType(
-      state.resourceMetricsByType
-    );
+    byAssetOwner[state.assetOwnerUserId] = nextMetricsByType;
     byGroup[scope.groupId] = byAssetOwner;
     runtime.groupResourceMetricsByAssetOwnerId = byGroup;
     this.stageRuntimeRepository.replaceRecord(runtime);
+    if (changedTypes.length > 0 && normalizedActorUserId) {
+      this.stageRuntimeRepository.markResourceTypesRead(
+        ref,
+        scope.groupId,
+        normalizedActorUserId,
+        changedTypes
+      );
+      runtime = this.stageRuntimeRepository.peekRecord(ref) ?? runtime;
+    }
     this.eventsRepository.syncTournamentStagePending(scope.runtimeOwnerId, scope.subEventId);
-    return this.aggregateGroupRuntimeMetrics(byAssetOwner);
+    return this.applyResourceReads(
+      this.aggregateGroupRuntimeMetrics(byAssetOwner),
+      runtime.groupResourceReadAtByUserId?.[scope.groupId]?.[normalizedActorUserId] ?? {}
+    );
   }
 
   private aggregateGroupRuntimeMetrics(
@@ -152,6 +209,31 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return runtimeOwnerId && groupId
       ? { runtimeOwnerId, subEventId: normalizedSubEventId, groupId }
       : null;
+  }
+
+  private sameResourceMetric(
+    left: AppDTOs.SubEventResourceMetricDTO | null | undefined,
+    right: AppDTOs.SubEventResourceMetricDTO | null | undefined
+  ): boolean {
+    return Math.max(0, Math.trunc(Number(left?.accepted) || 0)) === Math.max(0, Math.trunc(Number(right?.accepted) || 0))
+      && Math.max(0, Math.trunc(Number(left?.pending) || 0)) === Math.max(0, Math.trunc(Number(right?.pending) || 0))
+      && Math.max(0, Math.trunc(Number(left?.capacityMin) || 0)) === Math.max(0, Math.trunc(Number(right?.capacityMin) || 0))
+      && Math.max(0, Math.trunc(Number(left?.capacityMax) || 0)) === Math.max(0, Math.trunc(Number(right?.capacityMax) || 0));
+  }
+
+  private applyResourceReads(
+    metricsByType: Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>>,
+    readAtByType: Partial<Record<AppConstants.AssetType, string>>
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    return Object.fromEntries(AppConstants.ASSET_TYPES.map(type => {
+      const metric = metricsByType[type];
+      return [type, {
+        accepted: Math.max(0, Math.trunc(Number(metric?.accepted) || 0)),
+        pending: readAtByType[type] ? 0 : Math.max(0, Math.trunc(Number(metric?.pending) || 0)),
+        capacityMin: Math.max(0, Math.trunc(Number(metric?.capacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(metric?.capacityMax) || 0))
+      }];
+    }));
   }
 
   private toState(record: ActivitySubEventResourceRecord): AppDTOs.ActivitySubEventResourceStateDTO | null {

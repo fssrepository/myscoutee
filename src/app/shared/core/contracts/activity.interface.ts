@@ -426,6 +426,18 @@ export interface ActivitySubEventResourceStateRefDTO {
   assetOwnerUserId: string;
 }
 
+export interface ActivitySubEventResourceReadRequestDTO {
+  ownerId: string;
+  subEventId: string;
+  resourceType: AppConstants.AssetType;
+  userId: string;
+}
+
+export interface ActivitySubEventResourceReadReceiptDTO extends ActivitySubEventResourceReadRequestDTO {
+  groupId: string;
+  readAtIso: string;
+}
+
 export interface SubEventResourceMetricDTO {
   accepted: number;
   pending: number;
@@ -459,6 +471,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
   stageFinalizedByUserId?: string | null;
   stageResultRevision?: number | null;
   groupsCount?: number | null;
+  groupsResourcePendingRead?: number | null;
 }
 
 export interface ActivityEventDTO {

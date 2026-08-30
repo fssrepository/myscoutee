@@ -754,8 +754,12 @@ export class HttpEventsService implements IEventsService {
     let params = new HttpParams()
       .set('eventId', normalizedEventId)
       .set('stageId', normalizedStageId);
+    const normalizedUserId = `${query.userId ?? ''}`.trim();
     if (normalizedSlotId) {
       params = params.set('slotId', normalizedSlotId);
+    }
+    if (normalizedUserId) {
+      params = params.set('userId', normalizedUserId);
     }
     const response = await this.http
       .get<EventTournamentGroupDTO[] | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/stage-groups`, {

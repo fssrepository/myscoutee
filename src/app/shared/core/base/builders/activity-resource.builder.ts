@@ -348,11 +348,13 @@ export class ActivityResourceBuilder {
         : assignedCards.reduce((sum, card) => (
             sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'accepted', state.ownerId)
           ), 0);
-      const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
-        ? 0
-        : assignedCards.reduce((sum, card) => (
-            sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'pending', state.ownerId)
-          ), 0);
+      const pending = assignedCards.length + (
+        type === AppConstants.ASSET_TYPE_SUPPLIES
+          ? 0
+          : assignedCards.reduce((sum, card) => (
+              sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'pending', state.ownerId)
+            ), 0)
+      );
       const capacityMin = assignedCards.reduce((sum, card) => (
         sum + Math.max(0, Math.trunc(Number(settings[card.id]?.capacityMin) || 0))
       ), 0);
