@@ -296,7 +296,13 @@
                               <span class="chat-poll-option-text">{{ option.text }}</span>
                               <span class="chat-poll-voters">
                                 @for (vote of option.votes.slice(0, 3); track vote.userId) {
-                                  <span class="chat-poll-voter-avatar" [class]="'user-color-' + vote.gender">{{ vote.initials }}</span>
+                                  <span class="chat-poll-voter-avatar" [class]="'user-color-' + vote.gender">
+                                    @if (vote.imageUrl) {
+                                      <img [src]="vote.imageUrl" [alt]="vote.name || vote.initials" loading="lazy" decoding="async" />
+                                    } @else {
+                                      {{ vote.initials }}
+                                    }
+                                  </span>
                                 }
                               </span>
                             </span>

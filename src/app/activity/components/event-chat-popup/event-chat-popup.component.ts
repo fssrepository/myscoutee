@@ -126,6 +126,7 @@ interface ChatPollOptionState {
     name?: string;
     initials: string;
     gender: ContractTypes.ChatUserGender;
+    imageUrl?: string | null;
   }>;
 }
 
@@ -2011,7 +2012,8 @@ export class EventChatPopupComponent implements OnDestroy {
             ? [{
                 userId: activeUserId,
                 initials: presentation.senderAvatar.initials,
-                gender: presentation.senderAvatar.gender
+                gender: presentation.senderAvatar.gender,
+                imageUrl: presentation.senderAvatar.imageUrl ?? null
               }]
             : [])
         ]
@@ -3171,7 +3173,13 @@ export class EventChatPopupComponent implements OnDestroy {
                 votes: Array.isArray(value.votes)
                   ? value.votes
                       .map((vote: unknown): ChatPollOptionState['votes'][number] | null => {
-                        const voteValue = vote as { userId?: unknown; name?: unknown; initials?: unknown; gender?: unknown };
+                        const voteValue = vote as {
+                          userId?: unknown;
+                          name?: unknown;
+                          initials?: unknown;
+                          gender?: unknown;
+                          imageUrl?: unknown;
+                        };
                         const userId = `${voteValue.userId ?? ''}`.trim();
                         if (!userId) {
                           return null;
@@ -3180,7 +3188,8 @@ export class EventChatPopupComponent implements OnDestroy {
                           userId,
                           name: `${voteValue.name ?? ''}`.trim() || undefined,
                           initials: `${voteValue.initials ?? 'ME'}`.trim() || 'ME',
-                          gender: this.normalizeChatUserGender(voteValue.gender)
+                          gender: this.normalizeChatUserGender(voteValue.gender),
+                          imageUrl: `${voteValue.imageUrl ?? ''}`.trim() || null
                         };
                       })
                       .filter((vote: ChatPollOptionState['votes'][number] | null): vote is ChatPollOptionState['votes'][number] => vote !== null)
@@ -3215,7 +3224,8 @@ export class EventChatPopupComponent implements OnDestroy {
           userId: vote.userId,
           name: vote.name,
           initials: vote.initials,
-          gender: vote.gender
+          gender: vote.gender,
+          imageUrl: vote.imageUrl ?? null
         }))
       }))
     });
