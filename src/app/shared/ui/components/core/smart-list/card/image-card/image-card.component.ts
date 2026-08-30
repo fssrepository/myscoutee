@@ -18,6 +18,7 @@ import {
   type ImageCardData,
   type ImageCardFrame,
   type ImageCardLayout,
+  type ImageCardMediaFit,
   type ImageCardMediaAction,
   type ImageCardMediaActionEvent,
   type ImageCardMediaActionPosition,
@@ -61,7 +62,8 @@ export class ImageCardComponent {
       'experience-item-card',
       'ui-image-card',
       `ui-image-card--layout-${this.resolvedLayout()}`,
-      `ui-image-card--frame-${this.resolvedFrame()}`
+      `ui-image-card--frame-${this.resolvedFrame()}`,
+      `ui-image-card--media-fit-${this.resolvedMediaFit()}`
     ];
     const toneClass = `${this.card?.toneClass ?? ''}`.trim();
     if (toneClass) {
@@ -82,6 +84,10 @@ export class ImageCardComponent {
 
   protected resolvedFrame(): ImageCardFrame {
     return this.card?.frame ?? 'fluid';
+  }
+
+  protected resolvedMediaFit(): ImageCardMediaFit {
+    return this.card?.mediaFit ?? 'cover';
   }
 
   protected resolvedImageUrl(): string {

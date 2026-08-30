@@ -41,6 +41,8 @@ export class ActivityMemberImageCardConverter {
       subtitle: `${this.roleLabel(dto)} · ${dto.city}`,
       detail: checkedInDetail || pendingDetail,
       imageUrl: dto.avatarUrl,
+      aspectRatio: '3 / 4',
+      mediaFit: 'contain',
       placeholderIcon: 'highlight_off',
       placeholderLabel: dto.initials,
       layout: 'overlay',

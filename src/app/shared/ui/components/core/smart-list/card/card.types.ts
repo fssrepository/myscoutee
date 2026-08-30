@@ -4,6 +4,7 @@ import type { SmartListLocalSortKey } from '../smart-list-local-sort';
 
 export type CardPresentation = 'list' | 'fullscreen';
 export type ImageCardFrame = 'fluid' | 'compact';
+export type ImageCardMediaFit = 'cover' | 'contain';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
 export type InfoCardSurfaceTone =
@@ -383,6 +384,7 @@ export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEage
   imageUrl?: string | null;
   aspectRatio?: string | null;
   frame?: ImageCardFrame | null;
+  mediaFit?: ImageCardMediaFit | null;
   placeholderIcon?: string | null;
   placeholderLabel?: string | null;
   layout?: ImageCardLayout | null;

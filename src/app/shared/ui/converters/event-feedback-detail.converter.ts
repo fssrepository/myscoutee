@@ -154,8 +154,6 @@ export class EventFeedbackDetailImageCardConverter {
       subtitle: isEventCard ? card.subheading : card.identitySubtitle || card.subheading,
       detail: isEventCard ? card.identityTitle : null,
       imageUrl: card.imageUrl,
-      aspectRatio: '4 / 3',
-      frame: 'compact',
       layout: 'overlay',
       toneClass: card.toneClass,
       placeholderIcon: card.icon,

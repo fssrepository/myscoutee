@@ -37,6 +37,12 @@
   isolation: isolate;
 }
 
+.ui-image-card--layout-overlay.ui-image-card--media-fit-contain,
+.ui-image-card--media-fit-contain .ui-image-card__media {
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
 .ui-image-card--layout-overlay::before,
 .ui-image-card--layout-overlay::after {
   content: '';
