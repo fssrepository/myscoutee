@@ -349,6 +349,16 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           targetMember,
           nowIso
         );
+      } else if (
+        (action === 'disqualify' && targetMember.status === 'accepted')
+        || (action === 'reinstate' && targetMember.status === 'disqualified')
+      ) {
+        this.updateGeneratedTournamentRoomParticipationStatus(
+          normalizedOwner.ownerId,
+          targetMember,
+          action,
+          nowIso
+        );
       }
       const refreshedEvent = this.eventsRepository.synchronizeEventMemberProjection(normalizedOwner.ownerId);
       this.synchronizeEventCountersForUsers([
@@ -388,6 +398,21 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         this.appendEventMemberRemovedNotifications(
           refreshedEvent,
           targetMember,
+          normalizedActorUserId,
+          nextMembers.filter(member => member.status === 'accepted'),
+          nowIso
+        );
+      } else if (
+        refreshedEvent
+        && (
+          (action === 'disqualify' && targetMember.status === 'accepted')
+          || (action === 'reinstate' && targetMember.status === 'disqualified')
+        )
+      ) {
+        this.appendEventMemberStatusChangedNotifications(
+          refreshedEvent,
+          targetMember,
+          action,
           normalizedActorUserId,
           nextMembers.filter(member => member.status === 'accepted'),
           nowIso
@@ -443,6 +468,43 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         `${removedMemberName} was removed from the tournament group.`,
         'member-removed',
         removedAtIso
+      );
+    }
+  }
+
+  private updateGeneratedTournamentRoomParticipationStatus(
+    parentEventId: string,
+    member: ActivityMemberDTO,
+    action: 'disqualify' | 'reinstate',
+    changedAtIso: string
+  ): void {
+    const rooms = this.eventsRepository.queryGeneratedTournamentRoomsByParent(parentEventId);
+    if (rooms.length === 0) {
+      return;
+    }
+    const expectedStatus = action === 'disqualify' ? 'accepted' : 'disqualified';
+    const nextStatus = action === 'disqualify' ? 'disqualified' : 'accepted';
+    const changedRoomRecords = this.activityMembersRepository.updateEventMemberStatus(
+      rooms.map(room => room.id),
+      member.userId,
+      expectedStatus,
+      nextStatus,
+      changedAtIso
+    );
+    if (changedRoomRecords.length === 0) {
+      return;
+    }
+    const affectedRoomIds = new Set(changedRoomRecords.map(record => record.ownerId.trim()).filter(Boolean));
+    const user = this.localUsersRepository.queryUserById(member.userId);
+    const memberName = `${user?.name ?? member.name ?? member.userId}`.trim();
+    const actionText = action === 'disqualify' ? 'disqualified from' : 'reinstated to';
+    for (const room of rooms.filter(candidate => affectedRoomIds.has(candidate.id))) {
+      this.eventsRepository.synchronizeEventMemberProjection(room.id);
+      this.chatsRepository.appendEventSystemMessage(
+        room.id,
+        `${memberName} was ${actionText} the tournament group.`,
+        `member-${action}`,
+        changedAtIso
       );
     }
   }
@@ -503,6 +565,79 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         title: eventTitle,
         message: `${memberName} was removed from ${eventTitle}.`,
         createdAtIso: removedAtIso,
+        readAtIso: null,
+        senderUserId: actorUserId || null,
+        senderName: actor?.name ?? null,
+        senderAvatarUrl: actor?.images?.[0] ?? null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: event.id,
+        payload: { ...commonPayload, recipientRole: 'event-participant' }
+      });
+    }
+    this.notificationsRepository.append(notifications);
+  }
+
+  private appendEventMemberStatusChangedNotifications(
+    event: { id: string; title: string },
+    member: ActivityMemberDTO,
+    action: 'disqualify' | 'reinstate',
+    actorUserId: string,
+    activeMembers: readonly ActivityMemberDTO[],
+    changedAtIso: string
+  ): void {
+    const user = this.localUsersRepository.queryUserById(member.userId);
+    const actor = this.localUsersRepository.queryUserById(actorUserId);
+    const memberName = `${user?.name ?? member.name ?? member.userId}`.trim();
+    const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const membershipAction = action === 'disqualify' ? 'disqualified' : 'reinstated';
+    const actionText = action === 'disqualify' ? 'disqualified from' : 'reinstated to';
+    const kind = `event-member-${membershipAction}`;
+    const commonPayload = {
+      eventId: event.id,
+      parentEventId: event.id,
+      eventTitle,
+      eventScope: 'members',
+      memberUserId: member.userId,
+      memberName,
+      membershipAction,
+      senderUserId: actorUserId,
+      changedAtIso,
+      membershipOccurrenceId: occurrenceId,
+      notification_tone: action === 'disqualify' ? 'warning' : 'success'
+    };
+    const notifications: NotificationRecord[] = [];
+    if (member.userId !== actorUserId) {
+      notifications.push({
+        id: `${kind}:${event.id}:${member.userId}:${occurrenceId}:target`,
+        recipientUserId: member.userId,
+        kind,
+        category: 'event',
+        title: eventTitle,
+        message: `You were ${actionText} ${eventTitle}.`,
+        createdAtIso: changedAtIso,
+        readAtIso: null,
+        senderUserId: actorUserId || null,
+        senderName: actor?.name ?? null,
+        senderAvatarUrl: actor?.images?.[0] ?? null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: event.id,
+        payload: { ...commonPayload, recipientRole: 'affected-member' }
+      });
+    }
+    for (const participant of activeMembers.filter(candidate =>
+      candidate.userId !== actorUserId && candidate.userId !== member.userId)) {
+      notifications.push({
+        id: `${kind}:${event.id}:${member.userId}:${occurrenceId}:participant:${participant.userId}`,
+        recipientUserId: participant.userId,
+        kind,
+        category: 'event',
+        title: eventTitle,
+        message: `${memberName} was ${actionText} ${eventTitle}.`,
+        createdAtIso: changedAtIso,
         readAtIso: null,
         senderUserId: actorUserId || null,
         senderName: actor?.name ?? null,
