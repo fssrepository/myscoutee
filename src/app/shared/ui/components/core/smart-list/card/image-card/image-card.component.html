@@ -1,5 +1,6 @@
 <article
   [ngClass]="rootClassList()"
+  [style.aspect-ratio]="resolvedAspectRatio()"
   [appLazyBgImage]="resolvedLayout() === 'overlay' ? (resolvedImageUrl() || null) : null"
   >
   @if (resolvedLayout() === 'stacked') {

@@ -22,6 +22,11 @@
   box-shadow: 0 8px 20px rgba(15, 33, 58, 0.08);
 }
 
+.ui-image-card--frame-compact {
+  width: min(320px, 100%);
+  max-width: 100%;
+}
+
 .ui-image-card--layout-overlay {
   min-height: 250px;
   border-radius: 13px;

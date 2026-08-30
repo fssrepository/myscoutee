@@ -675,14 +675,12 @@ app-smart-list.admin-smart-list {
 }
 
 .admin-report-member-card {
-  padding: 0;
-  overflow: hidden;
-  background: #fff;
-  min-height: 220px;
   display: block;
+  min-height: 0;
+  justify-self: start;
+  cursor: pointer;
 }
 
-.admin-report-member-card app-image-card,
 .admin-blocked-smart-list-host app-image-card {
   display: block;
 }

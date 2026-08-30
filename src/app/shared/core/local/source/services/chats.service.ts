@@ -197,7 +197,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     }
     const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
     const records = this.activityMembersRepository.peekRecordsByOwner(owner)
-      .filter(record => pendingOnly ? record.status === 'pending' : record.status !== 'deleted')
+      .filter(record => pendingOnly ? record.status === 'pending' : record.status === 'accepted')
       .sort((left, right) => left.userId.localeCompare(right.userId));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
     const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);

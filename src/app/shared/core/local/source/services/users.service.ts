@@ -48,6 +48,7 @@ import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
+import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
 
 @Injectable({
@@ -70,6 +71,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
+  private readonly adminModerationRepository = inject(LocalAdminModerationRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -478,9 +480,53 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       };
     }
     const normalizedTarget = request.handle.trim();
+    const reporter = this.usersRepository.queryUserById(normalizedActiveUserId);
+    const reportIdentity = [
+      normalizedActiveUserId,
+      normalizedTargetUserId,
+      normalizedEventId,
+      `${request.reason ?? ''}`.trim(),
+      `${request.details ?? ''}`.trim(),
+      `${request.sourceType ?? ''}`.trim().toLowerCase(),
+      `${request.sourceId ?? ''}`.trim(),
+      `${request.chatId ?? ''}`.trim(),
+      `${request.messageId ?? ''}`.trim(),
+      `${request.assetId ?? ''}`.trim()
+    ].map(value => encodeURIComponent(value)).join(':');
+    await this.adminModerationRepository.whenReady();
+    const created = await this.adminModerationRepository.insertReportIfAbsent({
+      id: `local-user-report:${reportIdentity}`,
+      reporterUserId: normalizedActiveUserId,
+      reporterName: reporter?.name ?? normalizedActiveUserId,
+      reporterImageUrl: reporter?.images?.[0] ?? null,
+      targetUserId: normalizedTargetUserId,
+      handle: normalizedTarget || null,
+      reason: `${request.reason ?? ''}`.trim(),
+      details: `${request.details ?? ''}`.trim(),
+      eventId: normalizedEventId,
+      eventTitle: `${request.eventTitle ?? ''}`.trim() || null,
+      eventStartAtIso: `${request.eventStartAtIso ?? ''}`.trim() || null,
+      memberEntryId: targetMember?.id ?? null,
+      sourceType: `${request.sourceType ?? ''}`.trim() || null,
+      sourceId: `${request.sourceId ?? ''}`.trim() || null,
+      sourceText: `${request.sourceText ?? ''}`.trim() || null,
+      chatId: `${request.chatId ?? ''}`.trim() || null,
+      messageId: `${request.messageId ?? ''}`.trim() || null,
+      assetId: `${request.assetId ?? ''}`.trim() || null,
+      assetType: `${request.assetType ?? ''}`.trim() || null,
+      chatTitle: null,
+      chatMessages: [],
+      createdDate: new Date().toISOString(),
+      warnedAtIso: null,
+      warnedByAdminUserId: null,
+      resolvedAtIso: null,
+      resolvedByAdminUserId: null
+    });
     return {
       submitted: true,
-      message: `Report submitted successfully for ${normalizedTarget || 'the selected user'}. Our moderation team will review it.`
+      message: created
+        ? `Report submitted successfully for ${normalizedTarget || 'the selected user'}. Our moderation team will review it.`
+        : 'Report already submitted.'
     };
   }
 

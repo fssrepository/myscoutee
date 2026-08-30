@@ -16,6 +16,7 @@ import {
   type CardBadgeConfig,
   type CardMenuAction,
   type ImageCardData,
+  type ImageCardFrame,
   type ImageCardLayout,
   type ImageCardMediaAction,
   type ImageCardMediaActionEvent,
@@ -59,7 +60,8 @@ export class ImageCardComponent {
     const classes = [
       'experience-item-card',
       'ui-image-card',
-      `ui-image-card--layout-${this.resolvedLayout()}`
+      `ui-image-card--layout-${this.resolvedLayout()}`,
+      `ui-image-card--frame-${this.resolvedFrame()}`
     ];
     const toneClass = `${this.card?.toneClass ?? ''}`.trim();
     if (toneClass) {
@@ -78,11 +80,20 @@ export class ImageCardComponent {
     return this.card?.layout ?? 'stacked';
   }
 
+  protected resolvedFrame(): ImageCardFrame {
+    return this.card?.frame ?? 'fluid';
+  }
+
   protected resolvedImageUrl(): string {
     return AppUtils.mediaImageVariantUrl(
       `${this.card?.imageUrl ?? this.card?.singleImageUrls?.[0] ?? this.imageUrl ?? ''}`.trim(),
       'medium'
     );
+  }
+
+  protected resolvedAspectRatio(): string | null {
+    const aspectRatio = `${this.card?.aspectRatio ?? ''}`.trim();
+    return aspectRatio || null;
   }
 
   protected resolvedTitle(): string {

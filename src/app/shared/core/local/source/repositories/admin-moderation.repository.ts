@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppMemoryDb } from '../../../common/app.db';
-import type { AdminModerationStore } from '../../../contracts/admin.interface';
+import type { AdminModerationStore, AdminReportDto } from '../../../contracts/admin.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 @Injectable({
@@ -20,6 +20,23 @@ export class LocalAdminModerationRepository {
 
   async writeStore(store: AdminModerationStore): Promise<void> {
     await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration, store);
+  }
+
+  async insertReportIfAbsent(report: AdminReportDto): Promise<boolean> {
+    const normalizedReportId = `${report?.id ?? ''}`.trim();
+    if (!normalizedReportId) {
+      return false;
+    }
+    const store = await this.readStore();
+    if (!store || (store.reports ?? []).some(item => item.id === normalizedReportId)) {
+      return false;
+    }
+    await this.writeStore({
+      ...store,
+      reports: [...(store.reports ?? []), { ...report }],
+      feedback: [...(store.feedback ?? [])]
+    });
+    return true;
   }
 
   async setReportResolved(
