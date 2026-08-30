@@ -574,7 +574,6 @@ export class UserProfileStore {
     const isSeenCursor = nextCursor.length > 0 && this.realtimeSeenImpressionsCursorByUserId[normalizedUserId] === nextCursor;
     const uiPatch = UserRealtimeUiConverter.convert({
       snapshot,
-      previousImpressions: this.getUserImpressions(normalizedUserId),
       currentChangeFlags: this.getUserImpressionChangeFlags(normalizedUserId),
       suppressImpressionBadges: shouldIgnoreNextImpressionsSnapshot || isSeenCursor
     });
