@@ -153,6 +153,7 @@ export interface ActivitySubEventStageRuntimeRecord {
     string,
     Record<string, Partial<Record<AssetType, ActivitySubEventResourceMetricRecord>>>
   >;
+  groupResourceReadAtByUserId: Record<string, Record<string, Partial<Record<AssetType, string>>>>;
   ownerKey: string;
   createdMs: number;
   updatedMs: number;

@@ -24,6 +24,7 @@ import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalChatThreadMapper } from '../mappers';
 import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
 import type { ChatThreadRecord } from '../entity/chat.entity';
@@ -48,16 +49,22 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const page = this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), query);
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE, signal);
+    const ownerUserId = this.resolveDemoActivityUserId(userId);
+    const page = this.chatsRepository.queryActivitiesChatPage(ownerUserId, query);
+    const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
     return {
       ...LocalChatThreadMapper.toDtoPage(page),
-      items: this.chatDtosWithMetrics(page.items)
+      items: this.chatDtosWithMetrics(page.items),
+      chats: this.countValue(activities?.chats),
+      chatCounters: this.normalizeChatCounters(activities?.chat)
     };
   }
 
@@ -87,12 +94,35 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       throw this.abortError();
     }
     const chat = this.localChatForActiveUser(chatId);
+    const ownerUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
     const revision = Math.max(1, Math.trunc(Number(chat?.revision) || 1));
     const changed = Boolean(chat) && revision !== Math.max(1, Math.trunc(Number(knownRevision) || 1));
     return {
       revision,
       changed,
-      ownerStatus: changed ? chat?.ownerStatus ?? null : null
+      ownerStatus: chat?.ownerStatus ?? null,
+      unread: Math.max(0, Math.trunc(Number(chat?.unread) || 0)),
+      lastMessage: `${chat?.lastMessage ?? ''}`,
+      lastSenderId: `${chat?.lastSenderId ?? ''}`.trim() || null,
+      dateIso: `${chat?.dateIso ?? ''}`.trim() || null,
+      contextStartAtIso: `${chat?.contextStartAtIso ?? ''}`.trim() || null,
+      contextEndAtIso: `${chat?.contextEndAtIso ?? ''}`.trim() || null,
+      chats: this.countValue(activities?.chats),
+      chatCounters: this.normalizeChatCounters(activities?.chat)
+    };
+  }
+
+  private normalizeChatCounters(
+    counters: ContractTypes.UserChatCountersDto | null | undefined
+  ): ContractTypes.UserChatCountersDto {
+    return {
+      all: this.countValue(counters?.all),
+      event: this.countValue(counters?.event),
+      subEvent: this.countValue(counters?.subEvent),
+      group: this.countValue(counters?.group),
+      service: this.countValue(counters?.service),
+      appSupport: this.countValue(counters?.appSupport)
     };
   }
 
@@ -115,6 +145,10 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     ) {
       return null;
     }
+    const event = this.eventsRepository.queryEventRecordById(activeUserId, eventId);
+    const subEvent = subEventId
+      ? event?.subEvents?.find(item => item.id === subEventId) ?? null
+      : null;
     const chat: ChatDTO = {
       id: chatId,
       avatar: AppUtils.initialsFromText(`${input.avatarSource ?? ''}`.trim() || input.title),
@@ -124,6 +158,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       memberIds: [activeUserId, targetUserId],
       unread: 0,
       dateIso: new Date().toISOString(),
+      contextStartAtIso: subEvent?.startAt || event?.startAtIso || null,
+      contextEndAtIso: subEvent?.endAt || event?.endAtIso || null,
       channelType: 'serviceEvent',
       serviceContext: input.serviceContext,
       ownerId: eventId,
@@ -161,7 +197,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     }
     const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
     const records = this.activityMembersRepository.peekRecordsByOwner(owner)
-      .filter(record => pendingOnly ? record.status === 'pending' : record.status !== 'deleted')
+      .filter(record => pendingOnly ? record.status === 'pending' : record.status === 'accepted')
       .sort((left, right) => left.userId.localeCompare(right.userId));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
     const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);
@@ -287,6 +323,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       userId: update.reader.id,
       userInitials: update.reader.initials,
       userGender: update.reader.gender,
+      userImageUrl: update.reader.imageUrl ?? null,
       messageIds: update.messageIds,
       readAtIso: update.readAtIso,
       unread: update.unread

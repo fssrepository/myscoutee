@@ -1533,6 +1533,7 @@ export class LocalEventsRepository {
     );
     return this.stageGroupsForDisplay(ownerSourceId, stage, stages, record)
       .map((group, groupIndex) => this.tournamentGroupDto(
+        `${query.userId ?? ''}`.trim(),
         ownerSourceId,
         stage,
         group,
@@ -3323,6 +3324,7 @@ export class LocalEventsRepository {
       .map((stage, index) => ({ stage, index }))
       .filter(entry => this.isGeneratedTournamentStage(entry.stage))
       .map(({ stage, index }) => this.tournamentStageDto(
+        userId,
         normalizedEventId,
         stage,
         index,
@@ -3340,6 +3342,7 @@ export class LocalEventsRepository {
   }
 
   private tournamentStageDto(
+    userId: string,
     ownerSourceId: string,
     stage: ContractTypes.SubEventDTO,
     index: number,
@@ -3362,6 +3365,7 @@ export class LocalEventsRepository {
       advancePerGroup: Math.max(0, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 0)),
       groups: this.stageGroupsForDisplay(ownerSourceId, stage, stages, eventRecord)
         .map((group, groupIndex) => this.tournamentGroupDto(
+          userId,
           ownerSourceId,
           stage,
           group,
@@ -3373,6 +3377,7 @@ export class LocalEventsRepository {
   }
 
   private tournamentGroupDto(
+    userId: string,
     ownerSourceId: string,
     stage: ContractTypes.SubEventDTO,
     group: ContractTypes.SubEventGroupDTO,
@@ -3406,7 +3411,11 @@ export class LocalEventsRepository {
       membersPending: pending,
       memberOwnerType: 'group',
       memberOwnerId,
-      resourceMetricsByType: this.groupResourceMetrics(stageRuntime, `${group.id ?? ''}`.trim())
+      resourceMetricsByType: this.groupResourceMetrics(
+        stageRuntime,
+        `${group.id ?? ''}`.trim(),
+        userId
+      )
     };
   }
 
@@ -3459,9 +3468,11 @@ export class LocalEventsRepository {
 
   private groupResourceMetrics(
     runtime: ActivitySubEventStageRuntimeRecord | null,
-    groupId: string
+    groupId: string,
+    userId: string
   ): Partial<Record<AppConstants.AssetType, ContractTypes.EventTournamentResourceMetricDTO>> {
     const byAssetOwner = runtime?.groupResourceMetricsByAssetOwnerId?.[groupId] ?? {};
+    const readAtByType = runtime?.groupResourceReadAtByUserId?.[groupId]?.[userId] ?? {};
     const result: Partial<Record<AppConstants.AssetType, ContractTypes.EventTournamentResourceMetricDTO>> = {};
     for (const type of AppConstants.ASSET_TYPES) {
       let accepted = 0;
@@ -3480,7 +3491,7 @@ export class LocalEventsRepository {
       }
       result[type] = {
         accepted,
-        pending,
+        pending: readAtByType[type] ? 0 : pending,
         capacityMin,
         capacityMax: Math.max(capacityMin, capacityMax)
       };
@@ -3688,6 +3699,9 @@ export class LocalEventsRepository {
       groupsCount: Math.max(0, groupsCount),
       groupResourceMetricsByAssetOwnerId: LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceMetrics(
         existing?.groupResourceMetricsByAssetOwnerId
+      ),
+      groupResourceReadAtByUserId: LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceReadAt(
+        existing?.groupResourceReadAtByUserId
       ),
       ownerKey: ownerSourceId.trim(),
       createdMs: existing?.createdMs ?? nowMs,

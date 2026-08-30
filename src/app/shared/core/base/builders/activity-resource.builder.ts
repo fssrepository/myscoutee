@@ -8,6 +8,14 @@ import * as AppConstants from '../../common/constants';
 type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
 
 export class ActivityResourceBuilder {
+  static chatResourceDateRange(
+    chat: Pick<ContractTypes.ChatDTO, 'contextStartAtIso' | 'contextEndAtIso'>
+  ): { startAtIso: string; endAtIso: string } | null {
+    const startAtIso = `${chat.contextStartAtIso ?? ''}`.trim();
+    const endAtIso = `${chat.contextEndAtIso ?? ''}`.trim();
+    return startAtIso && endAtIso ? { startAtIso, endAtIso } : null;
+  }
+
   static authorizationEventId(ownerIdValue: string, subEventIdValue = ''): string {
     const ownerId = `${ownerIdValue ?? ''}`.trim();
     const subEventId = `${subEventIdValue ?? ''}`.trim();
@@ -31,6 +39,10 @@ export class ActivityResourceBuilder {
 
   static recordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}:${ref.subEventId}`;
+  }
+
+  static scopeId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    return `${ref.ownerId}:${ref.subEventId}:${ref.assetOwnerUserId}`;
   }
 
   static createEmptyState(
@@ -94,6 +106,37 @@ export class ActivityResourceBuilder {
     next.fallbackAssetCardsByType = this.cloneFallbackAssetCardsByType(next.fallbackAssetCardsByType);
     next.resourceMetricsByType = this.cloneResourceMetricsByType(next.resourceMetricsByType);
     return next;
+  }
+
+  static normalizeScope(
+    scope: AppDTOs.ActivitySubEventResourceScopeDTO | null | undefined,
+    viewerRef: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceScopeDTO {
+    const viewerState = this.normalizeState(scope?.viewerState, viewerRef)
+      ?? this.createEmptyState(viewerRef);
+    const visibleByRecordId = new Map<string, AppDTOs.ActivitySubEventResourceStateDTO>();
+    for (const source of scope?.visibleStates ?? []) {
+      const state = this.normalizeState(source);
+      if (
+        !state
+        || state.ownerId !== viewerRef.ownerId
+        || state.subEventId !== viewerRef.subEventId
+      ) {
+        continue;
+      }
+      visibleByRecordId.set(this.recordId(state), state);
+    }
+    if ((viewerState.assetAssignmentIds && Object.keys(viewerState.assetAssignmentIds).length > 0)
+      || (viewerState.assetSettingsByType && Object.keys(viewerState.assetSettingsByType).length > 0)
+      || Object.keys(viewerState.supplyContributionEntriesByAssetId ?? {}).length > 0) {
+      visibleByRecordId.set(this.recordId(viewerState), viewerState);
+    }
+    return {
+      viewerState: this.cloneState(viewerState) ?? this.createEmptyState(viewerRef),
+      visibleStates: [...visibleByRecordId.values()]
+        .sort((left, right) => left.assetOwnerUserId.localeCompare(right.assetOwnerUserId))
+        .map(state => this.cloneState(state) as AppDTOs.ActivitySubEventResourceStateDTO)
+    };
   }
 
   static cloneResourceMetricsByType(
@@ -348,11 +391,13 @@ export class ActivityResourceBuilder {
         : assignedCards.reduce((sum, card) => (
             sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'accepted', state.ownerId)
           ), 0);
-      const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
-        ? 0
-        : assignedCards.reduce((sum, card) => (
-            sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'pending', state.ownerId)
-          ), 0);
+      const pending = assignedCards.length + (
+        type === AppConstants.ASSET_TYPE_SUPPLIES
+          ? 0
+          : assignedCards.reduce((sum, card) => (
+              sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'pending', state.ownerId)
+            ), 0)
+      );
       const capacityMin = assignedCards.reduce((sum, card) => (
         sum + Math.max(0, Math.trunc(Number(settings[card.id]?.capacityMin) || 0))
       ), 0);

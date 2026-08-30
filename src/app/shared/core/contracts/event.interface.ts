@@ -222,6 +222,7 @@ export interface EventTournamentGroupsQueryDTO {
 }
 
 export interface EventTournamentStageGroupsQueryDTO {
+  userId?: string | null;
   eventId: string;
   slotId?: string | null;
   stageId: string;

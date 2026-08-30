@@ -2,6 +2,7 @@ import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { APP_CACHE_KEYS, APP_STORAGE_KEYS } from '../../common/storage-scope';
+import { pwaNotificationRegistrationEnabled } from '../../common/pwa-runtime-policy';
 
 interface BeforeInstallPromptChoice {
   outcome: 'accepted' | 'dismissed';
@@ -88,6 +89,9 @@ export class PwaService {
     } else {
       await this.unregisterServiceWorkers();
     }
+    if (this.isStandalone()) {
+      await this.requestNotificationRegistrationForActiveUser();
+    }
   }
 
   isStandalone(): boolean {
@@ -123,7 +127,9 @@ export class PwaService {
       return;
     }
     const { FirebaseMessagingService } = await import('./firebase-messaging.service');
-    await this.injector.get(FirebaseMessagingService).requestAndRegisterForActiveUser();
+    const messagingService = this.injector.get(FirebaseMessagingService);
+    messagingService.initialize();
+    await messagingService.requestAndRegisterForActiveUser();
   }
 
   dismissInstallPrompt(): void {
@@ -160,21 +166,15 @@ export class PwaService {
   }
 
   private shouldEnableNotificationRegistration(): boolean {
-    return environment.activitiesDataSource === 'http'
-      && environment.firebaseMessagingEnabled
-      && !this.isLoopbackBrowserHost();
-  }
-
-  private isLoopbackBrowserHost(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    const hostname = window.location.hostname.toLowerCase();
-    return hostname === 'localhost'
-      || hostname === '127.0.0.1'
-      || hostname === '[::1]'
-      || hostname === '::1'
-      || hostname.endsWith('.localhost');
+    return pwaNotificationRegistrationEnabled({
+      activitiesDataSource: environment.activitiesDataSource,
+      firebaseMessagingEnabled: environment.firebaseMessagingEnabled,
+      production: environment.production,
+      hostname: window.location.hostname,
+      standalone: this.isStandalone(),
+      devServiceWorkerOverrideEnabled:
+        localStorage.getItem(PwaService.DEV_OVERRIDE_STORAGE_KEY) === 'enabled'
+    });
   }
 
   private async registerServiceWorker(): Promise<void> {

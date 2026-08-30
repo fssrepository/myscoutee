@@ -47,6 +47,7 @@ export interface ActivityRatePageResultDTO {
   total: number;
   nextCursor?: string | null;
   users?: UserContracts.UserDto[];
+  gameCounter?: number;
 }
 
 export interface UserRateSyncPayloadDTO {
@@ -169,7 +170,8 @@ export interface IEventsService {
 export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
   queryChatMessagesPage(
     chat: ChatContracts.ChatDTO,
@@ -359,6 +361,7 @@ export interface SubEventResourceCardDTO {
   id: string;
   type: AppConstants.SubEventResourceFilter;
   sourceAssetId: string | null;
+  assetOwnerUserId?: string | null;
   title: string;
   subtitle: string;
   city: string;
@@ -426,6 +429,18 @@ export interface ActivitySubEventResourceStateRefDTO {
   assetOwnerUserId: string;
 }
 
+export interface ActivitySubEventResourceReadRequestDTO {
+  ownerId: string;
+  subEventId: string;
+  resourceType: AppConstants.AssetType;
+  userId: string;
+}
+
+export interface ActivitySubEventResourceReadReceiptDTO extends ActivitySubEventResourceReadRequestDTO {
+  groupId: string;
+  readAtIso: string;
+}
+
 export interface SubEventResourceMetricDTO {
   accepted: number;
   pending: number;
@@ -444,6 +459,11 @@ export interface ActivitySubEventResourceStateDTO {
   resourceMetricsByType?: Partial<Record<AppConstants.AssetType, SubEventResourceMetricDTO>>;
 }
 
+export interface ActivitySubEventResourceScopeDTO {
+  viewerState: ActivitySubEventResourceStateDTO;
+  visibleStates: ActivitySubEventResourceStateDTO[];
+}
+
 export interface ActivitySubEventStageRuntimeStateRefDTO {
   ownerId: string;
   subEventId: string;
@@ -459,6 +479,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
   stageFinalizedByUserId?: string | null;
   stageResultRevision?: number | null;
   groupsCount?: number | null;
+  groupsResourcePendingRead?: number | null;
 }
 
 export interface ActivityEventDTO {

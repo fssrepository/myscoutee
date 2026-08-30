@@ -4,6 +4,7 @@ import * as AppConstants from '../../../core/common/constants';
 import type {
   AssetBorrowPricingPreview
 } from '../../../core/base/builders/pricing.builder';
+import { ActivityResourceBuilder } from '../../../core/base/builders/activity-resource.builder';
 import type * as AppDTOs from '../../../core/contracts';
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
@@ -124,6 +125,7 @@ export interface SubEventResourceAssignmentQuantityUpdate {
 export interface SupplyContributionPopupState {
   subEventId: string;
   assetId: string;
+  assetOwnerUserId: string;
   title: string;
 }
 
@@ -228,6 +230,7 @@ export class SubEventResourcePopupStore {
   readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   readonly assignContextRef = signal<{ subEventId: string; type: AppConstants.AssetType } | null>(null);
   readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+  private readonly visibleResourceStatesRef = signal<AppDTOs.ActivitySubEventResourceStateDTO[]>([]);
   private readonly subEventResourcePopupRequestRef = signal<SubEventResourcePopupRequest | null>(null);
   private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourceAssetExploreComponentRef = signal<Type<unknown> | null>(null);
@@ -253,6 +256,25 @@ export class SubEventResourcePopupStore {
   readonly assetViewOutletContext = computed(() => this.resolveAssetViewOutletContext());
   readonly resourceMetricsRevision = this.resourceMetricsRevisionRef.asReadonly();
   readonly subEventResourceMetricsUpdate = this.subEventResourceMetricsUpdateRef.asReadonly();
+  readonly visibleResourceStates = this.visibleResourceStatesRef.asReadonly();
+
+  setVisibleResourceStates(states: readonly AppDTOs.ActivitySubEventResourceStateDTO[]): void {
+    this.visibleResourceStatesRef.set(states
+      .map(state => ActivityResourceBuilder.cloneState(state))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state)));
+  }
+
+  upsertVisibleResourceState(state: AppDTOs.ActivitySubEventResourceStateDTO): void {
+    const normalized = ActivityResourceBuilder.normalizeState(state);
+    if (!normalized) {
+      return;
+    }
+    const recordId = ActivityResourceBuilder.recordId(normalized);
+    const next = this.visibleResourceStatesRef()
+      .filter(current => ActivityResourceBuilder.recordId(current) !== recordId);
+    next.push(normalized);
+    this.setVisibleResourceStates(next);
+  }
 
   requestSubEventResourcePopup(request: SubEventResourcePopupRequest): void {
     this.subEventResourcePopupRequestRef.set(request);
@@ -284,6 +306,7 @@ export class SubEventResourcePopupStore {
     this.assetExplorePopupRef.set(null);
     this.assetExploreAssetViewIdRef.set(null);
     this.assetExploreOnlyRef.set(false);
+    this.visibleResourceStatesRef.set([]);
   }
 
   assetAssignmentKey(subEventId: string, type: AppConstants.AssetType): string {

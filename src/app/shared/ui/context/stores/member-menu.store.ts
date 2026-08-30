@@ -38,7 +38,15 @@ export interface NavigatorEventFeedbackRequest {
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
   | { type: 'eventCheckoutDraft'; sourceId: string }
-  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetDTO }
+  | {
+      type: 'assetExplore';
+      assetType?: AssetType;
+      assetId?: string;
+      viewOnly?: boolean;
+      fallbackAsset?: AssetDTO;
+      startAtIso?: string;
+      endAtIso?: string;
+    }
   | {
       type: 'chatResource';
       ownerId?: string;

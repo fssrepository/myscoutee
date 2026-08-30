@@ -166,10 +166,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       resolvedUserId,
       query
     );
-    const result = await this.withCheckoutResultStates(
+    const result = this.withResourceReadActivity(await this.withCheckoutResultStates(
       resolvedUserId,
       this.withCreatorAvatarUrls(LocalActivityEventsMapper.toDtoPage(page))
-    );
+    ), resolvedUserId);
     const eventCounters = this.usersRepository.queryUserById(resolvedUserId)?.activities?.event;
     return {
       ...result,
@@ -189,6 +189,25 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           creatorAvatarUrl: AppUtils.firstImageUrl(creator?.images)
         };
       })
+    };
+  }
+
+  private withResourceReadActivity(
+    page: ActivityEventPageResultDTO,
+    userId: string
+  ): ActivityEventPageResultDTO {
+    const readPendingByEventId = this.activitySubEventStageRuntimeRepository
+      .resourcePendingReadByParentEventIds(page.items.map(item => item.id), userId);
+    return {
+      ...page,
+      items: page.items.map(item => ({
+        ...item,
+        activity: Math.max(
+          0,
+          Math.trunc(Number(item.activity) || 0)
+            - Math.max(0, Math.trunc(Number(readPendingByEventId[item.id]) || 0))
+        )
+      }))
     };
   }
 
@@ -305,7 +324,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
     const stageRuntimeStates = this.activitySubEventStageRuntimeRepository.queryRecordsByRefs(stageRuntimeLookups)
       .map((record): ActivitySubEventStageRuntimeStateDTO | null =>
-        LocalActivitySubEventStageRuntimeMapper.toState(record))
+        LocalActivitySubEventStageRuntimeMapper.toState(record, normalizedUserId))
       .filter((state): state is ActivitySubEventStageRuntimeStateDTO => Boolean(state));
     const stageRuntimeByKey = new Map(
       stageRuntimeStates.map(state => [

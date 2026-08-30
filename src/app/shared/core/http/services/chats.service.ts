@@ -46,6 +46,8 @@ interface HttpChatDto {
   members?: ChatMemberSummaryDto[] | null;
   unread: number;
   dateIso?: string;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   channelType?: ContractTypes.ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
@@ -166,6 +168,7 @@ interface HttpChatReadReceiptDto {
   userId: string;
   userInitials: string;
   userGender: ContractTypes.ChatUserGender;
+  userImageUrl?: string | null;
   messageIds: string[];
   readAtIso: string;
   unread?: number | null;
@@ -266,7 +269,8 @@ export class HttpChatsService implements IChatsService {
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -310,11 +314,16 @@ export class HttpChatsService implements IChatsService {
     }
 
     try {
-      const response = await this.http.get<{
-        items?: HttpChatDto[] | null;
-        total?: number | null;
-        nextCursor?: string | null;
-      } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
+      const response = await this.requestWithAbort(
+        this.http.get<{
+          items?: HttpChatDto[] | null;
+          total?: number | null;
+          nextCursor?: string | null;
+          chats?: number | null;
+          chatCounters?: ContractTypes.UserChatCountersDto | null;
+        } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }),
+        signal
+      );
 
       const page = {
         items: this.deduplicateChatDTOs(
@@ -325,10 +334,15 @@ export class HttpChatsService implements IChatsService {
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
-          : null
+          : null,
+        chats: Math.max(0, Math.trunc(Number(response?.chats) || 0)),
+        chatCounters: this.normalizeChatCounters(response?.chatCounters)
       };
       return this.toActivitiesChatPageDTO(page);
-    } catch {
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
       return { items: [], total: 0, nextCursor: null };
     }
   }
@@ -340,7 +354,17 @@ export class HttpChatsService implements IChatsService {
   ): Promise<ChatHeaderSyncResponseDTO> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
-      return { revision: 1, changed: false, ownerStatus: null };
+      return {
+        revision: 1,
+        changed: false,
+        ownerStatus: null,
+        unread: 0,
+        lastMessage: '',
+        lastSenderId: null,
+        dateIso: null,
+        chats: 0,
+        chatCounters: this.normalizeChatCounters(null)
+      };
     }
     const params = this.activeUserParams().set(
       'knownRevision',
@@ -356,7 +380,13 @@ export class HttpChatsService implements IChatsService {
     return {
       revision: Math.max(1, Math.trunc(Number(response?.revision) || 1)),
       changed: response?.changed === true,
-      ownerStatus: response?.ownerStatus ?? null
+      ownerStatus: response?.ownerStatus ?? null,
+      unread: Math.max(0, Math.trunc(Number(response?.unread) || 0)),
+      lastMessage: `${response?.lastMessage ?? ''}`,
+      lastSenderId: `${response?.lastSenderId ?? ''}`.trim() || null,
+      dateIso: `${response?.dateIso ?? ''}`.trim() || null,
+      chats: Math.max(0, Math.trunc(Number(response?.chats) || 0)),
+      chatCounters: this.normalizeChatCounters(response?.chatCounters)
     };
   }
 
@@ -703,6 +733,8 @@ export class HttpChatsService implements IChatsService {
       members: this.resolveChatMembers(item.members, item.memberIds),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
+      contextStartAtIso: this.normalizeHttpText(item.contextStartAtIso) || null,
+      contextEndAtIso: this.normalizeHttpText(item.contextEndAtIso) || null,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
       ownerId: this.normalizeHttpText(item.ownerId) || undefined,
@@ -739,7 +771,7 @@ export class HttpChatsService implements IChatsService {
     }
     return {
       ...context,
-      subEvent: { ...context.subEvent },
+      subEvent: context.subEvent ? { ...context.subEvent } : context.subEvent,
       group: context.group ? { ...context.group } : context.group
     };
   }
@@ -822,11 +854,28 @@ export class HttpChatsService implements IChatsService {
     items: readonly ChatDTO[];
     total: number;
     nextCursor?: string | null;
+    chats?: number;
+    chatCounters?: ContractTypes.UserChatCountersDto;
   }): ActivitiesChatPageResultDTO {
     return {
       items: page.items.map(item => this.cloneChatDTO(item)),
       total: Math.max(0, Math.trunc(Number(page.total) || 0)),
-      nextCursor: page.nextCursor ?? null
+      nextCursor: page.nextCursor ?? null,
+      ...(Number.isFinite(page.chats) ? { chats: Math.max(0, Math.trunc(Number(page.chats))) } : {}),
+      ...(page.chatCounters ? { chatCounters: this.normalizeChatCounters(page.chatCounters) } : {})
+    };
+  }
+
+  private normalizeChatCounters(
+    counters: ContractTypes.UserChatCountersDto | null | undefined
+  ): ContractTypes.UserChatCountersDto {
+    return {
+      all: Math.max(0, Math.trunc(Number(counters?.all) || 0)),
+      event: Math.max(0, Math.trunc(Number(counters?.event) || 0)),
+      subEvent: Math.max(0, Math.trunc(Number(counters?.subEvent) || 0)),
+      group: Math.max(0, Math.trunc(Number(counters?.group) || 0)),
+      service: Math.max(0, Math.trunc(Number(counters?.service) || 0)),
+      appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0))
     };
   }
 
@@ -1154,6 +1203,7 @@ export class HttpChatsService implements IChatsService {
       userId,
       userInitials: this.normalizeHttpText(read?.userInitials),
       userGender: this.normalizeHttpGender(read?.userGender),
+      userImageUrl: this.normalizeHttpMediaUrl(read?.userImageUrl, 'small'),
       messageIds: (read?.messageIds ?? [])
         .map(messageId => this.normalizeHttpText(messageId))
         .filter(Boolean),
@@ -1239,6 +1289,7 @@ export class HttpChatsService implements IChatsService {
           userId: `${payload.read.userId ?? ''}`.trim(),
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
           userGender: this.normalizeHttpGender(payload.read.userGender),
+          userImageUrl: this.normalizeHttpMediaUrl(payload.read.userImageUrl, 'small'),
           messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
           readAtIso: `${payload.read.readAtIso ?? ''}`.trim(),
           unread: payload.read.unread === null || payload.read.unread === undefined
@@ -1469,6 +1520,10 @@ export class HttpChatsService implements IChatsService {
     const error = new Error('Request aborted.');
     error.name = 'AbortError';
     return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private withUserId(params: HttpParams, userId: string): HttpParams {

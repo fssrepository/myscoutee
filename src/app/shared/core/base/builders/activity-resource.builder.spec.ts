@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AssetDTO, AssetMemberRequestDTO } from '../../contracts';
+import type {
+  AssetDTO,
+  AssetMemberRequestDTO,
+  ChatDTO
+} from '../../contracts';
 import { ActivityResourceBuilder } from './activity-resource.builder';
 
 describe('ActivityResourceBuilder group request scoping', () => {
+  it('uses only the date range persisted on the chat channel', () => {
+    const chat = {
+      contextStartAtIso: '2026-08-30T09:30:00Z',
+      contextEndAtIso: '2026-08-30T10:30:00Z'
+    } as ChatDTO;
+
+    expect(ActivityResourceBuilder.chatResourceDateRange(chat)).toEqual({
+      startAtIso: chat.contextStartAtIso,
+      endAtIso: chat.contextEndAtIso
+    });
+    expect(ActivityResourceBuilder.chatResourceDateRange({} as ChatDTO)).toBeNull();
+  });
+
   it('resolves the base event id from slot and group resource owner ids', () => {
     expect(ActivityResourceBuilder.authorizationEventId('event-1', 'sub-1')).toBe('event-1');
     expect(ActivityResourceBuilder.authorizationEventId(
@@ -73,9 +90,47 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
     expect(metrics.Transport).toEqual({
       accepted: 0,
-      pending: 1,
+      pending: 2,
       capacityMin: 0,
       capacityMax: 4
+    });
+  });
+
+  it('persists a supplies assignment itself as one open pending item', () => {
+    const ownerId = 'event-1:stage-1:stage-1:group:1';
+    const card = {
+      id: 'supplies-1',
+      type: 'Supplies',
+      capacityTotal: 6,
+      requests: []
+    } as AssetDTO;
+    const metrics = ActivityResourceBuilder.buildPersistedResourceMetrics({
+      ownerId,
+      subEventId: 'stage-1',
+      assetOwnerUserId: 'owner-1',
+      assetAssignmentIds: { Supplies: ['supplies-1'] },
+      assetSettingsByType: {
+        Supplies: {
+          'supplies-1': {
+            capacityMin: 0,
+            capacityMax: 6,
+            quantity: 1,
+            addedByUserId: 'owner-1',
+            routeEnabled: false,
+            routes: []
+          }
+        }
+      },
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {}
+    }, [card]);
+
+    expect(metrics.Supplies).toEqual({
+      accepted: 0,
+      pending: 1,
+      capacityMin: 0,
+      capacityMax: 6
     });
   });
 });

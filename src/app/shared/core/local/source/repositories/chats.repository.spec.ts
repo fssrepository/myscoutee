@@ -267,14 +267,45 @@ describe('LocalChatsRepository chat pages', () => {
     } as ActivityEventRecord;
     repository.syncPublishedMainEventChat(event);
     const chatRecord = repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-read-test');
+    const initialRevision = chatRecord?.revision ?? 1;
 
     const read = repository.markChatRead(chatRecord!, ownerUserId, [], true);
 
     expect(read).toMatchObject({ messageIds: [], unread: 0 });
     expect(repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-read-test')).toMatchObject({
-      unread: 0
+      unread: 0,
+      revision: initialRevision
     });
     expect(memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId].activities.chats).toBe(originalChats);
+  });
+
+  it('advances the chat row revision when its message summary changes', () => {
+    const original = chat('chat-row-poll', 'user-1', 'groupSubEvent', '2026-08-30T05:00:00Z', {
+      revision: 7
+    });
+    seedChats([original]);
+
+    repository.appendChatMessage(original, {
+      id: 'message-row-poll',
+      sender: 'Nova Social',
+      senderAvatar: {
+        id: 'nova',
+        initials: 'NS',
+        gender: 'woman'
+      },
+      text: 'Row state changed',
+      time: '7:01 AM',
+      sentAtIso: '2026-08-30T05:01:00Z',
+      mine: false,
+      readBy: []
+    });
+
+    expect(repository.queryChatItemById('user-1', 'chat-row-poll')).toMatchObject({
+      lastMessage: 'Row state changed',
+      lastSenderId: 'nova',
+      dateIso: '2026-08-30T05:01:00Z'
+    });
+    expect(repository.queryChatItemById('user-1', 'chat-row-poll')?.revision).toBeGreaterThan(7);
   });
 
   function seedChats(records: ChatThreadRecord[]): void {

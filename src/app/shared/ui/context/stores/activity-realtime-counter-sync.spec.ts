@@ -1,7 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { UserRealtimeLongPollResponseDto } from '../../../core/contracts/user.interface';
+import type {
+  UserMenuCountersDto,
+  UserRealtimeLongPollResponseDto
+} from '../../../core/contracts/user.interface';
 import { ActivityStore } from './activity.store';
 import { UserProfileStore } from './user-profile.store';
 
@@ -85,7 +88,104 @@ describe('realtime activity counter synchronization', () => {
     expect(userProfileStore.applyUserRealtimeCounters('user-1', snapshot(1), staleToken)).toBe(false);
     expect(activityStore.getUserCounterOverride('user-1', 'tickets')).toBeNull();
   });
+
+  it('keeps the active Chats branch and applies only inactive Rates and Events counters', () => {
+    activityStore.signalUserChatCounterSnapshot('user-1', 8, {
+      all: 8,
+      event: 3,
+      subEvent: 2,
+      group: 1,
+      service: 1,
+      appSupport: 1
+    });
+    const token = activityStore.captureUserCounterSyncToken('user-1');
+
+    expect(activityStore.applyInactiveActivitiesCounterSnapshot(token, menuCounters(), 'chats')).toBe(true);
+    expect(activityStore.getUserCounterOverrides('user-1')).toMatchObject({
+      game: 2,
+      chats: 8,
+      events: 4,
+      chat: { all: 8, group: 1 },
+      event: { all: 7, active: 4 }
+    });
+  });
+
+  it('keeps the active Rates branch and applies only inactive Chats and Events counters', () => {
+    activityStore.signalUserRateCounterSnapshot('user-1', 9);
+    const token = activityStore.captureUserCounterSyncToken('user-1');
+
+    expect(activityStore.applyInactiveActivitiesCounterSnapshot(token, menuCounters(), 'rates')).toBe(true);
+    expect(activityStore.getUserCounterOverrides('user-1')).toMatchObject({
+      game: 9,
+      chats: 5,
+      events: 4,
+      chat: { all: 5, group: 2 },
+      event: { all: 7, active: 4 }
+    });
+  });
+
+  it('keeps the active Events branch and applies only inactive Rates and Chats counters', () => {
+    activityStore.signalUserEventCounterSnapshot('user-1', {
+      all: 12,
+      active: 10,
+      pending: 0,
+      invitations: 1,
+      hosting: 1,
+      drafts: 0,
+      trash: 0
+    });
+    const token = activityStore.captureUserCounterSyncToken('user-1');
+
+    expect(activityStore.applyInactiveActivitiesCounterSnapshot(token, menuCounters(), 'events')).toBe(true);
+    expect(activityStore.getUserCounterOverrides('user-1')).toMatchObject({
+      game: 2,
+      chats: 5,
+      events: 10,
+      invitations: 1,
+      hosting: 1,
+      chat: { all: 5, group: 2 },
+      event: { all: 12, active: 10 }
+    });
+  });
 });
+
+function menuCounters(): UserMenuCountersDto {
+  return {
+    game: 2,
+    chats: 5,
+    invitations: 2,
+    events: 4,
+    hosting: 1,
+    cars: 0,
+    accommodation: 0,
+    supplies: 0,
+    tickets: 0,
+    contacts: 0,
+    feedback: 0,
+    chat: {
+      all: 5,
+      event: 1,
+      subEvent: 1,
+      group: 2,
+      service: 1,
+      appSupport: 0
+    },
+    event: {
+      all: 7,
+      active: 4,
+      pending: 0,
+      invitations: 2,
+      hosting: 1,
+      drafts: 0,
+      trash: 0
+    },
+    asset: { cars: 0, accommodation: 0, supplies: 0, tickets: 0 },
+    eventFeedback: { ownEvents: 0, pending: 0, feedbacked: 0, removed: 0 },
+    adminJobs: 0,
+    adminMetrics: 0,
+    notifications: 0
+  };
+}
 
 function snapshot(ticketCount: number): UserRealtimeLongPollResponseDto {
   return {

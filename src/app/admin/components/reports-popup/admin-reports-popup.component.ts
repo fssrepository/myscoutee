@@ -553,7 +553,7 @@ export class AdminReportsPopupComponent {
 
   protected reportedUserImageCard(
     user: AdminReportedUserDto,
-    options: { idPrefix?: string; title?: string | null } = {}
+    options: { idPrefix?: string; title?: string | null; compact?: boolean } = {}
   ): ImageCardData<AdminReportedUserDto> {
     const blocked = this.isUserBlocked(user);
     return {
@@ -561,6 +561,9 @@ export class AdminReportsPopupComponent {
       title: `${options.title ?? this.memberCardTitle(user)}`.trim() || 'Member',
       subtitle: this.memberDescription(user),
       imageUrl: this.memberImageUrl(user) || null,
+      aspectRatio: options.compact ? '3 / 4' : null,
+      frame: options.compact ? 'compact' : 'fluid',
+      mediaFit: 'contain',
       placeholderIcon: blocked ? 'person_off' : 'person',
       placeholderLabel: user.initials,
       layout: 'overlay',

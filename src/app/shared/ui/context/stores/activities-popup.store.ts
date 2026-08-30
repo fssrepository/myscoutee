@@ -20,6 +20,8 @@ export interface EventChatHeaderState extends EventChatPopupRequest {
   members?: ContractTypes.ChatMemberSummaryDto[];
   unread?: number | null;
   dateIso?: string | null;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   lastMessage?: string | null;
   lastSenderId?: string | null;
   ownerUserId?: string | null;
@@ -65,6 +67,8 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     members: (chat.members ?? []).map(member => ({ ...member })),
     unread: chat.unread,
     dateIso: chat.dateIso ?? null,
+    contextStartAtIso: chat.contextStartAtIso ?? null,
+    contextEndAtIso: chat.contextEndAtIso ?? null,
     lastMessage: chat.lastMessage,
     lastSenderId: chat.lastSenderId,
     ownerUserId: chat.ownerUserId ?? null,
@@ -92,7 +96,9 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     navigationContext: chat.navigationContext
       ? {
           ...chat.navigationContext,
-          subEvent: { ...chat.navigationContext.subEvent },
+          subEvent: chat.navigationContext.subEvent
+            ? { ...chat.navigationContext.subEvent }
+            : chat.navigationContext.subEvent,
           group: chat.navigationContext.group ? { ...chat.navigationContext.group } : chat.navigationContext.group
         }
       : chat.navigationContext
@@ -744,7 +750,9 @@ export class ActivitiesPopupStore {
       navigationContext: header.navigationContext
         ? {
             ...header.navigationContext,
-            subEvent: { ...header.navigationContext.subEvent },
+            subEvent: header.navigationContext.subEvent
+              ? { ...header.navigationContext.subEvent }
+              : header.navigationContext.subEvent,
             group: header.navigationContext.group
               ? { ...header.navigationContext.group }
               : header.navigationContext.group

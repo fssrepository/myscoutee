@@ -126,6 +126,7 @@ interface ChatPollOptionState {
     name?: string;
     initials: string;
     gender: ContractTypes.ChatUserGender;
+    imageUrl?: string | null;
   }>;
 }
 
@@ -176,6 +177,8 @@ interface SelectedChatNavigationState {
   eventTarget: ContractTypes.EventEditorTarget;
   eventTitle: string | null;
   eventPendingMembers: number;
+  resourceStartAtIso: string | null;
+  resourceEndAtIso: string | null;
   subEvent: ContractTypes.SubEventDTO | null;
   group: SelectedChatGroupState | null;
   assetAssignmentIds: SubEventAssetAssignmentIds;
@@ -753,6 +756,8 @@ export class EventChatPopupComponent implements OnDestroy {
       members: (header.members ?? []).map(member => ({ ...member })),
       unread: Math.max(0, Math.trunc(Number(header.unread) || 0)),
       dateIso: header.dateIso ?? undefined,
+      contextStartAtIso: header.contextStartAtIso ?? null,
+      contextEndAtIso: header.contextEndAtIso ?? null,
       channelType: header.channelType ?? undefined,
       ownerId: ownerId || undefined,
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
@@ -775,7 +780,9 @@ export class EventChatPopupComponent implements OnDestroy {
       navigationContext: header.navigationContext
         ? {
             ...header.navigationContext,
-            subEvent: { ...header.navigationContext.subEvent },
+            subEvent: header.navigationContext.subEvent
+              ? { ...header.navigationContext.subEvent }
+              : header.navigationContext.subEvent,
             group: header.navigationContext.group
               ? { ...header.navigationContext.group }
               : header.navigationContext.group
@@ -813,7 +820,9 @@ export class EventChatPopupComponent implements OnDestroy {
       navigationContext: header.navigationContext
         ? {
             ...header.navigationContext,
-            subEvent: { ...header.navigationContext.subEvent },
+            subEvent: header.navigationContext.subEvent
+              ? { ...header.navigationContext.subEvent }
+              : header.navigationContext.subEvent,
             group: header.navigationContext.group
               ? { ...header.navigationContext.group }
               : header.navigationContext.group
@@ -838,12 +847,26 @@ export class EventChatPopupComponent implements OnDestroy {
     const result = await this.chatsService.syncChatHeader(state.chatId, state.revision, signal);
     const current = this.session();
     const currentSessionKey = current ? `${current.item.id}:${current.openedAtIso}` : '';
-    if (!current || currentSessionKey !== state.sessionKey || !result.changed) {
+    if (!current || currentSessionKey !== state.sessionKey || signal?.aborted) {
+      return;
+    }
+    this.activityStore.signalUserChatCounterSnapshot(
+      this.activeUserId(),
+      result.chats,
+      result.chatCounters
+    );
+    if (!result.changed) {
       return;
     }
     const synchronizedChat: ChatDTO = {
       ...current.item,
       ownerStatus: result.ownerStatus ?? current.item.ownerStatus ?? null,
+      unread: result.unread,
+      lastMessage: result.lastMessage,
+      lastSenderId: result.lastSenderId ?? '',
+      dateIso: result.dateIso ?? undefined,
+      contextStartAtIso: result.contextStartAtIso ?? current.item.contextStartAtIso ?? null,
+      contextEndAtIso: result.contextEndAtIso ?? current.item.contextEndAtIso ?? null,
       revision: result.revision
     };
     const synchronizedHeader = eventChatHeaderStateFromChat(synchronizedChat);
@@ -856,6 +879,10 @@ export class EventChatPopupComponent implements OnDestroy {
       chatId: synchronizedChat.id,
       ownerId: synchronizedChat.ownerId ?? null,
       channelType: synchronizedChat.channelType ?? null,
+      unread: synchronizedChat.unread,
+      lastMessage: synchronizedChat.lastMessage,
+      lastSenderId: synchronizedChat.lastSenderId ?? null,
+      dateIso: synchronizedChat.dateIso ?? null,
       ownerStatus: synchronizedChat.ownerStatus ?? null,
       headerRevision: synchronizedChat.revision ?? result.revision
     });
@@ -1985,7 +2012,8 @@ export class EventChatPopupComponent implements OnDestroy {
             ? [{
                 userId: activeUserId,
                 initials: presentation.senderAvatar.initials,
-                gender: presentation.senderAvatar.gender
+                gender: presentation.senderAvatar.gender,
+                imageUrl: presentation.senderAvatar.imageUrl ?? null
               }]
             : [])
         ]
@@ -2057,7 +2085,9 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT
+      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT,
+      startAtIso: state?.resourceStartAtIso ?? undefined,
+      endAtIso: state?.resourceEndAtIso ?? undefined
     });
   }
 
@@ -3143,7 +3173,13 @@ export class EventChatPopupComponent implements OnDestroy {
                 votes: Array.isArray(value.votes)
                   ? value.votes
                       .map((vote: unknown): ChatPollOptionState['votes'][number] | null => {
-                        const voteValue = vote as { userId?: unknown; name?: unknown; initials?: unknown; gender?: unknown };
+                        const voteValue = vote as {
+                          userId?: unknown;
+                          name?: unknown;
+                          initials?: unknown;
+                          gender?: unknown;
+                          imageUrl?: unknown;
+                        };
                         const userId = `${voteValue.userId ?? ''}`.trim();
                         if (!userId) {
                           return null;
@@ -3152,7 +3188,8 @@ export class EventChatPopupComponent implements OnDestroy {
                           userId,
                           name: `${voteValue.name ?? ''}`.trim() || undefined,
                           initials: `${voteValue.initials ?? 'ME'}`.trim() || 'ME',
-                          gender: this.normalizeChatUserGender(voteValue.gender)
+                          gender: this.normalizeChatUserGender(voteValue.gender),
+                          imageUrl: `${voteValue.imageUrl ?? ''}`.trim() || null
                         };
                       })
                       .filter((vote: ChatPollOptionState['votes'][number] | null): vote is ChatPollOptionState['votes'][number] => vote !== null)
@@ -3187,7 +3224,8 @@ export class EventChatPopupComponent implements OnDestroy {
           userId: vote.userId,
           name: vote.name,
           initials: vote.initials,
-          gender: vote.gender
+          gender: vote.gender,
+          imageUrl: vote.imageUrl ?? null
         }))
       }))
     });
@@ -3665,7 +3703,8 @@ export class EventChatPopupComponent implements OnDestroy {
           {
             id: read.userId,
             initials: read.userInitials,
-            gender: read.userGender
+            gender: read.userGender,
+            imageUrl: read.userImageUrl ?? null
           }
         ]
       };
@@ -4722,6 +4761,7 @@ export class EventChatPopupComponent implements OnDestroy {
       ? this.syncSubEventResourceCounts(this.cloneSubEvent(rawSubEvent), resourceState, assetCards)
       : null;
     const metricsSubEvent = subEvent ? this.applyChatMetricsToSubEvent(subEvent, chat.metrics) : null;
+    const resourceRange = ActivityResourceBuilder.chatResourceDateRange(chat);
     return {
       channelType: this.chatChannelType(chat),
       eventId: (eventRecord?.id ?? navigationContext?.eventId ?? eventId) || null,
@@ -4732,6 +4772,8 @@ export class EventChatPopupComponent implements OnDestroy {
       eventPendingMembers: this.chatMetricCount(
         navigationContext?.eventPendingMembers ?? eventRecord?.pendingMembers
       ),
+      resourceStartAtIso: resourceRange?.startAtIso ?? null,
+      resourceEndAtIso: resourceRange?.endAtIso ?? null,
       subEvent: metricsSubEvent,
       group: this.applyChatMetricsToGroup(
         this.resolveSelectedChatGroup(chat, metricsSubEvent, (eventRecord?.id ?? eventId) || null),

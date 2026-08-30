@@ -50,15 +50,25 @@ export class ActivitiesService extends BaseRouteModeService {
 
   async loadActivityChats(
     query: ListQuery<ActivitiesFeedFilters>,
-    _options: { signal?: AbortSignal } = {}
-  ): Promise<PageResult<ChatDTO>> {
-    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), query);
+    options: { signal?: AbortSignal } = {}
+  ): Promise<PageResult<ChatDTO, { chats?: number; chatCounters?: ContractTypes.UserChatCountersDto }>> {
+    const page = await this.chatsService.queryActivitiesChatPage(
+      this.resolveActiveUserId(),
+      query,
+      options.signal
+    );
+    return {
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
+      context: page.context
+    };
   }
 
   async loadActivityRates(
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}
-  ): Promise<PageResult<ActivityRateDTO, { users: UserDto[] }>> {
+  ): Promise<PageResult<ActivityRateDTO, { users: UserDto[]; gameCounter?: number }>> {
     const activeUserId = this.resolveActiveUserId();
     const page = await this.ratesService.queryActivitiesRatePage(activeUserId, query, options.signal);
     return {
@@ -66,7 +76,8 @@ export class ActivitiesService extends BaseRouteModeService {
       total: page.total,
       nextCursor: page.nextCursor ?? null,
       context: {
-        users: (page.users ?? []).map(user => ({ ...user, images: [...(user.images ?? [])] }))
+        users: (page.users ?? []).map(user => ({ ...user, images: [...(user.images ?? [])] })),
+        gameCounter: page.gameCounter
       }
     };
   }

@@ -12,6 +12,7 @@ export class HttpActivityResourcesService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedStateByRecordId: Record<string, AppDTOs.ActivitySubEventResourceStateDTO> = {};
+  private readonly cachedScopeById: Record<string, AppDTOs.ActivitySubEventResourceScopeDTO> = {};
 
   peekSubEventResourceState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
@@ -51,6 +52,60 @@ export class HttpActivityResourcesService {
     }
   }
 
+  async querySubEventResourceScope(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> {
+    const normalizedRef = this.normalizeRef(ref);
+    if (!normalizedRef) {
+      return null;
+    }
+    const response = await this.http
+      .get<AppDTOs.ActivitySubEventResourceScopeDTO>(
+        `${this.apiBaseUrl}/activities/events/subevent-resources/scope`,
+        {
+          params: new HttpParams()
+            .set('ownerId', normalizedRef.ownerId)
+            .set('subEventId', normalizedRef.subEventId)
+            .set('viewerUserId', normalizedRef.assetOwnerUserId)
+        }
+      )
+      .toPromise();
+    const scope = ActivityResourceBuilder.normalizeScope(response, normalizedRef);
+    for (const state of [scope.viewerState, ...scope.visibleStates]) {
+      this.cachedStateByRecordId[ActivityResourceBuilder.recordId(state)] = state;
+    }
+    this.cachedScopeById[ActivityResourceBuilder.scopeId(normalizedRef)] = scope;
+    return ActivityResourceBuilder.normalizeScope(scope, normalizedRef);
+  }
+
+  peekSubEventResourceScope(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceScopeDTO | null {
+    const normalizedRef = this.normalizeRef(ref);
+    if (!normalizedRef) {
+      return null;
+    }
+    const cached = this.cachedScopeById[ActivityResourceBuilder.scopeId(normalizedRef)];
+    return cached ? ActivityResourceBuilder.normalizeScope(cached, normalizedRef) : null;
+  }
+
+  async markResourceTypeRead(
+    request: AppDTOs.ActivitySubEventResourceReadRequestDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
+    const response = await this.http
+      .post<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null>(
+        `${this.apiBaseUrl}/activities/events/subevent-resources/read`,
+        {
+          ownerId: request.ownerId.trim(),
+          subEventId: request.subEventId.trim(),
+          resourceType: request.resourceType,
+          userId: request.userId.trim()
+        }
+      )
+      .toPromise();
+    return response ?? null;
+  }
+
   async querySupplyContributionPage(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
     assetId: string,
@@ -83,7 +138,8 @@ export class HttpActivityResourcesService {
 
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    _actorUserId?: string | null
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     const normalizedState = ActivityResourceBuilder.normalizeState(state, state);
     if (!normalizedState) {
@@ -102,6 +158,26 @@ export class HttpActivityResourcesService {
       throw new Error('Activity resource assignment was not persisted.');
     }
     this.cachedStateByRecordId[ActivityResourceBuilder.recordId(savedState)] = savedState;
+    for (const [scopeId, cachedScope] of Object.entries(this.cachedScopeById)) {
+      if (
+        cachedScope.viewerState.ownerId !== savedState.ownerId
+        || cachedScope.viewerState.subEventId !== savedState.subEventId
+      ) {
+        continue;
+      }
+      const viewerState = cachedScope.viewerState.assetOwnerUserId === savedState.assetOwnerUserId
+        ? savedState
+        : cachedScope.viewerState;
+      this.cachedScopeById[scopeId] = ActivityResourceBuilder.normalizeScope({
+        viewerState,
+        visibleStates: [
+          ...cachedScope.visibleStates.filter(state => (
+            ActivityResourceBuilder.recordId(state) !== ActivityResourceBuilder.recordId(savedState)
+          )),
+          savedState
+        ]
+      }, viewerState);
+    }
     return ActivityResourceBuilder.cloneState(savedState);
   }
 

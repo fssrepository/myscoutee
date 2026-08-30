@@ -249,6 +249,42 @@ describe('AppMenuComponent delayed drag', () => {
       )
     ).not.toBeNull();
   });
+
+  it('reopens a hierarchical select at the branch containing its active item', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    const component = fixture.componentInstance;
+    component.kind = 'select';
+    component.trigger = {
+      label: 'Transport',
+      layout: 'pill'
+    };
+    component.items = [{
+      id: 'transport',
+      label: 'Transport',
+      kind: 'branch',
+      items: [{
+        id: 'all-transport',
+        label: 'All Transport',
+        kind: 'radio',
+        active: true,
+        checked: true,
+        showCheck: true
+      }, {
+        id: 'suv',
+        label: 'SUV',
+        kind: 'radio'
+      }]
+    }];
+    component.open = true;
+
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.app-menu__branch-title')?.textContent?.trim()).toBe('Transport');
+    expect(host.querySelector('.app-menu__item--active .app-menu__item-label')?.textContent?.trim())
+      .toBe('All Transport');
+    expect(host.querySelector('.app-menu__item--active .app-menu__item-check')).not.toBeNull();
+  });
 });
 
 function createMenu(): {
