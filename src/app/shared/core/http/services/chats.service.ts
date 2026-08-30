@@ -340,7 +340,15 @@ export class HttpChatsService implements IChatsService {
   ): Promise<ChatHeaderSyncResponseDTO> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
-      return { revision: 1, changed: false, ownerStatus: null };
+      return {
+        revision: 1,
+        changed: false,
+        ownerStatus: null,
+        unread: 0,
+        lastMessage: '',
+        lastSenderId: null,
+        dateIso: null
+      };
     }
     const params = this.activeUserParams().set(
       'knownRevision',
@@ -356,7 +364,11 @@ export class HttpChatsService implements IChatsService {
     return {
       revision: Math.max(1, Math.trunc(Number(response?.revision) || 1)),
       changed: response?.changed === true,
-      ownerStatus: response?.ownerStatus ?? null
+      ownerStatus: response?.ownerStatus ?? null,
+      unread: Math.max(0, Math.trunc(Number(response?.unread) || 0)),
+      lastMessage: `${response?.lastMessage ?? ''}`,
+      lastSenderId: `${response?.lastSenderId ?? ''}`.trim() || null,
+      dateIso: `${response?.dateIso ?? ''}`.trim() || null
     };
   }
 

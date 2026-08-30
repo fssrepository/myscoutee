@@ -194,7 +194,7 @@ export class LocalChatsRepository {
           lastSenderId: storedMessage.senderAvatar.id,
           dateIso: storedMessage.sentAtIso,
           unread: this.normalizeCounter(current.unread) + 1,
-          revision: Math.max(1, Math.trunc(Number(current.revision) || 1)) + 1
+          revision: this.nextChatRevision(current.revision)
         };
         nextUsersTable = this.applyStoredChatCounterDelta(
           nextUsersTable,
@@ -240,7 +240,7 @@ export class LocalChatsRepository {
           ...current,
           memberIds: [...(current.memberIds ?? [])],
           ownerStatus,
-          revision: Date.now()
+          revision: this.nextChatRevision(current.revision)
         };
         changed += 1;
       }
@@ -467,7 +467,8 @@ export class LocalChatsRepository {
               ...existingRecord,
               lastMessage: storedMessage.text || this.chatAttachmentSummary(storedMessage),
               lastSenderId: storedMessage.senderAvatar.id,
-              dateIso: storedMessage.sentAtIso
+              dateIso: storedMessage.sentAtIso,
+              revision: this.nextChatRevision(existingRecord.revision)
             }
           }
         },
@@ -492,7 +493,8 @@ export class LocalChatsRepository {
       const nextRecord: ChatThreadRecord = {
         ...(existing ?? chat),
         ...chat,
-        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
+        revision: this.nextChatRevision(existing?.revision ?? chat.revision)
       };
       const unreadDelta = this.normalizeCounter(nextRecord.unread) - this.normalizeCounter(existing?.unread);
       const currentUsersTable = currentState[USERS_TABLE_NAME];
@@ -588,7 +590,8 @@ export class LocalChatsRepository {
               ...existingRecord,
               lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : existingRecord.lastMessage,
               lastSenderId: latest?.senderAvatar.id ?? existingRecord.lastSenderId,
-              dateIso: latest?.sentAtIso ?? existingRecord.dateIso
+              dateIso: latest?.sentAtIso ?? existingRecord.dateIso,
+              revision: this.nextChatRevision(existingRecord.revision)
             }
           }
         },
@@ -722,7 +725,8 @@ export class LocalChatsRepository {
             ...currentTable.byId,
             [recordKey]: {
               ...existingRecord,
-              unread
+              unread,
+              revision: this.nextChatRevision(existingRecord.revision)
             }
           }
         },
@@ -940,6 +944,11 @@ export class LocalChatsRepository {
   private normalizeCounter(value: unknown): number {
     const count = Number(value);
     return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  }
+
+  private nextChatRevision(value: unknown): number {
+    const current = Math.max(1, Math.trunc(Number(value) || 1));
+    return Math.max(Date.now(), current + 1);
   }
 
   private withAppendTimeline(

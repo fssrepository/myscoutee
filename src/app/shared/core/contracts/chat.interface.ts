@@ -195,6 +195,10 @@ export interface ChatHeaderSyncResponseDTO {
   revision: number;
   changed: boolean;
   ownerStatus?: ActivityEventStatus | null;
+  unread: number;
+  lastMessage: string;
+  lastSenderId?: string | null;
+  dateIso?: string | null;
 }
 
 export interface ChatServiceEnsureInput {

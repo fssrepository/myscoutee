@@ -844,6 +844,10 @@ export class EventChatPopupComponent implements OnDestroy {
     const synchronizedChat: ChatDTO = {
       ...current.item,
       ownerStatus: result.ownerStatus ?? current.item.ownerStatus ?? null,
+      unread: result.unread,
+      lastMessage: result.lastMessage,
+      lastSenderId: result.lastSenderId ?? '',
+      dateIso: result.dateIso ?? undefined,
       revision: result.revision
     };
     const synchronizedHeader = eventChatHeaderStateFromChat(synchronizedChat);
@@ -856,6 +860,10 @@ export class EventChatPopupComponent implements OnDestroy {
       chatId: synchronizedChat.id,
       ownerId: synchronizedChat.ownerId ?? null,
       channelType: synchronizedChat.channelType ?? null,
+      unread: synchronizedChat.unread,
+      lastMessage: synchronizedChat.lastMessage,
+      lastSenderId: synchronizedChat.lastSenderId ?? null,
+      dateIso: synchronizedChat.dateIso ?? null,
       ownerStatus: synchronizedChat.ownerStatus ?? null,
       headerRevision: synchronizedChat.revision ?? result.revision
     });

@@ -92,7 +92,11 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return {
       revision,
       changed,
-      ownerStatus: changed ? chat?.ownerStatus ?? null : null
+      ownerStatus: chat?.ownerStatus ?? null,
+      unread: Math.max(0, Math.trunc(Number(chat?.unread) || 0)),
+      lastMessage: `${chat?.lastMessage ?? ''}`,
+      lastSenderId: `${chat?.lastSenderId ?? ''}`.trim() || null,
+      dateIso: `${chat?.dateIso ?? ''}`.trim() || null
     };
   }
 

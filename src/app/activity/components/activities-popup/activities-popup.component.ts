@@ -1136,6 +1136,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
         chatId: target.chatId,
         ownerId: target.ownerId,
         channelType: target.channelType,
+        unread: result.unread,
+        lastMessage: result.lastMessage,
+        lastSenderId: result.lastSenderId ?? null,
+        dateIso: result.dateIso ?? null,
         ownerStatus: result.ownerStatus ?? null,
         headerRevision: result.revision
       });
@@ -1173,6 +1177,37 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const ownerId = `${patch.ownerId ?? ''}`.trim();
     const channelType = `${patch.channelType ?? ''}`.trim();
     if (!smartList || (!chatId && !ownerId) || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
+      return;
+    }
+    const matchedRow = (smartList.itemsSnapshot() ?? [])
+      .find(row => this.matchesEventChatRowPatch(row as ActivityChatListItem, chatId, ownerId, channelType));
+    const identity = matchedRow ? this.activityRowIdentity(matchedRow) : '';
+    const sourceChat = identity
+      ? this.chatRecordFromSourceItem(smartList.sourceItemSnapshot(identity))
+      : null;
+    if (sourceChat) {
+      const nextChat = this.cloneChatRecord(sourceChat);
+      if (patch.unread !== undefined) {
+        nextChat.unread = this.normalizeBadgeCounter(patch.unread);
+      }
+      if (patch.lastMessage !== undefined) {
+        nextChat.lastMessage = `${patch.lastMessage ?? ''}`;
+      }
+      if (patch.lastSenderId !== undefined) {
+        nextChat.lastSenderId = `${patch.lastSenderId ?? ''}`.trim();
+      }
+      if (patch.dateIso !== undefined) {
+        nextChat.dateIso = `${patch.dateIso ?? ''}`.trim() || undefined;
+      }
+      if (patch.ownerStatus !== undefined) {
+        nextChat.ownerStatus = patch.ownerStatus;
+      }
+      if (patch.headerRevision !== undefined) {
+        nextChat.revision = Math.max(1, Math.trunc(Number(patch.headerRevision) || 1));
+      }
+      smartList.patchConvertedVisibleItem(nextChat, {
+        predicate: row => this.matchesEventChatRowPatch(row as ActivityChatListItem, chatId, ownerId, channelType)
+      });
       return;
     }
     smartList.patchVisibleItem(
@@ -1218,6 +1253,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         next = cloneNext();
         next.unread = unread;
         (next as { badgeCount?: number | null }).badgeCount = unread;
+        next.sortScore = unread * 10 + Math.max(0, Math.trunc(Number(next.memberCount) || 0));
       }
     }
 
