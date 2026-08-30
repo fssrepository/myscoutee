@@ -3681,7 +3681,8 @@ export class EventChatPopupComponent implements OnDestroy {
           {
             id: read.userId,
             initials: read.userInitials,
-            gender: read.userGender
+            gender: read.userGender,
+            imageUrl: read.userImageUrl ?? null
           }
         ]
       };

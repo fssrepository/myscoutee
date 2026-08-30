@@ -102,6 +102,7 @@ export interface ChatReadReceipt {
   userId: string;
   userInitials: string;
   userGender: ChatUserGender;
+  userImageUrl?: string | null;
   messageIds: string[];
   readAtIso: string;
   unread?: number | null;

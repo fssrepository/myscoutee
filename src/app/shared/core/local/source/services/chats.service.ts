@@ -313,6 +313,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       userId: update.reader.id,
       userInitials: update.reader.initials,
       userGender: update.reader.gender,
+      userImageUrl: update.reader.imageUrl ?? null,
       messageIds: update.messageIds,
       readAtIso: update.readAtIso,
       unread: update.unread

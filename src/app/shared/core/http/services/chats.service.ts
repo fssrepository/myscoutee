@@ -166,6 +166,7 @@ interface HttpChatReadReceiptDto {
   userId: string;
   userInitials: string;
   userGender: ContractTypes.ChatUserGender;
+  userImageUrl?: string | null;
   messageIds: string[];
   readAtIso: string;
   unread?: number | null;
@@ -1198,6 +1199,7 @@ export class HttpChatsService implements IChatsService {
       userId,
       userInitials: this.normalizeHttpText(read?.userInitials),
       userGender: this.normalizeHttpGender(read?.userGender),
+      userImageUrl: this.normalizeHttpMediaUrl(read?.userImageUrl, 'small'),
       messageIds: (read?.messageIds ?? [])
         .map(messageId => this.normalizeHttpText(messageId))
         .filter(Boolean),
@@ -1283,6 +1285,7 @@ export class HttpChatsService implements IChatsService {
           userId: `${payload.read.userId ?? ''}`.trim(),
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
           userGender: this.normalizeHttpGender(payload.read.userGender),
+          userImageUrl: this.normalizeHttpMediaUrl(payload.read.userImageUrl, 'small'),
           messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
           readAtIso: `${payload.read.readAtIso ?? ''}`.trim(),
           unread: payload.read.unread === null || payload.read.unread === undefined
