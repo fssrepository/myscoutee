@@ -51,6 +51,10 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
     }
     return {
       ...page,
+      gameCounter: Math.max(
+        0,
+        Math.trunc(Number(this.usersRepository.queryUserById(ownerUserId)?.activities?.game) || 0)
+      ),
       users: [...userIds]
         .map(userId => usersById.get(userId) ?? null)
         .filter((user): user is NonNullable<typeof user> => Boolean(user))

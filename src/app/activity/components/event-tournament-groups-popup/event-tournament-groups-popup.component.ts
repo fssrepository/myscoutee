@@ -230,7 +230,18 @@ export class EventTournamentGroupsPopupComponent {
       }
       const match = this.groupResourceScope(sync.ownerId, sync.subEventId);
       if (match) {
-        this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
+        if (sync.resourceType && sync.readAtIso) {
+          this.state = this.markGroupResourceTypeRead(
+            this.state,
+            match.stage.subEventId,
+            match.group.id,
+            sync.resourceType
+          );
+          this.emitGroupsUpdate(match.stage.subEventId);
+          this.cdr.markForCheck();
+        } else {
+          this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
+        }
       }
     });
 
@@ -990,6 +1001,7 @@ export class EventTournamentGroupsPopupComponent {
     this.cdr.markForCheck();
     try {
       const snapshot = await this.eventsService.queryTournamentStageSnapshot({
+        userId: this.activeUserId(),
         eventId,
         slotId: request?.slotId ?? null,
         stageId: normalizedStageId
@@ -1534,6 +1546,39 @@ export class EventTournamentGroupsPopupComponent {
             ...stage,
             groups: stage.groups.map(group => group.id === groupId
               ? { ...group, resourceMetricsByType }
+              : group)
+          }
+        : stage)
+    };
+  }
+
+  private markGroupResourceTypeRead(
+    state: ContractTypes.EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    resourceType: AssetType
+  ): ContractTypes.EventTournamentGroupsStateDTO | null {
+    if (!state) {
+      return null;
+    }
+    return {
+      ...state,
+      stages: state.stages.map(stage => stage.subEventId === stageId
+        ? {
+            ...stage,
+            groups: stage.groups.map(group => group.id === groupId
+              ? {
+                  ...group,
+                  resourceMetricsByType: {
+                    ...group.resourceMetricsByType,
+                    [resourceType]: {
+                      accepted: Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[resourceType]?.accepted) || 0)),
+                      pending: 0,
+                      capacityMin: Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[resourceType]?.capacityMin) || 0)),
+                      capacityMax: Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[resourceType]?.capacityMax) || 0))
+                    }
+                  }
+                }
               : group)
           }
         : stage)

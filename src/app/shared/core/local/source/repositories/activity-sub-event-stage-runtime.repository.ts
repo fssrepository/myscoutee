@@ -9,6 +9,7 @@ import {
 } from '../entity/activity.entity';
 
 import type * as AppDTOs from '../../../contracts';
+import type { AssetType } from '../../../common/constants';
 
 @Injectable({
   providedIn: 'root'
@@ -59,6 +60,36 @@ export class LocalActivitySubEventStageRuntimeRepository {
       .map(record => LocalActivitySubEventStageRuntimeMapper.cloneRecord(record));
   }
 
+  resourcePendingReadByParentEventIds(
+    parentEventIds: readonly string[],
+    userId: string
+  ): Record<string, number> {
+    const normalizedParentEventIds = new Set(parentEventIds.map(id => id.trim()).filter(Boolean));
+    const normalizedUserId = userId.trim();
+    if (normalizedParentEventIds.size === 0 || !normalizedUserId) {
+      return {};
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
+    const result: Record<string, number> = {};
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || LocalActivitySubEventStageRuntimeMapper.isDeleted(record)) {
+        continue;
+      }
+      const runtimeOwnerId = `${record.ownerId ?? ''}`.trim();
+      const slotMarker = runtimeOwnerId.indexOf(':slot:');
+      const parentEventId = slotMarker > 0 ? runtimeOwnerId.slice(0, slotMarker) : runtimeOwnerId;
+      if (!normalizedParentEventIds.has(parentEventId)) {
+        continue;
+      }
+      const readPending = LocalActivitySubEventStageRuntimeMapper.resourcePendingRead(record, normalizedUserId);
+      if (readPending > 0) {
+        result[parentEventId] = (result[parentEventId] ?? 0) + readPending;
+      }
+    }
+    return result;
+  }
+
   peekRecord(
     ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO
   ): ActivitySubEventStageRuntimeRecord | null {
@@ -89,6 +120,88 @@ export class LocalActivitySubEventStageRuntimeRepository {
       };
     });
     return this.peekRecord(normalizedRef);
+  }
+
+  markResourceTypeRead(
+    ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO,
+    groupId: string,
+    userId: string,
+    resourceType: AssetType
+  ): string | null {
+    return this.markResourceTypesRead(ref, groupId, userId, [resourceType]);
+  }
+
+  markResourceTypesRead(
+    ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO,
+    groupId: string,
+    userId: string,
+    resourceTypes: readonly AssetType[],
+    readAtIso = new Date().toISOString()
+  ): string | null {
+    const record = this.peekRecord(ref);
+    const normalizedGroupId = groupId.trim();
+    const normalizedUserId = userId.trim();
+    const types = new Set(resourceTypes);
+    if (!record || !normalizedGroupId || !normalizedUserId || types.size === 0) {
+      return null;
+    }
+    const byGroup = LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceReadAt(
+      record.groupResourceReadAtByUserId
+    );
+    const byUser = { ...(byGroup[normalizedGroupId] ?? {}) };
+    const byType = { ...(byUser[normalizedUserId] ?? {}) };
+    for (const resourceType of types) {
+      byType[resourceType] = readAtIso;
+    }
+    byUser[normalizedUserId] = byType;
+    byGroup[normalizedGroupId] = byUser;
+    this.replaceRecord({
+      ...record,
+      groupResourceReadAtByUserId: byGroup,
+      updatedMs: Date.now(),
+      updatedAtIso: readAtIso
+    });
+    return readAtIso;
+  }
+
+  clearResourceTypeReads(
+    ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO,
+    groupId: string,
+    resourceTypes: readonly AssetType[]
+  ): ActivitySubEventStageRuntimeRecord | null {
+    const record = this.peekRecord(ref);
+    const normalizedGroupId = groupId.trim();
+    const types = new Set(resourceTypes);
+    if (!record || !normalizedGroupId || types.size === 0) {
+      return record;
+    }
+    const byGroup = LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceReadAt(
+      record.groupResourceReadAtByUserId
+    );
+    const byUser = { ...(byGroup[normalizedGroupId] ?? {}) };
+    for (const [userId, sourceByType] of Object.entries(byUser)) {
+      const byType = { ...(sourceByType ?? {}) };
+      for (const type of types) {
+        delete byType[type];
+      }
+      if (Object.keys(byType).length === 0) {
+        delete byUser[userId];
+      } else {
+        byUser[userId] = byType;
+      }
+    }
+    if (Object.keys(byUser).length === 0) {
+      delete byGroup[normalizedGroupId];
+    } else {
+      byGroup[normalizedGroupId] = byUser;
+    }
+    const nowMs = Date.now();
+    return this.replaceRecord({
+      ...record,
+      groupResourceReadAtByUserId: byGroup,
+      updatedMs: nowMs,
+      updatedAtIso: new Date(nowMs).toISOString()
+    });
   }
 
   markRecordsDeletedByParentSubEventIds(parentEventId: string, subEventIds: readonly string[]): number {

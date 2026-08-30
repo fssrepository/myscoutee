@@ -380,6 +380,8 @@ export class SeedChatsBuilder {
       channelType: 'mainEvent',
       memberIds,
       dateIso: record.startAtIso,
+      contextStartAtIso: record.startAtIso,
+      contextEndAtIso: record.endAtIso,
       unread: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0))
     }, ownerUserId);
   }
@@ -407,6 +409,8 @@ export class SeedChatsBuilder {
         channelType: 'serviceEvent',
         memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
         dateIso: record.startAtIso,
+        contextStartAtIso: record.startAtIso,
+        contextEndAtIso: record.endAtIso,
         unread: 0
       }, ownerUserId),
       serviceContext: record.type === 'hosting' ? 'notification' : 'event'
@@ -439,6 +443,8 @@ export class SeedChatsBuilder {
       channelType: 'optionalSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
+      contextStartAtIso: subEvent.startAt || record.startAtIso,
+      contextEndAtIso: subEvent.endAt || record.endAtIso,
       unread: this.sumSubEventPending(subEvent, true)
     }, ownerUserId);
   }
@@ -486,6 +492,8 @@ export class SeedChatsBuilder {
         channelType: 'groupSubEvent',
         memberIds,
         dateIso: subEvent.startAt || record.startAtIso,
+        contextStartAtIso: subEvent.startAt || record.startAtIso,
+        contextEndAtIso: subEvent.endAt || record.endAtIso,
         unread: this.sumSubEventPending(subEvent, true)
       }, ownerUserId);
     }).filter((item): item is ChatRecord => item !== null);
@@ -501,6 +509,8 @@ export class SeedChatsBuilder {
     channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
     memberIds: string[];
     dateIso: string;
+    contextStartAtIso: string;
+    contextEndAtIso: string;
     unread: number;
   }, ownerUserId: string): ChatRecord {
     const memberIds = this.uniqueUserIds(input.memberIds);
@@ -515,6 +525,8 @@ export class SeedChatsBuilder {
       memberIds,
       unread: Math.max(0, Math.trunc(Number(input.unread) || 0)),
       dateIso: input.dateIso,
+      contextStartAtIso: input.contextStartAtIso,
+      contextEndAtIso: input.contextEndAtIso,
       channelType: input.channelType,
       ownerId: input.ownerId,
       eventId: input.eventId,

@@ -29,6 +29,7 @@ import {
 import {
   APP_STORAGE_KEYS
 } from '../../common/storage-scope';
+import { pwaNotificationRegistrationEnabled } from '../../common/pwa-runtime-policy';
 import {
   FirebaseAppService,
   type FirebaseAppRuntime,
@@ -449,20 +450,17 @@ export class FirebaseMessagingService {
   }
 
   private get enabled(): boolean {
-    return environment.activitiesDataSource === 'http'
-      && environment.firebaseMessagingEnabled
-      && !this.isLoopbackBrowserHost();
-  }
-
-  private isLoopbackBrowserHost(): boolean {
     if (typeof window === 'undefined') {
       return false;
     }
-    const hostname = window.location.hostname.toLowerCase();
-    return hostname === 'localhost'
-      || hostname === '127.0.0.1'
-      || hostname === '[::1]'
-      || hostname === '::1'
-      || hostname.endsWith('.localhost');
+    return pwaNotificationRegistrationEnabled({
+      activitiesDataSource: environment.activitiesDataSource,
+      firebaseMessagingEnabled: environment.firebaseMessagingEnabled,
+      production: environment.production,
+      hostname: window.location.hostname,
+      standalone: this.isStandalone(),
+      devServiceWorkerOverrideEnabled:
+        localStorage.getItem(APP_STORAGE_KEYS.pwaDevServiceWorker) === 'enabled'
+    });
   }
 }

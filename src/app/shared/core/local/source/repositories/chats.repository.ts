@@ -37,7 +37,35 @@ export class LocalChatsRepository {
 
   ensureServiceChat(chat: ChatRecord & { ownerUserId?: string | null }): ChatThreadRecord | null {
     const record = this.resolveChatRecord(chat);
-    return record ? LocalChatThreadMapper.cloneRecord(record) : null;
+    if (!record) {
+      return null;
+    }
+    const contextStartAtIso = `${chat.contextStartAtIso ?? ''}`.trim() || null;
+    const contextEndAtIso = `${chat.contextEndAtIso ?? ''}`.trim() || null;
+    if (
+      (record.contextStartAtIso ?? null) === contextStartAtIso
+      && (record.contextEndAtIso ?? null) === contextEndAtIso
+    ) {
+      return LocalChatThreadMapper.cloneRecord(record);
+    }
+    const next: ChatThreadRecord = {
+      ...record,
+      contextStartAtIso,
+      contextEndAtIso,
+      revision: this.nextChatRevision(record.revision)
+    };
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [CHATS_TABLE_NAME]: {
+        ...currentState[CHATS_TABLE_NAME],
+        byId: {
+          ...currentState[CHATS_TABLE_NAME].byId,
+          [recordKey]: next
+        }
+      }
+    }));
+    return LocalChatThreadMapper.cloneRecord(next);
   }
 
   syncPublishedMainEventChat(
@@ -66,6 +94,10 @@ export class LocalChatsRepository {
         const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, chatId);
         const current = currentTable.byId[recordKey] ?? null;
         const isNewOwnerChat = current == null;
+        const contextWindowChanged = current != null && (
+          (current.contextStartAtIso ?? null) !== (event.startAtIso || null)
+          || (current.contextEndAtIso ?? null) !== (event.endAtIso || null)
+        );
         const nextRecord: ChatThreadRecord = {
           ...(current ?? {
             id: chatId,
@@ -82,11 +114,15 @@ export class LocalChatsRepository {
           memberIds: [...participantUserIds],
           unread: this.normalizeCounter(current?.unread ?? 0),
           dateIso: current?.dateIso ?? nowIso,
+          contextStartAtIso: event.startAtIso || null,
+          contextEndAtIso: event.endAtIso || null,
           channelType: 'mainEvent',
           ownerId: eventId,
           eventId,
           ownerStatus: 'A',
-          revision: Math.max(1, Math.trunc(Number(current?.revision) || 1))
+          revision: contextWindowChanged
+            ? this.nextChatRevision(current.revision)
+            : Math.max(1, Math.trunc(Number(current?.revision) || 1))
         };
         nextById[recordKey] = nextRecord;
         if (!nextIds.includes(recordKey)) {
@@ -194,7 +230,7 @@ export class LocalChatsRepository {
           lastSenderId: storedMessage.senderAvatar.id,
           dateIso: storedMessage.sentAtIso,
           unread: this.normalizeCounter(current.unread) + 1,
-          revision: Math.max(1, Math.trunc(Number(current.revision) || 1)) + 1
+          revision: this.nextChatRevision(current.revision)
         };
         nextUsersTable = this.applyStoredChatCounterDelta(
           nextUsersTable,
@@ -240,7 +276,7 @@ export class LocalChatsRepository {
           ...current,
           memberIds: [...(current.memberIds ?? [])],
           ownerStatus,
-          revision: Date.now()
+          revision: this.nextChatRevision(current.revision)
         };
         changed += 1;
       }
@@ -467,7 +503,8 @@ export class LocalChatsRepository {
               ...existingRecord,
               lastMessage: storedMessage.text || this.chatAttachmentSummary(storedMessage),
               lastSenderId: storedMessage.senderAvatar.id,
-              dateIso: storedMessage.sentAtIso
+              dateIso: storedMessage.sentAtIso,
+              revision: this.nextChatRevision(existingRecord.revision)
             }
           }
         },
@@ -492,7 +529,8 @@ export class LocalChatsRepository {
       const nextRecord: ChatThreadRecord = {
         ...(existing ?? chat),
         ...chat,
-        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
+        revision: this.nextChatRevision(existing?.revision ?? chat.revision)
       };
       const unreadDelta = this.normalizeCounter(nextRecord.unread) - this.normalizeCounter(existing?.unread);
       const currentUsersTable = currentState[USERS_TABLE_NAME];
@@ -588,7 +626,8 @@ export class LocalChatsRepository {
               ...existingRecord,
               lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : existingRecord.lastMessage,
               lastSenderId: latest?.senderAvatar.id ?? existingRecord.lastSenderId,
-              dateIso: latest?.sentAtIso ?? existingRecord.dateIso
+              dateIso: latest?.sentAtIso ?? existingRecord.dateIso,
+              revision: this.nextChatRevision(existingRecord.revision)
             }
           }
         },
@@ -722,7 +761,8 @@ export class LocalChatsRepository {
             ...currentTable.byId,
             [recordKey]: {
               ...existingRecord,
-              unread
+              unread,
+              revision: this.nextChatRevision(existingRecord.revision)
             }
           }
         },
@@ -940,6 +980,11 @@ export class LocalChatsRepository {
   private normalizeCounter(value: unknown): number {
     const count = Number(value);
     return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  }
+
+  private nextChatRevision(value: unknown): number {
+    const current = Math.max(1, Math.trunc(Number(value) || 1));
+    return Math.max(Date.now(), current + 1);
   }
 
   private withAppendTimeline(

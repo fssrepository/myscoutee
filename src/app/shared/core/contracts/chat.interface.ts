@@ -1,6 +1,7 @@
 import type * as AppConstants from '../common/constants';
 import type { ActivityEventStatus } from './activity.interface';
 import type { SubEventDTO } from './event.interface';
+import type { UserChatCountersDto } from './user.interface';
 
 export const RANDOM_ROOM_WELCOME_MESSAGE =
   'Welcome! We matched you here by affinity and past interactions. Leave anytime. '
@@ -101,6 +102,7 @@ export interface ChatReadReceipt {
   userId: string;
   userInitials: string;
   userGender: ChatUserGender;
+  userImageUrl?: string | null;
   messageIds: string[];
   readAtIso: string;
   unread?: number | null;
@@ -175,6 +177,8 @@ export interface ChatDTO {
   members?: ChatMemberSummaryDto[];
   unread: number;
   dateIso?: string;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
@@ -195,6 +199,14 @@ export interface ChatHeaderSyncResponseDTO {
   revision: number;
   changed: boolean;
   ownerStatus?: ActivityEventStatus | null;
+  unread: number;
+  lastMessage: string;
+  lastSenderId?: string | null;
+  dateIso?: string | null;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
+  chats: number;
+  chatCounters: UserChatCountersDto;
 }
 
 export interface ChatServiceEnsureInput {
@@ -212,6 +224,8 @@ export interface ActivitiesChatPageResultDTO {
   items: ChatDTO[];
   total: number;
   nextCursor?: string | null;
+  chats?: number;
+  chatCounters?: UserChatCountersDto;
 }
 
 export interface ChatMessagesPageResultDTO {

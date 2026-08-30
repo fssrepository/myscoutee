@@ -23,6 +23,8 @@ export interface ChatRecord {
   members?: ChatMemberSummaryDto[];
   unread: number;
   dateIso?: string;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: ChatChannelType;

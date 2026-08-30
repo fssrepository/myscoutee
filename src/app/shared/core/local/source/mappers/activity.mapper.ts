@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
+import type { AssetType } from '../../../common/constants';
 import type { UserDto } from '../../../contracts/user.interface';
 import type {
   ActivityMemberDTO,
@@ -538,6 +539,9 @@ export class LocalActivitySubEventStageRuntimeMapper {
       groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
         existing?.groupResourceMetricsByAssetOwnerId
       ),
+      groupResourceReadAtByUserId: this.cloneGroupResourceReadAt(
+        existing?.groupResourceReadAtByUserId
+      ),
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,
       createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -546,7 +550,8 @@ export class LocalActivitySubEventStageRuntimeMapper {
   }
 
   static toState(
-    record: ActivitySubEventStageRuntimeRecord
+    record: ActivitySubEventStageRuntimeRecord,
+    viewerUserId?: string | null
   ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
     if (this.isDeleted(record)) {
       return null;
@@ -562,7 +567,12 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageResultRevision: record.stageResultRevision,
       groupsCount: record.groupsCount
     }, record);
-    return normalized ? { ...normalized } : null;
+    return normalized
+      ? {
+          ...normalized,
+          groupsResourcePendingRead: this.resourcePendingRead(record, viewerUserId)
+        }
+      : null;
   }
 
   static cloneRecord(record: ActivitySubEventStageRuntimeRecord): ActivitySubEventStageRuntimeRecord {
@@ -570,6 +580,9 @@ export class LocalActivitySubEventStageRuntimeMapper {
       ...record,
       groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
         record.groupResourceMetricsByAssetOwnerId
+      ),
+      groupResourceReadAtByUserId: this.cloneGroupResourceReadAt(
+        record.groupResourceReadAtByUserId
       )
     };
   }
@@ -584,6 +597,39 @@ export class LocalActivitySubEventStageRuntimeMapper {
         ActivityResourceBuilder.cloneResourceMetricsByType(metricsByType)
       ]))
     ]));
+  }
+
+  static cloneGroupResourceReadAt(
+    source: ActivitySubEventStageRuntimeRecord['groupResourceReadAtByUserId'] | null | undefined
+  ): ActivitySubEventStageRuntimeRecord['groupResourceReadAtByUserId'] {
+    return Object.fromEntries(Object.entries(source ?? {}).map(([groupId, byUser]) => [
+      groupId,
+      Object.fromEntries(Object.entries(byUser ?? {}).map(([userId, readAtByType]) => [
+        userId,
+        { ...(readAtByType ?? {}) }
+      ]))
+    ]));
+  }
+
+  static resourcePendingRead(
+    record: ActivitySubEventStageRuntimeRecord | null | undefined,
+    viewerUserId?: string | null
+  ): number {
+    const userId = `${viewerUserId ?? ''}`.trim();
+    if (!record || !userId) {
+      return 0;
+    }
+    let total = 0;
+    for (const [groupId, byUser] of Object.entries(record.groupResourceReadAtByUserId ?? {})) {
+      const readAtByType = byUser?.[userId] ?? {};
+      const metricsByOwner = record.groupResourceMetricsByAssetOwnerId?.[groupId] ?? {};
+      for (const resourceType of Object.keys(readAtByType) as AssetType[]) {
+        for (const metricsByType of Object.values(metricsByOwner)) {
+          total += Math.max(0, Math.trunc(Number(metricsByType?.[resourceType]?.pending) || 0));
+        }
+      }
+    }
+    return total;
   }
 
   static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {

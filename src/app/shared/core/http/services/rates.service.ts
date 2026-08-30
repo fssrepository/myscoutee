@@ -136,6 +136,7 @@ export class HttpRatesService implements IRatesService {
           total?: number | null;
           nextCursor?: string | null;
           users?: UserDto[] | null;
+          gameCounter?: number | null;
         } | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_PAGE_ROUTE}`, { params }),
         signal
       );
@@ -146,11 +147,18 @@ export class HttpRatesService implements IRatesService {
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
           : null,
-        users: Array.isArray(response?.users) ? response.users.map(user => this.cloneUser(user)) : []
+        users: Array.isArray(response?.users) ? response.users.map(user => this.cloneUser(user)) : [],
+        gameCounter: Number.isFinite(response?.gameCounter)
+          ? Math.max(0, Math.trunc(Number(response?.gameCounter)))
+          : undefined
       };
-      return this.shouldUseCachedActivitiesRatePage(page, userId)
-        ? this.buildCachedActivitiesRatePage(userId, query)
-        : page;
+      if (!this.shouldUseCachedActivitiesRatePage(page, userId)) {
+        return page;
+      }
+      return {
+        ...this.buildCachedActivitiesRatePage(userId, query),
+        gameCounter: page.gameCounter
+      };
     } catch (error) {
       if (this.isAbortError(error)) {
         throw error;

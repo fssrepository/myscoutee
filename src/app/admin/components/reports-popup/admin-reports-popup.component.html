@@ -52,23 +52,21 @@
             }
 
             <div class="admin-report-context-grid">
-              <div
-                class="admin-report-context-card admin-report-member-card"
+              <app-image-card
+                class="admin-report-member-card"
                 [class.has-member-image]="memberImageUrl(item.user)"
                 [attr.aria-disabled]="!reportMemberShareUrl"
                 (click)="openSharedUrl(reportMemberShareUrl, $event)"
-                >
-                <app-image-card
-                  [card]="reportedUserImageCard(item.user, {
-                    idPrefix: 'report-detail-member',
-                    title: memberCardTitle(item.user, reportedHandle(item))
-                  })"
-                  [menuId]="'report-detail-member-menu-' + (item.user.userId || item.user.name)"
-                  [menuTitle]="memberCardTitle(item.user, reportedHandle(item))"
-                  [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'report-detail')"
-                  [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail', item)"
-                ></app-image-card>
-              </div>
+                [card]="reportedUserImageCard(item.user, {
+                  idPrefix: 'report-detail-member',
+                  title: memberCardTitle(item.user, reportedHandle(item)),
+                  compact: true
+                })"
+                [menuId]="'report-detail-member-menu-' + (item.user.userId || item.user.name)"
+                [menuTitle]="memberCardTitle(item.user, reportedHandle(item))"
+                [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'report-detail')"
+                [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail', item)"
+              ></app-image-card>
 
               <button
                 type="button"
