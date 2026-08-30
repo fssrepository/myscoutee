@@ -168,7 +168,11 @@ type AssetExploreOrderOption = {
 
 type AssetExploreMenuContext =
   | { menu: 'asset-explore-order'; order: AssetExploreOrder }
-  | { menu: 'asset-explore-category'; category: AppConstants.AssetCategory }
+  | {
+      menu: 'asset-explore-category';
+      type: AppConstants.AssetType;
+      category: AppConstants.AssetCategory;
+    }
   | { menu: 'asset-explore-borrow-draft'; entry: AssetExploreBorrowDraftViewState }
   | {
       menu: 'asset-explore-card';
@@ -662,7 +666,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     if (context.menu === 'asset-explore-category') {
       event.sourceEvent.stopPropagation();
-      this.selectCategory(context.category, event.sourceEvent);
+      this.selectCategory(context.type, context.category, event.sourceEvent);
       return;
     }
     if (context.menu === 'asset-explore-borrow-draft') {
@@ -706,17 +710,24 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected categoryMenuTrigger(explore: AssetExplorePopupViewState): AppMenuTrigger {
+    const wholeType = !`${explore.category ?? ''}`.trim();
     return {
-      label: AssetDefaultsBuilder.assetCategoryLabel(explore.category),
-      icon: AssetDefaultsBuilder.assetCategoryIcon(explore.category),
+      label: wholeType
+        ? AssetDefaultsBuilder.assetTypeLabel(explore.type)
+        : AssetDefaultsBuilder.assetCategoryLabel(explore.category),
+      icon: wholeType
+        ? AssetDefaultsBuilder.assetTypeIcon(explore.type)
+        : AssetDefaultsBuilder.assetCategoryIcon(explore.category),
       ariaLabel: 'Open asset explore category',
-      palette: this.assetCategoryPalette(explore.category),
+      palette: wholeType
+        ? this.assetTypeAggregatePalette(explore.type)
+        : this.assetCategoryPalette(explore.category),
       layout: 'pill'
     };
   }
 
   protected categoryMenuItems(explore: AssetExplorePopupViewState): readonly AppMenuItem<string, AssetExploreMenuContext>[] {
-    const selectedType = AssetDefaultsBuilder.assetCategoryType(explore.category);
+    const selectedType = explore.type;
     const items: AppMenuItem<string, AssetExploreMenuContext>[] = [];
     for (const type of AppConstants.ASSET_TYPES) {
       const options = explore.categoryOptions.filter(option => AssetDefaultsBuilder.assetCategoryType(option) === type);
@@ -731,26 +742,52 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         active: selectedType === type,
         palette: this.resourceTypePalette(type),
         surface: 'tinted',
-        items: options.map(option => this.categoryMenuItem(option, explore.category))
+        items: [
+          this.wholeAssetTypeMenuItem(type, explore),
+          ...options.map(option => this.categoryMenuItem(type, option, explore))
+        ]
       });
     }
     return items;
   }
 
   private categoryMenuItem(
+    type: AppConstants.AssetType,
     option: AppConstants.AssetCategory,
-    activeCategory: AppConstants.AssetCategory
+    explore: AssetExplorePopupViewState
   ): AppMenuItem<string, AssetExploreMenuContext> {
+    const active = explore.type === type && option === explore.category;
     return {
       id: `asset-explore-category-${option}`,
       label: AssetDefaultsBuilder.assetCategoryLabel(option),
       icon: AssetDefaultsBuilder.assetCategoryIcon(option),
       kind: 'radio',
-      active: option === activeCategory,
-      checked: option === activeCategory,
+      active,
+      checked: active,
+      showCheck: true,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
-      context: { menu: 'asset-explore-category', category: option }
+      context: { menu: 'asset-explore-category', type, category: option }
+    };
+  }
+
+  private wholeAssetTypeMenuItem(
+    type: AppConstants.AssetType,
+    explore: AssetExplorePopupViewState
+  ): AppMenuItem<string, AssetExploreMenuContext> {
+    const active = explore.type === type && !`${explore.category ?? ''}`.trim();
+    return {
+      id: `asset-explore-category-all-${type.toLowerCase()}`,
+      label: `All ${AssetDefaultsBuilder.assetTypeLabel(type)}`,
+      description: `Show every ${AssetDefaultsBuilder.assetTypeLabel(type).toLowerCase()} category`,
+      icon: AssetDefaultsBuilder.assetTypeIcon(type),
+      kind: 'radio',
+      active,
+      checked: active,
+      showCheck: true,
+      palette: this.assetTypeAggregatePalette(type),
+      surface: 'tinted',
+      context: { menu: 'asset-explore-category', type, category: '' }
     };
   }
 
@@ -1584,21 +1621,26 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return '4+ left';
   }
 
-  private selectCategory(category: string, event?: Event): void {
+  private selectCategory(
+    type: AppConstants.AssetType,
+    category: string,
+    event?: Event
+  ): void {
     event?.stopPropagation();
     const popup = this.resourcePopupStore.assetExplorePopupRef();
     if (!popup) {
       return;
     }
     const normalizedCategory = AssetDefaultsBuilder.assetCategoryLabel(category);
-    const nextType = AssetDefaultsBuilder.assetCategoryType(normalizedCategory);
-    const nextCategory = AssetDefaultsBuilder.normalizeCategory(nextType, normalizedCategory);
-    if (nextType === popup.type && nextCategory === popup.category) {
+    const nextCategory = normalizedCategory
+      ? AssetDefaultsBuilder.normalizeCategory(type, normalizedCategory)
+      : '';
+    if (type === popup.type && nextCategory === popup.category) {
       return;
     }
     this.resourcePopupStore.assetExplorePopupRef.set(this.resolvePopupState({
       ...popup,
-      type: nextType,
+      type,
       category: nextCategory
     }));
   }
@@ -3108,6 +3150,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private assetCategoryPalette(category: AppConstants.AssetCategory): AppMenuPalette {
     return this.resourceTypePalette(AssetDefaultsBuilder.assetCategoryType(category));
+  }
+
+  private assetTypeAggregatePalette(type: AppConstants.AssetType): AppMenuPalette {
+    switch (type) {
+      case AppConstants.ASSET_TYPE_TRANSPORT:
+        return 'blue';
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
+        return 'teal';
+      case AppConstants.ASSET_TYPE_SUPPLIES:
+        return 'orange';
+      default:
+        return 'default';
+    }
   }
 
   private resourceTypePalette(type: AppConstants.SubEventResourceFilter): AppMenuPalette {

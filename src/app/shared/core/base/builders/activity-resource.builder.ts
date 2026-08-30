@@ -8,6 +8,14 @@ import * as AppConstants from '../../common/constants';
 type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
 
 export class ActivityResourceBuilder {
+  static chatResourceDateRange(
+    chat: Pick<ContractTypes.ChatDTO, 'contextStartAtIso' | 'contextEndAtIso'>
+  ): { startAtIso: string; endAtIso: string } | null {
+    const startAtIso = `${chat.contextStartAtIso ?? ''}`.trim();
+    const endAtIso = `${chat.contextEndAtIso ?? ''}`.trim();
+    return startAtIso && endAtIso ? { startAtIso, endAtIso } : null;
+  }
+
   static authorizationEventId(ownerIdValue: string, subEventIdValue = ''): string {
     const ownerId = `${ownerIdValue ?? ''}`.trim();
     const subEventId = `${subEventIdValue ?? ''}`.trim();

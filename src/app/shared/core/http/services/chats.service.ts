@@ -46,6 +46,8 @@ interface HttpChatDto {
   members?: ChatMemberSummaryDto[] | null;
   unread: number;
   dateIso?: string;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   channelType?: ContractTypes.ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
@@ -731,6 +733,8 @@ export class HttpChatsService implements IChatsService {
       members: this.resolveChatMembers(item.members, item.memberIds),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
+      contextStartAtIso: this.normalizeHttpText(item.contextStartAtIso) || null,
+      contextEndAtIso: this.normalizeHttpText(item.contextEndAtIso) || null,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
       ownerId: this.normalizeHttpText(item.ownerId) || undefined,
@@ -767,7 +771,7 @@ export class HttpChatsService implements IChatsService {
     }
     return {
       ...context,
-      subEvent: { ...context.subEvent },
+      subEvent: context.subEvent ? { ...context.subEvent } : context.subEvent,
       group: context.group ? { ...context.group } : context.group
     };
   }

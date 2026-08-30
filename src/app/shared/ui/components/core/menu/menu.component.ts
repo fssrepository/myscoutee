@@ -163,6 +163,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.activeBranchPath = [];
       this.tabsFilterText = '';
     } else if (opened) {
+      this.restoreSelectedBranchPath();
       this.syncActiveTabsGroup();
     }
   }
@@ -1589,8 +1590,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if (this.resolveLiveValue(item.showCheck) === false) {
-      return false;
+    const configured = this.resolveLiveValue(item.showCheck);
+    if (configured !== null && configured !== undefined) {
+      return configured === true && this.isItemActive(item) && !this.hasNestedItems(item);
     }
     if (((this.isDropdownListKind && !this.currentTabbedModelLayout) || (this.isInlineRowLayout && !this.currentTabbedModelLayout)) && item.kind === 'radio') {
       return false;
@@ -1923,9 +1925,33 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.activeBranchPath = [];
       this.tabsFilterText = '';
     } else if (opened) {
+      this.restoreSelectedBranchPath();
       this.syncActiveTabsGroup();
     }
     this.openChange.emit(open);
+  }
+
+  private restoreSelectedBranchPath(): void {
+    if (!this.isSelectKind || this.currentTabbedModelLayout) {
+      return;
+    }
+    this.activeBranchPath = this.selectedBranchPath(this.actionRowItems);
+  }
+
+  private selectedBranchPath(
+    items: readonly AppMenuItem<TId, TContext>[]
+  ): AppMenuItem<TId, TContext>[] {
+    for (const item of items) {
+      const children = this.branchListItems(item);
+      if (children.length === 0) {
+        continue;
+      }
+      const nestedPath = this.selectedBranchPath(children);
+      if (nestedPath.length > 0 || children.some(child => this.isItemActive(child))) {
+        return [item, ...nestedPath];
+      }
+    }
+    return [];
   }
 
   private safeDomId(value: string): string {

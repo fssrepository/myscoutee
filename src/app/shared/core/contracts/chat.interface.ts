@@ -177,6 +177,8 @@ export interface ChatDTO {
   members?: ChatMemberSummaryDto[];
   unread: number;
   dateIso?: string;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
@@ -201,6 +203,8 @@ export interface ChatHeaderSyncResponseDTO {
   lastMessage: string;
   lastSenderId?: string | null;
   dateIso?: string | null;
+  contextStartAtIso?: string | null;
+  contextEndAtIso?: string | null;
   chats: number;
   chatCounters: UserChatCountersDto;
 }

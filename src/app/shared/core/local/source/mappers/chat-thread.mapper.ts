@@ -19,6 +19,8 @@ export class LocalChatThreadMapper {
       members: this.cloneMembers(record.members),
       unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
       dateIso: record.dateIso,
+      contextStartAtIso: record.contextStartAtIso ?? null,
+      contextEndAtIso: record.contextEndAtIso ?? null,
       distanceKm: record.distanceKm,
       distanceMetersExact: record.distanceMetersExact,
       channelType: record.channelType,

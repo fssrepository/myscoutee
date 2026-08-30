@@ -24,6 +24,7 @@ import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalChatThreadMapper } from '../mappers';
 import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
 import type { ChatThreadRecord } from '../entity/chat.entity';
@@ -48,6 +49,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
 
   async queryActivitiesChatPage(
     userId: string,
@@ -104,6 +106,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       lastMessage: `${chat?.lastMessage ?? ''}`,
       lastSenderId: `${chat?.lastSenderId ?? ''}`.trim() || null,
       dateIso: `${chat?.dateIso ?? ''}`.trim() || null,
+      contextStartAtIso: `${chat?.contextStartAtIso ?? ''}`.trim() || null,
+      contextEndAtIso: `${chat?.contextEndAtIso ?? ''}`.trim() || null,
       chats: this.countValue(activities?.chats),
       chatCounters: this.normalizeChatCounters(activities?.chat)
     };
@@ -141,6 +145,10 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     ) {
       return null;
     }
+    const event = this.eventsRepository.queryEventRecordById(activeUserId, eventId);
+    const subEvent = subEventId
+      ? event?.subEvents?.find(item => item.id === subEventId) ?? null
+      : null;
     const chat: ChatDTO = {
       id: chatId,
       avatar: AppUtils.initialsFromText(`${input.avatarSource ?? ''}`.trim() || input.title),
@@ -150,6 +158,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       memberIds: [activeUserId, targetUserId],
       unread: 0,
       dateIso: new Date().toISOString(),
+      contextStartAtIso: subEvent?.startAt || event?.startAtIso || null,
+      contextEndAtIso: subEvent?.endAt || event?.endAtIso || null,
       channelType: 'serviceEvent',
       serviceContext: input.serviceContext,
       ownerId: eventId,

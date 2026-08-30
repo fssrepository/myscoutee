@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AssetDTO, AssetMemberRequestDTO } from '../../contracts';
+import type {
+  AssetDTO,
+  AssetMemberRequestDTO,
+  ChatDTO
+} from '../../contracts';
 import { ActivityResourceBuilder } from './activity-resource.builder';
 
 describe('ActivityResourceBuilder group request scoping', () => {
+  it('uses only the date range persisted on the chat channel', () => {
+    const chat = {
+      contextStartAtIso: '2026-08-30T09:30:00Z',
+      contextEndAtIso: '2026-08-30T10:30:00Z'
+    } as ChatDTO;
+
+    expect(ActivityResourceBuilder.chatResourceDateRange(chat)).toEqual({
+      startAtIso: chat.contextStartAtIso,
+      endAtIso: chat.contextEndAtIso
+    });
+    expect(ActivityResourceBuilder.chatResourceDateRange({} as ChatDTO)).toBeNull();
+  });
+
   it('resolves the base event id from slot and group resource owner ids', () => {
     expect(ActivityResourceBuilder.authorizationEventId('event-1', 'sub-1')).toBe('event-1');
     expect(ActivityResourceBuilder.authorizationEventId(

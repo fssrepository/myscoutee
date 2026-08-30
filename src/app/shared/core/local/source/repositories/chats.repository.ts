@@ -37,7 +37,35 @@ export class LocalChatsRepository {
 
   ensureServiceChat(chat: ChatRecord & { ownerUserId?: string | null }): ChatThreadRecord | null {
     const record = this.resolveChatRecord(chat);
-    return record ? LocalChatThreadMapper.cloneRecord(record) : null;
+    if (!record) {
+      return null;
+    }
+    const contextStartAtIso = `${chat.contextStartAtIso ?? ''}`.trim() || null;
+    const contextEndAtIso = `${chat.contextEndAtIso ?? ''}`.trim() || null;
+    if (
+      (record.contextStartAtIso ?? null) === contextStartAtIso
+      && (record.contextEndAtIso ?? null) === contextEndAtIso
+    ) {
+      return LocalChatThreadMapper.cloneRecord(record);
+    }
+    const next: ChatThreadRecord = {
+      ...record,
+      contextStartAtIso,
+      contextEndAtIso,
+      revision: this.nextChatRevision(record.revision)
+    };
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [CHATS_TABLE_NAME]: {
+        ...currentState[CHATS_TABLE_NAME],
+        byId: {
+          ...currentState[CHATS_TABLE_NAME].byId,
+          [recordKey]: next
+        }
+      }
+    }));
+    return LocalChatThreadMapper.cloneRecord(next);
   }
 
   syncPublishedMainEventChat(
@@ -66,6 +94,10 @@ export class LocalChatsRepository {
         const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, chatId);
         const current = currentTable.byId[recordKey] ?? null;
         const isNewOwnerChat = current == null;
+        const contextWindowChanged = current != null && (
+          (current.contextStartAtIso ?? null) !== (event.startAtIso || null)
+          || (current.contextEndAtIso ?? null) !== (event.endAtIso || null)
+        );
         const nextRecord: ChatThreadRecord = {
           ...(current ?? {
             id: chatId,
@@ -82,11 +114,15 @@ export class LocalChatsRepository {
           memberIds: [...participantUserIds],
           unread: this.normalizeCounter(current?.unread ?? 0),
           dateIso: current?.dateIso ?? nowIso,
+          contextStartAtIso: event.startAtIso || null,
+          contextEndAtIso: event.endAtIso || null,
           channelType: 'mainEvent',
           ownerId: eventId,
           eventId,
           ownerStatus: 'A',
-          revision: Math.max(1, Math.trunc(Number(current?.revision) || 1))
+          revision: contextWindowChanged
+            ? this.nextChatRevision(current.revision)
+            : Math.max(1, Math.trunc(Number(current?.revision) || 1))
         };
         nextById[recordKey] = nextRecord;
         if (!nextIds.includes(recordKey)) {

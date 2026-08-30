@@ -176,6 +176,8 @@ interface SelectedChatNavigationState {
   eventTarget: ContractTypes.EventEditorTarget;
   eventTitle: string | null;
   eventPendingMembers: number;
+  resourceStartAtIso: string | null;
+  resourceEndAtIso: string | null;
   subEvent: ContractTypes.SubEventDTO | null;
   group: SelectedChatGroupState | null;
   assetAssignmentIds: SubEventAssetAssignmentIds;
@@ -753,6 +755,8 @@ export class EventChatPopupComponent implements OnDestroy {
       members: (header.members ?? []).map(member => ({ ...member })),
       unread: Math.max(0, Math.trunc(Number(header.unread) || 0)),
       dateIso: header.dateIso ?? undefined,
+      contextStartAtIso: header.contextStartAtIso ?? null,
+      contextEndAtIso: header.contextEndAtIso ?? null,
       channelType: header.channelType ?? undefined,
       ownerId: ownerId || undefined,
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
@@ -775,7 +779,9 @@ export class EventChatPopupComponent implements OnDestroy {
       navigationContext: header.navigationContext
         ? {
             ...header.navigationContext,
-            subEvent: { ...header.navigationContext.subEvent },
+            subEvent: header.navigationContext.subEvent
+              ? { ...header.navigationContext.subEvent }
+              : header.navigationContext.subEvent,
             group: header.navigationContext.group
               ? { ...header.navigationContext.group }
               : header.navigationContext.group
@@ -813,7 +819,9 @@ export class EventChatPopupComponent implements OnDestroy {
       navigationContext: header.navigationContext
         ? {
             ...header.navigationContext,
-            subEvent: { ...header.navigationContext.subEvent },
+            subEvent: header.navigationContext.subEvent
+              ? { ...header.navigationContext.subEvent }
+              : header.navigationContext.subEvent,
             group: header.navigationContext.group
               ? { ...header.navigationContext.group }
               : header.navigationContext.group
@@ -856,6 +864,8 @@ export class EventChatPopupComponent implements OnDestroy {
       lastMessage: result.lastMessage,
       lastSenderId: result.lastSenderId ?? '',
       dateIso: result.dateIso ?? undefined,
+      contextStartAtIso: result.contextStartAtIso ?? current.item.contextStartAtIso ?? null,
+      contextEndAtIso: result.contextEndAtIso ?? current.item.contextEndAtIso ?? null,
       revision: result.revision
     };
     const synchronizedHeader = eventChatHeaderStateFromChat(synchronizedChat);
@@ -2073,7 +2083,9 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT
+      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT,
+      startAtIso: state?.resourceStartAtIso ?? undefined,
+      endAtIso: state?.resourceEndAtIso ?? undefined
     });
   }
 
@@ -4739,6 +4751,7 @@ export class EventChatPopupComponent implements OnDestroy {
       ? this.syncSubEventResourceCounts(this.cloneSubEvent(rawSubEvent), resourceState, assetCards)
       : null;
     const metricsSubEvent = subEvent ? this.applyChatMetricsToSubEvent(subEvent, chat.metrics) : null;
+    const resourceRange = ActivityResourceBuilder.chatResourceDateRange(chat);
     return {
       channelType: this.chatChannelType(chat),
       eventId: (eventRecord?.id ?? navigationContext?.eventId ?? eventId) || null,
@@ -4749,6 +4762,8 @@ export class EventChatPopupComponent implements OnDestroy {
       eventPendingMembers: this.chatMetricCount(
         navigationContext?.eventPendingMembers ?? eventRecord?.pendingMembers
       ),
+      resourceStartAtIso: resourceRange?.startAtIso ?? null,
+      resourceEndAtIso: resourceRange?.endAtIso ?? null,
       subEvent: metricsSubEvent,
       group: this.applyChatMetricsToGroup(
         this.resolveSelectedChatGroup(chat, metricsSubEvent, (eventRecord?.id ?? eventId) || null),

@@ -693,15 +693,27 @@ export class EventResourcePopupComponent {
     const type = request.assetType === AppConstants.ASSET_TYPE_ACCOMMODATION || request.assetType === AppConstants.ASSET_TYPE_SUPPLIES
       ? request.assetType
       : AppConstants.ASSET_TYPE_TRANSPORT;
+    const requestedAssetId = `${request.assetId ?? ''}`.trim();
+    const initialCard = request.fallbackAsset
+      ?? this.ownedAssetCards().find(card => card.id === requestedAssetId)
+      ?? null;
+    if (request.viewOnly && requestedAssetId && initialCard) {
+      this.resourcePopupStore.closeResourcePopup();
+      this.resourcePopupStore.assetExploreOnlyRef.set(true);
+      void this.openReadonlyStandaloneAssetEditor(initialCard, requestedAssetId);
+      return;
+    }
     const now = new Date();
     const end = new Date(now);
     end.setHours(end.getHours() + 2);
+    const startAtIso = `${request.startAtIso ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(now);
+    const endAtIso = `${request.endAtIso ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(end);
     const subEvent: ContractTypes.SubEventDTO = {
       id: `asset-explore-${this.activeUser().id || 'user'}`,
       name: 'Asset Explore',
       description: '',
-      startAt: AppUtils.toIsoDateTimeLocal(now),
-      endAt: AppUtils.toIsoDateTimeLocal(end),
+      startAt: startAtIso,
+      endAt: endAtIso,
       optional: true,
       capacityMin: 0,
       capacityMax: 0,
@@ -722,15 +734,47 @@ export class EventResourcePopupComponent {
       subEvent,
       fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
     }, type, { hydrate: !request.viewOnly });
-    this.resourcePopupStore.assetExploreOnlyRef.set(!request.viewOnly);
-    if (request.viewOnly && request.assetId) {
-      this.resourcePopupStore.assignedAssetIdsByKey[ActivityResourceBuilder.subEventAssetAssignmentKey(subEvent.id, type)] = [request.assetId];
-      this.resourcePopupStore.resourceAssetViewIdRef.set(request.assetId);
-      this.resourcePopupStore.resourceAssetViewModeRef.set('view');
-      this.resourcePopupStore.resourceAssetViewReturnToChatRef.set(true);
+    this.resourcePopupStore.assetExploreOnlyRef.set(true);
+    this.openInitialExplorePopup();
+  }
+
+  private async openReadonlyStandaloneAssetEditor(
+    card: ResourceAssetDTO,
+    assetId: string
+  ): Promise<void> {
+    const normalizedAssetId = assetId.trim() || card.id;
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    const generation = this.assetStore.openAssetEditorEdit({
+      cardId: normalizedAssetId,
+      form: AssetCardBuilder.buildAssetFormFromCard(card),
+      visibility: AssetCardBuilder.visibilityFromCard(card),
+      loading: Boolean(ownerUserId),
+      readOnly: true,
+      parentZIndex: this.parentZIndex
+    });
+    void this.assetPopupStore.ensureAssetPopupLoaded();
+    if (!ownerUserId) {
+      this.assetStore.setAssetEditorLoading(false);
       return;
     }
-    this.openInitialExplorePopup();
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, normalizedAssetId);
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, normalizedAssetId)) {
+        return;
+      }
+      if (loadedCard) {
+        this.assetStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.assetStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, normalizedAssetId)) {
+        this.assetStore.setAssetEditorLoading(false);
+      }
+    }
   }
 
   private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {

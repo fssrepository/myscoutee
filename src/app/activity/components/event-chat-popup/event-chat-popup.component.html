@@ -493,6 +493,7 @@
           <button
             type="button"
             class="chat-poll-vote-option"
+            data-motion="none"
             [class.is-selected]="selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id"
             (click)="selectPollOption(pollContext.message, pollContext.attachment, option, $event)"
           >
