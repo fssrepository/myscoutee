@@ -118,6 +118,10 @@ export class LocalAssetsRepository {
   }
 
   async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
+    return this.peekOwnedAssetDetailById(userId, assetId);
+  }
+
+  peekOwnedAssetDetailById(userId: string, assetId: string): AppDTOs.AssetDetailDTO | null {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {

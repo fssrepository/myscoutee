@@ -359,6 +359,7 @@ export interface SubEventResourceCardDTO {
   id: string;
   type: AppConstants.SubEventResourceFilter;
   sourceAssetId: string | null;
+  assetOwnerUserId?: string | null;
   title: string;
   subtitle: string;
   city: string;
@@ -454,6 +455,11 @@ export interface ActivitySubEventResourceStateDTO {
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
   fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
   resourceMetricsByType?: Partial<Record<AppConstants.AssetType, SubEventResourceMetricDTO>>;
+}
+
+export interface ActivitySubEventResourceScopeDTO {
+  viewerState: ActivitySubEventResourceStateDTO;
+  visibleStates: ActivitySubEventResourceStateDTO[];
 }
 
 export interface ActivitySubEventStageRuntimeStateRefDTO {

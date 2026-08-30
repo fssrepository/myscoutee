@@ -423,7 +423,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       supply.assetId,
       page,
       pageSize,
-      this.activeUser().id
+      supply.assetOwnerUserId
     );
     await this.usersService.warmCachedUsers(result.items.map(entry => entry.userId));
     return {

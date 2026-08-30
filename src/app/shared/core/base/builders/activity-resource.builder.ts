@@ -33,6 +33,10 @@ export class ActivityResourceBuilder {
     return `${ref.assetOwnerUserId}:${ref.ownerId}:${ref.subEventId}`;
   }
 
+  static scopeId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    return `${ref.ownerId}:${ref.subEventId}:${ref.assetOwnerUserId}`;
+  }
+
   static createEmptyState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
   ): AppDTOs.ActivitySubEventResourceStateDTO {
@@ -94,6 +98,37 @@ export class ActivityResourceBuilder {
     next.fallbackAssetCardsByType = this.cloneFallbackAssetCardsByType(next.fallbackAssetCardsByType);
     next.resourceMetricsByType = this.cloneResourceMetricsByType(next.resourceMetricsByType);
     return next;
+  }
+
+  static normalizeScope(
+    scope: AppDTOs.ActivitySubEventResourceScopeDTO | null | undefined,
+    viewerRef: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceScopeDTO {
+    const viewerState = this.normalizeState(scope?.viewerState, viewerRef)
+      ?? this.createEmptyState(viewerRef);
+    const visibleByRecordId = new Map<string, AppDTOs.ActivitySubEventResourceStateDTO>();
+    for (const source of scope?.visibleStates ?? []) {
+      const state = this.normalizeState(source);
+      if (
+        !state
+        || state.ownerId !== viewerRef.ownerId
+        || state.subEventId !== viewerRef.subEventId
+      ) {
+        continue;
+      }
+      visibleByRecordId.set(this.recordId(state), state);
+    }
+    if ((viewerState.assetAssignmentIds && Object.keys(viewerState.assetAssignmentIds).length > 0)
+      || (viewerState.assetSettingsByType && Object.keys(viewerState.assetSettingsByType).length > 0)
+      || Object.keys(viewerState.supplyContributionEntriesByAssetId ?? {}).length > 0) {
+      visibleByRecordId.set(this.recordId(viewerState), viewerState);
+    }
+    return {
+      viewerState: this.cloneState(viewerState) ?? this.createEmptyState(viewerRef),
+      visibleStates: [...visibleByRecordId.values()]
+        .sort((left, right) => left.assetOwnerUserId.localeCompare(right.assetOwnerUserId))
+        .map(state => this.cloneState(state) as AppDTOs.ActivitySubEventResourceStateDTO)
+    };
   }
 
   static cloneResourceMetricsByType(

@@ -40,6 +40,22 @@ export class LocalActivityResourcesRepository {
     return this.peekSubEventResourceRecord(ref);
   }
 
+  peekSubEventResourceRecords(ownerId: string, subEventId: string): ActivitySubEventResourceRecord[] {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId) {
+      return [];
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventResourceRecord => Boolean(record)
+        && record.ownerId === normalizedOwnerId
+        && record.subEventId === normalizedSubEventId
+        && !LocalActivityResourcesMapper.isDeleted(record))
+      .map(record => LocalActivityResourcesMapper.cloneRecord(record));
+  }
+
   async querySupplyContributionPage(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
     assetId: string,

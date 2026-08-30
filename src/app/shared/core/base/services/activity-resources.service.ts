@@ -77,6 +77,27 @@ export class ActivityResourcesService extends BaseRouteModeService {
     return state;
   }
 
+  async querySubEventResourceScope(
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    viewerUserId: string | null | undefined = this.activeAssetOwnerUserId()
+  ): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> {
+    const ref = this.normalizeRef(ownerId, subEventId, viewerUserId);
+    if (!ref) {
+      return null;
+    }
+    return this.activityResourcesService.querySubEventResourceScope(ref);
+  }
+
+  peekSubEventResourceScope(
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    viewerUserId: string | null | undefined = this.activeAssetOwnerUserId()
+  ): AppDTOs.ActivitySubEventResourceScopeDTO | null {
+    const ref = this.normalizeRef(ownerId, subEventId, viewerUserId);
+    return ref ? this.activityResourcesService.peekSubEventResourceScope(ref) : null;
+  }
+
   async markResourceTypeRead(
     ownerId: string | null | undefined,
     subEventId: string | null | undefined,

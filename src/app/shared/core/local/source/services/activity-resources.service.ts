@@ -37,6 +37,29 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return record ? this.toState(record) : null;
   }
 
+  async querySubEventResourceScope(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> {
+    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
+    return this.peekSubEventResourceScope(ref);
+  }
+
+  peekSubEventResourceScope(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceScopeDTO | null {
+    const viewerRef = LocalActivityResourcesMapper.normalizeRef(ref);
+    if (!viewerRef) {
+      return null;
+    }
+    const visibleStates = this.repository
+      .peekSubEventResourceRecords(viewerRef.ownerId, viewerRef.subEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state));
+    const viewerState = visibleStates.find(state => state.assetOwnerUserId === viewerRef.assetOwnerUserId)
+      ?? ActivityResourceBuilder.createEmptyState(viewerRef);
+    return ActivityResourceBuilder.normalizeScope({ viewerState, visibleStates }, viewerRef);
+  }
+
   async markResourceTypeRead(
     request: AppDTOs.ActivitySubEventResourceReadRequestDTO
   ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
@@ -238,5 +261,31 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
 
   private toState(record: ActivitySubEventResourceRecord): AppDTOs.ActivitySubEventResourceStateDTO | null {
     return LocalActivityResourcesMapper.toState(record);
+  }
+
+  private toVisibleState(record: ActivitySubEventResourceRecord): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const state = this.toState(record);
+    if (!state) {
+      return null;
+    }
+    const fallbackAssetCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+      state.fallbackAssetCardsByType
+    );
+    for (const type of AppConstants.ASSET_TYPES) {
+      const cardsById = new Map((fallbackAssetCardsByType[type] ?? []).map(card => [card.id, card] as const));
+      for (const assetId of state.assetAssignmentIds[type] ?? []) {
+        const detail = this.assetsRepository.peekOwnedAssetDetailById(state.assetOwnerUserId, assetId);
+        if (detail?.type === type) {
+          cardsById.set(detail.id, detail);
+        }
+      }
+      if (cardsById.size > 0) {
+        fallbackAssetCardsByType[type] = [...cardsById.values()];
+      }
+    }
+    return {
+      ...state,
+      fallbackAssetCardsByType
+    };
   }
 }

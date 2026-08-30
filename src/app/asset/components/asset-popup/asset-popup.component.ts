@@ -2011,6 +2011,7 @@ export class AssetPopupComponent {
     if (!normalizedState) {
       return;
     }
+    this.resourcePopupStore.upsertVisibleResourceState(normalizedState);
     const activeContext = this.resourcePopupStore.popupContextRef();
     if (
       activeContext
