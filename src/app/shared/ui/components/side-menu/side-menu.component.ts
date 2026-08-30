@@ -2053,6 +2053,12 @@ export class SideMenuComponent implements OnDestroy {
         this.userProfileStore.applyUserRealtimeSnapshot(userId, {
           ...nonNotificationSnapshot
         }, counterSyncToken);
+      } else if (this.activitiesStore.activitiesOpen()) {
+        this.activityStore.applyInactiveActivitiesCounterSnapshot(
+          counterSyncToken,
+          nonNotificationCounters,
+          this.activitiesStore.activitiesPrimaryFilter()
+        );
       }
       if (Number.isFinite(nextNotificationCount)) {
         this.notificationCenterStore.applyRealtimeUnreadCount(

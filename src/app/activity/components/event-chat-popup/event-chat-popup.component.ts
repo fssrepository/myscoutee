@@ -838,7 +838,15 @@ export class EventChatPopupComponent implements OnDestroy {
     const result = await this.chatsService.syncChatHeader(state.chatId, state.revision, signal);
     const current = this.session();
     const currentSessionKey = current ? `${current.item.id}:${current.openedAtIso}` : '';
-    if (!current || currentSessionKey !== state.sessionKey || !result.changed) {
+    if (!current || currentSessionKey !== state.sessionKey || signal?.aborted) {
+      return;
+    }
+    this.activityStore.signalUserChatCounterSnapshot(
+      this.activeUserId(),
+      result.chats,
+      result.chatCounters
+    );
+    if (!result.changed) {
       return;
     }
     const synchronizedChat: ChatDTO = {

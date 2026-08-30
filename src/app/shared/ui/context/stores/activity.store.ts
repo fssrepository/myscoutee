@@ -2,6 +2,7 @@ import { Injectable, signal, untracked } from '@angular/core';
 
 import {
   EventFeedbackDetailDto,
+  type ActivitiesPrimaryFilter,
   type ActivitiesEventScope,
   type EventCheckoutResultState,
   type ActivityCurrentUserMembershipStatus
@@ -380,6 +381,57 @@ export class ActivityStore {
       hosting: event.hosting,
       event
     });
+  }
+
+  signalUserChatCounterSnapshot(
+    userId: string,
+    chats: number | null | undefined,
+    counters: UserMenuCountersDto['chat']
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !Number.isFinite(chats) || !counters) {
+      return;
+    }
+    this.patchUserCounterOverrides(normalizedUserId, {
+      chats: normalizeCounterValue(chats),
+      chat: cloneChatCounters(counters)
+    });
+  }
+
+  signalUserRateCounterSnapshot(userId: string, game: number | null | undefined): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !Number.isFinite(game)) {
+      return;
+    }
+    this.patchUserCounterOverrides(normalizedUserId, {
+      game: normalizeCounterValue(game)
+    });
+  }
+
+  applyInactiveActivitiesCounterSnapshot(
+    token: ActivityCounterSyncToken,
+    counters: UserMenuCountersDto,
+    activePrimaryFilter: ActivitiesPrimaryFilter
+  ): boolean {
+    const patch: Partial<ActivityCounters> = {};
+    if (activePrimaryFilter !== 'rates') {
+      patch.game = normalizeCounterValue(counters.game);
+    }
+    if (activePrimaryFilter !== 'chats') {
+      patch.chats = normalizeCounterValue(counters.chats);
+      patch.chat = cloneChatCounters(counters.chat);
+    }
+    if (
+      activePrimaryFilter !== 'events'
+      && activePrimaryFilter !== 'hosting'
+      && activePrimaryFilter !== 'invitations'
+    ) {
+      patch.events = normalizeCounterValue(counters.events);
+      patch.invitations = normalizeCounterValue(counters.invitations);
+      patch.hosting = normalizeCounterValue(counters.hosting);
+      patch.event = cloneEventCounters(counters.event);
+    }
+    return this.applyRealtimeCounterOverrides(token, patch);
   }
 
   signalUserTicketBucketCount(

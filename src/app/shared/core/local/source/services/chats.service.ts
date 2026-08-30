@@ -51,13 +51,18 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const page = this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), query);
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE, signal);
+    const ownerUserId = this.resolveDemoActivityUserId(userId);
+    const page = this.chatsRepository.queryActivitiesChatPage(ownerUserId, query);
+    const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
     return {
       ...LocalChatThreadMapper.toDtoPage(page),
-      items: this.chatDtosWithMetrics(page.items)
+      items: this.chatDtosWithMetrics(page.items),
+      chats: this.countValue(activities?.chats),
+      chatCounters: this.normalizeChatCounters(activities?.chat)
     };
   }
 
@@ -87,6 +92,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       throw this.abortError();
     }
     const chat = this.localChatForActiveUser(chatId);
+    const ownerUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
     const revision = Math.max(1, Math.trunc(Number(chat?.revision) || 1));
     const changed = Boolean(chat) && revision !== Math.max(1, Math.trunc(Number(knownRevision) || 1));
     return {
@@ -96,7 +103,22 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       unread: Math.max(0, Math.trunc(Number(chat?.unread) || 0)),
       lastMessage: `${chat?.lastMessage ?? ''}`,
       lastSenderId: `${chat?.lastSenderId ?? ''}`.trim() || null,
-      dateIso: `${chat?.dateIso ?? ''}`.trim() || null
+      dateIso: `${chat?.dateIso ?? ''}`.trim() || null,
+      chats: this.countValue(activities?.chats),
+      chatCounters: this.normalizeChatCounters(activities?.chat)
+    };
+  }
+
+  private normalizeChatCounters(
+    counters: ContractTypes.UserChatCountersDto | null | undefined
+  ): ContractTypes.UserChatCountersDto {
+    return {
+      all: this.countValue(counters?.all),
+      event: this.countValue(counters?.event),
+      subEvent: this.countValue(counters?.subEvent),
+      group: this.countValue(counters?.group),
+      service: this.countValue(counters?.service),
+      appSupport: this.countValue(counters?.appSupport)
     };
   }
 

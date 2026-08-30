@@ -47,6 +47,7 @@ export interface ActivityRatePageResultDTO {
   total: number;
   nextCursor?: string | null;
   users?: UserContracts.UserDto[];
+  gameCounter?: number;
 }
 
 export interface UserRateSyncPayloadDTO {
@@ -169,7 +170,8 @@ export interface IEventsService {
 export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
   queryChatMessagesPage(
     chat: ChatContracts.ChatDTO,

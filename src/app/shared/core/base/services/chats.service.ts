@@ -288,13 +288,21 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
-  ): Promise<PageResult<ChatDTO>> {
-    const page = await this.chatsService.queryActivitiesChatPage(userId, query);
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
+  ): Promise<PageResult<ChatDTO, {
+    chats?: number;
+    chatCounters?: ContractTypes.UserChatCountersDto;
+  }>> {
+    const page = await this.chatsService.queryActivitiesChatPage(userId, query, signal);
     return {
       items: page.items,
       total: page.total,
-      nextCursor: page.nextCursor ?? null
+      nextCursor: page.nextCursor ?? null,
+      context: {
+        chats: page.chats,
+        chatCounters: page.chatCounters
+      }
     };
   }
 

@@ -266,7 +266,8 @@ export class HttpChatsService implements IChatsService {
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -310,11 +311,16 @@ export class HttpChatsService implements IChatsService {
     }
 
     try {
-      const response = await this.http.get<{
-        items?: HttpChatDto[] | null;
-        total?: number | null;
-        nextCursor?: string | null;
-      } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
+      const response = await this.requestWithAbort(
+        this.http.get<{
+          items?: HttpChatDto[] | null;
+          total?: number | null;
+          nextCursor?: string | null;
+          chats?: number | null;
+          chatCounters?: ContractTypes.UserChatCountersDto | null;
+        } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }),
+        signal
+      );
 
       const page = {
         items: this.deduplicateChatDTOs(
@@ -325,10 +331,15 @@ export class HttpChatsService implements IChatsService {
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
-          : null
+          : null,
+        chats: Math.max(0, Math.trunc(Number(response?.chats) || 0)),
+        chatCounters: this.normalizeChatCounters(response?.chatCounters)
       };
       return this.toActivitiesChatPageDTO(page);
-    } catch {
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
       return { items: [], total: 0, nextCursor: null };
     }
   }
@@ -347,7 +358,9 @@ export class HttpChatsService implements IChatsService {
         unread: 0,
         lastMessage: '',
         lastSenderId: null,
-        dateIso: null
+        dateIso: null,
+        chats: 0,
+        chatCounters: this.normalizeChatCounters(null)
       };
     }
     const params = this.activeUserParams().set(
@@ -368,7 +381,9 @@ export class HttpChatsService implements IChatsService {
       unread: Math.max(0, Math.trunc(Number(response?.unread) || 0)),
       lastMessage: `${response?.lastMessage ?? ''}`,
       lastSenderId: `${response?.lastSenderId ?? ''}`.trim() || null,
-      dateIso: `${response?.dateIso ?? ''}`.trim() || null
+      dateIso: `${response?.dateIso ?? ''}`.trim() || null,
+      chats: Math.max(0, Math.trunc(Number(response?.chats) || 0)),
+      chatCounters: this.normalizeChatCounters(response?.chatCounters)
     };
   }
 
@@ -834,11 +849,28 @@ export class HttpChatsService implements IChatsService {
     items: readonly ChatDTO[];
     total: number;
     nextCursor?: string | null;
+    chats?: number;
+    chatCounters?: ContractTypes.UserChatCountersDto;
   }): ActivitiesChatPageResultDTO {
     return {
       items: page.items.map(item => this.cloneChatDTO(item)),
       total: Math.max(0, Math.trunc(Number(page.total) || 0)),
-      nextCursor: page.nextCursor ?? null
+      nextCursor: page.nextCursor ?? null,
+      ...(Number.isFinite(page.chats) ? { chats: Math.max(0, Math.trunc(Number(page.chats))) } : {}),
+      ...(page.chatCounters ? { chatCounters: this.normalizeChatCounters(page.chatCounters) } : {})
+    };
+  }
+
+  private normalizeChatCounters(
+    counters: ContractTypes.UserChatCountersDto | null | undefined
+  ): ContractTypes.UserChatCountersDto {
+    return {
+      all: Math.max(0, Math.trunc(Number(counters?.all) || 0)),
+      event: Math.max(0, Math.trunc(Number(counters?.event) || 0)),
+      subEvent: Math.max(0, Math.trunc(Number(counters?.subEvent) || 0)),
+      group: Math.max(0, Math.trunc(Number(counters?.group) || 0)),
+      service: Math.max(0, Math.trunc(Number(counters?.service) || 0)),
+      appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0))
     };
   }
 
@@ -1481,6 +1513,10 @@ export class HttpChatsService implements IChatsService {
     const error = new Error('Request aborted.');
     error.name = 'AbortError';
     return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private withUserId(params: HttpParams, userId: string): HttpParams {

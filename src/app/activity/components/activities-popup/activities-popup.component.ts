@@ -87,8 +87,7 @@ import {
   type UiListConverter
 } from '../../../shared/ui';
 import {
-  UiPollCoordinator,
-  UiTaskScheduler
+  UiPollCoordinator
 } from '../../../shared/ui/scheduler';
 import {
   ActivityChatSingleRowConverter,
@@ -179,17 +178,6 @@ interface ActivityDateTimeRange {
   endIso: string;
 }
 
-interface ActivityChatListPollState {
-  scopeKey: string;
-  targets: Array<{
-    chatId: string;
-    ownerId: string | null;
-    channelType: ContractTypes.ChatChannelType | null;
-    revision: number;
-  }>;
-}
-
-
 type ActivitiesPopupMenuContext =
   | { menu: 'primary'; value: ContractTypes.ActivitiesPrimaryFilter }
   | { menu: 'event-scope'; value: ContractTypes.ActivitiesEventScope }
@@ -220,8 +208,7 @@ type ActivitiesPopupMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
-  private static readonly EVENT_ACTIVITY_POLL_INTERVAL_MS = 30000;
-  private static readonly ADMIN_SUPPORT_BOARD_POLL_INTERVAL_MS = 30000;
+  private static readonly ACTIVITY_LIST_POLL_INTERVAL_MS = 30000;
 
   // ── injected ──────────────────────────────────────────────────────────────
   protected readonly cdr = inject(ChangeDetectorRef);
@@ -339,7 +326,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastAppliedActivityRuntimeUpdatedMs = 0;
   private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
-  private activityChatListPollScopeKey: string | null = null;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
   protected get assetCards(): AppDTOs.AssetDTO[] {
@@ -498,13 +484,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<ActivityListItem, ActivitiesSmartListFilters>
     = (query, context) => from(this.loadActivitiesSmartListPage(query, context));
-  private readonly activityChatListPollScheduler = new UiTaskScheduler<ActivityChatListPollState>({
-    intervalMs: () => this.shouldPollActivityChatList() ? this.chatsService.pollIntervalMs() : 0,
-    state: () => this.activityChatListPollState(),
-    task: ({ state, signal }) => this.pollActivityChatList(state, signal),
-    pollCoordinator: this.pollCoordinator,
-    pollPriority: 'foreground'
-  });
   // ── Scroll / sticky ───────────────────────────────────────────────────────
   protected activitiesListScrollable  = true;
   protected activitiesStickyValue     = '';
@@ -884,19 +863,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const scopeKey = this.activityChatListPollScope();
-      if (scopeKey === this.activityChatListPollScopeKey) {
-        return;
-      }
-      this.activityChatListPollScopeKey = scopeKey || null;
-      if (scopeKey) {
-        this.activityChatListPollScheduler.restart();
-      } else {
-        this.activityChatListPollScheduler.stop({ abort: true });
-      }
-    });
-
-    effect(() => {
       if (this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant') {
         this.activitiesStore.setActivitiesSecondaryFilter('recent');
       }
@@ -1020,7 +986,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.activityChatListPollScheduler.destroy();
     this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
     this.clearActivitiesExplanationContext();
@@ -1074,101 +1039,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesSmartListPollIntervalMs(): number {
-    if (
-      this.activitiesStore.activitiesOpen()
-      && this.isEventActivitiesPrimaryFilter()
-      && !this.isCalendarLayoutView()
-      && !this.dialogStore.dialog()
-      && !this.activitiesStore.eventChatSession()
-    ) {
-      return ActivitiesPopupComponent.EVENT_ACTIVITY_POLL_INTERVAL_MS;
-    }
     return this.activitiesStore.activitiesOpen()
-      && this.isAdminServiceChatMode()
-      && this.activitiesPrimaryFilter === 'chats'
       && !this.isCalendarLayoutView()
       && !this.dialogStore.dialog()
       && !this.activitiesStore.eventChatSession()
-      ? ActivitiesPopupComponent.ADMIN_SUPPORT_BOARD_POLL_INTERVAL_MS
+      ? ActivitiesPopupComponent.ACTIVITY_LIST_POLL_INTERVAL_MS
       : 0;
-  }
-
-  private shouldPollActivityChatList(): boolean {
-    return this.activitiesStore.activitiesOpen()
-      && this.activitiesPrimaryFilter === 'chats'
-      && !this.isAdminServiceChatMode()
-      && !this.isCalendarLayoutView()
-      && !this.dialogStore.dialog()
-      && !this.activitiesStore.eventChatSession();
-  }
-
-  private activityChatListPollState(): ActivityChatListPollState {
-    if (!this.shouldPollActivityChatList()) {
-      return { scopeKey: '', targets: [] };
-    }
-    return {
-      scopeKey: this.activityChatListPollScope(),
-      targets: (this.activitiesSmartList?.itemsSnapshot() ?? [])
-        .filter((row): row is ActivityChatListItem => this.isActivityChatRow(row))
-        .map(row => ({
-          chatId: `${row.id ?? ''}`.trim(),
-          ownerId: `${row.ownerId ?? ''}`.trim() || null,
-          channelType: this.activityChatChannelTypeFromRow(row),
-          revision: Math.max(1, Math.trunc(Number(row.chatRevision) || 1))
-        }))
-        .filter(target => target.chatId.length > 0)
-    };
-  }
-
-  private async pollActivityChatList(state: ActivityChatListPollState, signal?: AbortSignal): Promise<void> {
-    if (!state.scopeKey || state.scopeKey !== this.activityChatListPollScope()) {
-      return;
-    }
-    for (const target of state.targets) {
-      if (signal?.aborted || state.scopeKey !== this.activityChatListPollScope()) {
-        return;
-      }
-      const result = await this.chatsService.syncChatHeader(target.chatId, target.revision, signal);
-      if (!result.changed || signal?.aborted || state.scopeKey !== this.activityChatListPollScope()) {
-        continue;
-      }
-      this.activitiesStore.emitEventChatRowPatch({
-        chatId: target.chatId,
-        ownerId: target.ownerId,
-        channelType: target.channelType,
-        unread: result.unread,
-        lastMessage: result.lastMessage,
-        lastSenderId: result.lastSenderId ?? null,
-        dateIso: result.dateIso ?? null,
-        ownerStatus: result.ownerStatus ?? null,
-        headerRevision: result.revision
-      });
-    }
-  }
-
-  private activityChatListPollScope(): string {
-    if (!this.shouldPollActivityChatList()) {
-      return '';
-    }
-    return [
-      this.activeUser.id,
-      this.activitiesChatContextFilter,
-      this.activitiesSecondaryFilter,
-      this.activitiesView
-    ].join(':');
-  }
-
-  private activityChatChannelTypeFromRow(row: ActivityChatListItem): ContractTypes.ChatChannelType | null {
-    const status = `${row.status ?? ''}`.trim() as ContractTypes.ChatChannelType;
-    return status === 'general'
-      || status === 'mainEvent'
-      || status === 'optionalSubEvent'
-      || status === 'groupSubEvent'
-      || status === 'serviceEvent'
-      || status === 'appSupport'
-      || status === 'supportCase'
-      ? status
-      : null;
   }
 
   private applyEventChatRowPatch(patch: EventChatRowPatch): void {
@@ -3976,6 +3852,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const page = await this.activitiesService.loadActivityRates(query, {
         signal: context?.signal
       });
+      if (
+        context?.signal?.aborted !== true
+        && this.activitiesPrimaryFilter === requestedPrimaryFilter
+        && Number.isFinite(page.context?.gameCounter)
+      ) {
+        this.activityStore.signalUserRateCounterSnapshot(this.activeUser.id, page.context?.gameCounter);
+      }
       return {
         items: this.activitiesSmartList?.convertItems(page.items, {
           rateUsers: page.context?.users ?? []
@@ -4015,6 +3898,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
       };
     }
     const page = await this.activitiesService.loadActivityChats(query, { signal: context?.signal });
+    if (
+      context?.signal?.aborted !== true
+      && this.activitiesPrimaryFilter === requestedPrimaryFilter
+      && Number.isFinite(page.context?.chats)
+      && page.context?.chatCounters
+    ) {
+      this.activityStore.signalUserChatCounterSnapshot(
+        this.activeUser.id,
+        page.context.chats,
+        page.context.chatCounters
+      );
+    }
     return {
       items: this.activitiesSmartList?.convertItems(page.items) ?? [],
       total: page.total,

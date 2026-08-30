@@ -1,6 +1,7 @@
 import type * as AppConstants from '../common/constants';
 import type { ActivityEventStatus } from './activity.interface';
 import type { SubEventDTO } from './event.interface';
+import type { UserChatCountersDto } from './user.interface';
 
 export const RANDOM_ROOM_WELCOME_MESSAGE =
   'Welcome! We matched you here by affinity and past interactions. Leave anytime. '
@@ -199,6 +200,8 @@ export interface ChatHeaderSyncResponseDTO {
   lastMessage: string;
   lastSenderId?: string | null;
   dateIso?: string | null;
+  chats: number;
+  chatCounters: UserChatCountersDto;
 }
 
 export interface ChatServiceEnsureInput {
@@ -216,6 +219,8 @@ export interface ActivitiesChatPageResultDTO {
   items: ChatDTO[];
   total: number;
   nextCursor?: string | null;
+  chats?: number;
+  chatCounters?: UserChatCountersDto;
 }
 
 export interface ChatMessagesPageResultDTO {
