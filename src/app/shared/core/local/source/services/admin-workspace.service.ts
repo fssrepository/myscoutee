@@ -103,10 +103,12 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     );
     const feedback = store?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
     if (resolved && !wasResolved && feedback?.userId) {
-      await this.moderationService.sendFeedbackMessage(
+      await this.moderationService.sendFeedbackResolvedNotification(
+        feedback.id,
         feedback.userId,
         admin,
-        this.feedbackResolvedMessage(feedback)
+        this.feedbackResolvedMessage(feedback),
+        feedback.subject
       );
     }
     return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);

@@ -1,4 +1,5 @@
 import type { ChatThreadRecord } from '../entity/chat.entity';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { AdminUserDto } from '../../../contracts/admin.interface';
@@ -6,8 +7,10 @@ import type { AdminModerationActionResult, AdminModerationUserPatch } from '../.
 import type { ChatMessageDto, SupportCaseStatus } from '../../../contracts/chat.interface';
 
 import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalUsersService } from './users.service';
 
 const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
 const ADMIN_MODERATION_BLOCK_ROUTE = '/admin/reports/block';
@@ -18,7 +21,9 @@ const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
 })
 export class LocalAdminModerationService extends LocalRouteDelayService {
   private readonly moderationRepository = inject(LocalAdminModerationRepository);
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
+  private readonly usersService = inject(LocalUsersService);
 
   async warnUser(
     userId: string,
@@ -133,20 +138,58 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     return await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, status);
   }
 
-  async sendFeedbackMessage(
+  async sendFeedbackResolvedNotification(
+    feedbackId: string,
     userId: string,
     admin: AdminUserDto | null | undefined,
-    message: string
+    message: string,
+    subject?: string | null
   ): Promise<void> {
+    const normalizedFeedbackId = feedbackId.trim();
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
+    if (!normalizedFeedbackId || !normalizedUserId) {
       return;
     }
     const resolvedAdmin = this.resolveAdmin(admin);
     if (!resolvedAdmin) {
       return;
     }
-    await this.appendFeedbackMessage(normalizedUserId, resolvedAdmin, message);
+    await this.notificationsRepository.whenReady();
+    const normalizedSubject = `${subject ?? ''}`.trim();
+    const nowIso = new Date().toISOString();
+    const notification: NotificationRecord = {
+      id: `feedback-resolved:${normalizedFeedbackId}:${normalizedUserId}:${Date.now()}`,
+      recipientUserId: normalizedUserId,
+      kind: 'feedback-resolved',
+      category: 'app-admin',
+      title: normalizedSubject || 'Feedback',
+      message,
+      createdAtIso: nowIso,
+      readAtIso: null,
+      senderUserId: resolvedAdmin.id,
+      senderName: resolvedAdmin.name,
+      senderAvatarUrl: resolvedAdmin.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'feedback',
+      sourceId: normalizedFeedbackId,
+      payload: {
+        feedbackId: normalizedFeedbackId,
+        ...(normalizedSubject ? { feedbackSubject: normalizedSubject } : {}),
+        senderUserId: resolvedAdmin.id,
+        senderName: resolvedAdmin.name,
+        notification_tone: 'success',
+        notification_status_badge_fallback: 'Resolved',
+        notification_status_badge_tone: 'success'
+      }
+    };
+    const appended = this.notificationsRepository.append([notification]);
+    if (appended.length > 0) {
+      this.usersService.syncRealtimeNotificationCount(
+        normalizedUserId,
+        this.notificationsRepository.unreadCount(normalizedUserId)
+      );
+      await this.notificationsRepository.flushToIndexedDb();
+    }
   }
 
   private async appendSupportMessage(
@@ -214,64 +257,6 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       supportChatUnread: 0,
       supportChatId: chatId
     };
-  }
-
-  private async appendFeedbackMessage(
-    userId: string,
-    admin: AdminUserDto,
-    text: string
-  ): Promise<void> {
-    const feedbackUser = this.supportSession.findUser(userId);
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const chatId = `c-feedback-admin-${userId}`;
-    const messageId = `m-feedback-admin-${Date.now()}`;
-    const adminAvatar = {
-      id: admin.id,
-      initials: admin.initials,
-      gender: admin.id.includes('noel') ? 'man' as const : 'woman' as const
-    };
-    const userChat: ChatThreadRecord = {
-      id: chatId,
-      avatar: admin.initials,
-      title: 'MyScoutee Feedback',
-      lastMessage: text,
-      lastSenderId: admin.id,
-      memberIds: [userId, admin.id],
-      unread: 1,
-      dateIso: nowIso,
-      channelType: 'appSupport',
-      ownerUserId: userId
-    };
-    const userMessage: ChatMessageDto = {
-      id: messageId,
-      sender: admin.name,
-      senderAvatar: adminAvatar,
-      text,
-      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      sentAtIso: nowIso,
-      mine: false,
-      readBy: []
-    };
-    const adminChat: ChatThreadRecord = {
-      id: chatId,
-      avatar: feedbackUser?.initials || 'U',
-      title: `MyScoutee Feedback · ${feedbackUser?.name || 'User'}`,
-      lastMessage: text,
-      lastSenderId: admin.id,
-      memberIds: [userId, admin.id],
-      unread: 0,
-      dateIso: nowIso,
-      channelType: 'appSupport',
-      ownerUserId: admin.id
-    };
-    const adminMessage: ChatMessageDto = {
-      ...userMessage,
-      mine: true,
-      readBy: []
-    };
-    await this.supportSession.upsertSupportChatMessage(userChat, userMessage, true);
-    await this.supportSession.upsertSupportChatMessage(adminChat, adminMessage, false);
   }
 
   private supportCase(status: SupportCaseStatus, admin: AdminUserDto, updatedAtIso: string): ChatThreadRecord['supportCase'] {

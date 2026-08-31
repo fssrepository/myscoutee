@@ -958,10 +958,14 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatHeaderHistoryMenuItem(): AppMenuItem<string, ChatMenuContext> {
+    const historyCount = this.supportHistoryCount();
     return {
       id: 'chat-header-history',
       icon: 'history',
       palette: 'default',
+      counter: historyCount > 0 ? { value: historyCount, max: 99 } : null,
+      counterTone: 'alert',
+      disabled: historyCount === 0,
       ariaLabel: 'Open user moderation history',
       context: { menu: 'chat-header', action: 'history' }
     };
@@ -1230,11 +1234,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private async openSupportUserHistory(event?: Event): Promise<void> {
     event?.preventDefault();
     event?.stopPropagation();
-    const chat = this.session()?.item;
-    const activeUserId = this.activeUserId();
-    const targetUserId = (chat?.memberIds ?? [])
-      .map(userId => `${userId ?? ''}`.trim())
-      .find(userId => userId && userId !== activeUserId) ?? '';
+    const targetUserId = this.supportHistoryTargetUserId();
     if (!targetUserId) {
       return;
     }
@@ -1267,9 +1267,30 @@ export class EventChatPopupComponent implements OnDestroy {
       this.adminMenuStore.openReports(user);
       return;
     }
-    this.dialogStore.openInfo('No moderation history is available for this user.', {
-      title: 'Unable to open history'
-    });
+  }
+
+  private supportHistoryCount(): number {
+    return Math.max(0, Math.trunc(Number(this.supportHistoryUser()?.reportCount) || 0));
+  }
+
+  private supportHistoryUser(): ContractTypes.AdminReportedUserDto | null {
+    const targetUserId = this.supportHistoryTargetUserId();
+    const dashboard = this.adminWorkspaceStore.dashboard();
+    if (!targetUserId || !dashboard) {
+      return null;
+    }
+    return [
+      ...(dashboard.reportedUsers ?? []),
+      ...(dashboard.blockedUsers ?? [])
+    ].find(candidate => candidate.userId === targetUserId) ?? null;
+  }
+
+  private supportHistoryTargetUserId(): string {
+    const chat = this.session()?.item;
+    const activeUserId = this.activeUserId();
+    return (chat?.memberIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .find(userId => userId && userId !== activeUserId) ?? '';
   }
 
   protected messageActionMenuIdFor(message: ContractTypes.ChatMessageDto): string {
