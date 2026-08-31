@@ -1198,6 +1198,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private doesChatMatchActiveContextFilter(chat: ChatDTO): boolean {
+    if (this.isAdminServiceChatMode()) {
+      return this.doesChatMatchActiveSupportCaseFilter(chat);
+    }
     if (this.activitiesChatContextFilter === 'all') {
       return this.doesChatMatchActiveSupportCaseFilter(chat);
     }
@@ -2217,7 +2220,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (this.doesChatMatchActiveContextFilter(nextChat)) {
         smartList.patchConvertedVisibleItem(nextChat);
       } else {
-        smartList.removeVisibleItemByIdentity(`chats:${nextChat.id}`);
+        smartList.removeVisibleItemByIdentity(
+          ActivityChatSingleRowConverter.smartListKeyForIdentity(
+            nextChat.supportCase ? 'supportCase' : nextChat.channelType,
+            nextChat.ownerId,
+            nextChat.id
+          )
+        );
       }
     }
 

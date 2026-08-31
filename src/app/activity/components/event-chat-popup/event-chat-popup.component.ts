@@ -90,7 +90,6 @@ import {
 import type * as AppDTOs from '../../../shared/core/contracts';
 import * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { NotificationCenterStore } from '../../../shared/ui/context/stores/notification-center.store';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -240,7 +239,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
-  private readonly notificationCenterStore = inject(NotificationCenterStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
   private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
@@ -4221,10 +4219,6 @@ export class EventChatPopupComponent implements OnDestroy {
     chat: ChatDTO,
     page: PageResult<ContractTypes.ChatMessageDto, ChatThreadPageContext>
   ): void {
-    const notificationUnread = page.context?.notificationUnread;
-    if (Number.isFinite(notificationUnread)) {
-      this.notificationCenterStore.syncUnreadCount(Number(notificationUnread));
-    }
     const read = page.context?.readReceipt ?? null;
     if (read) {
       this.applyOwnReadReceiptToActivityRow(chat, read);
