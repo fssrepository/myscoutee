@@ -915,6 +915,11 @@
     padding-bottom: 0;
   }
 
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns {
+    display: grid;
+    grid-template-columns: repeat(var(--smart-list-mobile-columns), minmax(0, 1fr));
+  }
+
   .smart-list--list.smart-list--horizontal {
     --smart-list-horizontal-item-basis: 100%;
     --smart-list-horizontal-end-inset: 0;

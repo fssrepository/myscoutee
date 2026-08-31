@@ -223,6 +223,7 @@ export class HttpUsersService implements UserService {
     try {
       type HttpLongPollResponse = {
         userId?: string;
+        profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
         offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
@@ -245,6 +246,7 @@ export class HttpUsersService implements UserService {
       }
       return {
         userId: response.userId ?? normalizedUserId,
+        profileStatus: response.profileStatus ?? null,
         counters: response.counters,
         impressions: response.impressions,
         offlineTicketSnapshot: response.offlineTicketSnapshot

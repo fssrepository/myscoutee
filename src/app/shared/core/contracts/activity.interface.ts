@@ -168,6 +168,7 @@ export interface IEventsService {
 }
 
 export interface IChatsService {
+  queryChatById(chatId: string): Promise<ChatContracts.ChatDTO | null>;
   queryActivitiesChatPage(
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>,

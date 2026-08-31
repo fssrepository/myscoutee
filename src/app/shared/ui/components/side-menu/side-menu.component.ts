@@ -2040,6 +2040,7 @@ export class SideMenuComponent implements OnDestroy {
       ) {
         return;
       }
+      this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {
         notifications: _notificationCount,

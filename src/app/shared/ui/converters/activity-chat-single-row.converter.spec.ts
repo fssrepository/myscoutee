@@ -24,6 +24,29 @@ describe('ActivityChatSingleRowConverter group context', () => {
 });
 
 describe('ActivityChatSingleRowConverter identity', () => {
+  it('keeps the unread badge on an admin support row', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'appSupport',
+      unread: 3,
+      supportCase: {
+        status: 'blocked',
+        assignee: { userId: 'admin-1', name: 'Ava Moderation', initials: 'AM' }
+      }
+    }, {
+      activeUser: {
+        id: 'admin-1',
+        name: 'Ava Moderation',
+        initials: 'AM',
+        gender: 'woman'
+      } as unknown as UserDto,
+      adminServiceMode: true
+    });
+
+    expect(row.unread).toBe(3);
+    expect(row.badgeCount).toBe(3);
+  });
+
   it('shows the draft lifecycle as a compact inline Under review badge on a sub-event chat', () => {
     const row = ActivityChatSingleRowConverter.convert({
       ...groupChat(),

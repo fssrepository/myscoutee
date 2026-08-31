@@ -186,6 +186,7 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
         blockedAtIso: user?.profileStatus === 'blocked' ? sortedReports[0]?.createdDate ?? store.seededAtIso : null,
         hasSupportChat: this.demoSupportChatExists(activeAdmin.id, userId),
         supportChatUnread: this.demoSupportChatUnread(activeAdmin.id, userId),
+        supportChatId: this.demoSupportChatId(activeAdmin.id, userId),
         reports: sortedReports
       };
     }).sort((first, second) =>
@@ -228,6 +229,7 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
         blockedAtIso: reports[0]?.createdDate ?? store.seededAtIso,
         hasSupportChat: this.demoSupportChatExists(adminId, user.id),
         supportChatUnread: this.demoSupportChatUnread(adminId, user.id),
+        supportChatId: this.demoSupportChatId(adminId, user.id),
         reports
       };
     }).sort((first, second) =>
@@ -294,6 +296,15 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     }
     const chat = this.supportSession.findChatById(normalizedAdminId, `c-support-admin-${normalizedUserId}`);
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
+  }
+
+  private demoSupportChatId(adminId: string, userId: string): string | null {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const normalizedAdminId = `${adminId ?? ''}`.trim();
+    if (!normalizedUserId || !normalizedAdminId) {
+      return null;
+    }
+    return this.supportSession.findChatById(normalizedAdminId, `c-support-admin-${normalizedUserId}`)?.id ?? null;
   }
 
   private demoReviewCounts(store: AdminModerationStore): AdminReviewCountsDto {

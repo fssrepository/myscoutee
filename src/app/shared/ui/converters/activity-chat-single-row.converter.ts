@@ -77,13 +77,13 @@ export class ActivityChatSingleRowConverter {
       status: supportStatus ?? channelType,
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
       distanceMetersExact,
-      badgeCount: showSupportControls ? 0 : unread,
+      badgeCount: unread,
       sortScore: unread * 10 + memberCount,
       title: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
       subtitle: groupChannelLabel || dto.title,
       detail: groupParentLabel || lastMessage,
       metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
-      unread: showSupportControls ? 0 : unread,
+      unread,
       avatarUrl: systemSender ? systemAvatarUrl : this.personAvatarUrl(lastSender),
       avatarInitials: systemSender
         ? null

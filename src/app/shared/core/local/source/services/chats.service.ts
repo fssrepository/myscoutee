@@ -51,6 +51,13 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
 
+  async queryChatById(chatId: string): Promise<ChatDTO | null> {
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    const userId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const record = this.chatsRepository.queryChatItemById(userId, chatId);
+    return record ? LocalChatThreadMapper.toDto(record) : null;
+  }
+
   async queryActivitiesChatPage(
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>,

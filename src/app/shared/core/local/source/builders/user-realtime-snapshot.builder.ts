@@ -78,6 +78,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       sourceUser: user,
       snapshot: {
         ...state.snapshot,
+        profileStatus: user.profileStatus,
         counters: this.rebaseCounters(state.snapshot.counters, previousBase, nextBase)
       }
     };
@@ -146,6 +147,7 @@ export class LocalUserRealtimeSnapshotBuilder {
     const activities = user.activities ?? {};
     return {
       userId: user.id,
+      profileStatus: user.profileStatus,
       counters: {
         game: activities.game,
         chats: activities.chats,

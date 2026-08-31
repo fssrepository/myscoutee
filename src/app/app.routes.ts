@@ -135,7 +135,6 @@ const adminAreaGuard: CanActivateFn = async (_route, state) => {
     if (userId && (userId === storedAdminId || userId.startsWith('admin-demo-'))) {
       return true;
     }
-    return entryRedirect(router, state.url);
   }
 
   const user = await usersService
@@ -143,6 +142,12 @@ const adminAreaGuard: CanActivateFn = async (_route, state) => {
     .catch(() => null);
   if (isAdminUser(user)) {
     return true;
+  }
+  if (isOperatorUser(user)) {
+    return router.createUrlTree(['/operator']);
+  }
+  if (user) {
+    return router.createUrlTree(['/game']);
   }
   return entryRedirect(router, state.url);
 };

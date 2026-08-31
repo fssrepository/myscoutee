@@ -211,6 +211,7 @@ export interface UserRealtimeCountersDto extends UserMenuCountersDto {
 
 export interface UserRealtimeLongPollResponseDto {
   userId: string;
+  profileStatus?: UserDto['profileStatus'] | null;
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;
   offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;

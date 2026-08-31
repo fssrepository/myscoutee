@@ -179,6 +179,7 @@ interface HttpChatMessagesPageResponseDto {
   total?: number | null;
   nextCursor?: string | null;
   read?: HttpChatReadReceiptDto | null;
+  notificationUnread?: number | null;
 }
 
 interface HttpChatMemberDto {
@@ -266,6 +267,25 @@ export class HttpChatsService implements IChatsService {
   private socketReconnectAttempt = 0;
   private shouldEmitReconnectEvent = false;
   private socketMessageSequence = 0;
+
+  async queryChatById(chatId: string): Promise<ChatDTO | null> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const userId = this.activeUserId();
+    if (!normalizedChatId || !userId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<HttpChatDto | null>(
+          `${this.apiBaseUrl}/activities/chats/by-id/${encodeURIComponent(normalizedChatId)}`,
+          { params: this.withUserId(new HttpParams(), userId) }
+        )
+        .toPromise();
+      return response ? this.cloneChatDTO(this.mapChatDTO(response, userId)) : null;
+    } catch {
+      return null;
+    }
+  }
 
   async queryActivitiesChatPage(
     userId: string,
@@ -429,10 +449,13 @@ export class HttpChatsService implements IChatsService {
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
           : null,
-        readReceipt
+        readReceipt,
+        notificationUnread: Number.isFinite(response?.notificationUnread)
+          ? Math.max(0, Math.trunc(Number(response?.notificationUnread)))
+          : null
       };
     } catch {
-      return { items: [], total: 0, nextCursor: null, readReceipt: null };
+      return { items: [], total: 0, nextCursor: null, readReceipt: null, notificationUnread: null };
     }
   }
 
@@ -1842,5 +1865,4 @@ export class HttpChatsService implements IChatsService {
     }
     return false;
   }
-
 }

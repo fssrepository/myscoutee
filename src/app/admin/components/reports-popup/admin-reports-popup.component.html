@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'reports') {
-  <app-popup [model]="reportsPopupModel()">
+  <app-popup [model]="reportsPopupModel()" [zIndex]="2470">
       <div class="admin-list-only-body">
         <app-smart-list
           #reportsSmartList

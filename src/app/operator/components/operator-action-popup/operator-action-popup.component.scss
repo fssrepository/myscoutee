@@ -197,9 +197,13 @@
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(140px, 0.85fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.58rem;
+}
+
+.operator-action-popup__branding-identity > .operator-action-popup__field {
+  flex: 1 1 180px;
 }
 
 .operator-action-popup__branding-theme {
@@ -1673,7 +1677,7 @@
   }
 
   .operator-action-popup__branding-identity {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
   }
 
   .operator-action-popup__social-link-fields {

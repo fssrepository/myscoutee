@@ -32,6 +32,7 @@ import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
+  ChatsService,
   ShareTokensService,
   type AdminDashboardDto,
   type AdminModerationActionResult,
@@ -160,6 +161,7 @@ export class AdminReportsPopupComponent {
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly moderationData = inject(AdminModerationService);
+  private readonly chatsService = inject(ChatsService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly location = inject(Location);
@@ -246,6 +248,7 @@ export class AdminReportsPopupComponent {
     groupBy: item => AppUtils.activityGroupLabel(item.row, 'day', APP_STATIC_DATA.activityGroupLabels),
     listLayout: 'card-grid',
     desktopColumns: 4,
+    mobileColumns: 2,
     snapMode: 'none',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
@@ -264,9 +267,10 @@ export class AdminReportsPopupComponent {
   ) => from(this.loadBlockedUsersPage(query));
 
   protected reportsPopupModel(): PopupModel<AdminReviewStatusMenuContext> {
+    const selectedUser = this.admin.selectedReportedUser();
     return {
-      title: 'reported.users',
-      subtitle: 'only.users.with.moderation.reports.are.visible.here',
+      title: selectedUser ? 'history' : 'reported.users',
+      subtitle: selectedUser?.name ?? 'only.users.with.moderation.reports.are.visible.here',
       ariaLabel: 'reported.users',
       closeAriaLabel: 'close',
       size: 'wide',
@@ -280,7 +284,9 @@ export class AdminReportsPopupComponent {
           label: 'blocked.users',
           ariaLabel: 'open.blocked.users',
           palette: 'danger',
-          counter: this.blockedUsersCount(),
+          counter: this.blockedUsersCount() > 0
+            ? { value: this.blockedUsersCount(), max: 9 }
+            : null,
           disabled: this.blockedUsersCount() === 0,
           compactOnMobile: true
         }
@@ -561,8 +567,8 @@ export class AdminReportsPopupComponent {
       title: `${options.title ?? this.memberCardTitle(user)}`.trim() || 'Member',
       subtitle: this.memberDescription(user),
       imageUrl: this.memberImageUrl(user) || null,
-      aspectRatio: options.compact ? '3 / 4' : null,
-      frame: options.compact ? 'compact' : 'fluid',
+      aspectRatio: '3 / 4',
+      frame: options.compact ? 'compact' : undefined,
       mediaFit: 'contain',
       placeholderIcon: blocked ? 'person_off' : 'person',
       placeholderLabel: user.initials,
@@ -651,7 +657,7 @@ export class AdminReportsPopupComponent {
     event?.stopPropagation();
     this.closeBlockedUsers();
     this.closeReportDetails();
-    this.openBlockedUserChat(user);
+    void this.openBlockedUserChat(user);
   }
 
   protected unblockUser(user: AdminReportedUserDto, event?: Event): void {
@@ -1080,19 +1086,23 @@ export class AdminReportsPopupComponent {
     if (!this.blockedUsersOpen) {
       return;
     }
-    const user = this.resolveDashboardReportedUser(userId);
-    if (!user) {
+    const normalizedUserId = userId.trim();
+    const blockedUser = (this.workspace.dashboard()?.blockedUsers ?? [])
+      .find(user => user.userId === normalizedUserId) ?? null;
+    if (!blockedUser) {
+      this.blockedUsersSmartList?.removeVisibleItemByIdentity(normalizedUserId, { totalDelta: -1 });
       return;
     }
-    const item = this.buildBlockedUserListItem(user);
+    const item = this.buildBlockedUserListItem(blockedUser);
     const removed = this.blockedUsersSmartList?.removeVisibleItemByIdentity(item.id) ?? false;
     if (removed) {
       this.blockedUsersSmartList?.reinsertVisibleItem(item, { loadedRange: 'any' });
     }
   }
 
-  private openBlockedUserChat(user: AdminReportedUserDto): void {
-    const chat = this.buildAdminSupportChat(user);
+  private async openBlockedUserChat(user: AdminReportedUserDto): Promise<void> {
+    const chatId = `${user.supportChatId ?? ''}`.trim();
+    const chat = chatId ? await this.chatsService.queryChatById(chatId) : null;
     if (!chat) {
       return;
     }
@@ -1103,32 +1113,18 @@ export class AdminReportsPopupComponent {
     );
   }
 
-  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {
-    const admin = this.userProfileStore.activeAdminUser();
-    if (!admin) {
-      return null;
-    }
-    return {
-      id: `c-support-admin-${user.userId}`,
-      avatar: user.initials || 'U',
-      title: this.i18nText(
-        'myscoutee.support.user.title',
-        { user: user.name }
-      ),
-      lastMessage: user.profileStatus === 'blocked'
-        ? this.i18nText('moderation.account.blocked.message')
-        : this.i18nText('myscoutee.support.conversation'),
-      lastSenderId: admin.id,
-      memberIds: [user.userId, admin.id],
-      unread: this.supportChatUnread(user),
-      dateIso: user.lastReportedAtIso || new Date().toISOString(),
-      channelType: 'appSupport',
-      ownerUserId: admin.id
-    };
-  }
-
   private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
-    const rows = this.reportRowsForUsers(await this.loadReportedUsers(query.filters?.status ?? this.reportStatusFilter));
+    const status = query.filters?.status ?? this.reportStatusFilter;
+    const selectedUser = this.admin.selectedReportedUser();
+    const users = selectedUser
+      ? [{
+          ...selectedUser,
+          reports: selectedUser.reports.filter(report =>
+            status === 'resolved' ? this.isReportResolved(report) : !this.isReportResolved(report)
+          )
+        }]
+      : await this.loadReportedUsers(status);
+    const rows = this.reportRowsForUsers(users);
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
