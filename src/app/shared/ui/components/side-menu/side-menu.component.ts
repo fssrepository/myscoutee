@@ -462,7 +462,7 @@ export class SideMenuComponent implements OnDestroy {
       ? (
         adminReviewCounts.reports +
         adminReviewCounts.feedback +
-        (mergedActivities.chat?.supportCases.pending ?? 0) +
+        this.adminSupportCaseMenuCount(mergedActivities.chat) +
         mergedActivities.adminJobs +
         mergedActivities.adminMetrics
       )
@@ -643,11 +643,21 @@ export class SideMenuComponent implements OnDestroy {
     return {
       adminReports: reviewCounts.reports,
       adminFeedback: reviewCounts.feedback,
-      adminChat: user.activities.chat?.supportCases.pending ?? 0,
+      adminChat: this.adminSupportCaseMenuCount(user.activities.chat),
       adminJobs: user.activities.adminJobs,
       adminMetrics: user.activities.adminMetrics
     };
   });
+
+  private adminSupportCaseMenuCount(chat: ActivityCounters['chat']): number {
+    const counters = chat?.supportCases;
+    const count = (value: unknown): number => Math.max(0, Math.trunc(Number(value) || 0));
+    return count(counters?.pending)
+      + count(counters?.warned)
+      + count(counters?.picked)
+      + count(counters?.blocked);
+  }
+
   protected readonly navigatorMenuModel = computed<AppMenuModel<NavigatorMenuShortcutId>>(() => {
     const user = this.menuUser();
     if (!user) {
