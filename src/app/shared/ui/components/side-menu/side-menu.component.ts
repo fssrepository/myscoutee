@@ -127,6 +127,19 @@ interface SideMenuUiState {
   open: boolean;
 }
 
+interface AdminNavigatorBadgeActivities {
+  chat?: {
+    supportCases?: {
+      pending?: number | null;
+      warned?: number | null;
+      picked?: number | null;
+      blocked?: number | null;
+    } | null;
+  } | null;
+  adminJobs: number;
+  adminMetrics: number;
+}
+
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
 type NavigatorOperatorCommunityMenuItemId = 'operator-community';
@@ -457,15 +470,8 @@ export class SideMenuComponent implements OnDestroy {
     };
     const impressionChangeFlags = this.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveSideMenuPresentation('trait', activeUser.traitLabel ?? '');
-    const adminReviewCounts = this.adminWorkspaceStore.menuReviewCounts();
     const totalBadgeCount = this.userProfileStore.isAdminUserProfile(activeUser)
-      ? (
-        adminReviewCounts.reports +
-        adminReviewCounts.feedback +
-        this.adminSupportCaseMenuCount(mergedActivities.chat) +
-        mergedActivities.adminJobs +
-        mergedActivities.adminMetrics
-      )
+      ? this.adminNavigatorBadgeCount(mergedActivities)
       : (
         (impressionChangeFlags.host ? 1 : 0) +
         (impressionChangeFlags.member ? 1 : 0) +
@@ -649,13 +655,24 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
 
-  private adminSupportCaseMenuCount(chat: ActivityCounters['chat']): number {
+  private adminSupportCaseMenuCount(chat: AdminNavigatorBadgeActivities['chat']): number {
     const counters = chat?.supportCases;
     const count = (value: unknown): number => Math.max(0, Math.trunc(Number(value) || 0));
     return count(counters?.pending)
       + count(counters?.warned)
       + count(counters?.picked)
       + count(counters?.blocked);
+  }
+
+  private adminNavigatorBadgeCount(
+    activities: AdminNavigatorBadgeActivities
+  ): number {
+    const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
+    return reviewCounts.reports
+      + reviewCounts.feedback
+      + this.adminSupportCaseMenuCount(activities.chat)
+      + activities.adminJobs
+      + activities.adminMetrics;
   }
 
   protected readonly navigatorMenuModel = computed<AppMenuModel<NavigatorMenuShortcutId>>(() => {
@@ -2128,13 +2145,12 @@ export class SideMenuComponent implements OnDestroy {
 
   private resolveUserBadgeCount(user: UserDto): number {
     if (this.userProfileStore.isAdminUserProfile(user)) {
-      return (
-        this.resolveActivityBadge(user, 'game') +
-        this.resolveActivityBadge(user, 'chats') +
-        this.resolveActivityBadge(user, 'feedback') +
-        this.resolveActivityBadge(user, 'adminJobs') +
-        this.resolveActivityBadge(user, 'adminMetrics')
-      );
+      const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
+      return this.adminNavigatorBadgeCount({
+        chat: activityOverrides.chat ?? user.activities?.chat,
+        adminJobs: this.resolveActivityBadge(user, 'adminJobs'),
+        adminMetrics: this.resolveActivityBadge(user, 'adminMetrics')
+      });
     }
     const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
     return (
