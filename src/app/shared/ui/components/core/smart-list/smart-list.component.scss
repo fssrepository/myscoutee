@@ -918,6 +918,9 @@
   .smart-list--list.smart-list--card-grid.smart-list--mobile-columns {
     display: grid;
     grid-template-columns: repeat(var(--smart-list-mobile-columns), minmax(0, 1fr));
+    align-content: start;
+    gap: 0.45rem;
+    padding-bottom: 0.6rem;
   }
 
   .smart-list--list.smart-list--horizontal {
