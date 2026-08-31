@@ -133,6 +133,22 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     return await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, status);
   }
 
+  async sendFeedbackMessage(
+    userId: string,
+    admin: AdminUserDto | null | undefined,
+    message: string
+  ): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return;
+    }
+    await this.appendFeedbackMessage(normalizedUserId, resolvedAdmin, message);
+  }
+
   private async appendSupportMessage(
     userId: string,
     admin: AdminUserDto,
@@ -198,6 +214,64 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       supportChatUnread: 0,
       supportChatId: chatId
     };
+  }
+
+  private async appendFeedbackMessage(
+    userId: string,
+    admin: AdminUserDto,
+    text: string
+  ): Promise<void> {
+    const feedbackUser = this.supportSession.findUser(userId);
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const chatId = `c-feedback-admin-${userId}`;
+    const messageId = `m-feedback-admin-${Date.now()}`;
+    const adminAvatar = {
+      id: admin.id,
+      initials: admin.initials,
+      gender: admin.id.includes('noel') ? 'man' as const : 'woman' as const
+    };
+    const userChat: ChatThreadRecord = {
+      id: chatId,
+      avatar: admin.initials,
+      title: 'MyScoutee Feedback',
+      lastMessage: text,
+      lastSenderId: admin.id,
+      memberIds: [userId, admin.id],
+      unread: 1,
+      dateIso: nowIso,
+      channelType: 'appSupport',
+      ownerUserId: userId
+    };
+    const userMessage: ChatMessageDto = {
+      id: messageId,
+      sender: admin.name,
+      senderAvatar: adminAvatar,
+      text,
+      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      sentAtIso: nowIso,
+      mine: false,
+      readBy: []
+    };
+    const adminChat: ChatThreadRecord = {
+      id: chatId,
+      avatar: feedbackUser?.initials || 'U',
+      title: `MyScoutee Feedback · ${feedbackUser?.name || 'User'}`,
+      lastMessage: text,
+      lastSenderId: admin.id,
+      memberIds: [userId, admin.id],
+      unread: 0,
+      dateIso: nowIso,
+      channelType: 'appSupport',
+      ownerUserId: admin.id
+    };
+    const adminMessage: ChatMessageDto = {
+      ...userMessage,
+      mine: true,
+      readBy: []
+    };
+    await this.supportSession.upsertSupportChatMessage(userChat, userMessage, true);
+    await this.supportSession.upsertSupportChatMessage(adminChat, adminMessage, false);
   }
 
   private supportCase(status: SupportCaseStatus, admin: AdminUserDto, updatedAtIso: string): ChatThreadRecord['supportCase'] {

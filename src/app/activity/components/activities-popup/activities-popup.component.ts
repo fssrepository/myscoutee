@@ -2112,7 +2112,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isAdminServiceChatMode()) {
       return true;
     }
-    const normalized = this.normalizeSupportCaseFilter(this.activitiesSupportCaseFilter);
+    const normalized = this.normalizeSupportCaseFilter(this.activitiesStore.activitiesSupportCaseFilter());
     return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized;
   }
 
@@ -2134,11 +2134,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
       confirmTone: config.tone,
       failureMessage: this.i18n('activities.support.case.error.update'),
       onConfirm: async () => {
+        const previousStatus = chat.supportCase?.status;
         const updated = await this.chatsService.updateSupportCase(chat, action);
         if (!updated) {
           throw new Error('The support case could not be updated.');
         }
-        this.applySupportCaseUpdate(updated);
+        this.applySupportCaseUpdate(updated, previousStatus);
       }
     });
   }
@@ -2199,16 +2200,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.i18nService.translate(key);
   }
 
-  private applySupportCaseUpdate(chat: ChatDTO): void {
+  private applySupportCaseUpdate(
+    chat: ChatDTO,
+    previousStatus: ContractTypes.SupportCaseStatus | null | undefined
+  ): void {
     const nextChat = this.cloneChatRecord(chat);
 
     const smartList = this.activitiesSmartList;
-    const previousChat = this.chatRecordFromSourceItem(
-      smartList?.sourceItemSnapshot(`chats:${nextChat.id}`)
-    );
     this.activityStore.signalUserSupportCaseStatusTransition(
       this.activeUser.id,
-      previousChat?.supportCase?.status,
+      previousStatus,
       nextChat.supportCase?.status,
       this.activeUser.activities?.chat
     );
