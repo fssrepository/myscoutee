@@ -2072,14 +2072,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
     const normalized = this.normalizeSupportCaseFilter(filter);
-    const smartList = this.activitiesSmartList;
-    const supportCases = (smartList?.itemsSnapshot() ?? [])
-      .map(row => this.chatRecordFromSourceItem(smartList?.sourceItemSnapshot(this.activityRowIdentity(row))))
-      .filter((chat): chat is ChatDTO => Boolean(chat?.supportCase));
-    if (normalized === 'all') {
-      return supportCases.length;
-    }
-    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized).length;
+    const activeUser = this.userProfileStore.activeUserProfile();
+    const supportCases = this.activityStore.getUserCounterOverrides(this.activeUser.id).chat?.supportCases
+      ?? activeUser?.activities?.chat?.supportCases;
+    return this.normalizeBadgeCounter(supportCases?.[normalized]);
   }
 
   protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
@@ -2207,6 +2203,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const nextChat = this.cloneChatRecord(chat);
 
     const smartList = this.activitiesSmartList;
+    const previousChat = this.chatRecordFromSourceItem(
+      smartList?.sourceItemSnapshot(`chats:${nextChat.id}`)
+    );
+    this.activityStore.signalUserSupportCaseStatusTransition(
+      this.activeUser.id,
+      previousChat?.supportCase?.status,
+      nextChat.supportCase?.status,
+      this.activeUser.activities?.chat
+    );
     if (smartList && this.activitiesPrimaryFilter === 'chats' && !this.isCalendarLayoutView()) {
       if (this.doesChatMatchActiveContextFilter(nextChat)) {
         smartList.patchConvertedVisibleItem(nextChat);

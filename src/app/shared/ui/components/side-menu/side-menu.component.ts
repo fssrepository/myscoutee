@@ -41,6 +41,9 @@ import {
   ProfileHeaderCardConverter
 } from '../../converters';
 import {
+  cloneSupportCaseCounters
+} from '../../context/stores/app-context-store.utils';
+import {
   AppUtils
 } from '../../../app-utils';
 import {
@@ -67,6 +70,7 @@ import {
   I18nService,
   PrivacyPolicyService,
   SessionService,
+  ChatsService,
   TermsPolicyService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
@@ -92,7 +96,6 @@ import {
 import {
   resolveSideMenuPresentation
 } from './side-menu-presenters';
-import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import {
   DialogStore
 } from '../../context/stores/dialog.store';
@@ -220,6 +223,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
+  private readonly chatsService = inject(ChatsService);
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   private readonly popupPresenceStore = inject(PopupPresenceStore);
@@ -443,7 +447,10 @@ export class SideMenuComponent implements OnDestroy {
         subEvent: activityOverrides.chat?.subEvent ?? activeUser.activities?.chat?.subEvent ?? 0,
         group: activityOverrides.chat?.group ?? activeUser.activities?.chat?.group ?? 0,
         service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
-        appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0
+        appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0,
+        supportCases: cloneSupportCaseCounters(
+          activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases
+        )
       },
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
@@ -455,7 +462,7 @@ export class SideMenuComponent implements OnDestroy {
       ? (
         adminReviewCounts.reports +
         adminReviewCounts.feedback +
-        (mergedActivities.chat?.appSupport ?? 0) +
+        (mergedActivities.chat?.supportCases.pending ?? 0) +
         mergedActivities.adminJobs +
         mergedActivities.adminMetrics
       )
@@ -636,7 +643,7 @@ export class SideMenuComponent implements OnDestroy {
     return {
       adminReports: reviewCounts.reports,
       adminFeedback: reviewCounts.feedback,
-      adminChat: user.activities.chat?.appSupport ?? 0,
+      adminChat: user.activities.chat?.supportCases.pending ?? 0,
       adminJobs: user.activities.adminJobs,
       adminMetrics: user.activities.adminMetrics
     };
@@ -2192,27 +2199,24 @@ export class SideMenuComponent implements OnDestroy {
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
-  private openBlockedUserSupportChat(): void {
+  private async openBlockedUserSupportChat(): Promise<void> {
     const user = this.menuUser();
     if (!user || !this.runtimeStore.isOnline()) {
       return;
     }
     const activeUserId = user.id.trim();
-    const adminUserId = 'myscoutee-admin';
-    const chat: ChatDTO & { ownerUserId?: string } = {
-      id: `c-support-blocked-${activeUserId}`,
-      avatar: 'MS',
-      title: this.i18n.translate('myscoutee.support'),
-      lastMessage: this.i18n.translate(
-        'myscoutee.support.blocked.chat.message'
-      ),
-      lastSenderId: adminUserId,
-      memberIds: [activeUserId, adminUserId],
-      unread: 1,
-      dateIso: new Date().toISOString(),
-      channelType: 'appSupport',
-      ownerUserId: activeUserId
-    };
+    if (!activeUserId) {
+      return;
+    }
+    const chat = await this.chatsService
+      .queryChatById(`c-support-admin-${activeUserId}`)
+      .catch(() => null);
+    if (!chat) {
+      this.dialogStore.openInfo('The support chat could not be found. Please contact MyScoutee support.', {
+        title: 'Unable to open support chat'
+      });
+      return;
+    }
     this.activitiesStore.openActivities('chats');
     this.activitiesStore.openEventChat(
       eventChatPopupRequestFromChat(chat),

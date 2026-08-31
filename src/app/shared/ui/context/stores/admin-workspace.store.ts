@@ -48,10 +48,8 @@ export class AdminWorkspaceStore {
   readonly menuReviewCounts = computed(() => {
     const counts = this.reviewCounts();
     return {
-      reports: this.nonNegativeInteger(counts?.reportsUnresolved)
-        + this.nonNegativeInteger(counts?.reportsResolved),
+      reports: this.nonNegativeInteger(counts?.reportsUnresolved),
       feedback: this.nonNegativeInteger(counts?.feedbackUnresolved)
-        + this.nonNegativeInteger(counts?.feedbackResolved)
     };
   });
   readonly busy = this.busyRef.asReadonly();
@@ -333,7 +331,15 @@ export class AdminWorkspaceStore {
         subEvent: this.nonNegativeInteger(user.activities.chat?.subEvent),
         group: this.nonNegativeInteger(user.activities.chat?.group),
         service: this.nonNegativeInteger(user.activities.chat?.service),
-        appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport)
+        appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport),
+        supportCases: {
+          pending: this.nonNegativeInteger(user.activities.chat?.supportCases?.pending),
+          warned: this.nonNegativeInteger(user.activities.chat?.supportCases?.warned),
+          picked: this.nonNegativeInteger(user.activities.chat?.supportCases?.picked),
+          solved: this.nonNegativeInteger(user.activities.chat?.supportCases?.solved),
+          blocked: this.nonNegativeInteger(user.activities.chat?.supportCases?.blocked),
+          all: this.nonNegativeInteger(user.activities.chat?.supportCases?.all)
+        }
       },
       events: dashboard.reportedUsers.length,
       hosting: 0,

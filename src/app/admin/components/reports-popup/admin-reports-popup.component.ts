@@ -376,7 +376,7 @@ export class AdminReportsPopupComponent {
               icon: this.reviewStatusIcon(this.reportStatusFilter),
               palette: this.reviewStatusPalette(this.reportStatusFilter),
               counter: this.reportStatusCount(this.reportStatusFilter),
-              counterTone: this.reportStatusFilter === 'unresolved' ? 'alert' : 'default',
+              counterTone: this.reportStatusFilter === 'unresolved' ? 'alert' : 'success',
               ariaLabel: 'admin.reports.review.status.filter',
               items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
                 id: `review-status:${status}`,
@@ -387,7 +387,7 @@ export class AdminReportsPopupComponent {
                 surface: 'tinted',
                 checked: this.reportStatusFilter === status,
                 counter: this.reportStatusCount(status),
-                counterTone: status === 'unresolved' ? 'alert' : 'default',
+                counterTone: status === 'unresolved' ? 'alert' : 'success',
                 context: { status }
               }))
             }

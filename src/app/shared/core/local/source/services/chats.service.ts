@@ -129,7 +129,15 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       subEvent: this.countValue(counters?.subEvent),
       group: this.countValue(counters?.group),
       service: this.countValue(counters?.service),
-      appSupport: this.countValue(counters?.appSupport)
+      appSupport: this.countValue(counters?.appSupport),
+      supportCases: {
+        pending: this.countValue(counters?.supportCases?.pending),
+        warned: this.countValue(counters?.supportCases?.warned),
+        picked: this.countValue(counters?.supportCases?.picked),
+        solved: this.countValue(counters?.supportCases?.solved),
+        blocked: this.countValue(counters?.supportCases?.blocked),
+        all: this.countValue(counters?.supportCases?.all)
+      }
     };
   }
 

@@ -984,6 +984,12 @@
     grid-column: auto;
   }
 
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns .smart-list__sticky,
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns .smart-list__group-marker,
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns .smart-list__footer-spacer {
+    grid-column: 1 / -1;
+  }
+
   .smart-list--list.smart-list--thread {
     padding-right: 0.08rem;
   }

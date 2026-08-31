@@ -145,6 +145,16 @@ export interface UserChatCountersDto {
   group?: number;
   service?: number;
   appSupport?: number;
+  supportCases?: UserSupportCaseCountersDto;
+}
+
+export interface UserSupportCaseCountersDto {
+  pending?: number;
+  warned?: number;
+  picked?: number;
+  solved?: number;
+  blocked?: number;
+  all?: number;
 }
 
 export interface UserChatCounterDeltasDto {

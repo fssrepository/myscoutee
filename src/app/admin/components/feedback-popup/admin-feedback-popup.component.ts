@@ -197,7 +197,7 @@ export class AdminFeedbackPopupComponent {
               icon: this.reviewStatusIcon(this.feedbackStatusFilter),
               palette: this.reviewStatusPalette(this.feedbackStatusFilter),
               counter: this.feedbackStatusCount(this.feedbackStatusFilter),
-              counterTone: this.feedbackStatusFilter === 'unresolved' ? 'alert' : 'default',
+              counterTone: this.feedbackStatusFilter === 'unresolved' ? 'alert' : 'success',
               ariaLabel: 'admin.feedback.review.status.filter',
               items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
                 id: `review-status:${status}`,
@@ -208,7 +208,7 @@ export class AdminFeedbackPopupComponent {
                 surface: 'tinted',
                 checked: this.feedbackStatusFilter === status,
                 counter: this.feedbackStatusCount(status),
-                counterTone: status === 'unresolved' ? 'alert' : 'default',
+                counterTone: status === 'unresolved' ? 'alert' : 'success',
                 context: { status }
               }))
             }

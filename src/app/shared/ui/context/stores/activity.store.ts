@@ -10,6 +10,7 @@ import {
 import type * as AppDTOs from '../../../core/contracts';
 import type { AssetType } from '../../../core/common/constants';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
+import type { SupportCaseStatus } from '../../../core/contracts/chat.interface';
 import type {
   UserMenuCounterDeltasDto,
   UserMenuCountersDto,
@@ -67,6 +68,16 @@ export interface ActivityChatCounters {
   group: number;
   service: number;
   appSupport: number;
+  supportCases: ActivitySupportCaseCounters;
+}
+
+export interface ActivitySupportCaseCounters {
+  pending: number;
+  warned: number;
+  picked: number;
+  solved: number;
+  blocked: number;
+  all: number;
 }
 
 export interface ActivityEventCounters {
@@ -396,6 +407,24 @@ export class ActivityStore {
       chats: normalizeCounterValue(chats),
       chat: cloneChatCounters(counters)
     });
+  }
+
+  signalUserSupportCaseStatusTransition(
+    userId: string,
+    previousStatus: SupportCaseStatus | null | undefined,
+    nextStatus: SupportCaseStatus | null | undefined,
+    baseCounters: UserMenuCountersDto['chat'] | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !previousStatus || !nextStatus || previousStatus === nextStatus) {
+      return;
+    }
+    const current = cloneChatCounters(
+      this._counterOverridesByUserId()[normalizedUserId]?.chat ?? baseCounters
+    );
+    current.supportCases[previousStatus] = Math.max(0, current.supportCases[previousStatus] - 1);
+    current.supportCases[nextStatus] += 1;
+    this.patchUserCounterOverrides(normalizedUserId, { chat: current });
   }
 
   signalUserRateCounterSnapshot(userId: string, game: number | null | undefined): void {

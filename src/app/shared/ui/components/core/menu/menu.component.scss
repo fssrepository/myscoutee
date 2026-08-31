@@ -1302,19 +1302,33 @@
   box-shadow: none;
 }
 
-.app-menu__button-row-item--labelled .app-menu__counter--trigger.app-menu__counter--alert {
+.app-menu__button-row-item--labelled .app-menu__counter--trigger:is(
+  .app-menu__counter--alert,
+  .app-menu__counter--success
+) {
   position: absolute;
   top: var(--app-menu-trigger-counter-top, -0.34rem);
   right: var(--app-menu-trigger-counter-right, -0.28rem);
   min-width: var(--app-menu-counter-min-width, 1.22rem);
   height: var(--app-menu-counter-height, 1.22rem);
   padding: var(--app-menu-counter-padding, 0 0.32rem);
-  background: linear-gradient(180deg, #e24955 0%, #c93240 100%);
   color: #fff;
+}
+
+.app-menu__button-row-item--labelled .app-menu__counter--trigger.app-menu__counter--alert {
+  background: linear-gradient(180deg, #e24955 0%, #c93240 100%);
   box-shadow: 0 5px 10px rgba(163, 36, 48, 0.24);
 }
 
-.app-menu__button-row-item--labelled:has(.app-menu__counter--alert) {
+.app-menu__button-row-item--labelled .app-menu__counter--trigger.app-menu__counter--success {
+  background: linear-gradient(180deg, #2da66f 0%, #208456 100%);
+  box-shadow: 0 5px 10px rgba(26, 119, 76, 0.24);
+}
+
+.app-menu__button-row-item--labelled:has(
+  .app-menu__counter--alert,
+  .app-menu__counter--success
+) {
   overflow: visible;
 }
 
@@ -2919,6 +2933,12 @@ a.app-menu__item {
   z-index: 3;
 }
 
+.app-menu__counter--success {
+  background: linear-gradient(180deg, #2da66f 0%, #208456 100%);
+  color: #fff;
+  box-shadow: 0 5px 10px rgba(26, 119, 76, 0.24);
+}
+
 .app-menu__counter--trigger,
 .app-menu__counter--tile {
   position: absolute;
@@ -2965,6 +2985,17 @@ a.app-menu__item {
   background: linear-gradient(180deg, #e24955 0%, #c93240 100%);
   color: #fff;
   box-shadow: 0 4px 9px rgba(163, 36, 48, 0.22);
+}
+
+.app-menu__panel--dropdown-list .app-menu__counter--success {
+  min-width: 20px;
+  width: auto;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid #fff;
+  background: linear-gradient(180deg, #2da66f 0%, #208456 100%);
+  color: #fff;
+  box-shadow: 0 4px 9px rgba(26, 119, 76, 0.22);
 }
 
 .app-menu__panel--dropdown-list .app-menu__item-header > .app-menu__counter {

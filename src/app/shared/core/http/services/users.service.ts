@@ -582,7 +582,8 @@ export class HttpUsersService implements UserService {
           subEvent: 0,
           group: 0,
           service: 0,
-          appSupport: 0
+          appSupport: 0,
+          supportCases: { pending: 0, warned: 0, picked: 0, solved: 0, blocked: 0, all: 0 }
         },
         event: {
           all: 0,
@@ -634,7 +635,15 @@ export class HttpUsersService implements UserService {
         subEvent: this.normalizeInitialCounterValue(overrides?.chat?.subEvent, user.activities?.chat?.subEvent),
         group: this.normalizeInitialCounterValue(overrides?.chat?.group, user.activities?.chat?.group),
         service: this.normalizeInitialCounterValue(overrides?.chat?.service, user.activities?.chat?.service),
-        appSupport: this.normalizeInitialCounterValue(overrides?.chat?.appSupport, user.activities?.chat?.appSupport)
+        appSupport: this.normalizeInitialCounterValue(overrides?.chat?.appSupport, user.activities?.chat?.appSupport),
+        supportCases: {
+          pending: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.pending, user.activities?.chat?.supportCases?.pending),
+          warned: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.warned, user.activities?.chat?.supportCases?.warned),
+          picked: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.picked, user.activities?.chat?.supportCases?.picked),
+          solved: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.solved, user.activities?.chat?.supportCases?.solved),
+          blocked: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.blocked, user.activities?.chat?.supportCases?.blocked),
+          all: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.all, user.activities?.chat?.supportCases?.all)
+        }
       },
       event: {
         all: this.normalizeInitialCounterValue(overrides?.event?.all, user.activities?.event?.all),

@@ -894,7 +894,15 @@ export class HttpChatsService implements IChatsService {
       subEvent: Math.max(0, Math.trunc(Number(counters?.subEvent) || 0)),
       group: Math.max(0, Math.trunc(Number(counters?.group) || 0)),
       service: Math.max(0, Math.trunc(Number(counters?.service) || 0)),
-      appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0))
+      appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0)),
+      supportCases: {
+        pending: Math.max(0, Math.trunc(Number(counters?.supportCases?.pending) || 0)),
+        warned: Math.max(0, Math.trunc(Number(counters?.supportCases?.warned) || 0)),
+        picked: Math.max(0, Math.trunc(Number(counters?.supportCases?.picked) || 0)),
+        solved: Math.max(0, Math.trunc(Number(counters?.supportCases?.solved) || 0)),
+        blocked: Math.max(0, Math.trunc(Number(counters?.supportCases?.blocked) || 0)),
+        all: Math.max(0, Math.trunc(Number(counters?.supportCases?.all) || 0))
+      }
     };
   }
 
