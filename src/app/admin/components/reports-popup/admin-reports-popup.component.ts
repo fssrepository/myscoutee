@@ -775,7 +775,9 @@ export class AdminReportsPopupComponent {
   }
 
   protected isReportWarned(report: AdminReportDto | null | undefined): boolean {
-    return `${report?.warnedAtIso ?? ''}`.trim().length > 0;
+    const reportId = `${report?.id ?? ''}`.trim();
+    const resolvedReport = reportId ? this.resolveDashboardReport(reportId) : null;
+    return `${resolvedReport?.warnedAtIso ?? report?.warnedAtIso ?? ''}`.trim().length > 0;
   }
 
   protected supportChatUnread(user: AdminReportedUserDto): number {
@@ -788,6 +790,18 @@ export class AdminReportsPopupComponent {
     const userId = `${user.userId ?? ''}`.trim();
     const resolved = this.resolveDashboardReportedUser(userId) ?? user;
     return resolved.hasSupportChat === true && `${resolved.supportChatId ?? ''}`.trim().length > 0;
+  }
+
+  private resolveDashboardReport(reportId: string): AdminReportDto | null {
+    const normalizedReportId = reportId.trim();
+    if (!normalizedReportId) {
+      return null;
+    }
+    const dashboard = this.workspace.dashboard();
+    return [
+      ...(dashboard?.reportedUsers ?? []),
+      ...(dashboard?.blockedUsers ?? [])
+    ].flatMap(user => user.reports).find(report => report.id === normalizedReportId) ?? null;
   }
 
   protected isSelectedUser(user: AdminReportedUserDto): boolean {
