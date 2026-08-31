@@ -1,4 +1,5 @@
 import type { ChatThreadRecord } from '../entity/chat.entity';
+import type { NotificationRecord } from '../entity/notification.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { AdminUserDto } from '../../../contracts/admin.interface';
@@ -6,8 +7,10 @@ import type { AdminModerationActionResult, AdminModerationUserPatch } from '../.
 import type { ChatMessageDto, SupportCaseStatus } from '../../../contracts/chat.interface';
 
 import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalUsersService } from './users.service';
 
 const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
 const ADMIN_MODERATION_BLOCK_ROUTE = '/admin/reports/block';
@@ -18,7 +21,9 @@ const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
 })
 export class LocalAdminModerationService extends LocalRouteDelayService {
   private readonly moderationRepository = inject(LocalAdminModerationRepository);
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
+  private readonly usersService = inject(LocalUsersService);
 
   async warnUser(
     userId: string,
@@ -35,6 +40,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       return null;
     }
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     const normalizedReportId = `${reportId ?? ''}`.trim();
     if (normalizedReportId) {
       await this.moderationRepository.whenReady();
@@ -44,7 +50,6 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         new Date().toISOString()
       );
     }
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     return { userPatch: supportPatch };
   }
 
@@ -110,7 +115,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         profileStatus: nextStatus,
         blockedAtIso: null,
         hasSupportChat: this.supportChatExists(resolvedAdmin.id, normalizedUserId),
-        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId)
+        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId),
+        supportChatId: this.supportChatId(resolvedAdmin.id, normalizedUserId)
       }
     };
   }
@@ -130,6 +136,60 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       return null;
     }
     return await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, status);
+  }
+
+  async sendFeedbackResolvedNotification(
+    feedbackId: string,
+    userId: string,
+    admin: AdminUserDto | null | undefined,
+    message: string,
+    subject?: string | null
+  ): Promise<void> {
+    const normalizedFeedbackId = feedbackId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedFeedbackId || !normalizedUserId) {
+      return;
+    }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return;
+    }
+    await this.notificationsRepository.whenReady();
+    const normalizedSubject = `${subject ?? ''}`.trim();
+    const nowIso = new Date().toISOString();
+    const notification: NotificationRecord = {
+      id: `feedback-resolved:${normalizedFeedbackId}:${normalizedUserId}:${Date.now()}`,
+      recipientUserId: normalizedUserId,
+      kind: 'feedback-resolved',
+      category: 'app-admin',
+      title: normalizedSubject || 'Feedback',
+      message,
+      createdAtIso: nowIso,
+      readAtIso: null,
+      senderUserId: resolvedAdmin.id,
+      senderName: resolvedAdmin.name,
+      senderAvatarUrl: resolvedAdmin.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'feedback',
+      sourceId: normalizedFeedbackId,
+      payload: {
+        feedbackId: normalizedFeedbackId,
+        ...(normalizedSubject ? { feedbackSubject: normalizedSubject } : {}),
+        senderUserId: resolvedAdmin.id,
+        senderName: resolvedAdmin.name,
+        notification_tone: 'success',
+        notification_status_badge_fallback: 'Resolved',
+        notification_status_badge_tone: 'success'
+      }
+    };
+    const appended = this.notificationsRepository.append([notification]);
+    if (appended.length > 0) {
+      this.usersService.syncRealtimeNotificationCount(
+        normalizedUserId,
+        this.notificationsRepository.unreadCount(normalizedUserId)
+      );
+      await this.notificationsRepository.flushToIndexedDb();
+    }
   }
 
   private async appendSupportMessage(
@@ -194,7 +254,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     return {
       userId,
       hasSupportChat: true,
-      supportChatUnread: 0
+      supportChatUnread: 0,
+      supportChatId: chatId
     };
   }
 
@@ -216,6 +277,18 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
 
   private supportChatUnread(adminId: string, userId: string): number {
     return this.supportSession.supportChatUnread(adminId, userId);
+  }
+
+  private supportChatId(adminId: string, userId: string): string | null {
+    const normalizedAdminId = adminId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedAdminId || !normalizedUserId) {
+      return null;
+    }
+    return this.supportSession.findChatById(
+      normalizedAdminId,
+      `c-support-admin-${normalizedUserId}`
+    )?.id ?? null;
   }
 
   private resolveAdmin(admin: AdminUserDto | null | undefined): AdminUserDto | null {

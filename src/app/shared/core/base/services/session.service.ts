@@ -32,6 +32,7 @@ export class SessionService {
   private static readonly OPERATOR_BOOTSTRAP_EMAIL_PATTERN =
     /^operator-[0-9a-f]{24}@deployment\.invalid$/;
   private static readonly SESSION_STORAGE_KEY = APP_STORAGE_KEYS.session;
+  private static readonly ADMIN_SUPPORT_SESSION_KEY = APP_STORAGE_KEYS.adminSupportSession;
   private static readonly DEMO_ACTIVE_USER_KEY = APP_STORAGE_KEYS.demoActiveUser;
   private static readonly OPERATOR_BOOTSTRAP_SESSION_KEY =
     APP_STORAGE_KEYS.operatorBootstrapSession;
@@ -118,12 +119,16 @@ export class SessionService {
     if (!normalizedUserId) {
       return null;
     }
-    const session: AppSession = {
+    const supportContext = this.normalizeSupportContext(options.supportContext);
+    const session: Extract<AppSession, { kind: 'demo' }> = {
       kind: 'demo',
       userId: normalizedUserId,
       sessionId: this.newOpaqueId('session'),
-      supportContext: this.normalizeSupportContext(options.supportContext)
+      supportContext
     };
+    if (supportContext) {
+      return this.persistAdminSupportSession(session) ? session : null;
+    }
     localStorage.setItem(SessionService.DEMO_ACTIVE_USER_KEY, normalizedUserId);
     this.persistSession(session);
     return session;
@@ -267,6 +272,7 @@ export class SessionService {
 
   async logout(): Promise<void> {
     const current = this.sessionRef();
+    const adminSupportSession = this.isAdminSupportSession(current);
     const sessionRegistryEnabled = environment.activitiesDataSource === 'http';
     let firebaseToken: string | null = null;
     if (sessionRegistryEnabled && current?.kind === 'firebase') {
@@ -278,8 +284,10 @@ export class SessionService {
     }
     this.firebaseNoticeRef.set('');
     this.clearStoredSession();
-    localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
-    if (sessionRegistryEnabled) {
+    if (!adminSupportSession && typeof localStorage !== 'undefined') {
+      localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
+    }
+    if (sessionRegistryEnabled && !adminSupportSession) {
       try {
         const sessionId = current?.kind === 'demo' || current?.kind === 'firebase'
           ? `${current.sessionId ?? ''}`.trim()
@@ -462,6 +470,7 @@ export class SessionService {
   }
 
   private persistSession(session: AppSession): void {
+    this.clearAdminSupportSessionStorage();
     this.clearOperatorBootstrapStorage();
     this.sessionRef.set(session);
     if (typeof localStorage !== 'undefined') {
@@ -477,6 +486,7 @@ export class SessionService {
       return false;
     }
     try {
+      this.clearAdminSupportSessionStorage();
       sessionStorage.setItem(
         SessionService.OPERATOR_BOOTSTRAP_SESSION_KEY,
         JSON.stringify(session)
@@ -498,9 +508,11 @@ export class SessionService {
   }
 
   private clearStoredSession(): void {
+    const adminSupportSession = this.isAdminSupportSession(this.sessionRef());
     this.sessionRef.set(null);
+    this.clearAdminSupportSessionStorage();
     this.clearOperatorBootstrapStorage();
-    if (typeof localStorage !== 'undefined') {
+    if (!adminSupportSession && typeof localStorage !== 'undefined') {
       localStorage.removeItem(SessionService.SESSION_STORAGE_KEY);
     }
   }
@@ -522,6 +534,10 @@ export class SessionService {
   }
 
   private loadStoredSession(): AppSession | null {
+    const adminSupportSession = this.loadStoredAdminSupportSession();
+    if (adminSupportSession) {
+      return adminSupportSession;
+    }
     const operatorBootstrapSession = this.loadStoredOperatorBootstrapSession();
     if (operatorBootstrapSession) {
       return operatorBootstrapSession;
@@ -571,6 +587,61 @@ export class SessionService {
       }
       return null;
     } catch {
+      return null;
+    }
+  }
+
+  private persistAdminSupportSession(
+    session: Extract<AppSession, { kind: 'demo' }>
+  ): boolean {
+    if (!this.isAdminSupportSession(session) || typeof sessionStorage === 'undefined') {
+      return false;
+    }
+    try {
+      this.clearOperatorBootstrapStorage();
+      sessionStorage.setItem(
+        SessionService.ADMIN_SUPPORT_SESSION_KEY,
+        JSON.stringify(session)
+      );
+      this.sessionRef.set(session);
+      return true;
+    } catch {
+      this.clearAdminSupportSessionStorage();
+      return false;
+    }
+  }
+
+  private loadStoredAdminSupportSession():
+    Extract<AppSession, { kind: 'demo' }> | null {
+    if (typeof sessionStorage === 'undefined') {
+      return null;
+    }
+    try {
+      const rawSession = sessionStorage.getItem(
+        SessionService.ADMIN_SUPPORT_SESSION_KEY
+      );
+      if (!rawSession) {
+        return null;
+      }
+      const parsed = JSON.parse(rawSession) as Partial<
+        Extract<AppSession, { kind: 'demo' }>
+      >;
+      const userId = `${parsed.userId ?? ''}`.trim();
+      const supportContext = this.normalizeSupportContext(parsed.supportContext);
+      if (parsed.kind !== 'demo' || !userId || !supportContext) {
+        this.clearAdminSupportSessionStorage();
+        return null;
+      }
+      return {
+        kind: 'demo',
+        userId,
+        sessionId: typeof parsed.sessionId === 'string'
+          ? parsed.sessionId.trim() || undefined
+          : undefined,
+        supportContext
+      };
+    } catch {
+      this.clearAdminSupportSessionStorage();
       return null;
     }
   }
@@ -625,6 +696,24 @@ export class SessionService {
     } catch {
       // Clearing a blocked browser storage area is best effort.
     }
+  }
+
+  private clearAdminSupportSessionStorage(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.removeItem(SessionService.ADMIN_SUPPORT_SESSION_KEY);
+    } catch {
+      // Clearing a blocked browser storage area is best effort.
+    }
+  }
+
+  private isAdminSupportSession(
+    session: AppSession | null | undefined
+  ): boolean {
+    return session?.kind === 'demo'
+      && session.supportContext?.kind === 'admin-support';
   }
 
   private isOperatorBootstrapCandidate(request: FirebaseAuthRequestDto): boolean {

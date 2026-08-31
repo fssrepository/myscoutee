@@ -11,6 +11,7 @@ export interface AdminModerationUserPatch {
   blockedAtIso?: string | null;
   hasSupportChat?: boolean;
   supportChatUnread?: number | null;
+  supportChatId?: string | null;
 }
 
 export interface AdminModerationActionResult {

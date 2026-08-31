@@ -63,6 +63,10 @@
   pointer-events: none;
 }
 
+.notification-attention-launcher.is-chat-open {
+  bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px));
+}
+
 .notification-attention-menu {
   pointer-events: auto;
   --notification-attention-corner-size: 1.22rem;
@@ -334,6 +338,10 @@ app-event-supply-contributions-popup {
   .notification-attention-launcher {
     right: 1rem;
     bottom: 1rem;
+  }
+
+  .notification-attention-launcher.is-chat-open {
+    bottom: calc(3.6rem + 5px + env(safe-area-inset-bottom, 0px));
   }
 
   .user-menu-panel {

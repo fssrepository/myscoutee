@@ -233,6 +233,7 @@ export interface ChatMessagesPageResultDTO {
   total: number;
   nextCursor?: string | null;
   readReceipt?: ChatReadReceipt | null;
+  notificationUnread?: number | null;
 }
 
 export interface ChatVoiceClip {

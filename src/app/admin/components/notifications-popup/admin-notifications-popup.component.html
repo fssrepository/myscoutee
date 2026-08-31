@@ -180,7 +180,7 @@
                   <section class="process-card">
                     <div class="process-card-head">
                       <h3>{{ 'admin.jobs.timing' | i18n }}</h3>
-                      <button type="button" class="process-frequency" [class.has-dirty]="isTimingDirty(rule)" [disabled]="!hasEditableTiming(rule)" (click)="openScheduleEditor()">
+                      <button type="button" class="process-frequency" [disabled]="!hasEditableTiming(rule)" (click)="openScheduleEditor()">
                         <mat-icon>schedule</mat-icon>
                         <span>{{ 'edit' | i18n }}</span>
                       </button>
@@ -256,7 +256,7 @@
       </div>
 
       @if (scheduleEditorOpen() && selectedRule(); as scheduleRule) {
-        <app-popup [model]="scheduleEditorPopupModel(scheduleRule)" [zIndex]="2500">
+        <app-popup [model]="scheduleEditorPopupModel()" [zIndex]="2500">
           @if (scheduleEditorDraft(); as timingDraft) {
             <div class="job-timing-editor">
               <article class="run-window-row">

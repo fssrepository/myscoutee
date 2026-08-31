@@ -54,6 +54,7 @@ export const APP_CACHE_KEYS = {
 } as const;
 
 export const APP_STORAGE_KEYS = {
+  adminSupportSession: scopedStorageKey('admin-support.session.v1'),
   adminSession: scopedStorageKey('admin.session.v1'),
   demoActiveUser: scopedStorageKey('demo.active-user.v1'),
   demoCountryCode: scopedStorageKey('countryCode', 'demo'),

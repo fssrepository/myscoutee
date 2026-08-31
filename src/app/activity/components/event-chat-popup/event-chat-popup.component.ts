@@ -42,6 +42,7 @@ import {
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivityResourceBuilder,
+  AdminWorkspaceDataService,
   AssetDefaultsBuilder,
   ActivityResourcesService,
   ChatsService,
@@ -89,6 +90,8 @@ import {
 import type * as AppDTOs from '../../../shared/core/contracts';
 import * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import {
   ActivityStore,
@@ -157,6 +160,7 @@ type SubEventAssetCardsByType = Partial<Record<AssetType, SubEventAssetCard[]>>;
 type ChatMenuContext =
   | { menu: 'chat-header'; action: 'members'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'chat-header'; action: 'pins' }
+  | { menu: 'chat-header'; action: 'history' }
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
   | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
@@ -195,6 +199,7 @@ interface ChatOwnerParts {
 
 type ChatThreadPageContext = {
   readReceipt?: ContractTypes.ChatReadReceipt | null;
+  notificationUnread?: number | null;
 };
 
 type EmojiPickerMenuItemId = `emoji:${string}`;
@@ -234,6 +239,9 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly adminMenuStore = inject(AdminMenuStore);
+  private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
+  private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
@@ -685,10 +693,13 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatPopupHeaderControls(): readonly PopupControl<ChatMenuContext>[] {
+    const supportHistoryControls = this.isAdminRoleActive() && this.isAppSupportChat()
+      ? [this.chatHeaderHistoryControl()]
+      : [];
     if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
       || this.isServiceChat()
       || this.isBlockedSupportChat()) {
-      return [];
+      return supportHistoryControls;
     }
     if (this.selectedChatHasSubEventMenu()) {
       return [{
@@ -699,23 +710,35 @@ export class EventChatPopupComponent implements OnDestroy {
         trigger: this.selectedChatContextMenuTrigger(),
         groups: this.selectedChatContextMenuGroupsModel(),
         panelAlign: 'end'
-      }];
+      }, ...supportHistoryControls];
     }
     return [{
       kind: 'menu',
       id: 'chat-context-primary',
       menuKind: 'select',
       trigger: this.selectedChatPrimaryActionTrigger()
-    }];
+    }, ...supportHistoryControls];
+  }
+
+  private chatHeaderHistoryControl(): PopupControl<ChatMenuContext> {
+    return {
+      kind: 'menu',
+      id: 'chat-header-history-control',
+      menuKind: 'inline',
+      items: [this.chatHeaderHistoryMenuItem()]
+    };
   }
 
   private chatPopupToolbarControls(): readonly PopupControl<ChatMenuContext>[] {
+    const membersControl = this.isAppSupportChat() || this.isServiceChat() || this.isBlockedSupportChat()
+      ? null
+      : this.chatHeaderMembersControl();
     return [{
       kind: 'menu',
       id: 'chat-header-actions',
       align: 'end',
       menuKind: 'inline',
-      items: this.chatHeaderActionMenuItems(this.chatHeaderMembersControl())
+      items: this.chatHeaderActionMenuItems(membersControl)
     }];
   }
 
@@ -932,6 +955,20 @@ export class EventChatPopupComponent implements OnDestroy {
       ...(control ? [this.chatHeaderMembersMenuItem(control)] : []),
       this.chatHeaderPinMenuItem()
     ];
+  }
+
+  private chatHeaderHistoryMenuItem(): AppMenuItem<string, ChatMenuContext> {
+    const historyCount = this.supportHistoryCount();
+    return {
+      id: 'chat-header-history',
+      icon: 'history',
+      palette: 'default',
+      counter: historyCount > 0 ? { value: historyCount, max: 99 } : null,
+      counterTone: 'alert',
+      disabled: historyCount === 0,
+      ariaLabel: 'Open user moderation history',
+      context: { menu: 'chat-header', action: 'history' }
+    };
   }
 
   private chatHeaderMembersMenuItem(control: AppUiTypes.PopupHeaderControl): AppMenuItem<string, ChatMenuContext> {
@@ -1162,6 +1199,10 @@ export class EventChatPopupComponent implements OnDestroy {
         this.openChatHeaderControl(context.control, event.sourceEvent);
         return;
       }
+      if (context.action === 'history') {
+        void this.openSupportUserHistory(event.sourceEvent);
+        return;
+      }
       this.openPinnedMessagesDialog(event.sourceEvent);
       return;
     }
@@ -1188,6 +1229,68 @@ export class EventChatPopupComponent implements OnDestroy {
           break;
       }
     }
+  }
+
+  private async openSupportUserHistory(event?: Event): Promise<void> {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const targetUserId = this.supportHistoryTargetUserId();
+    if (!targetUserId) {
+      return;
+    }
+    let dashboard = this.adminWorkspaceStore.dashboard();
+    let user = [
+      ...(dashboard?.reportedUsers ?? []),
+      ...(dashboard?.blockedUsers ?? [])
+    ].find(candidate => candidate.userId === targetUserId) ?? null;
+    if (!user) {
+      const adminUserId = `${this.userProfileStore.activeAdminUser()?.id ?? ''}`.trim();
+      if (!adminUserId) {
+        return;
+      }
+      try {
+        dashboard = this.adminWorkspaceStore.applyDashboard(
+          await this.adminWorkspaceData.loadDashboard(adminUserId)
+        );
+        user = [
+          ...(dashboard.reportedUsers ?? []),
+          ...(dashboard.blockedUsers ?? [])
+        ].find(candidate => candidate.userId === targetUserId) ?? null;
+      } catch {
+        this.dialogStore.openInfo('The moderation history could not be loaded. Please try again.', {
+          title: 'Unable to open history'
+        });
+        return;
+      }
+    }
+    if (user) {
+      this.adminMenuStore.openReports(user);
+      return;
+    }
+  }
+
+  private supportHistoryCount(): number {
+    return Math.max(0, Math.trunc(Number(this.supportHistoryUser()?.reportCount) || 0));
+  }
+
+  private supportHistoryUser(): ContractTypes.AdminReportedUserDto | null {
+    const targetUserId = this.supportHistoryTargetUserId();
+    const dashboard = this.adminWorkspaceStore.dashboard();
+    if (!targetUserId || !dashboard) {
+      return null;
+    }
+    return [
+      ...(dashboard.reportedUsers ?? []),
+      ...(dashboard.blockedUsers ?? [])
+    ].find(candidate => candidate.userId === targetUserId) ?? null;
+  }
+
+  private supportHistoryTargetUserId(): string {
+    const chat = this.session()?.item;
+    const activeUserId = this.activeUserId();
+    return (chat?.memberIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .find(userId => userId && userId !== activeUserId) ?? '';
   }
 
   protected messageActionMenuIdFor(message: ContractTypes.ChatMessageDto): string {

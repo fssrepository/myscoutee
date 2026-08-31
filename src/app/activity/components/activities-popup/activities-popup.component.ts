@@ -1198,6 +1198,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private doesChatMatchActiveContextFilter(chat: ChatDTO): boolean {
+    if (this.isAdminServiceChatMode()) {
+      return this.doesChatMatchActiveSupportCaseFilter(chat);
+    }
     if (this.activitiesChatContextFilter === 'all') {
       return this.doesChatMatchActiveSupportCaseFilter(chat);
     }
@@ -2072,14 +2075,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
     const normalized = this.normalizeSupportCaseFilter(filter);
-    const smartList = this.activitiesSmartList;
-    const supportCases = (smartList?.itemsSnapshot() ?? [])
-      .map(row => this.chatRecordFromSourceItem(smartList?.sourceItemSnapshot(this.activityRowIdentity(row))))
-      .filter((chat): chat is ChatDTO => Boolean(chat?.supportCase));
-    if (normalized === 'all') {
-      return supportCases.length;
-    }
-    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized).length;
+    const activeUser = this.userProfileStore.activeUserProfile();
+    const supportCases = this.activityStore.getUserCounterOverrides(this.activeUser.id).chat?.supportCases
+      ?? activeUser?.activities?.chat?.supportCases;
+    return this.normalizeBadgeCounter(supportCases?.[normalized]);
   }
 
   protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
@@ -2116,7 +2115,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isAdminServiceChatMode()) {
       return true;
     }
-    const normalized = this.normalizeSupportCaseFilter(this.activitiesSupportCaseFilter);
+    const normalized = this.normalizeSupportCaseFilter(this.activitiesStore.activitiesSupportCaseFilter());
     return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized;
   }
 
@@ -2138,11 +2137,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
       confirmTone: config.tone,
       failureMessage: this.i18n('activities.support.case.error.update'),
       onConfirm: async () => {
+        const previousStatus = chat.supportCase?.status;
         const updated = await this.chatsService.updateSupportCase(chat, action);
         if (!updated) {
           throw new Error('The support case could not be updated.');
         }
-        this.applySupportCaseUpdate(updated);
+        this.applySupportCaseUpdate(updated, previousStatus);
       }
     });
   }
@@ -2203,15 +2203,30 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.i18nService.translate(key);
   }
 
-  private applySupportCaseUpdate(chat: ChatDTO): void {
+  private applySupportCaseUpdate(
+    chat: ChatDTO,
+    previousStatus: ContractTypes.SupportCaseStatus | null | undefined
+  ): void {
     const nextChat = this.cloneChatRecord(chat);
 
     const smartList = this.activitiesSmartList;
+    this.activityStore.signalUserSupportCaseStatusTransition(
+      this.activeUser.id,
+      previousStatus,
+      nextChat.supportCase?.status,
+      this.activeUser.activities?.chat
+    );
     if (smartList && this.activitiesPrimaryFilter === 'chats' && !this.isCalendarLayoutView()) {
       if (this.doesChatMatchActiveContextFilter(nextChat)) {
         smartList.patchConvertedVisibleItem(nextChat);
       } else {
-        smartList.removeVisibleItemByIdentity(`chats:${nextChat.id}`);
+        smartList.removeVisibleItemByIdentity(
+          ActivityChatSingleRowConverter.smartListKeyForIdentity(
+            nextChat.supportCase ? 'supportCase' : nextChat.channelType,
+            nextChat.ownerId,
+            nextChat.id
+          )
+        );
       }
     }
 

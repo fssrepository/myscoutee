@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'reports') {
-  <app-popup [model]="reportsPopupModel()">
+  <app-popup [model]="reportsPopupModel()" [zIndex]="2470">
       <div class="admin-list-only-body">
         <app-smart-list
           #reportsSmartList
@@ -26,7 +26,7 @@
 }
 
 @if (reportDetail; as item) {
-  <app-popup [model]="reportDetailPopupModel(item)" [zIndex]="2400">
+  <app-popup [model]="reportDetailPopupModel(item)" [zIndex]="2480">
       <div class="admin-detail-popup-body">
         <article class="admin-chat-detail-message">
           <div class="admin-message-bubble admin-report-detail-bubble" [ngClass]="reportReasonToneClass(item.report)">
@@ -100,7 +100,7 @@
 }
 
 @if (blockedUsersOpen) {
-  <app-popup [model]="blockedUsersPopupModel()" [zIndex]="2400">
+  <app-popup [model]="blockedUsersPopupModel()" [zIndex]="2490">
       <div class="admin-blocked-users-body">
         <app-smart-list
           #blockedUsersSmartList

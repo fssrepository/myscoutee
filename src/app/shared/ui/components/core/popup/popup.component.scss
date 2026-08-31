@@ -824,7 +824,7 @@ app-popup {
     border-radius: 50%;
   }
 
-  .ui-popup__action--compact-mobile span {
+  .ui-popup__action--compact-mobile .ui-popup__action-label {
     display: none;
   }
 }

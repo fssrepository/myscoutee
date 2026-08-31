@@ -19,6 +19,7 @@ import type * as ActivityContracts from '../../contracts/activity.interface';
 
 type ChatMessagesLoadContext = {
   readReceipt?: ContractTypes.ChatReadReceipt | null;
+  notificationUnread?: number | null;
 };
 
 @Injectable({
@@ -36,6 +37,10 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
   }
 
+  async queryChatById(chatId: string): Promise<ChatDTO | null> {
+    return this.chatsService.queryChatById(chatId);
+  }
+
   async loadChatMessagesResult(
     chat: ChatDTO,
     query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
@@ -45,7 +50,12 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       items: page.items,
       total: page.total,
       nextCursor: page.nextCursor ?? null,
-      context: page.readReceipt ? { readReceipt: page.readReceipt } : undefined
+      context: page.readReceipt || Number.isFinite(page.notificationUnread)
+        ? {
+            readReceipt: page.readReceipt ?? null,
+            notificationUnread: page.notificationUnread ?? null
+          }
+        : undefined
     };
   }
 
@@ -58,7 +68,8 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       items: page.items,
       total: page.total,
       nextCursor: page.nextCursor ?? null,
-      readReceipt: page.readReceipt ?? null
+      readReceipt: page.readReceipt ?? null,
+      notificationUnread: page.notificationUnread ?? null
     };
   }
 
@@ -211,32 +222,19 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   ): Promise<ChatDTO | null> {
     const expectedId = `c-service-event-${input.eventId}-${input.activeUserId}`;
     const expectedServiceContext = input.notification ? 'notification' : 'event';
-    let cursor: string | null = null;
-    do {
-      const page = await this.queryActivitiesChatPage(input.activeUserId, {
-        page: 0,
-        pageSize: 25,
-        cursor,
-        sort: 'date',
-        direction: 'desc',
-        filters: { primaryFilter: 'chats', chatContextFilter: 'service' }
-      });
-      const match = page.items.find(chat => chat.id === expectedId)
-        ?? page.items.find(chat =>
-          chat.channelType === 'serviceEvent'
-          && chat.serviceContext === expectedServiceContext
-          && chat.ownerId === input.eventId
-        );
-      if (match) {
-        return {
-          ...match,
-          memberIds: [...(match.memberIds ?? [])],
-          members: (match.members ?? []).map(member => ({ ...member }))
-        };
-      }
-      cursor = page.nextCursor ?? null;
-    } while (cursor);
-    return null;
+    const chat = await this.chatsService.queryChatById(expectedId);
+    if (
+      chat?.channelType !== 'serviceEvent'
+      || chat.serviceContext !== expectedServiceContext
+      || chat.ownerId !== input.eventId
+    ) {
+      return null;
+    }
+    return {
+      ...chat,
+      memberIds: [...(chat.memberIds ?? [])],
+      members: (chat.members ?? []).map(member => ({ ...member }))
+    };
   }
 
   buildActivityServiceChat(input: {
