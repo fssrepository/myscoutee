@@ -77,10 +77,6 @@ export class AdminFeedbackPopupComponent {
   protected feedbackSmartListQuery: Partial<ListQuery<AdminFeedbackListFilters>> = {
     filters: { status: 'unresolved' }
   };
-  protected feedbackStatusCounts: Record<AdminReviewStatusFilter, number> = {
-    unresolved: 0,
-    resolved: 0
-  };
 
   protected feedbackItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AdminFeedbackListItem, AdminFeedbackListFilters>
@@ -201,6 +197,7 @@ export class AdminFeedbackPopupComponent {
               icon: this.reviewStatusIcon(this.feedbackStatusFilter),
               palette: this.reviewStatusPalette(this.feedbackStatusFilter),
               counter: this.feedbackStatusCount(this.feedbackStatusFilter),
+              counterTone: this.feedbackStatusFilter === 'unresolved' ? 'alert' : 'default',
               ariaLabel: 'admin.feedback.review.status.filter',
               items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
                 id: `review-status:${status}`,
@@ -211,6 +208,7 @@ export class AdminFeedbackPopupComponent {
                 surface: 'tinted',
                 checked: this.feedbackStatusFilter === status,
                 counter: this.feedbackStatusCount(status),
+                counterTone: status === 'unresolved' ? 'alert' : 'default',
                 context: { status }
               }))
             }
@@ -233,7 +231,10 @@ export class AdminFeedbackPopupComponent {
   }
 
   private feedbackStatusCount(status: AdminReviewStatusFilter): number {
-    return Math.max(0, Math.trunc(Number(this.feedbackStatusCounts[status]) || 0));
+    const counts = this.workspace.reviewCounts();
+    return status === 'resolved'
+      ? Math.max(0, Math.trunc(Number(counts?.feedbackResolved) || 0))
+      : Math.max(0, Math.trunc(Number(counts?.feedbackUnresolved) || 0));
   }
 
   protected selectFeedback(item: AdminFeedbackListItem): void {
@@ -439,16 +440,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private applyFeedbackDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
-    const normalized = this.workspace.applyDashboard(dashboard);
-    this.applyFeedbackStatusCounts(normalized);
-    return normalized;
-  }
-
-  private applyFeedbackStatusCounts(dashboard: AdminDashboardDto): void {
-    this.feedbackStatusCounts = {
-      unresolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.feedbackUnresolved) || 0)),
-      resolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.feedbackResolved) || 0))
-    };
+    return this.workspace.applyDashboard(dashboard);
   }
 
   private buildFeedbackActivityRow(feedback: AdminFeedbackDto): SingleRowData {

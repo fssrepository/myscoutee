@@ -437,16 +437,25 @@ export class SideMenuComponent implements OnDestroy {
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
+      chat: {
+        all: activityOverrides.chat?.all ?? activeUser.activities?.chat?.all ?? 0,
+        event: activityOverrides.chat?.event ?? activeUser.activities?.chat?.event ?? 0,
+        subEvent: activityOverrides.chat?.subEvent ?? activeUser.activities?.chat?.subEvent ?? 0,
+        group: activityOverrides.chat?.group ?? activeUser.activities?.chat?.group ?? 0,
+        service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
+        appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0
+      },
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
     const impressionChangeFlags = this.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveSideMenuPresentation('trait', activeUser.traitLabel ?? '');
+    const adminReviewCounts = this.adminWorkspaceStore.menuReviewCounts();
     const totalBadgeCount = this.userProfileStore.isAdminUserProfile(activeUser)
       ? (
-        mergedActivities.game +
-        mergedActivities.feedback +
-        mergedActivities.chats +
+        adminReviewCounts.reports +
+        adminReviewCounts.feedback +
+        (mergedActivities.chat?.service ?? 0) +
         mergedActivities.adminJobs +
         mergedActivities.adminMetrics
       )
@@ -623,10 +632,11 @@ export class SideMenuComponent implements OnDestroy {
     if (!user) {
       return {};
     }
+    const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
     return {
-      adminReports: user.activities.game,
-      adminFeedback: user.activities.feedback,
-      adminChat: user.activities.chats,
+      adminReports: reviewCounts.reports,
+      adminFeedback: reviewCounts.feedback,
+      adminChat: user.activities.chat?.service ?? 0,
       adminJobs: user.activities.adminJobs,
       adminMetrics: user.activities.adminMetrics
     };
@@ -1596,7 +1606,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.adminMenuStore.openReports(this.adminWorkspaceStore.dashboard()?.reportedUsers[0] ?? null);
+    this.adminMenuStore.openReports();
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {

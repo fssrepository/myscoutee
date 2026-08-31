@@ -172,10 +172,6 @@ export class AdminReportsPopupComponent {
   protected reportsSmartListQuery: Partial<ListQuery<AdminReportListFilters>> = {
     filters: { status: 'unresolved' }
   };
-  protected reportStatusCounts: Record<AdminReviewStatusFilter, number> = {
-    unresolved: 0,
-    resolved: 0
-  };
   protected reportMemberShareUrl = '';
   protected reportSourceShareUrl = '';
   private reportShareLinksVersion = 0;
@@ -380,6 +376,7 @@ export class AdminReportsPopupComponent {
               icon: this.reviewStatusIcon(this.reportStatusFilter),
               palette: this.reviewStatusPalette(this.reportStatusFilter),
               counter: this.reportStatusCount(this.reportStatusFilter),
+              counterTone: this.reportStatusFilter === 'unresolved' ? 'alert' : 'default',
               ariaLabel: 'admin.reports.review.status.filter',
               items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
                 id: `review-status:${status}`,
@@ -390,6 +387,7 @@ export class AdminReportsPopupComponent {
                 surface: 'tinted',
                 checked: this.reportStatusFilter === status,
                 counter: this.reportStatusCount(status),
+                counterTone: status === 'unresolved' ? 'alert' : 'default',
                 context: { status }
               }))
             }
@@ -412,7 +410,10 @@ export class AdminReportsPopupComponent {
   }
 
   private reportStatusCount(status: AdminReviewStatusFilter): number {
-    return Math.max(0, Math.trunc(Number(this.reportStatusCounts[status]) || 0));
+    const counts = this.workspace.reviewCounts();
+    return status === 'resolved'
+      ? Math.max(0, Math.trunc(Number(counts?.reportsResolved) || 0))
+      : Math.max(0, Math.trunc(Number(counts?.reportsUnresolved) || 0));
   }
 
   protected selectUser(user: AdminReportedUserDto): void {
@@ -1154,16 +1155,7 @@ export class AdminReportsPopupComponent {
   }
 
   private applyReportDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
-    const normalized = this.workspace.applyDashboard(dashboard);
-    this.applyReportStatusCounts(normalized);
-    return normalized;
-  }
-
-  private applyReportStatusCounts(dashboard: AdminDashboardDto): void {
-    this.reportStatusCounts = {
-      unresolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.reportsUnresolved) || 0)),
-      resolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.reportsResolved) || 0))
-    };
+    return this.workspace.applyDashboard(dashboard);
   }
 
   private async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {

@@ -2,6 +2,7 @@ import {
   HttpErrorResponse
 } from '@angular/common/http';
 import {
+  computed,
   Injectable,
   inject,
   signal
@@ -43,6 +44,16 @@ export class AdminWorkspaceStore {
   private readonly accessDeniedRef = signal(false);
 
   readonly dashboard = this.dashboardRef.asReadonly();
+  readonly reviewCounts = computed(() => this.dashboardRef()?.reviewCounts ?? null);
+  readonly menuReviewCounts = computed(() => {
+    const counts = this.reviewCounts();
+    return {
+      reports: this.nonNegativeInteger(counts?.reportsUnresolved)
+        + this.nonNegativeInteger(counts?.reportsResolved),
+      feedback: this.nonNegativeInteger(counts?.feedbackUnresolved)
+        + this.nonNegativeInteger(counts?.feedbackResolved)
+    };
+  });
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();

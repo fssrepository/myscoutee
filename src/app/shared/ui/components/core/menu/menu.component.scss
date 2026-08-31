@@ -1302,6 +1302,22 @@
   box-shadow: none;
 }
 
+.app-menu__button-row-item--labelled .app-menu__counter--trigger.app-menu__counter--alert {
+  position: absolute;
+  top: var(--app-menu-trigger-counter-top, -0.34rem);
+  right: var(--app-menu-trigger-counter-right, -0.28rem);
+  min-width: var(--app-menu-counter-min-width, 1.22rem);
+  height: var(--app-menu-counter-height, 1.22rem);
+  padding: var(--app-menu-counter-padding, 0 0.32rem);
+  background: linear-gradient(180deg, #e24955 0%, #c93240 100%);
+  color: #fff;
+  box-shadow: 0 5px 10px rgba(163, 36, 48, 0.24);
+}
+
+.app-menu__button-row-item--labelled:has(.app-menu__counter--alert) {
+  overflow: visible;
+}
+
 .app-menu__button-row-item--active:not(:disabled):hover,
 .app-menu__button-row-item--labelled.app-menu__button-row-item--active:not(:disabled):hover,
 .app-menu__button-row-item--labelled.app-menu__button-row-item--active.app-menu__button-row-item--open {
