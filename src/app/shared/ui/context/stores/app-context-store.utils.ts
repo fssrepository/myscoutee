@@ -1,10 +1,18 @@
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../../core/contracts';
 import type { UserGameFilterPreferencesDto } from '../../../core/contracts/activity.interface';
-import type { ProfileExtDto, UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../core/contracts/user.interface';
+import type {
+  ProfileExtDto,
+  UserDto,
+  UserImpressionsDto,
+  UserImpressionsSectionDto,
+  UserSupportCaseCountersDto
+} from '../../../core/contracts/user.interface';
 import type {
   ActivityAssetCounters,
+  ActivityChatCounters,
   ActivityEventCounters,
-  ActivityEventFeedbackCounters
+  ActivityEventFeedbackCounters,
+  ActivitySupportCaseCounters
 } from './activity.store';
 import type { UserProfileAdminUserDto } from './user-profile.store';
 
@@ -143,14 +151,28 @@ export function cloneImpressions(impressions: UserImpressionsDto): UserImpressio
 
 export function cloneChatCounters(
   counters: UserDto['activities']['chat'] | null | undefined
-): { all: number; event: number; subEvent: number; group: number; service: number; appSupport: number } {
+): ActivityChatCounters {
   return {
     all: normalizeCounterValue(counters?.all),
     event: normalizeCounterValue(counters?.event),
     subEvent: normalizeCounterValue(counters?.subEvent),
     group: normalizeCounterValue(counters?.group),
     service: normalizeCounterValue(counters?.service),
-    appSupport: normalizeCounterValue(counters?.appSupport)
+    appSupport: normalizeCounterValue(counters?.appSupport),
+    supportCases: cloneSupportCaseCounters(counters?.supportCases)
+  };
+}
+
+export function cloneSupportCaseCounters(
+  counters: UserSupportCaseCountersDto | null | undefined
+): ActivitySupportCaseCounters {
+  return {
+    pending: normalizeCounterValue(counters?.pending),
+    warned: normalizeCounterValue(counters?.warned),
+    picked: normalizeCounterValue(counters?.picked),
+    solved: normalizeCounterValue(counters?.solved),
+    blocked: normalizeCounterValue(counters?.blocked),
+    all: normalizeCounterValue(counters?.all)
   };
 }
 

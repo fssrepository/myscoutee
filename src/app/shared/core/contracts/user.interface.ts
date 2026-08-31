@@ -145,6 +145,16 @@ export interface UserChatCountersDto {
   group?: number;
   service?: number;
   appSupport?: number;
+  supportCases?: UserSupportCaseCountersDto;
+}
+
+export interface UserSupportCaseCountersDto {
+  pending?: number;
+  warned?: number;
+  picked?: number;
+  solved?: number;
+  blocked?: number;
+  all?: number;
 }
 
 export interface UserChatCounterDeltasDto {
@@ -211,6 +221,7 @@ export interface UserRealtimeCountersDto extends UserMenuCountersDto {
 
 export interface UserRealtimeLongPollResponseDto {
   userId: string;
+  profileStatus?: UserDto['profileStatus'] | null;
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;
   offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;

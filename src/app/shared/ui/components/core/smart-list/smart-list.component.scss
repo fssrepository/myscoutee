@@ -915,6 +915,14 @@
     padding-bottom: 0;
   }
 
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns {
+    display: grid;
+    grid-template-columns: repeat(var(--smart-list-mobile-columns), minmax(0, 1fr));
+    align-content: start;
+    gap: 0.45rem;
+    padding-bottom: 0.6rem;
+  }
+
   .smart-list--list.smart-list--horizontal {
     --smart-list-horizontal-item-basis: 100%;
     --smart-list-horizontal-end-inset: 0;
@@ -977,6 +985,12 @@
   .smart-list--list.smart-list--card-grid .smart-list__group-marker,
   .smart-list--list.smart-list--card-grid .smart-list__footer-spacer {
     grid-column: auto;
+  }
+
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns .smart-list__sticky,
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns .smart-list__group-marker,
+  .smart-list--list.smart-list--card-grid.smart-list--mobile-columns .smart-list__footer-spacer {
+    grid-column: 1 / -1;
   }
 
   .smart-list--list.smart-list--thread {

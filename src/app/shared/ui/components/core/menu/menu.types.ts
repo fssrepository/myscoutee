@@ -188,7 +188,7 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   surface?: AppMenuItemSurface;
   layout?: AppMenuItemLayout;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
-  counterTone?: 'default' | 'alert';
+  counterTone?: 'default' | 'alert' | 'success';
   headerBadge?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   active?: AppMenuLiveValue<boolean | null | undefined>;

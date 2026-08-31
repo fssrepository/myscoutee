@@ -595,6 +595,28 @@ export class UserProfileStore {
     delete this.realtimeIgnoreNextImpressionsSnapshotByUserId[normalizedUserId];
   }
 
+  applyUserRealtimeProfileStatus(
+    userId: string,
+    profileStatus: UserRealtimeLongPollResponseDto['profileStatus']
+  ): void {
+    const normalizedUserId = userId.trim();
+    const normalizedStatus = `${profileStatus ?? ''}`.trim() as UserDto['profileStatus'];
+    if (!normalizedUserId || !normalizedStatus) {
+      return;
+    }
+    const currentUser = this._userProfilesByUserId()[normalizedUserId];
+    if (!currentUser || currentUser.profileStatus === normalizedStatus) {
+      return;
+    }
+    this._userProfilesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: cloneUserProfile({
+        ...currentUser,
+        profileStatus: normalizedStatus
+      })
+    }));
+  }
+
   private applyUserRealtimePatch(userId: string, patch: UserRealtimeProfilePatch): UserDto | null {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

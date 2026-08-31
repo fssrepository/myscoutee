@@ -4,6 +4,7 @@ import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityEventDTO } from '../../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import { ActivityStore } from './activity.store';
+import { cloneSupportCaseCounters } from './app-context-store.utils';
 import { UserProfileStore } from './user-profile.store';
 
 export interface EventChatPopupRequest {
@@ -591,7 +592,8 @@ export class ActivitiesPopupStore {
       subEvent: this.normalizeEventChatCounter((currentContexts.subEvent ?? 0) + (contextKey === 'subEvent' ? unreadDelta : 0)),
       group: this.normalizeEventChatCounter((currentContexts.group ?? 0) + (contextKey === 'group' ? unreadDelta : 0)),
       service: this.normalizeEventChatCounter((currentContexts.service ?? 0) + (contextKey === 'service' ? unreadDelta : 0)),
-      appSupport: this.normalizeEventChatCounter((currentContexts.appSupport ?? 0) + (contextKey === 'appSupport' ? unreadDelta : 0))
+      appSupport: this.normalizeEventChatCounter((currentContexts.appSupport ?? 0) + (contextKey === 'appSupport' ? unreadDelta : 0)),
+      supportCases: cloneSupportCaseCounters(currentContexts.supportCases)
     };
     const counterPatch = { chats: nextChatCounter, chat: nextContexts };
     this.activityStore.patchUserCounterOverrides(activeUserId, counterPatch);

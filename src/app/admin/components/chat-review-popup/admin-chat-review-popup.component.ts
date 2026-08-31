@@ -203,7 +203,16 @@ export class AdminChatReviewPopupComponent {
     if (!selected || selected.userId !== userId) {
       return;
     }
-    this.admin.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
+    const resolvedUser = this.resolveDashboardReportedUser(userId) ?? selected;
+    const selectedReportId = `${this.admin.selectedReport()?.id ?? ''}`.trim();
+    const resolvedReport = selectedReportId
+      ? resolvedUser.reports.find(report => report.id === selectedReportId) ?? null
+      : null;
+    if (resolvedReport) {
+      this.admin.openReportDetail(resolvedUser, resolvedReport);
+      return;
+    }
+    this.admin.setSelectedReportedUser(resolvedUser);
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {

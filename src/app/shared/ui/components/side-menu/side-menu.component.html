@@ -34,7 +34,10 @@
 }
 
 @if (avatarVisible() && runtimeStore.isOnline() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
-  <div class="notification-attention-launcher">
+  <div
+    class="notification-attention-launcher"
+    [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
+  >
     <app-menu
       class="notification-attention-menu"
       kind="fab"

@@ -64,6 +64,7 @@ export interface AdminReportedUserDto {
   blockedAtIso?: string | null;
   hasSupportChat?: boolean | null;
   supportChatUnread?: number | null;
+  supportChatId?: string | null;
   reports: AdminReportDto[];
 }
 

@@ -412,6 +412,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   listFlow?: SmartListConfigValue<SmartListListFlow, TFilters>;
   orientation?: SmartListConfigValue<SmartListOrientation, TFilters>;
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
+  mobileColumns?: SmartListConfigValue<number | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;
   headerProgress?: {

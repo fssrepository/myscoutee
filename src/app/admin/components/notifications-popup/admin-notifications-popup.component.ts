@@ -164,6 +164,12 @@ interface ScheduleEditorFormValue {
   intervalUnit: IntervalUnit;
 }
 
+interface ScheduleEditorBaseline {
+  ruleKey: string;
+  timing: AdminNotificationRule['timing'];
+  scheduleSlots?: AdminNotificationScheduleSlot[];
+}
+
 const INTERVAL_UNIT_SECONDS: Record<IntervalUnit, number> = {
   [INTERVAL_UNIT.seconds]: 1,
   [INTERVAL_UNIT.minutes]: 60,
@@ -496,6 +502,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
   private readonly timingBaselineSignatures = new Map<string, string>();
   private readonly parameterBaselineSignatures = new Map<string, string>();
+  private scheduleEditorBaseline: ScheduleEditorBaseline | null = null;
   protected readonly processListQuery = computed<Partial<ListQuery<ProcessListFilters>>>(() => ({
     page: 0,
     pageSize: 100,
@@ -829,11 +836,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     };
   }
 
-  protected scheduleEditorPopupModel(rule: AdminNotificationRule): PopupModel {
+  protected scheduleEditorPopupModel(): PopupModel {
     return {
       title: 'admin.jobs.timing',
       subtitle: 'admin.jobs.timing.description',
-      secondarySubtitle: this.intervalCron(rule),
       ariaLabel: this.uiText('admin.jobs.timing'),
       closeAriaLabel: this.uiText('admin.jobs.close.run.window.editor'),
       size: 'default',
@@ -1306,6 +1312,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     this.parameterDraft.set(null);
+    this.scheduleEditorBaseline = {
+      ruleKey: rule.ruleKey,
+      timing: { ...rule.timing },
+      scheduleSlots: rule.scheduleSlots?.map(slot => ({ ...slot }))
+    };
     this.scheduleEditorDraft.set({
       startTime: this.startTime(rule),
       intervalAmount: this.intervalAmount(rule),
@@ -1315,6 +1326,20 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected closeScheduleEditor(): void {
+    const baseline = this.scheduleEditorBaseline;
+    const rule = baseline && this.selectedRule()?.ruleKey === baseline.ruleKey
+      ? this.selectedRule()
+      : null;
+    if (baseline && rule && this.isTimingDirty(rule)) {
+      const restoredRule: AdminNotificationRule = {
+        ...rule,
+        timing: { ...baseline.timing },
+        scheduleSlots: baseline.scheduleSlots?.map(slot => ({ ...slot }))
+      };
+      this.patchRule(rule.ruleKey, () => restoredRule);
+      this.refreshTimingDirty(restoredRule);
+    }
+    this.scheduleEditorBaseline = null;
     this.scheduleEditorOpen.set(false);
     this.scheduleEditorDraft.set(null);
   }
@@ -1371,6 +1396,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.refreshTimingDirty(rule);
     const saved = await this.save();
     if (saved) {
+      this.scheduleEditorBaseline = null;
       this.closeScheduleEditor();
     }
   }

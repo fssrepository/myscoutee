@@ -2,6 +2,7 @@ import {
   HttpErrorResponse
 } from '@angular/common/http';
 import {
+  computed,
   Injectable,
   inject,
   signal
@@ -43,6 +44,14 @@ export class AdminWorkspaceStore {
   private readonly accessDeniedRef = signal(false);
 
   readonly dashboard = this.dashboardRef.asReadonly();
+  readonly reviewCounts = computed(() => this.dashboardRef()?.reviewCounts ?? null);
+  readonly menuReviewCounts = computed(() => {
+    const counts = this.reviewCounts();
+    return {
+      reports: this.nonNegativeInteger(counts?.reportsUnresolved),
+      feedback: this.nonNegativeInteger(counts?.feedbackUnresolved)
+    };
+  });
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
@@ -134,7 +143,8 @@ export class AdminWorkspaceStore {
       profileStatus: patch?.profileStatus ?? currentUser.profileStatus,
       blockedAtIso: patch?.blockedAtIso !== undefined ? patch.blockedAtIso : currentUser.blockedAtIso,
       hasSupportChat: patch?.hasSupportChat !== undefined ? patch.hasSupportChat : currentUser.hasSupportChat,
-      supportChatUnread: patch?.supportChatUnread !== undefined ? patch.supportChatUnread : currentUser.supportChatUnread
+      supportChatUnread: patch?.supportChatUnread !== undefined ? patch.supportChatUnread : currentUser.supportChatUnread,
+      supportChatId: patch?.supportChatId !== undefined ? patch.supportChatId : currentUser.supportChatId
     });
 
     const reportedUsers = dashboard.reportedUsers.map(user =>
@@ -290,6 +300,7 @@ export class AdminWorkspaceStore {
       blockedAtIso: `${user.blockedAtIso ?? (blockedFallback ? user.lastReportedAtIso : '') ?? ''}`.trim() || null,
       hasSupportChat: user.hasSupportChat === true,
       supportChatUnread: Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0)),
+      supportChatId: `${user.supportChatId ?? ''}`.trim() || null,
       reports: (user.reports ?? []).map(report => ({
         ...report,
         reporterImageUrl: `${report.reporterImageUrl ?? ''}`.trim() || null,
@@ -320,7 +331,15 @@ export class AdminWorkspaceStore {
         subEvent: this.nonNegativeInteger(user.activities.chat?.subEvent),
         group: this.nonNegativeInteger(user.activities.chat?.group),
         service: this.nonNegativeInteger(user.activities.chat?.service),
-        appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport)
+        appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport),
+        supportCases: {
+          pending: this.nonNegativeInteger(user.activities.chat?.supportCases?.pending),
+          warned: this.nonNegativeInteger(user.activities.chat?.supportCases?.warned),
+          picked: this.nonNegativeInteger(user.activities.chat?.supportCases?.picked),
+          solved: this.nonNegativeInteger(user.activities.chat?.supportCases?.solved),
+          blocked: this.nonNegativeInteger(user.activities.chat?.supportCases?.blocked),
+          all: this.nonNegativeInteger(user.activities.chat?.supportCases?.all)
+        }
       },
       events: dashboard.reportedUsers.length,
       hosting: 0,

@@ -274,6 +274,72 @@ describe('SessionService operator bootstrap session', () => {
     expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBeNull();
   });
 
+  it('keeps an admin help perspective in the new tab without replacing the admin session', () => {
+    const service = TestBed.inject(SessionService);
+    service.startDemoSession('admin-demo-ava');
+    const storedAdminSession = localStorage.getItem(APP_STORAGE_KEYS.session);
+
+    expect(service.startDemoSession('reported-user', {
+      supportContext: {
+        kind: 'admin-support',
+        targetUrl: '/game?supportTarget=member'
+      }
+    })).toMatchObject({
+      kind: 'demo',
+      userId: 'reported-user',
+      supportContext: { kind: 'admin-support' }
+    });
+
+    expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBe(storedAdminSession);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.demoActiveUser)).toBe('admin-demo-ava');
+    expect(JSON.parse(sessionStorage.getItem(APP_STORAGE_KEYS.adminSupportSession) ?? '{}'))
+      .toMatchObject({
+        kind: 'demo',
+        userId: 'reported-user',
+        supportContext: { kind: 'admin-support' }
+      });
+  });
+
+  it('restores the tab-scoped admin help perspective before the shared browser session', () => {
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
+      kind: 'demo',
+      userId: 'admin-demo-ava',
+      sessionId: 'session:admin'
+    }));
+    sessionStorage.setItem(APP_STORAGE_KEYS.adminSupportSession, JSON.stringify({
+      kind: 'demo',
+      userId: 'reported-user',
+      sessionId: 'session:support',
+      supportContext: {
+        kind: 'admin-support',
+        targetUrl: '/game?supportTarget=member'
+      }
+    }));
+
+    expect(TestBed.inject(SessionService).currentSession()).toMatchObject({
+      kind: 'demo',
+      userId: 'reported-user',
+      sessionId: 'session:support'
+    });
+  });
+
+  it('does not clear the admin session when the tab-scoped help perspective logs out', async () => {
+    const service = TestBed.inject(SessionService);
+    service.startDemoSession('admin-demo-ava');
+    const storedAdminSession = localStorage.getItem(APP_STORAGE_KEYS.session);
+    service.startDemoSession('reported-user', {
+      supportContext: { kind: 'admin-support' }
+    });
+
+    await service.logout();
+
+    expect(service.currentSession()).toBeNull();
+    expect(sessionStorage.getItem(APP_STORAGE_KEYS.adminSupportSession)).toBeNull();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBe(storedAdminSession);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.demoActiveUser)).toBe('admin-demo-ava');
+    expect(revokeDemoSession).not.toHaveBeenCalled();
+  });
+
   it('clears the bootstrap token on logout', async () => {
     bootstrapSignIn.mockResolvedValue(validBootstrapResponse());
     const service = TestBed.inject(SessionService);

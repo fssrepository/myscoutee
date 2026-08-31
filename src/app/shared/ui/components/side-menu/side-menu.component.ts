@@ -41,6 +41,9 @@ import {
   ProfileHeaderCardConverter
 } from '../../converters';
 import {
+  cloneSupportCaseCounters
+} from '../../context/stores/app-context-store.utils';
+import {
   AppUtils
 } from '../../../app-utils';
 import {
@@ -67,6 +70,7 @@ import {
   I18nService,
   PrivacyPolicyService,
   SessionService,
+  ChatsService,
   TermsPolicyService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
@@ -92,7 +96,6 @@ import {
 import {
   resolveSideMenuPresentation
 } from './side-menu-presenters';
-import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import {
   DialogStore
 } from '../../context/stores/dialog.store';
@@ -122,6 +125,19 @@ interface NavigatorAvatarState {
 
 interface SideMenuUiState {
   open: boolean;
+}
+
+interface AdminNavigatorBadgeActivities {
+  chat?: {
+    supportCases?: {
+      pending?: number | null;
+      warned?: number | null;
+      picked?: number | null;
+      blocked?: number | null;
+    } | null;
+  } | null;
+  adminJobs: number;
+  adminMetrics: number;
 }
 
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
@@ -220,6 +236,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
+  private readonly chatsService = inject(ChatsService);
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   private readonly popupPresenceStore = inject(PopupPresenceStore);
@@ -437,19 +454,24 @@ export class SideMenuComponent implements OnDestroy {
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
+      chat: {
+        all: activityOverrides.chat?.all ?? activeUser.activities?.chat?.all ?? 0,
+        event: activityOverrides.chat?.event ?? activeUser.activities?.chat?.event ?? 0,
+        subEvent: activityOverrides.chat?.subEvent ?? activeUser.activities?.chat?.subEvent ?? 0,
+        group: activityOverrides.chat?.group ?? activeUser.activities?.chat?.group ?? 0,
+        service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
+        appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0,
+        supportCases: cloneSupportCaseCounters(
+          activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases
+        )
+      },
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
     const impressionChangeFlags = this.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveSideMenuPresentation('trait', activeUser.traitLabel ?? '');
     const totalBadgeCount = this.userProfileStore.isAdminUserProfile(activeUser)
-      ? (
-        mergedActivities.game +
-        mergedActivities.feedback +
-        mergedActivities.chats +
-        mergedActivities.adminJobs +
-        mergedActivities.adminMetrics
-      )
+      ? this.adminNavigatorBadgeCount(mergedActivities)
       : (
         (impressionChangeFlags.host ? 1 : 0) +
         (impressionChangeFlags.member ? 1 : 0) +
@@ -623,14 +645,36 @@ export class SideMenuComponent implements OnDestroy {
     if (!user) {
       return {};
     }
+    const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
     return {
-      adminReports: user.activities.game,
-      adminFeedback: user.activities.feedback,
-      adminChat: user.activities.chats,
+      adminReports: reviewCounts.reports,
+      adminFeedback: reviewCounts.feedback,
+      adminChat: this.adminSupportCaseMenuCount(user.activities.chat),
       adminJobs: user.activities.adminJobs,
       adminMetrics: user.activities.adminMetrics
     };
   });
+
+  private adminSupportCaseMenuCount(chat: AdminNavigatorBadgeActivities['chat']): number {
+    const counters = chat?.supportCases;
+    const count = (value: unknown): number => Math.max(0, Math.trunc(Number(value) || 0));
+    return count(counters?.pending)
+      + count(counters?.warned)
+      + count(counters?.picked)
+      + count(counters?.blocked);
+  }
+
+  private adminNavigatorBadgeCount(
+    activities: AdminNavigatorBadgeActivities
+  ): number {
+    const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
+    return reviewCounts.reports
+      + reviewCounts.feedback
+      + this.adminSupportCaseMenuCount(activities.chat)
+      + activities.adminJobs
+      + activities.adminMetrics;
+  }
+
   protected readonly navigatorMenuModel = computed<AppMenuModel<NavigatorMenuShortcutId>>(() => {
     const user = this.menuUser();
     if (!user) {
@@ -1596,7 +1640,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.adminMenuStore.openReports(this.adminWorkspaceStore.dashboard()?.reportedUsers[0] ?? null);
+    this.adminMenuStore.openReports();
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {
@@ -2040,6 +2084,7 @@ export class SideMenuComponent implements OnDestroy {
       ) {
         return;
       }
+      this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {
         notifications: _notificationCount,
@@ -2100,13 +2145,12 @@ export class SideMenuComponent implements OnDestroy {
 
   private resolveUserBadgeCount(user: UserDto): number {
     if (this.userProfileStore.isAdminUserProfile(user)) {
-      return (
-        this.resolveActivityBadge(user, 'game') +
-        this.resolveActivityBadge(user, 'chats') +
-        this.resolveActivityBadge(user, 'feedback') +
-        this.resolveActivityBadge(user, 'adminJobs') +
-        this.resolveActivityBadge(user, 'adminMetrics')
-      );
+      const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
+      return this.adminNavigatorBadgeCount({
+        chat: activityOverrides.chat ?? user.activities?.chat,
+        adminJobs: this.resolveActivityBadge(user, 'adminJobs'),
+        adminMetrics: this.resolveActivityBadge(user, 'adminMetrics')
+      });
     }
     const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
     return (
@@ -2181,27 +2225,24 @@ export class SideMenuComponent implements OnDestroy {
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
-  private openBlockedUserSupportChat(): void {
+  private async openBlockedUserSupportChat(): Promise<void> {
     const user = this.menuUser();
     if (!user || !this.runtimeStore.isOnline()) {
       return;
     }
     const activeUserId = user.id.trim();
-    const adminUserId = 'myscoutee-admin';
-    const chat: ChatDTO & { ownerUserId?: string } = {
-      id: `c-support-blocked-${activeUserId}`,
-      avatar: 'MS',
-      title: this.i18n.translate('myscoutee.support'),
-      lastMessage: this.i18n.translate(
-        'myscoutee.support.blocked.chat.message'
-      ),
-      lastSenderId: adminUserId,
-      memberIds: [activeUserId, adminUserId],
-      unread: 1,
-      dateIso: new Date().toISOString(),
-      channelType: 'appSupport',
-      ownerUserId: activeUserId
-    };
+    if (!activeUserId) {
+      return;
+    }
+    const chat = await this.chatsService
+      .queryChatById(`c-support-admin-${activeUserId}`)
+      .catch(() => null);
+    if (!chat) {
+      this.dialogStore.openInfo('The support chat could not be found. Please contact MyScoutee support.', {
+        title: 'Unable to open support chat'
+      });
+      return;
+    }
     this.activitiesStore.openActivities('chats');
     this.activitiesStore.openEventChat(
       eventChatPopupRequestFromChat(chat),

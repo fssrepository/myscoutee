@@ -620,6 +620,7 @@ export class UsersService extends BaseRouteModeService {
     const chatGroup = normalizeWithFallback(counterOverrides.chat?.group, fallbackActivities.chat?.group);
     const chatService = normalizeWithFallback(counterOverrides.chat?.service, fallbackActivities.chat?.service);
     const chatAppSupport = normalizeWithFallback(counterOverrides.chat?.appSupport, fallbackActivities.chat?.appSupport);
+    const supportCases = counterOverrides.chat?.supportCases ?? fallbackActivities.chat?.supportCases;
     if (chatAll !== undefined || chatEvent !== undefined || chatSubEvent !== undefined
       || chatGroup !== undefined || chatService !== undefined || chatAppSupport !== undefined
     ) {
@@ -629,7 +630,15 @@ export class UsersService extends BaseRouteModeService {
         subEvent: chatSubEvent ?? 0,
         group: chatGroup ?? 0,
         service: chatService ?? 0,
-        appSupport: chatAppSupport ?? 0
+        appSupport: chatAppSupport ?? 0,
+        supportCases: {
+          pending: normalizeWithFallback(supportCases?.pending, 0) ?? 0,
+          warned: normalizeWithFallback(supportCases?.warned, 0) ?? 0,
+          picked: normalizeWithFallback(supportCases?.picked, 0) ?? 0,
+          solved: normalizeWithFallback(supportCases?.solved, 0) ?? 0,
+          blocked: normalizeWithFallback(supportCases?.blocked, 0) ?? 0,
+          all: normalizeWithFallback(supportCases?.all, 0) ?? 0
+        }
       };
     }
 
@@ -718,7 +727,15 @@ export class UsersService extends BaseRouteModeService {
           subEvent: Math.max(0, Math.trunc(Number(user.activities?.chat?.subEvent) || 0)),
           group: Math.max(0, Math.trunc(Number(user.activities?.chat?.group) || 0)),
           service: Math.max(0, Math.trunc(Number(user.activities?.chat?.service) || 0)),
-          appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0))
+          appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0)),
+          supportCases: {
+            pending: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.pending) || 0)),
+            warned: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.warned) || 0)),
+            picked: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.picked) || 0)),
+            solved: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.solved) || 0)),
+            blocked: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.blocked) || 0)),
+            all: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.all) || 0))
+          }
         },
         event: {
           all: Math.max(0, Math.trunc(Number(user.activities?.event?.all) || 0)),
