@@ -274,17 +274,13 @@ export class HttpChatsService implements IChatsService {
     if (!normalizedChatId || !userId) {
       return null;
     }
-    try {
-      const response = await this.http
-        .get<HttpChatDto | null>(
-          `${this.apiBaseUrl}/activities/chats/by-id/${encodeURIComponent(normalizedChatId)}`,
-          { params: this.withUserId(new HttpParams(), userId) }
-        )
-        .toPromise();
-      return response ? this.cloneChatDTO(this.mapChatDTO(response, userId)) : null;
-    } catch {
-      return null;
-    }
+    const response = await this.http
+      .get<HttpChatDto | null>(
+        `${this.apiBaseUrl}/activities/chats/by-id/${encodeURIComponent(normalizedChatId)}`,
+        { params: this.withUserId(new HttpParams(), userId) }
+      )
+      .toPromise();
+    return response ? this.cloneChatDTO(this.mapChatDTO(response, userId)) : null;
   }
 
   async queryActivitiesChatPage(

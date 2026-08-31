@@ -35,6 +35,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       return null;
     }
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     const normalizedReportId = `${reportId ?? ''}`.trim();
     if (normalizedReportId) {
       await this.moderationRepository.whenReady();
@@ -44,7 +45,6 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         new Date().toISOString()
       );
     }
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     return { userPatch: supportPatch };
   }
 
@@ -110,7 +110,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         profileStatus: nextStatus,
         blockedAtIso: null,
         hasSupportChat: this.supportChatExists(resolvedAdmin.id, normalizedUserId),
-        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId)
+        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId),
+        supportChatId: this.supportChatId(resolvedAdmin.id, normalizedUserId)
       }
     };
   }
@@ -194,7 +195,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     return {
       userId,
       hasSupportChat: true,
-      supportChatUnread: 0
+      supportChatUnread: 0,
+      supportChatId: chatId
     };
   }
 
@@ -216,6 +218,18 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
 
   private supportChatUnread(adminId: string, userId: string): number {
     return this.supportSession.supportChatUnread(adminId, userId);
+  }
+
+  private supportChatId(adminId: string, userId: string): string | null {
+    const normalizedAdminId = adminId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedAdminId || !normalizedUserId) {
+      return null;
+    }
+    return this.supportSession.findChatById(
+      normalizedAdminId,
+      `c-support-admin-${normalizedUserId}`
+    )?.id ?? null;
   }
 
   private resolveAdmin(admin: AdminUserDto | null | undefined): AdminUserDto | null {

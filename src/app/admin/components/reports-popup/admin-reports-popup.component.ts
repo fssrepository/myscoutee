@@ -656,8 +656,6 @@ export class AdminReportsPopupComponent {
   protected viewBlockedUserChat(user: AdminReportedUserDto, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.closeBlockedUsers();
-    this.closeReportDetails();
     void this.openBlockedUserChat(user);
   }
 
@@ -680,10 +678,13 @@ export class AdminReportsPopupComponent {
     source: AdminReportMenuSource,
     reportItem?: AdminReportListItem | null
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] {
+    const supportChatAvailable = this.hasPersistedSupportChat(user);
     if (this.isUserBlocked(user)) {
-      return [
-        this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open', 'success', undefined, reportItem),
-        this.reportActionItem(
+      const items = [
+        this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open', 'success', undefined, reportItem)
+      ];
+      if (supportChatAvailable) {
+        items.push(this.reportActionItem(
           user,
           source,
           'view-chat',
@@ -692,13 +693,16 @@ export class AdminReportsPopupComponent {
           'blue',
           this.visibleSupportChatUnread(user),
           reportItem
-        )
-      ];
+        ));
+      }
+      return items;
     }
     if (source === 'blocked-user') {
-      return [
-        this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger', undefined, reportItem),
-        this.reportActionItem(
+      const items = [
+        this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger', undefined, reportItem)
+      ];
+      if (supportChatAvailable) {
+        items.push(this.reportActionItem(
           user,
           source,
           'view-chat',
@@ -707,15 +711,16 @@ export class AdminReportsPopupComponent {
           'blue',
           this.visibleSupportChatUnread(user),
           reportItem
-        )
-      ];
+        ));
+      }
+      return items;
     }
     const warned = this.isReportWarned(reportItem?.report);
     const items: AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] = [];
     if (!warned) {
       items.push(this.reportActionItem(user, source, 'warn', 'warn', 'chat', 'warning', undefined, reportItem));
     }
-    if (warned) {
+    if (warned && supportChatAvailable) {
       items.push(
         this.reportActionItem(
           user,
@@ -777,6 +782,12 @@ export class AdminReportsPopupComponent {
     const userId = `${user.userId ?? ''}`.trim();
     const resolved = this.resolveDashboardReportedUser(userId) ?? user;
     return Math.max(0, Math.trunc(Number(resolved.supportChatUnread) || 0));
+  }
+
+  private hasPersistedSupportChat(user: AdminReportedUserDto): boolean {
+    const userId = `${user.userId ?? ''}`.trim();
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    return resolved.hasSupportChat === true && `${resolved.supportChatId ?? ''}`.trim().length > 0;
   }
 
   protected isSelectedUser(user: AdminReportedUserDto): boolean {
@@ -1102,11 +1113,31 @@ export class AdminReportsPopupComponent {
   }
 
   private async openBlockedUserChat(user: AdminReportedUserDto): Promise<void> {
-    const chatId = `${user.supportChatId ?? ''}`.trim();
-    const chat = chatId ? await this.chatsService.queryChatById(chatId) : null;
-    if (!chat) {
+    const resolvedUser = this.resolveDashboardReportedUser(user.userId) ?? user;
+    const chatId = `${resolvedUser.supportChatId ?? ''}`.trim();
+    if (!resolvedUser.hasSupportChat || !chatId) {
+      this.dialogStore.openInfo('The support chat is not available yet.', {
+        title: 'Unable to open chat'
+      });
       return;
     }
+    let chat: ChatDTO | null;
+    try {
+      chat = await this.chatsService.queryChatById(chatId);
+    } catch {
+      this.dialogStore.openInfo('The support chat could not be loaded. Please try again.', {
+        title: 'Unable to open chat'
+      });
+      return;
+    }
+    if (!chat) {
+      this.dialogStore.openInfo('The support chat could not be found.', {
+        title: 'Unable to open chat'
+      });
+      return;
+    }
+    this.closeBlockedUsers();
+    this.closeReportDetails();
     this.admin.closePopup();
     this.activitiesStore.openEventChat(
       eventChatPopupRequestFromChat(chat),

@@ -42,6 +42,7 @@ import {
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivityResourceBuilder,
+  AdminWorkspaceDataService,
   AssetDefaultsBuilder,
   ActivityResourcesService,
   ChatsService,
@@ -242,6 +243,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly notificationCenterStore = inject(NotificationCenterStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
+  private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
@@ -1193,7 +1195,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       if (context.action === 'history') {
-        this.openSupportUserHistory(event.sourceEvent);
+        void this.openSupportUserHistory(event.sourceEvent);
         return;
       }
       this.openPinnedMessagesDialog(event.sourceEvent);
@@ -1224,7 +1226,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  private openSupportUserHistory(event?: Event): void {
+  private async openSupportUserHistory(event?: Event): Promise<void> {
     event?.preventDefault();
     event?.stopPropagation();
     const chat = this.session()?.item;
@@ -1235,14 +1237,38 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!targetUserId) {
       return;
     }
-    const dashboard = this.adminWorkspaceStore.dashboard();
-    const user = [
+    let dashboard = this.adminWorkspaceStore.dashboard();
+    let user = [
       ...(dashboard?.reportedUsers ?? []),
       ...(dashboard?.blockedUsers ?? [])
     ].find(candidate => candidate.userId === targetUserId) ?? null;
+    if (!user) {
+      const adminUserId = `${this.userProfileStore.activeAdminUser()?.id ?? ''}`.trim();
+      if (!adminUserId) {
+        return;
+      }
+      try {
+        dashboard = this.adminWorkspaceStore.applyDashboard(
+          await this.adminWorkspaceData.loadDashboard(adminUserId)
+        );
+        user = [
+          ...(dashboard.reportedUsers ?? []),
+          ...(dashboard.blockedUsers ?? [])
+        ].find(candidate => candidate.userId === targetUserId) ?? null;
+      } catch {
+        this.dialogStore.openInfo('The moderation history could not be loaded. Please try again.', {
+          title: 'Unable to open history'
+        });
+        return;
+      }
+    }
     if (user) {
       this.adminMenuStore.openReports(user);
+      return;
     }
+    this.dialogStore.openInfo('No moderation history is available for this user.', {
+      title: 'Unable to open history'
+    });
   }
 
   protected messageActionMenuIdFor(message: ContractTypes.ChatMessageDto): string {

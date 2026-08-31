@@ -455,7 +455,7 @@ export class SideMenuComponent implements OnDestroy {
       ? (
         adminReviewCounts.reports +
         adminReviewCounts.feedback +
-        (mergedActivities.chat?.service ?? 0) +
+        (mergedActivities.chat?.appSupport ?? 0) +
         mergedActivities.adminJobs +
         mergedActivities.adminMetrics
       )
@@ -636,7 +636,7 @@ export class SideMenuComponent implements OnDestroy {
     return {
       adminReports: reviewCounts.reports,
       adminFeedback: reviewCounts.feedback,
-      adminChat: user.activities.chat?.service ?? 0,
+      adminChat: user.activities.chat?.appSupport ?? 0,
       adminJobs: user.activities.adminJobs,
       adminMetrics: user.activities.adminMetrics
     };
