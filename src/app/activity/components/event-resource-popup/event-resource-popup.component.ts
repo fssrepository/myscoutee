@@ -314,25 +314,37 @@ export class EventResourcePopupComponent {
   }
 
   private chatMetricIdentity(context: ResourcePopupContext): string {
-    return this.chatMetricIdentityFromParts(context.ownerId, context.subEvent.id, context.groupId);
+    return this.chatMetricIdentityFromParts(
+      context.ownerId,
+      context.subEvent.id,
+      context.groupId,
+      context.subEvent.runtimeKind,
+      context.subEvent.eventId
+    );
   }
 
   private chatMetricIdentityFromParts(
     ownerIdValue: string | null | undefined,
     subEventIdValue: string | null | undefined,
-    groupIdValue?: string | null
+    groupIdValue?: string | null,
+    runtimeKindValue?: string | null,
+    eventIdValue?: string | null
   ): string {
-    const ownerId = `${ownerIdValue ?? ''}`.trim();
-    const subEventId = `${subEventIdValue ?? ''}`.trim();
-    if (!ownerId || !subEventId) {
+    const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: ownerIdValue,
+      subEventId: subEventIdValue,
+      groupId: groupIdValue,
+      runtimeKind: runtimeKindValue,
+      eventId: eventIdValue
+    });
+    if (!scope.chatChannelType || !scope.chatOwnerId) {
       return '';
     }
-    const groupId = `${groupIdValue ?? ''}`.trim();
-    const channelType: ContractTypes.ChatChannelType = groupId ? 'groupSubEvent' : 'optionalSubEvent';
-    const chatOwnerId = groupId
-      ? this.scopedGroupOwnerId(ownerId, subEventId, groupId)
-      : `${ownerId}:${subEventId}`;
-    return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      scope.chatChannelType,
+      scope.chatOwnerId,
+      scope.chatOwnerId
+    );
   }
 
   private memberOwnerIdFromParts(
@@ -374,13 +386,13 @@ export class EventResourcePopupComponent {
   }
 
   private resourceMemberParent(context: ResourcePopupContext): ActivityContracts.ActivityMemberOwnerRef {
-    if (`${context.groupId ?? ''}`.trim()) {
-      return {
-        ownerId: context.ownerId.trim(),
-        ownerType: 'group'
-      };
-    }
-    return {
+    return ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      groupId: context.groupId,
+      runtimeKind: context.subEvent.runtimeKind,
+      eventId: context.subEvent.eventId
+    }).memberOwner ?? {
       ownerId: this.memberOwnerIdFromParts(context.ownerId, context.subEvent.id),
       ownerType: 'subEvent'
     };
@@ -780,25 +792,42 @@ export class EventResourcePopupComponent {
   private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {
     if (request.type === 'Members') {
       const group = request.group ?? null;
-      const ownerId = this.memberOwnerIdFromParts(request.ownerId, request.subEventId, group?.id);
-      const parentOwnerId = this.parentEventOwnerId(request.ownerId, request.subEventId, group?.id);
+      const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+        ownerId: request.ownerId,
+        subEventId: request.subEventId,
+        groupId: group?.id,
+        runtimeKind: request.runtimeKind,
+        eventId: request.eventId
+      });
+      const owner = scope.memberOwner;
+      const parentOwnerId = scope.eventId
+        || this.parentEventOwnerId(request.ownerId, request.subEventId, group?.id);
+      if (!owner) {
+        return;
+      }
       const groupLabel = group?.groupLabel?.trim() ?? '';
       const subEventTitle = this.requestSubEventTitle(request);
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
-        ownerId,
-        ownerType: group?.id ? 'group' : 'subEvent',
+        ownerId: owner.ownerId,
+        ownerType: owner.ownerType,
         parentOwnerId,
         parentOwnerType: 'event',
         eventId: parentOwnerId,
-        subEventId: `${request.subEventId ?? ''}`.trim(),
+        subEventId: scope.isMainEvent ? '' : `${request.subEventId ?? ''}`.trim(),
         subtitle: groupLabel || subEventTitle || request.parentTitle?.trim() || 'Event',
         canManage: group?.canManage === true,
         viewOnly: group?.id ? group.canManage !== true : undefined,
         acceptedMembers: Math.max(0, Math.trunc(Number(group?.accepted) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(group?.pending) || 0)),
         capacityTotal: Math.max(0, Math.trunc(Number(group?.capacityMax) || 0)),
-        metricIdentity: this.chatMetricIdentityFromParts(request.ownerId, request.subEventId, group?.id),
+        metricIdentity: this.chatMetricIdentityFromParts(
+          request.ownerId,
+          request.subEventId,
+          group?.id,
+          request.runtimeKind,
+          request.eventId
+        ),
         onMembersChanged: group?.onMembersChanged
       });
       return;
@@ -832,25 +861,17 @@ export class EventResourcePopupComponent {
     }
     const header = request.subEventHeader ?? null;
     const name = this.requestSubEventTitle(request) || 'Sub Event';
-    return {
-      id: subEventId,
+    return ActivityResourceBuilder.runtimeResourceTarget({
+      ownerId: request.ownerId,
+      subEventId,
+      runtimeKind: request.runtimeKind,
+      eventId: request.eventId,
       name,
       description: `${header?.description ?? ''}`.trim(),
       location: `${header?.location ?? ''}`.trim(),
       startAt: `${header?.startAt ?? ''}`.trim(),
-      endAt: `${header?.endAt ?? ''}`.trim(),
-      optional: true,
-      capacityMin: 0,
-      capacityMax: 0,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      carsAccepted: 0,
-      accommodationAccepted: 0,
-      suppliesAccepted: 0
-    };
+      endAt: `${header?.endAt ?? ''}`.trim()
+    });
   }
 
   private requestSubEventTitle(request: SubEventResourcePopupRequest): string {

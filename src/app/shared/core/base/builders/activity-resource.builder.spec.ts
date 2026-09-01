@@ -33,6 +33,54 @@ describe('ActivityResourceBuilder group request scoping', () => {
     )).toBe('event-1');
   });
 
+  it('EVENT-RUNTIME-001 keeps a MAIN_EVENT resource physically scoped to its runtime and logically scoped to the Event', () => {
+    const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: 'event-1',
+      subEventId: 'main-event:event-1',
+      runtimeKind: 'MAIN_EVENT',
+      eventId: 'event-1'
+    });
+
+    expect(scope).toEqual({
+      isMainEvent: true,
+      eventId: 'event-1',
+      resourceOwnerId: 'event-1',
+      resourceScopeId: 'main-event:event-1',
+      memberOwner: { ownerType: 'event', ownerId: 'event-1' },
+      chatChannelType: 'mainEvent',
+      chatOwnerId: 'event-1'
+    });
+
+    expect(ActivityResourceBuilder.runtimeResourceTarget({
+      ownerId: 'event-1',
+      subEventId: 'main-event:event-1',
+      runtimeKind: 'MAIN_EVENT',
+      eventId: 'event-1',
+      name: 'Childless Event',
+      description: 'Canonical runtime',
+      location: 'Austin',
+      startAt: '2026-09-01T09:00:00Z',
+      endAt: '2026-09-01T11:00:00Z'
+    })).toMatchObject({
+      id: 'main-event:event-1',
+      runtimeKind: 'MAIN_EVENT',
+      eventId: 'event-1',
+      name: 'Childless Event',
+      optional: false
+    });
+  });
+
+  it('keeps an ordinary sub-event on its existing sub-event member and chat identity', () => {
+    const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: 'event-1',
+      subEventId: 'sub-1'
+    });
+
+    expect(scope.memberOwner).toEqual({ ownerType: 'subEvent', ownerId: 'event-1:sub-1' });
+    expect(scope.chatChannelType).toBe('optionalSubEvent');
+    expect(scope.chatOwnerId).toBe('event-1:sub-1');
+  });
+
   it('counts only requests whose booking owner matches the selected group', () => {
     const groupA = 'event-1:stage-1:stage-1:group:1';
     const groupB = 'event-1:stage-1:stage-1:group:2';

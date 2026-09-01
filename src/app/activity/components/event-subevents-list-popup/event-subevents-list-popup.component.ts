@@ -887,6 +887,8 @@ export class EventSubeventsListPopupComponent {
     this.resourcePopupStore.requestSubEventResourcePopup({
       type: context.resourceType,
       ownerId,
+      runtimeKind: item.runtimeKind,
+      eventId: `${item.eventId ?? this.event?.id ?? ownerId}`.trim() || ownerId,
       assetOwnerUserId: this.event?.creatorUserId ?? null,
       viewOnly: this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction === 'view',
       parentTitle: this.popupSubtitle(),

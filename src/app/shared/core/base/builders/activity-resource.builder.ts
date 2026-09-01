@@ -7,6 +7,32 @@ import * as AppConstants from '../../common/constants';
 
 type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
 
+export interface ActivityRuntimeResourceScopeRef {
+  ownerId: string | null | undefined;
+  subEventId: string | null | undefined;
+  runtimeKind?: string | null;
+  eventId?: string | null;
+  groupId?: string | null;
+}
+
+export interface ActivityRuntimeResourceScopeIdentity {
+  isMainEvent: boolean;
+  eventId: string;
+  resourceOwnerId: string;
+  resourceScopeId: string;
+  memberOwner: AppDTOs.ActivityMemberOwnerRef | null;
+  chatChannelType: ContractTypes.ChatChannelType | null;
+  chatOwnerId: string;
+}
+
+export interface ActivityRuntimeResourceTargetRef extends ActivityRuntimeResourceScopeRef {
+  name: string;
+  description?: string | null;
+  location?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+}
+
 export class ActivityResourceBuilder {
   static chatResourceDateRange(
     chat: Pick<ContractTypes.ChatDTO, 'contextStartAtIso' | 'contextEndAtIso'>
@@ -31,6 +57,92 @@ export class ActivityResourceBuilder {
     }
     const slotMarker = runtimeOwnerId.indexOf(':slot:');
     return slotMarker > 0 ? runtimeOwnerId.slice(0, slotMarker) : runtimeOwnerId;
+  }
+
+  static runtimeResourceScopeIdentity(
+    ref: ActivityRuntimeResourceScopeRef
+  ): ActivityRuntimeResourceScopeIdentity {
+    const resourceOwnerId = `${ref.ownerId ?? ''}`.trim();
+    const resourceScopeId = `${ref.subEventId ?? ''}`.trim();
+    const groupId = `${ref.groupId ?? ''}`.trim();
+    const isMainEvent = !groupId && `${ref.runtimeKind ?? ''}`.trim().toUpperCase() === 'MAIN_EVENT';
+    const eventId = `${ref.eventId ?? ''}`.trim()
+      || this.authorizationEventId(resourceOwnerId, resourceScopeId);
+
+    if (groupId) {
+      const suffix = `:${resourceScopeId}:${groupId}`;
+      const chatOwnerId = resourceOwnerId && resourceScopeId
+        ? (resourceOwnerId.endsWith(suffix) ? resourceOwnerId : `${resourceOwnerId}${suffix}`)
+        : '';
+      return {
+        isMainEvent: false,
+        eventId,
+        resourceOwnerId,
+        resourceScopeId,
+        memberOwner: resourceOwnerId ? { ownerType: 'group', ownerId: resourceOwnerId } : null,
+        chatChannelType: chatOwnerId ? 'groupSubEvent' : null,
+        chatOwnerId
+      };
+    }
+
+    if (isMainEvent) {
+      return {
+        isMainEvent: true,
+        eventId,
+        resourceOwnerId,
+        resourceScopeId,
+        memberOwner: eventId ? { ownerType: 'event', ownerId: eventId } : null,
+        chatChannelType: eventId ? 'mainEvent' : null,
+        chatOwnerId: eventId
+      };
+    }
+
+    const subEventOwnerId = resourceOwnerId && resourceScopeId
+      ? `${resourceOwnerId}:${resourceScopeId}`
+      : resourceScopeId || resourceOwnerId;
+    return {
+      isMainEvent: false,
+      eventId,
+      resourceOwnerId,
+      resourceScopeId,
+      memberOwner: subEventOwnerId ? { ownerType: 'subEvent', ownerId: subEventOwnerId } : null,
+      chatChannelType: resourceOwnerId && resourceScopeId ? 'optionalSubEvent' : null,
+      chatOwnerId: resourceOwnerId && resourceScopeId ? subEventOwnerId : ''
+    };
+  }
+
+  static runtimeResourceTarget(
+    ref: ActivityRuntimeResourceTargetRef
+  ): AppDTOs.SubEventDTO | null {
+    const id = `${ref.subEventId ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    const runtimeKind = `${ref.runtimeKind ?? ''}`.trim() || null;
+    const isMainEvent = runtimeKind?.toUpperCase() === 'MAIN_EVENT';
+    const eventId = `${ref.eventId ?? ''}`.trim()
+      || (isMainEvent ? this.authorizationEventId(`${ref.ownerId ?? ''}`, id) : '');
+    return {
+      id,
+      runtimeKind,
+      eventId: eventId || null,
+      name: `${ref.name ?? ''}`.trim() || (isMainEvent ? 'Event' : 'Sub Event'),
+      description: `${ref.description ?? ''}`.trim(),
+      location: `${ref.location ?? ''}`.trim(),
+      startAt: `${ref.startAt ?? ''}`.trim(),
+      endAt: `${ref.endAt ?? ''}`.trim(),
+      optional: !isMainEvent,
+      capacityMin: 0,
+      capacityMax: 0,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsAccepted: 0,
+      accommodationAccepted: 0,
+      suppliesAccepted: 0
+    };
   }
 
   static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
