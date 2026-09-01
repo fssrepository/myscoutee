@@ -215,6 +215,29 @@ describe('HttpEventsService', () => {
     })).resolves.toEqual({ items: [], total: 0, nextCursor: null });
   });
 
+  it('loads a tournament snapshot leaderboard from the selected slot owner', async () => {
+    get.mockImplementation((url: string) => url.endsWith('/tournament-groups/stage-groups')
+      ? of([])
+      : of({
+        eventId: 'event-1:slot:weekly:2026-09-01T01:28:16Z',
+        subEventId: 'stage-1',
+        subEventName: 'Qualifiers',
+        leaderboardType: 'Score',
+        groups: []
+      }));
+
+    await TestBed.inject(HttpEventsService).queryTournamentStageSnapshot({
+      eventId: 'event-1',
+      slotId: ' event-1:slot:weekly:2026-09-01T01:28:16Z ',
+      stageId: 'stage-1'
+    });
+
+    const leaderboardCall = get.mock.calls.find(([url]) => url.endsWith('/activities/events/leaderboard'));
+    expect(leaderboardCall?.[1].params.get('eventId'))
+      .toBe('event-1:slot:weekly:2026-09-01T01:28:16Z');
+    expect(leaderboardCall?.[1].params.get('subEventId')).toBe('stage-1');
+  });
+
   it('returns the full stored event counter snapshot beside the selected bucket page', async () => {
     post.mockReturnValue(of({
       items: [],

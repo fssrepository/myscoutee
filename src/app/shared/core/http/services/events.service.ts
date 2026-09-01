@@ -773,13 +773,15 @@ export class HttpEventsService implements IEventsService {
     query: EventTournamentStageGroupsQueryDTO
   ): Promise<EventTournamentStageSnapshotDTO> {
     const normalizedEventId = query.eventId.trim();
+    const normalizedSlotId = `${query.slotId ?? ''}`.trim();
     const normalizedStageId = query.stageId.trim();
     if (!normalizedEventId || !normalizedStageId) {
       return { groups: [], leaderboard: null };
     }
+    const leaderboardOwnerId = normalizedSlotId || normalizedEventId;
     const [groups, leaderboard] = await Promise.all([
       this.queryTournamentStageGroups(query),
-      this.querySubEventLeaderboard(normalizedEventId, normalizedStageId).catch(() => null)
+      this.querySubEventLeaderboard(leaderboardOwnerId, normalizedStageId).catch(() => null)
     ]);
     return { groups, leaderboard };
   }
