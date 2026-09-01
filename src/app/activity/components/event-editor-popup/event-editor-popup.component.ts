@@ -179,7 +179,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
   private currentSourcePublished = false;
-  private publishedCapacityMaxFloor = 0;
+  private publishedCapacityOccupancyFloor = 0;
   private currentMemberSummary: ActivityContracts.ActivityMembersSummaryDto | null = null;
   private lastHandledActivityMembersSyncMs = 0;
   private pricingSlotCatalogCacheKey = '';
@@ -377,8 +377,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (mode === 'create') {
       return 'event.editor.create';
     }
-    if (readOnly || this.isPublishedManageMode()) {
+    if (readOnly) {
       return 'view.event';
+    }
+    if (this.isPublishedManageMode()) {
+      return 'manage.event';
     }
     return 'edit.event';
   }
@@ -735,11 +738,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventCapacityMaxReadOnly(): boolean {
-    return this.eventStructureReadOnly();
+    return this.eventEditorStore.readOnly();
   }
 
   protected showEventEditorSaveAction(): boolean {
-    return !this.isLoadingEventData() && !this.eventStructureReadOnly();
+    return !this.isLoadingEventData() && !this.eventEditorStore.readOnly();
   }
 
   protected showEventPublicationAction(): boolean {
@@ -752,8 +755,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventCapacityMaxMinimum(): number {
     const capacityMin = this.eventDetailDTO.capacityMin ?? 0;
-    const publishedFloor = this.isPublishedManageMode() ? this.publishedCapacityMaxFloor : 0;
+    const publishedFloor = this.isPublishedManageMode() ? this.publishedCapacityOccupancyFloor : 0;
     return Math.max(0, capacityMin, publishedFloor);
+  }
+
+  private acceptedCapacityFloor(dto: ActivityEventDetailDTO): number {
+    const acceptedUserIds = new Set(
+      (dto.acceptedMemberUserIds ?? [])
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(Boolean)
+    );
+    return Math.max(0, Number(dto.acceptedMembers ?? 0) || 0, acceptedUserIds.size);
   }
 
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
@@ -892,7 +904,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   canSaveEventDetailDTO(): boolean {
-    if (this.eventStructureReadOnly()) {
+    if (this.eventEditorStore.readOnly()) {
       return false;
     }
     return Boolean(
@@ -1274,8 +1286,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     const status: ActivityContracts.ActivityEventStatus = publishing ? 'A' : 'DR';
     this.currentSourcePublished = publishing;
-    this.publishedCapacityMaxFloor = publishing
-      ? Math.max(0, Number(this.eventDetailDTO.capacityMax ?? 0) || 0)
+    this.publishedCapacityOccupancyFloor = publishing
+      ? this.acceptedCapacityFloor(this.eventDetailDTO)
       : 0;
     this.eventDetailDTO.status = status;
     this.activitiesStore.emitActivityEventSaveResult(this.eventPublicationSync(status));
@@ -2170,7 +2182,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editingEventId = null;
     this.draftEventId = null;
     this.currentSourcePublished = false;
-    this.publishedCapacityMaxFloor = 0;
+    this.publishedCapacityOccupancyFloor = 0;
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
     this.eventVisibilityReady.set(false);
@@ -2298,7 +2310,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
     this.editingEventId = dto.id.trim() || this.editingEventId;
     this.currentSourcePublished = this.eventEditorStore.mode() === 'edit' && dto.status === 'A';
-    this.publishedCapacityMaxFloor = Math.max(0, Number(dto.capacityMax ?? 0) || 0);
+    this.publishedCapacityOccupancyFloor = this.acceptedCapacityFloor(dto);
     this.eventDetailDTO = dto;
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange('start');
@@ -2319,7 +2331,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const activeUserProfile = activeUserId ? this.userProfileStore.getUserProfile(activeUserId) : null;
 
     this.currentSourcePublished = false;
-    this.publishedCapacityMaxFloor = 0;
+    this.publishedCapacityOccupancyFloor = 0;
     this.eventDetailDTO = this.createEmptyEventDetailDTO().apply({
       id: this.draftEventId ?? '',
       userId: activeUserId,
