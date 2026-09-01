@@ -296,7 +296,7 @@ export class EventResourcePopupComponent {
               accepted: memberSync.acceptedMembers,
               pending: card.type === AppConstants.ASSET_TYPE_SUPPLIES
                 ? card.pending
-                : memberSync.pendingMembers + 1
+                : memberSync.pendingMembers
             }
           : card;
         return {
@@ -3094,7 +3094,9 @@ export class EventResourcePopupComponent {
       card: ResourceAssetDTO,
       status: 'accepted' | 'pending'
     ): number => {
-      const memberSync = this.assignedAssetMembersSync(card.id);
+      const memberSync = type === AppConstants.ASSET_TYPE_SUPPLIES
+        ? null
+        : this.assignedAssetMembersSync(card.id);
       if (memberSync) {
         return status === 'accepted'
           ? memberSync.acceptedMembers
@@ -3107,9 +3109,7 @@ export class EventResourcePopupComponent {
     };
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = cards.length + (type === AppConstants.ASSET_TYPE_SUPPLIES
-      ? 0
-      : cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0));
+    const pending = cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0);
     if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),

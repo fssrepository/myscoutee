@@ -138,13 +138,13 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
     expect(metrics.Transport).toEqual({
       accepted: 0,
-      pending: 2,
+      pending: 1,
       capacityMin: 0,
       capacityMax: 4
     });
   });
 
-  it('persists a supplies assignment itself as one open pending item', () => {
+  it('does not count a supplies assignment itself as pending', () => {
     const ownerId = 'event-1:stage-1:stage-1:group:1';
     const card = {
       id: 'supplies-1',
@@ -176,7 +176,7 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
     expect(metrics.Supplies).toEqual({
       accepted: 0,
-      pending: 1,
+      pending: 0,
       capacityMin: 0,
       capacityMax: 6
     });
