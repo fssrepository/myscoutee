@@ -145,27 +145,26 @@ describe('HttpEventsService', () => {
     });
   });
 
-  it('reloads full event details after saving instead of returning the sparse list response', async () => {
+  it('merges the compact save response into the submitted detail without a redundant reload', async () => {
     post.mockReturnValue(of({
       id: 'event-1',
       userId: 'host-1',
       title: 'Saved event',
       subtitle: 'List response',
-      imageUrl: 'https://example.test/stale-event-image.jpg',
+      imageUrl: 'https://example.test/server-event-image.jpg',
       subEventDefinitions: undefined
     }));
-    get.mockReturnValue(of({
+    const payload = new ActivityEventDetailDTO().apply({
       id: 'event-1',
       userId: 'host-1',
       creatorUserId: 'host-1',
       title: 'Saved event',
-      subtitle: 'Full response',
-      imageUrl: '',
+      subtitle: 'Editor payload',
       subEventDefinitions: [{
         id: 'stage-1',
         name: 'Opening round',
-        description: 'The saved definition',
-        timing: 'After previous',
+        description: 'The submitted definition',
+        timing: 'After',
         offsetMinutes: 0,
         durationMinutes: 30,
         optional: false,
@@ -180,24 +179,14 @@ describe('HttpEventsService', () => {
       sourceLink: 'https://example.test/event',
       blindMode: 'Open Event',
       autoInviter: true
-    }));
-    const payload = new ActivityEventDetailDTO().apply({
-      id: 'event-1',
-      userId: 'host-1',
-      creatorUserId: 'host-1',
-      title: 'Saved event',
-      subtitle: 'Editor payload'
     });
 
     const result = await TestBed.inject(HttpEventsService).saveActivityEvent(payload);
 
-    expect(get).toHaveBeenCalledWith(
-      expect.stringMatching(/\/activities\/events\/detail$/),
-      expect.objectContaining({ params: expect.anything() })
-    );
+    expect(get).not.toHaveBeenCalled();
     expect(result).toMatchObject({
-      subtitle: 'Full response',
-      imageUrl: '',
+      subtitle: 'List response',
+      imageUrl: 'https://example.test/server-event-image.jpg',
       sourceLink: 'https://example.test/event',
       policiesEnabled: true,
       slotsEnabled: true,
@@ -291,7 +280,14 @@ describe('HttpEventsService', () => {
         startAt: '2026-08-06T18:00',
         endAt: '2026-08-06T20:00',
         precision: 'minute'
-      }
+      },
+      slotsEnabled: true,
+      slotTemplates: [{
+        id: 'slot-1',
+        startAt: '2026-08-06T18:00',
+        overrideDate: null,
+        closed: false
+      }]
     });
 
     await TestBed.inject(HttpEventsService).saveActivityEvent(payload);
@@ -304,7 +300,15 @@ describe('HttpEventsService', () => {
       endAt: request.endAtIso,
       precision: 'minute'
     });
+    expect(request.slotTemplates).toEqual([{
+      id: 'slot-1',
+      startAt: new Date('2026-08-06T18:00').toISOString(),
+      overrideDate: null,
+      closed: false,
+      subEventDefinitions: []
+    }]);
     expect(payload.startAtIso).toBe('2026-08-06T18:00');
     expect(payload.endAtIso).toBe('2026-08-06T20:00');
+    expect(payload.slotTemplates[0]?.startAt).toBe('2026-08-06T18:00');
   });
 });

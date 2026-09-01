@@ -1175,18 +1175,18 @@ export class HttpEventsService implements IEventsService {
       const response = await this.http
         .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, persistencePayload)
         .toPromise();
-      return await this.loadSavedEventDetail(payload, response)
-        ?? this.cloneDTOs(response ? [response] : [])[0]
-        ?? null;
+      return response
+        ? persistencePayload.clone().apply(response as Partial<ActivityEventDetailDTO>)
+        : null;
     } catch {
       return null;
     }
   }
 
   /**
-   * The sync endpoint currently responds with the compact event-list DTO. Reload
-   * the detail before updating frontend state so editor-only fields are not
-   * replaced by missing values after an HTTP save.
+   * Snapshot callers require a canonical stored detail record. Interactive
+   * editor saves merge the compact response into their complete submitted DTO
+   * instead, avoiding a redundant read on the save-critical path.
    */
   private async loadSavedEventDetail(
     payload: ActivityEventDetailDTO,

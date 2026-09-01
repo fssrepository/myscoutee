@@ -849,6 +849,12 @@ export class ActivityEventDetailDTO {
     const payload = this.clone();
     payload.startAtIso = ActivityEventDetailDTO.toIsoInstant(this.startAtIso);
     payload.endAtIso = ActivityEventDetailDTO.toIsoInstant(this.endAtIso);
+    payload.slotTemplates = payload.slotTemplates.map(template => template.closed === true
+      ? { ...template }
+      : {
+          ...template,
+          startAt: ActivityEventDetailDTO.toIsoInstant(template.startAt)
+        });
     payload.dateRange = {
       ...payload.dateRange,
       startAt: payload.startAtIso,
