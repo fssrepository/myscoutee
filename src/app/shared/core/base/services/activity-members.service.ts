@@ -150,7 +150,7 @@ export class ActivityMembersService extends BaseRouteModeService {
       actorUserId,
       options
     );
-    this.emitActivityMembersSyncForOwner(owner);
+    this.emitActivityMembersSyncForOwner(owner, options);
   }
 
   async replaceMembersByOwnerId(
@@ -216,26 +216,38 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (result.counterOverrides) {
       this.activityStore.applyCanonicalCounterOverrides(counterSyncToken, result.counterOverrides);
     }
-    this.emitActivityMembersSyncForOwner(normalizedOwner);
+    this.emitActivityMembersSyncForOwner(normalizedOwner, options);
     return members;
   }
 
-  private emitActivityMembersSyncForOwner(owner: ActivityMemberOwnerRef): void {
+  private emitActivityMembersSyncForOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): void {
     const summary = this.activityMembersService.peekSummaryByOwner(owner);
     if (!summary) {
       return;
     }
-    this.emitActivityMembersSync(summary.ownerId, summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
+    this.emitActivityMembersSync(
+      summary.ownerId,
+      summary.acceptedMembers,
+      summary.pendingMembers,
+      summary.capacityTotal,
+      options
+    );
   }
 
   private emitActivityMembersSync(
     id: string,
     acceptedMembers: number,
     pendingMembers: number,
-    capacityTotal: number
+    capacityTotal: number,
+    options?: ActivityMembersQueryOptions
   ): void {
     this.activityStore.emitActivityMembersSync({
       id,
+      ...(`${options?.eventId ?? ''}`.trim() ? { eventId: `${options?.eventId ?? ''}`.trim() } : {}),
+      ...(`${options?.subEventId ?? ''}`.trim() ? { subEventId: `${options?.subEventId ?? ''}`.trim() } : {}),
       acceptedMembers,
       pendingMembers,
       capacityTotal

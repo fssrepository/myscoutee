@@ -86,6 +86,8 @@ describe('activity runtime counter signals', () => {
 
     store.emitActivityMembersSync({
       id: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
       acceptedMembers: 1,
       pendingMembers: 0,
       capacityTotal: 4,
@@ -104,6 +106,8 @@ describe('activity runtime counter signals', () => {
     });
 
     expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
       pendingMembers: 0,
       pendingMemberDelta: -1,
       memberStatusChange: {

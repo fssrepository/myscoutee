@@ -89,7 +89,8 @@ import {
   eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  ActivityStore
+  ActivityStore,
+  type ActivityMembersSyncState
 } from '../../../shared/ui/context/stores/activity.store';
 import {
   SubEventResourcePopupStore,
@@ -288,18 +289,14 @@ export class EventResourcePopupComponent {
       filterCounts: this.resourceFilterCounts(),
       canAssign: context?.viewOnly !== true,
       items: cards.map(card => {
-        const candidateMemberSync = card.sourceAssetId
-          ? memberSyncByOwnerId[card.sourceAssetId]
-          : null;
-        const memberSync = candidateMemberSync?.memberStatusChange
-          && !this.assignedAssetMemberStatusChange(card.sourceAssetId ?? '', context)
-          ? null
-          : candidateMemberSync;
+        const memberSync = this.assignedAssetMembersSync(card.sourceAssetId ?? '', context);
         const displayCard = memberSync
           ? {
               ...card,
               accepted: memberSync.acceptedMembers,
-              pending: memberSync.pendingMembers
+              pending: card.type === AppConstants.ASSET_TYPE_SUPPLIES
+                ? card.pending
+                : memberSync.pendingMembers + 1
             }
           : card;
         return {
@@ -2622,6 +2619,7 @@ export class EventResourcePopupComponent {
     this.applyPersistedPopupState(resolvedState);
     this.syncSubEventManualAssetRequests(context.subEvent, true);
     this.syncPopupSubEventMetrics({
+      persistedState: resolvedState,
       assignmentQuantityUpdates: [{
         assetId: normalizedAssetId,
         type,
@@ -2874,7 +2872,7 @@ export class EventResourcePopupComponent {
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
-    this.syncPopupSubEventMetrics({ persistAssetRequests: true });
+    this.syncPopupSubEventMetrics({ persistAssetRequests: true, persistedState: resolvedState });
   }
 
   private buildResourceAssignmentRemovalState(
@@ -3096,9 +3094,8 @@ export class EventResourcePopupComponent {
       card: ResourceAssetDTO,
       status: 'accepted' | 'pending'
     ): number => {
-      const memberSync = this.activityStore.activityMembersSyncByOwnerId()[card.id];
-      const statusChange = this.assignedAssetMemberStatusChange(card.id);
-      if (memberSync && statusChange?.subEventId === subEvent.id) {
+      const memberSync = this.assignedAssetMembersSync(card.id);
+      if (memberSync) {
         return status === 'accepted'
           ? memberSync.acceptedMembers
           : memberSync.pendingMembers;
@@ -3110,9 +3107,9 @@ export class EventResourcePopupComponent {
     };
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
+    const pending = cards.length + (type === AppConstants.ASSET_TYPE_SUPPLIES
       ? 0
-      : cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0);
+      : cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0));
     if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
@@ -3134,6 +3131,7 @@ export class EventResourcePopupComponent {
       persistResourceState?: boolean;
       persistAssetRequests?: boolean;
       syncManualAssetRequests?: boolean;
+      persistedState?: AppDTOs.ActivitySubEventResourceStateDTO | null;
       activityDelta?: number;
       assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
     } = false
@@ -3145,11 +3143,12 @@ export class EventResourcePopupComponent {
     const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
     const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
     const syncManualAssetRequests = typeof options === 'boolean' || options.syncManualAssetRequests !== false;
+    const persistedState = typeof options === 'boolean' ? null : options.persistedState ?? null;
     const activityDelta = typeof options === 'boolean' || options.activityDelta === undefined
       ? undefined
       : Math.trunc(Number(options.activityDelta) || 0);
     const assignmentQuantityUpdates = typeof options === 'boolean' ? [] : [...(options.assignmentQuantityUpdates ?? [])];
-    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT, { normalizeStore: false });
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION, { normalizeStore: false });
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES, { normalizeStore: false });
@@ -3165,6 +3164,7 @@ export class EventResourcePopupComponent {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
     const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
       || context.subEvent.carsPending !== nextSubEvent.carsPending
       || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin
@@ -3253,6 +3253,24 @@ export class EventResourcePopupComponent {
       return null;
     }
     return change;
+  }
+
+  private assignedAssetMembersSync(
+    assetId: string,
+    context = this.resourcePopupStore.popupContextRef()
+  ): ActivityMembersSyncState | null {
+    const normalizedAssetId = assetId.trim();
+    const sync = normalizedAssetId
+      ? this.activityStore.activityMembersSyncByOwnerId()[normalizedAssetId] ?? null
+      : null;
+    if (!context || !sync) {
+      return null;
+    }
+    const eventId = `${sync.memberStatusChange?.eventId ?? sync.eventId ?? ''}`.trim();
+    const subEventId = `${sync.memberStatusChange?.subEventId ?? sync.subEventId ?? ''}`.trim();
+    return eventId === context.ownerId && subEventId === context.subEvent.id
+      ? sync
+      : null;
   }
 
   private assetRequestBookingForSubEvent(

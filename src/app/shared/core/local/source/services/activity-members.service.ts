@@ -914,7 +914,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       });
       const requestedAtIso = `${request.requestedAtIso ?? ''}`.trim() || nowIso;
       const pending = request.status === 'pending';
-      const borrowerInitiated = request.requestKind !== 'manual';
+      const borrowerInitiated = request.requestKind === 'borrow';
       members.push({
         id: request.id?.trim() || `${asset.id}:request:${userId}`,
         userId: profile.id,

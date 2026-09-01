@@ -48,7 +48,7 @@ export type AssetRequestStatus = typeof ASSET_REQUEST_STATUSES[number];
 export const ASSET_TICKET_ORDERS = ['upcoming', 'past'] as const;
 export type AssetTicketOrder = typeof ASSET_TICKET_ORDERS[number];
 
-export const ASSET_REQUEST_KINDS = ['manual', 'borrow'] as const;
+export const ASSET_REQUEST_KINDS = ['manual', 'borrow', 'invite'] as const;
 export type AssetRequestKind = typeof ASSET_REQUEST_KINDS[number];
 
 export type AssetCategory = string;

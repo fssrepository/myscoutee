@@ -107,6 +107,8 @@ export interface ActivityEventFeedbackCounters {
 export interface ActivityMembersSyncState {
   updatedMs: number;
   id: string;
+  eventId?: string;
+  subEventId?: string;
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
@@ -642,6 +644,8 @@ export class ActivityStore {
     const sync: ActivityMembersSyncState = {
       updatedMs,
       id: normalizedId,
+      ...(`${payload.eventId ?? ''}`.trim() ? { eventId: `${payload.eventId ?? ''}`.trim() } : {}),
+      ...(`${payload.subEventId ?? ''}`.trim() ? { subEventId: `${payload.subEventId ?? ''}`.trim() } : {}),
       acceptedMembers: normalizeCounterValue(payload.acceptedMembers),
       pendingMembers: normalizeCounterValue(payload.pendingMembers),
       capacityTotal: Math.max(
@@ -717,6 +721,8 @@ export class ActivityStore {
     const sync: ActivityMembersSyncState = {
       updatedMs: Math.max(Date.now(), (previous?.updatedMs ?? 0) + 1),
       id: assetId,
+      eventId,
+      subEventId,
       acceptedMembers,
       pendingMembers,
       capacityTotal: Math.max(

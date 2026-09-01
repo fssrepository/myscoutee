@@ -1159,7 +1159,11 @@ export class EventMembersPopupComponent implements OnDestroy {
       result = await this.activityInviteCandidatesService.applyInvites(
         owner.ownerId,
         selectedCandidates,
-        owner.ownerType
+        owner.ownerType,
+        {
+          eventId: this.memberEventId,
+          subEventId: this.memberSubEventId
+        }
       );
     } catch (error) {
       if (this.suppressedOwnerSyncId === this.ownerId) {

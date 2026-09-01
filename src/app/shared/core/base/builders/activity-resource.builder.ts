@@ -270,6 +270,36 @@ export class ActivityResourceBuilder {
     return next;
   }
 
+  static withPersistedResourceMetrics(
+    subEvent: ContractTypes.SubEventDTO,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined
+  ): ContractTypes.SubEventDTO {
+    const next = { ...subEvent };
+    const metrics = this.cloneResourceMetricsByType(state?.resourceMetricsByType);
+    const transport = metrics[AppConstants.ASSET_TYPE_TRANSPORT];
+    if (transport) {
+      next.carsAccepted = transport.accepted;
+      next.carsPending = transport.pending;
+      next.carsCapacityMin = transport.capacityMin;
+      next.carsCapacityMax = transport.capacityMax;
+    }
+    const accommodation = metrics[AppConstants.ASSET_TYPE_ACCOMMODATION];
+    if (accommodation) {
+      next.accommodationAccepted = accommodation.accepted;
+      next.accommodationPending = accommodation.pending;
+      next.accommodationCapacityMin = accommodation.capacityMin;
+      next.accommodationCapacityMax = accommodation.capacityMax;
+    }
+    const supplies = metrics[AppConstants.ASSET_TYPE_SUPPLIES];
+    if (supplies) {
+      next.suppliesAccepted = supplies.accepted;
+      next.suppliesPending = supplies.pending;
+      next.suppliesCapacityMin = supplies.capacityMin;
+      next.suppliesCapacityMax = supplies.capacityMax;
+    }
+    return next;
+  }
+
   static cloneAssetAssignmentIds(
     source: AppDTOs.ActivitySubEventAssetAssignmentIdsDTO | null | undefined
   ): AppDTOs.ActivitySubEventAssetAssignmentIdsDTO {
