@@ -1343,7 +1343,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private eventPublicationSync(status: ActivityContracts.ActivityEventStatus): ActivityContracts.ActivityEventDTO {
     const dto = this.eventDetailDTO;
-    return {
+    return this.enrichEventDisplaySync({
       ...dto,
       id: this.currentEventIdentity(),
       status,
@@ -1353,6 +1353,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       invitedMemberUserIds: [...dto.invitedMemberUserIds],
       pendingRequestMemberUserIds: [...dto.pendingRequestMemberUserIds],
       subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(dto.subEventDefinitions)
+    });
+  }
+
+  private enrichEventDisplaySync(
+    sync: ActivityContracts.ActivityEventDTO
+  ): ActivityContracts.ActivityEventDTO {
+    const creatorUserId = `${sync.creatorUserId ?? sync.userId ?? ''}`.trim();
+    const creator = creatorUserId
+      ? this.userProfileStore.getUserProfile(creatorUserId)
+        ?? (creatorUserId === this.activeUserId() ? this.userProfileStore.activeUserProfile() : null)
+      : null;
+    return {
+      ...sync,
+      organizerUserId: `${sync.organizerUserId ?? creatorUserId}`.trim() || null,
+      creatorAvatarUrl: `${sync.creatorAvatarUrl ?? ''}`.trim()
+        || AppUtils.firstImageUrl(creator?.images)
+        || null
     };
   }
 
@@ -2111,10 +2128,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       capacityTotal: Math.max(memberSummary.acceptedMembers, memberSummary.capacityTotal)
     });
 
-    const displaySync = await this.eventsService.saveActivityEvent(this.eventDetailDTO);
-    if (!displaySync) {
+    const savedDisplaySync = await this.eventsService.saveActivityEvent(this.eventDetailDTO);
+    if (!savedDisplaySync) {
       throw new Error('Event sync did not return an event DTO.');
     }
+    const displaySync = this.enrichEventDisplaySync(savedDisplaySync);
     const syncedEventId = `${displaySync.id ?? ''}`.trim();
     if (syncedEventId) {
       this.eventDetailDTO.id = syncedEventId;

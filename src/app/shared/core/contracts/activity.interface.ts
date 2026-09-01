@@ -256,6 +256,7 @@ export interface ActivityEventRecord {
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
+  creatorAvatarUrl?: string | null;
   creatorGender: AppConstants.UserGender;
   creatorCity: string;
   organizerUserId?: string | null;
