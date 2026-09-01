@@ -65,13 +65,15 @@ import {
   I18nService
 } from '../../../shared/core';
 import { tournamentCurrentStageFromSubEvents } from '../../../shared/core/common/tournament-group-count';
+import * as AppConstants from '../../../shared/core/common/constants';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import {
   ActivityStore,
-  type ActivityMembersSyncState
+  type ActivityMembersSyncState,
+  type ActivityResourceMemberDeltaSyncState
 } from '../../../shared/ui/context/stores/activity.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
@@ -175,6 +177,7 @@ export class EventSubeventsListPopupComponent {
   private handledReloadRequestRevision = 0;
   private handledMembersSyncMs = 0;
   private handledResourceMetricsRevision = 0;
+  private handledResourceMemberDeltaSyncMs = 0;
   private activeDefinitionDraftUpdate: EventSubeventsDefinitionDraftUpdate | null = null;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
     density: 'compact'
@@ -417,6 +420,18 @@ export class EventSubeventsListPopupComponent {
       }
       this.handledMembersSyncMs = sync.updatedMs;
       this.applySubEventMembersSync(sync);
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityResourceMemberDeltaSync();
+      if (!sync || sync.updatedMs <= this.handledResourceMemberDeltaSyncMs) {
+        return;
+      }
+      this.handledResourceMemberDeltaSyncMs = sync.updatedMs;
+      if (!this.isOpen()) {
+        return;
+      }
+      untracked(() => this.applyResourceMemberDeltaSync(sync));
     });
 
     effect(() => {
@@ -1350,6 +1365,71 @@ export class EventSubeventsListPopupComponent {
       subEventId: changedSubEventId,
       activityDelta,
       source: 'members'
+    });
+    this.cdr.markForCheck();
+  }
+
+  private applyResourceMemberDeltaSync(sync: ActivityResourceMemberDeltaSyncState): void {
+    const ownerId = `${sync.ownerId ?? ''}`.trim();
+    const subEventId = `${sync.subEventId ?? ''}`.trim();
+    const pendingMemberDelta = Math.trunc(Number(sync.pendingMemberDelta) || 0);
+    if (!ownerId || !subEventId || pendingMemberDelta === 0) {
+      return;
+    }
+
+    let changed = false;
+    const patchItem = (item: SubEventDTO): SubEventDTO => {
+      if (changed || this.subEventOwnerId(item) !== ownerId || `${item.id ?? ''}`.trim() !== subEventId) {
+        return item;
+      }
+      changed = true;
+      switch (sync.resourceType) {
+        case AppConstants.ASSET_TYPE_TRANSPORT:
+          return {
+            ...item,
+            carsPending: Math.max(0, Math.trunc(Number(item.carsPending) || 0) + pendingMemberDelta)
+          };
+        case AppConstants.ASSET_TYPE_ACCOMMODATION:
+          return {
+            ...item,
+            accommodationPending: Math.max(0, Math.trunc(Number(item.accommodationPending) || 0) + pendingMemberDelta)
+          };
+        case AppConstants.ASSET_TYPE_SUPPLIES:
+          return {
+            ...item,
+            suppliesPending: Math.max(0, Math.trunc(Number(item.suppliesPending) || 0) + pendingMemberDelta)
+          };
+      }
+      return item;
+    };
+
+    const nextSlotSections = this.slotSections.map(section => {
+      const nextItems = section.items.map(patchItem);
+      return nextItems.some((item, index) => item !== section.items[index])
+        ? {
+            ...section,
+            items: nextItems,
+            slot: {
+              ...section.slot,
+              subEventItems: nextItems
+            }
+          }
+        : section;
+    });
+    const nextItems = nextSlotSections.length > 0
+      ? nextSlotSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
+    if (!changed) {
+      return;
+    }
+    this.slotSections = nextSlotSections;
+    this.items = nextItems;
+    this.syncSubEventSmartListCaches(nextSlotSections);
+    this.activityStore.emitActivityEventRuntimeSync({
+      eventId: `${this.event?.id ?? ''}`.trim(),
+      subEventId,
+      activityDelta: pendingMemberDelta,
+      source: 'resources'
     });
     this.cdr.markForCheck();
   }

@@ -1586,6 +1586,7 @@ export class EventResourcePopupComponent {
       parentOwnerType: parentOwner.ownerType,
       eventId: context.ownerId,
       subEventId: context.subEvent.id,
+      resourceType: assetType,
       subtitle,
       canManage: this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
       acceptedMembers,

@@ -81,6 +81,44 @@ describe('activity runtime counter signals', () => {
     vi.restoreAllMocks();
   });
 
+  it('emits the successful resource-member save delta without recounting members', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(175);
+    const store = new ActivityStore();
+
+    store.emitActivityResourceMemberDeltaSync({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      pendingMemberDelta: 1
+    });
+    const first = store.activityResourceMemberDeltaSync();
+    store.emitActivityResourceMemberDeltaSync({
+      ownerId: 'slot-1',
+      subEventId: 'subevent-2',
+      assetId: 'asset-2',
+      resourceType: 'Accommodation',
+      pendingMemberDelta: 2
+    });
+
+    expect(first).toMatchObject({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      pendingMemberDelta: 1
+    });
+    expect(store.activityResourceMemberDeltaSync()).toMatchObject({
+      ownerId: 'slot-1',
+      subEventId: 'subevent-2',
+      assetId: 'asset-2',
+      resourceType: 'Accommodation',
+      pendingMemberDelta: 2
+    });
+    expect(store.activityResourceMemberDeltaSync()?.updatedMs).toBeGreaterThan(first?.updatedMs ?? 0);
+    vi.restoreAllMocks();
+  });
+
   it('carries a lean member status transition with its signed counter deltas', () => {
     const store = new ActivityStore();
 

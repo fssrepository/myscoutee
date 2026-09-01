@@ -65,7 +65,7 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
-import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
+import type { ActivityMemberOwnerType, AssetType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
@@ -183,6 +183,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private parentOwnerRef: ActivityMemberOwnerRef | null = null;
   private memberEventId = '';
   private memberSubEventId = '';
+  private memberResourceType: AssetType | null = null;
   private canManageMembers = false;
   private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberDTO> = [];
   private membersListReady = false;
@@ -263,6 +264,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           parentOwnerType: request.parentOwnerType,
           eventId: request.eventId,
           subEventId: request.subEventId,
+          resourceType: request.resourceType,
           subtitle: request.subtitle,
           canManage: request.canManage,
           viewOnly: request.viewOnly,
@@ -420,6 +422,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.parentOwnerRef = null;
     this.memberEventId = '';
     this.memberSubEventId = '';
+    this.memberResourceType = null;
     this.lookupRef = null;
     this.ownerRecord = null;
     this.membersSmartList?.closeMenu();
@@ -1172,6 +1175,22 @@ export class EventMembersPopupComponent implements OnDestroy {
       throw error;
     }
     this.applyCommittedMembers(result.members, previousMembers);
+    const pendingMemberDelta = result.invitedUserIds.length;
+    if (
+      owner.ownerType === 'asset'
+      && this.memberEventId
+      && this.memberSubEventId
+      && this.memberResourceType
+      && pendingMemberDelta > 0
+    ) {
+      this.activityStore.emitActivityResourceMemberDeltaSync({
+        ownerId: this.memberEventId,
+        subEventId: this.memberSubEventId,
+        assetId: owner.ownerId,
+        resourceType: this.memberResourceType,
+        pendingMemberDelta
+      });
+    }
     return result;
   }
 
@@ -1186,6 +1205,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       parentOwnerType?: ActivityMemberOwnerType;
       eventId?: string;
       subEventId?: string;
+      resourceType?: AssetType;
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -1224,6 +1244,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         };
     this.memberEventId = `${options?.eventId ?? ''}`.trim();
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
+    this.memberResourceType = options?.resourceType ?? null;
     const explicitParentOwnerId = `${options?.parentOwnerId ?? ''}`.trim();
     const fallbackParentOwnerId = ownerType === 'event' ? '' : this.memberEventId;
     const parentOwnerId = explicitParentOwnerId || fallbackParentOwnerId;
