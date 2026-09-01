@@ -1175,22 +1175,6 @@ export class EventMembersPopupComponent implements OnDestroy {
       throw error;
     }
     this.applyCommittedMembers(result.members, previousMembers);
-    const pendingMemberDelta = result.invitedUserIds.length;
-    if (
-      owner.ownerType === 'asset'
-      && this.memberEventId
-      && this.memberSubEventId
-      && this.memberResourceType
-      && pendingMemberDelta > 0
-    ) {
-      this.activityStore.emitActivityResourceMemberDeltaSync({
-        ownerId: this.memberEventId,
-        subEventId: this.memberSubEventId,
-        assetId: owner.ownerId,
-        resourceType: this.memberResourceType,
-        pendingMemberDelta
-      });
-    }
     return result;
   }
 
@@ -1498,12 +1482,39 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
     this.syncCanManageMembers(nextMembers);
     this.applySummaryFromMembers(nextMembers);
+    this.emitResourcePendingDelta(previousMembers, nextMembers);
     this.membersSmartList?.closeMenu();
     this.syncVisibleMembers(previousMembers, nextMembers);
     if (this.membersChangeHandler) {
       this.membersChangeHandler(nextMembers);
     }
     this.cdr.markForCheck();
+  }
+
+  private emitResourcePendingDelta(
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    nextMembers: readonly ActivityContracts.ActivityMemberDTO[]
+  ): void {
+    if (
+      this.ownerRef?.ownerType !== 'asset'
+      || !this.memberEventId
+      || !this.memberSubEventId
+      || !this.memberResourceType
+    ) {
+      return;
+    }
+    const pendingMemberDelta = nextMembers.filter(member => member.status === 'pending').length
+      - previousMembers.filter(member => member.status === 'pending').length;
+    if (pendingMemberDelta === 0) {
+      return;
+    }
+    this.activityStore.emitActivityResourceMemberDeltaSync({
+      ownerId: this.memberEventId,
+      subEventId: this.memberSubEventId,
+      assetId: this.ownerRef.ownerId,
+      resourceType: this.memberResourceType,
+      pendingMemberDelta
+    });
   }
 
 
@@ -1884,16 +1895,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       }
       throw error;
     }
-    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), normalizedMembers);
-    this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
-    this.syncCanManageMembers(normalizedMembers);
-    this.applySummaryFromMembers(normalizedMembers);
-    this.membersSmartList?.closeMenu();
-    this.syncVisibleMembers(previousMembers, normalizedMembers);
-    if (this.membersChangeHandler) {
-      this.membersChangeHandler(normalizedMembers);
-    }
-    this.cdr.markForCheck();
+    this.applyCommittedMembers(normalizedMembers, previousMembers);
   }
 
   private isCurrentUser(entry: ActivityContracts.ActivityMemberDTO): boolean {
