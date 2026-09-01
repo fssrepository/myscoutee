@@ -45,7 +45,9 @@ export class EventSubeventsSlotConverter {
     const items = Array.isArray(slot.subEventItems) ? slot.subEventItems : [];
     const firstItem = items[0] ?? null;
     const isSlot = this.isGeneratedSlot(slot);
-    const title = isSlot
+    const title = this.isMainEventRuntime(firstItem)
+      ? 'Event'
+      : isSlot
       ? this.slotTitle(slot, index + 1, options.event)
       : 'Sub events';
     const subtitle = this.slotSubtitle(slot, firstItem, options.event);
@@ -89,6 +91,10 @@ export class EventSubeventsSlotConverter {
 
   private static isGeneratedSlot(slot: SubEventsSlotDTO): boolean {
     return Boolean(`${slot.slotSourceId ?? ''}`.trim() || `${slot.slotTemplateId ?? ''}`.trim());
+  }
+
+  private static isMainEventRuntime(item: SubEventDTO | null | undefined): boolean {
+    return `${item?.runtimeKind ?? ''}`.trim().toUpperCase() === 'MAIN_EVENT';
   }
 
   private static slotTitle(
