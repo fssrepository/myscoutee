@@ -757,16 +757,37 @@
   transition: width 180ms ease;
 }
 
-.process-progress-bar.is-reset span {
-  transition: none;
+.process-progress-reset-value {
+  display: none;
 }
 
 .process-progress-bar.is-complete span {
-  animation: process-progress-complete-blink 350ms ease-in-out 2 alternate;
+  animation: process-progress-complete-reset 1s step-end forwards;
 }
 
-@keyframes process-progress-complete-blink {
-  to { filter: brightness(1.25); }
+.process-progress-value.is-complete > span:first-child {
+  animation: process-progress-value-hide 1s step-end forwards;
+}
+
+.process-progress-value.is-complete .process-progress-reset-value {
+  display: inline;
+  opacity: 0;
+  animation: process-progress-value-show 1s step-end forwards;
+}
+
+@keyframes process-progress-complete-reset {
+  0%, 99% { width: 100%; filter: brightness(1.25); }
+  100% { width: 0%; filter: none; }
+}
+
+@keyframes process-progress-value-hide {
+  0%, 99% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes process-progress-value-show {
+  0%, 99% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .process-console.is-suspended .process-progress-bar span {

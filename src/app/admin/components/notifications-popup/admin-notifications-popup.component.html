@@ -170,11 +170,13 @@
                     <p>{{ processDescription(rule) | i18n }}</p>
                     <div class="process-progress">
                       <span>{{ (rule.runState.progressDetail || processStatusLabelKeys[statusKind(rule)]) | i18n }}</span>
-                      <span>{{ progressValue(rule) }}%</span>
+                      <span class="process-progress-value" [class.is-complete]="isProgressComplete(rule)">
+                        <span>{{ progressValue(rule) }}%</span>
+                        <span class="process-progress-reset-value">0%</span>
+                      </span>
                     </div>
                     <div
                       class="process-progress-bar"
-                      [class.is-reset]="isProgressReset(rule)"
                       [class.is-complete]="isProgressComplete(rule)"
                       aria-hidden="true"
                     >

@@ -411,7 +411,6 @@ const PROCESS_NEXT_RUN_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.running
 ]);
 const PROCESS_LIST_POLL_INTERVAL_MS = 5_000;
-const PROCESS_PROGRESS_COMPLETE_HOLD_MS = 1000;
 const PROCESS_FAILED_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.failed
 ]);
@@ -493,8 +492,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private processBaselinesCaptured = false;
   private latestProcessCenterState: AdminNotificationCenterState | null = null;
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
-  private readonly progressResetRevision = signal(0);
-  private readonly progressResetTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly timingBaselineSignatures = new Map<string, string>();
   private readonly parameterBaselineSignatures = new Map<string, string>();
   private scheduleEditorBaseline: ScheduleEditorBaseline | null = null;
@@ -1148,19 +1145,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected progressValue(rule: AdminNotificationRule): number {
-    this.progressResetRevision();
     if (this.isProcessRunning(rule)) {
       return Math.max(0, Math.min(99, rule.runState.progressPercent || 0));
     }
-    const finishedAt = Date.parse(rule.runState.finishedAtIso || rule.runState.lastRunAtIso || '');
-    if (Number.isFinite(finishedAt) && Date.now() - finishedAt >= PROCESS_PROGRESS_COMPLETE_HOLD_MS) {
-      return 0;
-    }
     return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
-  }
-
-  protected isProgressReset(rule: AdminNotificationRule): boolean {
-    return !this.isProcessRunning(rule) && this.progressValue(rule) === 0;
   }
 
   protected isProgressComplete(rule: AdminNotificationRule): boolean {
@@ -1575,14 +1563,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private stopRuntimeUpdates(): void {
-    if (this.unsubscribeRuntimeUpdates) {
-      this.unsubscribeRuntimeUpdates();
-      this.unsubscribeRuntimeUpdates = null;
+    if (!this.unsubscribeRuntimeUpdates) {
+      return;
     }
-    for (const timer of this.progressResetTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.progressResetTimers.clear();
+    this.unsubscribeRuntimeUpdates();
+    this.unsubscribeRuntimeUpdates = null;
   }
 
   private applyRuntimeEvent(event: AdminNotificationRuleLiveEvent): void {
@@ -1591,37 +1576,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     this.patchRule(ruleKey, current => this.mergeRuleRuntime(current, event));
-    if (PROCESS_FINISHED_RUNTIME_STATUSES.has(`${event.runState.currentStatus || ''}`.trim().toLowerCase())) {
-      this.scheduleProgressReset(ruleKey, event.runState.finishedAtIso || event.runState.lastRunAtIso);
-      void this.refreshRuleRuntime(ruleKey);
-    }
-  }
-
-  private async refreshRuleRuntime(ruleKey: string): Promise<void> {
-    try {
-      const rule = await this.notificationsService.loadNotificationRuleRuntime(ruleKey, this.activeAdminId());
-      if (rule) {
-        this.patchRule(ruleKey, current => this.mergeRuleRuntime(current, rule));
-      }
-    } catch {
-      // SmartList polling remains the bounded background fallback.
-    }
-  }
-
-  private scheduleProgressReset(ruleKey: string, finishedAtIso: string): void {
-    const existing = this.progressResetTimers.get(ruleKey);
-    if (existing) {
-      clearTimeout(existing);
-    }
-    const finishedAt = Date.parse(finishedAtIso || '');
-    const delay = Number.isFinite(finishedAt)
-      ? Math.max(0, finishedAt + PROCESS_PROGRESS_COMPLETE_HOLD_MS - Date.now())
-      : PROCESS_PROGRESS_COMPLETE_HOLD_MS;
-    const timer = setTimeout(() => {
-      this.progressResetTimers.delete(ruleKey);
-      this.progressResetRevision.update(value => value + 1);
-    }, delay);
-    this.progressResetTimers.set(ruleKey, timer);
   }
 
   private ensureProcessRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
