@@ -122,22 +122,27 @@ export class LocalActivityEventsMapper {
     const direction = `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? -1 : 1;
     const nowMs = Date.now();
     const sources = this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
-      .filter(source => source.definitions.length > 0)
       .filter(source => this.slotSourceMatchesOrder(source, query, nowMs))
       .filter(source => this.slotSourceOverlapsRange(source, query))
       .sort((left, right) => direction * (this.dateMs(left.startAt) - this.dateMs(right.startAt)));
     const groupCountsBySource = this.stageGroupCountsBySource(sources, parentRecord.capacityMax);
     return sources.map(source => this.toSubEventsSlot(
       source,
+      parentRecord,
       groupCountsBySource.get(source) ?? new Map<string, number>()
     ));
   }
 
   private static toSubEventsSlot(
     source: SubEventsSlotSource,
+    parentRecord: ActivityEventRecord,
     groupCountsByStageId: ReadonlyMap<string, number>
   ): SubEventsSlotDTO {
-    const subEventItems = this.subEventItemsForSlot(source.startAt, source.definitions, groupCountsByStageId);
+    const subEventItems = source.definitions.length > 0
+      ? this.subEventItemsForSlot(source.startAt, source.definitions, groupCountsByStageId)
+      : source.slotSourceId
+        ? [this.slotMainEventItem(source, parentRecord)]
+        : [];
     return {
       id: source.id,
       parentEventId: source.parentEventId,
@@ -275,12 +280,12 @@ export class LocalActivityEventsMapper {
     if (this.isGeneratedSlotRecord(parentRecord)) {
       return [this.recordSlotSource(parentEventId, parentRecord)];
     }
-    if (parentRecord.subEventsEnabled === false) {
-      return [];
-    }
     const templates = parentRecord.slotsEnabled === true ? parentRecord.slotTemplates ?? [] : [];
     if (templates.length > 0) {
       return this.templateSlotSources(parentEventId, parentRecord, templates, query);
+    }
+    if (parentRecord.subEventsEnabled === false) {
+      return [];
     }
     const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
     return definitions.length > 0
@@ -589,6 +594,45 @@ export class LocalActivityEventsMapper {
 
   private static dateMs(value: string | null | undefined): number {
     return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
+  }
+
+  private static slotMainEventItem(
+    source: SubEventsSlotSource,
+    parentRecord: ActivityEventRecord
+  ): EventContracts.SubEventDTO {
+    const slotSourceId = `${source.slotSourceId ?? ''}`.trim();
+    const startAt = `${source.startAt ?? parentRecord.startAtIso ?? ''}`.trim();
+    const endAt = `${source.endAt ?? parentRecord.endAtIso ?? startAt}`.trim() || startAt;
+    const startMs = this.dateMs(startAt);
+    const endMs = this.dateMs(endAt);
+    const slotDurationMinutes = Number.isFinite(startMs) && Number.isFinite(endMs)
+      ? Math.max(0, Math.trunc((endMs - startMs) / (60 * 1000)))
+      : 0;
+    return {
+      id: `main-event:${slotSourceId}`,
+      runtimeKind: 'MAIN_EVENT',
+      eventId: source.parentEventId,
+      name: `${parentRecord.title ?? source.title ?? ''}`.trim(),
+      description: `${parentRecord.subtitle ?? ''}`.trim(),
+      startAt,
+      endAt,
+      location: `${parentRecord.location ?? ''}`.trim(),
+      createdByUserId: `${parentRecord.creatorUserId ?? ''}`.trim(),
+      optional: false,
+      pricing: parentRecord.pricing ? PricingBuilder.clonePricingConfig(parentRecord.pricing) : parentRecord.pricing,
+      capacityMin: this.nonNegativeInteger(parentRecord.capacityMin),
+      capacityMax: this.nonNegativeInteger(parentRecord.capacityMax),
+      membersAccepted: this.nonNegativeInteger(parentRecord.acceptedMembers),
+      membersPending: this.nonNegativeInteger(parentRecord.pendingMembers),
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsAccepted: 0,
+      accommodationAccepted: 0,
+      suppliesAccepted: 0,
+      slotStartOffsetMinutes: 0,
+      slotDurationMinutes
+    };
   }
 
   private static subEventItemsForSlot(
