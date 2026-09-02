@@ -81,11 +81,51 @@ describe('activity runtime counter signals', () => {
     vi.restoreAllMocks();
   });
 
+  it('emits the successful resource-member save delta without recounting members', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(175);
+    const store = new ActivityStore();
+
+    store.emitActivityResourceMemberDeltaSync({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      pendingMemberDelta: 1
+    });
+    const first = store.activityResourceMemberDeltaSync();
+    store.emitActivityResourceMemberDeltaSync({
+      ownerId: 'slot-1',
+      subEventId: 'subevent-2',
+      assetId: 'asset-2',
+      resourceType: 'Accommodation',
+      pendingMemberDelta: 2
+    });
+
+    expect(first).toMatchObject({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      pendingMemberDelta: 1
+    });
+    expect(store.activityResourceMemberDeltaSync()).toMatchObject({
+      ownerId: 'slot-1',
+      subEventId: 'subevent-2',
+      assetId: 'asset-2',
+      resourceType: 'Accommodation',
+      pendingMemberDelta: 2
+    });
+    expect(store.activityResourceMemberDeltaSync()?.updatedMs).toBeGreaterThan(first?.updatedMs ?? 0);
+    vi.restoreAllMocks();
+  });
+
   it('carries a lean member status transition with its signed counter deltas', () => {
     const store = new ActivityStore();
 
     store.emitActivityMembersSync({
       id: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
       acceptedMembers: 1,
       pendingMembers: 0,
       capacityTotal: 4,
@@ -104,6 +144,8 @@ describe('activity runtime counter signals', () => {
     });
 
     expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
       pendingMembers: 0,
       pendingMemberDelta: -1,
       memberStatusChange: {
@@ -209,6 +251,79 @@ describe('activity runtime counter signals', () => {
       groupsPendingDelta: 1
     });
     vi.restoreAllMocks();
+  });
+
+  it('replaces and discards the full event sub-event definition draft with monotonic revisions', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(300);
+    const store = new EventSubeventsPopupStore();
+
+    store.emitEventSubeventsDefinitionDraftPreview({
+      eventId: 'event-1',
+      mode: 'Tournament',
+      startAtIso: '2026-09-01T10:00:00Z',
+      endAtIso: '2026-09-01T12:00:00Z',
+      definitions: [{
+        id: 'stage-1',
+        name: 'Qualifier',
+        description: 'Opening stage',
+        timing: 'After',
+        offsetMinutes: 0,
+        durationMinutes: 60,
+        optional: false,
+        capacityMin: 2,
+        capacityMax: 8
+      }]
+    });
+
+    expect(store.eventSubeventsDefinitionDraftUpdate()).toMatchObject({
+      updatedMs: 300,
+      action: 'preview',
+      eventId: 'event-1',
+      mode: 'Tournament',
+      definitions: [{ id: 'stage-1', name: 'Qualifier' }]
+    });
+
+    store.emitEventSubeventsDefinitionDraftPreview({
+      eventId: 'event-1',
+      mode: 'Tournament',
+      definitions: []
+    });
+
+    expect(store.eventSubeventsDefinitionDraftUpdate()).toMatchObject({
+      updatedMs: 301,
+      action: 'preview',
+      eventId: 'event-1',
+      definitions: []
+    });
+
+    store.discardEventSubeventsDefinitionDraft('event-1');
+
+    expect(store.eventSubeventsDefinitionDraftUpdate()).toMatchObject({
+      updatedMs: 302,
+      action: 'discard',
+      eventId: 'event-1',
+      definitions: []
+    });
+    vi.restoreAllMocks();
+  });
+
+  it('keeps event-save sub-event reload requests durable and monotonic', () => {
+    const store = new EventSubeventsPopupStore();
+
+    store.requestEventSubeventsReload('event-1');
+    const first = store.eventSubeventsReloadRequest();
+    store.requestEventSubeventsReload('event-1');
+
+    expect(first).toEqual({
+      revision: 1,
+      eventId: 'event-1',
+      source: 'event-save'
+    });
+    expect(store.eventSubeventsReloadRequest()).toEqual({
+      revision: 2,
+      eventId: 'event-1',
+      source: 'event-save'
+    });
   });
 
   it('preserves event member counters for the sub-event header converter', () => {

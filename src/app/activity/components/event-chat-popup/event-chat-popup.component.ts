@@ -1493,6 +1493,8 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resourcePopupStore.requestSubEventResourcePopup({
         type,
         ownerId,
+        runtimeKind: state.subEvent.runtimeKind,
+        eventId: `${state.subEvent.eventId ?? state.eventId ?? ownerId}`.trim() || ownerId,
         parentTitle: `${state.eventTitle ?? session.item.title ?? ''}`.trim() || session.item.title,
         subEventId,
         popupHeader,

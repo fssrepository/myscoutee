@@ -597,7 +597,13 @@ export class HttpAssetsService {
           gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
           status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
           note: `${request?.note ?? ''}`.trim(),
-          requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
+          requestKind: (
+            request?.requestKind === 'manual'
+              ? 'manual'
+              : request?.requestKind === 'invite'
+                ? 'invite'
+                : 'borrow'
+          ) as AppConstants.AssetRequestKind,
           requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
           menuActions: Array.isArray(request?.menuActions)
             ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
@@ -791,7 +797,11 @@ export class HttpAssetsService {
       avatarUrl: `${row?.avatarUrl ?? ''}`.trim() || undefined,
       gender: row?.gender === 'woman' ? 'woman' : 'man',
       status: row?.status === 'assigned' ? 'assigned' : row?.status === 'accepted' ? 'accepted' : 'pending',
-      requestKind: row?.requestKind === 'manual' ? 'manual' : 'borrow',
+      requestKind: row?.requestKind === 'manual'
+        ? 'manual'
+        : row?.requestKind === 'invite'
+          ? 'invite'
+          : 'borrow',
       quantity: Math.max(1, Math.trunc(Number(row?.quantity) || 1)),
       occupied: Math.max(0, Math.trunc(Number(row?.occupied) || 0)),
       capacity: Math.max(0, Math.trunc(Number(row?.capacity) || 0)),

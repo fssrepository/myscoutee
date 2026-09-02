@@ -2425,10 +2425,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         fallbackCardsByType: nextFallbackCards
       };
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.syncMetrics(false);
+      this.syncMetrics(false, persistedState);
       return;
     }
-    this.syncMetrics(false);
+    this.syncMetrics(false, persistedState);
   }
 
   private async persistBorrowedAssetAssignment(
@@ -2496,12 +2496,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return savedState;
   }
 
-  private syncMetrics(persistResourceState = false): void {
+  private syncMetrics(
+    persistResourceState = false,
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
+  ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
     }
-    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
@@ -2517,6 +2520,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
     const nextContext = {
       ...context,
       subEvent: nextSubEvent

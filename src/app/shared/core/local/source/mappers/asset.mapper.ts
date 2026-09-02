@@ -613,7 +613,13 @@ export class LocalAssetsMapper {
           gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
           status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
           note: `${request?.note ?? ''}`.trim(),
-          requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
+          requestKind: (
+            request?.requestKind === 'manual'
+              ? 'manual'
+              : request?.requestKind === 'invite'
+                ? 'invite'
+                : 'borrow'
+          ) as AppConstants.AssetRequestKind,
           requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
           menuActions: Array.isArray(request?.menuActions)
             ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)

@@ -95,7 +95,8 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   async applyInvites(
     ownerId: string,
     selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[],
-    ownerType: AppConstants.ActivityMemberOwnerType = 'event'
+    ownerType: AppConstants.ActivityMemberOwnerType = 'event',
+    options?: ActivityContracts.ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMembersInviteResultDTO> {
     const normalizedOwnerId = ownerId.trim();
     const activeUserId = this.activeUserId();
@@ -153,7 +154,8 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
       nextMembers,
       capacityTotal > 0
         ? capacityTotal
-        : Math.max(nextMembers.filter(member => member.status === 'accepted').length, 0)
+        : Math.max(nextMembers.filter(member => member.status === 'accepted').length, 0),
+      options
     );
     return {
       members: this.activityMembersService.peekMembersByOwner(ownerRef),

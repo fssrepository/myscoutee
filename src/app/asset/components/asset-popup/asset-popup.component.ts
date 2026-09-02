@@ -1889,7 +1889,7 @@ export class AssetPopupComponent {
         }
         const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
         this.applyPersistedPopupState(resolvedState);
-        this.syncPopupSubEventMetrics(true);
+        this.syncPopupSubEventMetrics(true, resolvedState);
         this.resourcePopupStore.pendingAssignSaveRef.set(null);
         this.closeAssignPopup(false);
       })
@@ -2013,12 +2013,12 @@ export class AssetPopupComponent {
     }
     this.resourcePopupStore.upsertVisibleResourceState(normalizedState);
     const activeContext = this.resourcePopupStore.popupContextRef();
-    if (
+    const nextContext = (
       activeContext
       && activeContext.ownerId === normalizedState.ownerId
       && activeContext.subEvent.id === normalizedState.subEventId
-    ) {
-      this.resourcePopupStore.popupContextRef.set({
+    )
+      ? {
         ...activeContext,
         fallbackCardsByType: activeContext.origin === 'subEventResource'
           ? {}
@@ -2027,8 +2027,8 @@ export class AssetPopupComponent {
               normalizedState.fallbackAssetCardsByType,
               normalizedState.subEventId
             )
-      });
-    }
+      }
+      : null;
     for (const type of AppConstants.ASSET_TYPES) {
       this.resourcePopupStore.assignedAssetIdsByKey[this.assetAssignmentKey(normalizedState.subEventId, type)] = [
         ...(normalizedState.assetAssignmentIds[type] ?? [])
@@ -2046,14 +2046,25 @@ export class AssetPopupComponent {
       this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[this.resourcePopupStore.supplyAssignmentKey(normalizedState.subEventId, assetId)] = entries
         .map(entry => ({ ...entry }));
     }
+    if (nextContext) {
+      // Assignment maps are plain scoped caches. Publish the reactive context only
+      // after all of them are coherent so the following metric signal sees the save DTO.
+      this.resourcePopupStore.popupContextRef.set(nextContext);
+    }
   }
 
-  private syncPopupSubEventMetrics(persistAssetRequests = false): void {
+  private syncPopupSubEventMetrics(
+    persistAssetRequests = false,
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
+  ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
     }
-    const nextSubEvent = { ...context.subEvent };
+    // Materialize the owner's accepted manual assignment locally before deriving
+    // occupancy. Persistence remains asynchronous and must not block the resource save.
+    this.syncSubEventManualAssetRequests(context.subEvent, persistAssetRequests);
+    let nextSubEvent = { ...context.subEvent };
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
@@ -2069,11 +2080,15 @@ export class AssetPopupComponent {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
-    this.resourcePopupStore.popupContextRef.set({
+    // The successful replace response is the canonical metric snapshot. Local
+    // derivation remains a fallback for non-persisting UI-only updates.
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
+    const nextContext = {
       ...context,
       subEvent: nextSubEvent
-    });
-    this.syncSubEventManualAssetRequests(nextSubEvent, persistAssetRequests);
+    };
+    this.resourcePopupStore.popupContextRef.set(nextContext);
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
   }
 
   private subEventAssetCapacityMetrics(
@@ -2242,12 +2257,8 @@ export class AssetPopupComponent {
   }
 
   private async persistAssetRequests(ownerUserId: string, card: AppDTOs.AssetDTO): Promise<void> {
-    const detail = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
-    if (!detail) {
-      return;
-    }
     const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, {
-      ...detail,
+      ...this.toAssetDetailDto(card),
       requests: card.requests.map(request => this.cloneAssetRequest(request))
     });
     if (this.assetStore.isActiveOwnerUser(ownerUserId)) {

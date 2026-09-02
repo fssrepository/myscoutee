@@ -33,16 +33,21 @@ export class EventSubeventRuntimeInfoCardConverter
     const slotTimeframe = `${options.slotTimeframe ?? ''}`.trim();
     const dateLabel = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, slotTimeframe || 'Date unavailable');
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
+    const isMainEvent = this.isMainEventRuntime(item);
     const isTournament = mode === 'Tournament';
     const sequenceNumber = Math.max(1, Math.trunc(Number(options.sequenceNumber) || 1));
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
-    const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
+    const sequenceLabel = isMainEvent
+      ? 'Event'
+      : isTournament
+        ? `Stage ${sequenceNumber}`
+        : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
     const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
     const stageStatus = isTournament
       ? this.stageStatusBadge(item, nowMs)
       : null;
-    const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
+    const runtimeIcon = isMainEvent ? 'event' : isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = options.menuBadgeCount == null
       ? EventSubeventRuntimeMenuConverter.runtimeBadgeCount(item, {
           event: options.event,
@@ -72,8 +77,8 @@ export class EventSubeventRuntimeInfoCardConverter
       surfaceTone: isTournament ? 'stage-runtime' : 'draft',
       accentHue: isTournament ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal) : null,
       leadingIcon: {
-        icon: isTournament ? 'emoji_events' : status.icon,
-        tone: isTournament ? 'stage' : status.leadingTone
+        icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : status.icon,
+        tone: isTournament ? 'stage' : isMainEvent ? 'public' : status.leadingTone
       },
       mediaStart: {
         variant: 'avatar',
@@ -81,7 +86,13 @@ export class EventSubeventRuntimeInfoCardConverter
         icon: 'location_on',
         interactive: false
       },
-      mediaEnd: isTournament ? stageStatus : {
+      mediaEnd: isTournament ? stageStatus : isMainEvent ? {
+        variant: 'badge',
+        tone: 'public',
+        label: 'Event',
+        icon: 'event',
+        interactive: false
+      } : {
         variant: 'badge',
         layout: 'badge-with-leading-accessory',
         tone: status.overlayTone,
@@ -181,7 +192,7 @@ export class EventSubeventRuntimeInfoCardConverter
     if (mode === 'Tournament') {
       return this.tournamentGroupCapacitySummary(item, options);
     }
-    if (!item.optional) {
+    if (!item.optional && !this.isMainEventRuntime(item)) {
       return null;
     }
     const accepted = Math.max(0, this.nonNegativeInteger(item.membersAccepted));
@@ -210,6 +221,10 @@ export class EventSubeventRuntimeInfoCardConverter
   private static nonNegativeInteger(value: unknown): number {
     const parsed = Math.trunc(Number(value));
     return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
+  private static isMainEventRuntime(item: SubEventDTO | null | undefined): boolean {
+    return `${item?.runtimeKind ?? ''}`.trim().toUpperCase() === 'MAIN_EVENT';
   }
 
   private static stageStatusBadge(

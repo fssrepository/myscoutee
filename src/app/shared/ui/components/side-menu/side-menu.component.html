@@ -37,6 +37,7 @@
   <div
     class="notification-attention-launcher"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
+    [class.is-popup-open]="popupPresenceStore.visible()"
   >
     <app-menu
       class="notification-attention-menu"

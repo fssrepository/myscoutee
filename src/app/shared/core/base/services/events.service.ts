@@ -73,16 +73,19 @@ import {
 import {
   UsersService
 } from './users.service';
+import { RouteDelayService } from './route-delay.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
 })
 export class EventsService extends BaseRouteModeService implements IEventsService {
+  private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
+  private readonly routeDelay = inject(RouteDelayService);
 
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/activities/events');
@@ -174,6 +177,10 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return this.localEventsService.queryEventExplorePage(query);
     }
     return this.httpEventsService.queryEventExplorePage(query);
+  }
+
+  explorePollIntervalMs(): number {
+    return this.routeDelay.resolveIntervalMs(EventsService.EVENTS_EXPLORE_ROUTE);
   }
 
   peekEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {

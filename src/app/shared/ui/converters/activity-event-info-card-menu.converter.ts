@@ -44,7 +44,6 @@ export class ActivityEventInfoCardMenuConverter {
     'restore',
     'takeOver',
     'publish',
-    'editEvent',
     'manageEvent',
     'viewInvitation',
     'view',
@@ -90,9 +89,6 @@ export class ActivityEventInfoCardMenuConverter {
       return 'view';
     }
     const activeUserId = options.activeUserId ?? '';
-    if (this.isActionVisible(subject, 'editEvent', activeUserId)) {
-      return 'edit';
-    }
     return this.isActionVisible(subject, 'manageEvent', activeUserId)
       ? 'manage'
       : 'view';
@@ -114,16 +110,17 @@ export class ActivityEventInfoCardMenuConverter {
       id: actionId,
       ...config
     };
+    const isEventEntryAction = actionId === 'manageEvent' || actionId === 'view';
     return [{
       id: actionId,
       label: config.label,
       icon: config.icon,
       palette: this.actionPalette(actionId, config.tone),
       surface: 'tinted',
-      counter: actionId === 'view' && this.pendingActivityCount(subject) > 0
+      counter: isEventEntryAction && this.pendingActivityCount(subject) > 0
         ? { value: this.pendingActivityCount(subject), max: 99 }
         : null,
-      counterTone: actionId === 'view' ? 'alert' : 'default',
+      counterTone: isEventEntryAction ? 'alert' : 'default',
       context: {
         menu: 'activity-event-card',
         subject,
@@ -157,18 +154,14 @@ export class ActivityEventInfoCardMenuConverter {
         return this.isAdmin(subject, activeUserId)
           && this.isDraft(subject)
           && !this.isPendingReview(subject);
-      case 'editEvent':
-        return this.isAdmin(subject, activeUserId)
-          && this.isDraft(subject)
-          && !this.isPendingReview(subject);
       case 'manageEvent':
         return this.isAdmin(subject, activeUserId)
-          && !this.isDraft(subject)
           && !this.isPendingReview(subject);
       case 'viewInvitation':
         return this.hasOutstandingInvitation(subject, activeUserId) && !this.isPendingReview(subject);
       case 'view':
-        return !this.hasOutstandingInvitation(subject, activeUserId);
+        return !this.isAdmin(subject, activeUserId)
+          && !this.hasOutstandingInvitation(subject, activeUserId);
       case 'paymentSummary':
         return subject.checkoutMenuAction === 'paymentSummary'
           && !this.isAdmin(subject, activeUserId);

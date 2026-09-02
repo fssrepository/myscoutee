@@ -235,6 +235,9 @@ export class EventExplorePopupComponent {
     desktopColumns: 3,
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
+    pollIntervalMs: () => this.isOpen && !this.dialogStore.dialog()
+      ? this.activitiesService.explorePollIntervalMs()
+      : 0,
     cacheable: true,
     containerClass: {
       'experience-card-list': true,
@@ -1436,6 +1439,7 @@ export class EventExplorePopupComponent {
         topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
       }
     });
+    this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
     return page;
   }
 
