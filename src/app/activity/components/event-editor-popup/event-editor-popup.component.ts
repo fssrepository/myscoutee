@@ -833,7 +833,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       invitedMemberUserIds: [],
       pendingRequestMemberUserIds: [],
       topics: [],
-      subEventsEnabled: true,
+      subEventsEnabled: false,
       subEventDefinitions: [],
       subEvents: [],
       mode: 'Casual',
