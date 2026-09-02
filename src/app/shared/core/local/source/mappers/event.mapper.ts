@@ -347,7 +347,7 @@ export class LocalActivityEventsMapper {
         continue;
       }
       const definitions = this.slotTemplateSubEventDefinitions(parentRecord, template);
-      const durationMs = this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000;
+      const durationMs = this.slotDurationMinutes(parentRecord, definitions, templateStart) * 60 * 1000;
       for (const startAt of this.generateSlotOccurrenceStarts(parentRecord.frequency ?? 'One-time', templateStart, horizon.start, horizon.end)) {
         const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
         if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
@@ -369,7 +369,7 @@ export class LocalActivityEventsMapper {
         continue;
       }
       const definitions = this.slotTemplateSubEventDefinitions(parentRecord, template);
-      const endAt = new Date(startAt.getTime() + (this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000));
+      const endAt = new Date(startAt.getTime() + (this.slotDurationMinutes(parentRecord, definitions, startAt) * 60 * 1000));
       if (startAt.getTime() < horizon.start.getTime() || startAt.getTime() > horizon.end.getTime()) {
         continue;
       }
@@ -412,6 +412,30 @@ export class LocalActivityEventsMapper {
     return overrideDefinitions.length > 0
       ? overrideDefinitions
       : ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
+  }
+
+  private static slotDurationMinutes(
+    parentRecord: ActivityEventRecord,
+    definitions: readonly SubEventDefinitionDTO[],
+    slotStart: Date
+  ): number {
+    const definitionsDuration = this.subEventDefinitionsDurationMinutes(definitions);
+    if (definitionsDuration > 0) {
+      return definitionsDuration;
+    }
+    const parentStart = AppUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
+    const parentEnd = AppUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
+    if (!parentStart || !parentEnd || parentEnd.getTime() <= parentStart.getTime()) {
+      return 0;
+    }
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(parentRecord.frequency ?? 'One-time');
+    if (frequency === 'One-time' || frequency === 'Custom') {
+      return Math.max(0, Math.trunc((parentEnd.getTime() - slotStart.getTime()) / (60 * 1000)));
+    }
+    const parentStartMinutes = (parentStart.getHours() * 60) + parentStart.getMinutes();
+    const parentEndMinutes = (parentEnd.getHours() * 60) + parentEnd.getMinutes();
+    const duration = parentEndMinutes - parentStartMinutes;
+    return duration > 0 ? duration : duration + (24 * 60);
   }
 
   private static slotGenerationHorizon(
