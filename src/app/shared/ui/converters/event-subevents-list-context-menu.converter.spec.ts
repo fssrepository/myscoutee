@@ -5,7 +5,7 @@ import { ActivityEventInfoCardConverter } from './activity-event-info-card.conve
 import { EventSubeventsListContextMenuConverter } from './event-subevents-list-context-menu.converter';
 
 describe('EventSubeventsListContextMenuConverter member activity', () => {
-  it('keeps Manage Event and View Event role semantics inside the Sub Events list', () => {
+  it('keeps the original Edit and View actions inside the Sub Events list', () => {
     const managedEntry = EventSubeventsListContextMenuConverter.convert({
       participantOnly: false,
       editorAction: 'manage',
@@ -19,8 +19,8 @@ describe('EventSubeventsListContextMenuConverter member activity', () => {
       membersDisabled: false
     }).find(item => item.id === 'view');
 
-    expect(managedEntry).toMatchObject({ label: 'manage.event', icon: 'settings' });
-    expect(viewedEntry).toMatchObject({ label: 'view.event', icon: 'visibility' });
+    expect(managedEntry).toMatchObject({ label: 'edit', icon: 'edit' });
+    expect(viewedEntry).toMatchObject({ label: 'view', icon: 'visibility' });
   });
 
   it('puts only pending members on the Tags action as a red counter', () => {

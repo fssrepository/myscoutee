@@ -29,8 +29,7 @@ export class EventSubeventsListContextMenuConverter
     input: EventSubeventsListContextMenuConverterInput
   ): readonly AppMenuItem<string, EventSubeventsListContextMenuContext>[] {
     const pendingMembers = this.nonNegativeInteger(input.pendingMembers);
-    const canEditStructure = input.editorAction === 'edit';
-    const canManageEvent = input.editorAction === 'manage';
+    const canEditEvent = input.editorAction !== 'view';
     return [
       {
         id: 'participant-filter',
@@ -46,9 +45,9 @@ export class EventSubeventsListContextMenuConverter
       },
       {
         id: input.editorAction,
-        label: canEditStructure ? 'edit.event' : canManageEvent ? 'manage.event' : 'view.event',
-        icon: canEditStructure ? 'edit' : canManageEvent ? 'settings' : 'visibility',
-        palette: canEditStructure ? 'amber' : canManageEvent ? 'blue' : 'teal',
+        label: canEditEvent ? 'edit' : 'view',
+        icon: canEditEvent ? 'edit' : 'visibility',
+        palette: canEditEvent ? 'amber' : 'teal',
         surface: 'tinted',
         layout: 'action',
         context: { menu: 'context', action: input.editorAction }
