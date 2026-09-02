@@ -1,7 +1,33 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityEventRecord } from '../../../contracts/activity.interface';
-import { LocalActivityEventsMapper } from './event.mapper';
+import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../contracts/activity.interface';
+import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
+
+describe('LocalActivityEventDetailsMapper empty child definitions', () => {
+  it('canonicalizes enabled empty Slots and Sub Events to the root Event shape', () => {
+    const payload = new ActivityEventDetailDTO().apply({
+      id: 'event-1',
+      userId: 'user-1',
+      creatorUserId: 'user-1',
+      title: 'Runtime Event',
+      startAtIso: '2099-03-10T12:00:00Z',
+      endAtIso: '2099-03-10T15:00:00Z',
+      frequency: 'Custom',
+      slotsEnabled: true,
+      slotTemplates: [],
+      subEventsEnabled: true,
+      subEventDefinitions: []
+    });
+
+    const record = LocalActivityEventDetailsMapper.toRecord(payload);
+
+    expect(record.slotsEnabled).toBe(false);
+    expect(record.slotTemplates).toEqual([]);
+    expect(record.frequency).toBe('One-time');
+    expect(record.subEventsEnabled).toBe(false);
+    expect(record.subEventDefinitions).toEqual([]);
+  });
+});
 
 describe('LocalActivityEventsMapper slot-scoped main Event runtime', () => {
   it('maps every Slot without Sub Event definitions to one MAIN_EVENT item', () => {

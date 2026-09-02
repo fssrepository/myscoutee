@@ -982,12 +982,14 @@ export class LocalActivityEventDetailsMapper {
     const type = this.normalizeRepositoryItemType(payload.type);
     const visibility = this.normalizeVisibility(payload.visibility);
     const blindMode = this.normalizeBlindMode(payload.blindMode);
-    const frequency = this.normalizeFrequency(payload.frequency);
-    const hasSlots = payload.slotsEnabled === true;
+    const requestedFrequency = this.normalizeFrequency(payload.frequency);
+    const normalizedSlotTemplates = this.normalizeSlotTemplates(payload.slotTemplates);
+    const hasSlots = payload.slotsEnabled === true && normalizedSlotTemplates.length > 0;
+    const frequency = hasSlots ? requestedFrequency : 'One-time';
     const topics = this.normalizeTopics(payload.topics);
-    const slotTemplates = hasSlots ? this.normalizeSlotTemplates(payload.slotTemplates) : [];
-    const subEventsEnabled = payload.subEventsEnabled !== false;
+    const slotTemplates = hasSlots ? normalizedSlotTemplates : [];
     const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions);
+    const subEventsEnabled = payload.subEventsEnabled !== false && subEventDefinitions.length > 0;
     const subEvents = this.normalizeSubEvents(payload.subEvents);
     const policiesEnabled = payload.policiesEnabled === true;
     const policies = this.normalizePolicies(payload.policies);
