@@ -113,7 +113,7 @@ describe('LocalAdminNotificationsService', () => {
     const runtime = await TestBed.inject(LocalAdminNotificationsService)
       .loadNotificationRuleRuntime(rule.ruleKey);
 
-    expect(runtime?.runState.nextRunAtIso).toBe('2026-09-02T06:50:51.458Z');
+    expect(runtime?.runState.nextRunAtIso).toBe('2026-09-02T06:50:00.000Z');
   });
 });
 

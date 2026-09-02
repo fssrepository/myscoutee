@@ -182,10 +182,12 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
       return '';
     }
     const amount = Math.max(1, Math.trunc(Number(rule.timing.intervalAmount) || 1));
-    const unitMillis = INTERVAL_UNIT_MILLIS[`${rule.timing.intervalUnit ?? ''}`.trim()]
+    const unit = `${rule.timing.intervalUnit ?? ''}`.trim();
+    const unitMillis = INTERVAL_UNIT_MILLIS[unit]
       ?? Math.max(1, Math.trunc(Number(rule.timing.intervalSeconds) || 60)) * 1000;
     const lastRunAt = Date.parse(rule.runState?.lastRunAtIso || '');
-    const base = Number.isFinite(lastRunAt) ? lastRunAt : Date.now();
+    let base = Number.isFinite(lastRunAt) ? lastRunAt : Date.now();
+    if (unit === 'minutes') base -= base % 60_000;
     return new Date(base + amount * unitMillis).toISOString();
   }
 
