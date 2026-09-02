@@ -1647,6 +1647,7 @@ export class HttpEventsService implements IEventsService {
         pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
         pendingReason: record.pendingReason ?? null,
         currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(record.currentUserMembershipStatus),
+        checkoutResultState: this.normalizeCheckoutResultState(record.checkoutResultState),
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,

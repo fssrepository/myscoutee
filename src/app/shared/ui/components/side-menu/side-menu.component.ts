@@ -239,7 +239,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly chatsService = inject(ChatsService);
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
-  private readonly popupPresenceStore = inject(PopupPresenceStore);
+  protected readonly popupPresenceStore = inject(PopupPresenceStore);
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
