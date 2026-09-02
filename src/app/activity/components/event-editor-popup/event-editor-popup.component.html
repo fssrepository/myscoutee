@@ -80,11 +80,13 @@
               <span>{{ 'capacity' | i18n }} <span class="required-star">*</span></span>
               <div class="subevent-capacity-range">
                 <input type="number" min="0" step="1" required [ngModel]="eventDetailDTO.capacityMin"
-                  (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventCapacityMinReadOnly()"
+                  (input)="onEventCapacityInput($event)" (ngModelChange)="onEventCapacityMinChange($event)"
+                  [disabled]="eventCapacityMinReadOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" [placeholder]="'min' | i18n" />
                 <span class="subevent-capacity-separator">-</span>
                 <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
-                  (ngModelChange)="onEventCapacityMaxChange($event)" (blur)="onEventCapacityMaxBlur()"
+                  (input)="onEventCapacityInput($event)" (ngModelChange)="onEventCapacityMaxChange($event)"
+                  (blur)="onEventCapacityMaxBlur()"
                   [disabled]="eventCapacityMaxReadOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" [placeholder]="'max' | i18n" />
               </div>

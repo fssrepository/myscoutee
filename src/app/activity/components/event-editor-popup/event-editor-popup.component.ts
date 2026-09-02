@@ -1968,6 +1968,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
+  onEventCapacityInput(event: Event): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    const canonicalValue = input.value.replace(/^0+(?=\d)/, '');
+    if (canonicalValue !== input.value) {
+      input.value = canonicalValue;
+    }
+  }
+
   onEventCapacityMaxChange(value: number | string): void {
     if (this.eventCapacityMaxReadOnly()) {
       return;
