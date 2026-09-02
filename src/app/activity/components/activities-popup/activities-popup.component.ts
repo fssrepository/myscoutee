@@ -609,8 +609,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const activeUserId = this.userProfileStore.activeUserId().trim() || this.activeUser.id;
     return ActivityEventInfoCardMenuConverter.convert(subject, {
-      activeUserId,
-      hiddenActions: ['editEvent', 'manageEvent']
+      activeUserId
     });
   }
 

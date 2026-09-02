@@ -61,4 +61,28 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
 
     expect(card.metaRows).toContain('Groups: 2 × 1–2 members');
   });
+
+  it('presents a persisted MAIN_EVENT runtime as the Event with canonical capacity', () => {
+    const card = EventSubeventRuntimeInfoCardConverter.convert({
+      id: 'main-event:event-1',
+      runtimeKind: 'MAIN_EVENT',
+      eventId: 'event-1',
+      name: 'Childless Event',
+      description: 'One canonical runtime',
+      startAt: '2027-03-10T10:00:00Z',
+      endAt: '2027-03-10T12:00:00Z',
+      optional: false,
+      capacityMin: 1,
+      capacityMax: 9,
+      membersAccepted: 2,
+      membersPending: 0
+    } as SubEventDTO, {
+      mode: 'Casual'
+    });
+
+    expect(card.mediaTitle).toBe('Event');
+    expect(card.mediaIcon).toBe('event');
+    expect(card.mediaEnd).toMatchObject({ label: 'Event', icon: 'event' });
+    expect(card.metaRows).toContain('Capacity 2 / 9');
+  });
 });

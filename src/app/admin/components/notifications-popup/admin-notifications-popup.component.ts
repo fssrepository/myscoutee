@@ -428,14 +428,6 @@ const PROCESS_FINISHED_RUNTIME_STATUSES = new Set<string>([
   PROCESS_RUNTIME_STATUS.skipped
 ]);
 
-const WEEKLY_SCHEDULE_FREQUENCIES = new Set<string>([
-  SCHEDULE_FREQUENCY.weekly,
-  SCHEDULE_FREQUENCY.biWeekly
-]);
-const ROLLING_DATE_SCHEDULE_FREQUENCIES = new Set<string>([
-  SCHEDULE_FREQUENCY.monthly,
-  SCHEDULE_FREQUENCY.yearly
-]);
 const DEFAULT_RUN_WINDOW = {
   frequency: SCHEDULE_FREQUENCY.daily,
   dayOfWeek: 1,
@@ -1159,6 +1151,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
   }
 
+  protected isProgressComplete(rule: AdminNotificationRule): boolean {
+    return !this.isProcessRunning(rule) && this.progressValue(rule) === 100;
+  }
+
   protected runWindows(rule: AdminNotificationRule): AdminNotificationScheduleSlot[] {
     return rule.scheduleSlots ?? [];
   }
@@ -1693,60 +1689,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private nextRunSortValue(rule: AdminNotificationRule): number {
-    const values = this.runWindows(rule)
-      .filter(slot => slot.enabled !== false)
-      .map(slot => this.slotSortValue(slot))
-      .filter(value => Number.isFinite(value));
-    if (values.length > 0) {
-      return Math.min(...values);
-    }
-    return Date.now() + this.intervalSeconds(rule) * 1000;
-  }
-
-  private slotSortValue(slot: AdminNotificationScheduleSlot): number {
-    const [hour, minute] = this.normalizeTime(slot.time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
-    const dateTime = (date: Date): number => {
-      date.setHours(hour, minute, 0, 0);
-      return date.getTime();
-    };
-    if (slot.frequency === SCHEDULE_FREQUENCY.oneTime && /^\d{4}-\d{2}-\d{2}$/.test(slot.date || '')) {
-      return dateTime(new Date(`${slot.date}T00:00:00`));
-    }
-    const today = new Date();
-    if (WEEKLY_SCHEDULE_FREQUENCIES.has(slot.frequency)) {
-      const targetDay = Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1)));
-      const currentDay = today.getDay() === 0 ? 7 : today.getDay();
-      const offsetDays = (targetDay - currentDay + 7) % 7;
-      const next = new Date(today);
-      next.setDate(today.getDate() + offsetDays);
-      const value = dateTime(next);
-      return value >= Date.now() ? value : value + 7 * 24 * 60 * 60 * 1000;
-    }
-    if (ROLLING_DATE_SCHEDULE_FREQUENCIES.has(slot.frequency)) {
-      const { month, day } = this.monthDayParts(slot.date);
-      const next = new Date(today);
-      next.setDate(Math.min(day, 28));
-      if (slot.frequency === SCHEDULE_FREQUENCY.yearly) {
-        next.setMonth(month - 1, Math.min(day, 28));
-      }
-      let value = dateTime(next);
-      if (value < Date.now()) {
-        if (slot.frequency === SCHEDULE_FREQUENCY.yearly) {
-          next.setFullYear(next.getFullYear() + 1);
-        } else {
-          next.setMonth(next.getMonth() + 1);
-        }
-        value = dateTime(next);
-      }
-      return value;
-    }
-    const next = new Date();
-    let value = dateTime(next);
-    if (value < Date.now()) {
-      next.setDate(next.getDate() + 1);
-      value = dateTime(next);
-    }
-    return value;
+    return this.parseDateSortValue(rule.runState.nextRunAtIso) || Number.MAX_SAFE_INTEGER;
   }
 
   private applyProcessCenterState(centerState: AdminNotificationCenterState): void {
@@ -1854,7 +1797,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     return {
       ...current,
-      runState: incoming.runState,
+      runState: {
+        ...incoming.runState,
+        nextRunAtIso: incoming.runState.nextRunAtIso || current.runState.nextRunAtIso
+      },
       runHistory,
       updatedDate,
       updatedUser

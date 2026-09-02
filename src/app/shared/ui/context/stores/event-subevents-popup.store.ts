@@ -1,5 +1,6 @@
 import { Injectable, Type, signal } from '@angular/core';
 
+import type { SubEventDefinitionDTO } from '../../../core/contracts/activity.interface';
 import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../core/contracts/event.interface';
 
 export type EventSubeventsEditorAction = 'edit' | 'manage' | 'view';
@@ -43,6 +44,23 @@ export interface EventTournamentGroupsUpdate {
   groupsPendingDelta: number;
 }
 
+export interface EventSubeventsDefinitionDraftUpdate {
+  updatedMs: number;
+  action: 'preview' | 'discard';
+  eventId: string;
+  mode: EventMode | null;
+  startAtIso: string | null;
+  endAtIso: string | null;
+  slotsEnabled: boolean;
+  definitions: readonly SubEventDefinitionDTO[];
+}
+
+export interface EventSubeventsReloadRequest {
+  revision: number;
+  eventId: string;
+  source: 'event-save';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -50,12 +68,16 @@ export class EventSubeventsPopupStore {
   private readonly eventSubeventsListPopupRef = signal<EventSubeventsListPopupRequest | null>(null);
   private readonly eventTournamentGroupsPopupRef = signal<EventTournamentGroupsPopupRequest | null>(null);
   private readonly eventTournamentGroupsUpdateRef = signal<EventTournamentGroupsUpdate | null>(null);
+  private readonly eventSubeventsDefinitionDraftUpdateRef = signal<EventSubeventsDefinitionDraftUpdate | null>(null);
+  private readonly eventSubeventsReloadRequestRef = signal<EventSubeventsReloadRequest | null>(null);
   private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly eventSubeventsListPopup = this.eventSubeventsListPopupRef.asReadonly();
   readonly eventTournamentGroupsPopup = this.eventTournamentGroupsPopupRef.asReadonly();
   readonly eventTournamentGroupsUpdate = this.eventTournamentGroupsUpdateRef.asReadonly();
+  readonly eventSubeventsDefinitionDraftUpdate = this.eventSubeventsDefinitionDraftUpdateRef.asReadonly();
+  readonly eventSubeventsReloadRequest = this.eventSubeventsReloadRequestRef.asReadonly();
   readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
   readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
 
@@ -188,6 +210,73 @@ export class EventSubeventsPopupStore {
         ? Math.trunc(Number(payload.groupsPendingDelta))
         : 0
     });
+  }
+
+  emitEventSubeventsDefinitionDraftPreview(payload: {
+    eventId: string;
+    mode: EventMode;
+    startAtIso?: string | null;
+    endAtIso?: string | null;
+    slotsEnabled?: boolean;
+    definitions?: readonly SubEventDefinitionDTO[] | null;
+  }): void {
+    const eventId = `${payload.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    this.eventSubeventsDefinitionDraftUpdateRef.set({
+      updatedMs: this.nextDefinitionDraftUpdatedMs(),
+      action: 'preview',
+      eventId,
+      mode: payload.mode === 'Tournament' ? 'Tournament' : 'Casual',
+      startAtIso: `${payload.startAtIso ?? ''}`.trim() || null,
+      endAtIso: `${payload.endAtIso ?? ''}`.trim() || null,
+      slotsEnabled: payload.slotsEnabled === true,
+      definitions: (payload.definitions ?? []).map(definition => ({ ...definition }))
+    });
+  }
+
+  discardEventSubeventsDefinitionDraft(eventId: string): void {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return;
+    }
+    this.eventSubeventsDefinitionDraftUpdateRef.set({
+      updatedMs: this.nextDefinitionDraftUpdatedMs(),
+      action: 'discard',
+      eventId: normalizedEventId,
+      mode: null,
+      startAtIso: null,
+      endAtIso: null,
+      slotsEnabled: false,
+      definitions: []
+    });
+  }
+
+  clearEventSubeventsDefinitionDraft(eventId: string): void {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (this.eventSubeventsDefinitionDraftUpdateRef()?.eventId === normalizedEventId) {
+      this.eventSubeventsDefinitionDraftUpdateRef.set(null);
+    }
+  }
+
+  requestEventSubeventsReload(eventId: string): void {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return;
+    }
+    this.eventSubeventsReloadRequestRef.set({
+      revision: (this.eventSubeventsReloadRequestRef()?.revision ?? 0) + 1,
+      eventId: normalizedEventId,
+      source: 'event-save'
+    });
+  }
+
+  private nextDefinitionDraftUpdatedMs(): number {
+    return Math.max(
+      Date.now(),
+      (this.eventSubeventsDefinitionDraftUpdateRef()?.updatedMs ?? 0) + 1
+    );
   }
 
   private nonNegativeInteger(value: unknown): number {

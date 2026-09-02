@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import type {
+  ActivityEventRecord,
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
@@ -54,6 +55,29 @@ export class EventCheckoutDraftStore {
     return Object.values(this.draftsRef())
       .filter(item => item.userId === normalizedUserId)
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
+  }
+
+  reconcileExpiredEventDrafts(
+    userId: string,
+    records: readonly Pick<ActivityEventRecord, 'id' | 'checkoutResultState'>[],
+    nowMs = Date.now()
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || records.length === 0) {
+      return;
+    }
+    const recordsById = new Map(records.map(record => [record.id, record]));
+    for (const draft of this.listByUser(normalizedUserId)) {
+      const expiresAtMs = Date.parse(draft.expiresAtIso ?? '');
+      const record = recordsById.get(draft.sourceId);
+      if (!record
+          || !Number.isFinite(expiresAtMs)
+          || expiresAtMs > nowMs
+          || record.checkoutResultState !== 'deleted') {
+        continue;
+      }
+      this.clear(normalizedUserId, draft.sourceId);
+    }
   }
 
   save(draft: EventCheckoutDraft): void {

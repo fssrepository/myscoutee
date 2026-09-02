@@ -47,6 +47,8 @@ export interface EventSlotOccurrenceDTO {
 
 export interface SubEventDTO {
   id: string;
+  runtimeKind?: 'MAIN_EVENT' | string | null;
+  eventId?: string | null;
   name: string;
   description: string;
   startAt: string;

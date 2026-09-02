@@ -244,7 +244,9 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/activities/events/explore',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      intervalMs: 30000,
+      demoIntervalMs: 10000
     },
     {
       routePrefix: '/activities/events/checkout',

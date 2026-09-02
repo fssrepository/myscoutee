@@ -48,6 +48,10 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
+  explorePollIntervalMs(): number {
+    return this.eventsService.explorePollIntervalMs();
+  }
+
   async loadActivityChats(
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}

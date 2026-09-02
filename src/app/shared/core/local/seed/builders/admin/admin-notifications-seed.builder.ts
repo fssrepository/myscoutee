@@ -334,6 +334,7 @@ export class AdminNotificationsSeedBuilder {
         finishedAtIso: '',
         durationMillis: 0,
         lastRunAtIso: '',
+        nextRunAtIso: '',
         lastRunStatus: '',
         lastRunDetail: '',
         lastRunCount: 0,

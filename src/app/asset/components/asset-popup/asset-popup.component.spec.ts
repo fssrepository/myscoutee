@@ -12,6 +12,7 @@ import {
 } from '../../../shared/core';
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
   AppMenuDispatcher
 } from '../../../shared/ui';
@@ -27,6 +28,7 @@ import { AssetPopupComponent } from './asset-popup.component';
 
 describe('AssetPopupComponent ticket cache reactivity', () => {
   const activeUserId = signal('owner-1');
+  const activeUserProfile = signal<UserDto | null>(null);
   const dbRevision = signal(0);
   const peekTicketCountByUser = vi.fn(() => {
     dbRevision();
@@ -37,6 +39,7 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
 
   beforeEach(() => {
     activeUserId.set('owner-1');
+    activeUserProfile.set(null);
     dbRevision.set(0);
     peekTicketCountByUser.mockClear();
     signalUserTicketBucketCount.mockClear();
@@ -51,7 +54,7 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
           provide: UserProfileStore,
           useValue: {
             activeUserId: activeUserId.asReadonly(),
-            activeUserProfile: () => null,
+            activeUserProfile: () => activeUserProfile(),
             getActiveUserId: () => activeUserId()
           }
         },
@@ -218,6 +221,93 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
       total: 1
     });
     expect(config.cacheable.identity(row, 0, {})).toBe('events:event-1');
+  });
+
+  it('publishes the saved main-event assignment metrics before closing the basket', () => {
+    const user = {
+      id: 'owner-1',
+      name: 'Owner One',
+      initials: 'OO',
+      gender: 'man'
+    } as UserDto;
+    activeUserProfile.set(user);
+
+    const assetStore = TestBed.inject(AssetStore);
+    const resourceStore = TestBed.inject(SubEventResourcePopupStore);
+    assetStore.setActiveOwnerUserId(user.id);
+    assetStore.applyAssetCards([{
+      id: 'transport-1',
+      type: AppConstants.ASSET_TYPE_TRANSPORT,
+      title: 'Main Event Transport',
+      subtitle: '',
+      city: 'Austin',
+      capacityTotal: 4,
+      quantity: 1,
+      description: '',
+      imageUrl: '',
+      ownerUserId: user.id,
+      requests: []
+    }], { reloadList: false });
+    resourceStore.popupContextRef.set({
+      origin: 'subEventResource',
+      ownerId: 'event-1',
+      assetOwnerUserId: user.id,
+      parentTitle: 'Main Event',
+      subEvent: {
+        id: 'main-event:event-1',
+        name: 'Main Event',
+        runtimeKind: 'MAIN_EVENT',
+        carsAccepted: 0,
+        carsPending: 0,
+        carsCapacityMin: 0,
+        carsCapacityMax: 0
+      },
+      fallbackCardsByType: {}
+    } as any);
+
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    const savedState = {
+      ownerId: 'event-1',
+      subEventId: 'main-event:event-1',
+      assetOwnerUserId: user.id,
+      assetAssignmentIds: { Transport: ['transport-1'] },
+      assetSettingsByType: {
+        Transport: {
+          'transport-1': {
+            capacityMin: 0,
+            capacityMax: 4,
+            quantity: 1,
+            addedByUserId: user.id,
+            routeEnabled: false,
+            routes: []
+          }
+        }
+      },
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {
+        Transport: {
+          accepted: 1,
+          pending: 1,
+          capacityMin: 0,
+          capacityMax: 4
+        }
+      }
+    };
+    (component as any).applyPersistedPopupState(savedState);
+    (component as any).syncPopupSubEventMetrics(false, savedState);
+
+    expect(resourceStore.subEventResourceMetricsUpdate()).toMatchObject({
+      ownerId: 'event-1',
+      subEventId: 'main-event:event-1',
+      subEvent: {
+        runtimeKind: 'MAIN_EVENT',
+        carsAccepted: 1,
+        carsPending: 1,
+        carsCapacityMin: 0,
+        carsCapacityMax: 4
+      }
+    });
   });
 });
 

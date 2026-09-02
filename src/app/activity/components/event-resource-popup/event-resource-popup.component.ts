@@ -89,7 +89,8 @@ import {
   eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  ActivityStore
+  ActivityStore,
+  type ActivityMembersSyncState
 } from '../../../shared/ui/context/stores/activity.store';
 import {
   SubEventResourcePopupStore,
@@ -288,18 +289,14 @@ export class EventResourcePopupComponent {
       filterCounts: this.resourceFilterCounts(),
       canAssign: context?.viewOnly !== true,
       items: cards.map(card => {
-        const candidateMemberSync = card.sourceAssetId
-          ? memberSyncByOwnerId[card.sourceAssetId]
-          : null;
-        const memberSync = candidateMemberSync?.memberStatusChange
-          && !this.assignedAssetMemberStatusChange(card.sourceAssetId ?? '', context)
-          ? null
-          : candidateMemberSync;
+        const memberSync = this.assignedAssetMembersSync(card.sourceAssetId ?? '', context);
         const displayCard = memberSync
           ? {
               ...card,
               accepted: memberSync.acceptedMembers,
-              pending: memberSync.pendingMembers
+              pending: card.type === AppConstants.ASSET_TYPE_SUPPLIES
+                ? card.pending
+                : memberSync.pendingMembers
             }
           : card;
         return {
@@ -314,25 +311,37 @@ export class EventResourcePopupComponent {
   }
 
   private chatMetricIdentity(context: ResourcePopupContext): string {
-    return this.chatMetricIdentityFromParts(context.ownerId, context.subEvent.id, context.groupId);
+    return this.chatMetricIdentityFromParts(
+      context.ownerId,
+      context.subEvent.id,
+      context.groupId,
+      context.subEvent.runtimeKind,
+      context.subEvent.eventId
+    );
   }
 
   private chatMetricIdentityFromParts(
     ownerIdValue: string | null | undefined,
     subEventIdValue: string | null | undefined,
-    groupIdValue?: string | null
+    groupIdValue?: string | null,
+    runtimeKindValue?: string | null,
+    eventIdValue?: string | null
   ): string {
-    const ownerId = `${ownerIdValue ?? ''}`.trim();
-    const subEventId = `${subEventIdValue ?? ''}`.trim();
-    if (!ownerId || !subEventId) {
+    const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: ownerIdValue,
+      subEventId: subEventIdValue,
+      groupId: groupIdValue,
+      runtimeKind: runtimeKindValue,
+      eventId: eventIdValue
+    });
+    if (!scope.chatChannelType || !scope.chatOwnerId) {
       return '';
     }
-    const groupId = `${groupIdValue ?? ''}`.trim();
-    const channelType: ContractTypes.ChatChannelType = groupId ? 'groupSubEvent' : 'optionalSubEvent';
-    const chatOwnerId = groupId
-      ? this.scopedGroupOwnerId(ownerId, subEventId, groupId)
-      : `${ownerId}:${subEventId}`;
-    return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      scope.chatChannelType,
+      scope.chatOwnerId,
+      scope.chatOwnerId
+    );
   }
 
   private memberOwnerIdFromParts(
@@ -374,13 +383,13 @@ export class EventResourcePopupComponent {
   }
 
   private resourceMemberParent(context: ResourcePopupContext): ActivityContracts.ActivityMemberOwnerRef {
-    if (`${context.groupId ?? ''}`.trim()) {
-      return {
-        ownerId: context.ownerId.trim(),
-        ownerType: 'group'
-      };
-    }
-    return {
+    return ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      groupId: context.groupId,
+      runtimeKind: context.subEvent.runtimeKind,
+      eventId: context.subEvent.eventId
+    }).memberOwner ?? {
       ownerId: this.memberOwnerIdFromParts(context.ownerId, context.subEvent.id),
       ownerType: 'subEvent'
     };
@@ -780,25 +789,42 @@ export class EventResourcePopupComponent {
   private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {
     if (request.type === 'Members') {
       const group = request.group ?? null;
-      const ownerId = this.memberOwnerIdFromParts(request.ownerId, request.subEventId, group?.id);
-      const parentOwnerId = this.parentEventOwnerId(request.ownerId, request.subEventId, group?.id);
+      const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+        ownerId: request.ownerId,
+        subEventId: request.subEventId,
+        groupId: group?.id,
+        runtimeKind: request.runtimeKind,
+        eventId: request.eventId
+      });
+      const owner = scope.memberOwner;
+      const parentOwnerId = scope.eventId
+        || this.parentEventOwnerId(request.ownerId, request.subEventId, group?.id);
+      if (!owner) {
+        return;
+      }
       const groupLabel = group?.groupLabel?.trim() ?? '';
       const subEventTitle = this.requestSubEventTitle(request);
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
-        ownerId,
-        ownerType: group?.id ? 'group' : 'subEvent',
+        ownerId: owner.ownerId,
+        ownerType: owner.ownerType,
         parentOwnerId,
         parentOwnerType: 'event',
         eventId: parentOwnerId,
-        subEventId: `${request.subEventId ?? ''}`.trim(),
+        subEventId: scope.isMainEvent ? '' : `${request.subEventId ?? ''}`.trim(),
         subtitle: groupLabel || subEventTitle || request.parentTitle?.trim() || 'Event',
         canManage: group?.canManage === true,
         viewOnly: group?.id ? group.canManage !== true : undefined,
         acceptedMembers: Math.max(0, Math.trunc(Number(group?.accepted) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(group?.pending) || 0)),
         capacityTotal: Math.max(0, Math.trunc(Number(group?.capacityMax) || 0)),
-        metricIdentity: this.chatMetricIdentityFromParts(request.ownerId, request.subEventId, group?.id),
+        metricIdentity: this.chatMetricIdentityFromParts(
+          request.ownerId,
+          request.subEventId,
+          group?.id,
+          request.runtimeKind,
+          request.eventId
+        ),
         onMembersChanged: group?.onMembersChanged
       });
       return;
@@ -832,25 +858,17 @@ export class EventResourcePopupComponent {
     }
     const header = request.subEventHeader ?? null;
     const name = this.requestSubEventTitle(request) || 'Sub Event';
-    return {
-      id: subEventId,
+    return ActivityResourceBuilder.runtimeResourceTarget({
+      ownerId: request.ownerId,
+      subEventId,
+      runtimeKind: request.runtimeKind,
+      eventId: request.eventId,
       name,
       description: `${header?.description ?? ''}`.trim(),
       location: `${header?.location ?? ''}`.trim(),
       startAt: `${header?.startAt ?? ''}`.trim(),
-      endAt: `${header?.endAt ?? ''}`.trim(),
-      optional: true,
-      capacityMin: 0,
-      capacityMax: 0,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      carsAccepted: 0,
-      accommodationAccepted: 0,
-      suppliesAccepted: 0
-    };
+      endAt: `${header?.endAt ?? ''}`.trim()
+    });
   }
 
   private requestSubEventTitle(request: SubEventResourcePopupRequest): string {
@@ -1568,6 +1586,7 @@ export class EventResourcePopupComponent {
       parentOwnerType: parentOwner.ownerType,
       eventId: context.ownerId,
       subEventId: context.subEvent.id,
+      resourceType: assetType,
       subtitle,
       canManage: this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
       acceptedMembers,
@@ -2601,6 +2620,7 @@ export class EventResourcePopupComponent {
     this.applyPersistedPopupState(resolvedState);
     this.syncSubEventManualAssetRequests(context.subEvent, true);
     this.syncPopupSubEventMetrics({
+      persistedState: resolvedState,
       assignmentQuantityUpdates: [{
         assetId: normalizedAssetId,
         type,
@@ -2853,7 +2873,7 @@ export class EventResourcePopupComponent {
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
-    this.syncPopupSubEventMetrics({ persistAssetRequests: true });
+    this.syncPopupSubEventMetrics({ persistAssetRequests: true, persistedState: resolvedState });
   }
 
   private buildResourceAssignmentRemovalState(
@@ -3075,9 +3095,10 @@ export class EventResourcePopupComponent {
       card: ResourceAssetDTO,
       status: 'accepted' | 'pending'
     ): number => {
-      const memberSync = this.activityStore.activityMembersSyncByOwnerId()[card.id];
-      const statusChange = this.assignedAssetMemberStatusChange(card.id);
-      if (memberSync && statusChange?.subEventId === subEvent.id) {
+      const memberSync = type === AppConstants.ASSET_TYPE_SUPPLIES
+        ? null
+        : this.assignedAssetMembersSync(card.id);
+      if (memberSync) {
         return status === 'accepted'
           ? memberSync.acceptedMembers
           : memberSync.pendingMembers;
@@ -3089,9 +3110,7 @@ export class EventResourcePopupComponent {
     };
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
-      ? 0
-      : cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0);
+    const pending = cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0);
     if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
@@ -3113,6 +3132,7 @@ export class EventResourcePopupComponent {
       persistResourceState?: boolean;
       persistAssetRequests?: boolean;
       syncManualAssetRequests?: boolean;
+      persistedState?: AppDTOs.ActivitySubEventResourceStateDTO | null;
       activityDelta?: number;
       assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
     } = false
@@ -3124,11 +3144,12 @@ export class EventResourcePopupComponent {
     const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
     const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
     const syncManualAssetRequests = typeof options === 'boolean' || options.syncManualAssetRequests !== false;
+    const persistedState = typeof options === 'boolean' ? null : options.persistedState ?? null;
     const activityDelta = typeof options === 'boolean' || options.activityDelta === undefined
       ? undefined
       : Math.trunc(Number(options.activityDelta) || 0);
     const assignmentQuantityUpdates = typeof options === 'boolean' ? [] : [...(options.assignmentQuantityUpdates ?? [])];
-    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT, { normalizeStore: false });
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION, { normalizeStore: false });
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES, { normalizeStore: false });
@@ -3144,6 +3165,7 @@ export class EventResourcePopupComponent {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
     const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
       || context.subEvent.carsPending !== nextSubEvent.carsPending
       || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin
@@ -3232,6 +3254,24 @@ export class EventResourcePopupComponent {
       return null;
     }
     return change;
+  }
+
+  private assignedAssetMembersSync(
+    assetId: string,
+    context = this.resourcePopupStore.popupContextRef()
+  ): ActivityMembersSyncState | null {
+    const normalizedAssetId = assetId.trim();
+    const sync = normalizedAssetId
+      ? this.activityStore.activityMembersSyncByOwnerId()[normalizedAssetId] ?? null
+      : null;
+    if (!context || !sync) {
+      return null;
+    }
+    const eventId = `${sync.memberStatusChange?.eventId ?? sync.eventId ?? ''}`.trim();
+    const subEventId = `${sync.memberStatusChange?.subEventId ?? sync.subEventId ?? ''}`.trim();
+    return eventId === context.ownerId && subEventId === context.subEvent.id
+      ? sync
+      : null;
   }
 
   private assetRequestBookingForSubEvent(

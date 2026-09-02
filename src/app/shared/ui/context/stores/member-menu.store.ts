@@ -75,6 +75,7 @@ export type ActivitiesNavigationRequest =
       parentOwnerType?: ActivityMemberOwnerType;
       eventId?: string;
       subEventId?: string;
+      resourceType?: AssetType;
       subtitle?: string;
       canManage?: boolean;
       viewOnly?: boolean;

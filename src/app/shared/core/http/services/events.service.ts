@@ -773,13 +773,15 @@ export class HttpEventsService implements IEventsService {
     query: EventTournamentStageGroupsQueryDTO
   ): Promise<EventTournamentStageSnapshotDTO> {
     const normalizedEventId = query.eventId.trim();
+    const normalizedSlotId = `${query.slotId ?? ''}`.trim();
     const normalizedStageId = query.stageId.trim();
     if (!normalizedEventId || !normalizedStageId) {
       return { groups: [], leaderboard: null };
     }
+    const leaderboardOwnerId = normalizedSlotId || normalizedEventId;
     const [groups, leaderboard] = await Promise.all([
       this.queryTournamentStageGroups(query),
-      this.querySubEventLeaderboard(normalizedEventId, normalizedStageId).catch(() => null)
+      this.querySubEventLeaderboard(leaderboardOwnerId, normalizedStageId).catch(() => null)
     ]);
     return { groups, leaderboard };
   }
@@ -1175,18 +1177,18 @@ export class HttpEventsService implements IEventsService {
       const response = await this.http
         .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, persistencePayload)
         .toPromise();
-      return await this.loadSavedEventDetail(payload, response)
-        ?? this.cloneDTOs(response ? [response] : [])[0]
-        ?? null;
+      return response
+        ? persistencePayload.clone().apply(response as Partial<ActivityEventDetailDTO>)
+        : null;
     } catch {
       return null;
     }
   }
 
   /**
-   * The sync endpoint currently responds with the compact event-list DTO. Reload
-   * the detail before updating frontend state so editor-only fields are not
-   * replaced by missing values after an HTTP save.
+   * Snapshot callers require a canonical stored detail record. Interactive
+   * editor saves merge the compact response into their complete submitted DTO
+   * instead, avoiding a redundant read on the save-critical path.
    */
   private async loadSavedEventDetail(
     payload: ActivityEventDetailDTO,
@@ -1601,8 +1603,10 @@ export class HttpEventsService implements IEventsService {
         creatorUserId: `${record.creatorUserId ?? ''}`.trim(),
         creatorName: `${record.creatorName ?? ''}`.trim(),
         creatorInitials: `${record.creatorInitials ?? ''}`.trim(),
+        creatorAvatarUrl: `${record.creatorAvatarUrl ?? ''}`.trim() || null,
         creatorGender: record.creatorGender === 'woman' ? 'woman' : 'man',
         creatorCity: `${record.creatorCity ?? ''}`.trim(),
+        organizerUserId: `${record.organizerUserId ?? ''}`.trim() || null,
         visibility: record.visibility ?? 'Public',
         blindMode: record.blindMode ?? 'Open Event',
         startAtIso: `${record.startAtIso ?? ''}`.trim(),
@@ -1643,6 +1647,7 @@ export class HttpEventsService implements IEventsService {
         pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
         pendingReason: record.pendingReason ?? null,
         currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(record.currentUserMembershipStatus),
+        checkoutResultState: this.normalizeCheckoutResultState(record.checkoutResultState),
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,

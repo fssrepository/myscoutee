@@ -43,6 +43,20 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     });
   });
 
+  it.each(['DR', 'A'] as const)('keeps the Multislot badge in %s status', status => {
+    const card = ActivityEventInfoCardConverter.convert({
+      id: 'event-1',
+      title: 'Weekly Tournament',
+      status,
+      slotsEnabled: true,
+      eventType: 'main',
+      acceptedMembers: 2,
+      capacityTotal: 8
+    } as ActivityEventDTO);
+
+    expect(card.mediaEnd?.label).toBe('Multislot');
+  });
+
   it('renders a random room as a system-owned event rather than a user-owned event', () => {
     const card = ActivityEventInfoCardConverter.convert({
       id: 'random-room:event-1:stage-1:room-1',

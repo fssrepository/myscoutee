@@ -444,6 +444,7 @@ export interface AdminNotificationRunStateDto {
   finishedAtIso: string;
   durationMillis: number;
   lastRunAtIso: string;
+  nextRunAtIso: string;
   lastRunStatus: string;
   lastRunDetail: string;
   lastRunCount: number;

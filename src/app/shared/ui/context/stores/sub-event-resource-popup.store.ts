@@ -85,6 +85,8 @@ export interface SubEventResourcePopupHeader {
 export interface SubEventResourcePopupRequest {
   type: SubEventResourcePopupType;
   ownerId: string;
+  runtimeKind?: ContractTypes.SubEventDTO['runtimeKind'];
+  eventId?: string | null;
   assetOwnerUserId?: string | null;
   viewOnly?: boolean;
   subEventId?: string | null;

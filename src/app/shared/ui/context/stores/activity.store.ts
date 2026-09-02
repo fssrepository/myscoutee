@@ -107,6 +107,8 @@ export interface ActivityEventFeedbackCounters {
 export interface ActivityMembersSyncState {
   updatedMs: number;
   id: string;
+  eventId?: string;
+  subEventId?: string;
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
@@ -126,6 +128,15 @@ export interface ActivityResourceSyncState {
   assetOwnerUserId: string;
   resourceType?: AssetType;
   readAtIso?: string;
+}
+
+export interface ActivityResourceMemberDeltaSyncState {
+  updatedMs: number;
+  ownerId: string;
+  subEventId: string;
+  assetId: string;
+  resourceType: AssetType;
+  pendingMemberDelta: number;
 }
 
 export interface ActivityEventRuntimeSyncState {
@@ -182,6 +193,7 @@ export class ActivityStore {
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityMembersSyncByOwnerId = signal<Readonly<Record<string, ActivityMembersSyncState>>>({});
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityResourceMemberDeltaSync = signal<ActivityResourceMemberDeltaSyncState | null>(null);
   private readonly _activityEventRuntimeSync = signal<ActivityEventRuntimeSyncState | null>(null);
   private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
   private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
@@ -190,6 +202,7 @@ export class ActivityStore {
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityMembersSyncByOwnerId = this._activityMembersSyncByOwnerId.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityResourceMemberDeltaSync = this._activityResourceMemberDeltaSync.asReadonly();
   readonly activityEventRuntimeSync = this._activityEventRuntimeSync.asReadonly();
   readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
   readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
@@ -642,6 +655,8 @@ export class ActivityStore {
     const sync: ActivityMembersSyncState = {
       updatedMs,
       id: normalizedId,
+      ...(`${payload.eventId ?? ''}`.trim() ? { eventId: `${payload.eventId ?? ''}`.trim() } : {}),
+      ...(`${payload.subEventId ?? ''}`.trim() ? { subEventId: `${payload.subEventId ?? ''}`.trim() } : {}),
       acceptedMembers: normalizeCounterValue(payload.acceptedMembers),
       pendingMembers: normalizeCounterValue(payload.pendingMembers),
       capacityTotal: Math.max(
@@ -717,6 +732,8 @@ export class ActivityStore {
     const sync: ActivityMembersSyncState = {
       updatedMs: Math.max(Date.now(), (previous?.updatedMs ?? 0) + 1),
       id: assetId,
+      eventId,
+      subEventId,
       acceptedMembers,
       pendingMembers,
       capacityTotal: Math.max(
@@ -762,6 +779,30 @@ export class ActivityStore {
       assetOwnerUserId,
       resourceType: payload.resourceType,
       readAtIso: payload.readAtIso
+    });
+  }
+
+  emitActivityResourceMemberDeltaSync(
+    payload: Omit<ActivityResourceMemberDeltaSyncState, 'updatedMs'>
+  ): void {
+    const ownerId = payload.ownerId.trim();
+    const subEventId = payload.subEventId.trim();
+    const assetId = payload.assetId.trim();
+    const pendingMemberDelta = Math.trunc(Number(payload.pendingMemberDelta) || 0);
+    if (!ownerId || !subEventId || !assetId || pendingMemberDelta === 0) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (untracked(() => this._activityResourceMemberDeltaSync())?.updatedMs ?? 0) + 1
+    );
+    this._activityResourceMemberDeltaSync.set({
+      updatedMs,
+      ownerId,
+      subEventId,
+      assetId,
+      resourceType: payload.resourceType,
+      pendingMemberDelta
     });
   }
 
