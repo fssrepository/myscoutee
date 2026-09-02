@@ -172,7 +172,12 @@
                       <span>{{ (rule.runState.progressDetail || processStatusLabelKeys[statusKind(rule)]) | i18n }}</span>
                       <span>{{ progressValue(rule) }}%</span>
                     </div>
-                    <div class="process-progress-bar" aria-hidden="true">
+                    <div
+                      class="process-progress-bar"
+                      [class.is-reset]="isProgressReset(rule)"
+                      [class.is-complete]="isProgressComplete(rule)"
+                      aria-hidden="true"
+                    >
                       <span [style.width.%]="progressValue(rule)"></span>
                     </div>
                   </section>
@@ -197,13 +202,13 @@
                       <h3>{{ jobI18n.pending.title | i18n }}</h3>
                     </div>
                     <div class="process-last-run">
-                      <strong>{{ rule.runState.pendingCountUpdatedAtIso ? rule.runState.pendingCount : '—' }}</strong>
+                      <strong>{{ rule.runState.pendingCount }}</strong>
                       <span>{{ (rule.runState.pendingCountUnit || jobI18n.lastRun.affected) | i18n }}</span>
                     </div>
                     <div class="process-last-run-stats">
                       <span>
-                        {{ rule.runState.pendingCountUpdatedAtIso
-                          ? shortDate(rule.runState.pendingCountUpdatedAtIso)
+                        {{ rule.runState.nextRunAtIso
+                          ? shortDate(rule.runState.nextRunAtIso)
                           : (jobI18n.pending.notCalculated | i18n) }}
                       </span>
                     </div>

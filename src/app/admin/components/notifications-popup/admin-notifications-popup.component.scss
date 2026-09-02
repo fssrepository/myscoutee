@@ -757,6 +757,18 @@
   transition: width 180ms ease;
 }
 
+.process-progress-bar.is-reset span {
+  transition: none;
+}
+
+.process-progress-bar.is-complete span {
+  animation: process-progress-complete-blink 350ms ease-in-out 2 alternate;
+}
+
+@keyframes process-progress-complete-blink {
+  to { filter: brightness(1.25); }
+}
+
 .process-console.is-suspended .process-progress-bar span {
   background: linear-gradient(90deg, #c85a2a 0%, #f0a444 100%);
 }

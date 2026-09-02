@@ -88,7 +88,32 @@ describe('LocalAdminNotificationsService', () => {
     const runtime = await TestBed.inject(LocalAdminNotificationsService)
       .loadNotificationRuleRuntime(rule.ruleKey);
 
-    expect(runtime?.runState).toEqual(rule.runState);
+    expect(runtime?.runState).toEqual({
+      ...rule.runState,
+      nextRunAtIso: '2026-07-26T00:40:32.000Z'
+    });
+  });
+
+  it('projects the next interval run in the local service layer', async () => {
+    const rule = stored.rules.find(item => item.ruleKey === 'event-random-groups')!;
+    rule.enabled = true;
+    rule.timing = {
+      ...rule.timing,
+      mode: 'interval',
+      intervalAmount: 1,
+      intervalUnit: 'minutes',
+      intervalSeconds: 60,
+      intervalMinutes: 1
+    };
+    rule.runState = {
+      ...rule.runState,
+      lastRunAtIso: '2026-09-02T06:49:51.458Z'
+    };
+
+    const runtime = await TestBed.inject(LocalAdminNotificationsService)
+      .loadNotificationRuleRuntime(rule.ruleKey);
+
+    expect(runtime?.runState.nextRunAtIso).toBe('2026-09-02T06:50:51.458Z');
   });
 });
 

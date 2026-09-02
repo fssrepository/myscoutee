@@ -411,6 +411,7 @@ const PROCESS_NEXT_RUN_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.running
 ]);
 const PROCESS_LIST_POLL_INTERVAL_MS = 5_000;
+const PROCESS_PROGRESS_COMPLETE_HOLD_MS = 1000;
 const PROCESS_FAILED_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.failed
 ]);
@@ -428,14 +429,6 @@ const PROCESS_FINISHED_RUNTIME_STATUSES = new Set<string>([
   PROCESS_RUNTIME_STATUS.skipped
 ]);
 
-const WEEKLY_SCHEDULE_FREQUENCIES = new Set<string>([
-  SCHEDULE_FREQUENCY.weekly,
-  SCHEDULE_FREQUENCY.biWeekly
-]);
-const ROLLING_DATE_SCHEDULE_FREQUENCIES = new Set<string>([
-  SCHEDULE_FREQUENCY.monthly,
-  SCHEDULE_FREQUENCY.yearly
-]);
 const DEFAULT_RUN_WINDOW = {
   frequency: SCHEDULE_FREQUENCY.daily,
   dayOfWeek: 1,
@@ -500,6 +493,8 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private processBaselinesCaptured = false;
   private latestProcessCenterState: AdminNotificationCenterState | null = null;
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
+  private readonly progressResetRevision = signal(0);
+  private readonly progressResetTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly timingBaselineSignatures = new Map<string, string>();
   private readonly parameterBaselineSignatures = new Map<string, string>();
   private scheduleEditorBaseline: ScheduleEditorBaseline | null = null;
@@ -1153,10 +1148,23 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected progressValue(rule: AdminNotificationRule): number {
+    this.progressResetRevision();
     if (this.isProcessRunning(rule)) {
       return Math.max(0, Math.min(99, rule.runState.progressPercent || 0));
     }
+    const finishedAt = Date.parse(rule.runState.finishedAtIso || rule.runState.lastRunAtIso || '');
+    if (Number.isFinite(finishedAt) && Date.now() - finishedAt >= PROCESS_PROGRESS_COMPLETE_HOLD_MS) {
+      return 0;
+    }
     return Math.max(0, Math.min(100, rule.runState.progressPercent || 0));
+  }
+
+  protected isProgressReset(rule: AdminNotificationRule): boolean {
+    return !this.isProcessRunning(rule) && this.progressValue(rule) === 0;
+  }
+
+  protected isProgressComplete(rule: AdminNotificationRule): boolean {
+    return !this.isProcessRunning(rule) && this.progressValue(rule) === 100;
   }
 
   protected runWindows(rule: AdminNotificationRule): AdminNotificationScheduleSlot[] {
@@ -1567,11 +1575,14 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private stopRuntimeUpdates(): void {
-    if (!this.unsubscribeRuntimeUpdates) {
-      return;
+    if (this.unsubscribeRuntimeUpdates) {
+      this.unsubscribeRuntimeUpdates();
+      this.unsubscribeRuntimeUpdates = null;
     }
-    this.unsubscribeRuntimeUpdates();
-    this.unsubscribeRuntimeUpdates = null;
+    for (const timer of this.progressResetTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.progressResetTimers.clear();
   }
 
   private applyRuntimeEvent(event: AdminNotificationRuleLiveEvent): void {
@@ -1580,6 +1591,37 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     this.patchRule(ruleKey, current => this.mergeRuleRuntime(current, event));
+    if (PROCESS_FINISHED_RUNTIME_STATUSES.has(`${event.runState.currentStatus || ''}`.trim().toLowerCase())) {
+      this.scheduleProgressReset(ruleKey, event.runState.finishedAtIso || event.runState.lastRunAtIso);
+      void this.refreshRuleRuntime(ruleKey);
+    }
+  }
+
+  private async refreshRuleRuntime(ruleKey: string): Promise<void> {
+    try {
+      const rule = await this.notificationsService.loadNotificationRuleRuntime(ruleKey, this.activeAdminId());
+      if (rule) {
+        this.patchRule(ruleKey, current => this.mergeRuleRuntime(current, rule));
+      }
+    } catch {
+      // SmartList polling remains the bounded background fallback.
+    }
+  }
+
+  private scheduleProgressReset(ruleKey: string, finishedAtIso: string): void {
+    const existing = this.progressResetTimers.get(ruleKey);
+    if (existing) {
+      clearTimeout(existing);
+    }
+    const finishedAt = Date.parse(finishedAtIso || '');
+    const delay = Number.isFinite(finishedAt)
+      ? Math.max(0, finishedAt + PROCESS_PROGRESS_COMPLETE_HOLD_MS - Date.now())
+      : PROCESS_PROGRESS_COMPLETE_HOLD_MS;
+    const timer = setTimeout(() => {
+      this.progressResetTimers.delete(ruleKey);
+      this.progressResetRevision.update(value => value + 1);
+    }, delay);
+    this.progressResetTimers.set(ruleKey, timer);
   }
 
   private ensureProcessRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
@@ -1693,60 +1735,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private nextRunSortValue(rule: AdminNotificationRule): number {
-    const values = this.runWindows(rule)
-      .filter(slot => slot.enabled !== false)
-      .map(slot => this.slotSortValue(slot))
-      .filter(value => Number.isFinite(value));
-    if (values.length > 0) {
-      return Math.min(...values);
-    }
-    return Date.now() + this.intervalSeconds(rule) * 1000;
-  }
-
-  private slotSortValue(slot: AdminNotificationScheduleSlot): number {
-    const [hour, minute] = this.normalizeTime(slot.time).split(':').map(value => Math.max(0, Math.trunc(Number(value) || 0)));
-    const dateTime = (date: Date): number => {
-      date.setHours(hour, minute, 0, 0);
-      return date.getTime();
-    };
-    if (slot.frequency === SCHEDULE_FREQUENCY.oneTime && /^\d{4}-\d{2}-\d{2}$/.test(slot.date || '')) {
-      return dateTime(new Date(`${slot.date}T00:00:00`));
-    }
-    const today = new Date();
-    if (WEEKLY_SCHEDULE_FREQUENCIES.has(slot.frequency)) {
-      const targetDay = Math.max(1, Math.min(7, Math.trunc(Number(slot.dayOfWeek) || 1)));
-      const currentDay = today.getDay() === 0 ? 7 : today.getDay();
-      const offsetDays = (targetDay - currentDay + 7) % 7;
-      const next = new Date(today);
-      next.setDate(today.getDate() + offsetDays);
-      const value = dateTime(next);
-      return value >= Date.now() ? value : value + 7 * 24 * 60 * 60 * 1000;
-    }
-    if (ROLLING_DATE_SCHEDULE_FREQUENCIES.has(slot.frequency)) {
-      const { month, day } = this.monthDayParts(slot.date);
-      const next = new Date(today);
-      next.setDate(Math.min(day, 28));
-      if (slot.frequency === SCHEDULE_FREQUENCY.yearly) {
-        next.setMonth(month - 1, Math.min(day, 28));
-      }
-      let value = dateTime(next);
-      if (value < Date.now()) {
-        if (slot.frequency === SCHEDULE_FREQUENCY.yearly) {
-          next.setFullYear(next.getFullYear() + 1);
-        } else {
-          next.setMonth(next.getMonth() + 1);
-        }
-        value = dateTime(next);
-      }
-      return value;
-    }
-    const next = new Date();
-    let value = dateTime(next);
-    if (value < Date.now()) {
-      next.setDate(next.getDate() + 1);
-      value = dateTime(next);
-    }
-    return value;
+    return this.parseDateSortValue(rule.runState.nextRunAtIso) || Number.MAX_SAFE_INTEGER;
   }
 
   private applyProcessCenterState(centerState: AdminNotificationCenterState): void {
@@ -1854,7 +1843,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     return {
       ...current,
-      runState: incoming.runState,
+      runState: {
+        ...incoming.runState,
+        nextRunAtIso: incoming.runState.nextRunAtIso || current.runState.nextRunAtIso
+      },
       runHistory,
       updatedDate,
       updatedUser

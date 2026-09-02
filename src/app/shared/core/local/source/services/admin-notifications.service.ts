@@ -19,6 +19,15 @@ const PROCESS_FILTER_SUSPENDED = 'suspended';
 const PROCESS_FILTER_RUNNING = 'running';
 const PROCESS_FILTER_FAILED = 'failed';
 const PROCESS_PROBLEM_STATUSES = new Set(['failed', 'error', 'missed', 'skipped']);
+const INTERVAL_UNIT_MILLIS: Record<string, number> = {
+  seconds: 1000,
+  minutes: 60_000,
+  hours: 3_600_000,
+  days: 86_400_000,
+  weeks: 604_800_000,
+  months: 2_592_000_000,
+  years: 31_536_000_000
+};
 
 export interface LocalAdminNotificationDelayOptions {
   skipDemoDelay?: boolean;
@@ -58,7 +67,7 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
       }
     }
     const next: AdminNotificationCenterState = {
-      rules: mergedRules,
+      rules: mergedRules.map(rule => this.withDerivedRuntime(rule)),
       emailTemplates: existing.emailTemplates,
       filterCounts: this.processFilterCounts(mergedRules),
       updatedDate: new Date().toISOString()
@@ -152,7 +161,32 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
     if (!existing?.rules?.length) {
       throw new Error('Demo notification center is not bootstrapped.');
     }
-    return existing;
+    return {
+      ...existing,
+      rules: existing.rules.map(rule => this.withDerivedRuntime(rule))
+    };
+  }
+
+  private withDerivedRuntime(rule: AdminNotificationRule): AdminNotificationRule {
+    return {
+      ...rule,
+      runState: {
+        ...rule.runState,
+        nextRunAtIso: this.nextRunAtIso(rule)
+      }
+    };
+  }
+
+  private nextRunAtIso(rule: AdminNotificationRule): string {
+    if (!rule.enabled || rule.timing?.mode !== 'interval') {
+      return '';
+    }
+    const amount = Math.max(1, Math.trunc(Number(rule.timing.intervalAmount) || 1));
+    const unitMillis = INTERVAL_UNIT_MILLIS[`${rule.timing.intervalUnit ?? ''}`.trim()]
+      ?? Math.max(1, Math.trunc(Number(rule.timing.intervalSeconds) || 60)) * 1000;
+    const lastRunAt = Date.parse(rule.runState?.lastRunAtIso || '');
+    const base = Number.isFinite(lastRunAt) ? lastRunAt : Date.now();
+    return new Date(base + amount * unitMillis).toISOString();
   }
 
   private applyProcessFilter(
