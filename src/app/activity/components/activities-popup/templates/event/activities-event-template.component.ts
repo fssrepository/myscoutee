@@ -428,9 +428,9 @@ export class ActivitiesEventsController {
         this.runActivityItemTakeOverAction(row, undefined, action.action);
         break;
       case 'editEvent':
-      case 'manageEvent':
         this.runActivityItemPrimaryAction(row);
         break;
+      case 'manageEvent':
       case 'viewInvitation':
       case 'view':
         this.runActivityItemViewAction(row);

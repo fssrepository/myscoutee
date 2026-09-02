@@ -5,6 +5,24 @@ import { ActivityEventInfoCardConverter } from './activity-event-info-card.conve
 import { EventSubeventsListContextMenuConverter } from './event-subevents-list-context-menu.converter';
 
 describe('EventSubeventsListContextMenuConverter member activity', () => {
+  it('keeps Manage Event and View Event role semantics inside the Sub Events list', () => {
+    const managedEntry = EventSubeventsListContextMenuConverter.convert({
+      participantOnly: false,
+      editorAction: 'manage',
+      pendingMembers: 0,
+      membersDisabled: false
+    }).find(item => item.id === 'manage');
+    const viewedEntry = EventSubeventsListContextMenuConverter.convert({
+      participantOnly: false,
+      editorAction: 'view',
+      pendingMembers: 0,
+      membersDisabled: false
+    }).find(item => item.id === 'view');
+
+    expect(managedEntry).toMatchObject({ label: 'manage.event', icon: 'settings' });
+    expect(viewedEntry).toMatchObject({ label: 'view.event', icon: 'visibility' });
+  });
+
   it('puts only pending members on the Tags action as a red counter', () => {
     const members = EventSubeventsListContextMenuConverter.convert({
       participantOnly: false,
