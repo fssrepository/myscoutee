@@ -1002,6 +1002,7 @@ export class EventResourcePopupComponent {
     this.closeAssignPopup(false);
     if (options.initialScope) {
       this.applyPersistedPopupState(options.initialScope.viewerState);
+      this.applyPersistedPopupScopeMetrics(options.initialScope);
     } else if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }
@@ -1050,6 +1051,7 @@ export class EventResourcePopupComponent {
       }
       this.resourcePopupStore.setVisibleResourceStates(scope.visibleStates);
       this.applyPersistedPopupState(scope.viewerState);
+      this.applyPersistedPopupScopeMetrics(scope);
       this.hydrateOwnedAssetsForResourcePopup();
     };
     void this.activityResourcesService
@@ -1150,6 +1152,23 @@ export class EventResourcePopupComponent {
       // the resulting render observes the fetched IDs and fallback cards together.
       this.resourcePopupStore.popupContextRef.set(nextContext);
     }
+  }
+
+  private applyPersistedPopupScopeMetrics(scope: AppDTOs.ActivitySubEventResourceScopeDTO): void {
+    const states = scope.visibleStates.length > 0
+      ? scope.visibleStates
+      : [scope.viewerState];
+    const resourceMetricsByType = ActivityResourceBuilder.aggregateResourceMetricsByType(states);
+    if (Object.keys(resourceMetricsByType).length === 0) {
+      return;
+    }
+    this.syncPopupSubEventMetrics({
+      syncManualAssetRequests: false,
+      persistedState: {
+        ...scope.viewerState,
+        resourceMetricsByType
+      }
+    });
   }
 
   private persistPopupResourceState(context: ResourcePopupContext | null = this.resourcePopupStore.popupContextRef()): void {
@@ -1654,7 +1673,8 @@ export class EventResourcePopupComponent {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
-      members: fallbackMembers
+      members: fallbackMembers,
+      onMembersChanged: () => this.hydratePopupResourceState(context)
     });
   }
 
@@ -1701,8 +1721,8 @@ export class EventResourcePopupComponent {
         (state.fallbackAssetCardsByType?.[type] ?? []).map(card => [card.id, card] as const)
       );
       for (const assetId of state.assetAssignmentIds[type] ?? []) {
-        const card = this.ownedAssetCards().find(item => item.id === assetId && item.type === type)
-          ?? fallbackCardById.get(assetId)
+        const card = fallbackCardById.get(assetId)
+          ?? this.ownedAssetCards().find(item => item.id === assetId && item.type === type)
           ?? null;
         if (!card) {
           continue;
@@ -3103,11 +3123,11 @@ export class EventResourcePopupComponent {
     type: AppConstants.AssetType,
     assetId: string
   ): ResourceAssetDTO | null {
-    return this.ownedAssetCards().find(card => card.id === assetId && card.type === type)
-      ?? this.resourcePopupStore.visibleResourceStates()
+    return this.resourcePopupStore.visibleResourceStates()
         .flatMap(state => state.fallbackAssetCardsByType?.[type] ?? [])
         .find(card => card.id === assetId && card.type === type)
       ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId && card.type === type)
+      ?? this.ownedAssetCards().find(card => card.id === assetId && card.type === type)
       ?? null;
   }
 

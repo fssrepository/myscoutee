@@ -212,6 +212,38 @@ describe('ActivityResourceBuilder group request scoping', () => {
       capacityMax: 6
     });
   });
+
+  it('aggregates the authoritative metrics from every visible resource owner', () => {
+    const state = (
+      assetOwnerUserId: string,
+      accepted: number,
+      pending: number,
+      capacityMax: number
+    ) => ({
+      ownerId: 'event-1:stage-1:stage-1:group:1',
+      subEventId: 'stage-1',
+      assetOwnerUserId,
+      assetAssignmentIds: {},
+      assetSettingsByType: {},
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {
+        Transport: { accepted, pending, capacityMin: 0, capacityMax }
+      }
+    });
+
+    expect(ActivityResourceBuilder.aggregateResourceMetricsByType([
+      state('owner-1', 1, 1, 4),
+      state('owner-2', 2, 0, 3)
+    ])).toEqual({
+      Transport: {
+        accepted: 3,
+        pending: 1,
+        capacityMin: 0,
+        capacityMax: 7
+      }
+    });
+  });
 });
 
 function request(id: string, userId: string, eventId: string): AssetMemberRequestDTO {

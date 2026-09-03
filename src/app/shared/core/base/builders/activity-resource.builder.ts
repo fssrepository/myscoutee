@@ -276,6 +276,32 @@ export class ActivityResourceBuilder {
     return next;
   }
 
+  static aggregateResourceMetricsByType(
+    states: readonly AppDTOs.ActivitySubEventResourceStateDTO[]
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    const next: Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> = {};
+    for (const type of AppConstants.ASSET_TYPES) {
+      const metrics = states
+        .map(state => state.resourceMetricsByType?.[type])
+        .filter((metric): metric is AppDTOs.SubEventResourceMetricDTO => Boolean(metric));
+      if (metrics.length === 0) {
+        continue;
+      }
+      next[type] = metrics.reduce<AppDTOs.SubEventResourceMetricDTO>((total, metric) => ({
+        accepted: total.accepted + Math.max(0, Math.trunc(Number(metric.accepted) || 0)),
+        pending: total.pending + Math.max(0, Math.trunc(Number(metric.pending) || 0)),
+        capacityMin: total.capacityMin + Math.max(0, Math.trunc(Number(metric.capacityMin) || 0)),
+        capacityMax: total.capacityMax + Math.max(0, Math.trunc(Number(metric.capacityMax) || 0))
+      }), {
+        accepted: 0,
+        pending: 0,
+        capacityMin: 0,
+        capacityMax: 0
+      });
+    }
+    return next;
+  }
+
   static withPersistedResourceMetrics(
     subEvent: ContractTypes.SubEventDTO,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined

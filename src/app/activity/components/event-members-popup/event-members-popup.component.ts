@@ -1430,6 +1430,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
         this.applySummaryFromMembers(members);
+        this.membersChangeHandler?.(members);
       }
     }
 
