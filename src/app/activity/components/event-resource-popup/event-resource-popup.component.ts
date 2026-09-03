@@ -1674,7 +1674,19 @@ export class EventResourcePopupComponent {
       pendingMembers,
       capacityTotal,
       members: fallbackMembers,
-      onMembersChanged: () => this.hydratePopupResourceState(context)
+      onMembersChanged: members => {
+        const acceptedMemberCount = members.filter(member => member.status === 'accepted').length;
+        const pendingMemberCount = members.filter(member => member.status === 'pending').length;
+        this.activityStore.emitActivityMembersSync({
+          id: sourceCard.id,
+          eventId: context.ownerId,
+          subEventId: context.subEvent.id,
+          acceptedMembers: acceptedMemberCount,
+          pendingMembers: pendingMemberCount,
+          capacityTotal: Math.max(acceptedMemberCount, capacityTotal)
+        });
+        this.hydratePopupResourceState(context);
+      }
     });
   }
 
@@ -1710,7 +1722,13 @@ export class EventResourcePopupComponent {
     if (!context) {
       return [];
     }
-    const type = this.resourcePopupStore.resourceFilterRef();
+    return this.resourceCardsForType(context, this.resourcePopupStore.resourceFilterRef());
+  }
+
+  private resourceCardsForType(
+    context: ResourcePopupContext,
+    type: AppConstants.AssetType
+  ): AppDTOs.SubEventResourceCardDTO[] {
     const visibleStates = this.visibleResourceStates(context);
     const states = visibleStates.length > 0
       ? visibleStates
@@ -3171,6 +3189,48 @@ export class EventResourcePopupComponent {
     type: AppConstants.AssetType,
     options: { normalizeStore?: boolean } = {}
   ): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
+    const context = this.resourcePopupStore.popupContextRef();
+    const visibleCards = context?.subEvent.id === subEvent.id
+      ? this.resourceCardsForType(context, type)
+      : [];
+    if (visibleCards.length > 0) {
+      const memberCount = (
+        card: AppDTOs.SubEventResourceCardDTO,
+        status: 'accepted' | 'pending'
+      ): number => {
+        const memberSync = type === AppConstants.ASSET_TYPE_SUPPLIES || !card.sourceAssetId
+          ? null
+          : this.assignedAssetMembersSync(card.sourceAssetId, context);
+        if (memberSync) {
+          return status === 'accepted'
+            ? memberSync.acceptedMembers
+            : memberSync.pendingMembers;
+        }
+        return status === 'accepted' ? card.accepted : card.pending;
+      };
+      const capacityMin = visibleCards.reduce((sum, card) => (
+        sum + Math.max(0, Math.trunc(Number(
+          card.sourceAssetId
+            ? this.visibleAssignedAssetSettings(
+                subEvent.id,
+                type,
+                card.sourceAssetId,
+                card.assetOwnerUserId
+              )?.capacityMin
+            : 0
+        ) || 0))
+      ), 0);
+      const capacityMax = visibleCards.reduce((sum, card) => (
+        sum + Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
+      ), 0);
+      return {
+        joined: visibleCards.reduce((sum, card) => sum + memberCount(card, 'accepted'), 0),
+        capacityMin,
+        capacityMax,
+        pending: visibleCards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0)
+      };
+    }
+
     const cards = this.subEventAssignedAssetCards(subEvent.id, type, options);
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type, options);
     const memberCount = (

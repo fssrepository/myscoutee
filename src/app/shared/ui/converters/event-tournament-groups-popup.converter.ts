@@ -384,6 +384,9 @@ export class EventTournamentGroupsPopupConverter
               return group;
             }
             const current = group.resourceMetricsByType?.[resourceType];
+            if (!current) {
+              return group;
+            }
             changed = true;
             return {
               ...group,

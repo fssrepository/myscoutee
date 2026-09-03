@@ -77,6 +77,20 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
       1
     )).toBe(state);
   });
+
+  it('does not synthesize a zero-capacity resource metric from a delta alone', () => {
+    const state = tournamentState();
+    state.stages[0]!.groups[0]!.resourceMetricsByType = {};
+
+    expect(EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      -1
+    )).toBe(state);
+    expect(state.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toBeUndefined();
+  });
 });
 
 function tournamentState(): EventTournamentGroupsStateDTO {
