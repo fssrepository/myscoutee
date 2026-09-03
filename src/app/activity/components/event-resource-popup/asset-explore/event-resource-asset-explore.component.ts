@@ -935,22 +935,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private async openReadonlyAssetEditor(card: ResourceAssetDTO): Promise<void> {
-    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    const viewerUserId = `${this.activeUser().id ?? ''}`.trim();
     const generation = this.assetStore.openAssetEditorEdit({
       cardId: card.id,
       form: AssetCardBuilder.buildAssetFormFromCard(card),
       visibility: AssetCardBuilder.visibilityFromCard(card),
-      loading: Boolean(ownerUserId),
+      loading: Boolean(viewerUserId),
       readOnly: true,
       parentZIndex: this.assetExplorePopupZIndex()
     });
     void this.assetPopupStore.ensureAssetPopupLoaded();
-    if (!ownerUserId) {
+    if (!viewerUserId) {
       this.assetStore.setAssetEditorLoading(false);
       return;
     }
     try {
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(viewerUserId, card.id);
       if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
         return;
       }

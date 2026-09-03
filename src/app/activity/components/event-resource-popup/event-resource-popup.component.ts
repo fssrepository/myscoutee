@@ -752,22 +752,22 @@ export class EventResourcePopupComponent {
     assetId: string
   ): Promise<void> {
     const normalizedAssetId = assetId.trim() || card.id;
-    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    const viewerUserId = `${this.activeUser().id ?? ''}`.trim();
     const generation = this.assetStore.openAssetEditorEdit({
       cardId: normalizedAssetId,
       form: AssetCardBuilder.buildAssetFormFromCard(card),
       visibility: AssetCardBuilder.visibilityFromCard(card),
-      loading: Boolean(ownerUserId),
+      loading: Boolean(viewerUserId),
       readOnly: true,
       parentZIndex: this.parentZIndex
     });
     void this.assetPopupStore.ensureAssetPopupLoaded();
-    if (!ownerUserId) {
+    if (!viewerUserId) {
       this.assetStore.setAssetEditorLoading(false);
       return;
     }
     try {
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, normalizedAssetId);
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(viewerUserId, normalizedAssetId);
       if (!this.assetStore.isCurrentAssetEditorLoad(generation, normalizedAssetId)) {
         return;
       }

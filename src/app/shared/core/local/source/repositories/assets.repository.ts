@@ -131,7 +131,10 @@ export class LocalAssetsRepository {
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const record = table.byId[normalizedAssetId];
-    return record && record.ownerUserId === normalizedUserId && !this.isSuppressedAssetStatus(record.status)
+    const visible = record
+      && (record.ownerUserId === normalizedUserId
+        || this.readVisibleAssetRecords(normalizedUserId, state).some(item => item.id === normalizedAssetId));
+    return record && visible && !this.isSuppressedAssetStatus(record.status)
       ? this.toAssetDetailDto(
           record,
           normalizedUserId,
