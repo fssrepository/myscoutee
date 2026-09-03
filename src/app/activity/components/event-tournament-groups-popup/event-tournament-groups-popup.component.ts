@@ -60,7 +60,10 @@ import {
   EventSubeventGroupFormPopupComponent
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityResourceMemberDeltaSyncState
+} from '../../../shared/ui/context/stores/activity.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
@@ -178,6 +181,7 @@ export class EventTournamentGroupsPopupComponent {
   private handledRequestMs = 0;
   private handledMembersSyncMs = 0;
   private handledResourceSyncMs = 0;
+  private handledResourceMemberDeltaSyncMs = 0;
   private handledResourceMetricsRevision = 0;
   private readonly emittedStagePendingByKey = new Map<string, number>();
   private loadSequence = 0;
@@ -243,6 +247,18 @@ export class EventTournamentGroupsPopupComponent {
           this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
         }
       }
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityResourceMemberDeltaSync();
+      if (!sync || sync.updatedMs <= this.handledResourceMemberDeltaSyncMs) {
+        return;
+      }
+      this.handledResourceMemberDeltaSyncMs = sync.updatedMs;
+      if (!this.isOpen()) {
+        return;
+      }
+      this.applyResourceMemberDeltaSync(sync);
     });
 
     effect(() => {
@@ -1409,6 +1425,8 @@ export class EventTournamentGroupsPopupComponent {
         id: group.id,
         groupLabel: group.name,
         source: group.source,
+        memberOwnerId: group.memberOwnerId,
+        memberOwnerType: group.memberOwnerType,
         accepted: group.membersAccepted,
         pending: group.membersPending,
         capacityMin: group.capacityMin,
@@ -1492,6 +1510,27 @@ export class EventTournamentGroupsPopupComponent {
     const stage = this.stageById(normalizedStageId);
     const group = stage?.groups.find(item => this.groupMemberOwnerId(normalizedStageId, item.id) === normalizedOwnerId) ?? null;
     return stage && group ? { stage, group } : null;
+  }
+
+  private applyResourceMemberDeltaSync(sync: ActivityResourceMemberDeltaSyncState): void {
+    const match = this.groupResourceScope(sync.ownerId, sync.subEventId);
+    const pendingDelta = Math.trunc(Number(sync.pendingMemberDelta) || 0);
+    if (!match || pendingDelta === 0) {
+      return;
+    }
+    const nextState = EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      this.state,
+      match.stage.subEventId,
+      match.group.id,
+      sync.resourceType,
+      pendingDelta
+    );
+    if (nextState === this.state) {
+      return;
+    }
+    this.state = nextState;
+    this.emitGroupsUpdate(match.stage.subEventId);
+    this.cdr.markForCheck();
   }
 
   private updateGroupCounts(

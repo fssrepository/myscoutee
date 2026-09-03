@@ -81,6 +81,24 @@ describe('ActivityResourceBuilder group request scoping', () => {
     expect(scope.chatOwnerId).toBe('event-1:sub-1');
   });
 
+  it('keeps a generated group resource on its physical scope while using its canonical member owner', () => {
+    const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: 'event-1:stage-1:stage-1:group:1',
+      subEventId: 'stage-1',
+      groupId: 'stage-1:group:1',
+      memberOwnerId: 'stage-1:group:1',
+      memberOwnerType: 'group',
+      eventId: 'event-1'
+    });
+
+    expect(scope).toMatchObject({
+      eventId: 'event-1',
+      resourceOwnerId: 'event-1:stage-1:stage-1:group:1',
+      resourceScopeId: 'stage-1',
+      memberOwner: { ownerType: 'group', ownerId: 'stage-1:group:1' }
+    });
+  });
+
   it('counts only requests whose booking owner matches the selected group', () => {
     const groupA = 'event-1:stage-1:stage-1:group:1';
     const groupB = 'event-1:stage-1:stage-1:group:2';

@@ -387,6 +387,8 @@ export class EventResourcePopupComponent {
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
       groupId: context.groupId,
+      memberOwnerId: context.groupMemberOwnerId,
+      memberOwnerType: context.groupMemberOwnerType,
       runtimeKind: context.subEvent.runtimeKind,
       eventId: context.subEvent.eventId
     }).memberOwner ?? {
@@ -793,6 +795,8 @@ export class EventResourcePopupComponent {
         ownerId: request.ownerId,
         subEventId: request.subEventId,
         groupId: group?.id,
+        memberOwnerId: group?.memberOwnerId,
+        memberOwnerType: group?.memberOwnerType,
         runtimeKind: request.runtimeKind,
         eventId: request.eventId
       });
@@ -903,6 +907,8 @@ export class EventResourcePopupComponent {
       subEvent: scopedSubEvent,
       groupId: group?.id?.trim() || undefined,
       groupName: group?.groupLabel?.trim() || undefined,
+      groupMemberOwnerId: `${group?.memberOwnerId ?? ''}`.trim() || undefined,
+      groupMemberOwnerType: group?.memberOwnerType ?? undefined,
       fallbackCardsByType: this.cloneFallbackCards(fallbackCardsByType)
     };
   }

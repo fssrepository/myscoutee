@@ -361,6 +361,48 @@ export class EventTournamentGroupsPopupConverter
     );
   }
 
+  static withResourcePendingDelta(
+    state: EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    resourceType: AssetType,
+    pendingDelta: number
+  ): EventTournamentGroupsStateDTO | null {
+    const normalizedStageId = `${stageId ?? ''}`.trim();
+    const normalizedGroupId = `${groupId ?? ''}`.trim();
+    const delta = Math.trunc(Number(pendingDelta) || 0);
+    if (!state || !normalizedStageId || !normalizedGroupId || delta === 0) {
+      return state;
+    }
+
+    let changed = false;
+    const stages = state.stages.map(stage => stage.subEventId === normalizedStageId
+      ? {
+          ...stage,
+          groups: stage.groups.map(group => {
+            if (group.id !== normalizedGroupId) {
+              return group;
+            }
+            const current = group.resourceMetricsByType?.[resourceType];
+            changed = true;
+            return {
+              ...group,
+              resourceMetricsByType: {
+                ...group.resourceMetricsByType,
+                [resourceType]: {
+                  accepted: this.count(current?.accepted),
+                  pending: Math.max(0, this.count(current?.pending) + delta),
+                  capacityMin: this.count(current?.capacityMin),
+                  capacityMax: this.count(current?.capacityMax)
+                }
+              }
+            };
+          })
+        }
+      : stage);
+    return changed ? { ...state, stages } : state;
+  }
+
   private static stageSubtitle(stage: EventTournamentStageDTO): string {
     const range = AppUtils.dateTimeRangeLabel(stage.startAt, stage.endAt, '');
     const groupLabel = stage.groups.length === 1 ? '1 group' : `${stage.groups.length} groups`;

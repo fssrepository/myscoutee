@@ -13,6 +13,8 @@ export interface ActivityRuntimeResourceScopeRef {
   runtimeKind?: string | null;
   eventId?: string | null;
   groupId?: string | null;
+  memberOwnerId?: string | null;
+  memberOwnerType?: AppConstants.ActivityMemberOwnerType | null;
 }
 
 export interface ActivityRuntimeResourceScopeIdentity {
@@ -65,6 +67,8 @@ export class ActivityResourceBuilder {
     const resourceOwnerId = `${ref.ownerId ?? ''}`.trim();
     const resourceScopeId = `${ref.subEventId ?? ''}`.trim();
     const groupId = `${ref.groupId ?? ''}`.trim();
+    const memberOwnerId = `${ref.memberOwnerId ?? ''}`.trim();
+    const memberOwnerType = ref.memberOwnerType === 'event' ? 'event' : 'group';
     const isMainEvent = !groupId && `${ref.runtimeKind ?? ''}`.trim().toUpperCase() === 'MAIN_EVENT';
     const eventId = `${ref.eventId ?? ''}`.trim()
       || this.authorizationEventId(resourceOwnerId, resourceScopeId);
@@ -79,7 +83,9 @@ export class ActivityResourceBuilder {
         eventId,
         resourceOwnerId,
         resourceScopeId,
-        memberOwner: resourceOwnerId ? { ownerType: 'group', ownerId: resourceOwnerId } : null,
+        memberOwner: memberOwnerId
+          ? { ownerType: memberOwnerType, ownerId: memberOwnerId }
+          : resourceOwnerId ? { ownerType: 'group', ownerId: resourceOwnerId } : null,
         chatChannelType: chatOwnerId ? 'groupSubEvent' : null,
         chatOwnerId
       };

@@ -119,6 +119,8 @@ export class EventResourceListComponent implements DoCheck {
   private lastItemCount = 0;
   private resourceListReady = false;
   private resourceListVisibleCount = 0;
+  private resourceListSyncPending = false;
+  private resourceListPendingPreviousItemCount = 0;
 
   protected readonly resourceFilterOptions: readonly AppConstants.AssetType[] = AppConstants.ASSET_TYPES;
 
@@ -170,6 +172,8 @@ export class EventResourceListComponent implements DoCheck {
       this.lastItemCount = model.items.length;
       this.resourceListReady = false;
       this.resourceListVisibleCount = 0;
+      this.resourceListSyncPending = false;
+      this.resourceListPendingPreviousItemCount = 0;
       this.resourceSmartListQuery = {
         filters: {
           revision: Date.now(),
@@ -193,6 +197,13 @@ export class EventResourceListComponent implements DoCheck {
       return;
     }
     const items = this.currentModel().items;
+    if (this.resourceListSyncPending) {
+      const previousItemCount = this.resourceListPendingPreviousItemCount;
+      this.resourceListSyncPending = false;
+      this.resourceListPendingPreviousItemCount = 0;
+      this.syncVisibleResourceItems(items, previousItemCount);
+      return;
+    }
     if (change.total !== items.length) {
       this.syncVisibleResourceItems(items, change.total);
     }
@@ -356,6 +367,10 @@ export class EventResourceListComponent implements DoCheck {
     previousItemCount: number
   ): void {
     if (!this.resourceListReady || !this.resourceSmartList) {
+      this.resourceListPendingPreviousItemCount = this.resourceListSyncPending
+        ? Math.min(this.resourceListPendingPreviousItemCount, previousItemCount)
+        : previousItemCount;
+      this.resourceListSyncPending = true;
       return;
     }
 

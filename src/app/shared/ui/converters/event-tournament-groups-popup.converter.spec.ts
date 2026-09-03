@@ -45,6 +45,38 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
     expect(menuItems.find(item => item.id === 'members')?.counterTone).toBe('alert');
     expect(menuItems.find(item => item.id === 'transport')?.counterTone).toBe('alert');
   });
+
+  it('applies a scoped resource-member delta only to the matching group and resource type', () => {
+    const state = tournamentState();
+    const next = EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      1
+    );
+
+    expect(next).not.toBe(state);
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toEqual({
+      accepted: 2,
+      pending: 4,
+      capacityMin: 0,
+      capacityMax: 5
+    });
+    expect(EventTournamentGroupsPopupConverter.stagePendingTotal(next?.stages[0])).toBe(5);
+  });
+
+  it('ignores a scoped resource-member delta for another group', () => {
+    const state = tournamentState();
+
+    expect(EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      state,
+      'stage-1',
+      'another-group',
+      'Transport',
+      1
+    )).toBe(state);
+  });
 });
 
 function tournamentState(): EventTournamentGroupsStateDTO {

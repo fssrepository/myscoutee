@@ -63,6 +63,8 @@ export interface ResourcePopupContext {
   subEvent: ContractTypes.SubEventDTO;
   groupId?: string;
   groupName?: string;
+  groupMemberOwnerId?: string;
+  groupMemberOwnerType?: AppConstants.ActivityMemberOwnerType;
   fallbackCardsByType: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>;
 }
 
@@ -102,6 +104,8 @@ export interface SubEventResourcePopupRequest {
     accepted?: number;
     capacityMin?: number;
     capacityMax?: number;
+    memberOwnerId?: string | null;
+    memberOwnerType?: AppConstants.ActivityMemberOwnerType | null;
     canManage?: boolean;
     members?: readonly ActivityMemberDTO[];
     onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
