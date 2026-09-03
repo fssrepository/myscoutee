@@ -1842,7 +1842,7 @@ export class EventResourcePopupComponent {
     if (this.isAssetOwnedByActiveUser(card, activeUserId)) {
       return true;
     }
-    return this.findBorrowedAssetRequest(card, subEventId, activeUserId)?.status === 'accepted';
+    return this.assignedAssetManagerUserId(subEventId, card.type, card.id) === activeUserId;
   }
 
   private isSubEventScopedAssetRequest(

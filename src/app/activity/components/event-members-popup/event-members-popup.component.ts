@@ -1035,6 +1035,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancel join request?';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `Leave ${this.ownerScopeLabel()}?`;
     }
@@ -1054,6 +1057,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalMessage(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Your pending request to join this asset will be cancelled.';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `You will leave this ${this.ownerScopeLabel()}.`;
     }
@@ -1073,6 +1079,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalConfirmLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancel request';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return 'Leave';
     }
@@ -1089,6 +1098,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalBusyLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancelling...';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return 'Leaving...';
     }
@@ -1105,6 +1117,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Unable to cancel the join request.';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `Unable to leave this ${this.ownerScopeLabel()}.`;
     }
@@ -1124,6 +1139,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected deleteLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancel join request';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `Leave ${this.ownerScopeLabel()}`;
     }
@@ -1641,6 +1659,11 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.ownerRef?.ownerType === 'asset' && entry.status === 'accepted') {
+      return this.canManageMembers
+        && !this.isCurrentUser(entry)
+        && !this.isProtectedManagerMember(entry);
+    }
     if (this.isSelfManagedLeave(entry)) {
       return true;
     }
@@ -1733,7 +1756,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canReportMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    if (this.lookupRef?.type === 'chat') {
+    if (this.lookupRef?.type === 'chat' || this.ownerRef?.ownerType === 'asset') {
       return false;
     }
     const activeUserId = this.activeUserId();
@@ -1902,9 +1925,17 @@ export class EventMembersPopupComponent implements OnDestroy {
     return entry.userId === this.activeUserId();
   }
 
+  private isSelfManagedAssetJoinRequestCancellation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.ownerRef?.ownerType === 'asset'
+      && this.isCurrentUser(entry)
+      && entry.status === 'pending'
+      && this.isJoinRequest(entry);
+  }
+
   private isSelfManagedLeave(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return this.ownerRef != null
       && this.ownerRef.ownerType !== 'event'
+      && !(this.ownerRef.ownerType === 'asset' && entry.status === 'accepted')
       && this.isCurrentUser(entry)
       && (
         entry.status === 'accepted'
