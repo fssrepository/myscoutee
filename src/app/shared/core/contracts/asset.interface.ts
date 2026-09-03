@@ -89,6 +89,7 @@ export interface AssetDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
@@ -115,6 +116,7 @@ export interface AssetDetailDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
@@ -140,6 +142,7 @@ export class AssetDto implements AssetDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[] = [];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
@@ -172,6 +175,7 @@ export class AssetDto implements AssetDTO {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerReleasedAtIso: card.ownerReleasedAtIso ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
@@ -209,6 +213,7 @@ export class AssetDto implements AssetDTO {
       && (this.status ?? '') === (other.status ?? '')
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
+      && (this.ownerReleasedAtIso ?? '') === (other.ownerReleasedAtIso ?? '')
       && AssetDto.sameRequests(this.requests, other.requests)
       && AssetDto.sameMetrics(this.metrics, other.metrics)
       && AssetDto.sameStringList(this.menuActions, other.menuActions);

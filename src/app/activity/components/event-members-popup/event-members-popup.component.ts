@@ -92,6 +92,7 @@ type MemberMenuAction =
   | 'reinstate'
   | 'promoteAdmin'
   | 'revokeManager'
+  | 'leaveAsset'
   | 'stepDownAdmin'
   | 'report'
   | 'involvement';
@@ -478,6 +479,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       || this.canReinstateMember(entry)
       || this.canPromoteAdmin(entry)
       || this.canRevokeAssetManager(entry)
+      || this.canLeaveAssetOwner(entry)
       || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
   }
@@ -541,6 +543,15 @@ export class EventMembersPopupComponent implements OnDestroy {
         icon: 'person_remove',
         palette: 'warning',
         context: { menu: 'member-action', member: entry, action: 'revokeManager' }
+      });
+    }
+    if (this.canLeaveAssetOwner(entry)) {
+      items.push({
+        id: `member-action-leave-asset-${entry.id}`,
+        label: 'Leave asset',
+        icon: 'logout',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'leaveAsset' }
       });
     }
     if (this.canStepDownAdmin(entry)) {
@@ -639,6 +650,9 @@ export class EventMembersPopupComponent implements OnDestroy {
         break;
       case 'revokeManager':
         this.requestRevokeAssetManager(context.member, event.sourceEvent);
+        break;
+      case 'leaveAsset':
+        this.requestLeaveAssetOwner(context.member, event.sourceEvent);
         break;
       case 'stepDownAdmin':
         this.requestStepDownAdmin(context.member, event.sourceEvent);
@@ -812,6 +826,25 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmTone: 'warning',
       failureMessage: 'Unable to revoke Asset Manager.',
       onConfirm: () => this.confirmAssetManagerRevocation(entry)
+    });
+  }
+
+  protected requestLeaveAssetOwner(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canLeaveAssetOwner(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Leave asset?',
+      message: 'You will leave this Asset. It will remain under review until an accepted Asset Manager takes over responsibility.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Leave asset',
+      busyConfirmLabel: 'Leaving...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to leave this Asset.',
+      onConfirm: () => this.confirmLeaveAssetOwner()
     });
   }
 
@@ -1138,6 +1171,27 @@ export class EventMembersPopupComponent implements OnDestroy {
           }
         : member);
     this.applyCommittedMembers(nextMembers, previousMembers);
+  }
+
+  private async confirmLeaveAssetOwner(): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await this.assetsService.leaveOwnedAsset(actorUserId, owner.ownerId);
+    if (!savedAsset || savedAsset.status !== 'UR') {
+      throw new Error('Unable to leave this Asset.');
+    }
+    this.memberAssetOwnerUserId = '';
+    this.canManageMembers = false;
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    });
+    this.applyCommittedMembers(persistedMembers, previousMembers);
   }
 
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
@@ -1850,6 +1904,14 @@ export class EventMembersPopupComponent implements OnDestroy {
       && !this.isCurrentUser(entry)
       && (this.isActiveUserAssetOwner()
         || (!!activeUserId && entry.managerGrantedByUserId === activeUserId));
+  }
+
+  protected canLeaveAssetOwner(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'asset'
+      && entry.status === 'accepted'
+      && this.isCurrentUser(entry)
+      && this.isActiveUserAssetOwner();
   }
 
   private isActiveUserAssetOwner(): boolean {

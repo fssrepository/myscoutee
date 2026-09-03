@@ -374,6 +374,31 @@ export class HttpAssetsService {
     }
   }
 
+  async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/leave-ownership`, {
+          userId: normalizedUserId,
+          assetId: normalizedAssetId
+        })
+        .toPromise();
+      const normalized = this.normalizeCard(response);
+      if (!normalized || normalized.status !== 'UR') {
+        return null;
+      }
+      this.cachedAssetsByUserId[normalizedUserId] = this.peekOwnedAssetsByUser(normalizedUserId)
+        .filter(card => card.id !== normalizedAssetId);
+      return this.cloneCards([normalized])[0] ?? normalized;
+    } catch {
+      return null;
+    }
+  }
+
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
@@ -531,6 +556,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
@@ -591,6 +617,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],

@@ -856,7 +856,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     if (owner.ownerType !== 'asset' || !eventId || !subEventId) {
       return null;
     }
-    const asset = this.assetsRepository.peekAssetById(owner.ownerId);
+    const asset = this.assetsRepository.peekAssetForMembershipById(owner.ownerId);
     if (!asset) {
       return [];
     }
@@ -869,7 +869,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         .map(record => [record.userId, record] as const)
     );
     const members: ActivityMemberDTO[] = [];
-    if (options?.pendingOnly !== true && ownerUserId) {
+    if (options?.pendingOnly !== true && ownerUserId && !asset.ownerReleasedAtIso) {
       const profile = this.resolveDemoUser(ownerUserId, {
         name: asset.ownerName,
         city: asset.city

@@ -75,6 +75,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
@@ -105,6 +106,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card.status),
       ownerUserId: `${card.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card.ownerReleasedAtIso ?? ''}`.trim() || null,
       requests,
       metrics: this.assetRequestMetrics(card.metrics),
       menuActions: Array.isArray(card.menuActions) ? [...card.menuActions] : undefined
@@ -163,6 +165,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
@@ -590,8 +593,9 @@ export class LocalAssetsMapper {
       visibility: summary.visibility ?? 'Public',
       status: summary.status ?? 'A',
       statusBeforeSuppression: null,
-      ownerUserId: ownerUserId.trim(),
+      ownerUserId: `${summary.ownerUserId ?? ''}`.trim() || ownerUserId.trim(),
       ownerName: summary.ownerName,
+      ownerReleasedAtIso: summary.ownerReleasedAtIso ?? null,
       requests: this.normalizeRequests(summary.requests) as AssetMemberRequestRecord[],
       menuActions: [...(summary.menuActions ?? [])],
       createdAtIso: now.toISOString(),
