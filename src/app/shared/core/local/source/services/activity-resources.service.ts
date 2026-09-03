@@ -184,10 +184,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       runtime = this.stageRuntimeRepository.peekRecord(ref) ?? runtime;
     }
     this.eventsRepository.syncTournamentStagePending(scope.runtimeOwnerId, scope.subEventId);
-    return this.applyResourceReads(
-      this.aggregateGroupRuntimeMetrics(byAssetOwner),
-      runtime.groupResourceReadAtByUserId?.[scope.groupId]?.[normalizedActorUserId] ?? {}
-    );
+    return this.aggregateGroupRuntimeMetrics(byAssetOwner);
   }
 
   private aggregateGroupRuntimeMetrics(
@@ -242,21 +239,6 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       && Math.max(0, Math.trunc(Number(left?.pending) || 0)) === Math.max(0, Math.trunc(Number(right?.pending) || 0))
       && Math.max(0, Math.trunc(Number(left?.capacityMin) || 0)) === Math.max(0, Math.trunc(Number(right?.capacityMin) || 0))
       && Math.max(0, Math.trunc(Number(left?.capacityMax) || 0)) === Math.max(0, Math.trunc(Number(right?.capacityMax) || 0));
-  }
-
-  private applyResourceReads(
-    metricsByType: Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>>,
-    readAtByType: Partial<Record<AppConstants.AssetType, string>>
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
-    return Object.fromEntries(AppConstants.ASSET_TYPES.map(type => {
-      const metric = metricsByType[type];
-      return [type, {
-        accepted: Math.max(0, Math.trunc(Number(metric?.accepted) || 0)),
-        pending: readAtByType[type] ? 0 : Math.max(0, Math.trunc(Number(metric?.pending) || 0)),
-        capacityMin: Math.max(0, Math.trunc(Number(metric?.capacityMin) || 0)),
-        capacityMax: Math.max(0, Math.trunc(Number(metric?.capacityMax) || 0))
-      }];
-    }));
   }
 
   private toState(record: ActivitySubEventResourceRecord): AppDTOs.ActivitySubEventResourceStateDTO | null {

@@ -1,6 +1,5 @@
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
-import type { AssetType } from '../../../common/constants';
 import type { UserDto } from '../../../contracts/user.interface';
 import type {
   ActivityMemberDTO,
@@ -570,7 +569,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
     return normalized
       ? {
           ...normalized,
-          groupsResourcePendingRead: this.resourcePendingRead(record, viewerUserId)
+          groupsResourcePendingRead: 0
         }
       : null;
   }
@@ -612,24 +611,10 @@ export class LocalActivitySubEventStageRuntimeMapper {
   }
 
   static resourcePendingRead(
-    record: ActivitySubEventStageRuntimeRecord | null | undefined,
-    viewerUserId?: string | null
+    _record: ActivitySubEventStageRuntimeRecord | null | undefined,
+    _viewerUserId?: string | null
   ): number {
-    const userId = `${viewerUserId ?? ''}`.trim();
-    if (!record || !userId) {
-      return 0;
-    }
-    let total = 0;
-    for (const [groupId, byUser] of Object.entries(record.groupResourceReadAtByUserId ?? {})) {
-      const readAtByType = byUser?.[userId] ?? {};
-      const metricsByOwner = record.groupResourceMetricsByAssetOwnerId?.[groupId] ?? {};
-      for (const resourceType of Object.keys(readAtByType) as AssetType[]) {
-        for (const metricsByType of Object.values(metricsByOwner)) {
-          total += Math.max(0, Math.trunc(Number(metricsByType?.[resourceType]?.pending) || 0));
-        }
-      }
-    }
-    return total;
+    return 0;
   }
 
   static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {

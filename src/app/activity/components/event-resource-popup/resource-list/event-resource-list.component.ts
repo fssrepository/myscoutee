@@ -121,6 +121,7 @@ export class EventResourceListComponent implements DoCheck {
   private resourceListVisibleCount = 0;
   private resourceListSyncPending = false;
   private resourceListPendingPreviousItemCount = 0;
+  private resourceListRevision = 0;
 
   protected readonly resourceFilterOptions: readonly AppConstants.AssetType[] = AppConstants.ASSET_TYPES;
 
@@ -163,27 +164,22 @@ export class EventResourceListComponent implements DoCheck {
 
   ngDoCheck(): void {
     const model = this.currentModel();
-    const contextKey = model.filter;
+    const contextKey = `${model.metricIdentity}:${model.filter}`;
     const signature = `${contextKey}:${model.items.map(item => this.itemSignature(item)).join('|')}`;
 
     if (contextKey !== this.lastContextKey) {
       this.lastContextKey = contextKey;
       this.lastItemsSignature = signature;
       this.lastItemCount = model.items.length;
-      this.resourceListReady = false;
-      this.resourceListVisibleCount = 0;
-      this.resourceListSyncPending = false;
-      this.resourceListPendingPreviousItemCount = 0;
-      this.resourceSmartListQuery = {
-        filters: {
-          revision: Date.now(),
-          contextKey
-        }
-      };
+      this.reloadResourceList(contextKey);
     } else if (signature !== this.lastItemsSignature) {
       const previousItemCount = this.lastItemCount;
       this.lastItemsSignature = signature;
       this.lastItemCount = model.items.length;
+      if (!this.resourceListReady || !this.resourceSmartList) {
+        this.reloadResourceList(contextKey);
+        return;
+      }
       this.syncVisibleResourceItems(model.items, previousItemCount);
     }
   }
@@ -387,6 +383,20 @@ export class EventResourceListComponent implements DoCheck {
       trackBy: (_index, item) => item.card.id,
       equals: (current, next) => this.itemSignature(current) === this.itemSignature(next)
     });
+  }
+
+  private reloadResourceList(contextKey: string): void {
+    this.resourceListReady = false;
+    this.resourceListVisibleCount = 0;
+    this.resourceListSyncPending = false;
+    this.resourceListPendingPreviousItemCount = 0;
+    this.resourceListRevision = Math.max(Date.now(), this.resourceListRevision + 1);
+    this.resourceSmartListQuery = {
+      filters: {
+        revision: this.resourceListRevision,
+        contextKey
+      }
+    };
   }
 
   private itemSignature(item: EventResourceListItem): string {

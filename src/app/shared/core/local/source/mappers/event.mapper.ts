@@ -859,11 +859,7 @@ export class LocalActivityEventsMapper {
       stageFinalizedByUserId: `${stageRuntime.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
       stageResultRevision: stageRuntime.stageResultRevision ?? item.stageResultRevision,
       groupsCount: stageRuntime.groupsCount ?? item.groupsCount,
-      groupsPending: Math.max(
-        0,
-        Math.trunc(Number(item.groupsPending) || 0)
-          - Math.trunc(Number(stageRuntime.groupsResourcePendingRead) || 0)
-      )
+      groupsPending: Math.max(0, Math.trunc(Number(item.groupsPending) || 0))
     };
   }
 

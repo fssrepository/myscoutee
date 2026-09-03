@@ -3469,10 +3469,9 @@ export class LocalEventsRepository {
   private groupResourceMetrics(
     runtime: ActivitySubEventStageRuntimeRecord | null,
     groupId: string,
-    userId: string
+    _userId: string
   ): Partial<Record<AppConstants.AssetType, ContractTypes.EventTournamentResourceMetricDTO>> {
     const byAssetOwner = runtime?.groupResourceMetricsByAssetOwnerId?.[groupId] ?? {};
-    const readAtByType = runtime?.groupResourceReadAtByUserId?.[groupId]?.[userId] ?? {};
     const result: Partial<Record<AppConstants.AssetType, ContractTypes.EventTournamentResourceMetricDTO>> = {};
     for (const type of AppConstants.ASSET_TYPES) {
       let accepted = 0;
@@ -3491,7 +3490,7 @@ export class LocalEventsRepository {
       }
       result[type] = {
         accepted,
-        pending: readAtByType[type] ? 0 : pending,
+        pending,
         capacityMin,
         capacityMax: Math.max(capacityMin, capacityMax)
       };

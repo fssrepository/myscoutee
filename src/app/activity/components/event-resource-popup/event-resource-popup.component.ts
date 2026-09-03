@@ -221,8 +221,15 @@ export class EventResourcePopupComponent {
       if (!request) {
         return;
       }
-      this.resourcePopupStore.clearSubEventResourcePopupRequest();
-      this.openFromSubEventResourceRequest(request);
+      try {
+        // Keep the request alive until the popup context has been published. The
+        // hosting outlet is conditional on either one being present; clearing the
+        // request first can tear down an already lazy-loaded outlet before a
+        // repeated open has a chance to install its context.
+        this.openFromSubEventResourceRequest(request);
+      } finally {
+        this.resourcePopupStore.clearSubEventResourcePopupRequest();
+      }
     });
 
     effect(() => {
@@ -933,14 +940,6 @@ export class EventResourcePopupComponent {
     this.hydrateOwnedAssetsForResourcePopup();
     this.resourcePopupStore.openResourcePopup(context, type);
     this.closeAssignPopup(false);
-    if (context.groupId) {
-      void this.activityResourcesService.markResourceTypeRead(
-        context.ownerId,
-        context.subEvent.id,
-        type,
-        this.activeUser().id
-      );
-    }
     if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }
