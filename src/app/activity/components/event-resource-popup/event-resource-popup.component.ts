@@ -1973,6 +1973,9 @@ export class EventResourcePopupComponent {
       return requests;
     }
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (ownerUserId && normalizedManagerUserId !== ownerUserId) {
+      return requests;
+    }
     if (`${card.ownerReleasedAtIso ?? ''}`.trim() && normalizedManagerUserId === ownerUserId) {
       return requests;
     }
