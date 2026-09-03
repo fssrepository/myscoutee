@@ -1865,6 +1865,9 @@ export class EventResourcePopupComponent {
     activeUserId = this.activeUser().id.trim(),
     ownerUserId = `${card.ownerUserId ?? ''}`.trim()
   ): boolean {
+    if (`${card.ownerReleasedAtIso ?? ''}`.trim()) {
+      return false;
+    }
     return ownerUserId.length > 0
       ? ownerUserId === activeUserId
       : this.ownedAssetCards().some(item => item.id === card.id && item.type === card.type);
@@ -1969,6 +1972,9 @@ export class EventResourcePopupComponent {
       return requests;
     }
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (`${card.ownerReleasedAtIso ?? ''}`.trim() && normalizedManagerUserId === ownerUserId) {
+      return requests;
+    }
     const managerOwnsAsset = this.isAssetOwnedByActiveUser(card, normalizedManagerUserId, ownerUserId);
     const visibleRequests = managerOwnsAsset
       ? requests.filter(request => {
