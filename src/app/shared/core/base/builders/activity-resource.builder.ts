@@ -594,10 +594,11 @@ export class ActivityResourceBuilder {
 
   static isSubEventManualAssignmentRequest(request: AppDTOs.AssetMemberRequestDTO, subEventId: string): boolean {
     const normalizedSubEventId = subEventId.trim();
+    const requestId = `${request.id ?? ''}`.trim();
     return (
       request.requestKind === 'manual'
       && normalizedSubEventId.length > 0
-      && request.id.startsWith(`manual:${normalizedSubEventId}:`)
+      && requestId.startsWith(`manual:${normalizedSubEventId}:`)
     );
   }
 

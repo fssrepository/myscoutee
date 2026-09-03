@@ -124,6 +124,19 @@ describe('ActivityResourceBuilder group request scoping', () => {
     )).toBe(true);
   });
 
+  it('keeps a scoped backend request with a null id renderable', () => {
+    const scopedRequest = {
+      ...request('request-a', 'user-a', 'event-1:stage-1:stage-1:group:1'),
+      id: null
+    } as unknown as AssetMemberRequestDTO;
+
+    expect(ActivityResourceBuilder.isSubEventScopedAssetRequest(
+      scopedRequest,
+      'stage-1',
+      'event-1:stage-1:stage-1:group:1'
+    )).toBe(true);
+  });
+
   it('builds the persisted group metric snapshot once during local assignment persistence', () => {
     const ownerId = 'event-1:stage-1:stage-1:group:1';
     const card = {

@@ -3,6 +3,7 @@ import {
 } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   HostListener,
   Input,
   computed,
@@ -153,6 +154,7 @@ export class EventResourcePopupComponent {
   private readonly chatsService = inject(ChatsService);
   private readonly activityStore = inject(ActivityStore);
   private readonly i18n = inject(I18nService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @Input() parentZIndex = 2500;
 
@@ -173,6 +175,8 @@ export class EventResourcePopupComponent {
   private lastResourcePopupOutletActionRequestId = 0;
   private ownedAssetsHydrationLoadedUserId = '';
   private ownedAssetsHydrationLoadingUserId = '';
+  private subEventResourceOpenVersion = 0;
+  private destroyed = false;
 
   protected readonly resourceAssetViewOutletInputs = computed(() => ({
     view: this.resourceAssetView(),
@@ -187,6 +191,11 @@ export class EventResourcePopupComponent {
   }
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      this.subEventResourceOpenVersion += 1;
+    });
+
     effect(() => {
       const deletedAssetEvent = this.assetStore.deletedAssetEvent();
       if (!deletedAssetEvent) {
@@ -221,15 +230,8 @@ export class EventResourcePopupComponent {
       if (!request) {
         return;
       }
-      try {
-        // Keep the request alive until the popup context has been published. The
-        // hosting outlet is conditional on either one being present; clearing the
-        // request first can tear down an already lazy-loaded outlet before a
-        // repeated open has a chance to install its context.
-        this.openFromSubEventResourceRequest(request);
-      } finally {
-        this.resourcePopupStore.clearSubEventResourcePopupRequest();
-      }
+      const version = ++this.subEventResourceOpenVersion;
+      untracked(() => void this.consumeSubEventResourceRequest(request, version));
     });
 
     effect(() => {
@@ -795,7 +797,23 @@ export class EventResourcePopupComponent {
     }
   }
 
-  private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {
+  private async consumeSubEventResourceRequest(
+    request: SubEventResourcePopupRequest,
+    version: number
+  ): Promise<void> {
+    try {
+      await this.openFromSubEventResourceRequest(request, version);
+    } finally {
+      if (this.resourcePopupStore.subEventResourcePopupRequest() === request) {
+        this.resourcePopupStore.clearSubEventResourcePopupRequest();
+      }
+    }
+  }
+
+  private async openFromSubEventResourceRequest(
+    request: SubEventResourcePopupRequest,
+    version: number
+  ): Promise<void> {
     if (request.type === 'Members') {
       const group = request.group ?? null;
       const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
@@ -857,7 +875,19 @@ export class EventResourcePopupComponent {
       request.assetOwnerUserId,
       request.viewOnly
     );
-    this.openPopupContext(context, request.type);
+    const assetOwnerUserId = `${request.assetOwnerUserId ?? this.activeUser().id}`.trim();
+    const scope = await this.activityResourcesService.querySubEventResourceScope(
+      context.ownerId,
+      context.subEvent.id,
+      assetOwnerUserId
+    );
+    if (this.destroyed || version !== this.subEventResourceOpenVersion) {
+      return;
+    }
+    this.openPopupContext(context, request.type, {
+      hydrate: false,
+      initialScope: scope
+    });
   }
 
   private subEventFromResourceRequest(
@@ -935,12 +965,17 @@ export class EventResourcePopupComponent {
   private openPopupContext(
     context: ResourcePopupContext,
     type: AppConstants.AssetType,
-    options: { hydrate?: boolean } = {}
+    options: {
+      hydrate?: boolean;
+      initialScope?: AppDTOs.ActivitySubEventResourceScopeDTO | null;
+    } = {}
   ): void {
     this.hydrateOwnedAssetsForResourcePopup();
-    this.resourcePopupStore.openResourcePopup(context, type);
+    this.resourcePopupStore.openResourcePopup(context, type, options.initialScope?.visibleStates ?? []);
     this.closeAssignPopup(false);
-    if (options.hydrate !== false) {
+    if (options.initialScope) {
+      this.applyPersistedPopupState(options.initialScope.viewerState);
+    } else if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }
   }
@@ -990,11 +1025,6 @@ export class EventResourcePopupComponent {
       this.applyPersistedPopupState(scope.viewerState);
       this.hydrateOwnedAssetsForResourcePopup();
     };
-    applyScope(this.activityResourcesService.peekSubEventResourceScope(
-      ownerId,
-      subEventId,
-      assetOwnerUserId
-    ));
     void this.activityResourcesService
       .querySubEventResourceScope(ownerId, subEventId, assetOwnerUserId)
       .then(scope => applyScope(scope));

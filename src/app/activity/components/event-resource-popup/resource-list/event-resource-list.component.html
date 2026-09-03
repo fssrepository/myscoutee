@@ -30,13 +30,11 @@
 </div>
 
 <app-smart-list
-  #resourceSmartList
   class="subevent-assets-scroll-list"
   [config]="resourceSmartListConfig"
   [loadPage]="resourceSmartListLoadPage"
   [itemTemplate]="resourceItemTemplate"
   [query]="resourceSmartListQuery"
-  (stateChange)="onResourceSmartListStateChange($event)"
 ></app-smart-list>
 
 <app-menu-outlet

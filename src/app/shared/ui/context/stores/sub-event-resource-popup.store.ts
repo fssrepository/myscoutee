@@ -290,10 +290,15 @@ export class SubEventResourcePopupStore {
     this.subEventResourcePopupRequestRef.set(null);
   }
 
-  openResourcePopup(context: ResourcePopupContext, type: AppConstants.AssetType): void {
-    this.popupContextRef.set(context);
-    this.resourceFilterRef.set(type);
+  openResourcePopup(
+    context: ResourcePopupContext,
+    type: AppConstants.AssetType,
+    visibleStates: readonly AppDTOs.ActivitySubEventResourceStateDTO[] = []
+  ): void {
     this.resetResourcePopupState();
+    this.resourceFilterRef.set(type);
+    this.setVisibleResourceStates(visibleStates);
+    this.popupContextRef.set(context);
   }
 
   closeResourcePopup(): void {

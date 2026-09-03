@@ -5,17 +5,15 @@ import {
   EventEmitter,
   Input,
   Output,
-  ViewChild,
   ViewEncapsulation,
   inject
 } from '@angular/core';
-import { from } from 'rxjs';
+import { of } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';
-import { ActivityResourcesService } from '../../../../shared/core/base/services/activity-resources.service';
 import type { ListQuery, PageResult } from '../../../../shared/core/contracts/list.interface';
 import { AppMenuComponent } from '../../../../shared/ui/components/core/menu/menu.component';
 import { AppMenuDispatcher } from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
@@ -37,8 +35,7 @@ import { InfoCardComponent } from '../../../../shared/ui/components/core/smart-l
 import { SmartListComponent } from '../../../../shared/ui/components/core/smart-list/smart-list.component';
 import type {
   SmartListConfig,
-  SmartListLoadPage,
-  SmartListStateChange
+  SmartListLoadPage
 } from '../../../../shared/ui/components/core/smart-list/smart-list.types';
 
 export interface EventResourceListItem {
@@ -112,15 +109,8 @@ export class EventResourceListComponent implements DoCheck {
   @Output() badgeDetailsRequested = new EventEmitter<AppDTOs.SubEventResourceCardDTO>();
   @Output() cardActionRequested = new EventEmitter<EventResourceCardActionRequest>();
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
-  private readonly activityResourcesService = inject(ActivityResourcesService);
 
   private lastItemsSignature = '';
-  private lastContextKey = '';
-  private lastItemCount = 0;
-  private resourceListReady = false;
-  private resourceListVisibleCount = 0;
-  private resourceListSyncPending = false;
-  private resourceListPendingPreviousItemCount = 0;
   private resourceListRevision = 0;
 
   protected readonly resourceFilterOptions: readonly AppConstants.AssetType[] = AppConstants.ASSET_TYPES;
@@ -132,12 +122,9 @@ export class EventResourceListComponent implements DoCheck {
     }
   };
 
-  @ViewChild('resourceSmartList')
-  private resourceSmartList?: SmartListComponent<EventResourceListItem, ResourceSmartListFilters>;
-
   protected readonly resourceSmartListLoadPage: SmartListLoadPage<EventResourceListItem, ResourceSmartListFilters> = (
     query
-  ) => from(this.loadResourceSmartListPage(query));
+  ) => of(this.loadResourceSmartListPage(query));
 
   protected readonly resourceSmartListConfig: SmartListConfig<EventResourceListItem, ResourceSmartListFilters> = {
     pageSize: 18,
@@ -166,43 +153,17 @@ export class EventResourceListComponent implements DoCheck {
     const model = this.currentModel();
     const contextKey = `${model.metricIdentity}:${model.filter}`;
     const signature = `${contextKey}:${model.items.map(item => this.itemSignature(item)).join('|')}`;
-
-    if (contextKey !== this.lastContextKey) {
-      this.lastContextKey = contextKey;
-      this.lastItemsSignature = signature;
-      this.lastItemCount = model.items.length;
-      this.reloadResourceList(contextKey);
-    } else if (signature !== this.lastItemsSignature) {
-      const previousItemCount = this.lastItemCount;
-      this.lastItemsSignature = signature;
-      this.lastItemCount = model.items.length;
-      if (!this.resourceListReady || !this.resourceSmartList) {
-        this.reloadResourceList(contextKey);
-        return;
+    if (signature === this.lastItemsSignature) {
+      return;
+    }
+    this.lastItemsSignature = signature;
+    this.resourceListRevision += 1;
+    this.resourceSmartListQuery = {
+      filters: {
+        revision: this.resourceListRevision,
+        contextKey
       }
-      this.syncVisibleResourceItems(model.items, previousItemCount);
-    }
-  }
-
-  protected onResourceSmartListStateChange(
-    change: SmartListStateChange<EventResourceListItem, ResourceSmartListFilters>
-  ): void {
-    this.resourceListVisibleCount = change.items.length;
-    this.resourceListReady = !change.initialLoading;
-    if (!this.resourceListReady) {
-      return;
-    }
-    const items = this.currentModel().items;
-    if (this.resourceListSyncPending) {
-      const previousItemCount = this.resourceListPendingPreviousItemCount;
-      this.resourceListSyncPending = false;
-      this.resourceListPendingPreviousItemCount = 0;
-      this.syncVisibleResourceItems(items, previousItemCount);
-      return;
-    }
-    if (change.total !== items.length) {
-      this.syncVisibleResourceItems(items, change.total);
-    }
+    };
   }
 
   protected resourceFilterMenuTrigger(): AppMenuTrigger {
@@ -344,10 +305,9 @@ export class EventResourceListComponent implements DoCheck {
     });
   }
 
-  private async loadResourceSmartListPage(
+  private loadResourceSmartListPage(
     query: ListQuery<ResourceSmartListFilters>
-  ): Promise<PageResult<EventResourceListItem>> {
-    await this.activityResourcesService.waitForResourceRouteDelay();
+  ): PageResult<EventResourceListItem> {
     const items = this.currentModel().items;
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
@@ -355,47 +315,6 @@ export class EventResourceListComponent implements DoCheck {
     return {
       items: items.slice(start, start + pageSize),
       total: items.length
-    };
-  }
-
-  private syncVisibleResourceItems(
-    items: readonly EventResourceListItem[],
-    previousItemCount: number
-  ): void {
-    if (!this.resourceListReady || !this.resourceSmartList) {
-      this.resourceListPendingPreviousItemCount = this.resourceListSyncPending
-        ? Math.min(this.resourceListPendingPreviousItemCount, previousItemCount)
-        : previousItemCount;
-      this.resourceListSyncPending = true;
-      return;
-    }
-
-    const visibleCount = Math.max(this.resourceListVisibleCount, this.resourceSmartList.itemsSnapshot().length);
-    const allItemsWereVisible = visibleCount >= previousItemCount;
-    let nextVisibleCount = Math.min(items.length, visibleCount);
-
-    if (items.length > previousItemCount && allItemsWereVisible) {
-      nextVisibleCount = Math.min(items.length, visibleCount + (items.length - previousItemCount));
-    }
-
-    this.resourceSmartList.syncVisibleItems(items.slice(0, nextVisibleCount), {
-      total: items.length,
-      trackBy: (_index, item) => item.card.id,
-      equals: (current, next) => this.itemSignature(current) === this.itemSignature(next)
-    });
-  }
-
-  private reloadResourceList(contextKey: string): void {
-    this.resourceListReady = false;
-    this.resourceListVisibleCount = 0;
-    this.resourceListSyncPending = false;
-    this.resourceListPendingPreviousItemCount = 0;
-    this.resourceListRevision = Math.max(Date.now(), this.resourceListRevision + 1);
-    this.resourceSmartListQuery = {
-      filters: {
-        revision: this.resourceListRevision,
-        contextKey
-      }
     };
   }
 
