@@ -241,7 +241,7 @@ describe('activity runtime counter signals', () => {
     expect(store.activityMembersSyncByOwnerId()['asset-1']?.memberStatusChange).toBeUndefined();
   });
 
-  it('publishes an explicit signed resource activity delta separately from absolute metrics', () => {
+  it('exposes a published resource activity delta to its parent exactly once', () => {
     const store = new SubEventResourcePopupStore();
     const context = {
       ownerId: 'event-1',
@@ -266,6 +266,13 @@ describe('activity runtime counter signals', () => {
         carsCapacityMax: 8
       }
     });
+    expect(store.consumeSubEventResourceActivityDelta(1)).toBe(true);
+    expect(store.consumeSubEventResourceActivityDelta(1)).toBe(false);
+
+    store.publishSubEventResourceMetrics(context, { activityDelta: -1 });
+
+    expect(store.consumeSubEventResourceActivityDelta(2)).toBe(true);
+    expect(store.consumeSubEventResourceActivityDelta(2)).toBe(false);
   });
 
   it('propagates the stage pending delta separately from its current value', () => {

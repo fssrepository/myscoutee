@@ -248,6 +248,7 @@ export class SubEventResourcePopupStore {
   private readonly eventResourceAssetExploreOutletActionRequestRef = signal<EventResourceAssetExploreOutletActionRequest | null>(null);
   private readonly resourceMetricsRevisionRef = signal(0);
   private readonly subEventResourceMetricsUpdateRef = signal<SubEventResourceMetricsUpdate | null>(null);
+  private consumedResourceActivityDeltaRevision = 0;
   private outletActionRequestSequence = 0;
 
   readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
@@ -351,6 +352,21 @@ export class SubEventResourcePopupStore {
         : { activityDelta: Math.trunc(Number(options.activityDelta) || 0) }),
       assignmentQuantityUpdates: [...(options.assignmentQuantityUpdates ?? [])]
     });
+  }
+
+  consumeSubEventResourceActivityDelta(revision: number): boolean {
+    const normalizedRevision = Math.max(0, Math.trunc(Number(revision) || 0));
+    const update = this.subEventResourceMetricsUpdateRef();
+    if (
+      normalizedRevision === 0
+      || normalizedRevision <= this.consumedResourceActivityDeltaRevision
+      || update?.revision !== normalizedRevision
+      || update.activityDelta === undefined
+    ) {
+      return false;
+    }
+    this.consumedResourceActivityDeltaRevision = normalizedRevision;
+    return true;
   }
 
   requestResourceAssetViewClose(event?: Event): void {
