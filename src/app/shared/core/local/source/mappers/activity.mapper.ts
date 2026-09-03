@@ -112,6 +112,7 @@ export class LocalActivityMembersBuilder {
       checkedInAtIso: record.checkedInAtIso ?? null,
       checkedInByUserId: record.checkedInByUserId ?? null,
       checkedInTicketId: record.checkedInTicketId ?? null,
+      managerGrantedByUserId: record.managerGrantedByUserId ?? null,
       profile: resolveProfile(record.userId, {
         name: record.name,
         initials: record.initials,

@@ -506,16 +506,71 @@ export class LocalAssetsRepository {
   }
 
   async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
-    const current = this.peekOwnedAssetsByUser(userId).find(asset => asset.id === assetId) ?? null;
-    if (!current || !targetUserId.trim()) {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
       return null;
     }
-    return {
-      ...current,
-      requests: current.requests.map(request => request.userId === targetUserId
-        ? { ...request, note: 'Borrow request approved by the owner.', menuActions: ['makeManager'] }
-        : request)
-    };
+
+    let saved: AssetRecord | null = null;
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      const targetManager = this.assetMemberRecords(normalizedAssetId)
+        .find(record => record.userId === normalizedTargetUserId
+          && record.status === 'accepted'
+          && this.isAssetManagerRole(record.role)) ?? null;
+      if (!current
+        || !this.canManageAssetMembers(current, normalizedUserId)
+        || !targetManager
+        || (current.ownerUserId !== normalizedUserId
+          && targetManager.managerGrantedByUserId !== normalizedUserId)) {
+        return state;
+      }
+      const now = new Date();
+      saved = this.withResolvedAssetRelevance({
+        ...current,
+        requests: current.requests.map(request => request.userId === normalizedTargetUserId
+          ? {
+              ...LocalAssetsMapper.cloneRequest(request),
+              note: 'Borrow request approved by the owner.',
+              menuActions: ['makeManager']
+            }
+          : LocalAssetsMapper.cloneRequest(request)),
+        updatedMs: now.getTime(),
+        updatedAtIso: now.toISOString()
+      });
+
+      const membersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const ownerKey = `asset:${normalizedAssetId}`;
+      const nextMembersById = { ...membersTable.byId };
+      for (const memberId of membersTable.idsByOwnerKey[ownerKey] ?? []) {
+        const member = nextMembersById[memberId];
+        if (member?.userId !== normalizedTargetUserId) {
+          continue;
+        }
+        nextMembersById[memberId] = {
+          ...member,
+          role: 'Member',
+          statusText: 'Accepted asset member.',
+          managerGrantedByUserId: null,
+          actionAtIso: now.toISOString(),
+          updatedMs: now.getTime(),
+          updatedAtIso: now.toISOString()
+        };
+      }
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [ACTIVITY_MEMBERS_TABLE_NAME]: {
+          byId: nextMembersById,
+          ids: [...membersTable.ids],
+          idsByOwnerKey: this.cloneActivityOwnerKeyIndex(membersTable.idsByOwnerKey)
+        }
+      };
+    });
+    return saved ? this.toAssetDto(saved, normalizedUserId) : null;
   }
 
   private queryUsers(): UserDto[] {
@@ -636,6 +691,7 @@ export class LocalAssetsRepository {
       updatedMs: now.getTime(),
       createdAtIso: existing?.createdAtIso ?? nowIso,
       updatedAtIso: nowIso,
+      managerGrantedByUserId: actorUserId,
       updatedUser: actorUserId
     } as ActivityMemberRecord;
     const nextIds = table.ids.includes(recordId) ? [...table.ids] : [recordId, ...table.ids];

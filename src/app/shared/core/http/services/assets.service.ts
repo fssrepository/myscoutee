@@ -433,11 +433,24 @@ export class HttpAssetsService {
   }
 
   async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
+      return null;
+    }
     try {
       const response = await this.http.post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/revoke-manager`, {
-        userId: userId.trim(), assetId: assetId.trim(), targetUserId: targetUserId.trim()
+        userId: normalizedUserId,
+        assetId: normalizedAssetId,
+        targetUserId: normalizedTargetUserId
       }).toPromise();
-      return this.normalizeCard(response);
+      const normalized = this.normalizeCard(response);
+      if (!normalized) {
+        return null;
+      }
+      this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(this.peekOwnedAssetsByUser(normalizedUserId), normalized);
+      return this.cloneCards([normalized])[0] ?? null;
     } catch {
       return null;
     }

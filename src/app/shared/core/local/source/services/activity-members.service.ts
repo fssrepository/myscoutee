@@ -863,6 +863,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const users = this.localActivityMemberUsers;
     const ownerUserId = `${asset.ownerUserId ?? ''}`.trim();
+    const storedManagersByUserId = new Map(
+      this.activityMembersRepository.peekRecordsByOwner(owner)
+        .filter(record => record.status === 'accepted' && (record.role === 'Manager' || record.role === 'Admin'))
+        .map(record => [record.userId, record] as const)
+    );
     const members: ActivityMemberDTO[] = [];
     if (options?.pendingOnly !== true && ownerUserId) {
       const profile = this.resolveDemoUser(ownerUserId, {
@@ -915,6 +920,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       const requestedAtIso = `${request.requestedAtIso ?? ''}`.trim() || nowIso;
       const pending = request.status === 'pending';
       const borrowerInitiated = request.requestKind === 'borrow';
+      const managerRecord = pending ? null : storedManagersByUserId.get(userId) ?? null;
       members.push({
         id: request.id?.trim() || `${asset.id}:request:${userId}`,
         userId: profile.id,
@@ -925,16 +931,18 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         statusText: pending
           ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
           : 'Borrowing this asset.',
-        role: 'Member',
+        role: managerRecord ? 'Manager' : 'Member',
         status: request.status,
         pendingSource: pending ? (borrowerInitiated ? 'member' : 'admin') : null,
         requestKind: pending ? (borrowerInitiated ? 'join' : 'invite') : null,
         invitedByActiveUser: false,
         invitedByUserId: null,
-        metAtIso: requestedAtIso,
-        actionAtIso: requestedAtIso,
+        metAtIso: managerRecord?.actionAtIso ?? requestedAtIso,
+        actionAtIso: managerRecord?.actionAtIso ?? requestedAtIso,
         metWhere: asset.title,
         avatarUrl: AppUtils.firstImageUrl(profile.images),
+        revision: managerRecord?.updatedAtIso ?? requestedAtIso,
+        managerGrantedByUserId: managerRecord?.managerGrantedByUserId ?? null,
         profile
       });
     }

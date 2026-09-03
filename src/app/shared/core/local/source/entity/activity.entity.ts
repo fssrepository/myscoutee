@@ -39,6 +39,8 @@ export interface ActivityMemberRecord {
   checkedInAtIso?: string | null;
   checkedInByUserId?: string | null;
   checkedInTicketId?: string | null;
+  managerGrantedByUserId?: string | null;
+  updatedUser?: string | null;
   ownerType: ActivityMemberOwnerType;
   ownerId: string;
   ownerKey: string;

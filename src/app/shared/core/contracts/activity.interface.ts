@@ -1277,6 +1277,7 @@ export interface ActivityMemberDTO {
   checkedInAtIso?: string | null;
   checkedInByUserId?: string | null;
   checkedInTicketId?: string | null;
+  managerGrantedByUserId?: string | null;
 }
 
 export interface ActivityMemberOwnerRef {
