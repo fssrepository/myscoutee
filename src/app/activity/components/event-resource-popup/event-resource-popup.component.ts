@@ -1158,10 +1158,18 @@ export class EventResourcePopupComponent {
     const states = scope.visibleStates.length > 0
       ? scope.visibleStates
       : [scope.viewerState];
-    const resourceMetricsByType = ActivityResourceBuilder.aggregateResourceMetricsByType(states);
-    if (Object.keys(resourceMetricsByType).length === 0) {
-      return;
-    }
+    const aggregated = ActivityResourceBuilder.aggregateResourceMetricsByType(states);
+    const emptyMetric = (): AppDTOs.SubEventResourceMetricDTO => ({
+      accepted: 0,
+      pending: 0,
+      capacityMin: 0,
+      capacityMax: 0
+    });
+    const resourceMetricsByType = {
+      [AppConstants.ASSET_TYPE_TRANSPORT]: aggregated[AppConstants.ASSET_TYPE_TRANSPORT] ?? emptyMetric(),
+      [AppConstants.ASSET_TYPE_ACCOMMODATION]: aggregated[AppConstants.ASSET_TYPE_ACCOMMODATION] ?? emptyMetric(),
+      [AppConstants.ASSET_TYPE_SUPPLIES]: aggregated[AppConstants.ASSET_TYPE_SUPPLIES] ?? emptyMetric()
+    };
     this.syncPopupSubEventMetrics({
       syncManualAssetRequests: false,
       persistedState: {
