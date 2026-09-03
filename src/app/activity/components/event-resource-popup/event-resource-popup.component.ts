@@ -1669,6 +1669,7 @@ export class EventResourcePopupComponent {
       subEventId: context.subEvent.id,
       resourceType: assetType,
       assetOwnerUserId: `${sourceCard.ownerUserId ?? card.assetOwnerUserId ?? ''}`.trim(),
+      canTakeOverAsset: (sourceCard.menuActions ?? []).includes('takeOver'),
       subtitle,
       canManage: this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
       acceptedMembers,

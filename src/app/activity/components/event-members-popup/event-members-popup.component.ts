@@ -93,6 +93,7 @@ type MemberMenuAction =
   | 'promoteAdmin'
   | 'revokeManager'
   | 'leaveAsset'
+  | 'takeOverAsset'
   | 'stepDownAdmin'
   | 'report'
   | 'involvement';
@@ -189,6 +190,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private memberSubEventId = '';
   private memberResourceType: AssetType | null = null;
   private memberAssetOwnerUserId = '';
+  private canTakeOverAssetResponsibility = false;
   private canManageMembers = false;
   private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberDTO> = [];
   private membersListReady = false;
@@ -271,6 +273,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           subEventId: request.subEventId,
           resourceType: request.resourceType,
           assetOwnerUserId: request.assetOwnerUserId,
+          canTakeOverAsset: request.canTakeOverAsset,
           subtitle: request.subtitle,
           canManage: request.canManage,
           viewOnly: request.viewOnly,
@@ -430,6 +433,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberSubEventId = '';
     this.memberResourceType = null;
     this.memberAssetOwnerUserId = '';
+    this.canTakeOverAssetResponsibility = false;
     this.lookupRef = null;
     this.ownerRecord = null;
     this.membersSmartList?.closeMenu();
@@ -480,6 +484,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       || this.canPromoteAdmin(entry)
       || this.canRevokeAssetManager(entry)
       || this.canLeaveAssetOwner(entry)
+      || this.canTakeOverAsset(entry)
       || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
   }
@@ -552,6 +557,15 @@ export class EventMembersPopupComponent implements OnDestroy {
         icon: 'logout',
         palette: 'danger',
         context: { menu: 'member-action', member: entry, action: 'leaveAsset' }
+      });
+    }
+    if (this.canTakeOverAsset(entry)) {
+      items.push({
+        id: `member-action-take-over-asset-${entry.id}`,
+        label: 'Take Over',
+        icon: 'verified_user',
+        palette: 'warning',
+        context: { menu: 'member-action', member: entry, action: 'takeOverAsset' }
       });
     }
     if (this.canStepDownAdmin(entry)) {
@@ -653,6 +667,9 @@ export class EventMembersPopupComponent implements OnDestroy {
         break;
       case 'leaveAsset':
         this.requestLeaveAssetOwner(context.member, event.sourceEvent);
+        break;
+      case 'takeOverAsset':
+        this.requestTakeOverAsset(context.member, event.sourceEvent);
         break;
       case 'stepDownAdmin':
         this.requestStepDownAdmin(context.member, event.sourceEvent);
@@ -845,6 +862,25 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmTone: 'danger',
       failureMessage: 'Unable to leave this Asset.',
       onConfirm: () => this.confirmLeaveAssetOwner()
+    });
+  }
+
+  protected requestTakeOverAsset(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canTakeOverAsset(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Take over asset?',
+      message: 'You will become responsible for this Asset and it will return to its previous active status.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Take Over',
+      busyConfirmLabel: 'Taking over...',
+      confirmTone: 'warning',
+      failureMessage: 'Unable to take over this Asset.',
+      onConfirm: () => this.confirmTakeOverAsset()
     });
   }
 
@@ -1194,6 +1230,28 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.applyCommittedMembers(persistedMembers, previousMembers);
   }
 
+  private async confirmTakeOverAsset(): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId || !this.canTakeOverAssetResponsibility) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await this.assetsService.takeOverOwnedAsset(actorUserId, owner.ownerId);
+    if (!savedAsset || `${savedAsset.ownerUserId ?? ''}`.trim() !== actorUserId || `${savedAsset.ownerReleasedAtIso ?? ''}`.trim()) {
+      throw new Error('Unable to take over this Asset.');
+    }
+
+    this.memberAssetOwnerUserId = actorUserId;
+    this.canTakeOverAssetResponsibility = false;
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    });
+    this.applyCommittedMembers(persistedMembers, previousMembers);
+  }
+
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
     if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
       return 'Cancel join request?';
@@ -1369,6 +1427,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       subEventId?: string;
       resourceType?: AssetType;
       assetOwnerUserId?: string;
+      canTakeOverAsset?: boolean;
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -1409,6 +1468,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
     this.memberResourceType = options?.resourceType ?? null;
     this.memberAssetOwnerUserId = `${options?.assetOwnerUserId ?? ''}`.trim();
+    this.canTakeOverAssetResponsibility = options?.canTakeOverAsset === true;
     const explicitParentOwnerId = `${options?.parentOwnerId ?? ''}`.trim();
     const fallbackParentOwnerId = ownerType === 'event' ? '' : this.memberEventId;
     const parentOwnerId = explicitParentOwnerId || fallbackParentOwnerId;
@@ -1912,6 +1972,14 @@ export class EventMembersPopupComponent implements OnDestroy {
       && entry.status === 'accepted'
       && this.isCurrentUser(entry)
       && this.isActiveUserAssetOwner();
+  }
+
+  protected canTakeOverAsset(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'asset'
+      && this.canTakeOverAssetResponsibility
+      && entry.status === 'accepted'
+      && this.isCurrentUser(entry);
   }
 
   private isActiveUserAssetOwner(): boolean {
