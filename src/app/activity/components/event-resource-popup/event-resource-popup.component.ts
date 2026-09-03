@@ -417,12 +417,32 @@ export class EventResourcePopupComponent {
     return {
       context,
       activeUserId,
-      activeUserAssets: this.ownedAssetCards(),
+      activeUserAssets: this.resourceSourceAssetCards(context),
       assetSettingsByKey: this.resourcePopupStore.assignedAssetSettingsByKey,
       users: this.users,
       eventCreatorUserId: eventRecord?.creatorUserId ?? context?.assetOwnerUserId ?? null,
       memberSyncByOwnerId
     };
+  }
+
+  private resourceSourceAssetCards(context: ResourcePopupContext | null): ResourceAssetDTO[] {
+    const cardsByIdentity = new Map<string, ResourceAssetDTO>();
+    const add = (card: ResourceAssetDTO): void => {
+      cardsByIdentity.set(`${card.type}:${card.id}`, card);
+    };
+    this.ownedAssetCards().forEach(add);
+    if (!context) {
+      return [...cardsByIdentity.values()];
+    }
+    for (const type of AppConstants.ASSET_TYPES) {
+      (context.fallbackCardsByType[type] ?? []).forEach(add);
+    }
+    for (const state of this.visibleResourceStates(context)) {
+      for (const type of AppConstants.ASSET_TYPES) {
+        (state.fallbackAssetCardsByType?.[type] ?? []).forEach(add);
+      }
+    }
+    return [...cardsByIdentity.values()];
   }
 
   protected openAssetViewMembers(view: ResourceAssetViewState, event: Event): void {
@@ -529,6 +549,13 @@ export class EventResourcePopupComponent {
     if (!context || !activeUserId) {
       return;
     }
+    const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      groupId: context.groupId,
+      runtimeKind: context.subEvent.runtimeKind,
+      eventId: context.subEvent.eventId
+    }).eventId;
     const sourceCard = card.sourceAssetId && card.type !== 'Members'
       ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppConstants.AssetType, card.sourceAssetId)
       : null;
@@ -545,7 +572,7 @@ export class EventResourcePopupComponent {
     const titlePrefix = sourceCard ? 'Asset Service' : 'Event Service';
     const chat = await this.chatsService.ensureServiceChat({
       serviceContext: sourceCard ? 'asset' : 'event',
-      eventId: context.ownerId,
+      eventId,
       subEventId: context.subEvent.id,
       assetId: sourceCard?.id ?? null,
       targetUserId,

@@ -1784,9 +1784,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !activeUserId || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
+    const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      groupId: context.groupId,
+      runtimeKind: context.subEvent.runtimeKind,
+      eventId: context.subEvent.eventId
+    }).eventId;
     const chat = await this.chatsService.ensureServiceChat({
       serviceContext: 'asset',
-      eventId: context.ownerId,
+      eventId,
       subEventId: context.subEvent.id,
       assetId: card.id,
       targetUserId: ownerUserId,
