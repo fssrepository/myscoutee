@@ -256,7 +256,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     for (const type of AppConstants.ASSET_TYPES) {
       const cardsById = new Map((fallbackAssetCardsByType[type] ?? []).map(card => [card.id, card] as const));
       for (const assetId of state.assetAssignmentIds[type] ?? []) {
-        const detail = this.assetsRepository.peekOwnedAssetDetailById(state.assetOwnerUserId, assetId);
+        const detail = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
         if (detail?.type === type) {
           cardsById.set(detail.id, detail);
         }

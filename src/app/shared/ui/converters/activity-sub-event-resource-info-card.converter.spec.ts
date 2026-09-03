@@ -52,6 +52,28 @@ describe('ActivitySubEventResourceInfoCardConverter member status changes', () =
     expect(converted.menuActions).toContain('leaveResource');
     expect(converted.menuActions).not.toContain('joinResource');
   });
+
+  it('treats a released former owner as a fresh user who can join the Group asset', () => {
+    const converted = ActivitySubEventResourceInfoCardConverter.convert(resourceCard(), {
+      ...options([]),
+      activeUserId: 'manager',
+      context: {
+        ...options([]).context,
+        fallbackCardsByType: {
+          [AppConstants.ASSET_TYPE_TRANSPORT]: [{
+            id: 'asset-1',
+            type: AppConstants.ASSET_TYPE_TRANSPORT,
+            ownerUserId: 'manager',
+            ownerReleasedAtIso: '2026-09-03T09:00:00Z',
+            requests: []
+          }]
+        }
+      }
+    });
+
+    expect(converted.menuActions).toContain('joinResource');
+    expect(converted.menuActions).not.toContain('removeAssignment');
+  });
 });
 
 function resourceCard(): AppDTOs.SubEventResourceCardDTO {

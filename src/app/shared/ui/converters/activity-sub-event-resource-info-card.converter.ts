@@ -18,6 +18,7 @@ export interface ActivitySubEventResourceInfoCardAssetRef {
 
 export interface ActivitySubEventResourceInfoCardSourceAsset extends ActivitySubEventResourceInfoCardAssetRef {
   ownerUserId?: string | null;
+  ownerReleasedAtIso?: string | null;
   requests?: readonly AppDTOs.AssetMemberRequestDTO[];
 }
 
@@ -179,7 +180,16 @@ export class ActivitySubEventResourceInfoCardConverter {
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
     const activeUserId = this.normalizeId(options.activeUserId);
-    const managerUserId = this.normalizeId(this.sourceAsset(card, options)?.ownerUserId)
+    const sourceAsset = this.sourceAsset(card, options);
+    const sourceOwnerUserId = this.normalizeId(sourceAsset?.ownerUserId);
+    if (
+      activeUserId.length > 0
+      && sourceOwnerUserId === activeUserId
+      && this.normalizeId(sourceAsset?.ownerReleasedAtIso).length > 0
+    ) {
+      return false;
+    }
+    const managerUserId = sourceOwnerUserId
       || this.normalizeId(this.assetManagerUserId(card, options));
     return activeUserId.length > 0 && managerUserId === activeUserId;
   }

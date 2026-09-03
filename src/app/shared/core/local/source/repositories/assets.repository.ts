@@ -90,10 +90,31 @@ export class LocalAssetsRepository {
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const record = table.byId[normalizedAssetId];
-    if (!record || LocalAssetsMapper.normalizeAssetStatus(record.status) === 'T') {
+    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
+    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
       return null;
     }
     return this.toAssetDto(
+      record,
+      record.ownerUserId,
+      this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
+    );
+  }
+
+  peekAssetDetailForMembershipById(assetId: string): AppDTOs.AssetDetailDTO | null {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return null;
+    }
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+    const record = table.byId[normalizedAssetId];
+    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
+    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
+      return null;
+    }
+    return this.toAssetDetailDto(
       record,
       record.ownerUserId,
       this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
@@ -815,17 +836,15 @@ export class LocalAssetsRepository {
       return [];
     }
     const sameOwner = record.ownerUserId === normalizedViewerUserId;
-    if (sameOwner && record.ownerReleasedAtIso) {
-      return ['share'];
-    }
-    const isOwner = sameOwner;
+    const isOwner = sameOwner && !record.ownerReleasedAtIso;
     const isManager = isOwner || this.isAcceptedAssetManager(record.id, normalizedViewerUserId);
-    if (!isManager) {
+    const status = LocalAssetsMapper.normalizeAssetStatus(record.status);
+    const isTakeOverCandidate = status === 'UR' && this.canTakeOverAsset(record, normalizedViewerUserId);
+    if (!isManager && !isTakeOverCandidate) {
       return ['share'];
     }
     const actions: string[] = [];
-    const status = LocalAssetsMapper.normalizeAssetStatus(record.status);
-    if (status === 'UR' && this.isActiveDemoUser(normalizedViewerUserId)) {
+    if (isTakeOverCandidate) {
       actions.push('takeOver');
     }
     actions.push('share');
@@ -838,13 +857,29 @@ export class LocalAssetsRepository {
 
   private canTakeOverAsset(record: AssetRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId)) {
+    if (
+      LocalAssetsMapper.normalizeAssetStatus(record.status) !== 'UR'
+      || !record.ownerReleasedAtIso
+      || !normalizedUserId
+      || !this.isActiveDemoUser(normalizedUserId)
+    ) {
       return false;
     }
-    if (record.ownerUserId === normalizedUserId) {
-      return !record.ownerReleasedAtIso;
-    }
-    return this.isAcceptedAssetManager(record.id, normalizedUserId);
+    const acceptedActiveMembers = this.assetMemberRecords(record.id)
+      .filter(member => member.status === 'accepted')
+      .filter(member => this.isActiveDemoUser(member.userId))
+      .filter(member => member.userId !== record.ownerUserId);
+    const acceptedActiveUserIds = new Set(record.requests
+      .filter(request => `${request.status ?? ''}`.trim().toLowerCase() === 'accepted')
+      .map(request => `${request.userId ?? ''}`.trim())
+      .filter(memberUserId => memberUserId.length > 0)
+      .filter(memberUserId => memberUserId !== record.ownerUserId)
+      .filter(memberUserId => this.isActiveDemoUser(memberUserId)));
+    acceptedActiveMembers.forEach(member => acceptedActiveUserIds.add(member.userId));
+    const hasActiveManager = acceptedActiveMembers.some(member => this.isAssetManagerRole(member.role));
+    const actorIsManager = acceptedActiveMembers.some(member => member.userId === normalizedUserId
+      && this.isAssetManagerRole(member.role));
+    return acceptedActiveUserIds.has(normalizedUserId) && (!hasActiveManager || actorIsManager);
   }
 
   private canManageAssetMembers(record: AssetRecord, userId: string): boolean {
