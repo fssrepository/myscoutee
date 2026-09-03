@@ -1093,6 +1093,13 @@
   z-index: 4;
 }
 
+.chat-message.chat-message-pending .chat-bubble > .chat-message-tools,
+.chat-message.chat-message-timed-out .chat-bubble > .chat-message-tools,
+.chat-message.chat-message-pending .chat-bubble > .chat-quick-reactions,
+.chat-message.chat-message-timed-out .chat-bubble > .chat-quick-reactions {
+  position: absolute;
+}
+
 .chat-readers {
   position: absolute;
   right: 0.28rem;
