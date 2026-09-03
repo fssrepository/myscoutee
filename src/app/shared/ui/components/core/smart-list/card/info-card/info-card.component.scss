@@ -237,6 +237,10 @@ button.asset-occupancy-badge:active::after,
   transition: opacity 100ms ease-in;
 }
 
+.ui-info-card--owned-asset .ui-info-card__media {
+  background-size: contain;
+}
+
 .ui-info-card__media--placeholder {
   display: flex;
   align-items: center;
