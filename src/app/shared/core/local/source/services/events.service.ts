@@ -944,7 +944,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           published,
           'event-invite',
           published.title,
-          `You were invited to ${published.title}.`,
+          'Event invitation',
           'info',
           null,
           true

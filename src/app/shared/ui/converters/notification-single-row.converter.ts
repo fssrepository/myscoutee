@@ -109,7 +109,46 @@ export class NotificationSingleRowConverter implements UiConverter<
     const translated = key && options.translate
       ? options.translate(key, notification.message)
       : notification.message;
-    return this.interpolatePayload(translated, notification.payload);
+    return this.compactMessage(
+      notification,
+      this.interpolatePayload(translated, notification.payload)
+    );
+  }
+
+  private compactMessage(notification: NotificationDto, fallback: string): string {
+    const payload = notification.payload;
+    const assetTitle = `${payload?.['assetTitle'] ?? ''}`.trim();
+    const quantity = `${payload?.['quantity'] ?? ''}`.trim();
+    switch (notification.kind) {
+      case 'event-invite': {
+        const location = `${payload?.['location'] ?? ''}`.trim();
+        return location ? `Invitation · ${location}` : 'Event invitation';
+      }
+      case 'asset-member-invite':
+        return 'Asset invitation';
+      case 'asset-admin-join-request': {
+        const memberName = `${payload?.['memberName'] ?? ''}`.trim();
+        return memberName ? `${memberName} requested access` : 'Access requested';
+      }
+      case 'event-supplies-open':
+        return assetTitle ? `Contributions open · ${assetTitle}` : 'Contributions open';
+      case 'event-supplies-contribution-added':
+        return [quantity ? `${quantity} added` : 'Added', assetTitle].filter(Boolean).join(' · ');
+      case 'event-supplies-contribution-removed':
+        return [quantity ? `${quantity} removed` : 'Removed', assetTitle].filter(Boolean).join(' · ');
+      default:
+        return this.withoutRepeatedSender(fallback, notification.senderName);
+    }
+  }
+
+  private withoutRepeatedSender(value: string, senderName?: string | null): string {
+    const message = `${value ?? ''}`.trim();
+    const sender = `${senderName ?? ''}`.trim();
+    if (!sender || !message.toLocaleLowerCase().startsWith(`${sender.toLocaleLowerCase()} `)) {
+      return message;
+    }
+    const remainder = message.slice(sender.length).trimStart();
+    return remainder ? `${remainder.charAt(0).toLocaleUpperCase()}${remainder.slice(1)}` : message;
   }
 
   private title(
