@@ -2,6 +2,7 @@ import type {
   NotificationCategory,
   NotificationDto
 } from '../../core/contracts/notification.interface';
+import * as AppConstants from '../../core/common/constants';
 import { AppUtils } from '../../app-utils';
 import type {
   SingleRowData,
@@ -41,6 +42,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     const statusBadgeLabel = statusBadgeKey && options.translate
       ? options.translate(statusBadgeKey, statusBadgeFallback)
       : statusBadgeFallback;
+    const targetAction = NotificationSingleRowConverter.targetActionId(notification);
     return {
       id: notification.id,
       title: this.title(notification, options),
@@ -92,13 +94,43 @@ export class NotificationSingleRowConverter implements UiConverter<
           position: 'inline' as const
         }] : [])
       ],
-      menuActions: read ? [] : ['markNotificationRead'],
+      menuActions: [
+        ...(!read ? ['markNotificationRead'] : []),
+        ...(targetAction ? [targetAction] : [])
+      ],
       progressRing: options.progressRing === true,
       eagerDetail: {
         ...notification,
         payload: notification.payload ? { ...notification.payload } : null
       }
     };
+  }
+
+  static targetActionId(notification: NotificationDto): string | null {
+    const eventId = this.eventId(notification);
+    if (!eventId) {
+      return null;
+    }
+    const payload = notification.payload;
+    const ownerId = `${payload?.['ownerId'] ?? ''}`.trim();
+    const subEventId = `${payload?.['subEventId'] ?? ''}`.trim();
+    if (ownerId && subEventId) {
+      switch (`${payload?.['resourceType'] ?? ''}`.trim()) {
+        case AppConstants.ASSET_TYPE_TRANSPORT:
+          return 'openNotificationTransport';
+        case AppConstants.ASSET_TYPE_ACCOMMODATION:
+          return 'openNotificationAccommodation';
+        case AppConstants.ASSET_TYPE_SUPPLIES:
+          return 'openNotificationSupplies';
+      }
+    }
+    return notification.kind === 'event-invite'
+      ? 'openNotificationInvitation'
+      : 'openNotificationEvent';
+  }
+
+  static eventId(notification: NotificationDto): string {
+    return `${notification.payload?.['eventId'] ?? ''}`.trim();
   }
 
   private message(
@@ -109,7 +141,46 @@ export class NotificationSingleRowConverter implements UiConverter<
     const translated = key && options.translate
       ? options.translate(key, notification.message)
       : notification.message;
-    return this.interpolatePayload(translated, notification.payload);
+    return this.compactMessage(
+      notification,
+      this.interpolatePayload(translated, notification.payload)
+    );
+  }
+
+  private compactMessage(notification: NotificationDto, fallback: string): string {
+    const payload = notification.payload;
+    const assetTitle = `${payload?.['assetTitle'] ?? ''}`.trim();
+    const quantity = `${payload?.['quantity'] ?? ''}`.trim();
+    switch (notification.kind) {
+      case 'event-invite': {
+        const location = `${payload?.['location'] ?? ''}`.trim();
+        return location ? `Invitation · ${location}` : 'Event invitation';
+      }
+      case 'asset-member-invite':
+        return 'Asset invitation';
+      case 'asset-admin-join-request': {
+        const memberName = `${payload?.['memberName'] ?? ''}`.trim();
+        return memberName ? `${memberName} requested access` : 'Access requested';
+      }
+      case 'event-supplies-open':
+        return assetTitle ? `Contributions open · ${assetTitle}` : 'Contributions open';
+      case 'event-supplies-contribution-added':
+        return [quantity ? `${quantity} added` : 'Added', assetTitle].filter(Boolean).join(' · ');
+      case 'event-supplies-contribution-removed':
+        return [quantity ? `${quantity} removed` : 'Removed', assetTitle].filter(Boolean).join(' · ');
+      default:
+        return this.withoutRepeatedSender(fallback, notification.senderName);
+    }
+  }
+
+  private withoutRepeatedSender(value: string, senderName?: string | null): string {
+    const message = `${value ?? ''}`.trim();
+    const sender = `${senderName ?? ''}`.trim();
+    if (!sender || !message.toLocaleLowerCase().startsWith(`${sender.toLocaleLowerCase()} `)) {
+      return message;
+    }
+    const remainder = message.slice(sender.length).trimStart();
+    return remainder ? `${remainder.charAt(0).toLocaleUpperCase()}${remainder.slice(1)}` : message;
   }
 
   private title(

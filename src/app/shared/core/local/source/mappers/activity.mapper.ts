@@ -1,6 +1,5 @@
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
-import type { AssetType } from '../../../common/constants';
 import type { UserDto } from '../../../contracts/user.interface';
 import type {
   ActivityMemberDTO,
@@ -113,6 +112,7 @@ export class LocalActivityMembersBuilder {
       checkedInAtIso: record.checkedInAtIso ?? null,
       checkedInByUserId: record.checkedInByUserId ?? null,
       checkedInTicketId: record.checkedInTicketId ?? null,
+      managerGrantedByUserId: record.managerGrantedByUserId ?? null,
       profile: resolveProfile(record.userId, {
         name: record.name,
         initials: record.initials,
@@ -402,13 +402,14 @@ export class LocalActivityResourcesMapper {
 
   static toRecord(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
-    existing?: ActivitySubEventResourceRecord | null
+    existing?: ActivitySubEventResourceRecord | null,
+    status = this.STATUS_ACTIVE
   ): ActivitySubEventResourceRecord {
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
     return {
-      id: this.recordId(state),
-      status: this.STATUS_ACTIVE,
+      id: existing?.id ?? this.newRecordId(state),
+      status,
       ownerKey: this.ownerKey(state),
       ownerId: state.ownerId,
       subEventId: state.subEventId,
@@ -425,6 +426,13 @@ export class LocalActivityResourcesMapper {
       createdAtIso: existing?.createdAtIso ?? nowIso,
       updatedAtIso: nowIso
     };
+  }
+
+  private static newRecordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    const generation = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${this.recordId(ref)}:${generation}`;
   }
 
   static toState(
@@ -570,7 +578,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
     return normalized
       ? {
           ...normalized,
-          groupsResourcePendingRead: this.resourcePendingRead(record, viewerUserId)
+          groupsResourcePendingRead: 0
         }
       : null;
   }
@@ -612,24 +620,10 @@ export class LocalActivitySubEventStageRuntimeMapper {
   }
 
   static resourcePendingRead(
-    record: ActivitySubEventStageRuntimeRecord | null | undefined,
-    viewerUserId?: string | null
+    _record: ActivitySubEventStageRuntimeRecord | null | undefined,
+    _viewerUserId?: string | null
   ): number {
-    const userId = `${viewerUserId ?? ''}`.trim();
-    if (!record || !userId) {
-      return 0;
-    }
-    let total = 0;
-    for (const [groupId, byUser] of Object.entries(record.groupResourceReadAtByUserId ?? {})) {
-      const readAtByType = byUser?.[userId] ?? {};
-      const metricsByOwner = record.groupResourceMetricsByAssetOwnerId?.[groupId] ?? {};
-      for (const resourceType of Object.keys(readAtByType) as AssetType[]) {
-        for (const metricsByType of Object.values(metricsByOwner)) {
-          total += Math.max(0, Math.trunc(Number(metricsByType?.[resourceType]?.pending) || 0));
-        }
-      }
-    }
-    return total;
+    return 0;
   }
 
   static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {

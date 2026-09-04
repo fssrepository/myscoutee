@@ -81,6 +81,24 @@ describe('ActivityResourceBuilder group request scoping', () => {
     expect(scope.chatOwnerId).toBe('event-1:sub-1');
   });
 
+  it('keeps a generated group resource on its physical scope while using its canonical member owner', () => {
+    const scope = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+      ownerId: 'event-1:stage-1:stage-1:group:1',
+      subEventId: 'stage-1',
+      groupId: 'stage-1:group:1',
+      memberOwnerId: 'stage-1:group:1',
+      memberOwnerType: 'group',
+      eventId: 'event-1'
+    });
+
+    expect(scope).toMatchObject({
+      eventId: 'event-1',
+      resourceOwnerId: 'event-1:stage-1:stage-1:group:1',
+      resourceScopeId: 'stage-1',
+      memberOwner: { ownerType: 'group', ownerId: 'stage-1:group:1' }
+    });
+  });
+
   it('counts only requests whose booking owner matches the selected group', () => {
     const groupA = 'event-1:stage-1:stage-1:group:1';
     const groupB = 'event-1:stage-1:stage-1:group:2';
@@ -103,6 +121,19 @@ describe('ActivityResourceBuilder group request scoping', () => {
       scopedRequest,
       'stage-1',
       slotOwnerId
+    )).toBe(true);
+  });
+
+  it('keeps a scoped backend request with a null id renderable', () => {
+    const scopedRequest = {
+      ...request('request-a', 'user-a', 'event-1:stage-1:stage-1:group:1'),
+      id: null
+    } as unknown as AssetMemberRequestDTO;
+
+    expect(ActivityResourceBuilder.isSubEventScopedAssetRequest(
+      scopedRequest,
+      'stage-1',
+      'event-1:stage-1:stage-1:group:1'
     )).toBe(true);
   });
 
@@ -181,6 +212,34 @@ describe('ActivityResourceBuilder group request scoping', () => {
       capacityMax: 6
     });
   });
+
+  it('persists a participant contribution without copying the shared supplies assignment', () => {
+    const metrics = ActivityResourceBuilder.buildPersistedResourceMetrics({
+      ownerId: 'event-1',
+      subEventId: 'stage-1',
+      assetOwnerUserId: 'riley',
+      assetAssignmentIds: {},
+      assetSettingsByType: {},
+      supplyContributionEntriesByAssetId: {
+        'supplies-1': [{
+          id: 'contribution-riley',
+          userId: 'riley',
+          quantity: 2,
+          addedAtIso: '2026-09-04T04:59:00Z'
+        }]
+      },
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {}
+    }, []);
+
+    expect(metrics.Supplies).toEqual({
+      accepted: 2,
+      pending: 0,
+      capacityMin: 0,
+      capacityMax: 0
+    });
+  });
+
 });
 
 function request(id: string, userId: string, eventId: string): AssetMemberRequestDTO {

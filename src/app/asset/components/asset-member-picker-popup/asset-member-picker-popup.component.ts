@@ -142,7 +142,13 @@ export class AssetMemberPickerPopupComponent {
     emptyDescription: 'Meet more people first or try again later.',
     listLayout: 'card-grid',
     desktopColumns: 4,
+    mobileColumns: 2,
     snapMode: 'none',
+    containerClass: {
+      'experience-card-list': true,
+      'assets-card-list': true,
+      'activity-members-list-shell': true
+    },
     trackBy: (_index, entry) => entry.id
   };
 
@@ -469,10 +475,12 @@ export class AssetMemberPickerPopupComponent {
       title: candidate.name,
       subtitle: this.inviteMetLabel(candidate),
       imageUrl: candidate.avatarUrl,
+      aspectRatio: '3 / 4',
+      mediaFit: 'contain',
       placeholderIcon: 'highlight_off',
       placeholderLabel: candidate.initials,
       layout: 'overlay',
-      toneClass: 'asset-invite-candidate-card'
+      toneClass: 'subevent-member-image-card activity-member-image-card asset-invite-candidate-card'
     };
   }
 

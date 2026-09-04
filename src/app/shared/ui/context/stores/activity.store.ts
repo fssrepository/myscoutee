@@ -8,7 +8,12 @@ import {
   type ActivityCurrentUserMembershipStatus
 } from '../../../core/contracts/activity.interface';
 import type * as AppDTOs from '../../../core/contracts';
-import type { AssetType } from '../../../core/common/constants';
+import {
+  ASSET_TYPE_ACCOMMODATION,
+  ASSET_TYPE_SUPPLIES,
+  ASSET_TYPE_TRANSPORT,
+  type AssetType
+} from '../../../core/common/constants';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type { SupportCaseStatus } from '../../../core/contracts/chat.interface';
 import type {
@@ -493,6 +498,39 @@ export class ActivityStore {
       tickets: normalizedCount,
       asset
     });
+  }
+
+  signalUserAssetBucketCount(
+    userId: string,
+    type: AssetType,
+    count: number,
+    baseCounters: Partial<ActivityCounters> | UserMenuCountersDto | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedCount = normalizeCounterValue(count);
+    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const asset = cloneAssetCounters(currentOverrides.asset ?? baseCounters?.asset);
+    const patch: Partial<ActivityCounters> = { asset };
+
+    switch (type) {
+      case ASSET_TYPE_TRANSPORT:
+        asset.cars = normalizedCount;
+        patch.cars = normalizedCount;
+        break;
+      case ASSET_TYPE_ACCOMMODATION:
+        asset.accommodation = normalizedCount;
+        patch.accommodation = normalizedCount;
+        break;
+      case ASSET_TYPE_SUPPLIES:
+        asset.supplies = normalizedCount;
+        patch.supplies = normalizedCount;
+        break;
+    }
+
+    this.patchUserCounterOverrides(normalizedUserId, patch);
   }
 
   patchUserCounterDeltas(

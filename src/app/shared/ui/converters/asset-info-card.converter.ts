@@ -21,6 +21,7 @@ export interface AssetOwnedInfoCardConverterOptions {
 export interface AssetExploreInfoCardConverterOptions {
   variant: 'explore';
   groupLabel?: string | null;
+  ownerAvatarUrl?: string | null;
   availabilityLabel: string;
   canBorrow: boolean;
   canReportOwner: boolean;
@@ -121,9 +122,12 @@ export class AssetInfoCardConverter {
       mediaStart: {
         variant: 'avatar',
         tone: this.assetExploreOwnerAvatarTone(card),
+        imageUrl: options.ownerAvatarUrl?.trim() || null,
         label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
-        interactive: false,
-        ariaLabel: null
+        interactive: Boolean(card.ownerUserId?.trim()),
+        ariaLabel: card.ownerUserId?.trim()
+          ? `Open ${card.ownerName?.trim() || 'asset owner'} impressions`
+          : null
       },
       mediaEnd: {
         variant: 'badge',

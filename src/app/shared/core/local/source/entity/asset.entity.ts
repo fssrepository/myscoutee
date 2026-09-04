@@ -47,6 +47,7 @@ export interface AssetMemberRequestRecord {
   initials: string;
   gender: UserGender;
   status: AssetRequestStatus;
+  recordStatus?: 'A' | 'D';
   note: string;
   requestKind?: AssetRequestKind;
   requestedAtIso?: string;
@@ -272,6 +273,7 @@ export interface AssetRecord {
   visibility: EventVisibility;
   status?: AssetLifecycleStatus | string;
   statusBeforeSuppression?: AssetLifecycleStatus | string | null;
+  ownerReleasedAtIso?: string | null;
   affinity?: number;
   boost?: number;
   createdMs: number;

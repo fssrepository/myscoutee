@@ -204,7 +204,44 @@ describe('activity runtime counter signals', () => {
     });
   });
 
-  it('publishes an explicit signed resource activity delta separately from absolute metrics', () => {
+  it('replaces a stale resource-member transition count with a canonical member snapshot', () => {
+    const store = new ActivityStore();
+
+    store.cacheActivityMemberStatusChange({
+      assetId: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      userId: 'joining-user',
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      capacityTotal: 4
+    });
+
+    expect(store.activityMembersSyncByOwnerId()['asset-1']?.pendingMembers).toBe(2);
+
+    store.emitActivityMembersSync({
+      id: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      capacityTotal: 4
+    });
+
+    expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      capacityTotal: 4
+    });
+    expect(store.activityMembersSyncByOwnerId()['asset-1']?.memberStatusChange).toBeUndefined();
+  });
+
+  it('exposes a published resource activity delta to its parent exactly once', () => {
     const store = new SubEventResourcePopupStore();
     const context = {
       ownerId: 'event-1',
@@ -229,6 +266,13 @@ describe('activity runtime counter signals', () => {
         carsCapacityMax: 8
       }
     });
+    expect(store.consumeSubEventResourceActivityDelta(1)).toBe(true);
+    expect(store.consumeSubEventResourceActivityDelta(1)).toBe(false);
+
+    store.publishSubEventResourceMetrics(context, { activityDelta: -1 });
+
+    expect(store.consumeSubEventResourceActivityDelta(2)).toBe(true);
+    expect(store.consumeSubEventResourceActivityDelta(2)).toBe(false);
   });
 
   it('propagates the stage pending delta separately from its current value', () => {

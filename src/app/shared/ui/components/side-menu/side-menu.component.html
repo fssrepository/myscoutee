@@ -33,7 +33,7 @@
   </div>
 }
 
-@if (avatarVisible() && runtimeStore.isOnline() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
+@if (avatarVisible() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
   <div
     class="notification-attention-launcher"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
@@ -143,9 +143,7 @@
 
 <app-dialog [zIndex]="notificationCenterStore.isOpen() ? 24000 : null"></app-dialog>
 
-@if (notificationCenterStore.popupComponent(); as notificationCenterComponent) {
-  <ng-container *ngComponentOutlet="notificationCenterComponent"></ng-container>
-}
+<app-notification-center-popup></app-notification-center-popup>
 
 @if (!subEventResourceStore.popupContextRef() && activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>

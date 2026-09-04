@@ -1145,6 +1145,10 @@
     flex-basis: 100%;
   }
 
+  .help-editor-revision-toggle .help-editor-active-badge {
+    margin-inline-start: auto;
+  }
+
   .help-editor-draft-toggle {
     display: contents;
   }
@@ -1194,8 +1198,8 @@
   }
 
   .help-editor-edit-section-head .help-editor-caret-btn {
-    order: 3;
-    margin-left: auto;
+    order: 7;
+    margin-left: 0;
   }
 
   .help-editor-edit-section-head .help-editor-privacy-optional-toggle {
@@ -1205,6 +1209,10 @@
 
   .help-editor-edit-section-head .help-editor-mode-toggle {
     order: 5;
+    margin-left: auto;
+  }
+
+  .help-editor-edit-section-head .help-editor-privacy-optional-toggle + .help-editor-mode-toggle {
     margin-left: 0;
   }
 

@@ -63,6 +63,8 @@ export interface ResourcePopupContext {
   subEvent: ContractTypes.SubEventDTO;
   groupId?: string;
   groupName?: string;
+  groupMemberOwnerId?: string;
+  groupMemberOwnerType?: AppConstants.ActivityMemberOwnerType;
   fallbackCardsByType: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>;
 }
 
@@ -102,6 +104,8 @@ export interface SubEventResourcePopupRequest {
     accepted?: number;
     capacityMin?: number;
     capacityMax?: number;
+    memberOwnerId?: string | null;
+    memberOwnerType?: AppConstants.ActivityMemberOwnerType | null;
     canManage?: boolean;
     members?: readonly ActivityMemberDTO[];
     onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
@@ -129,6 +133,9 @@ export interface SupplyContributionPopupState {
   assetId: string;
   assetOwnerUserId: string;
   title: string;
+  accepted: number;
+  capacityMin: number;
+  capacityTotal: number;
 }
 
 export interface PendingAssignSaveState {
@@ -244,6 +251,7 @@ export class SubEventResourcePopupStore {
   private readonly eventResourceAssetExploreOutletActionRequestRef = signal<EventResourceAssetExploreOutletActionRequest | null>(null);
   private readonly resourceMetricsRevisionRef = signal(0);
   private readonly subEventResourceMetricsUpdateRef = signal<SubEventResourceMetricsUpdate | null>(null);
+  private consumedResourceActivityDeltaRevision = 0;
   private outletActionRequestSequence = 0;
 
   readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
@@ -274,7 +282,9 @@ export class SubEventResourcePopupStore {
     const recordId = ActivityResourceBuilder.recordId(normalized);
     const next = this.visibleResourceStatesRef()
       .filter(current => ActivityResourceBuilder.recordId(current) !== recordId);
-    next.push(normalized);
+    if (ActivityResourceBuilder.hasResourceData(normalized)) {
+      next.push(normalized);
+    }
     this.setVisibleResourceStates(next);
   }
 
@@ -286,10 +296,15 @@ export class SubEventResourcePopupStore {
     this.subEventResourcePopupRequestRef.set(null);
   }
 
-  openResourcePopup(context: ResourcePopupContext, type: AppConstants.AssetType): void {
-    this.popupContextRef.set(context);
-    this.resourceFilterRef.set(type);
+  openResourcePopup(
+    context: ResourcePopupContext,
+    type: AppConstants.AssetType,
+    visibleStates: readonly AppDTOs.ActivitySubEventResourceStateDTO[] = []
+  ): void {
     this.resetResourcePopupState();
+    this.resourceFilterRef.set(type);
+    this.setVisibleResourceStates(visibleStates);
+    this.popupContextRef.set(context);
   }
 
   closeResourcePopup(): void {
@@ -342,6 +357,21 @@ export class SubEventResourcePopupStore {
         : { activityDelta: Math.trunc(Number(options.activityDelta) || 0) }),
       assignmentQuantityUpdates: [...(options.assignmentQuantityUpdates ?? [])]
     });
+  }
+
+  consumeSubEventResourceActivityDelta(revision: number): boolean {
+    const normalizedRevision = Math.max(0, Math.trunc(Number(revision) || 0));
+    const update = this.subEventResourceMetricsUpdateRef();
+    if (
+      normalizedRevision === 0
+      || normalizedRevision <= this.consumedResourceActivityDeltaRevision
+      || update?.revision !== normalizedRevision
+      || update.activityDelta === undefined
+    ) {
+      return false;
+    }
+    this.consumedResourceActivityDeltaRevision = normalizedRevision;
+    return true;
   }
 
   requestResourceAssetViewClose(event?: Event): void {

@@ -81,6 +81,46 @@ export class LocalAssetsRepository {
       : null;
   }
 
+  peekAssetForMembershipById(assetId: string): AppDTOs.AssetDTO | null {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return null;
+    }
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+    const record = table.byId[normalizedAssetId];
+    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
+    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
+      return null;
+    }
+    return this.toAssetDto(
+      record,
+      record.ownerUserId,
+      this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
+    );
+  }
+
+  peekAssetDetailForMembershipById(assetId: string): AppDTOs.AssetDetailDTO | null {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return null;
+    }
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+    const record = table.byId[normalizedAssetId];
+    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
+    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
+      return null;
+    }
+    return this.toAssetDetailDto(
+      record,
+      record.ownerUserId,
+      this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
+    );
+  }
+
   peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
     const normalizedUserIds = [...new Set(
       userIds
@@ -131,7 +171,10 @@ export class LocalAssetsRepository {
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const record = table.byId[normalizedAssetId];
-    return record && record.ownerUserId === normalizedUserId && !this.isSuppressedAssetStatus(record.status)
+    const visible = record
+      && (record.ownerUserId === normalizedUserId
+        || this.readVisibleAssetRecords(normalizedUserId, state).some(item => item.id === normalizedAssetId));
+    return record && visible && !this.isSuppressedAssetStatus(record.status)
       ? this.toAssetDetailDto(
           record,
           normalizedUserId,
@@ -259,6 +302,67 @@ export class LocalAssetsRepository {
     );
   }
 
+  statusDeleteAssignmentScopeRequests(
+    assetOwnerUserId: string,
+    assetIds: readonly string[],
+    ownerId: string,
+    authorizationEventId: string,
+    subEventId: string
+  ): void {
+    const normalizedAssetOwnerUserId = assetOwnerUserId.trim();
+    const normalizedAssetIds = new Set(assetIds.map(id => id.trim()).filter(Boolean));
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedAuthorizationEventId = authorizationEventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedAssetOwnerUserId || normalizedAssetIds.size === 0 || !normalizedOwnerId || !normalizedSubEventId) {
+      return;
+    }
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    this.memoryDb.write(state => {
+      let table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      let requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      for (const assetId of normalizedAssetIds) {
+        const current = table.byId[assetId];
+        if (!current || current.ownerUserId !== normalizedAssetOwnerUserId) {
+          continue;
+        }
+        let changed = false;
+        const requests = current.requests.map(request => {
+          const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+          const inScope = `${request.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId
+            && (bookingEventId === normalizedOwnerId
+              || (normalizedAuthorizationEventId.length > 0 && bookingEventId === normalizedAuthorizationEventId));
+          if (!inScope || request.recordStatus === 'D') {
+            return LocalAssetsMapper.cloneRequest(request);
+          }
+          changed = true;
+          return {
+            ...LocalAssetsMapper.cloneRequest(request),
+            recordStatus: 'D' as const,
+            menuActions: []
+          };
+        });
+        if (!changed) {
+          continue;
+        }
+        const next: AssetRecord = {
+          ...current,
+          requests,
+          updatedMs: nowMs,
+          updatedAtIso: nowIso
+        };
+        table = this.upsertRecordCollection(table, next);
+        requestTable = this.synchronizeAssetRequestCollection(requestTable, next, current.requests);
+      }
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: table,
+        [ASSET_REQUESTS_TABLE_NAME]: requestTable
+      };
+    });
+  }
+
   async applyMemberStatusChange(
     request: AppDTOs.AssetMemberStatusChangeRequestDTO
   ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
@@ -273,13 +377,17 @@ export class LocalAssetsRepository {
     if (!record || this.isSuppressedAssetStatus(record.status)) {
       return null;
     }
-    const inScope = (entry: AppDTOs.AssetMemberRequestDTO): boolean =>
-      entry.requestKind !== 'manual'
+    const inScope = (entry: AssetMemberRequestRecord): boolean =>
+      entry.recordStatus !== 'D'
+      && entry.requestKind !== 'manual'
       && `${entry.userId ?? ''}`.trim() === actorUserId
       && `${entry.booking?.eventId ?? ''}`.trim() === eventId
       && `${entry.booking?.subEventId ?? ''}`.trim() === subEventId;
     const previous = record.requests.find(inScope) ?? null;
-    const previousStatus = previous?.status ?? null;
+    const previousStatus: AppConstants.ActivityMemberStatus | null = previous?.status === 'accepted'
+      || previous?.status === 'pending'
+      ? previous.status
+      : null;
     if (request.action === 'leave' && !previous) {
       return null;
     }
@@ -290,7 +398,7 @@ export class LocalAssetsRepository {
         subEventId,
         userId: actorUserId,
         previousStatus,
-        status: previous.status,
+        status: previousStatus ?? 'pending',
         acceptedMemberDelta: 0,
         pendingMemberDelta: 0
       };
@@ -322,9 +430,10 @@ export class LocalAssetsRepository {
           }]
         : []),
       ...record.requests
-        .filter(entry => entry !== previous)
+        .filter(entry => entry.recordStatus !== 'D' && entry !== previous)
         .map(entry => ({
           ...entry,
+          status: entry.status === 'accepted' ? 'accepted' as const : 'pending' as const,
           booking: entry.booking
             ? {
                 ...entry.booking,
@@ -432,6 +541,66 @@ export class LocalAssetsRepository {
     });
   }
 
+  async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    let saved: AssetRecord | null = null;
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (
+        !current
+        || current.ownerUserId !== normalizedUserId
+        || this.isSuppressedAssetStatus(current.status)
+        || Boolean(current.ownerReleasedAtIso)
+      ) {
+        return state;
+      }
+      const nowIso = new Date().toISOString();
+      saved = {
+        ...current,
+        status: 'UR',
+        statusBeforeSuppression: LocalAssetsMapper.normalizeAssetStatus(current.status),
+        ownerReleasedAtIso: nowIso,
+        requests: current.requests
+          .filter(request => `${request.userId ?? ''}`.trim() !== normalizedUserId)
+          .map(request => LocalAssetsMapper.cloneRequest(request)),
+        updatedMs: Date.now(),
+        updatedAtIso: nowIso
+      };
+      const membersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const ownerKey = `asset:${normalizedAssetId}`;
+      const releasedMemberIds = new Set((membersTable.idsByOwnerKey[ownerKey] ?? [])
+        .filter(memberId => membersTable.byId[memberId]?.userId === normalizedUserId));
+      const nextMembersById = { ...membersTable.byId };
+      for (const memberId of releasedMemberIds) {
+        delete nextMembersById[memberId];
+      }
+      const nextIdsByOwnerKey = this.cloneActivityOwnerKeyIndex(membersTable.idsByOwnerKey);
+      nextIdsByOwnerKey[ownerKey] = (nextIdsByOwnerKey[ownerKey] ?? [])
+        .filter(memberId => !releasedMemberIds.has(memberId));
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
+          requestTable,
+          saved,
+          current.requests
+        ),
+        [ACTIVITY_MEMBERS_TABLE_NAME]: {
+          byId: nextMembersById,
+          ids: membersTable.ids.filter(memberId => !releasedMemberIds.has(memberId)),
+          idsByOwnerKey: nextIdsByOwnerKey
+        }
+      };
+    });
+    return saved ? this.toAssetDto(saved, normalizedUserId) : null;
+  }
+
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
@@ -452,6 +621,7 @@ export class LocalAssetsRepository {
         ownerName: actor?.name ?? current.ownerName,
         status: LocalAssetsMapper.restoredAssetStatus(current),
         statusBeforeSuppression: null,
+        ownerReleasedAtIso: null,
         updatedMs: Date.now(),
         updatedAtIso: new Date().toISOString()
       });
@@ -503,16 +673,71 @@ export class LocalAssetsRepository {
   }
 
   async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
-    const current = this.peekOwnedAssetsByUser(userId).find(asset => asset.id === assetId) ?? null;
-    if (!current || !targetUserId.trim()) {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
       return null;
     }
-    return {
-      ...current,
-      requests: current.requests.map(request => request.userId === targetUserId
-        ? { ...request, note: 'Borrow request approved by the owner.', menuActions: ['makeManager'] }
-        : request)
-    };
+
+    let saved: AssetRecord | null = null;
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      const targetManager = this.assetMemberRecords(normalizedAssetId)
+        .find(record => record.userId === normalizedTargetUserId
+          && record.status === 'accepted'
+          && this.isAssetManagerRole(record.role)) ?? null;
+      if (!current
+        || !this.canManageAssetMembers(current, normalizedUserId)
+        || !targetManager
+        || (current.ownerUserId !== normalizedUserId
+          && targetManager.managerGrantedByUserId !== normalizedUserId)) {
+        return state;
+      }
+      const now = new Date();
+      saved = this.withResolvedAssetRelevance({
+        ...current,
+        requests: current.requests.map(request => request.userId === normalizedTargetUserId
+          ? {
+              ...LocalAssetsMapper.cloneRequest(request),
+              note: 'Borrow request approved by the owner.',
+              menuActions: ['makeManager']
+            }
+          : LocalAssetsMapper.cloneRequest(request)),
+        updatedMs: now.getTime(),
+        updatedAtIso: now.toISOString()
+      });
+
+      const membersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const ownerKey = `asset:${normalizedAssetId}`;
+      const nextMembersById = { ...membersTable.byId };
+      for (const memberId of membersTable.idsByOwnerKey[ownerKey] ?? []) {
+        const member = nextMembersById[memberId];
+        if (member?.userId !== normalizedTargetUserId) {
+          continue;
+        }
+        nextMembersById[memberId] = {
+          ...member,
+          role: 'Member',
+          statusText: 'Accepted asset member.',
+          managerGrantedByUserId: null,
+          actionAtIso: now.toISOString(),
+          updatedMs: now.getTime(),
+          updatedAtIso: now.toISOString()
+        };
+      }
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [ACTIVITY_MEMBERS_TABLE_NAME]: {
+          byId: nextMembersById,
+          ids: [...membersTable.ids],
+          idsByOwnerKey: this.cloneActivityOwnerKeyIndex(membersTable.idsByOwnerKey)
+        }
+      };
+    });
+    return saved ? this.toAssetDto(saved, normalizedUserId) : null;
   }
 
   private queryUsers(): UserDto[] {
@@ -562,6 +787,9 @@ export class LocalAssetsRepository {
     let promotedExistingRequest = false;
     const next = record.requests.map(request => {
       const cloned = LocalAssetsMapper.cloneRequest(request);
+      if (request.recordStatus === 'D') {
+        return cloned;
+      }
       if (`${cloned.userId ?? ''}`.trim() !== normalizedTargetUserId) {
         return cloned;
       }
@@ -574,8 +802,11 @@ export class LocalAssetsRepository {
       };
     });
     if (!promotedExistingRequest) {
+      const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       next.push({
-        id: `${record.id}:manager:${normalizedTargetUserId}`,
+        id: `${record.id}:manager:${normalizedTargetUserId}:${requestId}`,
         userId: normalizedTargetUserId,
         name: targetUser.name,
         initials: targetUser.initials,
@@ -633,6 +864,7 @@ export class LocalAssetsRepository {
       updatedMs: now.getTime(),
       createdAtIso: existing?.createdAtIso ?? nowIso,
       updatedAtIso: nowIso,
+      managerGrantedByUserId: actorUserId,
       updatedUser: actorUserId
     } as ActivityMemberRecord;
     const nextIds = table.ids.includes(recordId) ? [...table.ids] : [recordId, ...table.ids];
@@ -675,14 +907,16 @@ export class LocalAssetsRepository {
     if (!normalizedViewerUserId) {
       return [];
     }
-    const isOwner = record.ownerUserId === normalizedViewerUserId;
+    const sameOwner = record.ownerUserId === normalizedViewerUserId;
+    const isOwner = sameOwner && !record.ownerReleasedAtIso;
     const isManager = isOwner || this.isAcceptedAssetManager(record.id, normalizedViewerUserId);
-    if (!isManager) {
+    const status = LocalAssetsMapper.normalizeAssetStatus(record.status);
+    const isTakeOverCandidate = status === 'UR' && this.canTakeOverAsset(record, normalizedViewerUserId);
+    if (!isManager && !isTakeOverCandidate) {
       return ['share'];
     }
     const actions: string[] = [];
-    const status = LocalAssetsMapper.normalizeAssetStatus(record.status);
-    if (status === 'UR' && this.isActiveDemoUser(normalizedViewerUserId)) {
+    if (isTakeOverCandidate) {
       actions.push('takeOver');
     }
     actions.push('share');
@@ -695,10 +929,30 @@ export class LocalAssetsRepository {
 
   private canTakeOverAsset(record: AssetRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId)) {
+    if (
+      LocalAssetsMapper.normalizeAssetStatus(record.status) !== 'UR'
+      || !record.ownerReleasedAtIso
+      || !normalizedUserId
+      || !this.isActiveDemoUser(normalizedUserId)
+    ) {
       return false;
     }
-    return record.ownerUserId === normalizedUserId || this.isAcceptedAssetManager(record.id, normalizedUserId);
+    const acceptedActiveMembers = this.assetMemberRecords(record.id)
+      .filter(member => member.status === 'accepted')
+      .filter(member => this.isActiveDemoUser(member.userId))
+      .filter(member => member.userId !== record.ownerUserId);
+    const acceptedActiveUserIds = new Set(record.requests
+      .filter(request => request.recordStatus !== 'D')
+      .filter(request => `${request.status ?? ''}`.trim().toLowerCase() === 'accepted')
+      .map(request => `${request.userId ?? ''}`.trim())
+      .filter(memberUserId => memberUserId.length > 0)
+      .filter(memberUserId => memberUserId !== record.ownerUserId)
+      .filter(memberUserId => this.isActiveDemoUser(memberUserId)));
+    acceptedActiveMembers.forEach(member => acceptedActiveUserIds.add(member.userId));
+    const hasActiveManager = acceptedActiveMembers.some(member => this.isAssetManagerRole(member.role));
+    const actorIsManager = acceptedActiveMembers.some(member => member.userId === normalizedUserId
+      && this.isAssetManagerRole(member.role));
+    return acceptedActiveUserIds.has(normalizedUserId) && (!hasActiveManager || actorIsManager);
   }
 
   private canManageAssetMembers(record: AssetRecord, userId: string): boolean {
@@ -706,7 +960,10 @@ export class LocalAssetsRepository {
     if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId) || LocalAssetsMapper.normalizeAssetStatus(record.status) === 'T') {
       return false;
     }
-    return record.ownerUserId === normalizedUserId || this.isAcceptedAssetManager(record.id, normalizedUserId);
+    if (record.ownerUserId === normalizedUserId) {
+      return !record.ownerReleasedAtIso;
+    }
+    return this.isAcceptedAssetManager(record.id, normalizedUserId);
   }
 
   private resolveRequestMenuActions(
@@ -761,10 +1018,15 @@ export class LocalAssetsRepository {
     const state = this.memoryDb.read();
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
-    const records = (table.idsByOwnerUserId[ownerUserId] ?? [])
+    const records = table.ids
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
-      .filter(record => !this.isSuppressedAssetStatus(record.status))
+      .filter(record => (
+        record.ownerUserId === ownerUserId && !this.isSuppressedAssetStatus(record.status)
+      ) || (
+        LocalAssetsMapper.normalizeAssetStatus(record.status) === 'UR'
+        && this.canTakeOverAsset(record, ownerUserId)
+      ))
       .sort((left, right) => right.updatedMs - left.updatedMs);
     const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, records);
     return records.map(record => this.toAssetDto(record, ownerUserId, metricsByAssetId.get(record.id)));
@@ -816,6 +1078,7 @@ export class LocalAssetsRepository {
       .map(id => requestTable.byId[id])
       .filter((request): request is AssetRequestRecord =>
         Boolean(request)
+        && request.recordStatus !== 'D'
         && request.assetId === record.id
         && request.ownerUserId === record.ownerUserId);
   }
@@ -888,6 +1151,7 @@ export class LocalAssetsRepository {
   private availableQuantityForWindow(record: AssetRecord, startAtIso: string, endAtIso: string): number {
     const totalQuantity = AssetCardBuilder.storedQuantityValue(record);
     const overlappingCommitted = (record.requests ?? [])
+      .filter(request => request.recordStatus !== 'D')
       .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetRequestWindowOverlap(request, startAtIso, endAtIso))
@@ -1006,8 +1270,20 @@ export class LocalAssetsRepository {
       visibility: incoming.visibility ?? existing?.visibility ?? 'Public',
       status: incoming.status ?? existing?.status ?? 'A',
       statusBeforeSuppression: existing?.statusBeforeSuppression ?? incoming.statusBeforeSuppression ?? null,
+      ownerReleasedAtIso: incoming.ownerReleasedAtIso !== undefined
+        ? incoming.ownerReleasedAtIso
+        : existing?.ownerReleasedAtIso ?? null,
       ownerName: incoming.ownerName ?? existing?.ownerName,
-      requests: incoming.requests.map(request => LocalAssetsMapper.cloneRequest(request)),
+      requests: [
+        ...incoming.requests.map(request => LocalAssetsMapper.cloneRequest(request)),
+        ...(existing?.requests ?? [])
+          .filter(request => !incoming.requests.some(incomingRequest => incomingRequest.id === request.id))
+          .map(request => ({
+            ...LocalAssetsMapper.cloneRequest(request),
+            recordStatus: 'D' as const,
+            menuActions: []
+          }))
+      ],
       menuActions: [...(incoming.menuActions ?? existing?.menuActions ?? [])],
       createdAtIso: existing?.createdAtIso ?? timestampIso,
       updatedAtIso: timestampIso,
@@ -1053,10 +1329,11 @@ export class LocalAssetsRepository {
   }
 
   private resolveAssetBoost(record: AssetRecord): number {
-    const acceptedRequests = record.requests.filter(request => request.status === 'accepted').length;
+    const activeRequests = record.requests.filter(request => request.recordStatus !== 'D');
+    const acceptedRequests = activeRequests.filter(request => request.status === 'accepted').length;
     const capacityAvailable = Math.max(0, Math.trunc(Number(record.capacityTotal) || 0) - acceptedRequests);
     const quantity = Math.max(0, Math.trunc(Number(record.quantity) || 0));
-    const requestCount = Math.max(0, record.requests.length);
+    const requestCount = Math.max(0, activeRequests.length);
     return Math.max(0, (capacityAvailable * 7) + (quantity * 11) + (requestCount * 13));
   }
 

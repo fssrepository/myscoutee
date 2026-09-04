@@ -107,4 +107,20 @@ describe('NotificationCenterStore realtime unread synchronization', () => {
 
     expect(store.attentionVisible()).toBe(false);
   });
+
+  it('opens and closes the already-loaded popup shell without a server request', () => {
+    const store = TestBed.inject(NotificationCenterStore);
+    const notificationsService = TestBed.inject(NotificationsService);
+    store.initialize('user-1', 4);
+
+    store.open();
+
+    expect(store.isOpen()).toBe(true);
+    expect(store.attentionVisible()).toBe(false);
+    expect(notificationsService.pollIntervalMs).not.toHaveBeenCalled();
+
+    store.close();
+
+    expect(store.isOpen()).toBe(false);
+  });
 });

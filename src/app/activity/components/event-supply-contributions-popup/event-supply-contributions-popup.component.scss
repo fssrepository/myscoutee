@@ -16,6 +16,32 @@
   min-height: 0;
 }
 
+.subevent-supply-contributions-popup {
+  flex-direction: column;
+}
+
+.subevent-supply-requirement-row {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding: 0.45rem 0.25rem 0.35rem;
+}
+
+.subevent-supply-requirement-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid rgba(49, 78, 120, 0.12);
+  border-radius: 999px;
+  background: #edf3fb;
+  color: #314e78;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 app-smart-list.subevent-supply-contribution-smart-list {
   display: flex;
   flex: 1 1 auto;

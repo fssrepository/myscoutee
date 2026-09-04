@@ -156,6 +156,10 @@ export class AssetsService extends BaseRouteModeService {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
   }
 
+  async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
+    return this.assetsService.leaveOwnedAsset(userId, assetId);
+  }
+
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     return this.assetsService.takeOverOwnedAsset(userId, assetId);
   }

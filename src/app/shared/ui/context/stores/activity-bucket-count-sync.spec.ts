@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ActivityStore, type ActivityCounters } from './activity.store';
 
-describe('activity event bucket count signal', () => {
+describe('activity bucket count signal', () => {
   const baseCounters: Partial<ActivityCounters> = {
     events: 4,
     invitations: 2,
@@ -110,6 +110,36 @@ describe('activity event bucket count signal', () => {
         accommodation: 4,
         supplies: 6,
         tickets: 3
+      }
+    });
+  });
+
+  it('publishes owned Asset counts as idempotent absolute values on both counter shapes', () => {
+    const store = new ActivityStore();
+    const assetBaseCounters: Partial<ActivityCounters> = {
+      cars: 1,
+      accommodation: 2,
+      supplies: 3,
+      asset: {
+        cars: 1,
+        accommodation: 2,
+        supplies: 3,
+        tickets: 4
+      }
+    };
+
+    store.signalUserAssetBucketCount('user-1', 'Transport', 2, assetBaseCounters);
+    store.signalUserAssetBucketCount('user-1', 'Transport', 2, assetBaseCounters);
+    store.signalUserAssetBucketCount('user-1', 'Accommodation', 1, assetBaseCounters);
+
+    expect(store.getUserCounterOverrides('user-1')).toMatchObject({
+      cars: 2,
+      accommodation: 1,
+      asset: {
+        cars: 2,
+        accommodation: 1,
+        supplies: 3,
+        tickets: 4
       }
     });
   });

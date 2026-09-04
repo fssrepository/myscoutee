@@ -1477,10 +1477,14 @@ export class HttpChatsService implements IChatsService {
     if (activeUserId) {
       baseUrl.searchParams.set('userId', activeUserId);
     }
-    if (this.sessionService.currentSession()?.kind === 'demo') {
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'demo') {
       baseUrl.searchParams.set('sessionKind', 'demo');
+      if (session.sessionId) {
+        baseUrl.searchParams.set('sessionId', session.sessionId);
+      }
     }
-    if (this.sessionService.currentSession()?.kind === 'firebase') {
+    if (session?.kind === 'firebase') {
       const token = await this.sessionService.getFirebaseIdToken();
       if (!token) {
         return null;

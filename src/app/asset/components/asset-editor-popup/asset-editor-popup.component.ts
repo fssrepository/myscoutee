@@ -64,6 +64,7 @@ import {
 
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
@@ -97,6 +98,7 @@ export class AssetEditorPopupComponent {
   private static readonly RUNTIME_ROUTE_SAVE_MINIMUM_MS = 520;
 
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly assetsService = inject(AssetsService);
   private readonly i18n = inject(I18nService);
   protected readonly assetStore = inject(AssetStore);
@@ -904,6 +906,13 @@ export class AssetEditorPopupComponent {
           ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
               if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
                 this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
+                this.activityStore.signalUserAssetBucketCount(
+                  ownerUserId,
+                  savedCard.type,
+                  this.assetStore.cardsByType(savedCard.type).length,
+                  this.userProfileStore.getUserProfile(ownerUserId)?.activities
+                    ?? this.userProfileStore.activeUserProfile()?.activities
+                );
               }
             })
           : Promise.resolve();
