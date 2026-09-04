@@ -3530,10 +3530,32 @@ export class EventResourcePopupComponent {
       this.assetStore.applyAssetCards(nextCards, { mutation: persist });
       if (persist) {
         for (const dirtyCard of dirtyCards) {
-          void this.assetsService.saveOwnedAsset(activeUser.id, this.toAssetDetailDto(dirtyCard));
+          void this.persistSubEventManualAssetRequests(activeUser.id, dirtyCard);
         }
       }
     }
+  }
+
+  private async persistSubEventManualAssetRequests(
+    ownerUserId: string,
+    card: ResourceAssetDTO
+  ): Promise<void> {
+    const detail = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+    if (!detail) {
+      throw new Error('The assigned asset details could not be loaded.');
+    }
+    await this.assetsService.saveOwnedAsset(ownerUserId, {
+      ...detail,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }))
+    });
   }
 
   private buildManualAssignmentRequest(
