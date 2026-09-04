@@ -94,6 +94,66 @@ export class LocalEventsRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
+  updateSubEventResourceMetrics(
+    ownerId: string,
+    subEventId: string,
+    metricsByType: Partial<Record<AppConstants.AssetType, ContractTypes.SubEventResourceMetricDTO>>
+  ): void {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId) {
+      return;
+    }
+    const transport = metricsByType[AppConstants.ASSET_TYPE_TRANSPORT];
+    const accommodation = metricsByType[AppConstants.ASSET_TYPE_ACCOMMODATION];
+    const supplies = metricsByType[AppConstants.ASSET_TYPE_SUPPLIES];
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME] as ActivityEventRecordCollection;
+      const byId = { ...table.byId };
+      let changed = false;
+      for (const id of table.ids) {
+        const record = table.byId[id];
+        const sourceId = `${(record as { sourceId?: string } | null)?.sourceId ?? ''}`.trim();
+        if (!record || (record.id !== normalizedOwnerId && sourceId !== normalizedOwnerId)) {
+          continue;
+        }
+        let matched = false;
+        const subEvents = (record.subEvents ?? []).map(item => {
+          if (`${item.id ?? ''}`.trim() !== normalizedSubEventId) {
+            return item;
+          }
+          matched = true;
+          return {
+            ...item,
+            carsAccepted: this.toNonNegativeInteger(transport?.accepted),
+            carsPending: this.toNonNegativeInteger(transport?.pending),
+            carsCapacityMin: this.toNonNegativeInteger(transport?.capacityMin),
+            carsCapacityMax: this.toNonNegativeInteger(transport?.capacityMax),
+            accommodationAccepted: this.toNonNegativeInteger(accommodation?.accepted),
+            accommodationPending: this.toNonNegativeInteger(accommodation?.pending),
+            accommodationCapacityMin: this.toNonNegativeInteger(accommodation?.capacityMin),
+            accommodationCapacityMax: this.toNonNegativeInteger(accommodation?.capacityMax),
+            suppliesAccepted: this.toNonNegativeInteger(supplies?.accepted),
+            suppliesPending: this.toNonNegativeInteger(supplies?.pending),
+            suppliesCapacityMin: this.toNonNegativeInteger(supplies?.capacityMin),
+            suppliesCapacityMax: this.toNonNegativeInteger(supplies?.capacityMax)
+          };
+        });
+        if (!matched) {
+          continue;
+        }
+        byId[id] = { ...record, subEvents };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: { ...table, byId }
+          }
+        : state;
+    });
+  }
+
   queryItemsByUser(userId: string): ActivityEventRecord[] {
     return this.queryUserRecords(userId);
   }

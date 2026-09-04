@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../contracts/activity.interface';
+import {
+  ActivityEventDetailDTO,
+  type ActivityEventRecord,
+  type ActivitySubEventResourceStateDTO
+} from '../../../contracts/activity.interface';
 import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
 
 describe('LocalActivityEventDetailsMapper empty child definitions', () => {
@@ -75,5 +79,56 @@ describe('LocalActivityEventsMapper slot-scoped main Event runtime', () => {
         capacityMax: 8
       });
     }
+  });
+});
+
+describe('LocalActivityEventsMapper common resource metrics', () => {
+  it('keeps the stored common counters for a viewer with an empty own assignment state', () => {
+    const slots = [{
+      id: 'event-1:default',
+      parentEventId: 'event-1',
+      slotSourceId: null,
+      subEventItems: [{
+        id: 'sub-1',
+        carsAccepted: 1,
+        carsPending: 0,
+        carsCapacityMin: 0,
+        carsCapacityMax: 4,
+        accommodationAccepted: 1,
+        accommodationPending: 0,
+        accommodationCapacityMin: 0,
+        accommodationCapacityMax: 3,
+        suppliesAccepted: 3,
+        suppliesPending: 0,
+        suppliesCapacityMin: 0,
+        suppliesCapacityMax: 6
+      }]
+    }] as Parameters<typeof LocalActivityEventsMapper.withSubEventResourceRecords>[0];
+    const rileyState: ActivitySubEventResourceStateDTO = {
+      ownerId: 'event-1',
+      subEventId: 'sub-1',
+      assetOwnerUserId: 'riley',
+      assetAssignmentIds: {},
+      assetSettingsByType: {},
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {}
+    };
+    const key = LocalActivityEventsMapper.subEventResourceRecordKey(rileyState);
+
+    const result = LocalActivityEventsMapper.withSubEventResourceRecords(
+      slots,
+      new Map([[key, rileyState]]),
+      'riley'
+    );
+
+    expect(result[0]?.subEventItems[0]).toMatchObject({
+      carsAccepted: 1,
+      carsCapacityMax: 4,
+      accommodationAccepted: 1,
+      accommodationCapacityMax: 3,
+      suppliesAccepted: 3,
+      suppliesCapacityMax: 6
+    });
   });
 });

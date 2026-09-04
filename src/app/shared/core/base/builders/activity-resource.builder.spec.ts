@@ -213,37 +213,33 @@ describe('ActivityResourceBuilder group request scoping', () => {
     });
   });
 
-  it('aggregates the authoritative metrics from every visible resource owner', () => {
-    const state = (
-      assetOwnerUserId: string,
-      accepted: number,
-      pending: number,
-      capacityMax: number
-    ) => ({
-      ownerId: 'event-1:stage-1:stage-1:group:1',
+  it('persists a participant contribution without copying the shared supplies assignment', () => {
+    const metrics = ActivityResourceBuilder.buildPersistedResourceMetrics({
+      ownerId: 'event-1',
       subEventId: 'stage-1',
-      assetOwnerUserId,
+      assetOwnerUserId: 'riley',
       assetAssignmentIds: {},
       assetSettingsByType: {},
-      supplyContributionEntriesByAssetId: {},
+      supplyContributionEntriesByAssetId: {
+        'supplies-1': [{
+          id: 'contribution-riley',
+          userId: 'riley',
+          quantity: 2,
+          addedAtIso: '2026-09-04T04:59:00Z'
+        }]
+      },
       fallbackAssetCardsByType: {},
-      resourceMetricsByType: {
-        Transport: { accepted, pending, capacityMin: 0, capacityMax }
-      }
-    });
+      resourceMetricsByType: {}
+    }, []);
 
-    expect(ActivityResourceBuilder.aggregateResourceMetricsByType([
-      state('owner-1', 1, 1, 4),
-      state('owner-2', 2, 0, 3)
-    ])).toEqual({
-      Transport: {
-        accepted: 3,
-        pending: 1,
-        capacityMin: 0,
-        capacityMax: 7
-      }
+    expect(metrics.Supplies).toEqual({
+      accepted: 2,
+      pending: 0,
+      capacityMin: 0,
+      capacityMax: 0
     });
   });
+
 });
 
 function request(id: string, userId: string, eventId: string): AssetMemberRequestDTO {

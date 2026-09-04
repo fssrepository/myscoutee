@@ -75,11 +75,14 @@ export class LocalActivityResourcesRepository {
     const table = this.normalizeCollection(
       storedTable ?? this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]
     );
-    const record = table.byId[LocalActivityResourcesMapper.recordId(normalizedRef)];
-    const entries = record && !LocalActivityResourcesMapper.isDeleted(record)
-      ? [...(record.supplyContributionEntriesByAssetId[normalizedAssetId] ?? [])]
-          .sort((left, right) => Date.parse(right.addedAtIso) - Date.parse(left.addedAtIso))
-      : [];
+    const entries = table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventResourceRecord => Boolean(record)
+        && !LocalActivityResourcesMapper.isDeleted(record)
+        && record.ownerId === normalizedRef.ownerId
+        && record.subEventId === normalizedRef.subEventId)
+      .flatMap(record => record.supplyContributionEntriesByAssetId[normalizedAssetId] ?? [])
+      .sort((left, right) => Date.parse(right.addedAtIso) - Date.parse(left.addedAtIso));
     const start = normalizedPage * normalizedPageSize;
     return {
       items: entries.slice(start, start + normalizedPageSize).map(entry => ({ ...entry })),

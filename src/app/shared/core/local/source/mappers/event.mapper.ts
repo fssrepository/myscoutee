@@ -138,11 +138,17 @@ export class LocalActivityEventsMapper {
     parentRecord: ActivityEventRecord,
     groupCountsByStageId: ReadonlyMap<string, number>
   ): SubEventsSlotDTO {
-    const subEventItems = source.definitions.length > 0
+    const generatedItems = source.definitions.length > 0
       ? this.subEventItemsForSlot(source.startAt, source.definitions, groupCountsByStageId)
       : source.slotSourceId
         ? [this.slotMainEventItem(source, parentRecord)]
         : [];
+    const storedItemsById = new Map(
+      (parentRecord.subEvents ?? []).map(item => [`${item.id ?? ''}`.trim(), item])
+    );
+    const subEventItems = generatedItems.map(item =>
+      this.withStoredSubEventCounters(item, storedItemsById.get(`${item.id ?? ''}`.trim()))
+    );
     return {
       id: source.id,
       parentEventId: source.parentEventId,
@@ -808,6 +814,9 @@ export class LocalActivityEventsMapper {
     resource: ActivitySubEventResourceStateDTO | null,
     resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): EventContracts.SubEventDTO {
+    if (item.runtimeKind !== 'MAIN_EVENT') {
+      return item;
+    }
     const car = this.resourceMetric(resource, AppConstants.ASSET_TYPE_TRANSPORT, {
       accepted: item.carsAccepted,
       pending: item.carsPending,
@@ -904,6 +913,33 @@ export class LocalActivityEventsMapper {
       pending: metric ? this.nonNegativeInteger(metric.pending) : pending,
       capacityMin,
       capacityMax
+    };
+  }
+
+  private static withStoredSubEventCounters(
+    item: EventContracts.SubEventDTO,
+    stored: EventContracts.SubEventDTO | undefined
+  ): EventContracts.SubEventDTO {
+    if (!stored) {
+      return item;
+    }
+    return {
+      ...item,
+      membersAccepted: this.nonNegativeInteger(stored.membersAccepted),
+      membersPending: this.nonNegativeInteger(stored.membersPending),
+      carsAccepted: this.nonNegativeInteger(stored.carsAccepted),
+      carsPending: this.nonNegativeInteger(stored.carsPending),
+      carsCapacityMin: this.nonNegativeInteger(stored.carsCapacityMin),
+      carsCapacityMax: this.nonNegativeInteger(stored.carsCapacityMax),
+      accommodationAccepted: this.nonNegativeInteger(stored.accommodationAccepted),
+      accommodationPending: this.nonNegativeInteger(stored.accommodationPending),
+      accommodationCapacityMin: this.nonNegativeInteger(stored.accommodationCapacityMin),
+      accommodationCapacityMax: this.nonNegativeInteger(stored.accommodationCapacityMax),
+      suppliesAccepted: this.nonNegativeInteger(stored.suppliesAccepted),
+      suppliesPending: this.nonNegativeInteger(stored.suppliesPending),
+      suppliesCapacityMin: this.nonNegativeInteger(stored.suppliesCapacityMin),
+      suppliesCapacityMax: this.nonNegativeInteger(stored.suppliesCapacityMax),
+      groupsPending: this.nonNegativeInteger(stored.groupsPending)
     };
   }
 

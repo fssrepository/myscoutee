@@ -1155,20 +1155,26 @@ export class EventResourcePopupComponent {
   }
 
   private applyPersistedPopupScopeMetrics(scope: AppDTOs.ActivitySubEventResourceScopeDTO): void {
-    const states = scope.visibleStates.length > 0
-      ? scope.visibleStates
-      : [scope.viewerState];
-    const aggregated = ActivityResourceBuilder.aggregateResourceMetricsByType(states);
-    const emptyMetric = (): AppDTOs.SubEventResourceMetricDTO => ({
-      accepted: 0,
-      pending: 0,
-      capacityMin: 0,
-      capacityMax: 0
-    });
+    const subEvent = this.resourcePopupStore.popupContextRef()?.subEvent;
     const resourceMetricsByType = {
-      [AppConstants.ASSET_TYPE_TRANSPORT]: aggregated[AppConstants.ASSET_TYPE_TRANSPORT] ?? emptyMetric(),
-      [AppConstants.ASSET_TYPE_ACCOMMODATION]: aggregated[AppConstants.ASSET_TYPE_ACCOMMODATION] ?? emptyMetric(),
-      [AppConstants.ASSET_TYPE_SUPPLIES]: aggregated[AppConstants.ASSET_TYPE_SUPPLIES] ?? emptyMetric()
+      [AppConstants.ASSET_TYPE_TRANSPORT]: {
+        accepted: subEvent?.carsAccepted ?? 0,
+        pending: subEvent?.carsPending ?? 0,
+        capacityMin: subEvent?.carsCapacityMin ?? 0,
+        capacityMax: subEvent?.carsCapacityMax ?? 0
+      },
+      [AppConstants.ASSET_TYPE_ACCOMMODATION]: {
+        accepted: subEvent?.accommodationAccepted ?? 0,
+        pending: subEvent?.accommodationPending ?? 0,
+        capacityMin: subEvent?.accommodationCapacityMin ?? 0,
+        capacityMax: subEvent?.accommodationCapacityMax ?? 0
+      },
+      [AppConstants.ASSET_TYPE_SUPPLIES]: {
+        accepted: subEvent?.suppliesAccepted ?? 0,
+        pending: subEvent?.suppliesPending ?? 0,
+        capacityMin: subEvent?.suppliesCapacityMin ?? 0,
+        capacityMax: subEvent?.suppliesCapacityMax ?? 0
+      }
     };
     this.syncPopupSubEventMetrics({
       syncManualAssetRequests: false,
@@ -1710,7 +1716,9 @@ export class EventResourcePopupComponent {
       subEventId: context.subEvent.id,
       assetId: card.sourceAssetId,
       assetOwnerUserId: `${card.assetOwnerUserId ?? this.activeUser().id}`.trim(),
-      title: card.title
+      title: card.title,
+      accepted: Math.max(0, Math.trunc(Number(card.accepted) || 0)),
+      capacityTotal: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
     });
     this.resourcePopupStore.bringDialogRef.set(null);
   }
@@ -1759,11 +1767,18 @@ export class EventResourcePopupComponent {
         const managerUserId = AppConstants.isAssetType(type)
           ? (`${assignmentSettings?.addedByUserId ?? ''}`.trim() || null)
           : null;
-        cardsByAssignment.set(`${state.assetOwnerUserId}:${card.id}`, {
+        const existing = cardsByAssignment.get(card.id);
+        const accepted = card.type === AppConstants.ASSET_TYPE_SUPPLIES
+          ? visibleStates
+              .flatMap(item => item.supplyContributionEntriesByAssetId[card.id] ?? [])
+              .reduce((sum, entry) => sum + Math.max(0, Math.trunc(Number(entry.quantity) || 0)), 0)
+          : this.assetAcceptedCount(card, context.subEvent.id, managerUserId);
+        const pending = this.assetPendingCount(card, context.subEvent.id, managerUserId);
+        cardsByAssignment.set(card.id, {
           id: `subevent-${state.assetOwnerUserId}-${card.id}`,
           type: card.type,
           sourceAssetId: card.id,
-          assetOwnerUserId: state.assetOwnerUserId,
+          assetOwnerUserId: `${card.ownerUserId ?? ''}`.trim() || state.assetOwnerUserId,
           title: card.title,
           subtitle: card.subtitle,
           city: card.city,
@@ -1771,12 +1786,12 @@ export class EventResourcePopupComponent {
           imageUrl: card.imageUrl,
           sourceLink: ActivityResourceBuilder.assetSourceLink(card),
           routes: this.assignedResourceCardRoutes(card, assignmentSettings),
-          capacityTotal: this.assignedAssetOccupancyCapacityTotal(card, assignmentSettings),
-          accepted: card.type === AppConstants.ASSET_TYPE_SUPPLIES
-            ? (state.supplyContributionEntriesByAssetId[card.id] ?? [])
-                .reduce((sum, entry) => sum + Math.max(0, Math.trunc(Number(entry.quantity) || 0)), 0)
-            : this.assetAcceptedCount(card, context.subEvent.id, managerUserId),
-          pending: this.assetPendingCount(card, context.subEvent.id, managerUserId),
+          capacityTotal: Math.max(
+            existing?.capacityTotal ?? 0,
+            this.assignedAssetOccupancyCapacityTotal(card, assignmentSettings)
+          ),
+          accepted: Math.max(existing?.accepted ?? 0, accepted),
+          pending: Math.max(existing?.pending ?? 0, pending),
           isMembers: false
         });
       }

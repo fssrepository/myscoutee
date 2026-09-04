@@ -133,6 +133,8 @@ export interface SupplyContributionPopupState {
   assetId: string;
   assetOwnerUserId: string;
   title: string;
+  accepted: number;
+  capacityTotal: number;
 }
 
 export interface PendingAssignSaveState {

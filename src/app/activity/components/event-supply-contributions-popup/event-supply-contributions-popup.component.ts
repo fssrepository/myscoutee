@@ -444,9 +444,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!context) {
       return;
     }
-    const source = this.ownedAssetCards().find(card => card.id === context.assetId && card.type === AppConstants.ASSET_TYPE_SUPPLIES);
-    const settings = this.getSubEventAssignedAssetSettings(context.subEventId, AppConstants.ASSET_TYPE_SUPPLIES);
-    const max = Math.max(1, settings[context.assetId]?.capacityMax ?? source?.capacityTotal ?? 1);
+    const max = Math.max(0, context.capacityTotal - context.accepted);
     this.resourcePopupStore.bringDialogRef.set({
       subEventId: context.subEventId,
       cardId: context.assetId,
@@ -536,10 +534,15 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
           return;
         }
         const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        const persistedEntry = (resolvedState.supplyContributionEntriesByAssetId[dialog.cardId] ?? [])
+          .find(entry => entry.id === nextEntry.id);
+        if (!persistedEntry) {
+          throw new Error('Supply contribution was not persisted.');
+        }
         this.applyPersistedPopupState(resolvedState);
         this.resourcePopupStore.bringDialogRef.set(null);
-        this.insertVisibleSupplyContribution(nextEntry);
-        this.syncPopupSubEventMetrics();
+        this.insertVisibleSupplyContribution(persistedEntry);
+        this.syncPopupSubEventMetrics(resolvedState);
       })
       .catch(error => {
         if (this.pendingSupplyBringAbortController === abortController) {
@@ -611,7 +614,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
     this.supplyContributionSmartList?.removeVisibleItemByIdentity(pending.entryId, { totalDelta: -1 });
-    this.syncPopupSubEventMetrics();
+    this.syncPopupSubEventMetrics(resolvedState);
   }
 
   protected addedLabel(addedAtIso: string): string {
@@ -711,6 +714,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!normalizedState) {
       return;
     }
+    this.resourcePopupStore.upsertVisibleResourceState(normalizedState);
     const activeContext = this.resourcePopupStore.popupContextRef();
     if (
       activeContext
@@ -745,12 +749,14 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     }
   }
 
-  private syncPopupSubEventMetrics(): void {
+  private syncPopupSubEventMetrics(
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
+  ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
     }
-    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
@@ -766,6 +772,19 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(
+      nextSubEvent,
+      persistedState
+    );
+    const supplyPopup = this.resourcePopupStore.supplyPopupRef();
+    const persistedSupplies = persistedState?.resourceMetricsByType?.[AppConstants.ASSET_TYPE_SUPPLIES];
+    if (supplyPopup && persistedSupplies) {
+      this.resourcePopupStore.supplyPopupRef.set({
+        ...supplyPopup,
+        accepted: Math.max(0, Math.trunc(Number(persistedSupplies.accepted) || 0)),
+        capacityTotal: Math.max(0, Math.trunc(Number(persistedSupplies.capacityMax) || 0))
+      });
+    }
     const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
       || context.subEvent.carsPending !== nextSubEvent.carsPending
       || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin
