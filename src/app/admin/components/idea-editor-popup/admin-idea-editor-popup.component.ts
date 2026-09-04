@@ -263,9 +263,9 @@ export class AdminIdeaEditorPopupComponent {
       });
       this.applyIdeaFilterCounts(result.counts);
       this.reindexAdminPosts();
-      const items = result.records
-        .map(post => this.adminIdeaCardForPostId(post.id))
-        .filter((card): card is IdeaInfoCard => Boolean(card));
+      const items = this.ideaSmartList?.convertItems(result.records, {
+        counts: result.counts
+      }) ?? this.ideaPosts.adminIdeaInfoCards(result.records);
       return {
         items,
         total: result.total,
@@ -1555,7 +1555,13 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   private ideaPostFromCard(card: IdeaInfoCard): IdeaPostDto | null {
-    return this.adminPostById(this.ideaCardPostId(card));
+    const postId = this.ideaCardPostId(card);
+    const source = this.ideaSmartList?.sourceItemSnapshot(card.id);
+    if (source && typeof source === 'object'
+      && `${(source as Partial<IdeaPostDto>).id ?? ''}`.trim() === postId) {
+      return source as IdeaPostDto;
+    }
+    return this.adminPostById(postId);
   }
 
   private adminPostById(postId: string): IdeaPostDto | null {
