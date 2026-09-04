@@ -134,6 +134,7 @@ export interface SupplyContributionPopupState {
   assetOwnerUserId: string;
   title: string;
   accepted: number;
+  capacityMin: number;
   capacityTotal: number;
 }
 

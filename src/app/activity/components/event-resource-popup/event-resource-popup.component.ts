@@ -1718,6 +1718,12 @@ export class EventResourcePopupComponent {
       assetOwnerUserId: `${card.assetOwnerUserId ?? this.activeUser().id}`.trim(),
       title: card.title,
       accepted: Math.max(0, Math.trunc(Number(card.accepted) || 0)),
+      capacityMin: Math.max(0, Math.trunc(Number(this.visibleAssignedAssetSettings(
+        context.subEvent.id,
+        AppConstants.ASSET_TYPE_SUPPLIES,
+        card.sourceAssetId,
+        card.assetOwnerUserId
+      )?.capacityMin) || 0)),
       capacityTotal: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
     });
     this.resourcePopupStore.bringDialogRef.set(null);

@@ -398,6 +398,11 @@ export interface SubEventSupplyContributionEntryDTO {
   userId: string;
   quantity: number;
   addedAtIso: string;
+  name?: string;
+  initials?: string;
+  gender?: AppConstants.UserGender;
+  age?: number;
+  city?: string;
 }
 
 export interface SubEventSupplyContributionPageDTO {

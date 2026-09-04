@@ -281,6 +281,16 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     };
   }
 
+  protected supplyRequirementLabel(): string {
+    const supply = this.resourcePopupStore.supplyPopupRef();
+    const required = Math.max(0, Math.trunc(Number(supply?.capacityMin) || 0));
+    const remaining = Math.max(
+      0,
+      Math.trunc(Number(supply?.capacityTotal) || 0) - Math.trunc(Number(supply?.accepted) || 0)
+    );
+    return `Required ${required} · Remaining ${remaining}`;
+  }
+
   protected supplyContributionsPopupZIndex(): number {
     return 3200;
   }
@@ -425,7 +435,9 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       pageSize,
       supply.assetOwnerUserId
     );
-    await this.usersService.warmCachedUsers(result.items.map(entry => entry.userId));
+    await this.usersService.warmCachedUsers(result.items
+      .filter(entry => !entry.name?.trim())
+      .map(entry => entry.userId));
     return {
       items: this.buildSupplyContributionRows(result.items),
       total: result.total
@@ -642,14 +654,18 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return entries
       .map(entry => {
         const user = this.userById.get(entry.userId) ?? null;
+        const name = entry.name?.trim() || user?.name || 'Unknown member';
+        const gender = entry.gender && AppConstants.USER_GENDERS.includes(entry.gender)
+          ? entry.gender
+          : user?.gender ?? 'woman';
         return {
           id: entry.id,
           userId: entry.userId,
-          name: user?.name ?? 'Unknown member',
-          initials: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Unknown member'),
-          gender: user?.gender ?? 'woman',
-          age: user?.age ?? 0,
-          city: user?.city ?? '',
+          name,
+          initials: entry.initials?.trim() || user?.initials || AppUtils.initialsFromText(name),
+          gender,
+          age: Math.max(0, Math.trunc(Number(entry.age ?? user?.age) || 0)),
+          city: entry.city?.trim() || user?.city || '',
           addedAtIso: entry.addedAtIso,
           quantity: AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
         };
@@ -681,32 +697,13 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return null;
     }
-    return {
-      ownerId,
-      subEventId,
-      assetOwnerUserId,
-      assetAssignmentIds: {
-        [AppConstants.ASSET_TYPE_TRANSPORT]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_TRANSPORT)],
-        [AppConstants.ASSET_TYPE_ACCOMMODATION]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)],
-        [AppConstants.ASSET_TYPE_SUPPLIES]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES)]
-      },
-      assetSettingsByType: {
-        [AppConstants.ASSET_TYPE_TRANSPORT]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_TRANSPORT) },
-        [AppConstants.ASSET_TYPE_ACCOMMODATION]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION) },
-        [AppConstants.ASSET_TYPE_SUPPLIES]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_SUPPLIES) }
-      },
-      supplyContributionEntriesByAssetId: Object.fromEntries(
-        this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES).map(assetId => [
-          assetId,
-          this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
-        ])
-      ),
-      fallbackAssetCardsByType: {
-        [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
-        [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
-        [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
-      }
-    };
+    const currentState = this.resourcePopupStore.visibleResourceStates().find(state =>
+      state.ownerId === ownerId
+      && state.subEventId === subEventId
+      && state.assetOwnerUserId === assetOwnerUserId
+    );
+    return ActivityResourceBuilder.cloneState(currentState)
+      ?? ActivityResourceBuilder.createEmptyState({ ownerId, subEventId, assetOwnerUserId });
   }
 
   private applyPersistedPopupState(state: AppDTOs.ActivitySubEventResourceStateDTO): void {
@@ -730,22 +727,17 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         )
       });
     }
-    for (const type of AppConstants.ASSET_TYPES) {
-      this.resourcePopupStore.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
-        ...(normalizedState.assetAssignmentIds[type] ?? [])
-      ];
-      this.resourcePopupStore.assignedAssetSettingsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = {
-        ...(normalizedState.assetSettingsByType[type] ?? {})
-      };
-    }
-    for (const key of Object.keys(this.resourcePopupStore.supplyContributionEntriesByAssignmentKey)) {
-      if (key.startsWith(`${normalizedState.subEventId}:`)) {
-        delete this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[key];
+    const activeSupply = this.resourcePopupStore.supplyPopupRef();
+    if (activeSupply && activeSupply.subEventId === normalizedState.subEventId) {
+      const entriesById = new Map<string, AppDTOs.SubEventSupplyContributionEntryDTO>();
+      for (const visibleState of this.resourcePopupStore.visibleResourceStates()) {
+        for (const entry of visibleState.supplyContributionEntriesByAssetId[activeSupply.assetId] ?? []) {
+          entriesById.set(entry.id, { ...entry });
+        }
       }
-    }
-    for (const [assetId, entries] of Object.entries(normalizedState.supplyContributionEntriesByAssetId)) {
-      this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(normalizedState.subEventId, assetId)] = entries
-        .map(entry => ({ ...entry }));
+      this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[
+        this.subEventSupplyAssignmentKey(normalizedState.subEventId, activeSupply.assetId)
+      ] = [...entriesById.values()];
     }
   }
 
@@ -782,6 +774,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       this.resourcePopupStore.supplyPopupRef.set({
         ...supplyPopup,
         accepted: Math.max(0, Math.trunc(Number(persistedSupplies.accepted) || 0)),
+        capacityMin: Math.max(0, Math.trunc(Number(persistedSupplies.capacityMin) || 0)),
         capacityTotal: Math.max(0, Math.trunc(Number(persistedSupplies.capacityMax) || 0))
       });
     }

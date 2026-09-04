@@ -11,10 +11,26 @@ import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalUsersRepository } from '../repositories/users.repository';
 import { ActivityResourceBuilder } from '../../../base/builders/activity-resource.builder';
 import * as AppConstants from '../../../common/constants';
 
 import type * as AppDTOs from '../../../contracts';
+
+interface SupplyContributionAddition {
+  assetId: string;
+  entryId: string;
+  contributorUserId: string;
+  quantity: number;
+}
+
+interface SupplyContributionRemoval {
+  assetId: string;
+  entryId: string;
+  contributorUserId: string;
+  quantity: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -26,6 +42,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly usersRepository = inject(LocalUsersRepository);
 
   peekSubEventResourceState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
@@ -101,7 +118,21 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     pageSize: number
   ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
     await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
-    return this.repository.querySupplyContributionPage(ref, assetId, page, pageSize);
+    const result = await this.repository.querySupplyContributionPage(ref, assetId, page, pageSize);
+    return {
+      ...result,
+      items: result.items.map(entry => {
+        const contributor = this.usersRepository.queryUserById(entry.userId);
+        return {
+          ...entry,
+          name: contributor?.name,
+          initials: contributor?.initials,
+          gender: contributor?.gender,
+          age: contributor?.age,
+          city: contributor?.city
+        };
+      })
+    };
   }
 
   async replaceSubEventResourceState(
@@ -121,6 +152,8 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     );
     const existing = this.repository.peekSubEventResourceRecord(normalizedState);
     const addedSupplyAssetIds = this.addedSupplyAssignmentIds(existing, normalizedState);
+    const addedSupplyContributions = this.addedSupplyContributions(existing, normalizedState);
+    const removedSupplyContributions = this.removedSupplyContributions(existing, normalizedState);
     const savedRecord = await this.repository.replaceSubEventResourceRecord(
       LocalActivityResourcesMapper.toRecord(normalizedState, existing)
     );
@@ -145,6 +178,16 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       actorUserId,
       addedSupplyAssetIds
     );
+    this.appendSupplyContributionAddedNotifications(
+      normalizedState,
+      actorUserId,
+      addedSupplyContributions
+    );
+    this.appendSupplyContributionRemovedNotifications(
+      normalizedState,
+      actorUserId,
+      removedSupplyContributions
+    );
     await this.repository.flushToIndexedDb();
     const savedState = savedRecord ? this.toState(savedRecord) : null;
     return savedState
@@ -165,6 +208,60 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       .filter(assetId => assetId.length > 0 && !previousIds.has(assetId));
   }
 
+  private addedSupplyContributions(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): SupplyContributionAddition[] {
+    const previousEntryIdsByAsset = new Map<string, Set<string>>(
+      Object.entries(previous?.supplyContributionEntriesByAssetId ?? {}).map(([assetId, entries]) => [
+        assetId,
+        new Set(entries.map(entry => entry.id.trim()).filter(Boolean))
+      ] as const)
+    );
+    return Object.entries(next.supplyContributionEntriesByAssetId ?? {}).flatMap(([assetId, entries]) => {
+      const normalizedAssetId = assetId.trim();
+      const previousEntryIds = previousEntryIdsByAsset.get(normalizedAssetId) ?? new Set<string>();
+      return entries
+        .map(entry => ({
+          assetId: normalizedAssetId,
+          entryId: entry.id.trim(),
+          contributorUserId: entry.userId.trim(),
+          quantity: Math.max(0, Math.trunc(Number(entry.quantity) || 0))
+        }))
+        .filter(entry => entry.assetId.length > 0
+          && entry.entryId.length > 0
+          && entry.quantity > 0
+          && !previousEntryIds.has(entry.entryId));
+    });
+  }
+
+  private removedSupplyContributions(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): SupplyContributionRemoval[] {
+    const nextEntryIdsByAsset = new Map<string, Set<string>>(
+      Object.entries(next.supplyContributionEntriesByAssetId ?? {}).map(([assetId, entries]) => [
+        assetId.trim(),
+        new Set(entries.map(entry => entry.id.trim()).filter(Boolean))
+      ] as const)
+    );
+    return Object.entries(previous?.supplyContributionEntriesByAssetId ?? {}).flatMap(([assetId, entries]) => {
+      const normalizedAssetId = assetId.trim();
+      const nextEntryIds = nextEntryIdsByAsset.get(normalizedAssetId) ?? new Set<string>();
+      return entries
+        .map(entry => ({
+          assetId: normalizedAssetId,
+          entryId: entry.id.trim(),
+          contributorUserId: entry.userId.trim(),
+          quantity: Math.max(0, Math.trunc(Number(entry.quantity) || 0))
+        }))
+        .filter(entry => entry.assetId.length > 0
+          && entry.entryId.length > 0
+          && entry.quantity > 0
+          && !nextEntryIds.has(entry.entryId));
+    });
+  }
+
   private appendSupplyContributionOpenNotifications(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
     actorUserId: string | null | undefined,
@@ -175,9 +272,9 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     }
     const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
     const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
-    const recipients = this.resourceNotificationMembers(state)
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
       .map(member => member.userId.trim())
-      .filter(userId => userId.length > 0 && userId !== actorId);
+      .filter(userId => userId.length > 0 && userId !== actorId))];
     if (recipients.length === 0) {
       return;
     }
@@ -205,6 +302,108 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
           subEventId: state.subEventId,
           assetId,
           assetTitle,
+          resourceType: AppConstants.ASSET_TYPE_SUPPLIES,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
+  private appendSupplyContributionAddedNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    additions: readonly SupplyContributionAddition[]
+  ): void {
+    if (additions.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0 && userId !== actorId))];
+    if (recipients.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const notifications: NotificationRecord[] = additions.flatMap(addition => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(addition.assetId);
+      const assetTitle = `${asset?.title ?? 'Supplies'}`.trim() || 'Supplies';
+      return recipients.map(recipientUserId => ({
+        id: `event-supplies-contribution-added:${state.ownerId}:${state.subEventId}:${addition.assetId}:${addition.entryId}:${recipientUserId}`,
+        recipientUserId,
+        kind: 'event-supplies-contribution-added',
+        category: 'event' as const,
+        title: 'Supplies contribution added',
+        message: `${addition.quantity} item(s) were added to ${assetTitle}.`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId: addition.assetId,
+          assetTitle,
+          contributionEntryId: addition.entryId,
+          contributorUserId: addition.contributorUserId || actorId,
+          quantity: `${addition.quantity}`,
+          resourceType: AppConstants.ASSET_TYPE_SUPPLIES,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
+  private appendSupplyContributionRemovedNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    removals: readonly SupplyContributionRemoval[]
+  ): void {
+    if (removals.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0 && userId !== actorId))];
+    if (recipients.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const notifications: NotificationRecord[] = removals.flatMap(removal => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(removal.assetId);
+      const assetTitle = `${asset?.title ?? 'Supplies'}`.trim() || 'Supplies';
+      return recipients.map(recipientUserId => ({
+        id: `event-supplies-contribution-removed:${state.ownerId}:${state.subEventId}:${removal.assetId}:${removal.entryId}:${recipientUserId}`,
+        recipientUserId,
+        kind: 'event-supplies-contribution-removed',
+        category: 'event' as const,
+        title: 'Supplies contribution removed',
+        message: `${removal.quantity} item(s) were removed from ${assetTitle}.`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId: removal.assetId,
+          assetTitle,
+          contributionEntryId: removal.entryId,
+          contributorUserId: removal.contributorUserId || actorId,
+          quantity: `${removal.quantity}`,
           resourceType: AppConstants.ASSET_TYPE_SUPPLIES,
           notification_tone: 'info'
         },
