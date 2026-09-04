@@ -905,7 +905,6 @@ export class EventSubeventsListPopupComponent {
       runtimeKind: item.runtimeKind,
       eventId: `${item.eventId ?? this.event?.id ?? ownerId}`.trim() || ownerId,
       assetOwnerUserId: this.event?.creatorUserId ?? null,
-      viewOnly: this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction === 'view',
       parentTitle: this.popupSubtitle(),
       subEventId: `${item.id ?? ''}`.trim(),
       subEventIndex: context.subEventIndex,
