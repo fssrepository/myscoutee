@@ -47,6 +47,7 @@ export interface AssetMemberRequestRecord {
   initials: string;
   gender: UserGender;
   status: AssetRequestStatus;
+  recordStatus?: 'A' | 'D';
   note: string;
   requestKind?: AssetRequestKind;
   requestedAtIso?: string;

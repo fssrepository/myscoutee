@@ -168,6 +168,61 @@ describe('NotificationSingleRowConverter badges', () => {
 
     expect(row.detail).toBe('Accepted your request.');
   });
+
+  it('puts the contextual resource target after Mark as read', () => {
+    const row = converter.convert(notification({
+      kind: 'event-supplies-open',
+      sourceType: 'event',
+      sourceId: 'event-1',
+      payload: {
+        eventId: 'event-1',
+        ownerId: 'event-1',
+        subEventId: 'sub-event-1',
+        resourceType: 'Supplies'
+      }
+    }));
+
+    expect(row.menuActions).toEqual([
+      'markNotificationRead',
+      'openNotificationSupplies'
+    ]);
+  });
+
+  it('keeps the contextual target available after the notification is read', () => {
+    const row = converter.convert(notification({
+      readAtIso: '2026-07-31T08:05:00.000Z',
+      sourceType: 'event',
+      sourceId: 'event-1',
+      payload: { eventId: 'event-1' }
+    }));
+
+    expect(row.menuActions).toEqual(['openNotificationEvent']);
+  });
+
+  it('names an invitation target contextually', () => {
+    const row = converter.convert(notification({
+      kind: 'event-invite',
+      sourceType: 'event',
+      sourceId: 'event-1',
+      payload: { eventId: 'event-1' }
+    }));
+
+    expect(row.menuActions).toEqual([
+      'markNotificationRead',
+      'openNotificationInvitation'
+    ]);
+  });
+
+  it('does not offer a target without enough data to open one', () => {
+    const row = converter.convert(notification({
+      kind: 'scheduled-maintenance',
+      category: 'app-admin',
+      sourceType: 'application',
+      sourceId: 'maintenance'
+    }));
+
+    expect(row.menuActions).toEqual(['markNotificationRead']);
+  });
 });
 
 function notification(

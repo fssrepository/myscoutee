@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
+import { ActivityResourceBuilder } from '../../../base/builders/activity-resource.builder';
 import { LocalActivityResourcesMapper } from '../mappers';
 import {
   ACTIVITY_RESOURCES_TABLE_NAME,
@@ -28,8 +29,15 @@ export class LocalActivityResourcesRepository {
       return null;
     }
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
-    const record = table.byId[LocalActivityResourcesMapper.recordId(normalizedRef)];
-    return record && !LocalActivityResourcesMapper.isDeleted(record)
+    const record = table.ids
+      .map(id => table.byId[id])
+      .filter((item): item is ActivitySubEventResourceRecord => Boolean(item)
+        && !LocalActivityResourcesMapper.isDeleted(item)
+        && item.ownerId === normalizedRef.ownerId
+        && item.subEventId === normalizedRef.subEventId
+        && item.assetOwnerUserId === normalizedRef.assetOwnerUserId)
+      .sort((left, right) => right.updatedMs - left.updatedMs)[0];
+    return record
       ? LocalActivityResourcesMapper.cloneRecord(record)
       : null;
   }
@@ -102,14 +110,16 @@ export class LocalActivityResourcesRepository {
       return [];
     }
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
-    const recordIds = new Set(normalizedRefs.map(ref => LocalActivityResourcesMapper.recordId(ref)));
+    const scopeIds = new Set(normalizedRefs.map(ref => ActivityResourceBuilder.scopeId(ref)));
     const ids = Array.from(new Set(
       normalizedRefs.flatMap(ref => table.idsByOwnerKey[LocalActivityResourcesMapper.ownerKey(ref)] ?? [])
     ));
     return Array.from(new Set(ids))
       .map(id => table.byId[id])
       .filter((record): record is ActivitySubEventResourceRecord =>
-        Boolean(record) && recordIds.has(record.id) && !LocalActivityResourcesMapper.isDeleted(record))
+        Boolean(record)
+        && scopeIds.has(ActivityResourceBuilder.scopeId(record))
+        && !LocalActivityResourcesMapper.isDeleted(record))
       .map(record => LocalActivityResourcesMapper.cloneRecord(record));
   }
 
@@ -130,6 +140,20 @@ export class LocalActivityResourcesRepository {
       .map(record => LocalActivityResourcesMapper.cloneRecord(record));
   }
 
+  peekActiveRecordsByEventScope(eventId: string): ActivitySubEventResourceRecord[] {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventResourceRecord => Boolean(record)
+        && !LocalActivityResourcesMapper.isDeleted(record)
+        && (record.ownerId === normalizedEventId || record.ownerId.startsWith(`${normalizedEventId}:`)))
+      .map(record => LocalActivityResourcesMapper.cloneRecord(record));
+  }
+
   async replaceSubEventResourceRecord(
     record: ActivitySubEventResourceRecord
   ): Promise<ActivitySubEventResourceRecord | null> {
@@ -145,7 +169,7 @@ export class LocalActivityResourcesRepository {
         [ACTIVITY_RESOURCES_TABLE_NAME]: this.upsertRecordCollection(table, recordClone)
       };
     });
-    return this.peekSubEventResourceRecord(normalizedRef);
+    return LocalActivityResourcesMapper.cloneRecord(recordClone);
   }
 
   markRecordsDeletedByParentSubEventIds(parentEventId: string, subEventIds: readonly string[]): number {

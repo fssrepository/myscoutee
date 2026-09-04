@@ -402,13 +402,14 @@ export class LocalActivityResourcesMapper {
 
   static toRecord(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
-    existing?: ActivitySubEventResourceRecord | null
+    existing?: ActivitySubEventResourceRecord | null,
+    status = this.STATUS_ACTIVE
   ): ActivitySubEventResourceRecord {
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
     return {
-      id: this.recordId(state),
-      status: this.STATUS_ACTIVE,
+      id: existing?.id ?? this.newRecordId(state),
+      status,
       ownerKey: this.ownerKey(state),
       ownerId: state.ownerId,
       subEventId: state.subEventId,
@@ -425,6 +426,13 @@ export class LocalActivityResourcesMapper {
       createdAtIso: existing?.createdAtIso ?? nowIso,
       updatedAtIso: nowIso
     };
+  }
+
+  private static newRecordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    const generation = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${this.recordId(ref)}:${generation}`;
   }
 
   static toState(

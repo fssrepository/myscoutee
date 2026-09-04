@@ -302,6 +302,67 @@ export class LocalAssetsRepository {
     );
   }
 
+  statusDeleteAssignmentScopeRequests(
+    assetOwnerUserId: string,
+    assetIds: readonly string[],
+    ownerId: string,
+    authorizationEventId: string,
+    subEventId: string
+  ): void {
+    const normalizedAssetOwnerUserId = assetOwnerUserId.trim();
+    const normalizedAssetIds = new Set(assetIds.map(id => id.trim()).filter(Boolean));
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedAuthorizationEventId = authorizationEventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedAssetOwnerUserId || normalizedAssetIds.size === 0 || !normalizedOwnerId || !normalizedSubEventId) {
+      return;
+    }
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    this.memoryDb.write(state => {
+      let table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      let requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      for (const assetId of normalizedAssetIds) {
+        const current = table.byId[assetId];
+        if (!current || current.ownerUserId !== normalizedAssetOwnerUserId) {
+          continue;
+        }
+        let changed = false;
+        const requests = current.requests.map(request => {
+          const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+          const inScope = `${request.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId
+            && (bookingEventId === normalizedOwnerId
+              || (normalizedAuthorizationEventId.length > 0 && bookingEventId === normalizedAuthorizationEventId));
+          if (!inScope || request.recordStatus === 'D') {
+            return LocalAssetsMapper.cloneRequest(request);
+          }
+          changed = true;
+          return {
+            ...LocalAssetsMapper.cloneRequest(request),
+            recordStatus: 'D' as const,
+            menuActions: []
+          };
+        });
+        if (!changed) {
+          continue;
+        }
+        const next: AssetRecord = {
+          ...current,
+          requests,
+          updatedMs: nowMs,
+          updatedAtIso: nowIso
+        };
+        table = this.upsertRecordCollection(table, next);
+        requestTable = this.synchronizeAssetRequestCollection(requestTable, next, current.requests);
+      }
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: table,
+        [ASSET_REQUESTS_TABLE_NAME]: requestTable
+      };
+    });
+  }
+
   async applyMemberStatusChange(
     request: AppDTOs.AssetMemberStatusChangeRequestDTO
   ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
@@ -316,13 +377,17 @@ export class LocalAssetsRepository {
     if (!record || this.isSuppressedAssetStatus(record.status)) {
       return null;
     }
-    const inScope = (entry: AppDTOs.AssetMemberRequestDTO): boolean =>
-      entry.requestKind !== 'manual'
+    const inScope = (entry: AssetMemberRequestRecord): boolean =>
+      entry.recordStatus !== 'D'
+      && entry.requestKind !== 'manual'
       && `${entry.userId ?? ''}`.trim() === actorUserId
       && `${entry.booking?.eventId ?? ''}`.trim() === eventId
       && `${entry.booking?.subEventId ?? ''}`.trim() === subEventId;
     const previous = record.requests.find(inScope) ?? null;
-    const previousStatus = previous?.status ?? null;
+    const previousStatus: AppConstants.ActivityMemberStatus | null = previous?.status === 'accepted'
+      || previous?.status === 'pending'
+      ? previous.status
+      : null;
     if (request.action === 'leave' && !previous) {
       return null;
     }
@@ -333,7 +398,7 @@ export class LocalAssetsRepository {
         subEventId,
         userId: actorUserId,
         previousStatus,
-        status: previous.status,
+        status: previousStatus ?? 'pending',
         acceptedMemberDelta: 0,
         pendingMemberDelta: 0
       };
@@ -365,9 +430,10 @@ export class LocalAssetsRepository {
           }]
         : []),
       ...record.requests
-        .filter(entry => entry !== previous)
+        .filter(entry => entry.recordStatus !== 'D' && entry !== previous)
         .map(entry => ({
           ...entry,
+          status: entry.status === 'accepted' ? 'accepted' as const : 'pending' as const,
           booking: entry.booking
             ? {
                 ...entry.booking,
@@ -721,6 +787,9 @@ export class LocalAssetsRepository {
     let promotedExistingRequest = false;
     const next = record.requests.map(request => {
       const cloned = LocalAssetsMapper.cloneRequest(request);
+      if (request.recordStatus === 'D') {
+        return cloned;
+      }
       if (`${cloned.userId ?? ''}`.trim() !== normalizedTargetUserId) {
         return cloned;
       }
@@ -733,8 +802,11 @@ export class LocalAssetsRepository {
       };
     });
     if (!promotedExistingRequest) {
+      const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       next.push({
-        id: `${record.id}:manager:${normalizedTargetUserId}`,
+        id: `${record.id}:manager:${normalizedTargetUserId}:${requestId}`,
         userId: normalizedTargetUserId,
         name: targetUser.name,
         initials: targetUser.initials,
@@ -870,6 +942,7 @@ export class LocalAssetsRepository {
       .filter(member => this.isActiveDemoUser(member.userId))
       .filter(member => member.userId !== record.ownerUserId);
     const acceptedActiveUserIds = new Set(record.requests
+      .filter(request => request.recordStatus !== 'D')
       .filter(request => `${request.status ?? ''}`.trim().toLowerCase() === 'accepted')
       .map(request => `${request.userId ?? ''}`.trim())
       .filter(memberUserId => memberUserId.length > 0)
@@ -1005,6 +1078,7 @@ export class LocalAssetsRepository {
       .map(id => requestTable.byId[id])
       .filter((request): request is AssetRequestRecord =>
         Boolean(request)
+        && request.recordStatus !== 'D'
         && request.assetId === record.id
         && request.ownerUserId === record.ownerUserId);
   }
@@ -1077,6 +1151,7 @@ export class LocalAssetsRepository {
   private availableQuantityForWindow(record: AssetRecord, startAtIso: string, endAtIso: string): number {
     const totalQuantity = AssetCardBuilder.storedQuantityValue(record);
     const overlappingCommitted = (record.requests ?? [])
+      .filter(request => request.recordStatus !== 'D')
       .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetRequestWindowOverlap(request, startAtIso, endAtIso))
@@ -1199,7 +1274,16 @@ export class LocalAssetsRepository {
         ? incoming.ownerReleasedAtIso
         : existing?.ownerReleasedAtIso ?? null,
       ownerName: incoming.ownerName ?? existing?.ownerName,
-      requests: incoming.requests.map(request => LocalAssetsMapper.cloneRequest(request)),
+      requests: [
+        ...incoming.requests.map(request => LocalAssetsMapper.cloneRequest(request)),
+        ...(existing?.requests ?? [])
+          .filter(request => !incoming.requests.some(incomingRequest => incomingRequest.id === request.id))
+          .map(request => ({
+            ...LocalAssetsMapper.cloneRequest(request),
+            recordStatus: 'D' as const,
+            menuActions: []
+          }))
+      ],
       menuActions: [...(incoming.menuActions ?? existing?.menuActions ?? [])],
       createdAtIso: existing?.createdAtIso ?? timestampIso,
       updatedAtIso: timestampIso,
@@ -1245,10 +1329,11 @@ export class LocalAssetsRepository {
   }
 
   private resolveAssetBoost(record: AssetRecord): number {
-    const acceptedRequests = record.requests.filter(request => request.status === 'accepted').length;
+    const activeRequests = record.requests.filter(request => request.recordStatus !== 'D');
+    const acceptedRequests = activeRequests.filter(request => request.status === 'accepted').length;
     const capacityAvailable = Math.max(0, Math.trunc(Number(record.capacityTotal) || 0) - acceptedRequests);
     const quantity = Math.max(0, Math.trunc(Number(record.quantity) || 0));
-    const requestCount = Math.max(0, record.requests.length);
+    const requestCount = Math.max(0, activeRequests.length);
     return Math.max(0, (capacityAvailable * 7) + (quantity * 11) + (requestCount * 13));
   }
 

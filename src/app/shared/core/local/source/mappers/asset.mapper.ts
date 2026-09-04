@@ -214,7 +214,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(record.status),
       ownerUserId: record.ownerUserId,
       ownerName: record.ownerName,
-      requests: record.requests.map(request => {
+      requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
         const dto = this.cloneRequest(request as AppDTOs.AssetMemberRequestDTO);
         return {
           ...dto,
@@ -257,7 +257,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(record.status),
       ownerUserId: record.ownerUserId,
       ownerName: record.ownerName,
-      requests: record.requests.map(request => {
+      requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
         const dto = this.cloneRequest(request as AppDTOs.AssetMemberRequestDTO);
         return {
           ...dto,

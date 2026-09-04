@@ -2985,7 +2985,23 @@ export class EventResourcePopupComponent {
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
-    this.syncPopupSubEventMetrics({ persistAssetRequests: true, persistedState: resolvedState });
+    this.retireScopedAssetRequestsFromStore(pending.assetId, resolvedState.ownerId, resolvedState.subEventId);
+    this.syncPopupSubEventMetrics({ persistAssetRequests: false, persistedState: resolvedState });
+  }
+
+  private retireScopedAssetRequestsFromStore(assetId: string, ownerId: string, subEventId: string): void {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return;
+    }
+    const nextCards = this.ownedAssetCards().map(card => card.id === normalizedAssetId
+      ? {
+          ...card,
+          requests: card.requests.filter(request =>
+            !ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId, ownerId))
+        }
+      : card);
+    this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false });
   }
 
   private buildResourceAssignmentRemovalState(
@@ -3539,9 +3555,10 @@ export class EventResourcePopupComponent {
       if (quantity <= 0) {
         return null;
       }
-      const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
+      const existing = card.requests.find(request =>
+        ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
       return {
-        id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
+        id: existing?.id ?? this.newManualAssignmentRequestId(subEvent.id, card.id),
         userId: activeUser.id,
         name: activeUser.name,
         initials: activeUser.initials,
@@ -3565,9 +3582,10 @@ export class EventResourcePopupComponent {
       settings?.quantity,
       this.assignedRuntimeQuantityMax(card)
     );
-    const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
+    const existing = card.requests.find(request =>
+      ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
     return {
-      id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
+      id: existing?.id ?? this.newManualAssignmentRequestId(subEvent.id, card.id),
       userId: activeUser.id,
       name: activeUser.name,
       initials: activeUser.initials,
@@ -3578,6 +3596,13 @@ export class EventResourcePopupComponent {
       requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
       booking: this.assetRequestBookingForSubEvent(subEvent, quantity, ownerId, parentTitle)
     };
+  }
+
+  private newManualAssignmentRequestId(subEventId: string, assetId: string): string {
+    const generation = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `manual:${subEventId}:${assetId}:${generation}`;
   }
 
   private assetMemberEntries(
@@ -3622,7 +3647,7 @@ export class EventResourcePopupComponent {
           city: matchedUser?.city ?? card.city,
           statusText: request.note,
           role: ownerUserId && userId === ownerUserId ? ('Manager' as const) : ('Member' as const),
-          status: request.status,
+          status: request.status === 'pending' ? 'pending' as const : 'accepted' as const,
           pendingSource,
           requestKind,
           invitedByUserId: pendingRequiresAdminApproval ? ownerUserId : null,

@@ -263,6 +263,7 @@ export class EventTournamentGroupsPopupComponent {
       if (!match) {
         return;
       }
+      const previousPending = EventTournamentGroupsPopupConverter.stagePendingTotal(match.stage);
       this.state = this.updateGroupResourceMetrics(
         this.state,
         match.stage.subEventId,
@@ -288,7 +289,9 @@ export class EventTournamentGroupsPopupComponent {
           }
         }
       );
-      this.emitGroupsUpdate(match.stage.subEventId);
+      const updatedStage = this.state?.stages.find(stage => stage.subEventId === match.stage.subEventId) ?? null;
+      const nextPending = EventTournamentGroupsPopupConverter.stagePendingTotal(updatedStage);
+      this.emitGroupsUpdate(match.stage.subEventId, nextPending - previousPending);
       this.cdr.markForCheck();
     });
 
@@ -1324,7 +1327,7 @@ export class EventTournamentGroupsPopupComponent {
     });
   }
 
-  private emitGroupsUpdate(stageId: string): void {
+  private emitGroupsUpdate(stageId: string, explicitPendingDelta?: number): void {
     const stage = this.state?.stages.find(item => item.subEventId === stageId) ?? null;
     const groupsCount = stage?.groups.length ?? 0;
     const groupsPending = EventTournamentGroupsPopupConverter.stagePendingTotal(stage);
@@ -1341,9 +1344,9 @@ export class EventTournamentGroupsPopupComponent {
       stageId,
       groupsCount,
       groupsPending,
-      groupsPendingDelta: previousGroupsPending == null
+      groupsPendingDelta: explicitPendingDelta ?? (previousGroupsPending == null
         ? 0
-        : groupsPending - previousGroupsPending
+        : groupsPending - previousGroupsPending)
     });
   }
 

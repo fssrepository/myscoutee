@@ -2,6 +2,7 @@ import type {
   NotificationCategory,
   NotificationDto
 } from '../../core/contracts/notification.interface';
+import * as AppConstants from '../../core/common/constants';
 import { AppUtils } from '../../app-utils';
 import type {
   SingleRowData,
@@ -41,6 +42,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     const statusBadgeLabel = statusBadgeKey && options.translate
       ? options.translate(statusBadgeKey, statusBadgeFallback)
       : statusBadgeFallback;
+    const targetAction = NotificationSingleRowConverter.targetActionId(notification);
     return {
       id: notification.id,
       title: this.title(notification, options),
@@ -92,13 +94,43 @@ export class NotificationSingleRowConverter implements UiConverter<
           position: 'inline' as const
         }] : [])
       ],
-      menuActions: read ? [] : ['markNotificationRead'],
+      menuActions: [
+        ...(!read ? ['markNotificationRead'] : []),
+        ...(targetAction ? [targetAction] : [])
+      ],
       progressRing: options.progressRing === true,
       eagerDetail: {
         ...notification,
         payload: notification.payload ? { ...notification.payload } : null
       }
     };
+  }
+
+  static targetActionId(notification: NotificationDto): string | null {
+    const eventId = this.eventId(notification);
+    if (!eventId) {
+      return null;
+    }
+    const payload = notification.payload;
+    const ownerId = `${payload?.['ownerId'] ?? ''}`.trim();
+    const subEventId = `${payload?.['subEventId'] ?? ''}`.trim();
+    if (ownerId && subEventId) {
+      switch (`${payload?.['resourceType'] ?? ''}`.trim()) {
+        case AppConstants.ASSET_TYPE_TRANSPORT:
+          return 'openNotificationTransport';
+        case AppConstants.ASSET_TYPE_ACCOMMODATION:
+          return 'openNotificationAccommodation';
+        case AppConstants.ASSET_TYPE_SUPPLIES:
+          return 'openNotificationSupplies';
+      }
+    }
+    return notification.kind === 'event-invite'
+      ? 'openNotificationInvitation'
+      : 'openNotificationEvent';
+  }
+
+  static eventId(notification: NotificationDto): string {
+    return `${notification.payload?.['eventId'] ?? ''}`.trim();
   }
 
   private message(

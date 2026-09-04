@@ -282,7 +282,9 @@ export class SubEventResourcePopupStore {
     const recordId = ActivityResourceBuilder.recordId(normalized);
     const next = this.visibleResourceStatesRef()
       .filter(current => ActivityResourceBuilder.recordId(current) !== recordId);
-    next.push(normalized);
+    if (ActivityResourceBuilder.hasResourceData(normalized)) {
+      next.push(normalized);
+    }
     this.setVisibleResourceStates(next);
   }
 

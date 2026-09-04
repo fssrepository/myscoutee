@@ -154,8 +154,10 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     const addedSupplyAssetIds = this.addedSupplyAssignmentIds(existing, normalizedState);
     const addedSupplyContributions = this.addedSupplyContributions(existing, normalizedState);
     const removedSupplyContributions = this.removedSupplyContributions(existing, normalizedState);
+    const removedAssetIds = this.removedAssignmentIds(existing, normalizedState);
+    const resourceBecameEmpty = Boolean(existing) && !ActivityResourceBuilder.hasResourceData(normalizedState);
     const savedRecord = await this.repository.replaceSubEventResourceRecord(
-      LocalActivityResourcesMapper.toRecord(normalizedState, existing)
+      LocalActivityResourcesMapper.toRecord(normalizedState, existing, resourceBecameEmpty ? 'D' : 'A')
     );
     const groupScope = this.groupRuntimeScope(normalizedState.ownerId, normalizedState.subEventId);
     const groupMetricsByType = this.persistGroupRuntimeMetrics(normalizedState, actorUserId);
@@ -188,14 +190,94 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       actorUserId,
       removedSupplyContributions
     );
+    this.appendAssetAssignmentRemovedNotifications(
+      normalizedState,
+      actorUserId,
+      removedAssetIds
+    );
+    this.assetsRepository.statusDeleteAssignmentScopeRequests(
+      normalizedState.assetOwnerUserId,
+      removedAssetIds,
+      normalizedState.ownerId,
+      ActivityResourceBuilder.authorizationEventId(normalizedState.ownerId, normalizedState.subEventId),
+      normalizedState.subEventId
+    );
     await this.repository.flushToIndexedDb();
     const savedState = savedRecord ? this.toState(savedRecord) : null;
-    return savedState
-      ? {
-          ...savedState,
-          resourceMetricsByType: commonMetricsByType
+    return {
+      ...(savedState ?? normalizedState),
+      resourceMetricsByType: commonMetricsByType
+    };
+  }
+
+  async removeManagedResourcesForRemovedEventMember(
+    eventId: string,
+    removedUserId: string,
+    actorUserId: string
+  ): Promise<void> {
+    const normalizedEventId = eventId.trim();
+    const normalizedRemovedUserId = removedUserId.trim();
+    if (!normalizedEventId || !normalizedRemovedUserId) {
+      return;
+    }
+    const records = this.repository.peekActiveRecordsByEventScope(normalizedEventId);
+    for (const record of records) {
+      const state = LocalActivityResourcesMapper.toState(record);
+      if (!state) {
+        continue;
+      }
+      let changed = false;
+      for (const type of AppConstants.ASSET_TYPES) {
+        const assignmentIds = [...(state.assetAssignmentIds[type] ?? [])];
+        const settingsByAssetId = { ...(state.assetSettingsByType[type] ?? {}) };
+        const retainedIds: string[] = [];
+        for (const assetId of assignmentIds) {
+          const managerUserId = `${settingsByAssetId[assetId]?.addedByUserId ?? record.assetOwnerUserId}`.trim();
+          if (managerUserId !== normalizedRemovedUserId) {
+            retainedIds.push(assetId);
+            continue;
+          }
+          if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
+            const remainingEntries = (state.supplyContributionEntriesByAssetId[assetId] ?? [])
+              .filter(entry => entry.userId.trim() !== normalizedRemovedUserId);
+            if (remainingEntries.length > 0) {
+              retainedIds.push(assetId);
+              state.supplyContributionEntriesByAssetId[assetId] = remainingEntries;
+              settingsByAssetId[assetId] = {
+                ...settingsByAssetId[assetId],
+                addedByUserId: remainingEntries[0].userId
+              };
+              changed = true;
+              continue;
+            }
+            delete state.supplyContributionEntriesByAssetId[assetId];
+          }
+          delete settingsByAssetId[assetId];
+          changed = true;
         }
-      : null;
+        state.assetAssignmentIds[type] = retainedIds;
+        state.assetSettingsByType[type] = settingsByAssetId;
+      }
+      if (changed) {
+        await this.replaceSubEventResourceState(state, undefined, actorUserId);
+      }
+    }
+  }
+
+  private removedAssignmentIds(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): string[] {
+    const removed = new Set<string>();
+    for (const type of AppConstants.ASSET_TYPES) {
+      const nextIds = new Set(next.assetAssignmentIds[type] ?? []);
+      for (const assetId of previous?.assetAssignmentIds[type] ?? []) {
+        if (!nextIds.has(assetId)) {
+          removed.add(assetId);
+        }
+      }
+    }
+    return [...removed];
   }
 
   private addedSupplyAssignmentIds(
@@ -413,6 +495,64 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     this.notificationsRepository.append(notifications);
   }
 
+  private appendAssetAssignmentRemovedNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    assetIds: readonly string[]
+  ): void {
+    if (assetIds.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const participantUserIds = this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim());
+    const createdAtIso = new Date().toISOString();
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const notifications: NotificationRecord[] = assetIds.flatMap(assetId => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
+      const assetTitle = `${asset?.title ?? 'Asset'}`.trim() || 'Asset';
+      const scopedAssetMemberUserIds = (asset?.requests ?? [])
+        .filter(request => ['accepted', 'pending'].includes(`${request.status ?? ''}`.trim()))
+        .filter(request => {
+          const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+          return `${request.booking?.subEventId ?? ''}`.trim() === state.subEventId
+            && (bookingEventId === state.ownerId || bookingEventId === eventId);
+        })
+        .map(request => `${request.userId ?? ''}`.trim());
+      const recipients = [...new Set([
+        ...participantUserIds,
+        state.assetOwnerUserId.trim(),
+        ...scopedAssetMemberUserIds
+      ].filter(userId => userId.length > 0 && userId !== actorId))];
+      return recipients.map(recipientUserId => ({
+        id: `event-asset-assignment-removed:${state.ownerId}:${state.subEventId}:${assetId}:${occurrenceId}:${recipientUserId}`,
+        recipientUserId,
+        kind: 'event-asset-assignment-removed',
+        category: 'event' as const,
+        title: 'Asset assignment removed',
+        message: `Assignment ended · ${assetTitle}`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId,
+          assetTitle,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
   private resourceNotificationMembers(
     state: AppDTOs.ActivitySubEventResourceStateDTO
   ): ActivityMemberRecord[] {
@@ -546,8 +686,16 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       runtime.groupResourceMetricsByAssetOwnerId
     );
     const byAssetOwner = { ...(byGroup[scope.groupId] ?? {}) };
-    byAssetOwner[state.assetOwnerUserId] = nextMetricsByType;
-    byGroup[scope.groupId] = byAssetOwner;
+    if (ActivityResourceBuilder.hasResourceData(state)) {
+      byAssetOwner[state.assetOwnerUserId] = nextMetricsByType;
+    } else {
+      delete byAssetOwner[state.assetOwnerUserId];
+    }
+    if (Object.keys(byAssetOwner).length > 0) {
+      byGroup[scope.groupId] = byAssetOwner;
+    } else {
+      delete byGroup[scope.groupId];
+    }
     runtime.groupResourceMetricsByAssetOwnerId = byGroup;
     this.stageRuntimeRepository.replaceRecord(runtime);
     if (changedTypes.length > 0 && normalizedActorUserId) {

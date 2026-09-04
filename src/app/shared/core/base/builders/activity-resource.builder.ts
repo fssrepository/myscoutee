@@ -178,6 +178,19 @@ export class ActivityResourceBuilder {
     };
   }
 
+  static hasResourceData(
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined
+  ): boolean {
+    if (!state) {
+      return false;
+    }
+    return AppConstants.ASSET_TYPES.some(type =>
+      (state.assetAssignmentIds?.[type] ?? []).length > 0
+      || Object.keys(state.assetSettingsByType?.[type] ?? {}).length > 0
+    ) || Object.values(state.supplyContributionEntriesByAssetId ?? {})
+      .some(entries => (entries ?? []).length > 0);
+  }
+
   static cloneState(
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined
   ): AppDTOs.ActivitySubEventResourceStateDTO | null {

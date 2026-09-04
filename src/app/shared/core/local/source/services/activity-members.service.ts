@@ -14,6 +14,7 @@ import { LocalNotificationsRepository } from '../repositories/notifications.repo
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalActivityResourcesService } from './activity-resources.service';
 import {
   LocalActivityMembersBuilder,
   LocalUsersMapper,
@@ -44,6 +45,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
+  private readonly activityResourcesService = inject(LocalActivityResourcesService);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
@@ -348,6 +350,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           normalizedOwner.ownerId,
           targetMember,
           nowIso
+        );
+        await this.activityResourcesService.removeManagedResourcesForRemovedEventMember(
+          normalizedOwner.ownerId,
+          targetMember.userId,
+          normalizedActorUserId
         );
       } else if (
         (action === 'disqualify' && targetMember.status === 'accepted')
@@ -932,7 +939,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
           : 'Borrowing this asset.',
         role: managerRecord ? 'Manager' : 'Member',
-        status: request.status,
+        status: pending ? 'pending' : 'accepted',
         pendingSource: pending ? (borrowerInitiated ? 'member' : 'admin') : null,
         requestKind: pending ? (borrowerInitiated ? 'join' : 'invite') : null,
         invitedByActiveUser: false,

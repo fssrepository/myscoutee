@@ -9,6 +9,7 @@ import { from } from 'rxjs';
 
 import { AppUtils } from '../../../app-utils';
 import { I18nService } from '../../../core';
+import * as AppConstants from '../../../core/common/constants';
 import type {
   NotificationBucket,
   NotificationDto,
@@ -20,7 +21,10 @@ import {
   NotificationSingleRowConverter
 } from '../../converters/notification-single-row.converter';
 import { DialogStore } from '../../context/stores/dialog.store';
+import { ActivitiesPopupStore } from '../../context/stores/activities-popup.store';
+import { EventSubeventsPopupStore } from '../../context/stores/event-subevents-popup.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
+import { SubEventResourcePopupStore } from '../../context/stores/sub-event-resource-popup.store';
 import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -71,6 +75,9 @@ export class NotificationCenterPopupComponent {
 
   protected readonly store = inject(NotificationCenterStore);
   private readonly dialogStore = inject(DialogStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly i18n = inject(I18nService);
   private readonly converter = new NotificationSingleRowConverter();
 
@@ -252,17 +259,92 @@ export class NotificationCenterPopupComponent {
     const context = event.context as NotificationRowMenuContext | undefined;
     const notification = context?.notification;
     const actionId = `${context?.action?.id ?? event.id ?? ''}`.trim();
-    if (
-      !notification
-      || actionId !== 'markNotificationRead'
-      || notification.readAtIso
-      || this.store.isMarkReadPending(notification.id)
-    ) {
+    if (!notification) {
       return;
     }
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    void this.markRead(notification);
+    if (actionId === 'markNotificationRead') {
+      if (notification.readAtIso || this.store.isMarkReadPending(notification.id)) {
+        return;
+      }
+      void this.markRead(notification);
+      return;
+    }
+    if (actionId === NotificationSingleRowConverter.targetActionId(notification)) {
+      void this.openNotificationTarget(notification, actionId);
+    }
+  }
+
+  private async openNotificationTarget(
+    notification: NotificationDto,
+    actionId: string
+  ): Promise<void> {
+    const eventId = NotificationSingleRowConverter.eventId(notification);
+    if (!eventId) {
+      return;
+    }
+    const payload = notification.payload;
+    const eventTitle = `${payload?.['eventTitle'] ?? notification.title ?? ''}`.trim() || 'Event';
+    const invitation = actionId === 'openNotificationInvitation';
+    this.store.close();
+    try {
+      await this.activitiesStore.ensureActivitiesPopupLoaded();
+      this.activitiesStore.openActivities(
+        'events',
+        invitation ? 'invitations' : 'active-events'
+      );
+      this.eventSubeventsStore.openEventSubeventsListPopup({
+        eventId,
+        host: 'activities',
+        target: 'events',
+        title: eventTitle,
+        startAtIso: `${payload?.['startAtIso'] ?? ''}`.trim() || null,
+        editorAction: 'view'
+      });
+      const resourceType = this.notificationResourceType(actionId);
+      const ownerId = `${payload?.['ownerId'] ?? ''}`.trim();
+      const subEventId = `${payload?.['subEventId'] ?? ''}`.trim();
+      if (!resourceType || !ownerId || !subEventId) {
+        return;
+      }
+      this.resourcePopupStore.requestSubEventResourcePopup({
+        type: resourceType,
+        ownerId,
+        eventId,
+        subEventId,
+        parentTitle: eventTitle,
+        popupHeader: {
+          title: `${eventTitle} - ${resourceType}`
+        },
+        subEventHeader: {
+          title: resourceType
+        }
+      });
+    } catch (error) {
+      this.dialogStore.openInfo(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'Unable to open this notification.',
+        {
+          title: 'Notification target unavailable',
+          confirmTone: 'danger'
+        }
+      );
+    }
+  }
+
+  private notificationResourceType(actionId: string): AppConstants.AssetType | null {
+    switch (actionId) {
+      case 'openNotificationTransport':
+        return AppConstants.ASSET_TYPE_TRANSPORT;
+      case 'openNotificationAccommodation':
+        return AppConstants.ASSET_TYPE_ACCOMMODATION;
+      case 'openNotificationSupplies':
+        return AppConstants.ASSET_TYPE_SUPPLIES;
+      default:
+        return null;
+    }
   }
 
   private onHeaderMenuSelect(

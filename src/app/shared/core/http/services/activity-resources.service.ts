@@ -157,7 +157,13 @@ export class HttpActivityResourcesService {
     if (!savedState) {
       throw new Error('Activity resource assignment was not persisted.');
     }
-    this.cachedStateByRecordId[ActivityResourceBuilder.recordId(savedState)] = savedState;
+    const savedRecordId = ActivityResourceBuilder.recordId(savedState);
+    const resourceIsActive = ActivityResourceBuilder.hasResourceData(savedState);
+    if (resourceIsActive) {
+      this.cachedStateByRecordId[savedRecordId] = savedState;
+    } else {
+      delete this.cachedStateByRecordId[savedRecordId];
+    }
     for (const [scopeId, cachedScope] of Object.entries(this.cachedScopeById)) {
       if (
         cachedScope.viewerState.ownerId !== savedState.ownerId
@@ -166,15 +172,15 @@ export class HttpActivityResourcesService {
         continue;
       }
       const viewerState = cachedScope.viewerState.assetOwnerUserId === savedState.assetOwnerUserId
-        ? savedState
+        ? (resourceIsActive ? savedState : ActivityResourceBuilder.createEmptyState(savedState))
         : cachedScope.viewerState;
       this.cachedScopeById[scopeId] = ActivityResourceBuilder.normalizeScope({
         viewerState,
         visibleStates: [
           ...cachedScope.visibleStates.filter(state => (
-            ActivityResourceBuilder.recordId(state) !== ActivityResourceBuilder.recordId(savedState)
+            ActivityResourceBuilder.recordId(state) !== savedRecordId
           )),
-          savedState
+          ...(resourceIsActive ? [savedState] : [])
         ]
       }, viewerState);
     }
