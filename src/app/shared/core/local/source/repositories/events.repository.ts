@@ -3411,6 +3411,7 @@ export class LocalEventsRepository {
       membersPending: pending,
       memberOwnerType: 'group',
       memberOwnerId,
+      viewerAccepted: groupMembers.some(member => member.status === 'accepted' && member.userId === userId),
       resourceMetricsByType: this.groupResourceMetrics(
         stageRuntime,
         `${group.id ?? ''}`.trim(),

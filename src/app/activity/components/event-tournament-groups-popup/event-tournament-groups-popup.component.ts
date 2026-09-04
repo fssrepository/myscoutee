@@ -1391,6 +1391,7 @@ export class EventTournamentGroupsPopupComponent {
       ownerId: this.groupMemberOwnerId(stage.subEventId, group.id),
       parentTitle: this.state?.title ?? '',
       subEventId: stage.subEventId,
+      viewOnly: group.viewerAccepted !== true,
       popupHeader: {
         title: this.joinDistinctResourcePopupHeaderLabels([parentTitle, stageTitle, groupLabel])
           || parentTitle
@@ -1420,7 +1421,7 @@ export class EventTournamentGroupsPopupComponent {
         pending: group.membersPending,
         capacityMin: group.capacityMin,
         capacityMax: group.capacityMax,
-        canManage: false
+        canManage: group.viewerAccepted === true
       }
     });
   }
