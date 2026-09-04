@@ -33,6 +33,7 @@ export interface ActivitySubEventResourceMemberSync {
 }
 
 export interface ActivitySubEventResourceInfoCardConverterOptions {
+  viewOnly?: boolean;
   groupLabel?: string | null;
   context?: ActivitySubEventResourceInfoCardContext | null;
   activeUserId?: string | null;
@@ -107,6 +108,9 @@ export class ActivitySubEventResourceInfoCardConverter {
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): readonly CardMenuActionId[] {
     const actions: CardMenuActionId[] = ['viewAsset'];
+    if (options.viewOnly) {
+      return actions;
+    }
     if (this.canJoin(card, options)) {
       actions.push('joinResource');
     } else if (this.canLeave(card, options)) {

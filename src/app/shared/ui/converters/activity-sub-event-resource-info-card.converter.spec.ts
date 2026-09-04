@@ -5,6 +5,15 @@ import type * as AppDTOs from '../../core/contracts';
 import { ActivitySubEventResourceInfoCardConverter } from './activity-sub-event-resource-info-card.converter';
 
 describe('ActivitySubEventResourceInfoCardConverter member status changes', () => {
+  it('keeps a foreign Group resource card read-only', () => {
+    const converted = ActivitySubEventResourceInfoCardConverter.convert(resourceCard(), {
+      ...options([]),
+      viewOnly: true
+    });
+
+    expect(converted.menuActions).toEqual(['viewAsset']);
+  });
+
   it('derives the joined menus from a pending status transition', () => {
     const converted = ActivitySubEventResourceInfoCardConverter.convert(resourceCard(), {
       ...options([]),

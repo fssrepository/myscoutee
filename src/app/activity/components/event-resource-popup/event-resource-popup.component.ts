@@ -415,6 +415,7 @@ export class EventResourcePopupComponent {
       ? this.eventsService.peekKnownRecordById(activeUserId, context.ownerId)
       : null;
     return {
+      viewOnly: context?.viewOnly === true,
       context,
       activeUserId,
       activeUserAssets: this.resourceSourceAssetCards(context),
@@ -453,6 +454,9 @@ export class EventResourcePopupComponent {
   protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.openResourceAssetView(card, 'view', new Event('click'));
+      return;
+    }
+    if (this.resourcePopupStore.popupContextRef()?.viewOnly) {
       return;
     }
     if (event.actionId === 'editAsset') {
@@ -1650,9 +1654,10 @@ export class EventResourcePopupComponent {
       subEventId: context.subEvent.id,
       resourceType: assetType,
       assetOwnerUserId: `${sourceCard.ownerUserId ?? card.assetOwnerUserId ?? ''}`.trim(),
-      canTakeOverAsset: (sourceCard.menuActions ?? []).includes('takeOver'),
+      canTakeOverAsset: !context.viewOnly && (sourceCard.menuActions ?? []).includes('takeOver'),
       subtitle,
-      canManage: this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
+      canManage: !context.viewOnly && this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
+      viewOnly: context.viewOnly === true,
       acceptedMembers,
       pendingMembers,
       capacityTotal,
@@ -3038,7 +3043,7 @@ export class EventResourcePopupComponent {
   openExplorePopup(event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
+    if (!context || context.viewOnly) {
       return;
     }
     const type = this.resourcePopupStore.resourceFilterRef();

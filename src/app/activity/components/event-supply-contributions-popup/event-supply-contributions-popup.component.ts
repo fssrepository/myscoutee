@@ -258,6 +258,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
 
   protected supplyContributionsPopupModel(): PopupModel {
     const title = this.supplyPopupTitle();
+    const viewOnly = this.resourcePopupStore.popupContextRef()?.viewOnly === true;
     return {
       title,
       subtitle: this.popupSubtitle(),
@@ -270,7 +271,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       headerTone: 'accent',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      headerActions: [{
+      headerActions: viewOnly ? [] : [{
         id: 'add-supply-quantity',
         icon: 'add',
         ariaLabel: 'Add supply quantity row',
@@ -453,7 +454,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected openBringDialog(event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.supplyPopupRef();
-    if (!context) {
+    if (!context || this.resourcePopupStore.popupContextRef()?.viewOnly) {
       return;
     }
     const max = Math.max(0, context.capacityTotal - context.accepted);
@@ -503,7 +504,12 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected confirmBringDialog(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.resourcePopupStore.bringDialogRef();
-    if (!dialog || dialog.busy || !this.canSubmitBringDialog()) {
+    if (
+      !dialog
+      || dialog.busy
+      || this.resourcePopupStore.popupContextRef()?.viewOnly
+      || !this.canSubmitBringDialog()
+    ) {
       return;
     }
     if (dialog.quantity <= 0) {
@@ -580,13 +586,18 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   protected canDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO): boolean {
-    return row.userId === this.activeUser().id;
+    return this.resourcePopupStore.popupContextRef()?.viewOnly !== true
+      && row.userId === this.activeUser().id;
   }
 
   protected requestDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.supplyPopupRef();
-    if (!context || row.userId !== this.activeUser().id) {
+    if (
+      !context
+      || this.resourcePopupStore.popupContextRef()?.viewOnly
+      || row.userId !== this.activeUser().id
+    ) {
       return;
     }
     const pending: SupplyContributionRemovalRequest = {

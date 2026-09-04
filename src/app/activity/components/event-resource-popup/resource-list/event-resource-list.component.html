@@ -19,13 +19,15 @@
   ></app-menu>
 
   <div class="subevent-assets-toolbar-actions">
-    <app-menu
-      class="subevent-assets-quick-actions"
-      kind="select"
-      [trigger]="quickActionsMenuTrigger()"
-      [items]="quickActionsMenuItems()"
-      (itemSelect)="onEventResourceMenuSelect($event)"
-    ></app-menu>
+    @if (model?.canAssign !== false) {
+      <app-menu
+        class="subevent-assets-quick-actions"
+        kind="select"
+        [trigger]="quickActionsMenuTrigger()"
+        [items]="quickActionsMenuItems()"
+        (itemSelect)="onEventResourceMenuSelect($event)"
+      ></app-menu>
+    }
   </div>
 </div>
 
