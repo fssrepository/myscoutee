@@ -765,6 +765,7 @@ export class AdminIdeaEditorPopupComponent {
       const saved = await this.ideaPosts.savePost({
         actorUserId: this.actorUserId(),
         id: post.id,
+        contentKey: post.contentKey,
         lang: post.lang,
         title: post.title,
         excerpt: post.excerpt,
@@ -818,6 +819,7 @@ export class AdminIdeaEditorPopupComponent {
       const saved = await this.ideaPosts.savePost({
         actorUserId: this.actorUserId(),
         id: post.id,
+        contentKey: post.contentKey,
         lang: post.lang,
         title: post.title,
         excerpt: post.excerpt,
