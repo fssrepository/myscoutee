@@ -1,4 +1,4 @@
-import { Injectable, Type, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type {
   NotificationBucket,
@@ -35,23 +35,19 @@ export class NotificationCenterStore {
 
   private readonly activeUserIdRef = signal('');
   private readonly openRef = signal(false);
-  private readonly openingRef = signal(false);
   private readonly unreadCountRef = signal(0);
   private readonly mutedRef = signal(false);
   private readonly markReadPendingIdsRef = signal<ReadonlySet<string>>(new Set());
   private readonly attentionRequestedRef = signal(false);
   private readonly dragPositionRef = signal<AppMenuDragPosition>({ x: 0, y: 0 });
-  private readonly popupComponentRef = signal<Type<unknown> | null>(null);
   private readonly bucketRef = signal<NotificationBucket>('new');
 
   readonly activeUserId = this.activeUserIdRef.asReadonly();
   readonly isOpen = this.openRef.asReadonly();
   readonly visible = this.isOpen;
-  readonly opening = this.openingRef.asReadonly();
   readonly unreadCount = this.unreadCountRef.asReadonly();
   readonly muted = this.mutedRef.asReadonly();
   readonly dragPosition = this.dragPositionRef.asReadonly();
-  readonly popupComponent = this.popupComponentRef.asReadonly();
   readonly bucket = this.bucketRef.asReadonly();
   readonly attentionVisible = computed(() =>
     this.attentionRequestedRef()
@@ -60,7 +56,6 @@ export class NotificationCenterStore {
     && !this.openRef()
   );
 
-  private popupLoadPromise: Promise<void> | null = null;
   private generation = 0;
   private pageContextRevision = 0;
   private pageContextRequestSequence = 0;
@@ -88,24 +83,12 @@ export class NotificationCenterStore {
     this.resetState();
   }
 
-  async open(): Promise<void> {
-    if (!this.activeUserIdRef() || this.openRef() || this.openingRef()) {
+  open(): void {
+    if (!this.activeUserIdRef() || this.openRef()) {
       return;
     }
-    const generation = this.generation;
-    this.openingRef.set(true);
-    try {
-      await this.ensurePopupLoaded();
-      if (generation !== this.generation || !this.activeUserIdRef()) {
-        return;
-      }
-      this.attentionRequestedRef.set(false);
-      this.openRef.set(true);
-    } finally {
-      if (generation === this.generation) {
-        this.openingRef.set(false);
-      }
-    }
+    this.attentionRequestedRef.set(false);
+    this.openRef.set(true);
   }
 
   close(): void {
@@ -191,22 +174,6 @@ export class NotificationCenterStore {
       announce: nextCount > token.unreadCount
     });
     return true;
-  }
-
-  async ensurePopupLoaded(): Promise<void> {
-    if (this.popupComponentRef()) {
-      return;
-    }
-    if (!this.popupLoadPromise) {
-      this.popupLoadPromise = import('../../components/notification-center-popup/notification-center-popup.component')
-        .then(module => {
-          this.popupComponentRef.set(module.NotificationCenterPopupComponent);
-        })
-        .finally(() => {
-          this.popupLoadPromise = null;
-        });
-    }
-    await this.popupLoadPromise;
   }
 
   async queryPage(
@@ -366,7 +333,6 @@ export class NotificationCenterStore {
     this.pageContextRequestSequence = 0;
     this.activeUserIdRef.set('');
     this.openRef.set(false);
-    this.openingRef.set(false);
     this.unreadCountRef.set(0);
     this.mutedRef.set(false);
     this.markReadPendingIdsRef.set(new Set());

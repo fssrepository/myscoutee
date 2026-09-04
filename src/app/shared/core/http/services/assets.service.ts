@@ -374,6 +374,31 @@ export class HttpAssetsService {
     }
   }
 
+  async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/leave-ownership`, {
+          userId: normalizedUserId,
+          assetId: normalizedAssetId
+        })
+        .toPromise();
+      const normalized = this.normalizeCard(response);
+      if (!normalized || normalized.status !== 'UR') {
+        return null;
+      }
+      this.cachedAssetsByUserId[normalizedUserId] = this.peekOwnedAssetsByUser(normalizedUserId)
+        .filter(card => card.id !== normalizedAssetId);
+      return this.cloneCards([normalized])[0] ?? normalized;
+    } catch {
+      return null;
+    }
+  }
+
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
@@ -433,11 +458,24 @@ export class HttpAssetsService {
   }
 
   async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
+      return null;
+    }
     try {
       const response = await this.http.post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/revoke-manager`, {
-        userId: userId.trim(), assetId: assetId.trim(), targetUserId: targetUserId.trim()
+        userId: normalizedUserId,
+        assetId: normalizedAssetId,
+        targetUserId: normalizedTargetUserId
       }).toPromise();
-      return this.normalizeCard(response);
+      const normalized = this.normalizeCard(response);
+      if (!normalized) {
+        return null;
+      }
+      this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(this.peekOwnedAssetsByUser(normalizedUserId), normalized);
+      return this.cloneCards([normalized])[0] ?? null;
     } catch {
       return null;
     }
@@ -518,6 +556,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
@@ -578,6 +617,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],

@@ -2,6 +2,7 @@
   <app-info-card
     [card]="itemInfoCard(card, { groupLabel })"
     [useSharedMenu]="true"
+    (mediaStartClick)="openOwnerImpressions(card)"
     (mediaEndClick)="openBorrowFromBadge(card)"
     (menuAction)="onCardMenuAction(card, $event)"
     (menuRequest)="openInfoCardMenu(card, $event)"

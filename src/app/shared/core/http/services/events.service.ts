@@ -1370,6 +1370,7 @@ export class HttpEventsService implements IEventsService {
       membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0)),
       memberOwnerType: group?.memberOwnerType === 'event' ? 'event' : 'group',
       memberOwnerId: `${group?.memberOwnerId ?? ''}`.trim(),
+      viewerAccepted: group?.viewerAccepted === true,
       resourceMetricsByType: Object.fromEntries(Object.entries(group?.resourceMetricsByType ?? {}).map(
         ([type, metric]) => [type, {
           accepted: Math.max(0, Math.trunc(Number(metric?.accepted) || 0)),

@@ -106,6 +106,11 @@ export class LocalAssetsService extends LocalRouteDelayService {
     await this.assetsRepository.deleteOwnedAsset(userId, assetId);
   }
 
+  async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.leaveOwnedAsset(userId, assetId);
+  }
+
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.takeOverOwnedAsset(userId, assetId);

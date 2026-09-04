@@ -1,4 +1,4 @@
-@if (!resourcePopupStore.assetExploreOnlyRef() || resourceAssetView()) {
+@if (resourcePopupStore.popupContextRef() && (!resourcePopupStore.assetExploreOnlyRef() || resourceAssetView())) {
   <app-popup
     class="event-resource-popup-shell"
     [class.event-resource-popup-shell--standalone-asset-view]="resourcePopupStore.resourceAssetViewReturnToChatRef()"

@@ -60,7 +60,10 @@ import {
   EventSubeventGroupFormPopupComponent
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityResourceMemberDeltaSyncState
+} from '../../../shared/ui/context/stores/activity.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
@@ -178,6 +181,7 @@ export class EventTournamentGroupsPopupComponent {
   private handledRequestMs = 0;
   private handledMembersSyncMs = 0;
   private handledResourceSyncMs = 0;
+  private handledResourceMemberDeltaSyncMs = 0;
   private handledResourceMetricsRevision = 0;
   private readonly emittedStagePendingByKey = new Map<string, number>();
   private loadSequence = 0;
@@ -230,19 +234,20 @@ export class EventTournamentGroupsPopupComponent {
       }
       const match = this.groupResourceScope(sync.ownerId, sync.subEventId);
       if (match) {
-        if (sync.resourceType && sync.readAtIso) {
-          this.state = this.markGroupResourceTypeRead(
-            this.state,
-            match.stage.subEventId,
-            match.group.id,
-            sync.resourceType
-          );
-          this.emitGroupsUpdate(match.stage.subEventId);
-          this.cdr.markForCheck();
-        } else {
-          this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
-        }
+        this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
       }
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityResourceMemberDeltaSync();
+      if (!sync || sync.updatedMs <= this.handledResourceMemberDeltaSyncMs) {
+        return;
+      }
+      this.handledResourceMemberDeltaSyncMs = sync.updatedMs;
+      if (!this.isOpen()) {
+        return;
+      }
+      this.applyResourceMemberDeltaSync(sync);
     });
 
     effect(() => {
@@ -258,6 +263,7 @@ export class EventTournamentGroupsPopupComponent {
       if (!match) {
         return;
       }
+      const previousPending = EventTournamentGroupsPopupConverter.stagePendingTotal(match.stage);
       this.state = this.updateGroupResourceMetrics(
         this.state,
         match.stage.subEventId,
@@ -283,7 +289,9 @@ export class EventTournamentGroupsPopupComponent {
           }
         }
       );
-      this.emitGroupsUpdate(match.stage.subEventId);
+      const updatedStage = this.state?.stages.find(stage => stage.subEventId === match.stage.subEventId) ?? null;
+      const nextPending = EventTournamentGroupsPopupConverter.stagePendingTotal(updatedStage);
+      this.emitGroupsUpdate(match.stage.subEventId, nextPending - previousPending);
       this.cdr.markForCheck();
     });
 
@@ -1319,7 +1327,7 @@ export class EventTournamentGroupsPopupComponent {
     });
   }
 
-  private emitGroupsUpdate(stageId: string): void {
+  private emitGroupsUpdate(stageId: string, explicitPendingDelta?: number): void {
     const stage = this.state?.stages.find(item => item.subEventId === stageId) ?? null;
     const groupsCount = stage?.groups.length ?? 0;
     const groupsPending = EventTournamentGroupsPopupConverter.stagePendingTotal(stage);
@@ -1336,9 +1344,9 @@ export class EventTournamentGroupsPopupComponent {
       stageId,
       groupsCount,
       groupsPending,
-      groupsPendingDelta: previousGroupsPending == null
+      groupsPendingDelta: explicitPendingDelta ?? (previousGroupsPending == null
         ? 0
-        : groupsPending - previousGroupsPending
+        : groupsPending - previousGroupsPending)
     });
   }
 
@@ -1386,6 +1394,7 @@ export class EventTournamentGroupsPopupComponent {
       ownerId: this.groupMemberOwnerId(stage.subEventId, group.id),
       parentTitle: this.state?.title ?? '',
       subEventId: stage.subEventId,
+      viewOnly: group.viewerAccepted !== true,
       popupHeader: {
         title: this.joinDistinctResourcePopupHeaderLabels([parentTitle, stageTitle, groupLabel])
           || parentTitle
@@ -1409,11 +1418,13 @@ export class EventTournamentGroupsPopupComponent {
         id: group.id,
         groupLabel: group.name,
         source: group.source,
+        memberOwnerId: group.memberOwnerId,
+        memberOwnerType: group.memberOwnerType,
         accepted: group.membersAccepted,
         pending: group.membersPending,
         capacityMin: group.capacityMin,
         capacityMax: group.capacityMax,
-        canManage: false
+        canManage: group.viewerAccepted === true
       }
     });
   }
@@ -1494,6 +1505,27 @@ export class EventTournamentGroupsPopupComponent {
     return stage && group ? { stage, group } : null;
   }
 
+  private applyResourceMemberDeltaSync(sync: ActivityResourceMemberDeltaSyncState): void {
+    const match = this.groupResourceScope(sync.ownerId, sync.subEventId);
+    const pendingDelta = Math.trunc(Number(sync.pendingMemberDelta) || 0);
+    if (!match || pendingDelta === 0) {
+      return;
+    }
+    const nextState = EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      this.state,
+      match.stage.subEventId,
+      match.group.id,
+      sync.resourceType,
+      pendingDelta
+    );
+    if (nextState === this.state) {
+      return;
+    }
+    this.state = nextState;
+    this.emitGroupsUpdate(match.stage.subEventId);
+    this.cdr.markForCheck();
+  }
+
   private updateGroupCounts(
     state: ContractTypes.EventTournamentGroupsStateDTO | null,
     stageId: string,
@@ -1546,39 +1578,6 @@ export class EventTournamentGroupsPopupComponent {
             ...stage,
             groups: stage.groups.map(group => group.id === groupId
               ? { ...group, resourceMetricsByType }
-              : group)
-          }
-        : stage)
-    };
-  }
-
-  private markGroupResourceTypeRead(
-    state: ContractTypes.EventTournamentGroupsStateDTO | null,
-    stageId: string,
-    groupId: string,
-    resourceType: AssetType
-  ): ContractTypes.EventTournamentGroupsStateDTO | null {
-    if (!state) {
-      return null;
-    }
-    return {
-      ...state,
-      stages: state.stages.map(stage => stage.subEventId === stageId
-        ? {
-            ...stage,
-            groups: stage.groups.map(group => group.id === groupId
-              ? {
-                  ...group,
-                  resourceMetricsByType: {
-                    ...group.resourceMetricsByType,
-                    [resourceType]: {
-                      accepted: Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[resourceType]?.accepted) || 0)),
-                      pending: 0,
-                      capacityMin: Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[resourceType]?.capacityMin) || 0)),
-                      capacityMax: Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[resourceType]?.capacityMax) || 0))
-                    }
-                  }
-                }
               : group)
           }
         : stage)

@@ -823,7 +823,8 @@ export class AssetPopupComponent {
 
   private async deleteAssetCardById(cardId: string): Promise<boolean> {
     const normalizedCardId = cardId.trim();
-    if (!normalizedCardId || !this.assetStore.assetCards().some(card => card.id === normalizedCardId)) {
+    const deletedCard = this.assetStore.assetCards().find(card => card.id === normalizedCardId) ?? null;
+    if (!normalizedCardId || !deletedCard) {
       return false;
     }
     const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
@@ -833,6 +834,15 @@ export class AssetPopupComponent {
     }
     this.assetStore.removeAssetCard(normalizedCardId, { reloadList: false, mutation: true });
     this.assetStore.recordAssetDeleted(normalizedCardId);
+    if (ownerUserId && this.assetStore.isActiveOwnerUser(ownerUserId)) {
+      this.activityStore.signalUserAssetBucketCount(
+        ownerUserId,
+        deletedCard.type,
+        this.assetStore.cardsByType(deletedCard.type).length,
+        this.userProfileStore.getUserProfile(ownerUserId)?.activities
+          ?? this.userProfileStore.activeUserProfile()?.activities
+      );
+    }
     return true;
   }
 

@@ -163,7 +163,7 @@ type ChatMenuContext =
   | { menu: 'chat-header'; action: 'history' }
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
-  | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
+  | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' | 'resend' };
 
 interface SelectedChatGroupState {
   id: string;
@@ -1350,6 +1350,16 @@ export class EventChatPopupComponent implements OnDestroy {
       surface: 'tinted',
       context: { menu: 'message-action', message, action: 'pin' }
     });
+    if (message.mine && message.deliveryState === 'timed-out') {
+      items.push({
+        id: `chat-message-resend-${message.id}`,
+        label: 'Resend',
+        icon: 'send',
+        palette: 'blue',
+        surface: 'tinted',
+        context: { menu: 'message-action', message, action: 'resend' }
+      });
+    }
     if (this.canReportMessage(message)) {
       items.push({
         id: `chat-message-report-${message.id}`,
@@ -1393,6 +1403,9 @@ export class EventChatPopupComponent implements OnDestroy {
         break;
       case 'pin':
         this.togglePinMessage(context.message, event.sourceEvent);
+        break;
+      case 'resend':
+        this.resendMessage(context.message, event.sourceEvent);
         break;
       case 'report':
         this.reportMessage(context.message, event.sourceEvent);
@@ -2672,6 +2685,58 @@ export class EventChatPopupComponent implements OnDestroy {
           return;
         });
     }
+  }
+
+  protected resendMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
+    event?.stopPropagation();
+    if (!message.mine || message.deliveryState !== 'timed-out') {
+      return;
+    }
+    const session = this.session();
+    if (!session) {
+      return;
+    }
+    const messageId = `${message.id ?? ''}`.trim();
+    const clientId = `${message.clientId ?? messageId}`.trim();
+    if (!messageId || !clientId) {
+      return;
+    }
+
+    const sessionKey = `${session.item.id}:${session.openedAtIso}`;
+    const sentAt = new Date();
+    const retriedMessage: ContractTypes.ChatMessageDto = {
+      ...message,
+      clientId,
+      deliveryState: 'pending',
+      sentAtIso: sentAt.toISOString(),
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      readBy: []
+    };
+    this.clearPendingMessageTimeout(messageId);
+    this.replaceExistingChatMessage(retriedMessage);
+    this.schedulePendingMessageTimeout(messageId);
+    this.closeTransientMessageUi();
+
+    void this.chatsService.sendChatMessageWithAttachments(
+      session.item,
+      retriedMessage.text,
+      (retriedMessage.attachments ?? []).map(attachment => ({ ...attachment })),
+      clientId,
+      retriedMessage.replyTo
+    )
+      .then(persistedMessage => {
+        if (this.loadedSessionKey !== sessionKey) {
+          return;
+        }
+        if (persistedMessage) {
+          this.confirmPendingChatMessage(messageId, persistedMessage);
+        }
+      })
+      .catch(() => {
+        if (this.loadedSessionKey === sessionKey) {
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   protected deletedMessageLabel(message: ContractTypes.ChatMessageDto): string {

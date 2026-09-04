@@ -258,6 +258,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
 
   protected supplyContributionsPopupModel(): PopupModel {
     const title = this.supplyPopupTitle();
+    const viewOnly = this.resourcePopupStore.popupContextRef()?.viewOnly === true;
     return {
       title,
       subtitle: this.popupSubtitle(),
@@ -270,7 +271,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       headerTone: 'accent',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      headerActions: [{
+      headerActions: viewOnly ? [] : [{
         id: 'add-supply-quantity',
         icon: 'add',
         ariaLabel: 'Add supply quantity row',
@@ -279,6 +280,16 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       onClose: () => this.closeSupplyContributionsPopup(),
       onAction: event => this.onSupplyContributionsPopupAction(event)
     };
+  }
+
+  protected supplyRequirementLabel(): string {
+    const supply = this.resourcePopupStore.supplyPopupRef();
+    const required = Math.max(0, Math.trunc(Number(supply?.capacityMin) || 0));
+    const remaining = Math.max(
+      0,
+      Math.trunc(Number(supply?.capacityTotal) || 0) - Math.trunc(Number(supply?.accepted) || 0)
+    );
+    return `Required ${required} · Remaining ${remaining}`;
   }
 
   protected supplyContributionsPopupZIndex(): number {
@@ -425,7 +436,9 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       pageSize,
       supply.assetOwnerUserId
     );
-    await this.usersService.warmCachedUsers(result.items.map(entry => entry.userId));
+    await this.usersService.warmCachedUsers(result.items
+      .filter(entry => !entry.name?.trim())
+      .map(entry => entry.userId));
     return {
       items: this.buildSupplyContributionRows(result.items),
       total: result.total
@@ -441,12 +454,10 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected openBringDialog(event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.supplyPopupRef();
-    if (!context) {
+    if (!context || this.resourcePopupStore.popupContextRef()?.viewOnly) {
       return;
     }
-    const source = this.ownedAssetCards().find(card => card.id === context.assetId && card.type === AppConstants.ASSET_TYPE_SUPPLIES);
-    const settings = this.getSubEventAssignedAssetSettings(context.subEventId, AppConstants.ASSET_TYPE_SUPPLIES);
-    const max = Math.max(1, settings[context.assetId]?.capacityMax ?? source?.capacityTotal ?? 1);
+    const max = Math.max(0, context.capacityTotal - context.accepted);
     this.resourcePopupStore.bringDialogRef.set({
       subEventId: context.subEventId,
       cardId: context.assetId,
@@ -493,7 +504,12 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected confirmBringDialog(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.resourcePopupStore.bringDialogRef();
-    if (!dialog || dialog.busy || !this.canSubmitBringDialog()) {
+    if (
+      !dialog
+      || dialog.busy
+      || this.resourcePopupStore.popupContextRef()?.viewOnly
+      || !this.canSubmitBringDialog()
+    ) {
       return;
     }
     if (dialog.quantity <= 0) {
@@ -536,10 +552,15 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
           return;
         }
         const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        const persistedEntry = (resolvedState.supplyContributionEntriesByAssetId[dialog.cardId] ?? [])
+          .find(entry => entry.id === nextEntry.id);
+        if (!persistedEntry) {
+          throw new Error('Supply contribution was not persisted.');
+        }
         this.applyPersistedPopupState(resolvedState);
         this.resourcePopupStore.bringDialogRef.set(null);
-        this.insertVisibleSupplyContribution(nextEntry);
-        this.syncPopupSubEventMetrics();
+        this.insertVisibleSupplyContribution(persistedEntry);
+        this.syncPopupSubEventMetrics(resolvedState);
       })
       .catch(error => {
         if (this.pendingSupplyBringAbortController === abortController) {
@@ -565,13 +586,18 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   protected canDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO): boolean {
-    return row.userId === this.activeUser().id;
+    return this.resourcePopupStore.popupContextRef()?.viewOnly !== true
+      && row.userId === this.activeUser().id;
   }
 
   protected requestDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.supplyPopupRef();
-    if (!context || row.userId !== this.activeUser().id) {
+    if (
+      !context
+      || this.resourcePopupStore.popupContextRef()?.viewOnly
+      || row.userId !== this.activeUser().id
+    ) {
       return;
     }
     const pending: SupplyContributionRemovalRequest = {
@@ -611,7 +637,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
     this.supplyContributionSmartList?.removeVisibleItemByIdentity(pending.entryId, { totalDelta: -1 });
-    this.syncPopupSubEventMetrics();
+    this.syncPopupSubEventMetrics(resolvedState);
   }
 
   protected addedLabel(addedAtIso: string): string {
@@ -639,14 +665,18 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return entries
       .map(entry => {
         const user = this.userById.get(entry.userId) ?? null;
+        const name = entry.name?.trim() || user?.name || 'Unknown member';
+        const gender = entry.gender && AppConstants.USER_GENDERS.includes(entry.gender)
+          ? entry.gender
+          : user?.gender ?? 'woman';
         return {
           id: entry.id,
           userId: entry.userId,
-          name: user?.name ?? 'Unknown member',
-          initials: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Unknown member'),
-          gender: user?.gender ?? 'woman',
-          age: user?.age ?? 0,
-          city: user?.city ?? '',
+          name,
+          initials: entry.initials?.trim() || user?.initials || AppUtils.initialsFromText(name),
+          gender,
+          age: Math.max(0, Math.trunc(Number(entry.age ?? user?.age) || 0)),
+          city: entry.city?.trim() || user?.city || '',
           addedAtIso: entry.addedAtIso,
           quantity: AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
         };
@@ -678,32 +708,13 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return null;
     }
-    return {
-      ownerId,
-      subEventId,
-      assetOwnerUserId,
-      assetAssignmentIds: {
-        [AppConstants.ASSET_TYPE_TRANSPORT]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_TRANSPORT)],
-        [AppConstants.ASSET_TYPE_ACCOMMODATION]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)],
-        [AppConstants.ASSET_TYPE_SUPPLIES]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES)]
-      },
-      assetSettingsByType: {
-        [AppConstants.ASSET_TYPE_TRANSPORT]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_TRANSPORT) },
-        [AppConstants.ASSET_TYPE_ACCOMMODATION]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION) },
-        [AppConstants.ASSET_TYPE_SUPPLIES]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_SUPPLIES) }
-      },
-      supplyContributionEntriesByAssetId: Object.fromEntries(
-        this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES).map(assetId => [
-          assetId,
-          this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
-        ])
-      ),
-      fallbackAssetCardsByType: {
-        [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
-        [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
-        [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
-      }
-    };
+    const currentState = this.resourcePopupStore.visibleResourceStates().find(state =>
+      state.ownerId === ownerId
+      && state.subEventId === subEventId
+      && state.assetOwnerUserId === assetOwnerUserId
+    );
+    return ActivityResourceBuilder.cloneState(currentState)
+      ?? ActivityResourceBuilder.createEmptyState({ ownerId, subEventId, assetOwnerUserId });
   }
 
   private applyPersistedPopupState(state: AppDTOs.ActivitySubEventResourceStateDTO): void {
@@ -711,6 +722,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!normalizedState) {
       return;
     }
+    this.resourcePopupStore.upsertVisibleResourceState(normalizedState);
     const activeContext = this.resourcePopupStore.popupContextRef();
     if (
       activeContext
@@ -726,31 +738,28 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         )
       });
     }
-    for (const type of AppConstants.ASSET_TYPES) {
-      this.resourcePopupStore.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
-        ...(normalizedState.assetAssignmentIds[type] ?? [])
-      ];
-      this.resourcePopupStore.assignedAssetSettingsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = {
-        ...(normalizedState.assetSettingsByType[type] ?? {})
-      };
-    }
-    for (const key of Object.keys(this.resourcePopupStore.supplyContributionEntriesByAssignmentKey)) {
-      if (key.startsWith(`${normalizedState.subEventId}:`)) {
-        delete this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[key];
+    const activeSupply = this.resourcePopupStore.supplyPopupRef();
+    if (activeSupply && activeSupply.subEventId === normalizedState.subEventId) {
+      const entriesById = new Map<string, AppDTOs.SubEventSupplyContributionEntryDTO>();
+      for (const visibleState of this.resourcePopupStore.visibleResourceStates()) {
+        for (const entry of visibleState.supplyContributionEntriesByAssetId[activeSupply.assetId] ?? []) {
+          entriesById.set(entry.id, { ...entry });
+        }
       }
-    }
-    for (const [assetId, entries] of Object.entries(normalizedState.supplyContributionEntriesByAssetId)) {
-      this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(normalizedState.subEventId, assetId)] = entries
-        .map(entry => ({ ...entry }));
+      this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[
+        this.subEventSupplyAssignmentKey(normalizedState.subEventId, activeSupply.assetId)
+      ] = [...entriesById.values()];
     }
   }
 
-  private syncPopupSubEventMetrics(): void {
+  private syncPopupSubEventMetrics(
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
+  ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
     }
-    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
@@ -766,6 +775,20 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(
+      nextSubEvent,
+      persistedState
+    );
+    const supplyPopup = this.resourcePopupStore.supplyPopupRef();
+    const persistedSupplies = persistedState?.resourceMetricsByType?.[AppConstants.ASSET_TYPE_SUPPLIES];
+    if (supplyPopup && persistedSupplies) {
+      this.resourcePopupStore.supplyPopupRef.set({
+        ...supplyPopup,
+        accepted: Math.max(0, Math.trunc(Number(persistedSupplies.accepted) || 0)),
+        capacityMin: Math.max(0, Math.trunc(Number(persistedSupplies.capacityMin) || 0)),
+        capacityTotal: Math.max(0, Math.trunc(Number(persistedSupplies.capacityMax) || 0))
+      });
+    }
     const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
       || context.subEvent.carsPending !== nextSubEvent.carsPending
       || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin

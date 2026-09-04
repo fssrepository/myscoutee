@@ -386,7 +386,7 @@ export class SeedNotificationsBuilder {
       kind: 'event-invite',
       category: 'event',
       title: eventTitle,
-      message: `${inviterName} invited you to ${eventTitle}.`,
+      message: 'Event invitation',
       createdAtIso: new Date(createdAtMs).toISOString(),
       readAtIso: invitation.unread > 0
         ? null

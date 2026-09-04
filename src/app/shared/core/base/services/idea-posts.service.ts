@@ -277,7 +277,8 @@ export class IdeaPostsService extends BaseRouteModeService {
   }
 
   private shouldResetAdminPage(query: IdeaPostAdminPageQueryDto): boolean {
-    return !`${query.cursor ?? ''}`.trim();
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    return page === 0 && !`${query.cursor ?? ''}`.trim();
   }
 
   private mergePostLists(existing: readonly IdeaPostDto[], incoming: readonly IdeaPostDto[]): IdeaPostDto[] {

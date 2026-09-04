@@ -19,24 +19,24 @@
   ></app-menu>
 
   <div class="subevent-assets-toolbar-actions">
-    <app-menu
-      class="subevent-assets-quick-actions"
-      kind="select"
-      [trigger]="quickActionsMenuTrigger()"
-      [items]="quickActionsMenuItems()"
-      (itemSelect)="onEventResourceMenuSelect($event)"
-    ></app-menu>
+    @if (model?.canAssign !== false) {
+      <app-menu
+        class="subevent-assets-quick-actions"
+        kind="select"
+        [trigger]="quickActionsMenuTrigger()"
+        [items]="quickActionsMenuItems()"
+        (itemSelect)="onEventResourceMenuSelect($event)"
+      ></app-menu>
+    }
   </div>
 </div>
 
 <app-smart-list
-  #resourceSmartList
   class="subevent-assets-scroll-list"
   [config]="resourceSmartListConfig"
   [loadPage]="resourceSmartListLoadPage"
   [itemTemplate]="resourceItemTemplate"
   [query]="resourceSmartListQuery"
-  (stateChange)="onResourceSmartListStateChange($event)"
 ></app-smart-list>
 
 <app-menu-outlet

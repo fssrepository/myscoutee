@@ -13,6 +13,8 @@ export interface ActivityRuntimeResourceScopeRef {
   runtimeKind?: string | null;
   eventId?: string | null;
   groupId?: string | null;
+  memberOwnerId?: string | null;
+  memberOwnerType?: AppConstants.ActivityMemberOwnerType | null;
 }
 
 export interface ActivityRuntimeResourceScopeIdentity {
@@ -65,6 +67,8 @@ export class ActivityResourceBuilder {
     const resourceOwnerId = `${ref.ownerId ?? ''}`.trim();
     const resourceScopeId = `${ref.subEventId ?? ''}`.trim();
     const groupId = `${ref.groupId ?? ''}`.trim();
+    const memberOwnerId = `${ref.memberOwnerId ?? ''}`.trim();
+    const memberOwnerType = ref.memberOwnerType === 'event' ? 'event' : 'group';
     const isMainEvent = !groupId && `${ref.runtimeKind ?? ''}`.trim().toUpperCase() === 'MAIN_EVENT';
     const eventId = `${ref.eventId ?? ''}`.trim()
       || this.authorizationEventId(resourceOwnerId, resourceScopeId);
@@ -79,7 +83,9 @@ export class ActivityResourceBuilder {
         eventId,
         resourceOwnerId,
         resourceScopeId,
-        memberOwner: resourceOwnerId ? { ownerType: 'group', ownerId: resourceOwnerId } : null,
+        memberOwner: memberOwnerId
+          ? { ownerType: memberOwnerType, ownerId: memberOwnerId }
+          : resourceOwnerId ? { ownerType: 'group', ownerId: resourceOwnerId } : null,
         chatChannelType: chatOwnerId ? 'groupSubEvent' : null,
         chatOwnerId
       };
@@ -170,6 +176,19 @@ export class ActivityResourceBuilder {
       fallbackAssetCardsByType: {},
       resourceMetricsByType: {}
     };
+  }
+
+  static hasResourceData(
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined
+  ): boolean {
+    if (!state) {
+      return false;
+    }
+    return AppConstants.ASSET_TYPES.some(type =>
+      (state.assetAssignmentIds?.[type] ?? []).length > 0
+      || Object.keys(state.assetSettingsByType?.[type] ?? {}).length > 0
+    ) || Object.values(state.supplyContributionEntriesByAssetId ?? {})
+      .some(entries => (entries ?? []).length > 0);
   }
 
   static cloneState(
@@ -526,10 +545,9 @@ export class ActivityResourceBuilder {
       const assignedCards = this.resolveAssignedCards(type, state, assets);
       const settings = this.resolveAssignedAssetSettings(state, type);
       const accepted = type === AppConstants.ASSET_TYPE_SUPPLIES
-        ? assignedCards.reduce((sum, card) => (
-            sum + this.resolveSupplyContributionEntries(state, card.id)
-              .reduce((entrySum, entry) => entrySum + Math.max(0, Math.trunc(Number(entry.quantity) || 0)), 0)
-          ), 0)
+        ? Object.values(state.supplyContributionEntriesByAssetId ?? {})
+            .flat()
+            .reduce((sum, entry) => sum + Math.max(0, Math.trunc(Number(entry.quantity) || 0)), 0)
         : assignedCards.reduce((sum, card) => (
             sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'accepted', state.ownerId)
           ), 0);
@@ -588,10 +606,11 @@ export class ActivityResourceBuilder {
 
   static isSubEventManualAssignmentRequest(request: AppDTOs.AssetMemberRequestDTO, subEventId: string): boolean {
     const normalizedSubEventId = subEventId.trim();
+    const requestId = `${request.id ?? ''}`.trim();
     return (
       request.requestKind === 'manual'
       && normalizedSubEventId.length > 0
-      && request.id.startsWith(`manual:${normalizedSubEventId}:`)
+      && requestId.startsWith(`manual:${normalizedSubEventId}:`)
     );
   }
 

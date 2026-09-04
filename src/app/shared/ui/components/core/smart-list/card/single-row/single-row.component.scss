@@ -193,6 +193,10 @@
   gap: 0.08rem;
 }
 
+.ui-single-row.notification-row.ui-single-row--with-top-right .ui-single-row__main {
+  padding-right: min(28%, 6.25rem);
+}
+
 .ui-single-row__headline {
   min-width: 0;
   display: flex;

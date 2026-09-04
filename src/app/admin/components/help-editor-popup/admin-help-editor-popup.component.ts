@@ -1729,13 +1729,16 @@ export class AdminHelpEditorPopupComponent {
   }
 
   private htmlFromClipboardPayload(html: string, text: string): string {
-    const normalizedHtml = `${html ?? ''}`.trim();
-    if (normalizedHtml) {
-      return normalizedHtml;
-    }
     const normalizedText = `${text ?? ''}`.trim();
     if (this.isEmbeddableImageUrl(normalizedText)) {
       return `<img src="${this.escapeHtmlAttribute(normalizedText)}" alt="">`;
+    }
+    if (normalizedText) {
+      return text;
+    }
+    const normalizedHtml = `${html ?? ''}`.trim();
+    if (normalizedHtml) {
+      return normalizedHtml;
     }
     return text;
   }

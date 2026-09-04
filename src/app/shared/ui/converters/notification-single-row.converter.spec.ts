@@ -119,6 +119,110 @@ describe('NotificationSingleRowConverter badges', () => {
     expect(row.badges?.map(badge => badge.label)).toContain('3');
     expect(row.badges?.find(badge => badge.label === '3')?.icon).toBe('repeat');
   });
+
+  it('uses the location without repeating the event title for invitations', () => {
+    const row = converter.convert(notification({
+      kind: 'event-invite',
+      title: 'Long Event Title',
+      message: 'You were invited to Long Event Title at Austin.',
+      payload: { location: 'Austin' }
+    }));
+
+    expect(row.detail).toBe('Invitation · Austin');
+  });
+
+  it('uses compact asset metadata for supply contribution messages', () => {
+    const row = converter.convert(notification({
+      kind: 'event-supplies-contribution-added',
+      message: '2 item(s) were added to a very long asset title in a very long event title.',
+      payload: {
+        quantity: '2',
+        assetTitle: 'Shared Supplies'
+      }
+    }));
+
+    expect(row.detail).toBe('2 added · Shared Supplies');
+  });
+
+  it('uses compact asset access messages', () => {
+    const invite = converter.convert(notification({
+      kind: 'asset-member-invite',
+      message: 'You were invited to use a very long asset title.',
+      payload: { assetTitle: 'Very Long Asset Title' }
+    }));
+    const request = converter.convert(notification({
+      kind: 'asset-admin-join-request',
+      message: 'Riley Outside requested to use a very long asset title.',
+      payload: { memberName: 'Riley Outside', assetTitle: 'Very Long Asset Title' }
+    }));
+
+    expect(invite.detail).toBe('Asset invitation');
+    expect(request.detail).toBe('Riley Outside requested access');
+  });
+
+  it('does not repeat the sender already shown in the subtitle', () => {
+    const row = converter.convert(notification({
+      senderName: 'Nova Social',
+      message: 'Nova Social accepted your request.'
+    }));
+
+    expect(row.detail).toBe('Accepted your request.');
+  });
+
+  it('puts the contextual resource target after Mark as read', () => {
+    const row = converter.convert(notification({
+      kind: 'event-supplies-open',
+      sourceType: 'event',
+      sourceId: 'event-1',
+      payload: {
+        eventId: 'event-1',
+        ownerId: 'event-1',
+        subEventId: 'sub-event-1',
+        resourceType: 'Supplies'
+      }
+    }));
+
+    expect(row.menuActions).toEqual([
+      'markNotificationRead',
+      'openNotificationSupplies'
+    ]);
+  });
+
+  it('keeps the contextual target available after the notification is read', () => {
+    const row = converter.convert(notification({
+      readAtIso: '2026-07-31T08:05:00.000Z',
+      sourceType: 'event',
+      sourceId: 'event-1',
+      payload: { eventId: 'event-1' }
+    }));
+
+    expect(row.menuActions).toEqual(['openNotificationEvent']);
+  });
+
+  it('names an invitation target contextually', () => {
+    const row = converter.convert(notification({
+      kind: 'event-invite',
+      sourceType: 'event',
+      sourceId: 'event-1',
+      payload: { eventId: 'event-1' }
+    }));
+
+    expect(row.menuActions).toEqual([
+      'markNotificationRead',
+      'openNotificationInvitation'
+    ]);
+  });
+
+  it('does not offer a target without enough data to open one', () => {
+    const row = converter.convert(notification({
+      kind: 'scheduled-maintenance',
+      category: 'app-admin',
+      sourceType: 'application',
+      sourceId: 'maintenance'
+    }));
+
+    expect(row.menuActions).toEqual(['markNotificationRead']);
+  });
 });
 
 function notification(

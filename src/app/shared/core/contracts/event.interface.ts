@@ -186,6 +186,7 @@ export interface EventTournamentGroupDTO {
   membersPending: number;
   memberOwnerType?: 'event' | 'group';
   memberOwnerId?: string;
+  viewerAccepted?: boolean;
   resourceMetricsByType: Partial<Record<string, EventTournamentResourceMetricDTO>>;
 }
 

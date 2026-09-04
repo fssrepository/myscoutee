@@ -32,6 +32,7 @@ export class LocalAssetRequestsRepository {
       .map(id => table.byId[id])
       .filter((record): record is AssetRequestRecord =>
         Boolean(record)
+        && record.recordStatus !== 'D'
         && record.assetId === normalizedAssetId
         && record.ownerUserId === normalizedOwnerUserId)
       .map(record => this.cloneRecord(record));

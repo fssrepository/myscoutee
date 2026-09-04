@@ -905,7 +905,6 @@ export class EventSubeventsListPopupComponent {
       runtimeKind: item.runtimeKind,
       eventId: `${item.eventId ?? this.event?.id ?? ownerId}`.trim() || ownerId,
       assetOwnerUserId: this.event?.creatorUserId ?? null,
-      viewOnly: this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction === 'view',
       parentTitle: this.popupSubtitle(),
       subEventId: `${item.id ?? ''}`.trim(),
       subEventIndex: context.subEventIndex,
@@ -1231,6 +1230,7 @@ export class EventSubeventsListPopupComponent {
       return;
     }
 
+    let matched = false;
     let changed = false;
     let inferredActivityDelta = 0;
     const patchItem = (item: SubEventDTO): SubEventDTO => {
@@ -1239,6 +1239,7 @@ export class EventSubeventsListPopupComponent {
       if (itemOwnerId !== ownerId || itemId !== subEventId) {
         return item;
       }
+      matched = true;
       const metricsUnchanged = item.carsAccepted === update.subEvent.carsAccepted
         && item.carsPending === update.subEvent.carsPending
         && item.carsCapacityMin === update.subEvent.carsCapacityMin
@@ -1290,7 +1291,9 @@ export class EventSubeventsListPopupComponent {
       : this.items.map(patchItem);
     const activityDelta = update.activityDelta === undefined
       ? inferredActivityDelta
-      : Math.trunc(Number(update.activityDelta) || 0);
+      : matched && this.resourcePopupStore.consumeSubEventResourceActivityDelta(update.revision)
+        ? Math.trunc(Number(update.activityDelta) || 0)
+        : 0;
     if (!changed && activityDelta === 0) {
       return;
     }

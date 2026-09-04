@@ -117,6 +117,9 @@ import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-pol
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
+import {
+  NotificationCenterPopupComponent
+} from '../notification-center-popup/notification-center-popup.component';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -203,7 +206,8 @@ type NavigatorHeaderActionMenuItemId =
     AppMenuComponent,
     HeaderCardComponent,
     ProfileSettingsPopupsComponent,
-    DialogComponent
+    DialogComponent,
+    NotificationCenterPopupComponent
   ],
   templateUrl: './side-menu.component.html',
   styleUrl: './side-menu.component.scss'
@@ -561,7 +565,7 @@ export class SideMenuComponent implements OnDestroy {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
-    if (!this.isOperatorMode() && this.runtimeStore.isOnline()) {
+    if (!this.isOperatorMode()) {
       items.push({
         id: 'notifications',
         label: 'Notifications',
@@ -572,14 +576,7 @@ export class SideMenuComponent implements OnDestroy {
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        ),
-        progress: this.notificationCenterStore.opening()
-          ? {
-              state: 'loading',
-              shape: 'circle',
-              durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
-            }
-          : null
+        )
       });
     }
     if (!this.isPrivilegedWorkspaceMode()) {
@@ -2181,11 +2178,8 @@ export class SideMenuComponent implements OnDestroy {
   private openNotificationCenter(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (!this.canToggleAvatarMenu()) {
-      return;
-    }
     this.closeSideMenu();
-    void this.notificationCenterStore.open();
+    this.notificationCenterStore.open();
   }
 
   private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {

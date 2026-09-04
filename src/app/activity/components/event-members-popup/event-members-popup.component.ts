@@ -28,6 +28,7 @@ import type { ActivityMembersSyncState } from '../../../shared/ui';
 import {
   ActivityMembersService,
   ActivityInviteCandidatesService,
+  AssetsService,
   ChatsService,
   EventsService,
   I18nService,
@@ -90,6 +91,9 @@ type MemberMenuAction =
   | 'disqualify'
   | 'reinstate'
   | 'promoteAdmin'
+  | 'revokeManager'
+  | 'leaveAsset'
+  | 'takeOverAsset'
   | 'stepDownAdmin'
   | 'report'
   | 'involvement';
@@ -149,6 +153,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
+  private readonly assetsService = inject(AssetsService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -184,6 +189,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   private memberEventId = '';
   private memberSubEventId = '';
   private memberResourceType: AssetType | null = null;
+  private memberAssetOwnerUserId = '';
+  private canTakeOverAssetResponsibility = false;
   private canManageMembers = false;
   private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberDTO> = [];
   private membersListReady = false;
@@ -265,6 +272,8 @@ export class EventMembersPopupComponent implements OnDestroy {
           eventId: request.eventId,
           subEventId: request.subEventId,
           resourceType: request.resourceType,
+          assetOwnerUserId: request.assetOwnerUserId,
+          canTakeOverAsset: request.canTakeOverAsset,
           subtitle: request.subtitle,
           canManage: request.canManage,
           viewOnly: request.viewOnly,
@@ -423,6 +432,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberEventId = '';
     this.memberSubEventId = '';
     this.memberResourceType = null;
+    this.memberAssetOwnerUserId = '';
+    this.canTakeOverAssetResponsibility = false;
     this.lookupRef = null;
     this.ownerRecord = null;
     this.membersSmartList?.closeMenu();
@@ -471,6 +482,9 @@ export class EventMembersPopupComponent implements OnDestroy {
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
       || this.canPromoteAdmin(entry)
+      || this.canRevokeAssetManager(entry)
+      || this.canLeaveAssetOwner(entry)
+      || this.canTakeOverAsset(entry)
       || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
   }
@@ -521,10 +535,37 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canPromoteAdmin(entry)) {
       items.push({
         id: `member-action-promote-admin-${entry.id}`,
-        label: 'Promote to admin',
+        label: this.ownerRef?.ownerType === 'asset' ? 'Make Manager' : 'Promote to admin',
         icon: 'admin_panel_settings',
         palette: 'blue',
         context: { menu: 'member-action', member: entry, action: 'promoteAdmin' }
+      });
+    }
+    if (this.canRevokeAssetManager(entry)) {
+      items.push({
+        id: `member-action-revoke-manager-${entry.id}`,
+        label: 'Revoke Manager',
+        icon: 'person_remove',
+        palette: 'warning',
+        context: { menu: 'member-action', member: entry, action: 'revokeManager' }
+      });
+    }
+    if (this.canLeaveAssetOwner(entry)) {
+      items.push({
+        id: `member-action-leave-asset-${entry.id}`,
+        label: 'Leave asset',
+        icon: 'logout',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'leaveAsset' }
+      });
+    }
+    if (this.canTakeOverAsset(entry)) {
+      items.push({
+        id: `member-action-take-over-asset-${entry.id}`,
+        label: 'Take Over',
+        icon: 'verified_user',
+        palette: 'warning',
+        context: { menu: 'member-action', member: entry, action: 'takeOverAsset' }
       });
     }
     if (this.canStepDownAdmin(entry)) {
@@ -620,6 +661,15 @@ export class EventMembersPopupComponent implements OnDestroy {
         break;
       case 'promoteAdmin':
         this.requestPromoteAdmin(context.member, event.sourceEvent);
+        break;
+      case 'revokeManager':
+        this.requestRevokeAssetManager(context.member, event.sourceEvent);
+        break;
+      case 'leaveAsset':
+        this.requestLeaveAssetOwner(context.member, event.sourceEvent);
+        break;
+      case 'takeOverAsset':
+        this.requestTakeOverAsset(context.member, event.sourceEvent);
         break;
       case 'stepDownAdmin':
         this.requestStepDownAdmin(context.member, event.sourceEvent);
@@ -741,15 +791,20 @@ export class EventMembersPopupComponent implements OnDestroy {
       return;
     }
     this.membersSmartList?.closeMenu();
+    const assetManagerPromotion = this.ownerRef?.ownerType === 'asset';
     this.dialogStore.open({
-      title: 'Promote member to admin?',
-      message: `${entry.name} will be able to manage this event and invite or approve members.`,
+      title: assetManagerPromotion ? 'Make member an Asset Manager?' : 'Promote member to admin?',
+      message: assetManagerPromotion
+        ? `${entry.name} will be able to manage this Asset and appoint other Asset Managers.`
+        : `${entry.name} will be able to manage this event and invite or approve members.`,
       cancelLabel: 'Cancel',
-      confirmLabel: 'Promote',
+      confirmLabel: assetManagerPromotion ? 'Make Manager' : 'Promote',
       busyConfirmLabel: 'Promoting...',
       confirmTone: 'accent',
       failureMessage: 'Unable to promote member.',
-      onConfirm: () => this.confirmMemberAction(entry, 'promote-admin')
+      onConfirm: () => assetManagerPromotion
+        ? this.confirmAssetManagerPromotion(entry)
+        : this.confirmMemberAction(entry, 'promote-admin')
     });
   }
 
@@ -770,6 +825,62 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmTone: 'warning',
       failureMessage: `Unable to step down as ${managerRole}.`,
       onConfirm: () => this.confirmMemberAction(entry, 'step-down-admin')
+    });
+  }
+
+  protected requestRevokeAssetManager(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canRevokeAssetManager(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: 'Revoke Asset Manager?',
+      message: `${entry.name} will remain an Asset Member but will no longer be able to manage this Asset.`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Revoke Manager',
+      busyConfirmLabel: 'Revoking...',
+      confirmTone: 'warning',
+      failureMessage: 'Unable to revoke Asset Manager.',
+      onConfirm: () => this.confirmAssetManagerRevocation(entry)
+    });
+  }
+
+  protected requestLeaveAssetOwner(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canLeaveAssetOwner(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Leave asset?',
+      message: 'You will leave this Asset. It will remain under review until an accepted Asset Manager takes over responsibility.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Leave asset',
+      busyConfirmLabel: 'Leaving...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to leave this Asset.',
+      onConfirm: () => this.confirmLeaveAssetOwner()
+    });
+  }
+
+  protected requestTakeOverAsset(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canTakeOverAsset(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Take over asset?',
+      message: 'You will become responsible for this Asset and it will return to its previous active status.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Take Over',
+      busyConfirmLabel: 'Taking over...',
+      confirmTone: 'warning',
+      failureMessage: 'Unable to take over this Asset.',
+      onConfirm: () => this.confirmTakeOverAsset()
     });
   }
 
@@ -1034,7 +1145,117 @@ export class EventMembersPopupComponent implements OnDestroy {
     await actionPromise;
   }
 
+  private async confirmAssetManagerPromotion(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await this.assetsService.makeAssetManager(actorUserId, owner.ownerId, entry.userId);
+    if (!savedAsset) {
+      throw new Error('Unable to promote member.');
+    }
+
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    });
+    const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === 'Manager')
+      ? persistedMembers
+      : previousMembers.map(member => member.userId === entry.userId
+        ? {
+            ...member,
+            role: 'Manager' as const,
+            status: 'accepted' as const,
+            pendingSource: null,
+            requestKind: null,
+            managerGrantedByUserId: actorUserId,
+            actionAtIso: AppUtils.toIsoDateTime(new Date())
+          }
+        : member);
+    this.applyCommittedMembers(nextMembers, previousMembers);
+  }
+
+  private async confirmAssetManagerRevocation(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await this.assetsService.revokeAssetManager(actorUserId, owner.ownerId, entry.userId);
+    if (!savedAsset) {
+      throw new Error('Unable to revoke Asset Manager.');
+    }
+
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    });
+    const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === 'Member')
+      ? persistedMembers
+      : previousMembers.map(member => member.userId === entry.userId
+        ? {
+            ...member,
+            role: 'Member' as const,
+            status: 'accepted' as const,
+            managerGrantedByUserId: null,
+            actionAtIso: AppUtils.toIsoDateTime(new Date())
+          }
+        : member);
+    this.applyCommittedMembers(nextMembers, previousMembers);
+  }
+
+  private async confirmLeaveAssetOwner(): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await this.assetsService.leaveOwnedAsset(actorUserId, owner.ownerId);
+    if (!savedAsset || savedAsset.status !== 'UR') {
+      throw new Error('Unable to leave this Asset.');
+    }
+    this.memberAssetOwnerUserId = '';
+    this.canManageMembers = false;
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    });
+    this.applyCommittedMembers(persistedMembers, previousMembers);
+  }
+
+  private async confirmTakeOverAsset(): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId || !this.canTakeOverAssetResponsibility) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await this.assetsService.takeOverOwnedAsset(actorUserId, owner.ownerId);
+    if (!savedAsset || `${savedAsset.ownerUserId ?? ''}`.trim() !== actorUserId || `${savedAsset.ownerReleasedAtIso ?? ''}`.trim()) {
+      throw new Error('Unable to take over this Asset.');
+    }
+
+    this.memberAssetOwnerUserId = actorUserId;
+    this.canTakeOverAssetResponsibility = false;
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    });
+    this.applyCommittedMembers(persistedMembers, previousMembers);
+  }
+
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancel join request?';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `Leave ${this.ownerScopeLabel()}?`;
     }
@@ -1054,6 +1275,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalMessage(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Your pending request to join this asset will be cancelled.';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `You will leave this ${this.ownerScopeLabel()}.`;
     }
@@ -1073,6 +1297,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalConfirmLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancel request';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return 'Leave';
     }
@@ -1089,6 +1316,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalBusyLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancelling...';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return 'Leaving...';
     }
@@ -1105,6 +1335,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Unable to cancel the join request.';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `Unable to leave this ${this.ownerScopeLabel()}.`;
     }
@@ -1124,6 +1357,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected deleteLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return 'Cancel join request';
+    }
     if (this.isSelfManagedLeave(entry)) {
       return `Leave ${this.ownerScopeLabel()}`;
     }
@@ -1190,6 +1426,8 @@ export class EventMembersPopupComponent implements OnDestroy {
       eventId?: string;
       subEventId?: string;
       resourceType?: AssetType;
+      assetOwnerUserId?: string;
+      canTakeOverAsset?: boolean;
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -1229,6 +1467,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberEventId = `${options?.eventId ?? ''}`.trim();
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
     this.memberResourceType = options?.resourceType ?? null;
+    this.memberAssetOwnerUserId = `${options?.assetOwnerUserId ?? ''}`.trim();
+    this.canTakeOverAssetResponsibility = options?.canTakeOverAsset === true;
     const explicitParentOwnerId = `${options?.parentOwnerId ?? ''}`.trim();
     const fallbackParentOwnerId = ownerType === 'event' ? '' : this.memberEventId;
     const parentOwnerId = explicitParentOwnerId || fallbackParentOwnerId;
@@ -1412,6 +1652,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
         this.applySummaryFromMembers(members);
+        this.membersChangeHandler?.(members);
       }
     }
 
@@ -1641,6 +1882,11 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.ownerRef?.ownerType === 'asset' && entry.status === 'accepted') {
+      return this.canManageMembers
+        && !this.isCurrentUser(entry)
+        && (this.isActiveUserAssetOwner() || !this.isProtectedManagerMember(entry));
+    }
     if (this.isSelfManagedLeave(entry)) {
       return true;
     }
@@ -1700,9 +1946,48 @@ export class EventMembersPopupComponent implements OnDestroy {
         || this.isCurrentUser(entry)) {
       return false;
     }
+    if (this.ownerRef.ownerType === 'asset' && entry.role === 'Manager') {
+      return false;
+    }
     return this.ownerRef.ownerType === 'event'
       ? this.isActiveUserEventAdmin()
       : this.canManageMembers;
+  }
+
+  protected canRevokeAssetManager(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    const activeUserId = this.activeUserId();
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'asset'
+      && this.canManageMembers
+      && entry.status === 'accepted'
+      && entry.role === 'Manager'
+      && !this.isCurrentUser(entry)
+      && (this.isActiveUserAssetOwner()
+        || (!!activeUserId && entry.managerGrantedByUserId === activeUserId));
+  }
+
+  protected canLeaveAssetOwner(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'asset'
+      && entry.status === 'accepted'
+      && this.isCurrentUser(entry)
+      && this.isActiveUserAssetOwner();
+  }
+
+  protected canTakeOverAsset(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'asset'
+      && this.canTakeOverAssetResponsibility
+      && entry.status === 'accepted'
+      && this.isCurrentUser(entry);
+  }
+
+  private isActiveUserAssetOwner(): boolean {
+    const activeUserId = this.activeUserId();
+    return this.ownerRef?.ownerType === 'asset'
+      && !!activeUserId
+      && !!this.memberAssetOwnerUserId
+      && activeUserId === this.memberAssetOwnerUserId;
   }
 
   protected canStepDownAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1710,6 +1995,9 @@ export class EventMembersPopupComponent implements OnDestroy {
         || !this.ownerRef
         || entry.status !== 'accepted'
         || !this.isCurrentUser(entry)) {
+      return false;
+    }
+    if (this.ownerRef.ownerType === 'asset') {
       return false;
     }
     if (this.ownerRef.ownerType === 'event') {
@@ -1733,7 +2021,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canReportMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    if (this.lookupRef?.type === 'chat') {
+    if (this.lookupRef?.type === 'chat' || this.ownerRef?.ownerType === 'asset') {
       return false;
     }
     const activeUserId = this.activeUserId();
@@ -1902,9 +2190,17 @@ export class EventMembersPopupComponent implements OnDestroy {
     return entry.userId === this.activeUserId();
   }
 
+  private isSelfManagedAssetJoinRequestCancellation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.ownerRef?.ownerType === 'asset'
+      && this.isCurrentUser(entry)
+      && entry.status === 'pending'
+      && this.isJoinRequest(entry);
+  }
+
   private isSelfManagedLeave(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return this.ownerRef != null
       && this.ownerRef.ownerType !== 'event'
+      && !(this.ownerRef.ownerType === 'asset' && entry.status === 'accepted')
       && this.isCurrentUser(entry)
       && (
         entry.status === 'accepted'
