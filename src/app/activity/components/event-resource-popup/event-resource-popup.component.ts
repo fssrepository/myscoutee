@@ -1002,7 +1002,6 @@ export class EventResourcePopupComponent {
     this.closeAssignPopup(false);
     if (options.initialScope) {
       this.applyPersistedPopupState(options.initialScope.viewerState);
-      this.applyPersistedPopupScopeMetrics(options.initialScope);
     } else if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }
@@ -1051,7 +1050,6 @@ export class EventResourcePopupComponent {
       }
       this.resourcePopupStore.setVisibleResourceStates(scope.visibleStates);
       this.applyPersistedPopupState(scope.viewerState);
-      this.applyPersistedPopupScopeMetrics(scope);
       this.hydrateOwnedAssetsForResourcePopup();
     };
     void this.activityResourcesService
@@ -1152,37 +1150,6 @@ export class EventResourcePopupComponent {
       // the resulting render observes the fetched IDs and fallback cards together.
       this.resourcePopupStore.popupContextRef.set(nextContext);
     }
-  }
-
-  private applyPersistedPopupScopeMetrics(scope: AppDTOs.ActivitySubEventResourceScopeDTO): void {
-    const subEvent = this.resourcePopupStore.popupContextRef()?.subEvent;
-    const resourceMetricsByType = {
-      [AppConstants.ASSET_TYPE_TRANSPORT]: {
-        accepted: subEvent?.carsAccepted ?? 0,
-        pending: subEvent?.carsPending ?? 0,
-        capacityMin: subEvent?.carsCapacityMin ?? 0,
-        capacityMax: subEvent?.carsCapacityMax ?? 0
-      },
-      [AppConstants.ASSET_TYPE_ACCOMMODATION]: {
-        accepted: subEvent?.accommodationAccepted ?? 0,
-        pending: subEvent?.accommodationPending ?? 0,
-        capacityMin: subEvent?.accommodationCapacityMin ?? 0,
-        capacityMax: subEvent?.accommodationCapacityMax ?? 0
-      },
-      [AppConstants.ASSET_TYPE_SUPPLIES]: {
-        accepted: subEvent?.suppliesAccepted ?? 0,
-        pending: subEvent?.suppliesPending ?? 0,
-        capacityMin: subEvent?.suppliesCapacityMin ?? 0,
-        capacityMax: subEvent?.suppliesCapacityMax ?? 0
-      }
-    };
-    this.syncPopupSubEventMetrics({
-      syncManualAssetRequests: false,
-      persistedState: {
-        ...scope.viewerState,
-        resourceMetricsByType
-      }
-    });
   }
 
   private persistPopupResourceState(context: ResourcePopupContext | null = this.resourcePopupStore.popupContextRef()): void {
