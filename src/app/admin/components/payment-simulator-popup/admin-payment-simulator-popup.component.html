@@ -1,0 +1,30 @@
+@if (admin.activePopup() === 'payment-simulator') {
+  <app-popup class="payment-simulator-popup" [model]="popupModel()">
+    <div class="payment-simulator-body">
+      @if (frameVisible() && sourceUrl(); as url) {
+        <iframe
+          class="payment-simulator-frame"
+          [src]="url"
+          [attr.title]="'admin.payment.simulator' | i18n"
+          sandbox="allow-forms allow-scripts allow-same-origin"
+          (load)="frameLoaded()"
+        ></iframe>
+      }
+      @if (loading()) {
+        <div class="payment-simulator-state" aria-busy="true">
+          <app-indicator kind="load-ring" state="loading"></app-indicator>
+          <span>{{ 'admin.payment.simulator.loading' | i18n }}</span>
+        </div>
+      } @else if (errorKey()) {
+        <div class="payment-simulator-state payment-simulator-state--error" role="alert">
+          <mat-icon>warning</mat-icon>
+          <span>{{ errorKey() | i18n }}</span>
+          <button type="button" (click)="retry()">
+            <mat-icon>refresh</mat-icon>
+            <span>{{ 'admin.payment.simulator.retry' | i18n }}</span>
+          </button>
+        </div>
+      }
+    </div>
+  </app-popup>
+}

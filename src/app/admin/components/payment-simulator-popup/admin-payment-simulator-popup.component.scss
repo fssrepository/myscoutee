@@ -1,0 +1,61 @@
+:host {
+  display: contents;
+}
+
+.payment-simulator-body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #eef3f9;
+}
+
+.payment-simulator-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #eef3f9;
+}
+
+.payment-simulator-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  color: #294b76;
+  background: #eef3f9;
+  font-size: 0.86rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.payment-simulator-state--error {
+  color: #9b3345;
+  background: #fff7f7;
+}
+
+.payment-simulator-state button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  border: 1px solid rgba(48, 103, 169, 0.24);
+  border-radius: 8px;
+  padding: 0.42rem 0.72rem;
+  color: #24598f;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.payment-simulator-state button mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}

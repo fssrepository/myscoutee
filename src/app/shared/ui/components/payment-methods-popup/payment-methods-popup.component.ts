@@ -405,7 +405,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.trackRegistration(registration, true);
       this.revisionRef.update(value => value + 1);
     } catch (error) {
-      this.errorRef.set(error instanceof Error ? error.message : this.i18n.translate('payment.registration.error.start'));
+      this.errorRef.set(this.errorKey(error, 'payment.registration.error.start'));
     } finally {
       this.busyRef.set(false);
     }
@@ -430,12 +430,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       if (registration.status === 'completed') {
         this.errorRef.set('');
       } else if (registration.status === 'expired') {
-        this.errorRef.set(this.i18n.translate('payment.registration.error.expired'));
+        this.errorRef.set('payment.registration.error.expired');
       } else if (registration.status !== 'cancelled') {
-        this.errorRef.set(this.i18n.translate('payment.registration.error.failed'));
+        this.errorRef.set('payment.registration.error.failed');
       }
     } catch (error) {
-      this.errorRef.set(error instanceof Error ? error.message : this.i18n.translate('payment.registration.error.status'));
+      this.errorRef.set(this.errorKey(error, 'payment.registration.error.status'));
       if (this.registrationExpired(current.expiresAtIso)) this.finishRegistration('expired');
     } finally {
       this.registrationRefreshInFlight = false;
@@ -476,7 +476,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       return;
     }
     const paymentUrl = registration.paymentUrl?.trim() || '';
-    if (!paymentUrl) throw new Error(this.i18n.translate('payment.registration.error.page'));
+    if (!paymentUrl) throw new Error('payment.registration.error.page');
     const current = this.registrationRef();
     if (current?.id !== registration.id) {
       this.registrationRef.set({
@@ -497,7 +497,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.registrationRef.set(null);
     this.revisionRef.update(value => value + 1);
     if (status === 'expired') {
-      this.errorRef.set(this.i18n.translate('payment.registration.error.expired'));
+      this.errorRef.set('payment.registration.error.expired');
     }
   }
 
@@ -525,8 +525,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private activeUserId(): string {
     const userId = this.userProfileStore.activeUserId().trim();
-    if (!userId) throw new Error('A signed-in user is required.');
+    if (!userId) throw new Error('payment.error.user.required');
     return userId;
+  }
+
+  private errorKey(error: unknown, fallback: string): string {
+    const message = error instanceof Error ? error.message.trim() : '';
+    return message.startsWith('payment.') ? message : fallback;
   }
 
   private origin(url: string): string {
@@ -569,7 +574,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         ? detail as unknown as AppDTOs.ActivityEventRecord
         : await this.events.queryKnownRecordById(userId, item.sourceId);
       if (!record) {
-        this.errorRef.set(this.i18n.translate('payment.summary.error.source.unavailable'));
+        this.errorRef.set('payment.summary.error.source.unavailable');
         return;
       }
       this.store.close();
@@ -585,7 +590,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         onSubmit: () => undefined
       });
     } catch {
-      this.errorRef.set(this.i18n.translate('payment.summary.error.open'));
+      this.errorRef.set('payment.summary.error.open');
     }
   }
 
@@ -595,7 +600,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     try {
       const card = await this.findPaymentAsset(userId, item.sourceId);
       if (!card) {
-        this.errorRef.set(this.i18n.translate('payment.summary.error.asset.unavailable'));
+        this.errorRef.set('payment.summary.error.asset.unavailable');
         return;
       }
       const request = (card.requests ?? []).find(candidate =>
@@ -680,7 +685,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         }
       });
     } catch {
-      this.errorRef.set(this.i18n.translate('payment.summary.error.open'));
+      this.errorRef.set('payment.summary.error.open');
     }
   }
 

@@ -118,6 +118,7 @@ import { NotificationCenterStore } from '../../context/stores/notification-cente
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
+import { environment } from '../../../../../environments/environment';
 import {
   NotificationCenterPopupComponent
 } from '../notification-center-popup/notification-center-popup.component';
@@ -177,6 +178,7 @@ type NavigatorAdminMenuShortcutId =
   | 'adminChat'
   | 'adminJobs'
   | 'adminParams'
+  | 'adminPaymentSimulator'
   | 'adminContent'
   | 'adminArticle'
   | 'adminStats'
@@ -843,6 +845,8 @@ export class SideMenuComponent implements OnDestroy {
   });
   protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
     const disabled = !this.runtimeStore.isOnline();
+    const paymentSimulatorConfigUrl = `${environment.paymentSimulatorConfigUrl ?? ''}`.trim();
+    const showPaymentSimulator = Boolean(paymentSimulatorConfigUrl) || environment.activitiesDataSource === 'local';
     return {
       nodes: [
         {
@@ -899,6 +903,14 @@ export class SideMenuComponent implements OnDestroy {
               ariaLabel: 'Open parameters',
               disabled
             },
+            ...(showPaymentSimulator ? [{
+              id: 'adminPaymentSimulator' as const,
+              label: 'admin.payment.simulator',
+              icon: 'credit_card_gear',
+              palette: 'cyan' as const,
+              ariaLabel: 'admin.payment.simulator.open',
+              disabled: disabled || !paymentSimulatorConfigUrl
+            }] : []),
             {
               id: 'adminContent',
               label: 'Content',
@@ -1452,6 +1464,9 @@ export class SideMenuComponent implements OnDestroy {
       case 'adminParams':
         this.openAdminParamsShortcut(event.sourceEvent);
         return;
+      case 'adminPaymentSimulator':
+        this.openAdminPaymentSimulatorShortcut(event.sourceEvent);
+        return;
       case 'adminContent':
         this.openAdminHelpEditorShortcut(event.sourceEvent);
         return;
@@ -1724,6 +1739,14 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     this.adminMenuStore.openParams();
+  }
+
+  protected openAdminPaymentSimulatorShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.runtimeStore.isOnline()) {
+      return;
+    }
+    this.adminMenuStore.openPaymentSimulator();
   }
 
   protected openAdminStatsShortcut(event?: Event): void {

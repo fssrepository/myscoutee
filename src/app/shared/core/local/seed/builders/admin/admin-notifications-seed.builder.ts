@@ -139,6 +139,23 @@ export class AdminNotificationsSeedBuilder {
           startTime: '00:00'
         }),
         this.defaultNotificationRule({
+          ruleKey: 'payment-method-expiry',
+          label: 'admin.jobs.rule.payment.method.expiry',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.payment.method.expiry.description',
+          actionKey: 'payment.method.expiry',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 235,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1440,
+          startTime: '02:15'
+        }),
+        this.defaultNotificationRule({
           ruleKey: 'affinity-recompute',
           label: 'admin.jobs.rule.affinity.recompute',
           category: 'admin.jobs.category.scheduled',
