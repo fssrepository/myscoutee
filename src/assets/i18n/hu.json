@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.05.hu.63",
+  "version": "2026.09.05.hu.64",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2052,6 +2052,11 @@
     "payment.cards.add": "Kártya hozzáadása",
     "payment.cards.add.aria": "Fizetési kártya regisztrálása",
     "payment.cards.close": "Fizetési kártyák bezárása",
+    "payment.cards.delete": "Kártya törlése",
+    "payment.cards.delete.busy": "Törlés...",
+    "payment.cards.delete.error": "A fizetési kártya nem törölhető.",
+    "payment.cards.delete.message": "A(z) {brand}, {last4} végződésű kártya törlődik a mentett kártyák közül.",
+    "payment.cards.delete.title": "Törlöd a mentett kártyát?",
     "payment.cards.empty": "Nincs mentett kártya",
     "payment.cards.empty.description": "A plusz gombbal regisztrálhatsz kártyát a fizetési szolgáltatónál.",
     "payment.cards.empty.local.description": "Ehhez a profilhoz nem érhető el frontend-local kártya.",
@@ -2060,6 +2065,7 @@
     "payment.cards.open.aria": "Fizetési kártyák megnyitása",
     "payment.cards.replace": "Kártya cseréje",
     "payment.cards.select.aria": "Fizetési kártya kiválasztása",
+    "payment.cards.select.confirm": "Kiválasztott fizetési kártya használata",
     "payment.cards.select.title": "Fizetési kártya kiválasztása",
     "payment.cards.subtitle": "Legfeljebb 6 tokenizált kártya",
     "payment.cards.subtitle.local": "Helyi demó · a regisztráció nem érhető el",

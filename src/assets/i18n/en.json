@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.05.en.63",
+  "version": "2026.09.05.en.64",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2052,6 +2052,11 @@
     "payment.cards.add": "Add card",
     "payment.cards.add.aria": "Register a payment card",
     "payment.cards.close": "Close payment cards",
+    "payment.cards.delete": "Delete card",
+    "payment.cards.delete.busy": "Deleting...",
+    "payment.cards.delete.error": "Unable to delete the payment card.",
+    "payment.cards.delete.message": "{brand} ending {last4} will be removed from your saved cards.",
+    "payment.cards.delete.title": "Delete saved card?",
     "payment.cards.empty": "No saved cards",
     "payment.cards.empty.description": "Use the plus button to register a card with the payment provider.",
     "payment.cards.empty.local.description": "Frontend-local cards are not available for this profile.",
@@ -2060,6 +2065,7 @@
     "payment.cards.open.aria": "Open payment cards",
     "payment.cards.replace": "Replace card",
     "payment.cards.select.aria": "Select a payment card",
+    "payment.cards.select.confirm": "Use selected payment card",
     "payment.cards.select.title": "Select payment card",
     "payment.cards.subtitle": "Up to 6 tokenized cards",
     "payment.cards.subtitle.local": "Local demo · registration unavailable",

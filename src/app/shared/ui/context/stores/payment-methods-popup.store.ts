@@ -1,4 +1,4 @@
-import { Injectable, Type, signal } from '@angular/core';
+import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
 
@@ -15,6 +15,7 @@ export class PaymentMethodsPopupStore {
 
   readonly isOpen = this.openRef.asReadonly();
   readonly picker = this.pickerRef.asReadonly();
+  readonly selectedPaymentMethodId = computed(() => this.pickerRef()?.selectedPaymentMethodId ?? null);
   readonly component = this.componentRef.asReadonly();
 
   async openHistory(): Promise<void> {
@@ -39,6 +40,16 @@ export class PaymentMethodsPopupStore {
   close(): void {
     this.openRef.set(false);
     this.pickerRef.set(null);
+  }
+
+  togglePickerSelection(paymentMethodId: string): void {
+    const picker = this.pickerRef();
+    const normalizedId = paymentMethodId.trim();
+    if (!picker || !normalizedId) return;
+    this.pickerRef.set({
+      ...picker,
+      selectedPaymentMethodId: picker.selectedPaymentMethodId === normalizedId ? null : normalizedId
+    });
   }
 
   confirm(paymentMethod: SavedPaymentMethodDto): void {

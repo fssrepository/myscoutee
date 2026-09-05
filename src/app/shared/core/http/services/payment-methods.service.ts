@@ -56,6 +56,13 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
     ), signal));
   }
 
+  async deletePaymentMethod(userId: string, paymentMethodId: string, signal?: AbortSignal): Promise<void> {
+    await this.withTimeout(this.http.delete<void>(
+      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/${encodeURIComponent(paymentMethodId.trim())}`,
+      { params: this.userParams(userId) }
+    ), signal);
+  }
+
   async queryHistory(
     userId: string,
     paymentMethodId: string,

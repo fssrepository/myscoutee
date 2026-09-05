@@ -17,6 +17,7 @@ import { ActivitiesPopupStore } from '../../context/stores/activities-popup.stor
 import { EventCheckoutDialogStore } from '../../context/stores/event-checkout-dialog.store';
 import { AssetStore } from '../../context/stores/asset.store';
 import { AssetPopupStore } from '../../context/stores/asset-popup.store';
+import { DialogStore } from '../../context/stores/dialog.store';
 import type { AppMenuItemSelectEvent, AppMenuTrigger } from '../core/menu';
 import {
   PopupComponent,
@@ -38,8 +39,7 @@ import {
 import { I18nPipe } from '../../pipes';
 
 interface PaymentListFilters { revision: number; }
-interface PaymentHistoryFilters { paymentMethodId: string; revision: number; }
-interface PaymentPopupMenuContext { action: 'open-cards' | 'add-card'; }
+interface PaymentPopupMenuContext { action: 'open-cards' | 'add-card' | 'confirm-card'; }
 
 @Component({
   selector: 'app-payment-methods-popup',
@@ -59,13 +59,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly assets = inject(AssetsService);
   private readonly assetStore = inject(AssetStore);
   private readonly assetPopup = inject(AssetPopupStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly i18n = inject(I18nService);
 
   private readonly revisionRef = signal(0);
   private readonly canAddRef = signal(false);
   private readonly cardsOpenRef = signal(false);
-  private readonly historyCardRef = signal<SavedPaymentMethodDto | null>(null);
   private readonly registrationRef = signal<{
     id: string;
     url: string;
@@ -77,10 +77,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
   private readonly spendingTotalsRef = signal<Record<string, number>>({});
+  private readonly loadedCardsById = new Map<string, SavedPaymentMethodDto>();
   private registrationPoll: ReturnType<typeof setTimeout> | null = null;
   private registrationRefreshInFlight = false;
 
-  protected readonly historyCard = this.historyCardRef.asReadonly();
   protected readonly cardsOpen = this.cardsOpenRef.asReadonly();
   protected readonly registration = this.registrationRef.asReadonly();
   protected readonly registrationFrameOpen = this.registrationFrameOpenRef.asReadonly();
@@ -106,17 +106,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     filters: { revision: this.revisionRef() }
   }));
 
-  protected readonly cardHistoryQuery = computed<Partial<ListQuery<PaymentHistoryFilters>>>(() => ({
-    page: 0,
-    pageSize: 20,
-    sort: 'createdDate',
-    direction: 'desc',
-    filters: {
-      paymentMethodId: this.historyCardRef()?.id ?? '',
-      revision: this.revisionRef()
-    }
-  }));
-
   protected readonly cardListConfig: SmartListConfig<SavedPaymentMethodDto, PaymentListFilters> = {
     pageSize: 6,
     defaultView: 'list',
@@ -134,18 +123,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     trackBy: (_index, item) => item.id
   };
 
-  protected readonly historyListConfig: SmartListConfig<PaymentHistoryItemDto, PaymentHistoryFilters> = {
-    pageSize: 20,
-    defaultView: 'list',
-    showStickyHeader: false,
-    emptyLabel: 'payment.history.empty',
-    emptyDescription: 'payment.history.card.empty.description',
-    listLayout: 'stack',
-    snapMode: 'none',
-    headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
-    trackBy: (_index, item) => item.id
-  };
-
   protected readonly allHistoryListConfig: SmartListConfig<PaymentHistoryItemDto, PaymentListFilters> = {
     pageSize: 20,
     defaultView: 'list',
@@ -160,6 +137,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected readonly loadCards: SmartListLoadPage<SavedPaymentMethodDto, PaymentListFilters> = (query, context) => from(
     this.paymentMethods.queryPage(this.activeUserId(), query, context?.signal).then(page => {
+      this.loadedCardsById.clear();
+      page.items.forEach(item => this.loadedCardsById.set(item.id, { ...item }));
       this.canAddRef.set(page.canAdd === true);
       if (page.pendingRegistration?.status === 'pending') {
         this.trackRegistration(page.pendingRegistration, false);
@@ -175,15 +154,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         : [...page.items, pending];
       return { ...page, items, total: Math.min(6, page.total + (replaced ? 0 : 1)) };
     })
-  );
-
-  protected readonly loadHistory: SmartListLoadPage<PaymentHistoryItemDto, PaymentHistoryFilters> = (query, context) => from(
-    this.paymentMethods.queryHistory(
-      this.activeUserId(),
-      query.filters?.paymentMethodId ?? '',
-      query,
-      context?.signal
-    )
   );
 
   protected readonly loadAllHistory: SmartListLoadPage<PaymentHistoryItemDto, PaymentListFilters> = (query, context) => from(
@@ -221,6 +191,29 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   protected cardsPopupModel(): PopupModel<PaymentPopupMenuContext> {
+    const headerControls: PopupControl<PaymentPopupMenuContext>[] = [this.headerActionControl({
+      id: 'add-card',
+      icon: 'add',
+      label: 'payment.cards.add',
+      ariaLabel: 'payment.cards.add.aria',
+      disabled: this.localMode || !this.canAddRef() || this.busyRef() || this.registrationRef() !== null,
+      palette: 'green',
+      layout: 'pill',
+      action: 'custom',
+      context: { action: 'add-card' }
+    })];
+    if (this.pickerMode()) {
+      headerControls.push(this.headerActionControl({
+        id: 'confirm-card',
+        icon: 'done',
+        ariaLabel: 'payment.cards.select.confirm',
+        disabled: !this.selectedPaymentMethod(),
+        palette: 'green',
+        layout: 'icon',
+        action: 'custom',
+        context: { action: 'confirm-card' }
+      }));
+    }
     return {
       title: this.pickerMode() ? 'payment.cards.select.title' : 'payment.cards.title',
       subtitle: this.localMode ? 'payment.cards.subtitle.local' : 'payment.cards.subtitle',
@@ -231,36 +224,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       bodyLayout: 'fill',
       headerTone: 'accent',
       headerPalette: 'blue',
-      headerControls: [this.headerActionControl({
-        id: 'add-card',
-        icon: 'add',
-        label: 'payment.cards.add',
-        ariaLabel: 'payment.cards.add.aria',
-        disabled: this.localMode || !this.canAddRef() || this.busyRef() || this.registrationRef() !== null,
-        palette: 'green',
-        layout: 'pill',
-        action: 'custom',
-        context: { action: 'add-card' }
-      })],
+      headerControls,
       onMenuSelect: event => this.onHeaderMenuSelect(event),
       onClose: () => this.closeCards()
-    };
-  }
-
-  protected historyPopupModel(): PopupModel {
-    const card = this.historyCardRef();
-    return {
-      title: 'payment.history.title',
-      subtitle: card ? `${card.brand} •••• ${card.last4}` : null,
-      translateSubtitle: false,
-      ariaLabel: 'payment.history.title',
-      closeAriaLabel: 'payment.history.close',
-      size: 'default',
-      height: 'full',
-      bodyLayout: 'fill',
-      headerTone: 'accent',
-      headerPalette: 'slate',
-      onClose: () => this.historyCardRef.set(null)
     };
   }
 
@@ -293,12 +259,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       loading,
       loadingLabel: loading ? 'payment.registration.pending' : undefined,
       disabled: loading,
-      selected: false,
-      paymentMenuActions: loading ? [] : [
-        { id: 'payment-history', label: 'payment.history.title', icon: 'receipt_long', tone: 'default' },
-        ...(!this.localMode && !this.pickerMode()
+      selected: this.pickerMode() && this.store.selectedPaymentMethodId() === method.id,
+      paymentMenuActions: loading || this.pickerMode() ? [] : [
+        ...(!this.localMode
           ? [{ id: 'replace-payment-card', label: 'payment.cards.replace', icon: 'published_with_changes', tone: 'accent' as const }]
-          : [])
+          : []),
+        { id: 'delete-payment-card', label: 'payment.cards.delete', icon: 'delete', tone: 'destructive' }
       ]
     };
   }
@@ -321,10 +287,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         second: '2-digit'
       }),
       icon: item.status === 'captured' ? 'check_circle' : item.status === 'released' ? 'undo' : 'payments',
-      toneClass: 'payment-history-row',
       badges: [
         {
           label: item.provider,
+          icon: item.provider.toLowerCase() === 'stripe' ? 'payment' : 'account_balance_wallet',
           tone: item.provider.toLowerCase() === 'stripe' ? 'info' : 'accent',
           position: 'inline'
         },
@@ -350,24 +316,46 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     if (!this.pickerMode() || method.status !== 'active') return;
-    this.store.confirm(method);
+    this.store.togglePickerSelection(method.id);
   }
 
   protected onCardMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as {
       menu?: string;
       item?: SavedPaymentMethodDto;
-      request?: { items?: Array<{ context?: { paymentMethodId?: string } }> };
+      paymentMethodId?: string;
     } | undefined;
-    const method = context?.item;
+    const paymentMethodId = `${context?.paymentMethodId ?? context?.item?.id ?? ''}`.trim();
+    const method = context?.item ?? this.loadedCardsById.get(paymentMethodId) ?? null;
     if (!method) return;
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    if (event.id === 'payment-history') {
-      this.historyCardRef.set({ ...method });
-    } else if (event.id === 'replace-payment-card') {
+    if (event.id === 'replace-payment-card') {
       void this.beginRegistration(method.id);
+    } else if (event.id === 'delete-payment-card') {
+      this.confirmDelete(method);
     }
+  }
+
+  private confirmDelete(method: SavedPaymentMethodDto): void {
+    this.dialogStore.open({
+      title: 'payment.cards.delete.title',
+      message: this.i18n.translateParams('payment.cards.delete.message', {
+        brand: method.brand,
+        last4: method.last4
+      }),
+      cancelLabel: 'cancel',
+      confirmLabel: 'payment.cards.delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
+      confirmTone: 'danger',
+      failureMessage: 'payment.cards.delete.error',
+      onConfirm: async () => {
+        await this.paymentMethods.deletePaymentMethod(this.activeUserId(), method.id);
+        this.loadedCardsById.delete(method.id);
+        this.errorRef.set('');
+        this.revisionRef.update(value => value + 1);
+      }
+    });
   }
 
   @HostListener('window:message', ['$event'])
@@ -391,8 +379,19 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       return;
     }
     if (action === 'open-cards') {
+      this.errorRef.set('');
       this.cardsOpenRef.set(true);
+      return;
     }
+    if (action === 'confirm-card') {
+      const selected = this.selectedPaymentMethod();
+      if (selected) this.store.confirm(selected);
+    }
+  }
+
+  private selectedPaymentMethod(): SavedPaymentMethodDto | null {
+    const selectedId = this.store.selectedPaymentMethodId();
+    return selectedId ? this.loadedCardsById.get(selectedId) ?? null : null;
   }
 
   private async beginRegistration(replacesPaymentMethodId: string | null): Promise<void> {
@@ -448,7 +447,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private closeAll(): void {
     this.closeRegistration();
-    this.historyCardRef.set(null);
     this.cardsOpenRef.set(false);
     this.errorRef.set('');
     this.store.close();
@@ -456,7 +454,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private closeCards(): void {
     this.closeRegistration();
-    this.historyCardRef.set(null);
     if (this.pickerMode()) {
       this.closeAll();
     } else {
@@ -576,9 +573,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         userId,
         record,
         readOnlySummary: true,
+        preloadedCheckoutBasket: await this.paymentSummaryBasket(userId, item, record.title),
         title: 'event.checkout.payment.summary',
         subtitle: record.timeframe,
-        failureMessage: 'payment.summary.error.open',
+        failureMessage: this.i18n.translate('payment.summary.error.open'),
         onSubmit: () => undefined
       });
     } catch {
@@ -590,15 +588,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.errorRef.set('');
     const userId = this.activeUserId();
     try {
-      const summary = await this.findPaymentAsset(userId, item.sourceId);
-      if (!summary) {
+      const card = await this.findPaymentAsset(userId, item.sourceId);
+      if (!card) {
         this.errorRef.set(this.i18n.translate('payment.summary.error.asset.unavailable'));
         return;
       }
-      const detail = summary.ownerUserId
-        ? await this.assets.loadOwnedAssetDetailById(summary.ownerUserId, summary.id)
-        : null;
-      const card = detail ?? summary;
       const request = (card.requests ?? []).find(candidate =>
         `${candidate.userId ?? ''}`.trim() === userId
         && (!item.checkoutSessionId
@@ -642,7 +636,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
           quantity,
           quantityMax: quantity,
           quantityLabel: this.i18n.translate('quantity'),
-          quantityDescription: request?.booking?.timeframe ?? null,
+          quantityDescription: request?.booking?.timeframe ?? undefined,
           editable: false
         },
         checkout: {
@@ -685,17 +679,63 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     }
   }
 
-  private async findPaymentAsset(userId: string, sourceId: string): Promise<AppDTOs.AssetDTO | null> {
+  private async findPaymentAsset(
+    userId: string,
+    sourceId: string
+  ): Promise<AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null> {
     const normalizedSourceId = sourceId.trim();
     if (!normalizedSourceId) return null;
     const cached = this.assets.peekOwnedAssetById(userId, normalizedSourceId);
     if (cached) return cached;
-    const owned = await this.assets.loadOwnedAssetDetailById(userId, normalizedSourceId);
-    if (owned) return owned;
+    const detail = await this.assets.loadOwnedAssetDetailById(userId, normalizedSourceId);
+    if (detail) return detail;
     const visibleByType = await Promise.all(AppConstants.ASSET_TYPES.map(type =>
       this.assets.queryVisibleAssets({ userId, type })
     ));
-    return visibleByType.flat().find(card => card.id === normalizedSourceId) ?? null;
+    const visible = visibleByType.flat().find(card => card.id === normalizedSourceId) ?? null;
+    if (!visible) return null;
+    return await this.assets.loadOwnedAssetDetailById(userId, visible.id) ?? visible;
+  }
+
+  private async paymentSummaryBasket(
+    userId: string,
+    item: PaymentHistoryItemDto,
+    fallbackLabel: string
+  ): Promise<AppDTOs.EventCheckoutBasket> {
+    const audit = item.checkoutSessionId
+      ? await this.events.loadCheckoutPaymentAudit(userId, item.sourceId, item.checkoutSessionId)
+      : null;
+    const currency = `${audit?.currency ?? item.currency ?? 'USD'}`.trim() || 'USD';
+    const amount = Number(audit?.amount ?? item.amount) || 0;
+    const items = audit?.basketItems?.length
+      ? audit.basketItems.map(basketItem => ({ ...basketItem }))
+      : [{
+          id: `payment-history-${item.id}`,
+          kind: 'event' as const,
+          sourceId: item.sourceId,
+          label: fallbackLabel,
+          detail: '',
+          amount,
+          currency,
+          quantity: 1,
+          status: 'confirmed' as const,
+          resultState: item.status === 'failed' ? 'failed' as const : 'succeeded' as const,
+          pricingSummaryRows: audit?.pricingSummaryRows?.map(row => ({ ...row })) ?? [],
+          checkoutSessionId: item.checkoutSessionId ?? null,
+          createdAtIso: item.createdAtIso
+        }];
+    return {
+      userId,
+      sourceId: item.sourceId,
+      status: 'confirmed',
+      items,
+      pricingSummaryRows: audit?.pricingSummaryRows?.map(row => ({ ...row })) ?? [],
+      lineItems: audit?.lineItems?.map(line => ({ ...line })) ?? [],
+      totalAmount: amount,
+      currency,
+      checkoutSessionId: item.checkoutSessionId ?? null,
+      appliedPromoCodes: []
+    };
   }
 
   ngOnDestroy(): void {

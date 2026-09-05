@@ -37,6 +37,10 @@ export class PaymentMethodsService extends BaseRouteModeService {
     return this.service.refreshRegistration(userId, registrationId, signal);
   }
 
+  deletePaymentMethod(userId: string, paymentMethodId: string, signal?: AbortSignal): Promise<void> {
+    return this.service.deletePaymentMethod(userId, paymentMethodId, signal);
+  }
+
   queryHistory(
     userId: string,
     paymentMethodId: string,

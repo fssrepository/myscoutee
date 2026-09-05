@@ -17,7 +17,7 @@ export interface PaymentAuthorizationContinuation {
 @Injectable({ providedIn: 'root' })
 export class PaymentAuthorizationService {
   private static readonly POLL_INTERVAL_MS = 1500;
-  private static readonly POLL_TIMEOUT_MS = 3 * 60 * 1000;
+  private static readonly POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
   private readonly events = inject(EventsService);
   private readonly i18n = inject(I18nService);
@@ -63,8 +63,7 @@ export class PaymentAuthorizationService {
       return await this.waitForAuthorization(
         userId.trim(),
         sourceId.trim(),
-        continuation.id.trim(),
-        providerWindow
+        continuation.id.trim()
       );
     } finally {
       this.closeProviderWindow(providerWindow);
@@ -81,8 +80,7 @@ export class PaymentAuthorizationService {
   private async waitForAuthorization(
     userId: string,
     sourceId: string,
-    paymentSessionId: string,
-    providerWindow: Window
+    paymentSessionId: string
   ): Promise<EventCheckoutPaymentAudit> {
     const deadline = Date.now() + PaymentAuthorizationService.POLL_TIMEOUT_MS;
     while (Date.now() < deadline) {
@@ -93,9 +91,6 @@ export class PaymentAuthorizationService {
       }
       if (audit && this.isTerminalFailureStatus(status)) {
         throw new Error(this.i18n.translateParams('payment.authorization.error.failed', { status }));
-      }
-      if (providerWindow.closed) {
-        throw new Error(this.i18n.translate('payment.authorization.error.cancelled'));
       }
       await this.delay(PaymentAuthorizationService.POLL_INTERVAL_MS);
     }

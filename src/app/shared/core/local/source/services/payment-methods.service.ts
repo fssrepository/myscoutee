@@ -17,13 +17,16 @@ import { LocalRouteDelayService } from './route-delay.service';
 export class LocalPaymentMethodsService extends LocalRouteDelayService implements PaymentMethodDataService {
   private static readonly ROUTE = '/payment-methods';
   private readonly artworkRepository = inject(LocalPaymentCardArtworkRepository);
+  private readonly deletedPaymentMethodIds = new Set<string>();
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const all = await Promise.all(this.seedMethods(userId).map(async method => ({
+    const all = await Promise.all(this.seedMethods(userId)
+      .filter(method => !this.deletedPaymentMethodIds.has(method.id))
+      .map(async method => ({
       ...method,
       artworkUrl: await this.artworkRepository.resolveUrl(method.artworkKey)
-    })));
+      })));
     const pageSize = Math.max(1, Math.min(6, Math.trunc(Number(query.pageSize) || 6)));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const from = Math.min(all.length, page * pageSize);
@@ -49,6 +52,17 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   async refreshRegistration(_userId: string, _registrationId: string, signal?: AbortSignal): Promise<PaymentMethodRegistrationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
     throw new Error('Card registration is disabled in frontend-local mode.');
+  }
+
+  async deletePaymentMethod(userId: string, paymentMethodId: string, signal?: AbortSignal): Promise<void> {
+    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
+    const ownerId = userId.trim();
+    const methodId = paymentMethodId.trim();
+    const owned = this.seedMethods(ownerId).some(method => method.id === methodId);
+    if (!owned) {
+      throw new Error('Payment card was not found.');
+    }
+    this.deletedPaymentMethodIds.add(methodId);
   }
 
   async queryHistory(
@@ -128,9 +142,14 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   private seedHistory(card: SavedPaymentMethodDto): PaymentHistoryItemDto[] {
     const now = Date.now();
+    const ownerPrefix = 'local-pm-';
+    const artworkSuffix = `-${card.artworkKey}`;
+    const owner = card.id.startsWith(ownerPrefix) && card.id.endsWith(artworkSuffix)
+      ? card.id.slice(ownerPrefix.length, -artworkSuffix.length)
+      : 'local-user';
     return [0, 1, 2].map((offset, index) => ({
       id: `${card.id}-payment-${index + 1}`,
-      sourceId: index === 1 ? '15d3049967690e9c3abcf0df' : '21746c9aacc985817e31cf9f',
+      sourceId: index === 1 ? `${owner}:asset-transport-1` : 'e1',
       paymentMethodId: card.id,
       provider: card.provider,
       status: index === 2 ? 'released' : 'captured',

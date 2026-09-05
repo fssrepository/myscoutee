@@ -32,7 +32,7 @@
 .payment-card__provider { position: absolute; top: 1.05rem; right: 3.35rem; }
 .payment-card__menu { position: absolute; z-index: 4; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.68); border-radius: 50%; background: rgba(7, 18, 38, .55); color: #fff; cursor: pointer; }
 .payment-card__menu mat-icon { width: 1.2rem; height: 1.2rem; font-size: 1.2rem; line-height: 1.2rem; }
-.payment-card__selected { position: absolute; z-index: 3; top: .72rem; left: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #1a5fb4; box-shadow: 0 .25rem .8rem rgba(0,0,0,.25); }
+.payment-card__selected { position: absolute; z-index: 3; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #1a5fb4; box-shadow: 0 .25rem .8rem rgba(0,0,0,.25); }
 
 .payment-card__content { position: absolute; inset: auto 1.25rem 1.1rem; display: grid; gap: .8rem; text-shadow: 0 1px 4px rgba(0,0,0,.68); }
 .payment-card__number { font: 760 clamp(.9rem, 3.2vw, 1.4rem) ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .065em; white-space: nowrap; }

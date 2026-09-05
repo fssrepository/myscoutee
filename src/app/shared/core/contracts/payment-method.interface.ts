@@ -65,6 +65,7 @@ export interface PaymentMethodDataService {
     signal?: AbortSignal
   ): Promise<PaymentMethodRegistrationDto>;
   refreshRegistration(userId: string, registrationId: string, signal?: AbortSignal): Promise<PaymentMethodRegistrationDto>;
+  deletePaymentMethod(userId: string, paymentMethodId: string, signal?: AbortSignal): Promise<void>;
   queryHistory(
     userId: string,
     paymentMethodId: string,

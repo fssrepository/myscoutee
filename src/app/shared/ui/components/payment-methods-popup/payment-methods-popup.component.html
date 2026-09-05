@@ -43,27 +43,10 @@
         <app-payment-card
           [card]="paymentCard(method)"
           [selectable]="pickerMode()"
-          [showMenu]="true"
+          [showMenu]="!pickerMode()"
           (cardSelect)="selectCard(method, $event)"
           (menuRequest)="openMenu($event)"
         ></app-payment-card>
-      </ng-template>
-    </section>
-  </app-popup>
-}
-
-@if (historyCard()) {
-  <app-popup [model]="historyPopupModel()" [zIndex]="22600">
-    <section class="payment-methods-popup__body">
-      <app-smart-list
-        class="payment-methods-popup__list"
-        [config]="historyListConfig"
-        [loadPage]="loadHistory"
-        [query]="cardHistoryQuery()"
-        [itemTemplate]="historyRowTemplate"
-      ></app-smart-list>
-      <ng-template #historyRowTemplate let-item>
-        <single-row [row]="historyRow(item)"></single-row>
       </ng-template>
     </section>
   </app-popup>
