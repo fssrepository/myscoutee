@@ -2796,6 +2796,9 @@ export class EventCheckoutPopupComponent {
       this.closeCheckoutDialog();
     } catch (error) {
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+      if (this.isPaymentProviderChanged(error)) {
+        await this.deploymentConfiguration.reload().catch(() => undefined);
+      }
       throw new Error(this.errorMessage);
     } finally {
       this.paymentAuthorization.closeProviderWindow(providerWindow);
@@ -3488,6 +3491,12 @@ export class EventCheckoutPopupComponent {
       ? error.error.message.trim()
       : '';
     return backendMessage.startsWith('Payment session ');
+  }
+
+  private isPaymentProviderChanged(error: unknown): boolean {
+    return error instanceof HttpErrorResponse
+      && typeof error.error?.message === 'string'
+      && error.error.message.trim() === 'Payment provider changed. Retokenize your card.';
   }
 
   private availableSlotDateKeys(): string[] {
