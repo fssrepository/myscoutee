@@ -1,6 +1,7 @@
 @if (authorization.waitingSurface() && sourceUrl(); as url) {
   <app-popup class="payment-authorization-popup" [model]="popupModel()" [zIndex]="25200">
     <iframe
+      #providerFrame
       class="payment-authorization-popup__frame"
       [src]="url"
       [attr.title]="'payment.authorization.waiting.title' | i18n"

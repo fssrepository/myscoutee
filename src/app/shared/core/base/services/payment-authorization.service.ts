@@ -26,7 +26,10 @@ interface PaymentAuthorizationAttempt {
 @Injectable({ providedIn: 'root' })
 export class PaymentAuthorizationService {
   private static readonly POLL_INTERVAL_MS = 1500;
-  private static readonly POLL_TIMEOUT_MS = 2 * 60 * 1000;
+  // The provider owns the three-minute authorization deadline. This small
+  // grace period lets its terminal callback and result animation arrive
+  // before the MyScoutee safety poll gives up.
+  private static readonly POLL_TIMEOUT_MS = (3 * 60 * 1000) + 5000;
 
   private readonly events = inject(EventsService);
   private readonly i18n = inject(I18nService);
@@ -115,6 +118,18 @@ export class PaymentAuthorizationService {
     this.waitingSurfaceRef.set(null);
   }
 
+  receiveProviderStatus(id: string, status: string): void {
+    const waiting = this.waitingSurfaceRef();
+    if (!waiting || waiting.id !== id.trim()) {
+      return;
+    }
+    const normalizedStatus = this.normalizedStatus(status);
+    if (this.isSuccessfulStatus(normalizedStatus)
+        || this.isTerminalFailureStatus(normalizedStatus)) {
+      this.waitingSurfaceRef.set(null);
+    }
+  }
+
   private async waitForAuthorization(
     userId: string,
     sourceId: string,
@@ -128,14 +143,29 @@ export class PaymentAuthorizationService {
       const audit = await this.events.loadCheckoutPaymentAudit(userId, sourceId, attempt.id);
       const status = this.normalizedStatus(audit?.status);
       if (audit && this.isSuccessfulStatus(status)) {
+        await this.waitForSimulatorResult(attempt);
         return audit;
       }
       if (audit && this.isTerminalFailureStatus(status)) {
+        await this.waitForSimulatorResult(attempt);
         throw new Error(this.i18n.translateParams('payment.authorization.error.failed', { status }));
       }
       await this.delay(PaymentAuthorizationService.POLL_INTERVAL_MS);
     }
     throw new Error(this.i18n.translate('payment.authorization.error.timeout'));
+  }
+
+  private async waitForSimulatorResult(attempt: PaymentAuthorizationAttempt): Promise<void> {
+    if (this.waitingSurfaceRef()?.id !== attempt.id) {
+      return;
+    }
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline && this.waitingSurfaceRef()?.id === attempt.id) {
+      if (attempt.cancelled) {
+        throw new Error(this.i18n.translate('payment.authorization.error.cancelled'));
+      }
+      await this.delay(50);
+    }
   }
 
   private isSuccessfulStatus(status: string): boolean {
