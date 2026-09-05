@@ -1440,7 +1440,54 @@ export class EventExplorePopupComponent {
       }
     });
     this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
+    await this.restoreServerCheckoutDrafts(page.items);
     return page;
+  }
+
+  private async restoreServerCheckoutDrafts(records: readonly ActivityEventRecord[]): Promise<void> {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const recordsToRestore = records.filter(record =>
+      (record.checkoutResultState === 'pending' || record.checkoutResultState === 'failed')
+      && !this.eventCheckoutDraftStore.read(activeUserId, record.id)
+    );
+    await Promise.all(recordsToRestore.map(async record => {
+      const basket = await this.eventsService.loadCheckoutBasketByEvent(activeUserId, record.id);
+      if (!basket || basket.items.length === 0) {
+        return;
+      }
+      this.eventCheckoutDraftStore.save({
+        userId: activeUserId,
+        sourceId: basket.sourceId || record.id,
+        eventTitle: record.title,
+        eventTimeframe: record.timeframe,
+        slotSourceId: basket.slotSourceId?.trim() || null,
+        selectedDateKey: basket.selectedDateKey?.trim() || null,
+        optionalSubEventIds: basket.items
+          .filter(item => item.kind === 'sub_event')
+          .map(item => item.subEventId?.trim() ?? '')
+          .filter(Boolean),
+        acceptedPolicyIds: [],
+        appliedPromoCodes: [...(basket.appliedPromoCodes ?? [])],
+        basketItems: basket.items.map(item => ({ ...item })),
+        pricingSummaryRows: basket.pricingSummaryRows.map(row => ({ ...row })),
+        checkoutState: basket.status,
+        lineItems: basket.lineItems.map(item => ({ ...item })),
+        totalAmount: basket.totalAmount,
+        currency: basket.currency,
+        checkoutSessionId: basket.checkoutSessionId?.trim() || null,
+        expiresAtIso: basket.expiresAtIso?.trim() || null,
+        pendingReason: basket.status === 'waiting'
+          ? 'waitlist'
+          : basket.status === 'approval-pending'
+            ? 'approval'
+            : null,
+        basketChanged: false,
+        updatedAtMs: Date.now()
+      });
+    }));
   }
 
   protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
