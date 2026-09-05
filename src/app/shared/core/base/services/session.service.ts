@@ -139,10 +139,16 @@ export class SessionService {
     if (!normalizedUserId) {
       return null;
     }
+    const current = this.sessionRef();
+    const currentSessionId = current?.kind === 'demo'
+      && !current.supportContext
+      && current.userId.trim() === normalizedUserId
+      ? `${current.sessionId ?? ''}`.trim()
+      : '';
     const session: Extract<AppSession, { kind: 'demo' }> & { sessionId: string } = {
       kind: 'demo',
       userId: normalizedUserId,
-      sessionId: this.newOpaqueId('session')
+      sessionId: currentSessionId || this.newOpaqueId('session')
     };
     try {
       const response = await (await this.firebaseSessionRegistryService()).registerDemoLogin(

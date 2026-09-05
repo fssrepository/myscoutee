@@ -247,6 +247,34 @@ describe('SessionService operator bootstrap session', () => {
     expect(service.currentSession()).toMatchObject({ kind: 'demo', userId: 'demo-user' });
   });
 
+  it('reuses the tracked demo session when the same browser reopens the same user', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
+      kind: 'demo',
+      userId: 'admin-demo-ava',
+      sessionId: 'session:current-browser'
+    }));
+    registerDemoLogin.mockResolvedValue({
+      accepted: true,
+      existingSession: true,
+      outcome: 'ACCEPTED',
+      activeSessionCount: 2,
+      maxActiveSessions: 2
+    });
+    const service = TestBed.inject(SessionService);
+
+    await expect(service.startTrackedDemoSession('admin-demo-ava')).resolves.toMatchObject({
+      kind: 'demo',
+      userId: 'admin-demo-ava',
+      sessionId: 'session:current-browser'
+    });
+
+    expect(registerDemoLogin).toHaveBeenCalledWith(
+      'session:current-browser',
+      'admin-demo-ava',
+      expect.objectContaining({ provider: 'demo' })
+    );
+  });
+
   it('revokes a tracked demo session before logout completes', async () => {
     environment.activitiesDataSource = 'http';
     const service = TestBed.inject(SessionService);
