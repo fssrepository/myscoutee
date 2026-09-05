@@ -16,6 +16,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { EventsService } from '../../../shared/core/base/services/events.service';
+import { PaymentAuthorizationService } from '../../../shared/core/base/services/payment-authorization.service';
 import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
@@ -83,6 +84,7 @@ export class EventCheckoutPopupComponent {
   protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
+  private readonly paymentAuthorization = inject(PaymentAuthorizationService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly confirmationDialogStore = inject(DialogStore);
@@ -95,6 +97,7 @@ export class EventCheckoutPopupComponent {
   protected acceptedPolicyIds = new Set<string>();
   protected appliedPromoCodes: string[] = [];
   protected paymentStep = false;
+  private readonly selectedPaymentMethodRef = signal<ContractTypes.SavedPaymentMethodDto | null>(null);
   protected busy = false;
   protected errorMessage = '';
   private readonly promoCodePopupOpen = signal(false);
@@ -202,6 +205,7 @@ export class EventCheckoutPopupComponent {
       showPricingPanel: this.showCheckoutPricingPanel(),
       basketTone: this.checkoutBasketSurfaceTone(),
       paymentTone: this.checkoutPaymentSurfaceTone(),
+      paymentMethod: () => this.selectedPaymentMethodRef(),
       basketItems: this.checkoutBasketPresentationItems(),
       basketPricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
       basketTotalAmount: this.totalAmount(),
@@ -213,6 +217,7 @@ export class EventCheckoutPopupComponent {
       policyApprovalDisabled: () => this.checkoutPolicyApprovalDisabled(),
       onPromoCodeAction: () => this.openPromoCodePopup(),
       onPolicyToggle: policyId => this.togglePolicy(policyId),
+      onPaymentMethodChange: paymentMethod => this.selectPaymentMethod(paymentMethod),
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
       footerItems: this.isReadOnlyCheckoutSummary() || checkoutLoading ? [] : this.checkoutFooterMenuItems(),
@@ -2196,7 +2201,7 @@ export class EventCheckoutPopupComponent {
   }
 
   protected paymentDisabled(): boolean {
-    return !environment.paymentIntegrationEnabled;
+    return this.totalAmount() > 0 && !this.selectedPaymentMethodRef();
   }
 
   protected canContinue(state?: CheckoutFooterDecisionState): boolean {
@@ -2216,7 +2221,16 @@ export class EventCheckoutPopupComponent {
     if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {
       return false;
     }
+    if (this.paymentStep && this.totalAmount() > 0 && !this.selectedPaymentMethodRef()) {
+      return false;
+    }
     return true;
+  }
+
+  private selectPaymentMethod(paymentMethod: ContractTypes.SavedPaymentMethodDto): void {
+    this.selectedPaymentMethodRef.set({ ...paymentMethod });
+    const dialog = this.dialog();
+    if (dialog) this.openCheckoutReviewEditorShell(dialog);
   }
 
   private currentCheckoutState(
@@ -2687,19 +2701,31 @@ export class EventCheckoutPopupComponent {
     this.busy = true;
     this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
+    const providerWindow = this.totalAmount() > 0
+      ? this.paymentAuthorization.openProviderWindow()
+      : null;
     try {
       const memberDelta = this.checkoutSuccessMemberDelta();
-      const joinResult = await this.eventsService.payEventCheckout(this.buildCheckoutStateChangeRequest(
+      const paymentRequest = this.buildCheckoutStateChangeRequest(
         'pay',
         'succeeded',
         null,
         null
-      ));
-      const paymentUrl = AppUtils.normalizeHttpUrl(joinResult?.paymentUrl);
-      if (joinResult?.membershipStatus === 'payment_pending' && paymentUrl) {
+      );
+      let joinResult = await this.eventsService.payEventCheckout(paymentRequest);
+      if (joinResult?.membershipStatus === 'payment_pending') {
         this.checkoutSessionId = joinResult.paymentSessionId ?? null;
-        window.location.assign(paymentUrl);
-        return;
+        await this.paymentAuthorization.completeCustomerAction(
+          {
+            id: joinResult.paymentSessionId ?? '',
+            status: joinResult.paymentStatus ?? 'requires_action',
+            paymentUrl: AppUtils.normalizeHttpUrl(joinResult.paymentUrl)
+          },
+          dialog.userId,
+          dialog.record.id,
+          providerWindow
+        );
+        joinResult = await this.eventsService.payEventCheckout(paymentRequest);
       }
       if (!joinResult || joinResult.membershipStatus !== 'accepted') {
         throw new Error(dialog.failureMessage);
@@ -2714,6 +2740,7 @@ export class EventCheckoutPopupComponent {
     } catch (error) {
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
     } finally {
+      this.paymentAuthorization.closeProviderWindow(providerWindow);
       this.busy = false;
       this.checkoutBusyActionId = null;
     }
@@ -2920,6 +2947,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private resetDialogState(): void {
+    this.selectedPaymentMethodRef.set(null);
     this.renderedDialogId = 0;
     this.renderedDialogLoading = false;
     this.availableSlotsCache = [];
@@ -3012,7 +3040,8 @@ export class EventCheckoutPopupComponent {
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
-      pendingReason
+      pendingReason,
+      paymentMethodId: this.selectedPaymentMethodRef()?.id ?? null
     };
   }
 

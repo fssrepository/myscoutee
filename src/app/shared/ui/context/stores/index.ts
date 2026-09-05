@@ -96,6 +96,10 @@ export {
 } from './notification-center.store';
 export { PopupPresenceStore } from './popup-presence.store';
 export {
+  PaymentMethodsPopupStore,
+  type PaymentMethodPickerRequest
+} from './payment-methods-popup.store';
+export {
   OperatorRegistryStore,
   type OperatorRegistryBusyAction
 } from './operator-registry.store';

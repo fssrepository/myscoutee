@@ -116,6 +116,7 @@ import { isNavigatorHydrationRoute } from './navigator-hydration-route';
 import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
+import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import {
   NotificationCenterPopupComponent
@@ -147,6 +148,7 @@ type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
 type NavigatorOperatorCommunityMenuItemId = 'operator-community';
 type NotificationAttentionMenuItemId = 'notification-attention';
+type NavigatorContextualMenuItemId = 'payment-history';
 
 interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
@@ -244,6 +246,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   protected readonly popupPresenceStore = inject(PopupPresenceStore);
+  protected readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -615,6 +618,25 @@ export class SideMenuComponent implements OnDestroy {
           items
         }
       ]
+    };
+  });
+  protected readonly navigatorContextualMenuModel = computed<AppMenuModel<NavigatorContextualMenuItemId>>(() => {
+    const user = this.menuUser();
+    return {
+      layout: 'row',
+      density: 'compact',
+      nodes: [{
+        id: 'navigator-contextual-actions',
+        items: [{
+          id: 'payment-history',
+          label: 'payment.history.menu',
+          icon: 'receipt_long',
+          layout: 'pill',
+          palette: 'green',
+          ariaLabel: 'payment.history.open',
+          disabled: !user || this.isPrimaryMenuDisabled(user)
+        }]
+      }]
     };
   });
   protected readonly navigatorMenuValues = computed<AppMenuValueMap<NavigatorMenuShortcutId>>(() => {
@@ -1364,6 +1386,14 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
+  protected onNavigatorContextualMenuSelect(event: AppMenuItemSelectEvent<NavigatorContextualMenuItemId>): void {
+    if (event.id !== 'payment-history') return;
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    this.closeSideMenu();
+    void this.paymentMethodsPopupStore.openHistory();
+  }
+
   protected onNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorMenuShortcutId>): void {
     switch (event.id) {
       case 'impressions':
@@ -1628,7 +1658,7 @@ export class SideMenuComponent implements OnDestroy {
     return this.currentRoutePathRef().startsWith('/operator');
   }
 
-  private isPrivilegedWorkspaceMode(): boolean {
+  protected isPrivilegedWorkspaceMode(): boolean {
     return this.isAdminMode() || this.isOperatorMode();
   }
 

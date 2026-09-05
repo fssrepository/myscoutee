@@ -73,6 +73,8 @@ export { LocalLandingContentService } from './source/services/landing-content.se
 export { LocalDeploymentConfigurationService } from './source/services/deployment-configuration.service';
 export { LocalMediaService } from './source/services/media.service';
 export { LocalNotificationsService } from './source/services/notifications.service';
+export { LocalPaymentMethodsService } from './source/services/payment-methods.service';
+export { LocalPaymentCardArtworkRepository } from './source/repositories/payment-card-artwork.repository';
 export { LocalOperatorRegistryService } from './source/services/operator-registry.service';
 export { LocalContactsService } from './source/services/contacts.service';
 export { LocalUserExperiencesService } from './source/services/user-experiences.service';

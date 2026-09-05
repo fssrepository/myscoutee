@@ -454,6 +454,21 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   memberCount?: number | null;
 }
 
+export interface PaymentCardData extends DisplayData {
+  provider: 'stripe' | 'barion';
+  brand: string;
+  last4: string;
+  expiryMonth: number;
+  expiryYear: number;
+  cardholderName: string;
+  artworkUrl: string;
+  loading?: boolean;
+  loadingLabel?: string;
+  selected?: boolean;
+  disabled?: boolean;
+  paymentMenuActions?: readonly CardMenuAction[];
+}
+
 export interface CardClickEvent<TCard extends DisplayData = DisplayData> {
   id: string;
   card: TCard;

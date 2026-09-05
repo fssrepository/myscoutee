@@ -2551,6 +2551,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return session;
   }
 
+  async authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    const session: EventCheckoutSession = {
+      id: `payment-${Date.now()}`,
+      provider: 'dummy',
+      mode: 'dummy',
+      status: 'approved',
+      amount: Math.max(0, Number(request.totalAmount) || 0),
+      currency: request.currency?.trim() || 'USD',
+      paymentUrl: null
+    };
+    await this.saveCheckoutBasketRecord(this.withCheckoutBasketState(request, 'pay', session.id));
+    return session;
+  }
+
   async payCheckoutSession(
     request: EventCheckoutRequest,
     paymentSessionId: string

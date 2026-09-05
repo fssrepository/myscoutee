@@ -29,22 +29,28 @@
 
   <p class="event-payment-note">{{ paymentNote() | i18n }}</p>
 
-  <div class="event-payment-field-grid">
-    <label>
-      <span>{{ 'event.editor.payment.card.number' | i18n }}</span>
-      <input type="text" value="4242 4242 4242 4242" disabled />
-    </label>
-    <label>
-      <span>{{ 'event.editor.payment.card.name' | i18n }}</span>
-      <input type="text" value="Demo User" disabled />
-    </label>
-    <label>
-      <span>{{ 'event.editor.payment.card.expiry' | i18n }}</span>
-      <input type="text" value="12 / 30" disabled />
-    </label>
-    <label>
-      <span>{{ 'event.editor.payment.card.cvc' | i18n }}</span>
-      <input type="text" value="123" disabled />
-    </label>
+  <div class="event-payment-method-shell">
+    @if (paymentCard(); as card) {
+      <button
+        type="button"
+        class="event-payment-method-button event-payment-method-button--card"
+        [disabled]="paymentMethodSelectionDisabled"
+        [attr.aria-label]="'payment.card.change.aria' | i18n"
+        (click)="openPaymentMethodPicker($event)"
+      >
+        <app-payment-card [card]="card" [selectable]="false" [showMenu]="false"></app-payment-card>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="event-payment-method-button event-payment-method-button--empty"
+        [disabled]="paymentMethodSelectionDisabled"
+        [attr.aria-label]="'payment.card.select.aria' | i18n"
+        (click)="openPaymentMethodPicker($event)"
+      >
+        <mat-icon>add</mat-icon>
+        <strong>{{ 'payment.card.select' | i18n }}</strong>
+      </button>
+    }
   </div>
 </section>

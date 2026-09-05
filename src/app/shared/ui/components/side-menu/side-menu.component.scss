@@ -218,6 +218,17 @@
   min-width: 0;
 }
 
+.navigator-header-contextual-menu {
+  position: absolute;
+  right: .72rem;
+  bottom: .72rem;
+  z-index: 7;
+  width: max-content;
+  max-width: calc(100% - 1.44rem);
+  --app-menu-action-height: 34px;
+  --app-menu-action-padding: 0 .66rem;
+}
+
 .navigator-offline-badge {
   min-height: 30px;
   padding: 0.28rem 0.62rem;

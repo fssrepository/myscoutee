@@ -33,10 +33,13 @@
               [totalAmount]="checkoutPaymentTotal()"
               [currency]="checkoutPaymentCurrency()"
               tone="payment"
-              [paymentIntegrationEnabled]="false"
+              [paymentIntegrationEnabled]="environment.paymentIntegrationEnabled"
               [providerLabel]="assetCheckout()?.paymentProviderLabel ?? ''"
               [statusLabel]="assetCheckout()?.paymentStatusLabel ?? ''"
               [note]="assetCheckout()?.paymentNote ?? ''"
+              [paymentMethod]="assetCheckout()?.paymentMethod ?? null"
+              [paymentMethodSelectionDisabled]="assetCheckout()?.busy === true"
+              (paymentMethodChange)="onCheckoutPaymentMethodChange($event)"
             ></app-event-payment-input>
           </div>
         } @else {

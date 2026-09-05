@@ -1,0 +1,46 @@
+<article
+  class="payment-card"
+  [class.payment-card--selectable]="selectable"
+  [class.payment-card--selected]="card.selected"
+  [class.payment-card--disabled]="card.disabled"
+  [class.payment-card--pending]="card.loading"
+  [attr.role]="selectable ? 'button' : null"
+  [attr.tabindex]="selectable && !card.disabled ? 0 : null"
+  [attr.aria-pressed]="selectable ? (card.selected === true) : null"
+  [attr.aria-label]="ariaLabel()"
+  [appLazyBgImage]="card.artworkUrl || null"
+  (click)="onSelect($event)"
+  (keydown)="onKeydown($event)"
+>
+  <span class="payment-card__loader" [attr.aria-hidden]="card.loading ? null : true">
+    <app-indicator kind="spinner-ring"></app-indicator>
+    @if (card.loadingLabel) { <strong>{{ card.loadingLabel | i18n }}</strong> }
+  </span>
+  <span class="payment-card__shade" aria-hidden="true"></span>
+  @if (!card.loading) {
+  <span class="payment-card__provider">{{ card.provider }}</span>
+
+  @if (showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
+    <button
+      type="button"
+      class="payment-card__menu"
+      [attr.aria-label]="'payment.card.actions.open' | i18n"
+      (pointerdown)="captureMenuRect($event)"
+      (click)="openMenu($event)"
+    ><mat-icon>more_vert</mat-icon></button>
+  }
+
+  @if (card.selected) {
+    <span class="payment-card__selected" [attr.aria-label]="'payment.card.selected' | i18n"><mat-icon>check</mat-icon></span>
+  }
+
+  <div class="payment-card__content">
+    <span class="payment-card__number">{{ maskedNumber() }}</span>
+    <div class="payment-card__footer">
+      <span><small>{{ 'payment.card.cardholder' | i18n }}</small><strong>{{ card.cardholderName }}</strong></span>
+      <span><small>{{ 'payment.card.expires' | i18n }}</small><strong>{{ expiry() }}</strong></span>
+    </div>
+    <span class="payment-card__brand">{{ resolvedBrandLabel() }}</span>
+  </div>
+  }
+</article>

@@ -48,6 +48,8 @@
               [currency]="checkoutBasketCurrency()"
               [tone]="checkoutPaymentTone()"
               [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
+              [paymentMethod]="checkoutPaymentMethod()"
+              (paymentMethodChange)="onCheckoutPaymentMethodChange($event)"
             ></app-event-payment-input>
           }
         </div>

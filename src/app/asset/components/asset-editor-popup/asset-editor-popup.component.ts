@@ -61,6 +61,7 @@ import {
 import {
   AppUtils
 } from '../../../shared/app-utils';
+import { environment } from '../../../../environments/environment';
 
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
@@ -95,6 +96,7 @@ type AssetEditorFlowValue = AssetFormState & {
   styleUrl: './asset-editor-popup.component.scss'
 })
 export class AssetEditorPopupComponent {
+  protected readonly environment = environment;
   private static readonly RUNTIME_ROUTE_SAVE_MINIMUM_MS = 520;
 
   private readonly userProfileStore = inject(UserProfileStore);
@@ -993,6 +995,10 @@ export class AssetEditorPopupComponent {
 
   protected assetCheckout(): AssetEditorCheckoutState | null {
     return this.assetStore.assetFormCheckout();
+  }
+
+  protected onCheckoutPaymentMethodChange(paymentMethod: AppDTOs.SavedPaymentMethodDto): void {
+    this.assetStore.assetFormCheckout()?.onPaymentMethodChange?.(paymentMethod);
   }
 
   protected toggleCheckoutPolicy(policyId: string): void {

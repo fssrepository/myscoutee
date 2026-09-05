@@ -107,6 +107,9 @@ import {
   I18nService
 } from '../../../../shared/core/base/services/i18n.service';
 import {
+  PaymentAuthorizationService
+} from '../../../../shared/core/base/services/payment-authorization.service';
+import {
   ShareTokensService
 } from '../../../../shared/core/base/services/share-tokens.service';
 import {
@@ -245,6 +248,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly contactsService = inject(ContactsService);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
+  private readonly paymentAuthorization = inject(PaymentAuthorizationService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   private readonly assetStore = inject(AssetStore);
@@ -1184,6 +1188,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!card) {
       return false;
     }
+    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    if (dialog.paymentStep && pricing.amount > 0 && !dialog.paymentMethod) {
+      return false;
+    }
     return this.isValidWindow(dialog.startAtIso, dialog.endAtIso);
   }
 
@@ -1258,70 +1266,56 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           appliedPromoCodes: [],
           lineItems,
           totalAmount: pricing.amount,
-          currency: pricing.currency
+          currency: pricing.currency,
+          paymentMethodId: dialog.paymentMethod?.id ?? null
         } satisfies ActivityContracts.EventCheckoutRequest
       : null;
 
     if (inventoryApplied && !dialog.paymentStep) {
-      this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+      const nextDialog: AssetExploreBorrowDialogState = {
         ...dialog,
-        busy: true,
+        checkoutSessionId: null,
+        paymentStep: true,
+        busy: false,
         error: null
-      });
-      void this.eventsService.createCheckoutSession(checkoutRequest!)
-        .then(session => {
-          if (!session?.id) {
-            throw new Error(this.i18n.translate('asset.borrow.error.checkout'));
-          }
-          const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-          if (!currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
-            return;
-          }
-          const nextDialog: AssetExploreBorrowDialogState = {
-            ...currentDialog,
-            checkoutSessionId: session.id,
-            paymentStep: true,
-            busy: false,
-            error: null
-          };
-          this.resourcePopupStore.assetExploreBorrowDialogRef.set(nextDialog);
-          this.saveBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
-        })
-        .catch(error => {
-          const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-          if (!currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
-            return;
-          }
-          this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-            ...currentDialog,
-            busy: false,
-            error: this.errorMessage(error, this.i18n.translate('asset.borrow.error.checkout'))
-          });
-        });
+      };
+      this.resourcePopupStore.assetExploreBorrowDialogRef.set(nextDialog);
+      this.saveBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
       return;
     }
 
+    const providerWindow = inventoryApplied
+      ? this.paymentAuthorization.openProviderWindow()
+      : null;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...dialog,
       busy: true,
       error: null
     });
-    const checkoutSessionPromise = inventoryApplied && !dialog.checkoutSessionId
-      ? this.eventsService.createCheckoutSession(checkoutRequest!)
-      : Promise.resolve(dialog.checkoutSessionId ? {
-          id: dialog.checkoutSessionId,
+    const checkoutSessionPromise = inventoryApplied
+      ? this.eventsService.authorizeCheckout(checkoutRequest!)
+      : Promise.resolve({
+          id: '',
           provider: 'dummy',
           mode: 'dummy',
           status: 'approved',
           amount: pricing.amount,
           currency: pricing.currency,
           paymentUrl: null
-        } satisfies ActivityContracts.EventCheckoutSession : null);
+        } satisfies ActivityContracts.EventCheckoutSession);
 
     void checkoutSessionPromise
       .then(async session => {
         if (inventoryApplied && (!session || !session.id)) {
           throw new Error(this.i18n.translate('asset.borrow.error.payment'));
+        }
+        if (inventoryApplied && session) {
+          await this.paymentAuthorization.completeCustomerAction(
+            session,
+            activeUser.id,
+            card.id,
+            providerWindow
+          );
         }
         const nextRequest: AppDTOs.AssetMemberRequestDTO = {
           id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
@@ -1420,7 +1414,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           busy: false,
           error: this.errorMessage(error, this.i18n.translate('asset.borrow.error.send'))
         });
-      });
+      })
+      .finally(() => this.paymentAuthorization.closeProviderWindow(providerWindow));
   }
 
   protected closeBorrowDialog(event?: Event): void {
@@ -1861,6 +1856,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         ?? existingRequest?.booking?.paymentSessionId
         ?? ''
       }`.trim() || null,
+      paymentMethod: draft?.paymentMethod ? { ...draft.paymentMethod } : null,
       paymentStep: Boolean(
         draft?.paymentStep
         || existingRequest?.booking?.paymentSessionId
@@ -1983,6 +1979,17 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
+  private selectBorrowPaymentMethod(paymentMethod: AppDTOs.SavedPaymentMethodDto): void {
+    const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy) return;
+    this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+      ...dialog,
+      paymentMethod: { ...paymentMethod },
+      checkoutSessionId: null,
+      error: null
+    });
+  }
+
   private borrowCheckoutState(
     card: ResourceAssetDTO,
     dialog: AssetExploreBorrowDialogState
@@ -2007,11 +2014,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         dialog.quantity
       ),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+      paymentMethod: dialog.paymentMethod ? { ...dialog.paymentMethod } : null,
       footerItems: this.borrowCheckoutFooterItems(card, dialog),
       busy: dialog.busy,
       error: dialog.error,
       onDateRangeChange: value => this.onBorrowCheckoutDateRangeChange(value),
       onPolicyToggle: policyId => this.toggleBorrowPolicy(policyId),
+      onPaymentMethodChange: paymentMethod => this.selectBorrowPaymentMethod(paymentMethod),
       onFooterItemSelect: (itemId, sourceEvent) => {
         if (itemId === 'borrow-cancel') {
           this.closeBorrowDialog(sourceEvent);
@@ -2057,7 +2066,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         label: submitLabel,
         layout: 'action',
         palette: hasError ? 'danger' : 'blue',
-        disabled: !this.canSubmitBorrow() || dialog.busy,
+        disabled: !this.canSubmitBorrow()
+          || dialog.busy
+          || (pricing.amount > 0 && dialog.paymentStep && !dialog.paymentMethod),
         progress: dialog.busy || hasError
           ? {
               state: dialog.busy ? 'loading' : 'error',
@@ -2301,6 +2312,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       endAtIso: dialog.endAtIso,
       acceptedPolicyIds: [...new Set(dialog.acceptedPolicyIds)].map(item => item.trim()).filter(Boolean),
       checkoutSessionId: dialog.checkoutSessionId?.trim() || null,
+      paymentMethod: dialog.paymentMethod ? { ...dialog.paymentMethod } : null,
       paymentStep: dialog.paymentStep,
       updatedAtMs: Date.now()
     };

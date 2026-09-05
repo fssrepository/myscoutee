@@ -99,6 +99,8 @@ type HttpActivityEventPageResponse = ActivityEventDTO[] | {
 })
 export class HttpEventsService implements IEventsService {
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
+  private static readonly PAYMENT_AUTHORIZATION_ROUTE = '/activities/events/checkout/authorize';
+  private static readonly EVENT_PAYMENT_ROUTE = '/activities/events/checkout/pay';
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
@@ -581,9 +583,10 @@ export class HttpEventsService implements IEventsService {
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    const response = await this.http
-      .post<EventParticipationActionResultDTO | null>(
-        `${this.apiBaseUrl}/activities/events/checkout/pay`,
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpEventsService.EVENT_PAYMENT_ROUTE,
+      this.http.post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}${HttpEventsService.EVENT_PAYMENT_ROUTE}`,
         {
           ...request,
           userId: normalizedUserId,
@@ -592,8 +595,10 @@ export class HttpEventsService implements IEventsService {
           resultState: 'succeeded',
           pendingReason: null
         }
-      )
-      .toPromise();
+      ).toPromise(),
+      'Payment provider request timed out.',
+      30000
+    );
     return this.normalizeParticipationActionResult(response);
   }
 
@@ -939,6 +944,18 @@ export class HttpEventsService implements IEventsService {
         request
       )
       .toPromise() ?? null;
+  }
+
+  async authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    return await this.routeDelay.withRequestTimeout(
+      HttpEventsService.PAYMENT_AUTHORIZATION_ROUTE,
+      this.http.post<EventCheckoutSession | null>(
+        `${this.apiBaseUrl}${HttpEventsService.PAYMENT_AUTHORIZATION_ROUTE}`,
+        request
+      ).toPromise(),
+      'Payment provider request timed out.',
+      30000
+    ) ?? null;
   }
 
   async payCheckoutSession(

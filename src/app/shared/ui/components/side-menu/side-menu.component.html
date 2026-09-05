@@ -102,6 +102,15 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
+        @if (!isPrivilegedWorkspaceMode()) {
+          <app-menu
+            class="navigator-header-contextual-menu"
+            kind="inline"
+            layout="row"
+            [model]="navigatorContextualMenuModel()"
+            (itemSelect)="onNavigatorContextualMenuSelect($event)"
+          ></app-menu>
+        }
       </div>
       <div class="user-menu-content">
         @if (!runtimeStore.isOnline()) {
@@ -144,6 +153,10 @@
 <app-dialog [zIndex]="notificationCenterStore.isOpen() ? 24000 : null"></app-dialog>
 
 <app-notification-center-popup></app-notification-center-popup>
+
+@if (paymentMethodsPopupStore.component(); as paymentMethodsComponent) {
+  <ng-container *ngComponentOutlet="paymentMethodsComponent"></ng-container>
+}
 
 @if (!subEventResourceStore.popupContextRef() && activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>

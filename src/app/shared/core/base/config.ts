@@ -33,6 +33,11 @@ export const ROUTE_CONFIG: RouteConfig = {
   defaultIntervalMs: 0,
   entries: [
     {
+      routePrefix: '/payment-methods',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 3000
+    },
+    {
       routePrefix: '/auth/demo-users',
       demoDelayMs: 1500
     },
@@ -247,6 +252,16 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500,
       intervalMs: 30000,
       demoIntervalMs: 10000
+    },
+    {
+      routePrefix: '/activities/events/checkout/authorize',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 30000
+    },
+    {
+      routePrefix: '/activities/events/checkout/pay',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 30000
     },
     {
       routePrefix: '/activities/events/checkout',

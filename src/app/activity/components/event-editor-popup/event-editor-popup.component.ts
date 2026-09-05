@@ -582,6 +582,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return environment.paymentIntegrationEnabled;
   }
 
+  protected checkoutPaymentMethod(): ContractTypes.SavedPaymentMethodDto | null {
+    return this.resolvePresentationValue<ContractTypes.SavedPaymentMethodDto | null>(
+      this.eventEditorStore.presentation().paymentMethod,
+      null
+    );
+  }
+
+  protected onCheckoutPaymentMethodChange(paymentMethod: ContractTypes.SavedPaymentMethodDto): void {
+    void this.eventEditorStore.presentation().onPaymentMethodChange?.(paymentMethod);
+  }
+
   private formatCheckoutDateRange(startAtIso: string | null | undefined, endAtIso: string | null | undefined): string {
     const start = AppUtils.isoLocalDateTimeToDate(`${startAtIso ?? ''}`.trim());
     const end = AppUtils.isoLocalDateTimeToDate(`${endAtIso ?? ''}`.trim());

@@ -1,0 +1,82 @@
+@if (store.isOpen()) {
+  @if (!pickerMode()) {
+  <app-popup [model]="mainPopupModel()" [zIndex]="22200">
+    <section class="payment-methods-popup__body">
+      @if (error()) {
+        <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
+      }
+      <app-smart-list
+        class="payment-methods-popup__list"
+        [config]="allHistoryListConfig"
+        [loadPage]="loadAllHistory"
+        [query]="allHistoryQuery()"
+        [itemTemplate]="paymentHistoryTemplate"
+        (menuItemSelect)="onPaymentHistoryMenuSelect($event)"
+      ></app-smart-list>
+      <ng-template #paymentHistoryTemplate let-item let-openMenu="openMenu">
+        <single-row
+          [row]="historyRow(item, true)"
+          [useSharedMenu]="true"
+          (menuRequest)="openMenu($event)"
+        ></single-row>
+      </ng-template>
+    </section>
+  </app-popup>
+  }
+}
+
+@if (store.isOpen() && (pickerMode() || cardsOpen())) {
+  <app-popup [model]="cardsPopupModel()" [zIndex]="22400">
+    <section class="payment-methods-popup__body">
+      @if (error()) {
+        <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
+      }
+      <app-smart-list
+        class="payment-methods-popup__list"
+        [config]="cardListConfig"
+        [loadPage]="loadCards"
+        [query]="query()"
+        [itemTemplate]="paymentCardTemplate"
+        (menuItemSelect)="onCardMenuSelect($event)"
+      ></app-smart-list>
+      <ng-template #paymentCardTemplate let-method let-openMenu="openMenu">
+        <app-payment-card
+          [card]="paymentCard(method)"
+          [selectable]="pickerMode()"
+          [showMenu]="true"
+          (cardSelect)="selectCard(method, $event)"
+          (menuRequest)="openMenu($event)"
+        ></app-payment-card>
+      </ng-template>
+    </section>
+  </app-popup>
+}
+
+@if (historyCard()) {
+  <app-popup [model]="historyPopupModel()" [zIndex]="22600">
+    <section class="payment-methods-popup__body">
+      <app-smart-list
+        class="payment-methods-popup__list"
+        [config]="historyListConfig"
+        [loadPage]="loadHistory"
+        [query]="cardHistoryQuery()"
+        [itemTemplate]="historyRowTemplate"
+      ></app-smart-list>
+      <ng-template #historyRowTemplate let-item>
+        <single-row [row]="historyRow(item)"></single-row>
+      </ng-template>
+    </section>
+  </app-popup>
+}
+
+@if (registrationFrameOpen() && registration(); as providerRegistration) {
+  <app-popup [model]="registrationPopupModel()" [zIndex]="22800">
+    <iframe
+      class="payment-methods-popup__provider-frame"
+      [src]="providerRegistration.safeUrl"
+      [title]="'payment.registration.frame.title' | i18n"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allow="payment"
+    ></iframe>
+  </app-popup>
+}

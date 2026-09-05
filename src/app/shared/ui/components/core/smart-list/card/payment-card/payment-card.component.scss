@@ -1,0 +1,48 @@
+:host { display: block; min-width: 0; }
+
+.payment-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1.586 / 1;
+  border: 1px solid rgba(255, 255, 255, .42);
+  border-radius: 1.05rem;
+  background: #1c3156 center / cover no-repeat;
+  color: #fff;
+  box-shadow: 0 .8rem 1.8rem rgba(12, 25, 48, .2);
+}
+
+.payment-card--selectable { cursor: pointer; }
+.payment-card--selectable:focus-visible { outline: 3px solid #6aa6ff; outline-offset: 3px; }
+.payment-card--selected { box-shadow: 0 0 0 3px #62a0ff, 0 .8rem 1.8rem rgba(12, 25, 48, .24); }
+.payment-card--disabled { filter: grayscale(.7); opacity: .62; cursor: default; }
+
+.payment-card__shade { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(3, 10, 25, .08), rgba(3, 10, 25, .42)); }
+.payment-card__loader { position: absolute; z-index: 5; inset: 0; display: grid; place-content: center; justify-items: center; gap: .65rem; opacity: 0; }
+.payment-card__loader strong { font-size: .82rem; letter-spacing: .02em; text-shadow: 0 1px 4px rgba(0,0,0,.55); }
+.payment-card.lazy-bg-loading .payment-card__loader { opacity: 1; }
+.payment-card.lazy-bg-loaded .payment-card__loader, .payment-card.lazy-bg-error .payment-card__loader { opacity: 0; }
+.payment-card--pending { border-color: rgba(77, 126, 190, .34); background: linear-gradient(135deg, #6e87a8, #344b6d); box-shadow: 0 .55rem 1.25rem rgba(12, 25, 48, .14); }
+.payment-card--pending .payment-card__loader,
+.payment-card--pending.lazy-bg-loaded .payment-card__loader,
+.payment-card--pending.lazy-bg-error .payment-card__loader { opacity: 1; }
+
+.payment-card__provider, .payment-card__brand { text-transform: uppercase; letter-spacing: .1em; font-size: clamp(.62rem, 1.5vw, .78rem); font-weight: 850; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.payment-card__provider { position: absolute; top: 1.05rem; right: 3.35rem; }
+.payment-card__menu { position: absolute; z-index: 4; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.68); border-radius: 50%; background: rgba(7, 18, 38, .55); color: #fff; cursor: pointer; }
+.payment-card__menu mat-icon { width: 1.2rem; height: 1.2rem; font-size: 1.2rem; line-height: 1.2rem; }
+.payment-card__selected { position: absolute; z-index: 3; top: .72rem; left: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #1a5fb4; box-shadow: 0 .25rem .8rem rgba(0,0,0,.25); }
+
+.payment-card__content { position: absolute; inset: auto 1.25rem 1.1rem; display: grid; gap: .8rem; text-shadow: 0 1px 4px rgba(0,0,0,.68); }
+.payment-card__number { font: 760 clamp(.9rem, 3.2vw, 1.4rem) ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .065em; white-space: nowrap; }
+.payment-card__footer { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; }
+.payment-card__footer span { display: grid; min-width: 0; gap: .12rem; }
+.payment-card__footer small { color: rgba(255,255,255,.76); font-size: clamp(.48rem, 1.2vw, .6rem); font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
+.payment-card__footer strong { overflow: hidden; font-size: clamp(.64rem, 1.8vw, .82rem); text-overflow: ellipsis; white-space: nowrap; }
+.payment-card__brand { justify-self: end; }
+
+@media (max-width: 520px) {
+  .payment-card__content { inset: auto 1rem .82rem; gap: .55rem; }
+  .payment-card__provider { top: .85rem; }
+}

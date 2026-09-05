@@ -2,6 +2,7 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 
 import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/menu';
+import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
 
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
 export type EventEditorCheckoutPhase = 'review' | 'payment';
@@ -42,6 +43,7 @@ export interface EventEditorPresentationOptions {
   showPricingPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
   basketTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
   paymentTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
+  paymentMethod?: EventEditorPresentationValue<SavedPaymentMethodDto | null | undefined> | null;
   basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
   basketPricingSummaryRows?: EventEditorPresentationValue<readonly EventEditorBasketPricingSummaryRow[] | null | undefined> | null;
   basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
@@ -54,6 +56,7 @@ export interface EventEditorPresentationOptions {
   onBasketAdd?: (event?: Event) => void | Promise<void>;
   onPromoCodeAction?: (event?: Event) => void | Promise<void>;
   onPolicyToggle?: (policyId: string) => void | Promise<void>;
+  onPaymentMethodChange?: (paymentMethod: SavedPaymentMethodDto) => void | Promise<void>;
   onBasketItemMenuSelect?: (
     item: EventEditorBasketPresentationItem,
     event: AppMenuItemSelectEvent<string>
@@ -221,6 +224,7 @@ export class EventEditorPopupStore {
       showPricingPanel: presentation?.showPricingPanel ?? null,
       basketTone: presentation?.basketTone ?? null,
       paymentTone: presentation?.paymentTone ?? null,
+      paymentMethod: presentation?.paymentMethod ?? null,
       basketItems: typeof presentation?.basketItems === 'function'
         ? presentation.basketItems
         : [...(presentation?.basketItems ?? [])],
@@ -239,6 +243,7 @@ export class EventEditorPopupStore {
       onBasketAdd: presentation?.onBasketAdd,
       onPromoCodeAction: presentation?.onPromoCodeAction,
       onPolicyToggle: presentation?.onPolicyToggle,
+      onPaymentMethodChange: presentation?.onPaymentMethodChange,
       onBasketItemMenuSelect: presentation?.onBasketItemMenuSelect,
       footerItems: [...(presentation?.footerItems ?? [])],
       footerMessage: presentation?.footerMessage ?? null,

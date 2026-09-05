@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payment-method.interface';
+import { PaymentCardComponent, type PaymentCardData } from '../../../../shared/ui/components/core/smart-list/card';
 import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
+import { PaymentMethodsPopupStore } from '../../../../shared/ui/context/stores/payment-methods-popup.store';
 import { I18nPipe } from '../../../../shared/ui/pipes';
 
 export interface EventPaymentInputPricingSummaryRow {
@@ -29,6 +32,7 @@ export interface EventPaymentInputItem {
   imports: [
     CommonModule,
     MatIconModule,
+    PaymentCardComponent,
     I18nPipe
   ],
   templateUrl: './event-payment-input.component.html',
@@ -36,6 +40,8 @@ export interface EventPaymentInputItem {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventPaymentInputComponent {
+  private readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
+
   @Input() title = 'event.editor.payment.title';
   @Input() subtitle = 'event.editor.payment.subtitle';
   @Input() eventTitle = '';
@@ -50,6 +56,34 @@ export class EventPaymentInputComponent {
   @Input() providerLabel = '';
   @Input() statusLabel = '';
   @Input() note = '';
+  @Input() paymentMethod: SavedPaymentMethodDto | null = null;
+  @Input() paymentMethodSelectionDisabled = false;
+  @Output() readonly paymentMethodChange = new EventEmitter<SavedPaymentMethodDto>();
+
+  protected paymentCard(): PaymentCardData | null {
+    const method = this.paymentMethod;
+    return method ? {
+      id: method.id,
+      provider: method.provider,
+      brand: method.brand,
+      last4: method.last4,
+      expiryMonth: method.expiryMonth,
+      expiryYear: method.expiryYear,
+      cardholderName: method.cardholderName,
+      artworkUrl: method.artworkUrl,
+      selected: false
+    } : null;
+  }
+
+  protected openPaymentMethodPicker(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.paymentMethodSelectionDisabled) return;
+    void this.paymentMethodsPopupStore.openPicker({
+      selectedPaymentMethodId: this.paymentMethod?.id ?? null,
+      onSelect: paymentMethod => this.paymentMethodChange.emit(paymentMethod)
+    });
+  }
 
   protected itemTrackId(_index: number, item: EventPaymentInputItem): string {
     return item.id;

@@ -8,5 +8,5 @@ export const environment = {
   firebaseLoginEnabled: true,
   firebaseLoginQaOverrideEnabled: false,
   firebaseMessagingEnabled: true,
-  paymentIntegrationEnabled: false
+  paymentIntegrationEnabled: true
 };
