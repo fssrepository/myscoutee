@@ -256,12 +256,12 @@ export const ROUTE_CONFIG: RouteConfig = {
     {
       routePrefix: '/activities/events/checkout/authorize',
       demoDelayMs: 1500,
-      requestTimeoutMs: 30000
+      requestTimeoutMs: 120000
     },
     {
       routePrefix: '/activities/events/checkout/pay',
       demoDelayMs: 1500,
-      requestTimeoutMs: 30000
+      requestTimeoutMs: 120000
     },
     {
       routePrefix: '/activities/events/checkout',

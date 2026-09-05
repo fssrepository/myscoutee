@@ -17,7 +17,7 @@ export interface PaymentAuthorizationContinuation {
 @Injectable({ providedIn: 'root' })
 export class PaymentAuthorizationService {
   private static readonly POLL_INTERVAL_MS = 1500;
-  private static readonly POLL_TIMEOUT_MS = 10 * 60 * 1000;
+  private static readonly POLL_TIMEOUT_MS = 2 * 60 * 1000;
 
   private readonly events = inject(EventsService);
   private readonly i18n = inject(I18nService);

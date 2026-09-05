@@ -2702,9 +2702,7 @@ export class EventCheckoutPopupComponent {
     this.busy = true;
     this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
-    const providerWindow = this.totalAmount() > 0
-      ? this.paymentAuthorization.openProviderWindow()
-      : null;
+    let providerWindow: Window | null = null;
     try {
       const memberDelta = this.checkoutSuccessMemberDelta();
       const paymentRequest = this.buildCheckoutStateChangeRequest(
@@ -2716,6 +2714,7 @@ export class EventCheckoutPopupComponent {
       let joinResult = await this.eventsService.payEventCheckout(paymentRequest);
       if (joinResult?.membershipStatus === 'payment_pending') {
         this.checkoutSessionId = joinResult.paymentSessionId ?? null;
+        providerWindow = this.paymentAuthorization.openProviderWindow();
         await this.paymentAuthorization.completeCustomerAction(
           {
             id: joinResult.paymentSessionId ?? '',

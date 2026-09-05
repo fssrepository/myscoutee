@@ -597,7 +597,7 @@ export class HttpEventsService implements IEventsService {
         }
       ).toPromise(),
       'Payment provider request timed out.',
-      30000
+      120000
     );
     return this.normalizeParticipationActionResult(response);
   }
@@ -954,7 +954,7 @@ export class HttpEventsService implements IEventsService {
         request
       ).toPromise(),
       'Payment provider request timed out.',
-      30000
+      120000
     ) ?? null;
   }
 
