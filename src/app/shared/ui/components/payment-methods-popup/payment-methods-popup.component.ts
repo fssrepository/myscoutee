@@ -600,6 +600,22 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     return normalized ? this.i18n.translate(`payment.status.${normalized}`, status) : '';
   }
 
+  private paymentStatusTone(status: string): 'neutral' | 'success' | 'danger' {
+    switch (`${status ?? ''}`.trim().toLowerCase()) {
+      case 'failed':
+      case 'declined':
+      case 'expired':
+        return 'danger';
+      case 'captured':
+      case 'approved':
+      case 'succeeded':
+      case 'authorized':
+        return 'success';
+      default:
+        return 'neutral';
+    }
+  }
+
   protected historyHeaderTotals(): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
     const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
     const outgoing = stored?.outgoing ?? this.spendingTotalsRef();
@@ -703,6 +719,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         readOnlySummary: true,
         preloadedCheckoutBasket: await this.paymentSummaryBasket(userId, item, record.title),
         paymentMethod,
+        paymentProvider: item.provider,
+        paymentStatusLabel: this.paymentStatusLabel(item.status),
+        paymentStatusTone: this.paymentStatusTone(item.status),
+        paymentNote: this.paymentHistoryNote(item),
         title: 'event.checkout.payment.summary',
         subtitle: record.timeframe,
         failureMessage: this.i18n.translate('payment.summary.error.open'),
@@ -796,13 +816,15 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
           footerItems: [],
           busy: false,
           error: null,
+          paymentProvider: item.provider,
           paymentProviderLabel: 'event.editor.payment.recorded',
           paymentStatusLabel: audit?.auditKind === 'booking_price_revision'
             ? 'event.editor.payment.recorded.revised'
             : this.paymentStatusLabel(audit?.status ?? item.status),
+          paymentStatusTone: this.paymentStatusTone(audit?.status ?? item.status),
           paymentNote: audit?.auditKind === 'booking_price_revision'
             ? 'event.editor.payment.recorded.revision.note'
-            : 'event.editor.payment.recorded.note',
+            : this.paymentHistoryNote(item),
           paymentMethod
         }
       });
@@ -838,6 +860,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       throw new Error('payment.summary.error.method.unavailable');
     }
     return { ...method };
+  }
+
+  private paymentHistoryNote(item: PaymentHistoryItemDto): string {
+    const failureReason = `${item.failureReason ?? ''}`.trim();
+    return item.status.trim().toLowerCase() === 'failed' && failureReason
+      ? failureReason
+      : 'event.editor.payment.recorded.note';
   }
 
   private async findPaymentAsset(

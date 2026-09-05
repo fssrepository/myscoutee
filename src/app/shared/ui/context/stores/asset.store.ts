@@ -13,6 +13,7 @@ import type {
   PricingEditorRuntimePreview
 } from '../../components/core/form/inputs/pricing-editor';
 import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
+import type { EventPaymentStatusTone } from './event-editor-popup.store';
 
 export interface AssetVisibleListState {
   items: readonly AppDTOs.AssetDTO[];
@@ -78,8 +79,10 @@ export interface AssetEditorCheckoutState {
   pendingFooterLabel?: string | null;
   busy: boolean;
   error: string | null;
+  paymentProvider?: string | null;
   paymentProviderLabel?: string | null;
   paymentStatusLabel?: string | null;
+  paymentStatusTone?: EventPaymentStatusTone | null;
   paymentNote?: string | null;
   paymentMethod?: SavedPaymentMethodDto | null;
   onDateRangeChange?: (value: DateInputRangeValue) => void;

@@ -46,6 +46,10 @@
               [tone]="checkoutPaymentTone()"
               [paymentMethod]="checkoutPaymentMethod()"
               [paymentMethodReadOnly]="checkoutPaymentMethodReadOnly()"
+              [provider]="checkoutPaymentProvider()"
+              [statusLabel]="checkoutPaymentStatusLabel()"
+              [statusTone]="checkoutPaymentStatusTone()"
+              [note]="checkoutPaymentNote()"
               (paymentMethodChange)="onCheckoutPaymentMethodChange($event)"
             ></app-event-payment-input>
           }

@@ -34,7 +34,8 @@ import {
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   EventEditorPopupStore,
-  type EventEditorCheckoutSurfaceTone
+  type EventEditorCheckoutSurfaceTone,
+  type EventPaymentStatusTone
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
   EventCheckoutDraftStore,
@@ -599,6 +600,25 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventEditorStore.presentation().paymentMethodReadOnly,
       false
     ) === true;
+  }
+
+  protected checkoutPaymentProvider(): string {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().paymentProvider, '') ?? '';
+  }
+
+  protected checkoutPaymentStatusLabel(): string {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().paymentStatusLabel, '') ?? '';
+  }
+
+  protected checkoutPaymentStatusTone(): EventPaymentStatusTone {
+    return this.resolvePresentationValue(
+      this.eventEditorStore.presentation().paymentStatusTone,
+      'neutral'
+    ) ?? 'neutral';
+  }
+
+  protected checkoutPaymentNote(): string {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().paymentNote, '') ?? '';
   }
 
   protected onCheckoutPaymentMethodChange(paymentMethod: ContractTypes.SavedPaymentMethodDto): void {

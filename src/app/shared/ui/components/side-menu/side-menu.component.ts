@@ -926,27 +926,6 @@ export class SideMenuComponent implements OnDestroy {
             }
           ]
         },
-        ...(showPaymentSimulator ? [{
-          id: 'admin-testing',
-          label: 'admin.testing',
-          icon: 'science',
-          palette: 'cyan' as const,
-          items: [{
-            id: 'adminPaymentSimulator' as const,
-            label: 'admin.payment.simulator',
-            icon: 'credit_card_gear',
-            palette: 'cyan' as const,
-            ariaLabel: 'admin.payment.simulator.open',
-            disabled: disabled || !paymentSimulatorConfigUrl
-          }, {
-            id: 'adminPaymentAuthorizations' as const,
-            label: 'admin.payment.simulator.3ds',
-            icon: 'verified_user',
-            palette: 'green' as const,
-            ariaLabel: 'admin.payment.simulator.authorization.open',
-            disabled: disabled || !paymentSimulatorConfigUrl
-          }]
-        }] : []),
         {
           id: 'admin-monitoring',
           label: 'monitoring',
@@ -978,7 +957,28 @@ export class SideMenuComponent implements OnDestroy {
               disabled
             }
           ]
-        }
+        },
+        ...(showPaymentSimulator ? [{
+          id: 'admin-testing',
+          label: 'admin.testing',
+          icon: 'science',
+          palette: 'cyan' as const,
+          items: [{
+            id: 'adminPaymentSimulator' as const,
+            label: 'admin.payment.simulator',
+            icon: 'credit_card_gear',
+            palette: 'cyan' as const,
+            ariaLabel: 'admin.payment.simulator.open',
+            disabled: disabled || !paymentSimulatorConfigUrl
+          }, {
+            id: 'adminPaymentAuthorizations' as const,
+            label: 'admin.payment.simulator.3ds',
+            icon: 'verified_user',
+            palette: 'green' as const,
+            ariaLabel: 'admin.payment.simulator.authorization.open',
+            disabled: disabled || !paymentSimulatorConfigUrl
+          }]
+        }] : [])
       ]
     };
   });

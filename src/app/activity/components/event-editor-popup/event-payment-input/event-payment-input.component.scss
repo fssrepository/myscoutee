@@ -283,6 +283,26 @@
   padding: 0.62rem 0.68rem;
 }
 
+.event-payment-status-grid .event-payment-status--success {
+  border-color: rgba(34, 146, 93, 0.48);
+  background: rgba(225, 247, 235, 0.96);
+}
+
+.event-payment-status-grid .event-payment-status--success span,
+.event-payment-status-grid .event-payment-status--success strong {
+  color: #12663f;
+}
+
+.event-payment-status-grid .event-payment-status--danger {
+  border-color: rgba(214, 55, 68, 0.5);
+  background: rgba(255, 232, 235, 0.97);
+}
+
+.event-payment-status-grid .event-payment-status--danger span,
+.event-payment-status-grid .event-payment-status--danger strong {
+  color: #a7192d;
+}
+
 .event-payment-method-shell {
   width: min(100%, 34rem);
   min-width: 0;

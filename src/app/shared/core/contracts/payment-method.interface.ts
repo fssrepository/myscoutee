@@ -46,6 +46,7 @@ export interface PaymentHistoryItemDto {
   paymentMethodId?: string | null;
   provider: string;
   status: string;
+  failureReason?: string | null;
   amount: number;
   currency: string;
   bookingStatus: string;

@@ -4,6 +4,7 @@ import type { EventCheckoutBasket, EventCheckoutSelection } from '../../../core/
 import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
 import type { ActivityPendingReason } from '../../../core/common/constants';
 import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
+import type { EventPaymentStatusTone } from './event-editor-popup.store';
 
 export interface EventCheckoutDialogConfig {
   mode: 'join' | 'invitation';
@@ -22,6 +23,10 @@ export interface EventCheckoutDialogConfig {
   readOnlySummary?: boolean;
   preloadedCheckoutBasket?: EventCheckoutBasket | null;
   paymentMethod?: SavedPaymentMethodDto | null;
+  paymentProvider?: string | null;
+  paymentStatusLabel?: string | null;
+  paymentStatusTone?: EventPaymentStatusTone | null;
+  paymentNote?: string | null;
   failureMessage?: string | null;
   onSubmit: (selection: EventCheckoutSelection) => void | Promise<void>;
 }
@@ -45,6 +50,10 @@ export interface EventCheckoutDialogState {
   hasPreloadedCheckoutBasket: boolean;
   preloadedCheckoutBasket: EventCheckoutBasket | null;
   paymentMethod: SavedPaymentMethodDto | null;
+  paymentProvider: string;
+  paymentStatusLabel: string;
+  paymentStatusTone: EventPaymentStatusTone;
+  paymentNote: string;
   failureMessage: string;
   onSubmit: (selection: EventCheckoutSelection) => void | Promise<void>;
 }
@@ -109,6 +118,12 @@ export class EventCheckoutDialogStore {
       hasPreloadedCheckoutBasket: Object.prototype.hasOwnProperty.call(config, 'preloadedCheckoutBasket'),
       preloadedCheckoutBasket: config.preloadedCheckoutBasket ?? null,
       paymentMethod: config.paymentMethod ? { ...config.paymentMethod } : null,
+      paymentProvider: config.paymentProvider?.trim().toLowerCase() || '',
+      paymentStatusLabel: config.paymentStatusLabel?.trim() || '',
+      paymentStatusTone: config.paymentStatusTone === 'success' || config.paymentStatusTone === 'danger'
+        ? config.paymentStatusTone
+        : 'neutral',
+      paymentNote: config.paymentNote?.trim() || '',
       failureMessage: config.failureMessage?.trim() || 'Unable to complete checkout.',
       onSubmit: config.onSubmit
     };

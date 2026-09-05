@@ -7,6 +7,7 @@ import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-meth
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
 export type EventEditorCheckoutPhase = 'review' | 'payment';
 export type EventEditorCheckoutSurfaceTone = 'neutral' | 'ready' | 'payment' | 'waiting' | 'approval' | 'changed';
+export type EventPaymentStatusTone = 'neutral' | 'success' | 'danger';
 export type EventEditorPresentationValue<TValue> = TValue | (() => TValue);
 
 export interface EventEditorBasketPricingSummaryRow {
@@ -45,6 +46,10 @@ export interface EventEditorPresentationOptions {
   paymentTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
   paymentMethod?: EventEditorPresentationValue<SavedPaymentMethodDto | null | undefined> | null;
   paymentMethodReadOnly?: EventEditorPresentationValue<boolean | null | undefined> | null;
+  paymentProvider?: EventEditorPresentationValue<string | null | undefined> | null;
+  paymentStatusLabel?: EventEditorPresentationValue<string | null | undefined> | null;
+  paymentStatusTone?: EventEditorPresentationValue<EventPaymentStatusTone | null | undefined> | null;
+  paymentNote?: EventEditorPresentationValue<string | null | undefined> | null;
   basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
   basketPricingSummaryRows?: EventEditorPresentationValue<readonly EventEditorBasketPricingSummaryRow[] | null | undefined> | null;
   basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
@@ -227,6 +232,10 @@ export class EventEditorPopupStore {
       paymentTone: presentation?.paymentTone ?? null,
       paymentMethod: presentation?.paymentMethod ?? null,
       paymentMethodReadOnly: presentation?.paymentMethodReadOnly ?? null,
+      paymentProvider: presentation?.paymentProvider ?? null,
+      paymentStatusLabel: presentation?.paymentStatusLabel ?? null,
+      paymentStatusTone: presentation?.paymentStatusTone ?? null,
+      paymentNote: presentation?.paymentNote ?? null,
       basketItems: typeof presentation?.basketItems === 'function'
         ? presentation.basketItems
         : [...(presentation?.basketItems ?? [])],

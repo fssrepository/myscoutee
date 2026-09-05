@@ -36,7 +36,11 @@
       <span>{{ 'event.editor.payment.amount' | i18n }}</span>
       <strong>{{ formatMoney(totalAmount, currency) }}</strong>
     </article>
-    <article>
+    <article
+      class="event-payment-status"
+      [class.event-payment-status--success]="statusTone === 'success'"
+      [class.event-payment-status--danger]="statusTone === 'danger'"
+    >
       <span>{{ 'event.editor.payment.status' | i18n }}</span>
       <strong>{{ paymentStatusLabel() | i18n }}</strong>
     </article>

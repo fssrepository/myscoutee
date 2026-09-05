@@ -4,7 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { DeploymentConfigurationService } from '../../../../shared/core/base/services/deployment-configuration.service';
 import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payment-method.interface';
 import { PaymentCardComponent, type PaymentCardData } from '../../../../shared/ui/components/core/smart-list/card';
-import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
+import type {
+  EventEditorCheckoutSurfaceTone,
+  EventPaymentStatusTone
+} from '../../../../shared/ui/context/stores/event-editor-popup.store';
 import { PaymentMethodsPopupStore } from '../../../../shared/ui/context/stores/payment-methods-popup.store';
 import { I18nPipe } from '../../../../shared/ui/pipes';
 
@@ -35,8 +38,10 @@ export class EventPaymentInputComponent {
   @Input() totalAmount = 0;
   @Input() currency = 'USD';
   @Input() tone: EventEditorCheckoutSurfaceTone = 'payment';
+  @Input() provider = '';
   @Input() providerLabel = '';
   @Input() statusLabel = '';
+  @Input() statusTone: EventPaymentStatusTone = 'neutral';
   @Input() note = '';
   @Input() paymentMethod: SavedPaymentMethodDto | null = null;
   @Input() paymentMethodSelectionDisabled = false;
@@ -87,8 +92,8 @@ export class EventPaymentInputComponent {
   }
 
   protected paymentProviderLabel(): string {
-    return this.providerLabel.trim()
-      || this.paymentProviderName()
+    return this.paymentProviderName()
+      || this.providerLabel.trim()
       || 'event.editor.payment.cash.only';
   }
 
@@ -139,6 +144,10 @@ export class EventPaymentInputComponent {
   }
 
   private paymentProvider(): 'stripe' | 'barion' | null {
+    const explicitProvider = this.provider.trim().toLowerCase();
+    if (explicitProvider === 'stripe' || explicitProvider === 'barion') {
+      return explicitProvider;
+    }
     if (this.providerLabel.trim()) {
       return null;
     }
