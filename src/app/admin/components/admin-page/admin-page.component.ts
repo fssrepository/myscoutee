@@ -129,6 +129,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
           void this.ensureAffinityGraphPopupLoaded();
           break;
         case 'payment-simulator':
+        case 'payment-authorizations':
           void this.ensurePaymentSimulatorPopupLoaded();
           break;
         case 'monitoring':

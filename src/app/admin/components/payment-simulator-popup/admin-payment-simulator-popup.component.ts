@@ -26,34 +26,52 @@ export class AdminPaymentSimulatorPopupComponent {
   protected readonly loading = signal(false);
   protected readonly errorKey = signal('');
   protected readonly frameVisible = computed(() => this.sourceUrl() !== null && !this.errorKey());
-  private open = false;
+  protected readonly authorizationSurface = computed(
+    () => this.admin.activePopup() === 'payment-authorizations'
+  );
+  protected readonly titleKey = computed(() => this.authorizationSurface()
+    ? 'admin.payment.simulator.authorization'
+    : 'admin.payment.simulator');
+  protected readonly loadingKey = computed(() => this.authorizationSurface()
+    ? 'admin.payment.simulator.authorization.loading'
+    : 'admin.payment.simulator.loading');
+  private activeSurface: 'payment-simulator' | 'payment-authorizations' | null = null;
   private requestGeneration = 0;
   private simulatorOrigin = '';
 
   constructor() {
     effect(() => {
-      const isOpen = this.admin.activePopup() === 'payment-simulator';
-      if (isOpen && !this.open) {
-        this.open = true;
-        queueMicrotask(() => void this.loadConfiguration());
+      const activePopup = this.admin.activePopup();
+      const surface = activePopup === 'payment-simulator' || activePopup === 'payment-authorizations'
+        ? activePopup
+        : null;
+      if (surface === this.activeSurface) {
         return;
       }
-      if (!isOpen && this.open) {
-        this.open = false;
-        this.requestGeneration += 1;
-        this.sourceUrl.set(null);
-        this.simulatorOrigin = '';
-        this.loading.set(false);
-        this.errorKey.set('');
+      this.activeSurface = surface;
+      this.requestGeneration += 1;
+      this.sourceUrl.set(null);
+      this.simulatorOrigin = '';
+      this.loading.set(false);
+      this.errorKey.set('');
+      if (surface) {
+        queueMicrotask(() => void this.loadConfiguration());
       }
     });
   }
 
   protected popupModel(): PopupModel {
+    const authorizationSurface = this.authorizationSurface();
     return {
-      title: 'admin.payment.simulator',
-      subtitle: 'admin.payment.simulator.subtitle',
-      ariaLabel: 'admin.payment.simulator',
+      title: authorizationSurface
+        ? 'admin.payment.simulator.authorization'
+        : 'admin.payment.simulator',
+      subtitle: authorizationSurface
+        ? 'admin.payment.simulator.authorization.subtitle'
+        : 'admin.payment.simulator.subtitle',
+      ariaLabel: authorizationSurface
+        ? 'admin.payment.simulator.authorization'
+        : 'admin.payment.simulator',
       closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
@@ -104,24 +122,29 @@ export class AdminPaymentSimulatorPopupComponent {
 
   private async loadConfiguration(): Promise<void> {
     const generation = ++this.requestGeneration;
+    const authorizationSurface = this.authorizationSurface();
     this.loading.set(true);
     this.errorKey.set('');
     this.sourceUrl.set(null);
     try {
-      const access = await this.simulator.createConfigurationAccess();
-      if (generation !== this.requestGeneration || this.admin.activePopup() !== 'payment-simulator') {
+      const access = authorizationSurface
+        ? await this.simulator.createAuthorizationAccess()
+        : await this.simulator.createConfigurationAccess();
+      if (generation !== this.requestGeneration || this.authorizationSurface() !== authorizationSurface) {
         return;
       }
       this.simulatorOrigin = new URL(access.url).origin;
       this.sourceUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(access.url));
     } catch (error) {
-      if (generation !== this.requestGeneration || this.admin.activePopup() !== 'payment-simulator') {
+      if (generation !== this.requestGeneration || this.authorizationSurface() !== authorizationSurface) {
         return;
       }
       const message = error instanceof Error ? error.message.trim() : '';
       this.errorKey.set(message.startsWith('admin.payment.simulator.')
         ? message
-        : 'admin.payment.simulator.unavailable');
+        : authorizationSurface
+          ? 'admin.payment.simulator.authorization.unavailable'
+          : 'admin.payment.simulator.unavailable');
       this.loading.set(false);
     }
   }

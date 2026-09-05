@@ -714,6 +714,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     userId: string,
     item: PaymentHistoryItemDto
   ): Promise<SavedPaymentMethodDto> {
+    if (item.paymentMethod) {
+      return { ...item.paymentMethod };
+    }
     const paymentMethodId = `${item.paymentMethodId ?? ''}`.trim();
     if (!paymentMethodId) {
       throw new Error('payment.summary.error.method.unavailable');

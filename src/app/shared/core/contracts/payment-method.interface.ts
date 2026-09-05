@@ -51,6 +51,7 @@ export interface PaymentHistoryItemDto {
   fulfillmentKind?: string | null;
   checkoutSessionId?: string | null;
   createdAtIso: string;
+  paymentMethod?: SavedPaymentMethodDto | null;
 }
 
 export interface PaymentHistoryPageDto extends PageResult<PaymentHistoryItemDto> {

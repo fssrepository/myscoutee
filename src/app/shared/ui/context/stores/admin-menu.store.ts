@@ -14,6 +14,7 @@ export type AdminMenuKind =
   | 'stats'
   | 'affinity-graph'
   | 'payment-simulator'
+  | 'payment-authorizations'
   | 'monitoring'
   | 'item-preview';
 
@@ -66,6 +67,10 @@ export class AdminMenuStore {
 
   openPaymentSimulator(): void {
     this.activePopupRef.set('payment-simulator');
+  }
+
+  openPaymentAuthorizations(): void {
+    this.activePopupRef.set('payment-authorizations');
   }
 
   openMonitoring(): void {

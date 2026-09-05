@@ -1,5 +1,4 @@
-import { Injectable, inject } from '@angular/core';
-
+import { Injectable, inject, signal } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   EventCheckoutPaymentAudit,
@@ -14,6 +13,16 @@ export interface PaymentAuthorizationContinuation {
   paymentUrl?: string | null;
 }
 
+export interface PaymentAuthorizationWaitingSurface {
+  id: string;
+  url: string;
+}
+
+interface PaymentAuthorizationAttempt {
+  id: string;
+  cancelled: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PaymentAuthorizationService {
   private static readonly POLL_INTERVAL_MS = 1500;
@@ -21,9 +30,17 @@ export class PaymentAuthorizationService {
 
   private readonly events = inject(EventsService);
   private readonly i18n = inject(I18nService);
+  private readonly waitingSurfaceRef = signal<PaymentAuthorizationWaitingSurface | null>(null);
+  private activeAttempt: PaymentAuthorizationAttempt | null = null;
+
+  readonly waitingSurface = this.waitingSurfaceRef.asReadonly();
 
   openProviderWindow(): Window | null {
-    if (!environment.paymentIntegrationEnabled || typeof window === 'undefined') {
+    if (
+      !environment.paymentIntegrationEnabled
+      || environment.paymentSimulatorConfigUrl
+      || typeof window === 'undefined'
+    ) {
       return null;
     }
     const popup = window.open(
@@ -41,11 +58,10 @@ export class PaymentAuthorizationService {
     continuation: PaymentAuthorizationContinuation | EventCheckoutSession,
     userId: string,
     sourceId: string,
-    providerWindow: Window | null
+    providerWindow: Window | null = null
   ): Promise<EventCheckoutPaymentAudit | null> {
     const status = this.normalizedStatus(continuation?.status);
     if (this.isSuccessfulStatus(status)) {
-      this.closeProviderWindow(providerWindow);
       return null;
     }
     const paymentUrl = this.normalizedPaymentUrl(continuation?.paymentUrl);
@@ -53,38 +69,63 @@ export class PaymentAuthorizationService {
       this.closeProviderWindow(providerWindow);
       throw new Error(this.i18n.translate('payment.authorization.error.start'));
     }
-    if (!providerWindow || providerWindow.closed) {
+    const simulatorSurface = Boolean(environment.paymentSimulatorConfigUrl);
+    if (!simulatorSurface && (!providerWindow || providerWindow.closed)) {
       throw new Error(this.i18n.translate('payment.authorization.error.popup'));
     }
-
+    const attempt: PaymentAuthorizationAttempt = {
+      id: continuation.id.trim(),
+      cancelled: false
+    };
+    if (this.activeAttempt) {
+      this.activeAttempt.cancelled = true;
+    }
+    this.activeAttempt = attempt;
+    if (simulatorSurface) {
+      this.waitingSurfaceRef.set({ id: attempt.id, url: paymentUrl });
+    } else {
+      providerWindow!.location.replace(paymentUrl);
+      providerWindow!.focus();
+    }
     try {
-      providerWindow.location.replace(paymentUrl);
-      providerWindow.focus();
       return await this.waitForAuthorization(
         userId.trim(),
         sourceId.trim(),
-        continuation.id.trim()
+        attempt
       );
     } finally {
+      if (this.activeAttempt === attempt) {
+        this.activeAttempt = null;
+        this.waitingSurfaceRef.set(null);
+      }
       this.closeProviderWindow(providerWindow);
     }
   }
 
   closeProviderWindow(providerWindow: Window | null): void {
-    if (!providerWindow || providerWindow.closed) {
-      return;
+    if (providerWindow && !providerWindow.closed) {
+      providerWindow.close();
     }
-    providerWindow.close();
+  }
+
+  closeWaitingSurface(): void {
+    if (this.activeAttempt) {
+      this.activeAttempt.cancelled = true;
+    }
+    this.waitingSurfaceRef.set(null);
   }
 
   private async waitForAuthorization(
     userId: string,
     sourceId: string,
-    paymentSessionId: string
+    attempt: PaymentAuthorizationAttempt
   ): Promise<EventCheckoutPaymentAudit> {
     const deadline = Date.now() + PaymentAuthorizationService.POLL_TIMEOUT_MS;
     while (Date.now() < deadline) {
-      const audit = await this.events.loadCheckoutPaymentAudit(userId, sourceId, paymentSessionId);
+      if (attempt.cancelled) {
+        throw new Error(this.i18n.translate('payment.authorization.error.cancelled'));
+      }
+      const audit = await this.events.loadCheckoutPaymentAudit(userId, sourceId, attempt.id);
       const status = this.normalizedStatus(audit?.status);
       if (audit && this.isSuccessfulStatus(status)) {
         return audit;
@@ -119,7 +160,8 @@ export class PaymentAuthorizationService {
       return null;
     }
     try {
-      const url = new URL(candidate, window.location.href);
+      const baseUrl = typeof window === 'undefined' ? 'http://localhost/' : window.location.href;
+      const url = new URL(candidate, baseUrl);
       return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
     } catch {
       return null;

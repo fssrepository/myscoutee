@@ -11,7 +11,8 @@ export interface PaymentSimulatorConfigurationAccessDto {
 
 @Injectable({ providedIn: 'root' })
 export class HttpPaymentSimulatorAdminService {
-  private static readonly ROUTE = '/admin/payment-simulator/configuration-access';
+  private static readonly CONFIGURATION_ROUTE = '/admin/payment-simulator/configuration-access';
+  private static readonly AUTHORIZATION_ROUTE = '/admin/payment-simulator/authorization-access';
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
 
@@ -21,7 +22,7 @@ export class HttpPaymentSimulatorAdminService {
       throw new Error('admin.payment.simulator.unavailable');
     }
     const response = await this.routeDelay.withRequestTimeout(
-      HttpPaymentSimulatorAdminService.ROUTE,
+      HttpPaymentSimulatorAdminService.CONFIGURATION_ROUTE,
       this.http.post<PaymentSimulatorConfigurationAccessDto | null>(endpoint, {}).toPromise(),
       'admin.payment.simulator.timeout'
     );
@@ -29,6 +30,25 @@ export class HttpPaymentSimulatorAdminService {
     const expiresAt = `${response?.expiresAt ?? ''}`.trim();
     if (!url || !expiresAt || !this.isAllowedUrl(url)) {
       throw new Error('admin.payment.simulator.unavailable');
+    }
+    return { url, expiresAt };
+  }
+
+  async createAuthorizationAccess(): Promise<PaymentSimulatorConfigurationAccessDto> {
+    const configurationEndpoint = `${environment.paymentSimulatorConfigUrl ?? ''}`.trim();
+    if (!configurationEndpoint) {
+      throw new Error('admin.payment.simulator.authorization.unavailable');
+    }
+    const endpoint = `${environment.apiBaseUrl}${HttpPaymentSimulatorAdminService.AUTHORIZATION_ROUTE}`;
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpPaymentSimulatorAdminService.AUTHORIZATION_ROUTE,
+      this.http.post<PaymentSimulatorConfigurationAccessDto | null>(endpoint, {}).toPromise(),
+      'admin.payment.simulator.authorization.timeout'
+    );
+    const url = `${response?.url ?? ''}`.trim();
+    const expiresAt = `${response?.expiresAt ?? ''}`.trim();
+    if (!url || !expiresAt || !this.isAllowedUrl(url)) {
+      throw new Error('admin.payment.simulator.authorization.unavailable');
     }
     return { url, expiresAt };
   }

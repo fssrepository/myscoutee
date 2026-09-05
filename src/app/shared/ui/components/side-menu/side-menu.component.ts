@@ -179,6 +179,7 @@ type NavigatorAdminMenuShortcutId =
   | 'adminJobs'
   | 'adminParams'
   | 'adminPaymentSimulator'
+  | 'adminPaymentAuthorizations'
   | 'adminContent'
   | 'adminArticle'
   | 'adminStats'
@@ -965,6 +966,13 @@ export class SideMenuComponent implements OnDestroy {
             palette: 'cyan' as const,
             ariaLabel: 'admin.payment.simulator.open',
             disabled: disabled || !paymentSimulatorConfigUrl
+          }, {
+            id: 'adminPaymentAuthorizations' as const,
+            label: 'admin.payment.simulator.3ds',
+            icon: 'verified_user',
+            palette: 'green' as const,
+            ariaLabel: 'admin.payment.simulator.authorization.open',
+            disabled: disabled || !paymentSimulatorConfigUrl
           }]
         }] : [])
       ]
@@ -1473,6 +1481,9 @@ export class SideMenuComponent implements OnDestroy {
       case 'adminPaymentSimulator':
         this.openAdminPaymentSimulatorShortcut(event.sourceEvent);
         return;
+      case 'adminPaymentAuthorizations':
+        this.openAdminPaymentAuthorizationsShortcut(event.sourceEvent);
+        return;
       case 'adminContent':
         this.openAdminHelpEditorShortcut(event.sourceEvent);
         return;
@@ -1753,6 +1764,14 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     this.adminMenuStore.openPaymentSimulator();
+  }
+
+  protected openAdminPaymentAuthorizationsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.runtimeStore.isOnline()) {
+      return;
+    }
+    this.adminMenuStore.openPaymentAuthorizations();
   }
 
   protected openAdminStatsShortcut(event?: Event): void {
