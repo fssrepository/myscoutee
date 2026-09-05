@@ -51,12 +51,20 @@
 
 @if (registrationFrameOpen() && registration(); as providerRegistration) {
   <app-popup [model]="registrationPopupModel()" [zIndex]="22800">
-    <iframe
-      class="payment-methods-popup__provider-frame"
-      [src]="providerRegistration.safeUrl"
-      [title]="'payment.registration.frame.title' | i18n"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allow="payment"
-    ></iframe>
+    <section class="payment-methods-popup__provider-shell">
+      <div class="payment-methods-popup__provider-brand">
+        <img
+          [src]="registrationProviderLogo(providerRegistration.provider)"
+          [alt]="registrationProviderLabel(providerRegistration.provider)"
+        />
+      </div>
+      <iframe
+        class="payment-methods-popup__provider-frame"
+        [src]="providerRegistration.safeUrl"
+        [title]="'payment.registration.frame.title' | i18n"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow="payment"
+      ></iframe>
+    </section>
   </app-popup>
 }

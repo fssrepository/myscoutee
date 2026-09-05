@@ -9,6 +9,7 @@ import type { ListQuery } from '../../../core/contracts/list.interface';
 import type {
   PaymentHistoryItemDto,
   PaymentMethodRegistrationDto,
+  PaymentProvider,
   SavedPaymentMethodDto
 } from '../../../core/contracts/payment-method.interface';
 import { UserProfileStore } from '../../context/stores/user-profile.store';
@@ -70,6 +71,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     id: string;
     url: string;
     safeUrl: SafeResourceUrl;
+    provider: PaymentProvider;
     expiresAtIso: string;
     replacesPaymentMethodId: string | null;
   } | null>(null);
@@ -243,6 +245,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       headerPalette: 'green',
       onClose: () => this.closeRegistration()
     };
+  }
+
+  protected registrationProviderLogo(provider: PaymentProvider): string {
+    return `assets/payment-providers/${provider}.svg`;
+  }
+
+  protected registrationProviderLabel(provider: PaymentProvider): string {
+    return provider === 'barion' ? 'Barion' : 'Stripe';
   }
 
   protected paymentCard(method: SavedPaymentMethodDto): PaymentCardData {
@@ -483,6 +493,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         id: registration.id,
         url: paymentUrl,
         safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(paymentUrl),
+        provider: registration.provider,
         expiresAtIso: registration.expiresAtIso,
         replacesPaymentMethodId: registration.replacesPaymentMethodId?.trim() || null
       });
