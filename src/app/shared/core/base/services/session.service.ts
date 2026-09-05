@@ -262,7 +262,7 @@ export class SessionService {
       const session: AppSession = {
         kind: 'firebase',
         profile,
-        sessionId: this.newOpaqueId('session')
+        sessionId: this.reusableFirebaseSessionId(profile) || this.newOpaqueId('session')
       };
       if (!await this.registerFirebaseLogin(session, 'firebase')) {
         return null;
@@ -419,7 +419,7 @@ export class SessionService {
     const session: AppSession = {
       kind: 'firebase',
       profile: result.profile,
-      sessionId: this.newOpaqueId('session')
+      sessionId: this.reusableFirebaseSessionId(result.profile) || this.newOpaqueId('session')
     };
     if (!await this.registerFirebaseLogin(session, request.provider)) {
       return null;
@@ -481,6 +481,18 @@ export class SessionService {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(SessionService.SESSION_STORAGE_KEY, JSON.stringify(session));
     }
+  }
+
+  private reusableFirebaseSessionId(profile: FirebaseAuthProfileDto): string {
+    const current = this.sessionRef();
+    if (current?.kind !== 'firebase') {
+      return '';
+    }
+    const currentUserId = current.profile.id.trim();
+    const nextUserId = profile.id.trim();
+    return currentUserId && currentUserId === nextUserId
+      ? current.sessionId.trim()
+      : '';
   }
 
   private persistOperatorBootstrapSession(

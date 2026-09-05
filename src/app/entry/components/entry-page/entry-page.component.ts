@@ -692,8 +692,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     selection: EntryDemoUserSelectionEvent,
     operatorUserId: string
   ): Promise<void> {
-    if (!this.sessionService.startDemoSession(operatorUserId)) {
-      selection.fail();
+    const session = this.usersService.localModeEnabled
+      ? this.sessionService.startDemoSession(operatorUserId)
+      : await this.sessionService.startTrackedDemoSession(operatorUserId);
+    if (!session) {
+      selection.fail(this.sessionService.firebaseNotice());
       return;
     }
     try {

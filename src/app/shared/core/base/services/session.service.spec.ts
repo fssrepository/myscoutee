@@ -216,6 +216,37 @@ describe('SessionService operator bootstrap session', () => {
     }
   });
 
+  it('reuses the persisted Firebase session when the same device restores the same user', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
+      kind: 'firebase',
+      sessionId: 'session:persisted-device',
+      profile: {
+        id: 'firebase-user',
+        name: 'Firebase User',
+        email: 'firebase@example.com',
+        initials: 'FU'
+      }
+    }));
+    firebaseRestore.mockResolvedValue({
+      id: 'firebase-user',
+      name: 'Firebase User',
+      email: 'firebase@example.com',
+      initials: 'FU'
+    });
+    const service = TestBed.inject(SessionService);
+
+    await expect(service.restoreFirebaseSession()).resolves.toMatchObject({
+      kind: 'firebase',
+      sessionId: 'session:persisted-device'
+    });
+
+    expect(registerLogin).toHaveBeenCalledWith(
+      'session:persisted-device',
+      'firebase-token',
+      expect.objectContaining({ provider: 'firebase' })
+    );
+  });
+
   it('publishes a tracked demo session only after server registration accepts it', async () => {
     let acceptRegistration!: (value: {
       accepted: boolean;
