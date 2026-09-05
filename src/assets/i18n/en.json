@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.05.en.71",
+  "version": "2026.09.05.en.72",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2069,6 +2069,8 @@
     "payment.card.ending": "{brand} ending {last4}",
     "payment.card.expires": "Expires",
     "payment.card.expired": "Expired",
+    "notification.payment.card.expired.title": "Payment card expired",
+    "notification.payment.card.expired.message": "Your saved card ending in {last4} has expired.",
     "payment.card.select": "Select payment card",
     "payment.card.select.aria": "Select payment card",
     "payment.card.selected": "Selected",

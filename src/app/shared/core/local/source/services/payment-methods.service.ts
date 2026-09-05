@@ -114,7 +114,11 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     const createdAtIso = new Date(now.getTime() - 86_400_000 * 30).toISOString();
     return [
       this.method(owner, 'midnight', 'stripe', 'Visa', '4242', 12, expiryYear, 'ALEX MORGAN', createdAtIso),
-      this.method(owner, 'emerald', 'barion', 'Mastercard', '4444', 8, expiryYear + 1, 'ALEX MORGAN', createdAtIso)
+      this.method(owner, 'emerald', 'barion', 'Mastercard', '4444', 8, expiryYear + 1, 'ALEX MORGAN', createdAtIso),
+      {
+        ...this.method(owner, 'ruby', 'stripe', 'Visa', '0008', 8, now.getFullYear() - 1, 'ALEX MORGAN', createdAtIso),
+        status: 'expired'
+      }
     ];
   }
 

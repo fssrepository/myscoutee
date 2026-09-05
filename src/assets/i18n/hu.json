@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.05.hu.71",
+  "version": "2026.09.05.hu.72",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2069,6 +2069,8 @@
     "payment.card.ending": "{brand}, végződés: {last4}",
     "payment.card.expires": "Lejárat",
     "payment.card.expired": "Lejárt",
+    "notification.payment.card.expired.title": "Lejárt a fizetési kártya",
+    "notification.payment.card.expired.message": "A(z) {last4} végződésű mentett kártyád lejárt.",
     "payment.card.select": "Fizetési kártya kiválasztása",
     "payment.card.select.aria": "Fizetési kártya kiválasztása",
     "payment.card.selected": "Kiválasztva",
