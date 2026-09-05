@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.05.en.64",
+  "version": "2026.09.05.en.65",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2090,7 +2090,8 @@
     "payment.registration.aria": "Register payment card with provider",
     "payment.registration.close": "Close card registration",
     "payment.registration.error.ended": "Card registration ended with status: {status}.",
-    "payment.registration.error.expired": "Card registration expired. Start it again to add the card.",
+    "payment.registration.error.expired": "The card-registration time limit expired. Start it again to add the card.",
+    "payment.registration.error.failed": "Card registration failed. Start it again to add the card.",
     "payment.registration.error.page": "Payment provider did not return a registration page.",
     "payment.registration.error.start": "Card registration could not start.",
     "payment.registration.error.status": "Card registration status could not be read.",

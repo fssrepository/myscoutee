@@ -429,8 +429,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.finishRegistration(registration.status);
       if (registration.status === 'completed') {
         this.errorRef.set('');
+      } else if (registration.status === 'expired') {
+        this.errorRef.set(this.i18n.translate('payment.registration.error.expired'));
       } else if (registration.status !== 'cancelled') {
-        this.errorRef.set(this.i18n.translateParams('payment.registration.error.ended', { status: registration.status }));
+        this.errorRef.set(this.i18n.translate('payment.registration.error.failed'));
       }
     } catch (error) {
       this.errorRef.set(error instanceof Error ? error.message : this.i18n.translate('payment.registration.error.status'));
@@ -562,7 +564,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const userId = this.activeUserId();
     try {
       await this.activities.ensureActivitiesPopupLoaded();
-      const record = await this.events.queryKnownRecordById(userId, item.sourceId);
+      const detail = await this.events.loadEventDetailById(userId, item.sourceId);
+      const record = detail
+        ? detail as unknown as AppDTOs.ActivityEventRecord
+        : await this.events.queryKnownRecordById(userId, item.sourceId);
       if (!record) {
         this.errorRef.set(this.i18n.translate('payment.summary.error.source.unavailable'));
         return;

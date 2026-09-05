@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.05.hu.64",
+  "version": "2026.09.05.hu.65",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2090,7 +2090,8 @@
     "payment.registration.aria": "Fizetési kártya regisztrálása a szolgáltatónál",
     "payment.registration.close": "Kártyaregisztráció bezárása",
     "payment.registration.error.ended": "A kártyaregisztráció ezzel az állapottal zárult: {status}.",
-    "payment.registration.error.expired": "A kártyaregisztráció időtúllépéssel lezárult. A kártya hozzáadásához indítsd újra.",
+    "payment.registration.error.expired": "A kártyaregisztráció időkorlátja lejárt. A kártya hozzáadásához indítsd újra.",
+    "payment.registration.error.failed": "A kártyaregisztráció sikertelen. A kártya hozzáadásához indítsd újra.",
     "payment.registration.error.page": "A fizetési szolgáltató nem adott vissza regisztrációs oldalt.",
     "payment.registration.error.start": "A kártyaregisztráció nem indítható el.",
     "payment.registration.error.status": "A kártyaregisztráció állapota nem olvasható.",
