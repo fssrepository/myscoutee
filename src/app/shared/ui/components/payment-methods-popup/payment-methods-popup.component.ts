@@ -577,7 +577,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         this.errorRef.set('payment.summary.error.source.unavailable');
         return;
       }
-      this.store.close();
       this.eventCheckoutDialog.open({
         mode: 'join',
         userId,
@@ -635,7 +634,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
               multiplier: null
             }];
       await this.assetPopup.ensureAssetPopupLoaded();
-      this.store.close();
       this.assetStore.openAssetEditorEdit({
         cardId: card.id,
         form: AssetCardBuilder.buildAssetFormFromCard(card),
