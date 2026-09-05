@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../shared/app-utils';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../../../../shared/ui/components/core/menu';
 import { TextCardComponent, type TextCardTone } from '../../../../shared/ui/components/core/smart-list/card';
 import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
@@ -185,7 +186,19 @@ export class EventBasketInputComponent {
   }
 
   protected itemDetail(item: EventBasketInputItem): string {
-    return item.detail?.trim() || '';
+    return AppUtils.normalizeDateTimeRangeText(item.detail, '');
+  }
+
+  protected itemMeta(item: EventBasketInputItem): string {
+    return AppUtils.normalizeDateTimeRangeText(item.meta, '');
+  }
+
+  protected contextMetaLabel(): string {
+    return AppUtils.normalizeDateTimeRangeText(this.contextMeta, '');
+  }
+
+  protected contextDetailLabel(): string {
+    return AppUtils.normalizeDateTimeRangeText(this.contextDetail, '');
   }
 
   private itemQuantity(item: EventBasketInputItem): number {

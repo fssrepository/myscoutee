@@ -57,6 +57,21 @@ describe('AppUtils media image variants', () => {
   });
 });
 
+describe('AppUtils date-time range text', () => {
+  it('formats an embedded raw ISO interval', () => {
+    const start = '2026-09-06T06:23:33.087Z';
+    const end = '2026-09-06T08:23:33.087Z';
+
+    expect(AppUtils.normalizeDateTimeRangeText(`${start} – ${end}`))
+      .toBe(AppUtils.dateTimeRangeLabel(start, end));
+  });
+
+  it('preserves an already formatted label', () => {
+    expect(AppUtils.normalizeDateTimeRangeText('Sep 6, 8:23 AM - 10:23 AM'))
+      .toBe('Sep 6, 8:23 AM - 10:23 AM');
+  });
+});
+
 function managedImageUrl(variant: 'small' | 'medium' | 'large'): string {
   return `/api/media/public?key=${encodeURIComponent(`images/owner/article/upload-1/${variant}.webp`)}`;
 }

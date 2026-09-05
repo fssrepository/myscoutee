@@ -990,7 +990,7 @@ export class EventExplorePopupComponent {
         id: `checkout-draft-${entry.draft.sourceId}`,
         label: entry.draft.eventTitle,
         description: [
-          entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout',
+          this.checkoutDraftTimeframeLabel(entry),
           `${itemCount} elem · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
         ].join('\n'),
         detail: clearing ? 'Releasing...' : this.checkoutDraftMenuStatusLabel(entry),
@@ -1007,6 +1007,13 @@ export class EventExplorePopupComponent {
         context: { menu: 'checkout-draft', entry }
       };
     });
+  }
+
+  private checkoutDraftTimeframeLabel(entry: CheckoutDraftEntry): string {
+    return AppUtils.normalizeDateTimeRangeText(
+      entry.draft.eventTimeframe || entry.record?.timeframe,
+      'Pending checkout'
+    );
   }
 
   private checkoutDraftBasketItemCount(draft: EventCheckoutDraft): number {
