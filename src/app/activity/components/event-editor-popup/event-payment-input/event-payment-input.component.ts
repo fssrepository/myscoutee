@@ -7,23 +7,10 @@ import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/conte
 import { PaymentMethodsPopupStore } from '../../../../shared/ui/context/stores/payment-methods-popup.store';
 import { I18nPipe } from '../../../../shared/ui/pipes';
 
-export interface EventPaymentInputPricingSummaryRow {
-  key: string;
-  label: string;
-  detail?: string | null;
-  amount?: number | null;
-  currency?: string | null;
-  multiplier?: number | null;
-}
-
-export interface EventPaymentInputItem {
-  id: string;
-  title: string;
-  meta: string;
-  detail?: string | null;
-  amount: number;
-  currency: string;
-  quantity?: number | null;
+export interface EventPaymentInputConfig {
+  title?: string;
+  subtitle?: string;
+  paymentIntegrationEnabled?: boolean;
 }
 
 @Component({
@@ -42,23 +29,25 @@ export interface EventPaymentInputItem {
 export class EventPaymentInputComponent {
   private readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
 
-  @Input() title = 'event.editor.payment.title';
-  @Input() subtitle = 'event.editor.payment.subtitle';
-  @Input() eventTitle = '';
-  @Input() eventLocation = '';
-  @Input() eventTimeframe = '';
-  @Input() items: readonly EventPaymentInputItem[] = [];
-  @Input() pricingSummaryRows: readonly EventPaymentInputPricingSummaryRow[] = [];
+  @Input() config: EventPaymentInputConfig = {};
   @Input() totalAmount = 0;
   @Input() currency = 'USD';
-  @Input() paymentIntegrationEnabled = false;
   @Input() tone: EventEditorCheckoutSurfaceTone = 'payment';
   @Input() providerLabel = '';
   @Input() statusLabel = '';
   @Input() note = '';
   @Input() paymentMethod: SavedPaymentMethodDto | null = null;
   @Input() paymentMethodSelectionDisabled = false;
+  @Input() paymentMethodReadOnly = false;
   @Output() readonly paymentMethodChange = new EventEmitter<SavedPaymentMethodDto>();
+
+  protected title(): string {
+    return this.config.title ?? 'event.editor.payment.title';
+  }
+
+  protected subtitle(): string {
+    return this.config.subtitle ?? 'event.editor.payment.subtitle';
+  }
 
   protected paymentCard(): PaymentCardData | null {
     const method = this.paymentMethod;
@@ -71,26 +60,19 @@ export class EventPaymentInputComponent {
       expiryYear: method.expiryYear,
       cardholderName: method.cardholderName,
       artworkUrl: method.artworkUrl,
-      selected: false
+      selected: false,
+      disabled: this.paymentMethodReadOnly
     } : null;
   }
 
   protected openPaymentMethodPicker(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    if (this.paymentMethodSelectionDisabled) return;
+    if (this.paymentMethodReadOnly || this.paymentMethodSelectionDisabled) return;
     void this.paymentMethodsPopupStore.openPicker({
       selectedPaymentMethodId: this.paymentMethod?.id ?? null,
       onSelect: paymentMethod => this.paymentMethodChange.emit(paymentMethod)
     });
-  }
-
-  protected itemTrackId(_index: number, item: EventPaymentInputItem): string {
-    return item.id;
-  }
-
-  protected rowTrackId(_index: number, row: EventPaymentInputPricingSummaryRow): string {
-    return row.key;
   }
 
   protected formatMoney(amount: number | null | undefined, currency = this.currency): string {
@@ -98,57 +80,19 @@ export class EventPaymentInputComponent {
     return `${this.currencySymbol(currency)}${value.toFixed(2)}`;
   }
 
-  protected rowAmountLabel(row: EventPaymentInputPricingSummaryRow): string {
-    if (!Number.isFinite(row.amount)) {
-      return '';
-    }
-    return this.formatMoney(row.amount, row.currency || this.currency);
-  }
-
-  protected rowDetailLabel(row: EventPaymentInputPricingSummaryRow): string {
-    const parts: string[] = [];
-    const detail = `${row.detail ?? ''}`.trim();
-    if (detail) {
-      parts.push(detail);
-    }
-    const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
-    if (multiplier > 1) {
-      parts.push(`affected by x${multiplier}`);
-    }
-    return parts.join(' · ');
-  }
-
-  protected itemAmountLabel(item: EventPaymentInputItem): string {
-    const quantity = Math.max(1, Math.trunc(Number(item.quantity) || 1));
-    const amount = (Number(item.amount) || 0) * quantity;
-    return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'included';
-  }
-
-  protected resolvedEventTitle(): string {
-    return `${this.eventTitle ?? ''}`.trim() || 'event';
-  }
-
-  protected resolvedEventLocation(): string {
-    return `${this.eventLocation ?? ''}`.trim() || 'event.editor.location.not.set';
-  }
-
-  protected resolvedEventTimeframe(): string {
-    return `${this.eventTimeframe ?? ''}`.trim() || 'event.editor.date.not.set';
-  }
-
   protected paymentProviderLabel(): string {
     return this.providerLabel.trim()
-      || (this.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo');
+      || (this.config.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo');
   }
 
   protected paymentStatusLabel(): string {
     return this.statusLabel.trim()
-      || (this.paymentIntegrationEnabled ? 'event.editor.payment.ready.redirect' : 'event.editor.payment.review.before.confirm');
+      || (this.config.paymentIntegrationEnabled ? 'event.editor.payment.ready.redirect' : 'event.editor.payment.review.before.confirm');
   }
 
   protected paymentNote(): string {
     return this.note.trim()
-      || (this.paymentIntegrationEnabled
+      || (this.config.paymentIntegrationEnabled
         ? 'event.editor.payment.gateway.note'
         : 'event.editor.payment.demo.note');
   }

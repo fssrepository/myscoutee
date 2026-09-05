@@ -44,6 +44,7 @@ export interface EventEditorPresentationOptions {
   basketTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
   paymentTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
   paymentMethod?: EventEditorPresentationValue<SavedPaymentMethodDto | null | undefined> | null;
+  paymentMethodReadOnly?: EventEditorPresentationValue<boolean | null | undefined> | null;
   basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
   basketPricingSummaryRows?: EventEditorPresentationValue<readonly EventEditorBasketPricingSummaryRow[] | null | undefined> | null;
   basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
@@ -225,6 +226,7 @@ export class EventEditorPopupStore {
       basketTone: presentation?.basketTone ?? null,
       paymentTone: presentation?.paymentTone ?? null,
       paymentMethod: presentation?.paymentMethod ?? null,
+      paymentMethodReadOnly: presentation?.paymentMethodReadOnly ?? null,
       basketItems: typeof presentation?.basketItems === 'function'
         ? presentation.basketItems
         : [...(presentation?.basketItems ?? [])],

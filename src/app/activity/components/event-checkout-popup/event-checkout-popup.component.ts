@@ -199,13 +199,14 @@ export class EventCheckoutPopupComponent {
       checkoutPhase: this.checkoutEditorPhase(),
       hideSubEventsPanel: !this.showCheckoutSubEventDefinitionsPanel(dialog),
       hideSlotsPanel: true,
-      hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
+      hidePaymentPanel: false,
       loading: checkoutLoading,
       showBasketPanel: true,
       showPricingPanel: this.showCheckoutPricingPanel(),
       basketTone: this.checkoutBasketSurfaceTone(),
       paymentTone: this.checkoutPaymentSurfaceTone(),
       paymentMethod: () => this.selectedPaymentMethodRef(),
+      paymentMethodReadOnly: this.isReadOnlyCheckoutSummary(),
       basketItems: this.checkoutBasketPresentationItems(),
       basketPricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
       basketTotalAmount: this.totalAmount(),
@@ -2773,6 +2774,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private initializeDialogState(dialog: EventCheckoutDialogState): void {
+    this.selectedPaymentMethodRef.set(dialog.paymentMethod ? { ...dialog.paymentMethod } : null);
     this.rebuildSlotCaches(dialog.record.upcomingSlots ?? []);
     const firstSlot = dialog.record.upcomingSlots?.[0] ?? null;
     const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);

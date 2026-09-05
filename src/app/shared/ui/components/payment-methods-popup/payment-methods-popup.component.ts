@@ -561,12 +561,19 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   private async openPaymentSummary(item: PaymentHistoryItemDto): Promise<void> {
-    if (item.fulfillmentKind === 'client') {
-      await this.openAssetPaymentSummary(item);
-      return;
-    }
     this.errorRef.set('');
     const userId = this.activeUserId();
+    let paymentMethod: SavedPaymentMethodDto;
+    try {
+      paymentMethod = await this.paymentMethodForHistoryItem(userId, item);
+    } catch {
+      this.errorRef.set('payment.summary.error.method.unavailable');
+      return;
+    }
+    if (item.fulfillmentKind === 'client') {
+      await this.openAssetPaymentSummary(item, paymentMethod);
+      return;
+    }
     try {
       await this.activities.ensureActivitiesPopupLoaded();
       const detail = await this.events.loadEventDetailById(userId, item.sourceId);
@@ -583,6 +590,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         record,
         readOnlySummary: true,
         preloadedCheckoutBasket: await this.paymentSummaryBasket(userId, item, record.title),
+        paymentMethod,
         title: 'event.checkout.payment.summary',
         subtitle: record.timeframe,
         failureMessage: this.i18n.translate('payment.summary.error.open'),
@@ -593,7 +601,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     }
   }
 
-  private async openAssetPaymentSummary(item: PaymentHistoryItemDto): Promise<void> {
+  private async openAssetPaymentSummary(
+    item: PaymentHistoryItemDto,
+    paymentMethod: SavedPaymentMethodDto
+  ): Promise<void> {
     this.errorRef.set('');
     const userId = this.activeUserId();
     try {
@@ -679,12 +690,39 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
             : this.paymentStatusLabel(audit?.status ?? item.status),
           paymentNote: audit?.auditKind === 'booking_price_revision'
             ? 'event.editor.payment.recorded.revision.note'
-            : 'event.editor.payment.recorded.note'
+            : 'event.editor.payment.recorded.note',
+          paymentMethod
         }
       });
     } catch {
       this.errorRef.set('payment.summary.error.open');
     }
+  }
+
+  private async paymentMethodForHistoryItem(
+    userId: string,
+    item: PaymentHistoryItemDto
+  ): Promise<SavedPaymentMethodDto> {
+    const paymentMethodId = `${item.paymentMethodId ?? ''}`.trim();
+    if (!paymentMethodId) {
+      throw new Error('payment.summary.error.method.unavailable');
+    }
+    const cached = this.loadedCardsById.get(paymentMethodId);
+    if (cached) {
+      return { ...cached };
+    }
+    const page = await this.paymentMethods.queryPage(userId, {
+      page: 0,
+      pageSize: 6,
+      sort: 'createdAt',
+      direction: 'desc'
+    });
+    page.items.forEach(method => this.loadedCardsById.set(method.id, { ...method }));
+    const method = this.loadedCardsById.get(paymentMethodId);
+    if (!method) {
+      throw new Error('payment.summary.error.method.unavailable');
+    }
+    return { ...method };
   }
 
   private async findPaymentAsset(

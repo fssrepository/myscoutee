@@ -9,8 +9,8 @@
     <div class="event-payment-panel-title">
       <mat-icon>payments</mat-icon>
       <div>
-        <h3>{{ title | i18n }}</h3>
-        <p>{{ subtitle | i18n }}</p>
+        <h3>{{ title() | i18n }}</h3>
+        <p>{{ subtitle() | i18n }}</p>
       </div>
     </div>
     <span>{{ paymentProviderLabel() | i18n }}</span>
@@ -34,13 +34,13 @@
       <button
         type="button"
         class="event-payment-method-button event-payment-method-button--card"
-        [disabled]="paymentMethodSelectionDisabled"
+        [disabled]="paymentMethodReadOnly || paymentMethodSelectionDisabled"
         [attr.aria-label]="'payment.card.change.aria' | i18n"
         (click)="openPaymentMethodPicker($event)"
       >
         <app-payment-card [card]="card" [selectable]="false" [showMenu]="false"></app-payment-card>
       </button>
-    } @else {
+    } @else if (!paymentMethodReadOnly) {
       <button
         type="button"
         class="event-payment-method-button event-payment-method-button--empty"

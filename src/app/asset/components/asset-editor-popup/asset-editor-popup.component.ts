@@ -52,11 +52,13 @@ import type {
 } from '../../../shared/ui/components/core/form/inputs/date-input';
 import {
   EventBasketInputComponent,
+  type EventBasketInputConfig,
   type EventBasketInputItem,
   type EventBasketInputPricingSummaryRow
 } from '../../../activity/components/event-editor-popup/event-basket-input';
 import {
-  EventPaymentInputComponent
+  EventPaymentInputComponent,
+  type EventPaymentInputConfig
 } from '../../../activity/components/event-editor-popup/event-payment-input';
 import {
   AppUtils
@@ -117,6 +119,19 @@ export class AssetEditorPopupComponent {
     allowSlotFeatures: false,
     showAudienceSection: false,
     runtimePreview: () => this.assetCheckoutPricingPreview()
+  };
+  protected readonly checkoutPaymentBasketConfig: EventBasketInputConfig = {
+    title: 'event.editor.basket.title',
+    subtitle: 'event.editor.basket.payment.subtitle',
+    readOnly: true,
+    showAdd: false,
+    showItemMenu: false,
+    showPricingSummary: true
+  };
+  protected readonly checkoutPaymentInputConfig: EventPaymentInputConfig = {
+    title: 'event.editor.payment.title',
+    subtitle: 'asset.borrow.payment.subtitle',
+    paymentIntegrationEnabled: environment.paymentIntegrationEnabled
   };
   protected readonly assetLocationInputConfig: LocationInputConfig = {
     label: 'Location',

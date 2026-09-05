@@ -13,8 +13,7 @@
       <section class="editor-list-card editor-list-card--payment">
         <div class="event-checkout-payment-stack">
           <app-event-basket-input
-            title="event.editor.basket.title"
-            subtitle="event.editor.basket.payment.subtitle"
+            [config]="checkoutPaymentBasketConfig"
             [contextTitle]="eventDetailDTO.title"
             [contextMeta]="eventDetailDTO.location"
             [contextDetail]="checkoutPaymentEventTimeframe()"
@@ -23,9 +22,6 @@
             [totalAmount]="checkoutBasketTotalAmount()"
             [currency]="checkoutBasketCurrency()"
             [tone]="checkoutBasketTone()"
-            [readOnly]="true"
-            [showAdd]="false"
-            [showItemMenu]="false"
           ></app-event-basket-input>
           <div
             class="event-pricing-field-shell"
@@ -44,11 +40,12 @@
           </div>
           @if (showCheckoutPaymentPanel()) {
             <app-event-payment-input
+              [config]="checkoutPaymentInputConfig"
               [totalAmount]="checkoutBasketTotalAmount()"
               [currency]="checkoutBasketCurrency()"
               [tone]="checkoutPaymentTone()"
-              [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
               [paymentMethod]="checkoutPaymentMethod()"
+              [paymentMethodReadOnly]="checkoutPaymentMethodReadOnly()"
               (paymentMethodChange)="onCheckoutPaymentMethodChange($event)"
             ></app-event-payment-input>
           }
@@ -154,14 +151,12 @@
             @if (showCheckoutBasketInput()) {
               <app-event-basket-input
                 class="experience-description-field"
-                title="event.editor.basket.title"
-                subtitle="event.editor.basket.selected.slot.subtitle"
+                [config]="checkoutSelectionBasketConfig"
                 [items]="checkoutBasketInputItems()"
                 [pricingSummaryRows]="checkoutBasketPricingSummaryRows()"
                 [totalAmount]="checkoutBasketTotalAmount()"
                 [currency]="checkoutBasketCurrency()"
                 [addDisabled]="checkoutBasketAddDisabled()"
-                [showItemMenu]="false"
                 (addSelect)="onCheckoutBasketAdd($event)"
                 (itemMenuSelect)="onCheckoutBasketItemMenuSelect($event)"
               ></app-event-basket-input>

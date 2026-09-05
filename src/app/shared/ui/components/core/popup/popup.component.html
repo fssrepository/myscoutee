@@ -3,7 +3,7 @@
   [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
   [class.ui-popup--auto-height]="popupModel.height !== 'full' && popupModel.size !== 'fullscreen'"
   [class.ui-popup--mobile-compact]="popupModel.mobilePresentation === 'compact'"
-  [style.z-index]="zIndex ?? null"
+  [style.z-index]="effectiveZIndex"
 >
   <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>
   <section
