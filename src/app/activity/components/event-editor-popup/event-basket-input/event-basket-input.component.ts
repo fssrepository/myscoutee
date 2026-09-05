@@ -256,7 +256,11 @@ export class EventBasketInputComponent {
 
   private formatMoney(amount: number, currency: string): string {
     const symbol = this.currencySymbol(currency);
-    return `${symbol}${(Number(amount) || 0).toFixed(2)}`;
+    const formattedAmount = new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(amount) || 0);
+    return `${symbol}${formattedAmount}`;
   }
 
   private currencySymbol(currency: string): string {

@@ -77,7 +77,11 @@ export class EventPaymentInputComponent {
 
   protected formatMoney(amount: number | null | undefined, currency = this.currency): string {
     const value = Number(amount) || 0;
-    return `${this.currencySymbol(currency)}${value.toFixed(2)}`;
+    const formattedAmount = new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+    return `${this.currencySymbol(currency)}${formattedAmount}`;
   }
 
   protected paymentProviderLabel(): string {
