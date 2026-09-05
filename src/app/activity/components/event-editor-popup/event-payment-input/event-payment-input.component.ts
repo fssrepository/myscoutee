@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { DeploymentConfigurationService } from '../../../../shared/core/base/services/deployment-configuration.service';
 import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payment-method.interface';
 import { PaymentCardComponent, type PaymentCardData } from '../../../../shared/ui/components/core/smart-list/card';
 import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
@@ -28,6 +29,7 @@ export interface EventPaymentInputConfig {
 })
 export class EventPaymentInputComponent {
   private readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
 
   @Input() config: EventPaymentInputConfig = {};
   @Input() totalAmount = 0;
@@ -87,7 +89,7 @@ export class EventPaymentInputComponent {
   protected paymentProviderLabel(): string {
     return this.providerLabel.trim()
       || this.paymentProviderName()
-      || (this.config.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo');
+      || 'event.editor.payment.cash.only';
   }
 
   protected paymentProviderLogo(): string | null {
@@ -101,14 +103,28 @@ export class EventPaymentInputComponent {
 
   protected paymentStatusLabel(): string {
     return this.statusLabel.trim()
-      || (this.config.paymentIntegrationEnabled ? 'event.editor.payment.ready.redirect' : 'event.editor.payment.review.before.confirm');
+      || (this.cashOnly()
+        ? 'event.editor.payment.cash.status'
+        : this.config.paymentIntegrationEnabled
+          ? 'event.editor.payment.ready.redirect'
+          : 'event.editor.payment.review.before.confirm');
   }
 
   protected paymentNote(): string {
     return this.note.trim()
-      || (this.config.paymentIntegrationEnabled
-        ? 'event.editor.payment.gateway.note'
-        : 'event.editor.payment.demo.note');
+      || (this.cashOnly()
+        ? ''
+        : this.config.paymentIntegrationEnabled
+          ? 'event.editor.payment.gateway.note'
+          : 'event.editor.payment.demo.note');
+  }
+
+  protected showPaymentMethod(): boolean {
+    return Boolean(this.providerLabel.trim()) || !this.cashOnly();
+  }
+
+  protected cashOnly(): boolean {
+    return !this.providerLabel.trim() && this.paymentProvider() === null;
   }
 
   private currencySymbol(currency: string): string {
@@ -123,10 +139,12 @@ export class EventPaymentInputComponent {
   }
 
   private paymentProvider(): 'stripe' | 'barion' | null {
-    if (this.providerLabel.trim() || !this.config.paymentIntegrationEnabled) {
+    if (this.providerLabel.trim()) {
       return null;
     }
-    const provider = `${this.paymentMethod?.provider ?? ''}`.trim().toLowerCase();
+    const provider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`
+      .trim()
+      .toLowerCase();
     return provider === 'stripe' || provider === 'barion' ? provider : null;
   }
 

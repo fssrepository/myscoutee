@@ -101,6 +101,9 @@ import {
   EventsService
 } from '../../../../shared/core/base/services/events.service';
 import {
+  DeploymentConfigurationService
+} from '../../../../shared/core/base/services/deployment-configuration.service';
+import {
   GameService
 } from '../../../../shared/core/base/services/game.service';
 import {
@@ -248,6 +251,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly contactsService = inject(ContactsService);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly paymentAuthorization = inject(PaymentAuthorizationService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
@@ -403,10 +407,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       payable: pricing.amount > 0,
       paymentStep: dialog.paymentStep,
       submitLabel: pricing.amount > 0
-        ? (dialog.paymentStep ? this.i18n.translate('asset.borrow.pay') : this.i18n.translate('asset.borrow.confirm'))
+        ? (dialog.paymentStep && !this.cashOnly()
+            ? this.i18n.translate('asset.borrow.pay')
+            : this.i18n.translate('asset.borrow.confirm'))
         : this.i18n.translate('asset.borrow.send.request'),
       busyLabel: pricing.amount > 0
-        ? (dialog.paymentStep ? this.i18n.translate('asset.borrow.paying') : this.i18n.translate('asset.borrow.confirming'))
+        ? (dialog.paymentStep && !this.cashOnly()
+            ? this.i18n.translate('asset.borrow.paying')
+            : this.i18n.translate('asset.borrow.confirming'))
         : this.i18n.translate('asset.borrow.sending.request'),
       busy: dialog.busy,
       error: dialog.error
@@ -1189,7 +1197,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return false;
     }
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
-    if (dialog.paymentStep && pricing.amount > 0 && !dialog.paymentMethod) {
+    if (
+      dialog.paymentStep
+      && !this.cashOnly()
+      && pricing.amount > 0
+      && !dialog.paymentMethod
+    ) {
       return false;
     }
     return this.isValidWindow(dialog.startAtIso, dialog.endAtIso);
@@ -1235,6 +1248,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const requestVersion = ++this.pendingBorrowRequestVersion;
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
     const inventoryApplied = pricing.amount > 0;
+    const onlinePayment = inventoryApplied && !this.cashOnly();
     const lineItems: ActivityContracts.EventCheckoutLineItem[] = [
       {
         id: `resource:${card.id}`,
@@ -1267,7 +1281,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           lineItems,
           totalAmount: pricing.amount,
           currency: pricing.currency,
-          paymentMethodId: dialog.paymentMethod?.id ?? null
+          paymentMethodId: onlinePayment ? dialog.paymentMethod?.id ?? null : null
         } satisfies ActivityContracts.EventCheckoutRequest
       : null;
 
@@ -1284,7 +1298,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
 
-    const providerWindow = inventoryApplied
+    const providerWindow = onlinePayment
       ? this.paymentAuthorization.openProviderWindow()
       : null;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
@@ -1292,24 +1306,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       busy: true,
       error: null
     });
-    const checkoutSessionPromise = inventoryApplied
+    const checkoutSessionPromise = onlinePayment
       ? this.eventsService.authorizeCheckout(checkoutRequest!)
-      : Promise.resolve({
-          id: '',
-          provider: 'dummy',
-          mode: 'dummy',
-          status: 'approved',
-          amount: pricing.amount,
-          currency: pricing.currency,
-          paymentUrl: null
-        } satisfies ActivityContracts.EventCheckoutSession);
+      : Promise.resolve(null);
 
     void checkoutSessionPromise
       .then(async session => {
-        if (inventoryApplied && (!session || !session.id)) {
+        if (onlinePayment && (!session || !session.id)) {
           throw new Error(this.i18n.translate('asset.borrow.error.payment'));
         }
-        if (inventoryApplied && session) {
+        if (onlinePayment && session) {
           await this.paymentAuthorization.completeCustomerAction(
             session,
             activeUser.id,
@@ -1324,7 +1330,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           initials: activeUser.initials,
           gender: activeUser.gender,
           status: 'pending',
-          note: pricing.amount > 0 ? 'Payment approved. Awaiting owner confirmation.' : 'Awaiting owner confirmation.',
+          note: onlinePayment
+            ? 'Payment approved. Awaiting owner confirmation.'
+            : inventoryApplied
+              ? 'Cash payment. Awaiting owner confirmation.'
+              : 'Awaiting owner confirmation.',
           requestKind: 'borrow',
           requestedAtIso: new Date().toISOString(),
           booking: this.bookingForRange(
@@ -2043,12 +2053,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
     const submitLabel = dialog.busy
       ? (pricing.amount > 0
-          ? (dialog.paymentStep
+          ? (dialog.paymentStep && !this.cashOnly()
               ? this.i18n.translate('asset.borrow.paying')
               : this.i18n.translate('asset.borrow.confirming'))
           : this.i18n.translate('asset.borrow.sending.request'))
       : (pricing.amount > 0
-          ? (dialog.paymentStep
+          ? (dialog.paymentStep && !this.cashOnly()
               ? this.i18n.translate('asset.borrow.pay')
               : this.i18n.translate('asset.borrow.confirm'))
           : this.i18n.translate('asset.borrow.send.request'));
@@ -2068,7 +2078,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         palette: hasError ? 'danger' : 'blue',
         disabled: !this.canSubmitBorrow()
           || dialog.busy
-          || (pricing.amount > 0 && dialog.paymentStep && !dialog.paymentMethod),
+          || (
+            pricing.amount > 0
+            && dialog.paymentStep
+            && !this.cashOnly()
+            && !dialog.paymentMethod
+          ),
         progress: dialog.busy || hasError
           ? {
               state: dialog.busy ? 'loading' : 'error',
@@ -2077,6 +2092,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           : null
       }
     ];
+  }
+
+  private cashOnly(): boolean {
+    return !`${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim();
   }
 
   private borrowCheckoutDateRangeModel(): DateInputModel {

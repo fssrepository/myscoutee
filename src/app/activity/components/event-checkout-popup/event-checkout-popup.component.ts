@@ -16,6 +16,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { EventsService } from '../../../shared/core/base/services/events.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import { PaymentAuthorizationService } from '../../../shared/core/base/services/payment-authorization.service';
 import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
@@ -84,6 +85,7 @@ export class EventCheckoutPopupComponent {
   protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly paymentAuthorization = inject(PaymentAuthorizationService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -1657,7 +1659,9 @@ export class EventCheckoutPopupComponent {
       return 'Update';
     }
     if (this.paymentStep) {
-      return 'payment';
+      return this.cashOnly()
+        ? 'event.editor.payment.cash.confirm'
+        : 'payment';
     }
     if (this.checkoutPaymentReviewStarted()) {
       return this.hasCheckoutSelectionChanges() ? 'update' : 'continue';
@@ -1681,7 +1685,9 @@ export class EventCheckoutPopupComponent {
       return 'Updating...';
     }
     if (this.paymentStep) {
-      return 'event.checkout.paying';
+      return this.cashOnly()
+        ? 'event.editor.payment.cash.confirming'
+        : 'event.checkout.paying';
     }
     if (this.checkoutPaymentReviewStarted()) {
       return this.hasCheckoutSelectionChanges() ? 'updating' : 'continuing';
@@ -1799,7 +1805,9 @@ export class EventCheckoutPopupComponent {
       return 'Update';
     }
     if (this.paymentStep) {
-      return 'payment';
+      return this.cashOnly()
+        ? 'event.editor.payment.cash.confirm'
+        : 'payment';
     }
     if (state.paymentReviewStarted) {
       return state.selectionChanged ? 'update' : 'continue';
@@ -1821,7 +1829,9 @@ export class EventCheckoutPopupComponent {
       return 'Updating...';
     }
     if (this.paymentStep) {
-      return 'event.checkout.paying';
+      return this.cashOnly()
+        ? 'event.editor.payment.cash.confirming'
+        : 'event.checkout.paying';
     }
     if (state.paymentReviewStarted) {
       return state.selectionChanged ? 'updating' : 'continuing';
@@ -2137,6 +2147,7 @@ export class EventCheckoutPopupComponent {
       busyConfirmLabel: this.busyLabel(),
       confirmTone: 'accent',
       confirmPalette: this.checkoutConfirmPalette(),
+      showClose: true,
       failureMessage: this.dialog()?.failureMessage ?? 'Unable to continue checkout.',
       onConfirm: async () => this.submit()
     });
@@ -2196,13 +2207,18 @@ export class EventCheckoutPopupComponent {
       return 'The basket will be confirmed before opening payment.';
     }
     if (this.paymentStep || this.checkoutSessionId) {
+      if (this.cashOnly()) {
+        return 'event.editor.payment.cash.confirm.warning';
+      }
       return 'Payment will run for the selected basket item.';
     }
     return 'The selected basket item will be joined.';
   }
 
   protected paymentDisabled(): boolean {
-    return this.totalAmount() > 0 && !this.selectedPaymentMethodRef();
+    return !this.cashOnly()
+      && this.totalAmount() > 0
+      && !this.selectedPaymentMethodRef();
   }
 
   protected canContinue(state?: CheckoutFooterDecisionState): boolean {
@@ -2222,7 +2238,12 @@ export class EventCheckoutPopupComponent {
     if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {
       return false;
     }
-    if (this.paymentStep && this.totalAmount() > 0 && !this.selectedPaymentMethodRef()) {
+    if (
+      this.paymentStep
+      && !this.cashOnly()
+      && this.totalAmount() > 0
+      && !this.selectedPaymentMethodRef()
+    ) {
       return false;
     }
     return true;
@@ -2610,7 +2631,7 @@ export class EventCheckoutPopupComponent {
     }
     if (this.checkoutTargetUnavailable()) {
       this.errorMessage = 'This place is no longer available.';
-      return;
+      throw new Error(this.errorMessage);
     }
     const pendingActionReason = this.checkoutActionPendingReason();
     const selectionChanged = this.hasCheckoutSelectionChanges();
@@ -2634,6 +2655,7 @@ export class EventCheckoutPopupComponent {
         this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+        throw new Error(this.errorMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
@@ -2668,6 +2690,7 @@ export class EventCheckoutPopupComponent {
         }
       } catch (error) {
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+        throw new Error(this.errorMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
@@ -2691,10 +2714,33 @@ export class EventCheckoutPopupComponent {
       } catch (error) {
         this.paymentStep = false;
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+        throw new Error(this.errorMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
         this.switchCheckoutReviewPhase();
+      }
+      return;
+    }
+
+    if (this.cashOnly()) {
+      this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
+      this.errorMessage = '';
+      try {
+        await dialog.onSubmit(this.buildSelection(null, true, {
+          checkoutState: 'confirmed',
+          pendingReason: null,
+          includeBasketPayload: true
+        }));
+        this.clearCheckoutDraft();
+        this.closeCheckoutDialog();
+      } catch (error) {
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+        throw new Error(this.errorMessage);
+      } finally {
+        this.busy = false;
+        this.checkoutBusyActionId = null;
       }
       return;
     }
@@ -2739,11 +2785,16 @@ export class EventCheckoutPopupComponent {
       this.closeCheckoutDialog();
     } catch (error) {
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+      throw new Error(this.errorMessage);
     } finally {
       this.paymentAuthorization.closeProviderWindow(providerWindow);
       this.busy = false;
       this.checkoutBusyActionId = null;
     }
+  }
+
+  private cashOnly(): boolean {
+    return !`${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim();
   }
 
   protected backToDetails(event?: Event): void {

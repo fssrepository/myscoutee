@@ -106,6 +106,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: 'https://cdn.example.test/community-hub.webp',
       logoCharacterIndex: null,
       themePreset: 'OCEAN',
+      paymentProviderId: 'stripe',
       socialLinks: [{
         provider: 'community',
         label: 'Community',
@@ -145,6 +146,7 @@ describe('DeploymentConfigurationService', () => {
       dataControllerName: 'Community Cooperative',
       privacyContactEmail: 'privacy@example.test'
     });
+    expect(service.paymentProviderId()).toBe('stripe');
     expect(TestBed.inject(DOCUMENT).documentElement.dataset['deploymentTheme'])
       .toBe('ocean');
     expect(TestBed.inject(DOCUMENT).title).toBe('Community Hub');
@@ -220,6 +222,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: '',
       logoCharacterIndex: -1,
       themePreset: 'OCEAN',
+      paymentProviderId: null,
       socialLinks: [],
       privacyContact: {
         configured: false,
@@ -251,6 +254,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: 'assets/logo/heart.png',
       logoCharacterIndex: 3,
       themePreset: 'OCEAN',
+      paymentProviderId: null,
       socialLinks: [],
       privacyContact: {
         configured: false,

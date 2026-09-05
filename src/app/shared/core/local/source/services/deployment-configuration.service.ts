@@ -39,6 +39,7 @@ export class LocalDeploymentConfigurationService
     return structuredClone(normalizedRecord?.configuration
       ? {
           ...normalizedRecord.configuration.branding,
+          paymentProviderId: normalizedRecord.configuration.payment.providerId,
           socialLinks: normalizedRecord.configuration.socialLinks,
           privacyContact: normalizedRecord.configuration.privacyContact
         }

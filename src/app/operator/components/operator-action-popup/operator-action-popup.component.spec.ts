@@ -176,7 +176,7 @@ describe('OperatorActionPopupComponent', () => {
       palette: 'violet'
     }));
     expect(items.map(item => item.id)).toEqual([
-      'operator-payment-provider-none',
+      'operator-payment-provider-cash-only',
       'operator-payment-provider-stripe',
       'operator-payment-provider-barion'
     ]);

@@ -13,20 +13,22 @@
         <p>{{ subtitle() | i18n }}</p>
       </div>
     </div>
-    <span
-      class="event-payment-provider-badge"
-      [class.event-payment-provider-badge--logo-only]="paymentProviderLogo()"
-      [attr.aria-label]="paymentProviderLabel() | i18n"
-    >
-      @if (paymentProviderLogo(); as providerLogo) {
-        <span class="event-payment-provider-badge__image">
-          <img [src]="providerLogo" [alt]="paymentProviderLabel()" />
-        </span>
-      } @else {
-        <mat-icon>{{ paymentProviderIcon() }}</mat-icon>
-        <span>{{ paymentProviderLabel() | i18n }}</span>
-      }
-    </span>
+    @if (paymentProviderLabel(); as providerLabel) {
+      <span
+        class="event-payment-provider-badge"
+        [class.event-payment-provider-badge--logo-only]="paymentProviderLogo()"
+        [attr.aria-label]="providerLabel | i18n"
+      >
+        @if (paymentProviderLogo(); as providerLogo) {
+          <span class="event-payment-provider-badge__image">
+            <img [src]="providerLogo" [alt]="providerLabel" />
+          </span>
+        } @else {
+          <mat-icon>{{ paymentProviderIcon() }}</mat-icon>
+          <span>{{ providerLabel | i18n }}</span>
+        }
+      </span>
+    }
   </div>
 
   <div class="event-payment-status-grid">
@@ -40,8 +42,11 @@
     </article>
   </div>
 
-  <p class="event-payment-note">{{ paymentNote() | i18n }}</p>
+  @if (paymentNote(); as note) {
+    <p class="event-payment-note">{{ note | i18n }}</p>
+  }
 
+  @if (showPaymentMethod()) {
   <div class="event-payment-method-shell">
     @if (paymentCard(); as card) {
       <button
@@ -66,4 +71,5 @@
       </button>
     }
   </div>
+  }
 </section>
