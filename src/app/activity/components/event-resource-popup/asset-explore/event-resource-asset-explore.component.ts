@@ -1331,10 +1331,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           gender: activeUser.gender,
           status: 'pending',
           note: onlinePayment
-            ? 'Payment approved. Awaiting owner confirmation.'
+            ? this.i18n.translate('asset.borrow.note.payment.approved')
             : inventoryApplied
-              ? 'Cash payment. Awaiting owner confirmation.'
-              : 'Awaiting owner confirmation.',
+              ? this.i18n.translate('asset.borrow.note.cash.payment')
+              : this.i18n.translate('asset.borrow.note.awaiting.owner'),
           requestKind: 'borrow',
           requestedAtIso: new Date().toISOString(),
           booking: this.bookingForRange(

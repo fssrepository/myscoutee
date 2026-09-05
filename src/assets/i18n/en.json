@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.05.en.66",
+  "version": "2026.09.05.en.68",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2598,6 +2598,7 @@
     "asset.borrow.error.payment": "Unable to start payment.",
     "asset.borrow.error.send": "Unable to send the borrow request.",
     "asset.borrow.note.payment.approved": "Payment approved. Awaiting owner confirmation.",
+    "asset.borrow.note.cash.payment": "Cash payment. Awaiting owner confirmation.",
     "asset.borrow.note.awaiting.owner": "Awaiting owner confirmation.",
     "operator": "Operator",
     "operator.brand.aria": "MyScoutee operator",

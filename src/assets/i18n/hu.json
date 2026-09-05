@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.05.hu.66",
+  "version": "2026.09.05.hu.68",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2598,6 +2598,7 @@
     "asset.borrow.error.payment": "A fizetés nem indítható el.",
     "asset.borrow.error.send": "A kölcsönzési kérelem nem küldhető el.",
     "asset.borrow.note.payment.approved": "A fizetés jóváhagyva. Tulajdonosi megerősítésre vár.",
+    "asset.borrow.note.cash.payment": "Készpénzes fizetés. Tulajdonosi megerősítésre vár.",
     "asset.borrow.note.awaiting.owner": "Tulajdonosi megerősítésre vár.",
     "operator": "Operátor",
     "operator.brand.aria": "MyScoutee operátor",

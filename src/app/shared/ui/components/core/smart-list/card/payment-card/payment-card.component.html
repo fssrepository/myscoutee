@@ -7,6 +7,7 @@
   [attr.role]="selectable ? 'button' : null"
   [attr.tabindex]="selectable && !card.disabled ? 0 : null"
   [attr.aria-pressed]="selectable ? (card.selected === true) : null"
+  [attr.data-motion]="selectable ? 'none' : null"
   [attr.aria-label]="ariaLabel()"
   [appLazyBgImage]="card.artworkUrl || null"
   (click)="onSelect($event)"
