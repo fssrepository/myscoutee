@@ -2,9 +2,6 @@
   @if (!pickerMode()) {
   <app-popup [model]="mainPopupModel()" [zIndex]="22200">
     <section class="payment-methods-popup__body">
-      @if (error()) {
-        <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
-      }
       <app-smart-list
         class="payment-methods-popup__list"
         [config]="allHistoryListConfig"
