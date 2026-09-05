@@ -42,6 +42,7 @@
     }
   }
   @if (!card.expired && card.requiresRetokenization) {
+    @if (showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
     <button
       type="button"
       class="payment-card__status payment-card__status--retokenize payment-card__status--action"
@@ -50,11 +51,23 @@
       (click)="openMenu($event)"
     >
       <mat-icon aria-hidden="true">published_with_changes</mat-icon>
-      {{ 'payment.card.retokenize' | i18n }}
+      {{ 'payment.card.reconnect' | i18n }}
       <mat-icon class="payment-card__status-chevron" aria-hidden="true">chevron_right</mat-icon>
     </button>
+    } @else {
+      <span class="payment-card__status payment-card__status--retokenize">
+        <mat-icon aria-hidden="true">published_with_changes</mat-icon>
+        {{ 'payment.card.reconnect' | i18n }}
+      </span>
+    }
   }
-  @if (!card.expired && !card.requiresRetokenization && showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
+  @if (!card.expired && !card.requiresRetokenization && card.updateNeeded) {
+    <span class="payment-card__status payment-card__status--update-needed">
+      <mat-icon aria-hidden="true">published_with_changes</mat-icon>
+      {{ 'payment.card.update.needed' | i18n }}
+    </span>
+  }
+  @if (!card.expired && !card.requiresRetokenization && !card.updateNeeded && showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
     <button
       type="button"
       class="payment-card__menu"

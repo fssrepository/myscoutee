@@ -502,6 +502,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.trackRegistration(registration, true);
       this.revisionRef.update(value => value + 1);
     } catch (error) {
+      if (error instanceof Error && 'error' in error) {
+        this.deploymentConfiguration.applyPaymentProviderChangeResponse(
+          (error as Error & { error?: unknown }).error
+        );
+      }
       this.errorRef.set(this.errorKey(error, 'payment.registration.error.start'));
     } finally {
       this.busyRef.set(false);
@@ -538,6 +543,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         this.errorRef.set('payment.registration.error.failed');
       }
     } catch (error) {
+      if (error instanceof Error && 'error' in error) {
+        this.deploymentConfiguration.applyPaymentProviderChangeResponse(
+          (error as Error & { error?: unknown }).error
+        );
+      }
       this.errorRef.set(this.errorKey(error, 'payment.registration.error.status'));
       if (this.registrationExpired(current.expiresAtIso)) this.finishRegistration('expired');
     } finally {

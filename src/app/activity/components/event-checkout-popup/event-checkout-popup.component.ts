@@ -209,7 +209,9 @@ export class EventCheckoutPopupComponent {
       paymentTone: this.checkoutPaymentSurfaceTone(),
       paymentMethod: () => this.selectedPaymentMethodRef(),
       paymentMethodReadOnly: this.isReadOnlyCheckoutSummary(),
-      paymentProvider: dialog.paymentProvider,
+      paymentProvider: this.isReadOnlyCheckoutSummary()
+        ? dialog.paymentProvider
+        : `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase(),
       paymentStatusLabel: dialog.paymentStatusLabel,
       paymentStatusTone: dialog.paymentStatusTone,
       paymentNote: dialog.paymentNote,
@@ -2222,7 +2224,7 @@ export class EventCheckoutPopupComponent {
   protected paymentDisabled(): boolean {
     return !this.cashOnly()
       && this.totalAmount() > 0
-      && !this.selectedPaymentMethodRef();
+      && (!this.selectedPaymentMethodRef() || this.selectedPaymentMethodReconnectRequired());
   }
 
   protected canContinue(state?: CheckoutFooterDecisionState): boolean {
@@ -2246,7 +2248,7 @@ export class EventCheckoutPopupComponent {
       this.paymentStep
       && !this.cashOnly()
       && this.totalAmount() > 0
-      && !this.selectedPaymentMethodRef()
+      && (!this.selectedPaymentMethodRef() || this.selectedPaymentMethodReconnectRequired())
     ) {
       return false;
     }
@@ -2257,6 +2259,12 @@ export class EventCheckoutPopupComponent {
     this.selectedPaymentMethodRef.set({ ...paymentMethod });
     const dialog = this.dialog();
     if (dialog) this.openCheckoutReviewEditorShell(dialog);
+  }
+
+  private selectedPaymentMethodReconnectRequired(): boolean {
+    const selectedProvider = `${this.selectedPaymentMethodRef()?.provider ?? ''}`.trim().toLowerCase();
+    const activeProvider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase();
+    return Boolean(selectedProvider && activeProvider && selectedProvider !== activeProvider);
   }
 
   private currentCheckoutState(
@@ -2796,8 +2804,11 @@ export class EventCheckoutPopupComponent {
       this.closeCheckoutDialog();
     } catch (error) {
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
-      if (this.isPaymentProviderChanged(error)) {
-        await this.deploymentConfiguration.reload().catch(() => undefined);
+      if (error instanceof HttpErrorResponse
+        && this.deploymentConfiguration.applyPaymentProviderChangeResponse(error.error)) {
+        if (this.dialog()?.id === dialog.id && this.checkoutReviewDialogId === dialog.id) {
+          this.openCheckoutReviewEditorShell(dialog);
+        }
       }
       throw new Error(this.errorMessage);
     } finally {
@@ -3107,7 +3118,9 @@ export class EventCheckoutPopupComponent {
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       pendingReason,
-      paymentMethodId: this.selectedPaymentMethodRef()?.id ?? null
+      paymentMethodId: this.cashOnly()
+        ? null
+        : this.selectedPaymentMethodRef()?.id ?? null
     };
   }
 
@@ -3491,12 +3504,6 @@ export class EventCheckoutPopupComponent {
       ? error.error.message.trim()
       : '';
     return backendMessage.startsWith('Payment session ');
-  }
-
-  private isPaymentProviderChanged(error: unknown): boolean {
-    return error instanceof HttpErrorResponse
-      && typeof error.error?.message === 'string'
-      && error.error.message.trim() === 'Payment provider changed. Retokenize your card.';
   }
 
   private availableSlotDateKeys(): string[] {

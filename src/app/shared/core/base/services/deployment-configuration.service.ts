@@ -93,6 +93,23 @@ export class DeploymentConfigurationService
     return paymentProviderId;
   }
 
+  applyPaymentProviderChangeResponse(value: unknown): boolean {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const response = value as Record<string, unknown>;
+    if (response['code'] !== 'PAYMENT_PROVIDER_CHANGED'
+      || !Object.prototype.hasOwnProperty.call(response, 'currentProvider')) {
+      return false;
+    }
+    this.applyPaymentProviderId(
+      typeof response['currentProvider'] === 'string'
+        ? response['currentProvider']
+        : null
+    );
+    return true;
+  }
+
   private async load(): Promise<DeploymentBrandingDto> {
     if (!this.loadPromise) {
       this.loadingRef.set(true);

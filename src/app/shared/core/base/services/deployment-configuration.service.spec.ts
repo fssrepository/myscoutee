@@ -270,6 +270,26 @@ describe('DeploymentConfigurationService', () => {
     );
   });
 
+  it('applies a provider-change response directly without reloading configuration', () => {
+    const service = TestBed.inject(DeploymentConfigurationService);
+
+    expect(service.applyPaymentProviderChangeResponse({
+      code: 'PAYMENT_PROVIDER_CHANGED',
+      message: 'Payment provider changed to Barion. Retokenize your card.',
+      currentProvider: 'barion'
+    })).toBe(true);
+    expect(service.paymentProviderId()).toBe('barion');
+    expect(loadLocalBranding).not.toHaveBeenCalled();
+
+    expect(service.applyPaymentProviderChangeResponse({
+      code: 'PAYMENT_PROVIDER_CHANGED',
+      message: 'Payment provider changed to Cash only. Start payment again.',
+      currentProvider: null
+    })).toBe(true);
+    expect(service.paymentProviderId()).toBeNull();
+    expect(loadLocalBranding).not.toHaveBeenCalled();
+  });
+
   function addHeadFixture(
     tagName: 'meta' | 'link',
     attributes: Record<string, string>

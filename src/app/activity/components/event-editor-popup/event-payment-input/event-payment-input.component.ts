@@ -68,7 +68,8 @@ export class EventPaymentInputComponent {
       cardholderName: method.cardholderName,
       artworkUrl: method.artworkUrl,
       selected: false,
-      disabled: this.paymentMethodReadOnly
+      disabled: this.paymentMethodReadOnly,
+      updateNeeded: this.paymentMethodUpdateNeeded()
     } : null;
   }
 
@@ -125,7 +126,7 @@ export class EventPaymentInputComponent {
   }
 
   protected showPaymentMethod(): boolean {
-    return Boolean(this.providerLabel.trim()) || !this.cashOnly();
+    return Boolean(this.paymentMethod) || Boolean(this.providerLabel.trim()) || !this.cashOnly();
   }
 
   protected cashOnly(): boolean {
@@ -160,5 +161,14 @@ export class EventPaymentInputComponent {
   private paymentProviderName(): string {
     const provider = this.paymentProvider();
     return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : '';
+  }
+
+  private paymentMethodUpdateNeeded(): boolean {
+    if (!this.paymentMethod || this.paymentMethodReadOnly) {
+      return false;
+    }
+    const tokenProvider = `${this.paymentMethod.provider ?? ''}`.trim().toLowerCase();
+    const currentProvider = this.paymentProvider();
+    return Boolean(tokenProvider && tokenProvider !== (currentProvider ?? 'cash-only'));
   }
 }

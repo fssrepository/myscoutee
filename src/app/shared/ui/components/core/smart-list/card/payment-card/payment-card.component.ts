@@ -61,8 +61,11 @@ export class PaymentCardComponent {
     if (this.card.expired) {
       return `${label}. ${this.i18n.translate('payment.card.expired')}.`;
     }
-    return this.card.requiresRetokenization
-      ? `${label}. ${this.i18n.translate('payment.card.retokenize')}.`
+    if (this.card.requiresRetokenization) {
+      return `${label}. ${this.i18n.translate('payment.card.reconnect')}.`;
+    }
+    return this.card.updateNeeded
+      ? `${label}. ${this.i18n.translate('payment.card.update.needed')}.`
       : label;
   }
 

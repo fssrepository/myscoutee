@@ -467,6 +467,7 @@ export interface PaymentCardData extends DisplayData {
   selected?: boolean;
   disabled?: boolean;
   expired?: boolean;
+  updateNeeded?: boolean;
   requiresRetokenization?: boolean;
   paymentMenuActions?: readonly CardMenuAction[];
 }

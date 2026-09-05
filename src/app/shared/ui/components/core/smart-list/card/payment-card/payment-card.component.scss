@@ -42,10 +42,11 @@
 .payment-card__status mat-icon { width: 1rem; height: 1rem; font-size: 1rem; line-height: 1rem; }
 .payment-card__status .payment-card__status-chevron { margin-left: -.12rem; }
 .payment-card__status--expired { background: #d62839; }
-.payment-card__status--retokenize { background: #b45309; }
+.payment-card__status--retokenize,
+.payment-card__status--update-needed { background: #2563b8; }
 .payment-card__status--action { font: inherit; cursor: pointer; transition: transform .14s ease, background-color .14s ease, box-shadow .14s ease; }
 .payment-card__status--action:hover { background: #ed3145; box-shadow: 0 .35rem 1rem rgba(160, 22, 40, .34); transform: translateY(-1px); }
-.payment-card__status--retokenize.payment-card__status--action:hover { background: #d97706; box-shadow: 0 .35rem 1rem rgba(146, 64, 14, .34); }
+.payment-card__status--retokenize.payment-card__status--action:hover { background: #1d4f96; box-shadow: 0 .35rem 1rem rgba(29, 79, 150, .34); }
 .payment-card__status--action:focus-visible { outline: 3px solid rgba(255,255,255,.96); outline-offset: 2px; }
 
 .payment-card__content { position: absolute; inset: auto 1.25rem 1.1rem; display: grid; gap: .8rem; text-shadow: 0 1px 4px rgba(0,0,0,.68); }
