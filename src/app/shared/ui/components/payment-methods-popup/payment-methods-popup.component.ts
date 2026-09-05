@@ -312,6 +312,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         second: '2-digit'
       }),
       icon: item.status === 'captured' ? 'check_circle' : item.status === 'released' ? 'undo' : 'payments',
+      avatarToneClass: `payment-history-avatar payment-history-avatar--${
+        item.status === 'failed' ? 'failed' : item.status === 'released' ? 'released' : item.direction
+      }`,
       badges: [
         {
           label: item.provider,
@@ -322,6 +325,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         {
           label: statusLabel,
           tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : 'muted',
+          className: item.status === 'captured'
+            ? 'payment-history-status-badge--success'
+            : item.status === 'failed'
+              ? 'payment-history-status-badge--danger'
+              : null,
           position: 'top-right'
         }
       ],
@@ -596,10 +604,20 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
     const outgoing = stored?.outgoing ?? this.spendingTotalsRef();
     const incoming = stored?.incoming ?? this.incomeTotalsRef();
-    return [
-      ...this.signedTotals(outgoing, '−', 'expense'),
-      ...this.signedTotals(incoming, '+', 'income')
-    ];
+    const currencies = [...new Set([...Object.keys(outgoing), ...Object.keys(incoming)])]
+      .map(currency => currency.trim().toUpperCase())
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right));
+    return (currencies.length > 0 ? currencies : ['HUF']).flatMap(currency => [
+      {
+        text: this.formatSignedCurrency(Number(outgoing[currency]) || 0, currency, '−'),
+        tone: 'expense' as const
+      },
+      {
+        text: this.formatSignedCurrency(Number(incoming[currency]) || 0, currency, '+'),
+        tone: 'income' as const
+      }
+    ]);
   }
 
   private historyFilterControl(): PopupControl<PaymentPopupMenuContext> {
@@ -638,20 +656,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       panelAlign: 'end',
       closeOnSelect: true
     };
-  }
-
-  private signedTotals(
-    totals: Record<string, number>,
-    sign: '+' | '−',
-    tone: 'expense' | 'income'
-  ): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
-    return Object.entries(totals)
-      .filter(([, amount]) => Number(amount) > 0)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([currency, amount]) => ({
-        text: this.formatSignedCurrency(Number(amount) || 0, currency, sign),
-        tone
-      }));
   }
 
   private formatSignedCurrency(amount: number, currency: string, sign: '+' | '−'): string {

@@ -21,3 +21,31 @@
 :host ::ng-deep .payment-method-card-list .smart-list__list {
   align-content: start;
 }
+:host ::ng-deep .payment-history-status-badge--success {
+  border-color: #16845b;
+  background: #ccefdc;
+  color: #0e633f;
+  box-shadow: 0 5px 12px rgba(22, 132, 91, .16);
+}
+:host ::ng-deep .payment-history-status-badge--danger {
+  border-color: #c4313c;
+  background: #ffd6da;
+  color: #9f1f2b;
+  box-shadow: 0 5px 12px rgba(196, 49, 60, .16);
+}
+:host ::ng-deep .payment-history-avatar {
+  border: 1px solid rgba(255, 255, 255, .82);
+  box-shadow: 0 4px 11px rgba(31, 54, 88, .16);
+}
+:host ::ng-deep .payment-history-avatar--expense {
+  background: linear-gradient(180deg, #ef6472 0%, #c4313c 100%);
+}
+:host ::ng-deep .payment-history-avatar--income {
+  background: linear-gradient(180deg, #3db981 0%, #16845b 100%);
+}
+:host ::ng-deep .payment-history-avatar--failed {
+  background: linear-gradient(180deg, #dc4050 0%, #991f2b 100%);
+}
+:host ::ng-deep .payment-history-avatar--released {
+  background: linear-gradient(180deg, #8b9ab0 0%, #64748b 100%);
+}
