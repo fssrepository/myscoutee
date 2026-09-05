@@ -172,7 +172,6 @@ export class SessionService {
           : 'auth.session.registration.failed'
       );
     }
-    this.clearStoredSession();
     return null;
   }
 

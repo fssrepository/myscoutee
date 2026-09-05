@@ -275,6 +275,26 @@ describe('SessionService operator bootstrap session', () => {
     );
   });
 
+  it('keeps the current browser session when another tracked demo login is rejected', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
+      kind: 'demo',
+      userId: 'admin-demo-ava',
+      sessionId: 'session:current-browser'
+    }));
+    registerDemoLogin.mockRejectedValue({ status: 409 });
+    const service = TestBed.inject(SessionService);
+
+    await expect(service.startTrackedDemoSession('other-demo-user')).resolves.toBeNull();
+
+    expect(service.currentSession()).toMatchObject({
+      kind: 'demo',
+      userId: 'admin-demo-ava',
+      sessionId: 'session:current-browser'
+    });
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEYS.session) ?? '{}'))
+      .toMatchObject({ sessionId: 'session:current-browser' });
+  });
+
   it('revokes a tracked demo session before logout completes', async () => {
     environment.activitiesDataSource = 'http';
     const service = TestBed.inject(SessionService);
