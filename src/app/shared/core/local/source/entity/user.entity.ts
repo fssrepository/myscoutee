@@ -118,6 +118,11 @@ export interface UserRecord {
   notificationPreferences?: {
     muted?: boolean;
   };
+  paymentTotals?: {
+    outgoing: Record<string, number>;
+    incoming: Record<string, number>;
+    all: Record<string, number>;
+  };
   activities: {
     game: number;
     chats: number;

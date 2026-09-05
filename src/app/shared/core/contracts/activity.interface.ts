@@ -105,7 +105,11 @@ export interface IEventsService {
   ): Promise<EventCheckoutPromoCodeValidationResult | null>;
   saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
   updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
-  payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null>;
+  payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null>;
+  authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
@@ -1680,6 +1684,7 @@ export interface EventCheckoutRequest {
   totalAmount: number;
   currency: string;
   pendingReason?: AppConstants.ActivityPendingReason;
+  paymentMethodId?: string | null;
 }
 
 export interface EventCheckoutStateChangeRequest {

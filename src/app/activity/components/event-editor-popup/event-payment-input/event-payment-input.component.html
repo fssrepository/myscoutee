@@ -9,11 +9,26 @@
     <div class="event-payment-panel-title">
       <mat-icon>payments</mat-icon>
       <div>
-        <h3>{{ title | i18n }}</h3>
-        <p>{{ subtitle | i18n }}</p>
+        <h3>{{ title() | i18n }}</h3>
+        <p>{{ subtitle() | i18n }}</p>
       </div>
     </div>
-    <span>{{ paymentProviderLabel() | i18n }}</span>
+    @if (paymentProviderLabel(); as providerLabel) {
+      <span
+        class="event-payment-provider-badge"
+        [class.event-payment-provider-badge--logo-only]="paymentProviderLogo()"
+        [attr.aria-label]="providerLabel | i18n"
+      >
+        @if (paymentProviderLogo(); as providerLogo) {
+          <span class="event-payment-provider-badge__image">
+            <img [src]="providerLogo" [alt]="providerLabel" />
+          </span>
+        } @else {
+          <mat-icon>{{ paymentProviderIcon() }}</mat-icon>
+          <span>{{ providerLabel | i18n }}</span>
+        }
+      </span>
+    }
   </div>
 
   <div class="event-payment-status-grid">
@@ -21,30 +36,44 @@
       <span>{{ 'event.editor.payment.amount' | i18n }}</span>
       <strong>{{ formatMoney(totalAmount, currency) }}</strong>
     </article>
-    <article>
+    <article
+      class="event-payment-status"
+      [class.event-payment-status--success]="statusTone === 'success'"
+      [class.event-payment-status--danger]="statusTone === 'danger'"
+    >
       <span>{{ 'event.editor.payment.status' | i18n }}</span>
       <strong>{{ paymentStatusLabel() | i18n }}</strong>
     </article>
   </div>
 
-  <p class="event-payment-note">{{ paymentNote() | i18n }}</p>
+  @if (paymentNote(); as note) {
+    <p class="event-payment-note">{{ note | i18n }}</p>
+  }
 
-  <div class="event-payment-field-grid">
-    <label>
-      <span>{{ 'event.editor.payment.card.number' | i18n }}</span>
-      <input type="text" value="4242 4242 4242 4242" disabled />
-    </label>
-    <label>
-      <span>{{ 'event.editor.payment.card.name' | i18n }}</span>
-      <input type="text" value="Demo User" disabled />
-    </label>
-    <label>
-      <span>{{ 'event.editor.payment.card.expiry' | i18n }}</span>
-      <input type="text" value="12 / 30" disabled />
-    </label>
-    <label>
-      <span>{{ 'event.editor.payment.card.cvc' | i18n }}</span>
-      <input type="text" value="123" disabled />
-    </label>
+  @if (showPaymentMethod()) {
+  <div class="event-payment-method-shell">
+    @if (paymentCard(); as card) {
+      <button
+        type="button"
+        class="event-payment-method-button event-payment-method-button--card"
+        [disabled]="paymentMethodReadOnly || paymentMethodSelectionDisabled"
+        [attr.aria-label]="'payment.card.change.aria' | i18n"
+        (click)="openPaymentMethodPicker($event)"
+      >
+        <app-payment-card [card]="card" [selectable]="false" [showMenu]="false"></app-payment-card>
+      </button>
+    } @else if (!paymentMethodReadOnly) {
+      <button
+        type="button"
+        class="event-payment-method-button event-payment-method-button--empty"
+        [disabled]="paymentMethodSelectionDisabled"
+        [attr.aria-label]="'payment.card.select.aria' | i18n"
+        (click)="openPaymentMethodPicker($event)"
+      >
+        <mat-icon>add</mat-icon>
+        <strong>{{ 'payment.card.select' | i18n }}</strong>
+      </button>
+    }
   </div>
+  }
 </section>

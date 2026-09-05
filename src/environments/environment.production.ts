@@ -8,5 +8,6 @@ export const environment = {
   firebaseLoginEnabled: true,
   firebaseLoginQaOverrideEnabled: false,
   firebaseMessagingEnabled: true,
-  paymentIntegrationEnabled: false
+  paymentIntegrationEnabled: true,
+  paymentSimulatorConfigUrl: '/api/admin/payment-simulator/configuration-access' as string | null
 };

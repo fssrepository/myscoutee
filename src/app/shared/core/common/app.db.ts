@@ -577,6 +577,9 @@ export class AppMemoryDb {
     if (value instanceof Date) {
       return value.toISOString();
     }
+    if (typeof Blob !== 'undefined' && value instanceof Blob) {
+      return value;
+    }
     if (Array.isArray(value)) {
       return value.map(item => this.toIndexedDbPlainValue(item, seen));
     }

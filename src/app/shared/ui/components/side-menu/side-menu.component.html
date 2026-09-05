@@ -37,6 +37,7 @@
   <div
     class="notification-attention-launcher"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
+    [class.is-checkout-open]="eventEditorStore.isOpen() && eventEditorStore.presentation().mode === 'checkout-review'"
     [class.is-popup-open]="popupPresenceStore.visible()"
   >
     <app-menu
@@ -80,6 +81,15 @@
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
         ></app-header-card>
+        @if (!isPrivilegedWorkspaceMode()) {
+          <app-menu
+            class="navigator-header-contextual-menu"
+            kind="inline"
+            layout="row"
+            [model]="navigatorContextualMenuModel()"
+            (itemSelect)="onNavigatorContextualMenuSelect($event)"
+          ></app-menu>
+        }
         <div class="navigator-header-actions">
           @if (!runtimeStore.isOnline()) {
             <div class="navigator-offline-badge" role="status">
@@ -141,9 +151,13 @@
   <ng-container *ngComponentOutlet="profileViewComponent"></ng-container>
 }
 
-<app-dialog [zIndex]="notificationCenterStore.isOpen() ? 24000 : null"></app-dialog>
+<app-dialog [zIndex]="notificationCenterStore.isOpen() || paymentMethodsPopupStore.isOpen() ? 24000 : null"></app-dialog>
 
 <app-notification-center-popup></app-notification-center-popup>
+
+@if (paymentMethodsPopupStore.component(); as paymentMethodsComponent) {
+  <ng-container *ngComponentOutlet="paymentMethodsComponent"></ng-container>
+}
 
 @if (!subEventResourceStore.popupContextRef() && activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>

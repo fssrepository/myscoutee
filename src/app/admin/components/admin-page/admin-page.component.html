@@ -54,6 +54,9 @@
     @if (affinityGraphPopupComponent(); as affinityGraphComponent) {
       <ng-container *ngComponentOutlet="affinityGraphComponent"></ng-container>
     }
+    @if (paymentSimulatorPopupComponent(); as paymentSimulatorComponent) {
+      <ng-container *ngComponentOutlet="paymentSimulatorComponent"></ng-container>
+    }
     @if (monitoringPopupComponent(); as monitoringComponent) {
       <ng-container *ngComponentOutlet="monitoringComponent"></ng-container>
     }

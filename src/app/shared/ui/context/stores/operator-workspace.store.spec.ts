@@ -38,6 +38,7 @@ describe('OperatorWorkspaceStore', () => {
   const testConfiguration = vi.fn();
   const refreshFirebaseApp = vi.fn();
   const applyPrivacyContact = vi.fn();
+  const applyPaymentProviderId = vi.fn();
   const createBrowserReadinessLease = vi.fn();
   const releaseBrowserReadinessLease = vi.fn();
   const applyMutation = vi.fn();
@@ -102,6 +103,7 @@ describe('OperatorWorkspaceStore', () => {
     refreshFirebaseApp.mockReset();
     refreshFirebaseApp.mockResolvedValue(null);
     applyPrivacyContact.mockReset();
+    applyPaymentProviderId.mockReset();
     createBrowserReadinessLease.mockReset();
     releaseBrowserReadinessLease.mockReset();
     releaseBrowserReadinessLease.mockResolvedValue(undefined);
@@ -147,7 +149,8 @@ describe('OperatorWorkspaceStore', () => {
           useValue: {
             applyBranding: vi.fn(),
             applySocialLinks: vi.fn(),
-            applyPrivacyContact
+            applyPrivacyContact,
+            applyPaymentProviderId
           }
         },
         {

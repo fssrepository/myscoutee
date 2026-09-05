@@ -165,6 +165,7 @@ export interface AssetExploreBorrowDialogState {
   availableQuantity: number;
   acceptedPolicyIds: string[];
   checkoutSessionId: string | null;
+  paymentMethod: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
   paymentStep: boolean;
   busy: boolean;
   error: string | null;
@@ -190,6 +191,7 @@ export interface AssetExploreBorrowDraftState {
   endAtIso: string;
   acceptedPolicyIds: string[];
   checkoutSessionId: string | null;
+  paymentMethod: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
   paymentStep: boolean;
   updatedAtMs: number;
 }

@@ -12,8 +12,7 @@
         @if (assetCheckout()?.phase === 'payment') {
           <div class="asset-editor-checkout-payment-stack">
             <app-event-basket-input
-              title="event.editor.basket.title"
-              subtitle="event.editor.basket.payment.subtitle"
+              [config]="checkoutPaymentBasketConfig"
               [contextTitle]="checkoutPaymentContextTitle()"
               [contextMeta]="checkoutPaymentContextMeta()"
               [contextDetail]="checkoutPaymentTimeframe()"
@@ -22,21 +21,21 @@
               [totalAmount]="checkoutPaymentTotal()"
               [currency]="checkoutPaymentCurrency()"
               tone="payment"
-              [readOnly]="true"
-              [showAdd]="false"
-              [showItemMenu]="false"
-              [showPricingSummary]="true"
             ></app-event-basket-input>
             <app-event-payment-input
-              title="event.editor.payment.title"
-              subtitle="asset.borrow.payment.subtitle"
+              [config]="checkoutPaymentInputConfig"
               [totalAmount]="checkoutPaymentTotal()"
               [currency]="checkoutPaymentCurrency()"
               tone="payment"
-              [paymentIntegrationEnabled]="false"
+              [provider]="assetCheckout()?.paymentProvider ?? ''"
               [providerLabel]="assetCheckout()?.paymentProviderLabel ?? ''"
               [statusLabel]="assetCheckout()?.paymentStatusLabel ?? ''"
+              [statusTone]="assetCheckout()?.paymentStatusTone ?? 'neutral'"
               [note]="assetCheckout()?.paymentNote ?? ''"
+              [paymentMethod]="assetCheckout()?.paymentMethod ?? null"
+              [paymentMethodSelectionDisabled]="assetCheckout()?.busy === true"
+              [paymentMethodReadOnly]="assetCheckout()?.mode === 'payment-summary'"
+              (paymentMethodChange)="onCheckoutPaymentMethodChange($event)"
             ></app-event-payment-input>
           </div>
         } @else {

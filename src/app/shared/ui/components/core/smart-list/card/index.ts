@@ -3,6 +3,7 @@ export * from './single-card';
 export * from './single-row';
 export * from './pair-card';
 export * from './image-card';
+export * from './payment-card';
 export * from './info-card';
 export * from './warp-image-card';
 export * from './header-card';

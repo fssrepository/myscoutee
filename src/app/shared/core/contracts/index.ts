@@ -9,6 +9,7 @@ export * from './deployment-configuration.interface';
 export * from './event.interface';
 export * from './list.interface';
 export * from './notification.interface';
+export * from './payment-method.interface';
 export * from './operator.interface';
 export * from './pricing.interface';
 export * from './profile.interface';

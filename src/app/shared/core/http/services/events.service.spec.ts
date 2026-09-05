@@ -70,6 +70,32 @@ describe('HttpEventsService', () => {
     });
   });
 
+  it('sends the displayed merchant provider when starting event payment', async () => {
+    post.mockReturnValue(of(null));
+
+    const result = await TestBed.inject(HttpEventsService).payEventCheckout({
+      userId: ' user-1 ',
+      sourceId: ' event-1 ',
+      slotSourceId: null,
+      checkoutState: 'pay',
+      resultState: 'succeeded',
+      pendingReason: null,
+      checkoutSessionId: null,
+      checkoutRequest: null
+    }, ' Stripe ');
+
+    expect(result).toBeNull();
+    expect(post).toHaveBeenCalledTimes(1);
+    const [url, body, options] = post.mock.calls[0];
+    expect(url).toMatch(/\/activities\/events\/checkout\/pay$/);
+    expect(body).toMatchObject({
+      userId: 'user-1',
+      sourceId: 'event-1',
+      checkoutState: 'pay'
+    });
+    expect(options.params.get('provider')).toBe('stripe');
+  });
+
   it('preserves the backend translation key for an invalid code', async () => {
     post.mockReturnValue(of({
       valid: false,

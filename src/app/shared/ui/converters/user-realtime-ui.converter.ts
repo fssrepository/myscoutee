@@ -1,5 +1,6 @@
 import type {
   UserImpressionsDto,
+  UserPaymentTotalsDto,
   UserRealtimeLongPollResponseDto
 } from '../../core/contracts/user.interface';
 import type {
@@ -20,6 +21,7 @@ export interface UserRealtimeUiPatch {
   impressions: UserImpressionsDto;
   changeFlags: UserImpressionChangeFlags | null;
   clearChangeFlags: boolean;
+  paymentTotals: UserPaymentTotalsDto | null;
 }
 
 export class UserRealtimeUiConverter {
@@ -34,7 +36,14 @@ export class UserRealtimeUiConverter {
       changeFlags: input.suppressImpressionBadges
         ? null
         : this.toImpressionChangeFlags(input.snapshot, input.currentChangeFlags),
-      clearChangeFlags: input.suppressImpressionBadges
+      clearChangeFlags: input.suppressImpressionBadges,
+      paymentTotals: input.snapshot.paymentTotals
+        ? {
+          outgoing: { ...(input.snapshot.paymentTotals.outgoing ?? {}) },
+          incoming: { ...(input.snapshot.paymentTotals.incoming ?? {}) },
+          all: { ...(input.snapshot.paymentTotals.all ?? {}) }
+        }
+        : null
     };
   }
 

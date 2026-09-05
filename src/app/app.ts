@@ -14,13 +14,15 @@ import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
+import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
     NgComponentOutlet,
-    PromptComponent
+    PromptComponent,
+    PaymentAuthorizationPopupComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'

@@ -12,6 +12,8 @@ import type {
 import type {
   PricingEditorRuntimePreview
 } from '../../components/core/form/inputs/pricing-editor';
+import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
+import type { EventPaymentStatusTone } from './event-editor-popup.store';
 
 export interface AssetVisibleListState {
   items: readonly AppDTOs.AssetDTO[];
@@ -77,11 +79,15 @@ export interface AssetEditorCheckoutState {
   pendingFooterLabel?: string | null;
   busy: boolean;
   error: string | null;
+  paymentProvider?: string | null;
   paymentProviderLabel?: string | null;
   paymentStatusLabel?: string | null;
+  paymentStatusTone?: EventPaymentStatusTone | null;
   paymentNote?: string | null;
+  paymentMethod?: SavedPaymentMethodDto | null;
   onDateRangeChange?: (value: DateInputRangeValue) => void;
   onPolicyToggle?: (policyId: string) => void;
+  onPaymentMethodChange?: (paymentMethod: SavedPaymentMethodDto) => void;
   onFooterItemSelect?: (itemId: string, event: Event) => void;
   onClose?: () => void;
 }
@@ -661,6 +667,7 @@ export class AssetStore {
       footerItems: (state.footerItems ?? []).map(item => ({ ...item })),
       pendingFooterItemId: `${state.pendingFooterItemId ?? ''}`.trim() || null,
       pendingFooterLabel: `${state.pendingFooterLabel ?? ''}`.trim() || null,
+      paymentMethod: state.paymentMethod ? { ...state.paymentMethod } : null,
       busy: state.busy === true,
       error: `${state.error ?? ''}`.trim() || null
     };

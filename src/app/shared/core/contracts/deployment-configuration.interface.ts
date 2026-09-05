@@ -56,6 +56,7 @@ Readonly<DeploymentPrivacyContactDto> = {
 };
 
 export interface DeploymentConfigurationDto extends DeploymentBrandingDto {
+  paymentProviderId: string | null;
   socialLinks: readonly DeploymentSocialLinkDto[];
   privacyContact: DeploymentPrivacyContactDto;
 }
@@ -63,6 +64,7 @@ export interface DeploymentConfigurationDto extends DeploymentBrandingDto {
 export const DEFAULT_DEPLOYMENT_CONFIGURATION:
 Readonly<DeploymentConfigurationDto> = {
   ...DEFAULT_DEPLOYMENT_BRANDING,
+  paymentProviderId: null,
   socialLinks: DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
   privacyContact: DEFAULT_DEPLOYMENT_PRIVACY_CONTACT
 };

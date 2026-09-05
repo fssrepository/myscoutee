@@ -81,6 +81,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly paramsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly affinityGraphPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly paymentSimulatorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly monitoringPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected readonly restoringWorkspace = signal(this.currentRouteIsAdminShell());
@@ -92,6 +93,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly paramsPopupComponent = this.paramsPopupComponentRef.asReadonly();
   protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
+  protected readonly paymentSimulatorPopupComponent = this.paymentSimulatorPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
   protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
   protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
@@ -125,6 +127,10 @@ export class AdminPageComponent implements OnInit, OnDestroy {
           break;
         case 'affinity-graph':
           void this.ensureAffinityGraphPopupLoaded();
+          break;
+        case 'payment-simulator':
+        case 'payment-authorizations':
+          void this.ensurePaymentSimulatorPopupLoaded();
           break;
         case 'monitoring':
           void this.ensureMonitoringPopupLoaded();
@@ -190,14 +196,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     return this.workspaceData.isFirebaseAdminMode;
   }
 
-  private prepareSelectedAdminSession(adminUserId: string): void {
-    const normalizedAdminUserId = this.workspace.prepareSelectedAdminSession(adminUserId);
-    if (!normalizedAdminUserId) {
-      return;
-    }
-    this.workspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
-  }
-
   private async restoreAdminSession(): Promise<boolean> {
     const adminId = this.workspace.readStoredAdminId();
     if (!adminId) {
@@ -213,7 +211,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
         this.clearAdminSession();
         return false;
       }
-      this.prepareSelectedAdminSession(adminId);
+      this.workspace.prepareSelectedAdminSession(adminId);
       return Boolean(await this.bootstrapAdmin(
         session.kind === 'demo' ? session.userId : undefined
       ));
@@ -280,12 +278,18 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private openSelectedAdmin(adminUserId: string): boolean {
+  private async openSelectedAdmin(adminUserId: string): Promise<boolean> {
     const normalizedAdminUserId = adminUserId.trim();
     if (!normalizedAdminUserId) {
       return false;
     }
-    this.prepareSelectedAdminSession(normalizedAdminUserId);
+    this.workspace.prepareSelectedAdminSession(normalizedAdminUserId);
+    const session = this.workspaceData.shouldUseLocalAdminHelpSession
+      ? this.sessionService.startDemoSession(normalizedAdminUserId)
+      : await this.sessionService.startTrackedDemoSession(normalizedAdminUserId);
+    if (!session) {
+      return false;
+    }
     void this.navigateToAdminAfterSelectorClose();
     return true;
   }
@@ -389,6 +393,14 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
     const module = await import('../affinity-graph-popup/admin-affinity-graph-popup.component');
     this.affinityGraphPopupComponentRef.set(module.AdminAffinityGraphPopupComponent);
+  }
+
+  private async ensurePaymentSimulatorPopupLoaded(): Promise<void> {
+    if (this.paymentSimulatorPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../payment-simulator-popup/admin-payment-simulator-popup.component');
+    this.paymentSimulatorPopupComponentRef.set(module.AdminPaymentSimulatorPopupComponent);
   }
 
   private async ensureMonitoringPopupLoaded(): Promise<void> {

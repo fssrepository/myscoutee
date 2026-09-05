@@ -93,6 +93,7 @@ export class HttpAssetsService {
       const response = await this.http
         .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets/explore`, {
           params: new HttpParams()
+            .set('userId', normalizedUserId)
             .set('type', query.type)
             .set('category', `${query.category ?? ''}`.trim())
             .set('startAtIso', `${query.startAtIso ?? ''}`.trim())

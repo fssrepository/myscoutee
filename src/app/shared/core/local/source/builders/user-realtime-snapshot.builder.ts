@@ -171,6 +171,13 @@ export class LocalUserRealtimeSnapshotBuilder {
         impressionsMemberChanged: false
       },
       impressions: this.cloneImpressions(user.impressions),
+      paymentTotals: user.paymentTotals
+        ? {
+          outgoing: { ...(user.paymentTotals.outgoing ?? {}) },
+          incoming: { ...(user.paymentTotals.incoming ?? {}) },
+          all: { ...(user.paymentTotals.all ?? {}) }
+        }
+        : { outgoing: {}, incoming: {}, all: {} },
       cursor: '0'
     };
   }

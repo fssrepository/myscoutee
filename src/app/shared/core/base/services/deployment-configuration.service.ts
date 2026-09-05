@@ -39,6 +39,7 @@ export class DeploymentConfigurationService
   private readonly privacyContactRef = signal<DeploymentPrivacyContactDto>(
     structuredClone(DEFAULT_DEPLOYMENT_PRIVACY_CONTACT)
   );
+  private readonly paymentProviderIdRef = signal<string | null>(null);
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
   private manifestObjectUrl: string | null = null;
@@ -46,6 +47,7 @@ export class DeploymentConfigurationService
   readonly branding = this.brandingRef.asReadonly();
   readonly socialLinks = this.socialLinksRef.asReadonly();
   readonly privacyContact = this.privacyContactRef.asReadonly();
+  readonly paymentProviderId = this.paymentProviderIdRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
 
   ngOnDestroy(): void {
@@ -85,6 +87,29 @@ export class DeploymentConfigurationService
     return structuredClone(privacyContact);
   }
 
+  applyPaymentProviderId(value: string | null | undefined): string | null {
+    const paymentProviderId = `${value ?? ''}`.trim().toLowerCase() || null;
+    this.paymentProviderIdRef.set(paymentProviderId);
+    return paymentProviderId;
+  }
+
+  applyPaymentProviderChangeResponse(value: unknown): boolean {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const response = value as Record<string, unknown>;
+    if (response['code'] !== 'PAYMENT_PROVIDER_CHANGED'
+      || !Object.prototype.hasOwnProperty.call(response, 'currentProvider')) {
+      return false;
+    }
+    this.applyPaymentProviderId(
+      typeof response['currentProvider'] === 'string'
+        ? response['currentProvider']
+        : null
+    );
+    return true;
+  }
+
   private async load(): Promise<DeploymentBrandingDto> {
     if (!this.loadPromise) {
       this.loadingRef.set(true);
@@ -104,6 +129,7 @@ export class DeploymentConfigurationService
   ): DeploymentBrandingDto {
     this.applySocialLinks(value.socialLinks);
     this.applyPrivacyContact(value.privacyContact);
+    this.applyPaymentProviderId(value.paymentProviderId);
     return this.applyBranding(value);
   }
 

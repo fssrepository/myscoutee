@@ -1,5 +1,7 @@
 :host {
-  --app-menu-outlet-overlay-z-index: 19000;
+  // Hosted SmartList menus must stay above nested application popups while
+  // remaining below the shared confirmation-dialog layer (24000).
+  --app-menu-outlet-overlay-z-index: 23900;
   --app-menu-outlet-contained-z-index: 35;
   position: fixed;
   z-index: var(--app-menu-outlet-overlay-z-index);

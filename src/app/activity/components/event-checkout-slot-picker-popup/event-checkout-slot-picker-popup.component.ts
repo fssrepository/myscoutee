@@ -43,6 +43,7 @@ import {
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   EventBasketInputComponent,
+  type EventBasketInputConfig,
   type EventBasketInputItem
 } from '../event-editor-popup/event-basket-input/event-basket-input.component';
 
@@ -106,6 +107,15 @@ export class EventCheckoutSlotPickerPopupComponent {
   private checkoutBasketHydrated = false;
 
   protected slotListQuery: Partial<ListQuery<SlotPickerFilters>> = this.buildSlotListQuery();
+
+  protected readonly pricingSummaryBasketConfig: EventBasketInputConfig = {
+    title: 'Pricing',
+    subtitle: 'Read-only checkout price review',
+    readOnly: true,
+    showAdd: false,
+    showItemMenu: false,
+    showPricingSummary: true
+  };
 
   protected readonly dateInputModel: DateInputModel = {
     mode: 'single',

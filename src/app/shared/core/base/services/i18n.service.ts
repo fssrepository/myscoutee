@@ -836,7 +836,9 @@ export class I18nService {
       'Scanning expired event counters.': 'admin.jobs.run.detail.counter.scanning',
       'No expired event counters or ticket records were due.': 'admin.jobs.run.detail.counter.none.due',
       'Scanning expired checkout basket drafts.': 'admin.jobs.run.detail.checkout.scanning',
-      'No expired checkout basket items were due.': 'admin.jobs.run.detail.checkout.none.due'
+      'No expired checkout basket items were due.': 'admin.jobs.run.detail.checkout.none.due',
+      'Scanning expired saved payment cards.': 'admin.jobs.run.detail.payment.card.expiry.scanning',
+      'No expired saved payment cards were due.': 'admin.jobs.run.detail.payment.card.expiry.none.due'
     };
     const exactKey = exactKeys[normalizedSource];
     if (exactKey) {
@@ -974,6 +976,15 @@ export class I18nService {
     );
     if (checkoutMarkedMatch) {
       return translate('admin.jobs.run.detail.checkout.marked', { count: checkoutMarkedMatch[1] ?? '0' });
+    }
+
+    const expiredPaymentCardsMatch = normalizedSource.match(
+      /^Expired and queued notifications for\s+(\d+)\s+saved payment card\(s\)\.$/i
+    );
+    if (expiredPaymentCardsMatch) {
+      return translate('admin.jobs.run.detail.payment.card.expiry.completed', {
+        count: expiredPaymentCardsMatch[1] ?? '0'
+      });
     }
 
     return null;

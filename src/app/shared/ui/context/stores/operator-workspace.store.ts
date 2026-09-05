@@ -547,6 +547,9 @@ export class OperatorWorkspaceStore {
       this.deploymentConfiguration.applyPrivacyContact(
         result.configuration.privacyContact
       );
+      this.deploymentConfiguration.applyPaymentProviderId(
+        result.configuration.payment.providerId
+      );
       if (result.tlsConfiguration) {
         this.tlsConfigurationRef.set(result.tlsConfiguration);
         this.tlsConfigurationDraftRef.set(
@@ -848,6 +851,9 @@ export class OperatorWorkspaceStore {
       this.deploymentConfiguration.applyBranding(result.branding);
       this.deploymentConfiguration.applySocialLinks(result.socialLinks);
       this.deploymentConfiguration.applyPrivacyContact(result.privacyContact);
+      this.deploymentConfiguration.applyPaymentProviderId(
+        result.payment.providerId
+      );
       this.noticeRef.set(noticeKey);
     }
     return result;
