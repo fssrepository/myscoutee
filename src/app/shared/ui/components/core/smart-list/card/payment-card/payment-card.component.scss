@@ -22,7 +22,7 @@
 .payment-card--disabled { filter: grayscale(.7); opacity: .62; cursor: default; }
 
 .payment-card__shade { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(3, 10, 25, .08), rgba(3, 10, 25, .42)); }
-.payment-card__loader { position: absolute; z-index: 5; inset: 0; display: grid; place-content: center; justify-items: center; gap: .65rem; opacity: 0; }
+.payment-card__loader { position: absolute; z-index: 5; inset: 0; display: grid; place-content: center; justify-items: center; gap: .65rem; opacity: 0; pointer-events: none; }
 .payment-card__loader strong { font-size: .82rem; letter-spacing: .02em; text-shadow: 0 1px 4px rgba(0,0,0,.55); }
 .payment-card.lazy-bg-loading .payment-card__loader { opacity: 1; }
 .payment-card.lazy-bg-loaded .payment-card__loader, .payment-card.lazy-bg-error .payment-card__loader { opacity: 0; }
