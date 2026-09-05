@@ -299,6 +299,7 @@
     "admin.jobs.timing.rule": "Timing rule",
     "admin.jobs.start.at": "Start at",
     "admin.jobs.what.it.does": "What it does",
+    "admin.testing": "Testing",
     "admin.payment.simulator": "Payment simulator",
     "admin.payment.simulator.open": "Open payment simulator configuration",
     "admin.payment.simulator.subtitle": "Runtime configuration for demo payment branches",

@@ -299,6 +299,7 @@
     "admin.jobs.timing.rule": "Időzítési szabály",
     "admin.jobs.start.at": "Kezdés",
     "admin.jobs.what.it.does": "Mit csinál",
+    "admin.testing": "Tesztelés",
     "admin.payment.simulator": "Fizetési szimulátor",
     "admin.payment.simulator.open": "Fizetési szimulátor konfigurációjának megnyitása",
     "admin.payment.simulator.subtitle": "A demo fizetési ágak futásidejű beállítása",
