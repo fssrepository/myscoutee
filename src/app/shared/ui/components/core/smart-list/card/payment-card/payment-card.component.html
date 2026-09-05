@@ -3,6 +3,7 @@
   [class.payment-card--selectable]="selectable"
   [class.payment-card--selected]="card.selected"
   [class.payment-card--disabled]="card.disabled && !card.expired"
+  [class.payment-card--expired]="card.expired"
   [class.payment-card--pending]="card.loading"
   [attr.role]="selectable ? 'button' : null"
   [attr.tabindex]="selectable && !card.disabled ? 0 : null"
