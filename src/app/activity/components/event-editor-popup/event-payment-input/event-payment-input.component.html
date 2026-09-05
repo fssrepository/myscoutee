@@ -13,7 +13,20 @@
         <p>{{ subtitle() | i18n }}</p>
       </div>
     </div>
-    <span>{{ paymentProviderLabel() | i18n }}</span>
+    <span
+      class="event-payment-provider-badge"
+      [class.event-payment-provider-badge--logo-only]="paymentProviderLogo()"
+      [attr.aria-label]="paymentProviderLabel() | i18n"
+    >
+      @if (paymentProviderLogo(); as providerLogo) {
+        <span class="event-payment-provider-badge__image">
+          <img [src]="providerLogo" [alt]="paymentProviderLabel()" />
+        </span>
+      } @else {
+        <mat-icon>{{ paymentProviderIcon() }}</mat-icon>
+        <span>{{ paymentProviderLabel() | i18n }}</span>
+      }
+    </span>
   </div>
 
   <div class="event-payment-status-grid">

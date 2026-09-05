@@ -64,6 +64,7 @@
 }
 
 .notification-attention-launcher.is-chat-open,
+.notification-attention-launcher.is-checkout-open,
 .notification-attention-launcher.is-popup-open {
   bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px));
 }
@@ -349,6 +350,7 @@ app-event-supply-contributions-popup {
   }
 
   .notification-attention-launcher.is-chat-open,
+  .notification-attention-launcher.is-checkout-open,
   .notification-attention-launcher.is-popup-open {
     bottom: calc(3.6rem + 5px + env(safe-area-inset-bottom, 0px));
   }

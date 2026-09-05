@@ -222,11 +222,12 @@
   font-size: 1.12rem;
 }
 
-.event-payment-input-head > span {
+.event-payment-provider-badge {
   justify-self: end;
   min-height: 32px;
   display: inline-flex;
   align-items: center;
+  gap: 0.42rem;
   border: 1px solid rgba(97, 158, 137, 0.42);
   border-radius: 999px;
   background: rgba(232, 249, 243, 0.95);
@@ -235,6 +236,38 @@
   font-size: 0.78rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.event-payment-provider-badge > mat-icon {
+  width: 1.08rem;
+  height: 1.08rem;
+  font-size: 1.08rem;
+  line-height: 1.08rem;
+}
+
+.event-payment-provider-badge--logo-only {
+  padding: 0 0.38rem;
+}
+
+.event-payment-provider-badge__image {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 1.36rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.12rem;
+}
+
+.event-payment-provider-badge__image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .event-payment-status-grid {
@@ -296,7 +329,7 @@
 
   .event-payment-total,
   .event-payment-context-time,
-  .event-payment-input-head > span {
+  .event-payment-provider-badge {
     justify-self: start;
     text-align: left;
   }

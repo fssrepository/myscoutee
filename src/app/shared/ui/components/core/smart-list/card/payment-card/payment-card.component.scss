@@ -31,8 +31,7 @@
 .payment-card--pending.lazy-bg-loaded .payment-card__loader,
 .payment-card--pending.lazy-bg-error .payment-card__loader { opacity: 1; }
 
-.payment-card__provider, .payment-card__brand { text-transform: uppercase; letter-spacing: .1em; font-size: clamp(.62rem, 1.5vw, .78rem); font-weight: 850; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
-.payment-card__provider { position: absolute; top: 1.05rem; right: 3.35rem; }
+.payment-card__brand { text-transform: uppercase; letter-spacing: .1em; font-size: clamp(.62rem, 1.5vw, .78rem); font-weight: 850; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .payment-card__menu { position: absolute; z-index: 4; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.68); border-radius: 50%; background: rgba(7, 18, 38, .55); color: #fff; cursor: pointer; }
 .payment-card__menu mat-icon { width: 1.2rem; height: 1.2rem; font-size: 1.2rem; line-height: 1.2rem; }
 .payment-card__selected { position: absolute; z-index: 3; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #1a5fb4; box-shadow: 0 .25rem .8rem rgba(0,0,0,.25); }
@@ -47,5 +46,4 @@
 
 @media (max-width: 520px) {
   .payment-card__content { inset: auto 1rem .82rem; gap: .55rem; }
-  .payment-card__provider { top: .85rem; }
 }

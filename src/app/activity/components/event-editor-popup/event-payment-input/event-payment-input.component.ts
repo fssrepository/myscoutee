@@ -86,7 +86,17 @@ export class EventPaymentInputComponent {
 
   protected paymentProviderLabel(): string {
     return this.providerLabel.trim()
+      || this.paymentProviderName()
       || (this.config.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo');
+  }
+
+  protected paymentProviderLogo(): string | null {
+    const provider = this.paymentProvider();
+    return provider ? `assets/payment-providers/${provider}.svg` : null;
+  }
+
+  protected paymentProviderIcon(): string {
+    return this.providerLabel.trim() ? 'verified' : 'payments';
   }
 
   protected paymentStatusLabel(): string {
@@ -110,5 +120,18 @@ export class EventPaymentInputComponent {
       default:
         return '$';
     }
+  }
+
+  private paymentProvider(): 'stripe' | 'barion' | null {
+    if (this.providerLabel.trim() || !this.config.paymentIntegrationEnabled) {
+      return null;
+    }
+    const provider = `${this.paymentMethod?.provider ?? ''}`.trim().toLowerCase();
+    return provider === 'stripe' || provider === 'barion' ? provider : null;
+  }
+
+  private paymentProviderName(): string {
+    const provider = this.paymentProvider();
+    return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : '';
   }
 }

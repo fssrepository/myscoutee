@@ -37,6 +37,7 @@
   <div
     class="notification-attention-launcher"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
+    [class.is-checkout-open]="eventEditorStore.isOpen() && eventEditorStore.presentation().mode === 'checkout-review'"
     [class.is-popup-open]="popupPresenceStore.visible()"
   >
     <app-menu
