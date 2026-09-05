@@ -2761,7 +2761,8 @@ export class EventCheckoutPopupComponent {
         null,
         null
       );
-      let joinResult = await this.eventsService.payEventCheckout(paymentRequest);
+      const expectedProvider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase();
+      let joinResult = await this.eventsService.payEventCheckout(paymentRequest, expectedProvider);
       if (joinResult?.membershipStatus === 'payment_pending') {
         this.checkoutSessionId = joinResult.paymentSessionId ?? null;
         providerWindow = this.paymentAuthorization.openProviderWindow();
@@ -2775,7 +2776,13 @@ export class EventCheckoutPopupComponent {
           dialog.record.id,
           providerWindow
         );
-        joinResult = await this.eventsService.payEventCheckout(paymentRequest);
+        joinResult = await this.eventsService.payEventCheckout(
+          {
+            ...paymentRequest,
+            checkoutSessionId: this.checkoutSessionId
+          },
+          expectedProvider
+        );
       }
       if (!joinResult || joinResult.membershipStatus !== 'accepted') {
         throw new Error(dialog.failureMessage);
@@ -3474,7 +3481,13 @@ export class EventCheckoutPopupComponent {
   }
 
   private isPaymentSessionConflict(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && error.status === 409;
+    if (!(error instanceof HttpErrorResponse) || error.status !== 409) {
+      return false;
+    }
+    const backendMessage = typeof error.error?.message === 'string'
+      ? error.error.message.trim()
+      : '';
+    return backendMessage.startsWith('Payment session ');
   }
 
   private availableSlotDateKeys(): string[] {

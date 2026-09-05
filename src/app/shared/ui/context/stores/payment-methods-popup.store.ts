@@ -52,6 +52,13 @@ export class PaymentMethodsPopupStore {
     });
   }
 
+  selectPickerPaymentMethod(paymentMethodId: string): void {
+    const picker = this.pickerRef();
+    const normalizedId = paymentMethodId.trim();
+    if (!picker || !normalizedId) return;
+    this.pickerRef.set({ ...picker, selectedPaymentMethodId: normalizedId });
+  }
+
   confirm(paymentMethod: SavedPaymentMethodDto): void {
     const picker = this.pickerRef();
     if (!picker) return;

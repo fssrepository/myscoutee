@@ -105,7 +105,10 @@ export interface IEventsService {
   ): Promise<EventCheckoutPromoCodeValidationResult | null>;
   saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
   updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
-  payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null>;
+  payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null>;
   authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto

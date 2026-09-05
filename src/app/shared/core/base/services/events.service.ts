@@ -336,17 +336,23 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     });
   }
 
-  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+  async payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    return this.eventsService.payEventCheckout({
-      ...request,
-      userId: normalizedUserId,
-      sourceId: normalizedSourceId
-    });
+    return this.eventsService.payEventCheckout(
+      {
+        ...request,
+        userId: normalizedUserId,
+        sourceId: normalizedSourceId
+      },
+      provider
+    );
   }
 
   trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {

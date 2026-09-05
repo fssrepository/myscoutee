@@ -58,8 +58,11 @@ export class PaymentCardComponent {
     const label = this.card.loading
       ? this.i18n.translate(this.card.loadingLabel || 'payment.registration.pending')
       : this.resolvedBrandLabel();
-    return this.card.expired
-      ? `${label}. ${this.i18n.translate('payment.card.expired')}.`
+    if (this.card.expired) {
+      return `${label}. ${this.i18n.translate('payment.card.expired')}.`;
+    }
+    return this.card.requiresRetokenization
+      ? `${label}. ${this.i18n.translate('payment.card.retokenize')}.`
       : label;
   }
 

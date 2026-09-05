@@ -534,7 +534,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
   }
 
-  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+  async payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    _provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
     if (!normalizedUserId || !normalizedSourceId) {

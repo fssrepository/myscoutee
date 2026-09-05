@@ -56,7 +56,7 @@
         <app-payment-card
           [card]="paymentCard(method)"
           [selectable]="pickerMode()"
-          [showMenu]="!pickerMode()"
+          [showMenu]="true"
           (cardSelect)="selectCard(method, $event)"
           (menuRequest)="openMenu($event)"
         ></app-payment-card>

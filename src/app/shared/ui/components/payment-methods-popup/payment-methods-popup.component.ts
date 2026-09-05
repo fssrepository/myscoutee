@@ -2,7 +2,14 @@ import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, 
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { from } from 'rxjs';
 
-import { AssetCardBuilder, AssetsService, EventsService, I18nService, PaymentMethodsService } from '../../../core';
+import {
+  AssetCardBuilder,
+  AssetsService,
+  DeploymentConfigurationService,
+  EventsService,
+  I18nService,
+  PaymentMethodsService
+} from '../../../core';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
 import type { ListQuery } from '../../../core/contracts/list.interface';
@@ -58,6 +65,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly store = inject(PaymentMethodsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly paymentMethods = inject(PaymentMethodsService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly events = inject(EventsService);
   private readonly activities = inject(ActivitiesPopupStore);
   private readonly eventCheckoutDialog = inject(EventCheckoutDialogStore);
@@ -267,6 +275,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected paymentCard(method: SavedPaymentMethodDto): PaymentCardData {
     const loading = method.status === 'registering';
     const expired = this.paymentMethodExpired(method);
+    const requiresRetokenization = !this.localMode && !loading && !expired
+      && this.paymentMethodRequiresRetokenization(method);
+    const deleteAction = {
+      id: 'delete-payment-card',
+      label: 'payment.cards.delete',
+      icon: 'delete',
+      tone: 'destructive' as const
+    };
     return {
       id: method.id,
       provider: method.provider,
@@ -278,15 +294,36 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       artworkUrl: method.artworkUrl,
       loading,
       loadingLabel: loading ? 'payment.registration.pending' : undefined,
-      disabled: loading || expired,
+      disabled: loading || expired || requiresRetokenization,
       expired,
-      selected: !expired && this.pickerMode() && this.store.selectedPaymentMethodId() === method.id,
-      paymentMenuActions: loading || this.pickerMode() ? [] : [
-        ...(!this.localMode && !expired
-          ? [{ id: 'replace-payment-card', label: 'payment.cards.replace', icon: 'published_with_changes', tone: 'accent' as const }]
-          : []),
-        { id: 'delete-payment-card', label: 'payment.cards.delete', icon: 'delete', tone: 'destructive' }
-      ]
+      requiresRetokenization,
+      selected: !expired && !requiresRetokenization && this.pickerMode()
+        && this.store.selectedPaymentMethodId() === method.id,
+      paymentMenuActions: loading
+        ? []
+        : expired
+          ? [deleteAction]
+          : requiresRetokenization
+            ? [
+                {
+                  id: 'retokenize-payment-card',
+                  label: 'payment.cards.retokenize',
+                  icon: 'published_with_changes',
+                  tone: 'warning' as const
+                },
+                deleteAction
+              ]
+            : this.pickerMode()
+              ? []
+              : [
+                  {
+                    id: 'replace-payment-card',
+                    label: 'payment.cards.replace',
+                    icon: 'published_with_changes',
+                    tone: 'accent' as const
+                  },
+                  deleteAction
+                ]
     };
   }
 
@@ -348,7 +385,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected selectCard(method: SavedPaymentMethodDto, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    if (!this.pickerMode() || method.status !== 'active' || this.paymentMethodExpired(method)) return;
+    if (!this.pickerMode() || method.status !== 'active' || this.paymentMethodExpired(method)
+      || this.paymentMethodRequiresRetokenization(method)) return;
     this.store.togglePickerSelection(method.id);
   }
 
@@ -363,7 +401,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     if (!method) return;
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    if (event.id === 'replace-payment-card') {
+    if (event.id === 'replace-payment-card' || event.id === 'retokenize-payment-card') {
       void this.beginRegistration(method.id);
     } else if (event.id === 'delete-payment-card') {
       this.confirmDelete(method);
@@ -434,8 +472,15 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const selectedId = this.store.selectedPaymentMethodId();
     const selected = selectedId ? this.loadedCardsById.get(selectedId) ?? null : null;
     return selected?.status === 'active' && !this.paymentMethodExpired(selected)
+      && !this.paymentMethodRequiresRetokenization(selected)
       ? selected
       : null;
+  }
+
+  private paymentMethodRequiresRetokenization(method: SavedPaymentMethodDto): boolean {
+    const activeProvider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase();
+    const tokenProvider = `${method.provider ?? ''}`.trim().toLowerCase();
+    return Boolean(activeProvider && tokenProvider && activeProvider !== tokenProvider);
   }
 
   private paymentMethodExpired(method: SavedPaymentMethodDto): boolean {
@@ -477,6 +522,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       if (registration.status === 'pending') {
         if (this.registrationExpired(current.expiresAtIso)) this.finishRegistration('expired');
         return;
+      }
+      if (registration.status === 'completed' && registration.paymentMethod) {
+        this.loadedCardsById.set(registration.paymentMethod.id, { ...registration.paymentMethod });
+        if (this.pickerMode()) {
+          this.store.selectPickerPaymentMethod(registration.paymentMethod.id);
+        }
       }
       this.finishRegistration(registration.status);
       if (registration.status === 'completed') {

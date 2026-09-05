@@ -21,6 +21,8 @@
 .payment-card--disabled { filter: saturate(.82) brightness(1.12); opacity: .76; cursor: default; }
 .payment-card--expired { cursor: default; }
 .payment-card--expired::after { position: absolute; z-index: 2; inset: 0; background: rgba(255, 255, 255, .58); content: ''; pointer-events: none; }
+.payment-card--retokenize { cursor: default; }
+.payment-card--retokenize::after { position: absolute; z-index: 2; inset: 0; background: rgba(255, 255, 255, .58); content: ''; pointer-events: none; }
 
 .payment-card__shade { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(3, 10, 25, .08), rgba(3, 10, 25, .42)); }
 .payment-card__loader { position: absolute; z-index: 5; inset: 0; display: grid; place-content: center; justify-items: center; gap: .65rem; opacity: 0; pointer-events: none; }
@@ -40,8 +42,10 @@
 .payment-card__status mat-icon { width: 1rem; height: 1rem; font-size: 1rem; line-height: 1rem; }
 .payment-card__status .payment-card__status-chevron { margin-left: -.12rem; }
 .payment-card__status--expired { background: #d62839; }
+.payment-card__status--retokenize { background: #b45309; }
 .payment-card__status--action { font: inherit; cursor: pointer; transition: transform .14s ease, background-color .14s ease, box-shadow .14s ease; }
 .payment-card__status--action:hover { background: #ed3145; box-shadow: 0 .35rem 1rem rgba(160, 22, 40, .34); transform: translateY(-1px); }
+.payment-card__status--retokenize.payment-card__status--action:hover { background: #d97706; box-shadow: 0 .35rem 1rem rgba(146, 64, 14, .34); }
 .payment-card__status--action:focus-visible { outline: 3px solid rgba(255,255,255,.96); outline-offset: 2px; }
 
 .payment-card__content { position: absolute; inset: auto 1.25rem 1.1rem; display: grid; gap: .8rem; text-shadow: 0 1px 4px rgba(0,0,0,.68); }

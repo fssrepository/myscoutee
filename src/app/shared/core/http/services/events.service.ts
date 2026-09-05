@@ -577,12 +577,19 @@ export class HttpEventsService implements IEventsService {
     return ActivityEventDetailDTO.cloneCheckoutBasket(response);
   }
 
-  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+  async payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    const normalizedProvider = `${provider ?? ''}`.trim().toLowerCase();
+    const options = normalizedProvider
+      ? { params: new HttpParams().set('provider', normalizedProvider) }
+      : {};
     const response = await this.routeDelay.withRequestTimeout(
       HttpEventsService.EVENT_PAYMENT_ROUTE,
       this.http.post<EventParticipationActionResultDTO | null>(
@@ -594,7 +601,8 @@ export class HttpEventsService implements IEventsService {
           checkoutState: 'pay',
           resultState: 'succeeded',
           pendingReason: null
-        }
+        },
+        options
       ).toPromise(),
       'Payment provider request timed out.',
       120000

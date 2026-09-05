@@ -2,8 +2,9 @@
   class="payment-card"
   [class.payment-card--selectable]="selectable"
   [class.payment-card--selected]="card.selected"
-  [class.payment-card--disabled]="card.disabled && !card.expired"
+  [class.payment-card--disabled]="card.disabled && !card.expired && !card.requiresRetokenization"
   [class.payment-card--expired]="card.expired"
+  [class.payment-card--retokenize]="card.requiresRetokenization"
   [class.payment-card--pending]="card.loading"
   [attr.role]="selectable ? 'button' : null"
   [attr.tabindex]="selectable && !card.disabled ? 0 : null"
@@ -40,7 +41,20 @@
       </span>
     }
   }
-  @if (!card.expired && showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
+  @if (!card.expired && card.requiresRetokenization) {
+    <button
+      type="button"
+      class="payment-card__status payment-card__status--retokenize payment-card__status--action"
+      [attr.aria-label]="'payment.card.actions.open' | i18n"
+      (pointerdown)="captureMenuRect($event)"
+      (click)="openMenu($event)"
+    >
+      <mat-icon aria-hidden="true">published_with_changes</mat-icon>
+      {{ 'payment.card.retokenize' | i18n }}
+      <mat-icon class="payment-card__status-chevron" aria-hidden="true">chevron_right</mat-icon>
+    </button>
+  }
+  @if (!card.expired && !card.requiresRetokenization && showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
     <button
       type="button"
       class="payment-card__menu"
