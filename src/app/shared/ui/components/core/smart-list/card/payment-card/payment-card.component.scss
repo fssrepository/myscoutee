@@ -18,7 +18,7 @@
 
 .payment-card--selectable { cursor: pointer; }
 .payment-card--selectable:focus-visible { outline: 3px solid #6aa6ff; outline-offset: 3px; }
-.payment-card--disabled { filter: grayscale(.7); opacity: .62; cursor: default; }
+.payment-card--disabled { filter: saturate(.82) brightness(1.12); opacity: .76; cursor: default; }
 
 .payment-card__shade { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(3, 10, 25, .08), rgba(3, 10, 25, .42)); }
 .payment-card__loader { position: absolute; z-index: 5; inset: 0; display: grid; place-content: center; justify-items: center; gap: .65rem; opacity: 0; pointer-events: none; }
@@ -32,12 +32,15 @@
 
 .payment-card__brand { text-transform: uppercase; letter-spacing: .1em; font-size: clamp(.62rem, 1.5vw, .78rem); font-weight: 850; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .payment-card__menu { position: absolute; z-index: 4; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.68); border-radius: 50%; background: rgba(7, 18, 38, .55); color: #fff; cursor: pointer; }
-.payment-card__menu--with-status { right: 7.15rem; }
 .payment-card__menu mat-icon { width: 1.2rem; height: 1.2rem; font-size: 1.2rem; line-height: 1.2rem; }
 .payment-card__selected { position: absolute; z-index: 3; top: .72rem; right: .72rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 50%; background: #fff; color: #1a5fb4; box-shadow: 0 .25rem .8rem rgba(0,0,0,.25); }
 .payment-card__status { position: absolute; z-index: 4; top: .72rem; right: .72rem; display: inline-flex; align-items: center; gap: .28rem; min-height: 2.2rem; padding: .35rem .62rem; border: 1px solid rgba(255,255,255,.74); border-radius: 999px; color: #fff; font-size: .72rem; font-weight: 850; letter-spacing: .025em; box-shadow: 0 .25rem .8rem rgba(0,0,0,.24); text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .payment-card__status mat-icon { width: 1rem; height: 1rem; font-size: 1rem; line-height: 1rem; }
-.payment-card__status--expired { background: rgba(179, 32, 49, .92); }
+.payment-card__status .payment-card__status-chevron { margin-left: -.12rem; }
+.payment-card__status--expired { background: #d62839; }
+.payment-card__status--action { font: inherit; cursor: pointer; transition: transform .14s ease, background-color .14s ease, box-shadow .14s ease; }
+.payment-card__status--action:hover { background: #ed3145; box-shadow: 0 .35rem 1rem rgba(160, 22, 40, .34); transform: translateY(-1px); }
+.payment-card__status--action:focus-visible { outline: 3px solid rgba(255,255,255,.96); outline-offset: 2px; }
 
 .payment-card__content { position: absolute; inset: auto 1.25rem 1.1rem; display: grid; gap: .8rem; text-shadow: 0 1px 4px rgba(0,0,0,.68); }
 .payment-card__number { font: 760 clamp(.9rem, 3.2vw, 1.4rem) ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .065em; white-space: nowrap; }

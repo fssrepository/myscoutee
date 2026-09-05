@@ -2,7 +2,7 @@
   class="payment-card"
   [class.payment-card--selectable]="selectable"
   [class.payment-card--selected]="card.selected"
-  [class.payment-card--disabled]="card.disabled"
+  [class.payment-card--disabled]="card.disabled && !card.expired"
   [class.payment-card--pending]="card.loading"
   [attr.role]="selectable ? 'button' : null"
   [attr.tabindex]="selectable && !card.disabled ? 0 : null"
@@ -20,16 +20,29 @@
   <span class="payment-card__shade" aria-hidden="true"></span>
   @if (!card.loading) {
   @if (card.expired) {
-    <span class="payment-card__status payment-card__status--expired">
+    @if (showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
+    <button
+      type="button"
+      class="payment-card__status payment-card__status--expired payment-card__status--action"
+      [attr.aria-label]="'payment.card.actions.open' | i18n"
+      (pointerdown)="captureMenuRect($event)"
+      (click)="openMenu($event)"
+    >
       <mat-icon aria-hidden="true">event_busy</mat-icon>
       {{ 'payment.card.expired' | i18n }}
-    </span>
+      <mat-icon class="payment-card__status-chevron" aria-hidden="true">chevron_right</mat-icon>
+    </button>
+    } @else {
+      <span class="payment-card__status payment-card__status--expired">
+        <mat-icon aria-hidden="true">event_busy</mat-icon>
+        {{ 'payment.card.expired' | i18n }}
+      </span>
+    }
   }
-  @if (showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
+  @if (!card.expired && showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
     <button
       type="button"
       class="payment-card__menu"
-      [class.payment-card__menu--with-status]="card.expired"
       [attr.aria-label]="'payment.card.actions.open' | i18n"
       (pointerdown)="captureMenuRect($event)"
       (click)="openMenu($event)"

@@ -116,7 +116,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       this.method(owner, 'midnight', 'stripe', 'Visa', '4242', 12, expiryYear, 'ALEX MORGAN', createdAtIso),
       this.method(owner, 'emerald', 'barion', 'Mastercard', '4444', 8, expiryYear + 1, 'ALEX MORGAN', createdAtIso),
       {
-        ...this.method(owner, 'ruby', 'stripe', 'Visa', '0008', 8, now.getFullYear() - 1, 'ALEX MORGAN', createdAtIso),
+        ...this.method(owner, 'coral', 'stripe', 'Visa', '0008', 8, now.getFullYear() - 1, 'ALEX MORGAN', createdAtIso),
         status: 'expired'
       }
     ];
