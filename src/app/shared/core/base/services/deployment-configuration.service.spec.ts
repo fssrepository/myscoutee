@@ -275,7 +275,7 @@ describe('DeploymentConfigurationService', () => {
 
     expect(service.applyPaymentProviderChangeResponse({
       code: 'PAYMENT_PROVIDER_CHANGED',
-      message: 'Payment provider changed to Barion. Retokenize your card.',
+      message: 'Payment provider changed to Barion. Reconnect your card.',
       currentProvider: 'barion'
     })).toBe(true);
     expect(service.paymentProviderId()).toBe('barion');
