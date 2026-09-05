@@ -2,6 +2,9 @@
   @if (!pickerMode()) {
   <app-popup [model]="mainPopupModel()" [zIndex]="22200">
     <section class="payment-methods-popup__body">
+      @if (error()) {
+        <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
+      }
       @if (historyHeaderTotals(); as totals) {
         @if (totals.length) {
           <div class="payment-methods-popup__history-totals" [attr.aria-label]="'payment.history.totals' | i18n">

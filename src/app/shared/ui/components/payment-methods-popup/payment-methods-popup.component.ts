@@ -691,12 +691,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private async openPaymentSummary(item: PaymentHistoryItemDto): Promise<void> {
     this.errorRef.set('');
     const userId = this.activeUserId();
-    let paymentMethod: SavedPaymentMethodDto;
+    let paymentMethod: SavedPaymentMethodDto | null = null;
     try {
       paymentMethod = await this.paymentMethodForHistoryItem(userId, item);
     } catch {
-      this.errorRef.set('payment.summary.error.method.unavailable');
-      return;
+      // A payment audit outlives the currently saved card. Cash payments never
+      // have one, and a tokenized method may have been cleaned up since the
+      // transaction, so the read-only summary must remain available without it.
     }
     if (item.fulfillmentKind === 'client') {
       await this.openAssetPaymentSummary(item, paymentMethod);
@@ -735,7 +736,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private async openAssetPaymentSummary(
     item: PaymentHistoryItemDto,
-    paymentMethod: SavedPaymentMethodDto
+    paymentMethod: SavedPaymentMethodDto | null
   ): Promise<void> {
     this.errorRef.set('');
     const userId = this.activeUserId();
