@@ -155,4 +155,51 @@ describe('EntryPageComponent demo session routing', () => {
     expect(complete).toHaveBeenCalledOnce();
     expect(fail).not.toHaveBeenCalled();
   });
+
+  it('registers an HTTP operator demo session before navigating', async () => {
+    const startDemoSession = vi.fn();
+    const startTrackedDemoSession = vi.fn().mockResolvedValue({
+      kind: 'demo',
+      userId: 'operator-demo',
+      sessionId: 'tracked-session'
+    });
+    const navigateByUrl = vi.fn().mockResolvedValue(true);
+    const complete = vi.fn();
+    const fail = vi.fn();
+    const component = Object.create(EntryPageComponent.prototype) as {
+      usersService: { localModeEnabled: boolean };
+      sessionService: {
+        startDemoSession: typeof startDemoSession;
+        startTrackedDemoSession: typeof startTrackedDemoSession;
+        firebaseNotice: ReturnType<typeof vi.fn>;
+      };
+      router: { navigateByUrl: typeof navigateByUrl };
+      onDemoUserSelected: (selection: {
+        userId: string;
+        mode: 'operator';
+        complete: () => void;
+        fail: (message?: string) => void;
+      }) => Promise<void>;
+    };
+    component.usersService = { localModeEnabled: false };
+    component.sessionService = {
+      startDemoSession,
+      startTrackedDemoSession,
+      firebaseNotice: vi.fn().mockReturnValue('')
+    };
+    component.router = { navigateByUrl };
+
+    await component.onDemoUserSelected({
+      userId: 'operator-demo',
+      mode: 'operator',
+      complete,
+      fail
+    });
+
+    expect(startTrackedDemoSession).toHaveBeenCalledWith('operator-demo');
+    expect(startDemoSession).not.toHaveBeenCalled();
+    expect(navigateByUrl).toHaveBeenCalledWith('/operator');
+    expect(complete).toHaveBeenCalledOnce();
+    expect(fail).not.toHaveBeenCalled();
+  });
 });

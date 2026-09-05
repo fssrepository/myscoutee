@@ -267,6 +267,17 @@ export class SeedUsersRepository {
         };
         changed = true;
       }
+      if (!existing.paymentTotals && seededUser.paymentTotals) {
+        nextById[userId] = {
+          ...(nextById[userId] ?? existing),
+          paymentTotals: {
+            outgoing: { ...seededUser.paymentTotals.outgoing },
+            incoming: { ...seededUser.paymentTotals.incoming },
+            all: { ...seededUser.paymentTotals.all }
+          }
+        };
+        changed = true;
+      }
     }
 
     return {

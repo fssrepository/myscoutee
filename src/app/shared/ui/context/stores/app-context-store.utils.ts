@@ -194,6 +194,13 @@ export function cloneUserProfile(user: UserDto): UserDto {
         muted: user.notificationPreferences.muted === true
       }
       : undefined,
+    paymentTotals: user.paymentTotals
+      ? {
+        outgoing: { ...(user.paymentTotals.outgoing ?? {}) },
+        incoming: { ...(user.paymentTotals.incoming ?? {}) },
+        all: { ...(user.paymentTotals.all ?? {}) }
+      }
+      : undefined,
     activities: {
       game: user.activities?.game ?? 0,
       chats: user.activities?.chats ?? 0,

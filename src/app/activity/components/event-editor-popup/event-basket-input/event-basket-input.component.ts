@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../shared/app-utils';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../../../../shared/ui/components/core/menu';
 import { TextCardComponent, type TextCardTone } from '../../../../shared/ui/components/core/smart-list/card';
 import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
@@ -33,6 +34,18 @@ export interface EventBasketInputItemMenuEvent {
   menuEvent: AppMenuItemSelectEvent<string, unknown>;
 }
 
+export interface EventBasketInputConfig {
+  title?: string;
+  subtitle?: string;
+  readOnly?: boolean;
+  showAdd?: boolean;
+  showItemMenu?: boolean;
+  showPricingSummary?: boolean;
+  addIcon?: string;
+  addAriaLabel?: string;
+  emptyLabel?: string;
+}
+
 @Component({
   selector: 'app-event-basket-input',
   standalone: true,
@@ -48,8 +61,7 @@ export interface EventBasketInputItemMenuEvent {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventBasketInputComponent {
-  @Input() title = 'event.editor.basket.title';
-  @Input() subtitle = 'event.editor.basket.selected.items.subtitle';
+  @Input() config: EventBasketInputConfig = {};
   @Input() contextTitle = '';
   @Input() contextMeta = '';
   @Input() contextDetail = '';
@@ -59,23 +71,36 @@ export class EventBasketInputComponent {
   @Input() totalAmount = 0;
   @Input() currency = 'USD';
   @Input() addDisabled = false;
-  @Input() readOnly = false;
-  @Input() showAdd = true;
-  @Input() showItemMenu = true;
-  @Input() showPricingSummary = false;
-  @Input() addIcon = 'edit';
-  @Input() addAriaLabel = 'event.editor.basket.edit.aria';
-  @Input() emptyLabel = 'event.editor.basket.empty';
   @Input() tone: EventEditorCheckoutSurfaceTone = 'neutral';
 
   @Output() readonly addSelect = new EventEmitter<Event>();
   @Output() readonly itemMenuSelect = new EventEmitter<EventBasketInputItemMenuEvent>();
 
+  protected title(): string {
+    return this.config.title ?? 'event.editor.basket.title';
+  }
+
+  protected subtitle(): string {
+    return this.config.subtitle ?? 'event.editor.basket.selected.items.subtitle';
+  }
+
+  protected readOnly(): boolean {
+    return this.config.readOnly === true;
+  }
+
+  protected showAdd(): boolean {
+    return this.config.showAdd !== false;
+  }
+
+  protected emptyLabel(): string {
+    return this.config.emptyLabel ?? 'event.editor.basket.empty';
+  }
+
   protected addMenuItems(): readonly AppMenuItem<string, unknown>[] {
     return [{
       id: 'add',
-      icon: this.addIcon,
-      ariaLabel: this.addAriaLabel,
+      icon: this.config.addIcon ?? 'edit',
+      ariaLabel: this.config.addAriaLabel ?? 'event.editor.basket.edit.aria',
       palette: 'amber',
       layout: 'action',
       disabled: this.addDisabled
@@ -85,7 +110,7 @@ export class EventBasketInputComponent {
   protected onAddSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    if (event.id !== 'add' || this.readOnly || this.addDisabled) {
+    if (event.id !== 'add' || this.readOnly() || this.addDisabled) {
       return;
     }
     this.addSelect.emit(event.sourceEvent);
@@ -117,7 +142,7 @@ export class EventBasketInputComponent {
   }
 
   protected itemMenuItems(): readonly AppMenuItem<string, unknown>[] {
-    if (this.readOnly || !this.showItemMenu) {
+    if (this.readOnly() || !this.showItemMenu()) {
       return [];
     }
     return [
@@ -139,7 +164,7 @@ export class EventBasketInputComponent {
   }
 
   protected onItemMenuSelect(item: EventBasketInputItem, menuEvent: AppMenuItemSelectEvent<string, unknown>): void {
-    if (this.readOnly || !this.showItemMenu) {
+    if (this.readOnly() || !this.showItemMenu()) {
       return;
     }
     this.itemMenuSelect.emit({ item, menuEvent });
@@ -161,7 +186,19 @@ export class EventBasketInputComponent {
   }
 
   protected itemDetail(item: EventBasketInputItem): string {
-    return item.detail?.trim() || '';
+    return AppUtils.normalizeDateTimeRangeText(item.detail, '');
+  }
+
+  protected itemMeta(item: EventBasketInputItem): string {
+    return AppUtils.normalizeDateTimeRangeText(item.meta, '');
+  }
+
+  protected contextMetaLabel(): string {
+    return AppUtils.normalizeDateTimeRangeText(this.contextMeta, '');
+  }
+
+  protected contextDetailLabel(): string {
+    return AppUtils.normalizeDateTimeRangeText(this.contextDetail, '');
   }
 
   private itemQuantity(item: EventBasketInputItem): number {
@@ -169,12 +206,13 @@ export class EventBasketInputComponent {
   }
 
   protected hasContext(): boolean {
-    return Boolean(this.contextTitle?.trim() || this.contextMeta?.trim() || this.contextDetail?.trim());
+    return Boolean(this.contextTitle.trim() || this.contextMeta.trim() || this.contextDetail.trim());
   }
 
   protected contextAmountLabel(): string {
-    return Number.isFinite(this.contextAmount)
-      ? this.formatMoney(Number(this.contextAmount), this.currency)
+    const amount = this.contextAmount;
+    return Number.isFinite(amount)
+      ? this.formatMoney(Number(amount), this.currency)
       : '';
   }
 
@@ -185,7 +223,7 @@ export class EventBasketInputComponent {
   }
 
   protected visiblePricingSummaryRows(): EventBasketInputPricingSummaryRow[] {
-    const rows = (this.pricingSummaryRows ?? []).length > 0
+    const rows = this.pricingSummaryRows.length > 0
       ? this.pricingSummaryRows
       : this.items.flatMap(item => item.pricingSummaryRows ?? []);
     return rows
@@ -201,8 +239,12 @@ export class EventBasketInputComponent {
   }
 
   protected hasPricingSummary(): boolean {
-    return this.showPricingSummary === true
-      && (this.visiblePricingSummaryRows().length > 0 || this.items.length > 0 || Number(this.totalAmount) > 0);
+    return this.config.showPricingSummary === true
+      && (
+        this.visiblePricingSummaryRows().length > 0
+        || this.items.length > 0
+        || Number(this.totalAmount) > 0
+      );
   }
 
   protected pricingSummaryAmountLabel(row: EventBasketInputPricingSummaryRow): string {
@@ -215,12 +257,23 @@ export class EventBasketInputComponent {
   }
 
   protected pricingSummaryTotalLabel(): string {
-    return this.formatMoney(Number(this.totalAmount) || 0, this.currency);
+    return this.formatMoney(
+      Number(this.totalAmount) || 0,
+      this.currency
+    );
+  }
+
+  private showItemMenu(): boolean {
+    return this.config.showItemMenu !== false;
   }
 
   private formatMoney(amount: number, currency: string): string {
     const symbol = this.currencySymbol(currency);
-    return `${symbol}${(Number(amount) || 0).toFixed(2)}`;
+    const formattedAmount = new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(amount) || 0);
+    return `${symbol}${formattedAmount}`;
   }
 
   private currencySymbol(currency: string): string {

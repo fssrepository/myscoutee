@@ -34,7 +34,8 @@ import {
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   EventEditorPopupStore,
-  type EventEditorCheckoutSurfaceTone
+  type EventEditorCheckoutSurfaceTone,
+  type EventPaymentStatusTone
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
   EventCheckoutDraftStore,
@@ -94,13 +95,14 @@ import {
 } from '../../../shared/ui';
 import {
   EventBasketInputComponent,
+  type EventBasketInputConfig,
   type EventBasketInputItem,
   type EventBasketInputItemMenuEvent,
   type EventBasketInputPricingSummaryRow
 } from './event-basket-input';
 import {
   EventPaymentInputComponent,
-  type EventPaymentInputItem
+  type EventPaymentInputConfig
 } from './event-payment-input';
 import {
   EventSubeventDefinitionsPanelComponent
@@ -300,6 +302,26 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     slotCatalog: () => this.pricingSlotCatalog(),
     visible: () => this.checkoutPricingPanelVisibility(),
     runtimePreview: () => this.checkoutPricingRuntimePreview()
+  };
+
+  protected readonly checkoutPaymentBasketConfig: EventBasketInputConfig = {
+    title: 'event.editor.basket.title',
+    subtitle: 'event.editor.basket.payment.subtitle',
+    readOnly: true,
+    showAdd: false,
+    showItemMenu: false
+  };
+
+  protected readonly checkoutSelectionBasketConfig: EventBasketInputConfig = {
+    title: 'event.editor.basket.title',
+    subtitle: 'event.editor.basket.selected.slot.subtitle',
+    showItemMenu: false
+  };
+
+  protected readonly checkoutPaymentInputConfig: EventPaymentInputConfig = {
+    title: 'event.editor.payment.title',
+    subtitle: 'event.editor.payment.subtitle',
+    paymentIntegrationEnabled: environment.paymentIntegrationEnabled
   };
 
   protected readonly eventPoliciesInputConfig: PoliciesInputConfig = {
@@ -551,18 +573,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }));
   }
 
-  protected checkoutPaymentInputItems(): readonly EventPaymentInputItem[] {
-    return this.checkoutBasketInputItems().map(item => ({
-      id: item.id,
-      title: item.title,
-      meta: item.meta,
-      detail: item.detail ?? null,
-      amount: item.amount,
-      currency: item.currency,
-      quantity: item.quantity ?? 1
-    }));
-  }
-
   protected checkoutBasketTone(): EventEditorCheckoutSurfaceTone {
     const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketTone, null);
     return configured ?? 'neutral';
@@ -578,8 +588,41 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       || this.formatCheckoutDateRange(this.eventDetailDTO.dateRange.startAt, this.eventDetailDTO.dateRange.endAt);
   }
 
-  protected checkoutPaymentIntegrationEnabled(): boolean {
-    return environment.paymentIntegrationEnabled;
+  protected checkoutPaymentMethod(): ContractTypes.SavedPaymentMethodDto | null {
+    return this.resolvePresentationValue<ContractTypes.SavedPaymentMethodDto | null>(
+      this.eventEditorStore.presentation().paymentMethod,
+      null
+    );
+  }
+
+  protected checkoutPaymentMethodReadOnly(): boolean {
+    return this.resolvePresentationValue(
+      this.eventEditorStore.presentation().paymentMethodReadOnly,
+      false
+    ) === true;
+  }
+
+  protected checkoutPaymentProvider(): string {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().paymentProvider, '') ?? '';
+  }
+
+  protected checkoutPaymentStatusLabel(): string {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().paymentStatusLabel, '') ?? '';
+  }
+
+  protected checkoutPaymentStatusTone(): EventPaymentStatusTone {
+    return this.resolvePresentationValue(
+      this.eventEditorStore.presentation().paymentStatusTone,
+      'neutral'
+    ) ?? 'neutral';
+  }
+
+  protected checkoutPaymentNote(): string {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().paymentNote, '') ?? '';
+  }
+
+  protected onCheckoutPaymentMethodChange(paymentMethod: ContractTypes.SavedPaymentMethodDto): void {
+    void this.eventEditorStore.presentation().onPaymentMethodChange?.(paymentMethod);
   }
 
   private formatCheckoutDateRange(startAtIso: string | null | undefined, endAtIso: string | null | undefined): string {

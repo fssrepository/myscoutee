@@ -11,14 +11,14 @@
       <span class="event-basket-panel-title">
         <span class="event-basket-panel-title-line">
           <mat-icon>shopping_basket</mat-icon>
-          <span>{{ title | i18n }}</span>
+          <span>{{ title() | i18n }}</span>
         </span>
       </span>
-      @if (subtitle) {
-        <p class="event-basket-panel-subtitle">{{ subtitle | i18n }}</p>
+      @if (subtitle()) {
+        <p class="event-basket-panel-subtitle">{{ subtitle() | i18n }}</p>
       }
     </div>
-    @if (showAdd && !readOnly) {
+    @if (showAdd() && !readOnly()) {
     <div class="event-basket-panel-actions">
       <app-menu
         class="event-basket-add-menu"
@@ -38,10 +38,10 @@
             <strong>{{ contextTitle }}</strong>
           }
           @if (contextMeta) {
-            <span>{{ contextMeta }}</span>
+            <span>{{ contextMetaLabel() }}</span>
           }
           @if (contextDetail) {
-            <small>{{ contextDetail }}</small>
+            <small>{{ contextDetailLabel() }}</small>
           }
         </div>
         @if (contextAmountLabel()) {
@@ -51,7 +51,7 @@
     }
 
     @if (items.length > 0) {
-      @if (readOnly) {
+      @if (readOnly()) {
         <div class="event-basket-section-head">
           <span>{{ 'event.editor.basket.selected.items' | i18n }}</span>
           <strong>{{ items.length }} {{ (items.length === 1 ? 'item' : 'items') | i18n }}</strong>
@@ -59,11 +59,11 @@
       }
       <div class="event-basket-list">
         @for (item of items; track itemTrackId($index, item)) {
-          @if (readOnly) {
+          @if (readOnly()) {
             <article class="event-basket-readonly-row">
               <div>
                 <strong>{{ item.title }}</strong>
-                <span>{{ item.meta }}</span>
+                <span>{{ itemMeta(item) }}</span>
                 @if (itemDetail(item)) {
                   <small>{{ itemDetail(item) }}</small>
                 }
@@ -77,7 +77,7 @@
             icon="event_seat"
             [title]="item.title"
             [subtitle]="itemSubtitle(item)"
-            [meta]="item.meta"
+            [meta]="itemMeta(item)"
             [detail]="itemDetail(item)"
             [menuTitle]="item.title"
             [menuPalette]="itemMenuPalette(item)"
@@ -88,7 +88,7 @@
         }
       </div>
     } @else {
-      <div class="event-basket-empty">{{ emptyLabel | i18n }}</div>
+      <div class="event-basket-empty">{{ emptyLabel() | i18n }}</div>
     }
 
     @if (hasPricingSummary()) {

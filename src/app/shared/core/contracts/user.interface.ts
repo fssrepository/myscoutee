@@ -219,12 +219,19 @@ export interface UserRealtimeCountersDto extends UserMenuCountersDto {
   impressionsMemberChanged?: boolean;
 }
 
+export interface UserPaymentTotalsDto {
+  outgoing: Record<string, number>;
+  incoming: Record<string, number>;
+  all: Record<string, number>;
+}
+
 export interface UserRealtimeLongPollResponseDto {
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;
   offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
+  paymentTotals?: UserPaymentTotalsDto | null;
   cursor?: string | null;
   serverTsIso?: string;
 }
@@ -284,6 +291,7 @@ export class UserDto {
   admin?: boolean;
   operator?: boolean;
   notificationPreferences?: UserNotificationPreferencesDto;
+  paymentTotals?: UserPaymentTotalsDto;
   activities: {
     game: number;
     chats: number;

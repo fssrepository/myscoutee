@@ -39,6 +39,7 @@ import type {
 export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
   private readonly popupPresenceStore = inject(PopupPresenceStore);
   private presenceToken: symbol | null = null;
+  private registeredZIndex = 2300;
 
   @Input() model: PopupModel<TContext> | null = null;
   @Input() zIndex: number | null = null;
@@ -49,7 +50,8 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
   @Output() readonly dateInputChange = new EventEmitter<PopupDateInputChangeEvent<TContext>>();
 
   ngOnInit(): void {
-    this.presenceToken = this.popupPresenceStore.register();
+    this.presenceToken = this.popupPresenceStore.register(this.zIndex);
+    this.registeredZIndex = this.popupPresenceStore.layer(this.presenceToken) ?? this.registeredZIndex;
   }
 
   ngOnDestroy(): void {
@@ -61,6 +63,13 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
 
   protected get popupModel(): PopupModel<TContext> {
     return this.model ?? {};
+  }
+
+  protected get effectiveZIndex(): number {
+    const configuredZIndex = Number(this.zIndex);
+    return Number.isFinite(configuredZIndex) && configuredZIndex > 0
+      ? Math.max(Math.trunc(configuredZIndex), this.registeredZIndex)
+      : this.registeredZIndex;
   }
 
   protected get ariaLabel(): string {

@@ -99,6 +99,8 @@ type HttpActivityEventPageResponse = ActivityEventDTO[] | {
 })
 export class HttpEventsService implements IEventsService {
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
+  private static readonly PAYMENT_AUTHORIZATION_ROUTE = '/activities/events/checkout/authorize';
+  private static readonly EVENT_PAYMENT_ROUTE = '/activities/events/checkout/pay';
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
@@ -575,15 +577,23 @@ export class HttpEventsService implements IEventsService {
     return ActivityEventDetailDTO.cloneCheckoutBasket(response);
   }
 
-  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+  async payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    const response = await this.http
-      .post<EventParticipationActionResultDTO | null>(
-        `${this.apiBaseUrl}/activities/events/checkout/pay`,
+    const normalizedProvider = `${provider ?? ''}`.trim().toLowerCase();
+    const options = normalizedProvider
+      ? { params: new HttpParams().set('provider', normalizedProvider) }
+      : {};
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpEventsService.EVENT_PAYMENT_ROUTE,
+      this.http.post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}${HttpEventsService.EVENT_PAYMENT_ROUTE}`,
         {
           ...request,
           userId: normalizedUserId,
@@ -591,9 +601,12 @@ export class HttpEventsService implements IEventsService {
           checkoutState: 'pay',
           resultState: 'succeeded',
           pendingReason: null
-        }
-      )
-      .toPromise();
+        },
+        options
+      ).toPromise(),
+      'Payment provider request timed out.',
+      120000
+    );
     return this.normalizeParticipationActionResult(response);
   }
 
@@ -939,6 +952,18 @@ export class HttpEventsService implements IEventsService {
         request
       )
       .toPromise() ?? null;
+  }
+
+  async authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    return await this.routeDelay.withRequestTimeout(
+      HttpEventsService.PAYMENT_AUTHORIZATION_ROUTE,
+      this.http.post<EventCheckoutSession | null>(
+        `${this.apiBaseUrl}${HttpEventsService.PAYMENT_AUTHORIZATION_ROUTE}`,
+        request
+      ).toPromise(),
+      'Payment provider request timed out.',
+      120000
+    ) ?? null;
   }
 
   async payCheckoutSession(

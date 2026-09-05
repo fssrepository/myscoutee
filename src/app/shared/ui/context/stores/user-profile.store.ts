@@ -10,6 +10,7 @@ import type {
   ProfileExtDto,
   UserDto,
   UserImpressionsDto,
+  UserPaymentTotalsDto,
   UserRealtimeLongPollResponseDto
 } from '../../../core/contracts/user.interface';
 import {
@@ -61,6 +62,7 @@ export interface UserRealtimeProfilePatch {
   impressions: UserImpressionsDto;
   changeFlags: UserImpressionChangeFlags | null;
   clearChangeFlags: boolean;
+  paymentTotals: UserPaymentTotalsDto | null;
 }
 
 export interface UserProfileSaveSignal {
@@ -631,7 +633,8 @@ export class UserProfileStore {
       nextUser = cloneUserProfile({
         ...currentUser,
         activities: this.applyActivityCounterPatch(currentUser.activities, patch.counterPatch),
-        impressions
+        impressions,
+        paymentTotals: patch.paymentTotals ?? currentUser.paymentTotals
       });
       this._userProfilesByUserId.update(state => ({
         ...state,

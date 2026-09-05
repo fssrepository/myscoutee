@@ -534,6 +534,17 @@ export class SeedUserBuilder {
     const chats = normalize(user.activities?.chats);
     return {
       ...user,
+      paymentTotals: user.paymentTotals
+        ? {
+          outgoing: { ...user.paymentTotals.outgoing },
+          incoming: { ...user.paymentTotals.incoming },
+          all: { ...user.paymentTotals.all }
+        }
+        : {
+          outgoing: { HUF: 34800 },
+          incoming: { HUF: 14000 },
+          all: { HUF: 48800 }
+        },
       activities: {
         ...user.activities,
         chats,

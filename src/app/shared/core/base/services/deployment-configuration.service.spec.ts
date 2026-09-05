@@ -106,6 +106,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: 'https://cdn.example.test/community-hub.webp',
       logoCharacterIndex: null,
       themePreset: 'OCEAN',
+      paymentProviderId: 'stripe',
       socialLinks: [{
         provider: 'community',
         label: 'Community',
@@ -145,6 +146,7 @@ describe('DeploymentConfigurationService', () => {
       dataControllerName: 'Community Cooperative',
       privacyContactEmail: 'privacy@example.test'
     });
+    expect(service.paymentProviderId()).toBe('stripe');
     expect(TestBed.inject(DOCUMENT).documentElement.dataset['deploymentTheme'])
       .toBe('ocean');
     expect(TestBed.inject(DOCUMENT).title).toBe('Community Hub');
@@ -220,6 +222,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: '',
       logoCharacterIndex: -1,
       themePreset: 'OCEAN',
+      paymentProviderId: null,
       socialLinks: [],
       privacyContact: {
         configured: false,
@@ -251,6 +254,7 @@ describe('DeploymentConfigurationService', () => {
       logoUrl: 'assets/logo/heart.png',
       logoCharacterIndex: 3,
       themePreset: 'OCEAN',
+      paymentProviderId: null,
       socialLinks: [],
       privacyContact: {
         configured: false,
@@ -264,6 +268,26 @@ describe('DeploymentConfigurationService', () => {
     await expect(service.initialize()).rejects.toThrow(
       'deployment.configuration.branding.logo.character.index.invalid'
     );
+  });
+
+  it('applies a provider-change response directly without reloading configuration', () => {
+    const service = TestBed.inject(DeploymentConfigurationService);
+
+    expect(service.applyPaymentProviderChangeResponse({
+      code: 'PAYMENT_PROVIDER_CHANGED',
+      message: 'Payment provider changed to Barion. Reconnect your card.',
+      currentProvider: 'barion'
+    })).toBe(true);
+    expect(service.paymentProviderId()).toBe('barion');
+    expect(loadLocalBranding).not.toHaveBeenCalled();
+
+    expect(service.applyPaymentProviderChangeResponse({
+      code: 'PAYMENT_PROVIDER_CHANGED',
+      message: 'Payment provider changed to Cash only. Start payment again.',
+      currentProvider: null
+    })).toBe(true);
+    expect(service.paymentProviderId()).toBeNull();
+    expect(loadLocalBranding).not.toHaveBeenCalled();
   });
 
   function addHeadFixture(

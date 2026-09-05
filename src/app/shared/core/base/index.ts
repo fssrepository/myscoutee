@@ -19,6 +19,11 @@ export { LandingContentService } from './services/landing-content.service';
 export { DeploymentConfigurationService } from './services/deployment-configuration.service';
 export { MediaService } from './services/media.service';
 export { NotificationsService } from './services/notifications.service';
+export { PaymentMethodsService } from './services/payment-methods.service';
+export {
+  PaymentAuthorizationService,
+  type PaymentAuthorizationContinuation
+} from './services/payment-authorization.service';
 export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
 export {
   AdminParamsService,

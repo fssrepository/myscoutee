@@ -116,7 +116,9 @@ import { isNavigatorHydrationRoute } from './navigator-hydration-route';
 import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
+import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
+import { environment } from '../../../../../environments/environment';
 import {
   NotificationCenterPopupComponent
 } from '../notification-center-popup/notification-center-popup.component';
@@ -147,6 +149,7 @@ type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
 type NavigatorOperatorCommunityMenuItemId = 'operator-community';
 type NotificationAttentionMenuItemId = 'notification-attention';
+type NavigatorContextualMenuItemId = 'payment-history';
 
 interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
@@ -175,6 +178,8 @@ type NavigatorAdminMenuShortcutId =
   | 'adminChat'
   | 'adminJobs'
   | 'adminParams'
+  | 'adminPaymentSimulator'
+  | 'adminPaymentAuthorizations'
   | 'adminContent'
   | 'adminArticle'
   | 'adminStats'
@@ -244,6 +249,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   protected readonly popupPresenceStore = inject(PopupPresenceStore);
+  protected readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -617,6 +623,25 @@ export class SideMenuComponent implements OnDestroy {
       ]
     };
   });
+  protected readonly navigatorContextualMenuModel = computed<AppMenuModel<NavigatorContextualMenuItemId>>(() => {
+    const user = this.menuUser();
+    return {
+      layout: 'row',
+      density: 'compact',
+      nodes: [{
+        id: 'navigator-contextual-actions',
+        items: [{
+          id: 'payment-history',
+          label: 'payment.history.menu',
+          icon: 'receipt_long',
+          layout: 'pill',
+          palette: 'green',
+          ariaLabel: 'payment.history.open',
+          disabled: !user || this.isPrimaryMenuDisabled(user)
+        }]
+      }]
+    };
+  });
   protected readonly navigatorMenuValues = computed<AppMenuValueMap<NavigatorMenuShortcutId>>(() => {
     const user = this.menuUser();
     if (!user) {
@@ -821,6 +846,12 @@ export class SideMenuComponent implements OnDestroy {
   });
   protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
     const disabled = !this.runtimeStore.isOnline();
+    const paymentSimulatorConfigUrl = `${environment.paymentSimulatorConfigUrl ?? ''}`.trim();
+    const activeSession = this.sessionService.session();
+    const activeUserId = activeSession?.kind === 'demo'
+      ? activeSession.userId.trim()
+      : '';
+    const showPaymentSimulator = activeUserId.startsWith('admin-demo-');
     return {
       nodes: [
         {
@@ -926,7 +957,28 @@ export class SideMenuComponent implements OnDestroy {
               disabled
             }
           ]
-        }
+        },
+        ...(showPaymentSimulator ? [{
+          id: 'admin-testing',
+          label: 'admin.testing',
+          icon: 'science',
+          palette: 'cyan' as const,
+          items: [{
+            id: 'adminPaymentSimulator' as const,
+            label: 'admin.payment.simulator',
+            icon: 'credit_card_gear',
+            palette: 'cyan' as const,
+            ariaLabel: 'admin.payment.simulator.open',
+            disabled: disabled || !paymentSimulatorConfigUrl
+          }, {
+            id: 'adminPaymentAuthorizations' as const,
+            label: 'admin.payment.simulator.3ds',
+            icon: 'verified_user',
+            palette: 'green' as const,
+            ariaLabel: 'admin.payment.simulator.authorization.open',
+            disabled: disabled || !paymentSimulatorConfigUrl
+          }]
+        }] : [])
       ]
     };
   });
@@ -1364,6 +1416,14 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
+  protected onNavigatorContextualMenuSelect(event: AppMenuItemSelectEvent<NavigatorContextualMenuItemId>): void {
+    if (event.id !== 'payment-history') return;
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    this.closeSideMenu();
+    void this.paymentMethodsPopupStore.openHistory();
+  }
+
   protected onNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorMenuShortcutId>): void {
     switch (event.id) {
       case 'impressions':
@@ -1421,6 +1481,12 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'adminParams':
         this.openAdminParamsShortcut(event.sourceEvent);
+        return;
+      case 'adminPaymentSimulator':
+        this.openAdminPaymentSimulatorShortcut(event.sourceEvent);
+        return;
+      case 'adminPaymentAuthorizations':
+        this.openAdminPaymentAuthorizationsShortcut(event.sourceEvent);
         return;
       case 'adminContent':
         this.openAdminHelpEditorShortcut(event.sourceEvent);
@@ -1628,7 +1694,7 @@ export class SideMenuComponent implements OnDestroy {
     return this.currentRoutePathRef().startsWith('/operator');
   }
 
-  private isPrivilegedWorkspaceMode(): boolean {
+  protected isPrivilegedWorkspaceMode(): boolean {
     return this.isAdminMode() || this.isOperatorMode();
   }
 
@@ -1694,6 +1760,22 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     this.adminMenuStore.openParams();
+  }
+
+  protected openAdminPaymentSimulatorShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.runtimeStore.isOnline()) {
+      return;
+    }
+    this.adminMenuStore.openPaymentSimulator();
+  }
+
+  protected openAdminPaymentAuthorizationsShortcut(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.runtimeStore.isOnline()) {
+      return;
+    }
+    this.adminMenuStore.openPaymentAuthorizations();
   }
 
   protected openAdminStatsShortcut(event?: Event): void {

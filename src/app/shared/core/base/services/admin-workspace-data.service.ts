@@ -43,15 +43,6 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
     return this.isLocalAdminWorkspace();
   }
 
-  prepareSelectedAdminSession(adminUserId: string): void {
-    if (
-      !this.isLocalAdminWorkspace()
-      && this.sessionService.currentSession()?.kind !== 'firebase'
-    ) {
-      this.sessionService.startDemoSession(adminUserId);
-    }
-  }
-
   async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
     try {
       return await this.shareTokens.resolveToken(token, '');

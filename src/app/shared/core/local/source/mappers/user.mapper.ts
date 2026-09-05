@@ -98,6 +98,13 @@ export class LocalUsersMapper {
           muted: user.notificationPreferences.muted === true
         }
         : undefined,
+      paymentTotals: user.paymentTotals
+        ? {
+          outgoing: { ...(user.paymentTotals.outgoing ?? {}) },
+          incoming: { ...(user.paymentTotals.incoming ?? {}) },
+          all: { ...(user.paymentTotals.all ?? {}) }
+        }
+        : undefined,
       activities: {
         ...user.activities
       }

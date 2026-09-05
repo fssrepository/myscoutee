@@ -534,7 +534,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
   }
 
-  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+  async payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    _provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
     if (!normalizedUserId || !normalizedSourceId) {
@@ -2548,6 +2551,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.saveCheckoutBasketRecord(
       this.withCheckoutBasketState(request, 'confirmed', session.id)
     );
+    return session;
+  }
+
+  async authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    const session: EventCheckoutSession = {
+      id: `payment-${Date.now()}`,
+      provider: 'dummy',
+      mode: 'dummy',
+      status: 'approved',
+      amount: Math.max(0, Number(request.totalAmount) || 0),
+      currency: request.currency?.trim() || 'USD',
+      paymentUrl: null
+    };
+    await this.saveCheckoutBasketRecord(this.withCheckoutBasketState(request, 'pay', session.id));
     return session;
   }
 

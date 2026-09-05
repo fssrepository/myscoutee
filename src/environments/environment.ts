@@ -8,5 +8,6 @@ export const environment = {
   firebaseLoginEnabled: false,
   firebaseLoginQaOverrideEnabled: false,
   firebaseMessagingEnabled: true,
-  paymentIntegrationEnabled: false
+  paymentIntegrationEnabled: false,
+  paymentSimulatorConfigUrl: null as string | null
 };

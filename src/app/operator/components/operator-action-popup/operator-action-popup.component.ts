@@ -736,9 +736,9 @@ export class OperatorActionPopupComponent {
     const selected = this.workspace.configurationDraft()?.payment.providerId ?? null;
     return [
       {
-        id: 'operator-payment-provider-none',
-        label: 'operator.configuration.payment.provider.none',
-        icon: 'money_off',
+        id: 'operator-payment-provider-cash-only',
+        label: 'operator.configuration.payment.provider.cash.only',
+        icon: 'payments',
         kind: 'radio',
         palette: 'slate',
         active: selected === null,
@@ -1583,12 +1583,12 @@ export class OperatorActionPopupComponent {
     const provider = configuration?.payment.availableProviders
       .find(item => item.id === selected);
     return {
-      label: provider?.label ?? 'operator.configuration.payment.provider.none',
+      label: provider?.label ?? 'operator.configuration.payment.provider.cash.only',
       icon: provider
         ? provider.logoUrl
           ? undefined
           : 'payments'
-        : 'money_off',
+        : 'payments',
       imageUrl: provider?.logoUrl,
       imageAlt: provider?.logoAlt,
       palette: provider?.palette ?? (provider ? undefined : 'slate'),
