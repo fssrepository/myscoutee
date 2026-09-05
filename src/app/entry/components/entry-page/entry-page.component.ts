@@ -669,9 +669,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       selection.fail();
       return;
     }
-    this.adminWorkspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
-    if (!this.sessionService.startDemoSession(normalizedAdminUserId)) {
-      selection.fail();
+    const session = this.usersService.localModeEnabled
+      ? this.sessionService.startDemoSession(normalizedAdminUserId)
+      : await this.sessionService.startTrackedDemoSession(normalizedAdminUserId);
+    if (!session) {
+      selection.fail(this.sessionService.firebaseNotice());
       return;
     }
     try {

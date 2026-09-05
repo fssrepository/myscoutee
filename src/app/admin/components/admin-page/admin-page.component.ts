@@ -195,14 +195,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     return this.workspaceData.isFirebaseAdminMode;
   }
 
-  private prepareSelectedAdminSession(adminUserId: string): void {
-    const normalizedAdminUserId = this.workspace.prepareSelectedAdminSession(adminUserId);
-    if (!normalizedAdminUserId) {
-      return;
-    }
-    this.workspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
-  }
-
   private async restoreAdminSession(): Promise<boolean> {
     const adminId = this.workspace.readStoredAdminId();
     if (!adminId) {
@@ -218,7 +210,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
         this.clearAdminSession();
         return false;
       }
-      this.prepareSelectedAdminSession(adminId);
+      this.workspace.prepareSelectedAdminSession(adminId);
       return Boolean(await this.bootstrapAdmin(
         session.kind === 'demo' ? session.userId : undefined
       ));
@@ -285,12 +277,18 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private openSelectedAdmin(adminUserId: string): boolean {
+  private async openSelectedAdmin(adminUserId: string): Promise<boolean> {
     const normalizedAdminUserId = adminUserId.trim();
     if (!normalizedAdminUserId) {
       return false;
     }
-    this.prepareSelectedAdminSession(normalizedAdminUserId);
+    this.workspace.prepareSelectedAdminSession(normalizedAdminUserId);
+    const session = this.workspaceData.shouldUseLocalAdminHelpSession
+      ? this.sessionService.startDemoSession(normalizedAdminUserId)
+      : await this.sessionService.startTrackedDemoSession(normalizedAdminUserId);
+    if (!session) {
+      return false;
+    }
     void this.navigateToAdminAfterSelectorClose();
     return true;
   }
