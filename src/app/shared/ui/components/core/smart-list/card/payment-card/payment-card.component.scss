@@ -9,6 +9,9 @@
   border: 1px solid rgba(255, 255, 255, .42);
   border-radius: 1.05rem;
   background: #1c3156 center / cover no-repeat;
+  // Seeded artwork has its own transparent rounded edge. A small, centered
+  // overscan keeps that edge outside the card component's clipping radius.
+  background-size: 104% 104%;
   color: #fff;
   box-shadow: 0 .8rem 1.8rem rgba(12, 25, 48, .2);
 }
