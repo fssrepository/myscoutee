@@ -7,6 +7,7 @@ import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 import type {
+  PaymentHistoryDirection,
   PaymentHistoryItemDto,
   PaymentMethodRegistrationDto,
   PaymentProvider,
@@ -19,7 +20,7 @@ import { EventCheckoutDialogStore } from '../../context/stores/event-checkout-di
 import { AssetStore } from '../../context/stores/asset.store';
 import { AssetPopupStore } from '../../context/stores/asset-popup.store';
 import { DialogStore } from '../../context/stores/dialog.store';
-import type { AppMenuItemSelectEvent, AppMenuTrigger } from '../core/menu';
+import type { AppMenuItem, AppMenuItemSelectEvent, AppMenuTrigger } from '../core/menu';
 import {
   PopupComponent,
   type PopupControl,
@@ -39,8 +40,11 @@ import {
 } from '../core/smart-list/card';
 import { I18nPipe } from '../../pipes';
 
-interface PaymentListFilters { revision: number; }
-interface PaymentPopupMenuContext { action: 'open-cards' | 'add-card' | 'confirm-card'; }
+interface PaymentListFilters { revision: number; direction?: PaymentHistoryDirection; }
+interface PaymentPopupMenuContext {
+  action: 'open-cards' | 'add-card' | 'confirm-card' | 'set-history-direction';
+  direction?: PaymentHistoryDirection;
+}
 
 @Component({
   selector: 'app-payment-methods-popup',
@@ -79,6 +83,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
   private readonly spendingTotalsRef = signal<Record<string, number>>({});
+  private readonly incomeTotalsRef = signal<Record<string, number>>({});
+  private readonly historyDirectionRef = signal<PaymentHistoryDirection>('all');
   private readonly loadedCardsById = new Map<string, SavedPaymentMethodDto>();
   private registrationPoll: ReturnType<typeof setTimeout> | null = null;
   private registrationRefreshInFlight = false;
@@ -89,6 +95,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly busy = this.busyRef.asReadonly();
   protected readonly error = this.errorRef.asReadonly();
   protected readonly spendingTotals = this.spendingTotalsRef.asReadonly();
+  protected readonly historyDirection = this.historyDirectionRef.asReadonly();
   protected readonly localMode = this.paymentMethods.localModeEnabled;
   protected readonly pickerMode = computed(() => this.store.picker() !== null);
 
@@ -105,7 +112,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     pageSize: 20,
     sort: 'createdDate',
     direction: 'desc',
-    filters: { revision: this.revisionRef() }
+    filters: { revision: this.revisionRef(), direction: this.historyDirectionRef() }
   }));
 
   protected readonly cardListConfig: SmartListConfig<SavedPaymentMethodDto, PaymentListFilters> = {
@@ -133,6 +140,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     emptyDescription: 'payment.history.empty.description',
     listLayout: 'stack',
     snapMode: 'none',
+    groupBy: item => `${item.createdAtIso ?? ''}`.slice(0, 10),
+    showFirstGroupMarker: true,
     headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
     trackBy: (_index, item) => item.id
   };
@@ -161,6 +170,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly loadAllHistory: SmartListLoadPage<PaymentHistoryItemDto, PaymentListFilters> = (query, context) => from(
     this.paymentMethods.queryAllHistory(this.activeUserId(), query, context?.signal).then(page => {
       this.spendingTotalsRef.set({ ...page.spendingTotals });
+      this.incomeTotalsRef.set({ ...page.incomeTotals });
       return page;
     })
   );
@@ -168,8 +178,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected mainPopupModel(): PopupModel<PaymentPopupMenuContext> {
     return {
       title: 'payment.history.title',
-      subtitle: this.historySubtitle(),
-      translateSubtitle: false,
+      subtitle: 'payment.history.subtitle',
       ariaLabel: 'payment.history.title',
       closeAriaLabel: 'payment.history.close',
       size: 'wide',
@@ -177,7 +186,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       bodyLayout: 'fill',
       headerTone: 'accent',
       headerPalette: 'blue',
-      headerControls: [this.headerActionControl({
+      headerControls: [this.historyFilterControl(), this.headerActionControl({
         id: 'open-cards',
         icon: 'credit_card',
         label: 'payment.cards.open',
@@ -257,6 +266,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected paymentCard(method: SavedPaymentMethodDto): PaymentCardData {
     const loading = method.status === 'registering';
+    const expired = this.paymentMethodExpired(method);
     return {
       id: method.id,
       provider: method.provider,
@@ -268,10 +278,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       artworkUrl: method.artworkUrl,
       loading,
       loadingLabel: loading ? 'payment.registration.pending' : undefined,
-      disabled: loading,
-      selected: this.pickerMode() && this.store.selectedPaymentMethodId() === method.id,
+      disabled: loading || expired,
+      expired,
+      selected: !expired && this.pickerMode() && this.store.selectedPaymentMethodId() === method.id,
       paymentMenuActions: loading || this.pickerMode() ? [] : [
-        ...(!this.localMode
+        ...(!this.localMode && !expired
           ? [{ id: 'replace-payment-card', label: 'payment.cards.replace', icon: 'published_with_changes', tone: 'accent' as const }]
           : []),
         { id: 'delete-payment-card', label: 'payment.cards.delete', icon: 'delete', tone: 'destructive' }
@@ -280,13 +291,17 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   protected historyRow(item: PaymentHistoryItemDto, withMenu = false): SingleRowData<PaymentHistoryItemDto> {
-    const amount = new Intl.NumberFormat(undefined, { style: 'currency', currency: item.currency || 'HUF' })
-      .format(Number(item.amount) || 0);
+    const amount = this.formatSignedCurrency(
+      Number(item.amount) || 0,
+      item.currency || 'HUF',
+      item.direction === 'income' ? '+' : '−'
+    );
     const date = new Date(item.createdAtIso);
     const statusLabel = this.paymentStatusLabel(item.status);
     return {
       id: item.id,
       title: amount,
+      surfaceTone: item.direction === 'income' ? 'success' : 'danger',
       subtitle: item.sourceId || this.i18n.translate('payment'),
       detail: Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
         year: 'numeric',
@@ -325,7 +340,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected selectCard(method: SavedPaymentMethodDto, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    if (!this.pickerMode() || method.status !== 'active') return;
+    if (!this.pickerMode() || method.status !== 'active' || this.paymentMethodExpired(method)) return;
     this.store.togglePickerSelection(method.id);
   }
 
@@ -384,6 +399,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
     const action = event.itemSelect.context?.action;
+    if (action === 'set-history-direction') {
+      const direction = event.itemSelect.context?.direction;
+      if (direction && direction !== this.historyDirectionRef()) {
+        this.historyDirectionRef.set(direction);
+        this.revisionRef.update(value => value + 1);
+      }
+      return;
+    }
     if (action === 'add-card') {
       void this.beginRegistration(null);
       return;
@@ -401,7 +424,18 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private selectedPaymentMethod(): SavedPaymentMethodDto | null {
     const selectedId = this.store.selectedPaymentMethodId();
-    return selectedId ? this.loadedCardsById.get(selectedId) ?? null : null;
+    const selected = selectedId ? this.loadedCardsById.get(selectedId) ?? null : null;
+    return selected?.status === 'active' && !this.paymentMethodExpired(selected)
+      ? selected
+      : null;
+  }
+
+  private paymentMethodExpired(method: SavedPaymentMethodDto): boolean {
+    if (`${method.status ?? ''}`.trim().toLowerCase() === 'expired') return true;
+    const year = Number(method.expiryYear);
+    const month = Number(method.expiryMonth);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return true;
+    return Date.now() >= Date.UTC(year, month, 1);
   }
 
   private async beginRegistration(replacesPaymentMethodId: string | null): Promise<void> {
@@ -558,17 +592,80 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     return normalized ? this.i18n.translate(`payment.status.${normalized}`, status) : '';
   }
 
-  private historySubtitle(): string {
-    const base = this.i18n.translate('payment.history.subtitle');
-    const totals = Object.entries(this.spendingTotalsRef())
+  protected historyHeaderTotals(): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
+    const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
+    const outgoing = stored?.outgoing ?? this.spendingTotalsRef();
+    const incoming = stored?.incoming ?? this.incomeTotalsRef();
+    return [
+      ...this.signedTotals(outgoing, '−', 'expense'),
+      ...this.signedTotals(incoming, '+', 'income')
+    ];
+  }
+
+  private historyFilterControl(): PopupControl<PaymentPopupMenuContext> {
+    const direction = this.historyDirectionRef();
+    const labels: Record<PaymentHistoryDirection, string> = {
+      all: 'payment.history.filter.all',
+      expenses: 'payment.history.filter.expenses',
+      income: 'payment.history.filter.income'
+    };
+    const items: AppMenuItem<string, PaymentPopupMenuContext>[] = (['all', 'expenses', 'income'] as const)
+      .map(value => ({
+        id: `payment-history-${value}`,
+        label: labels[value],
+        icon: value === 'all' ? 'swap_vert' : value === 'income' ? 'south_west' : 'north_east',
+        kind: 'radio',
+        palette: value === 'income' ? 'green' : value === 'expenses' ? 'red' : 'blue',
+        active: value === direction,
+        checked: value === direction,
+        context: { action: 'set-history-direction', direction: value }
+      }));
+    return {
+      kind: 'menu',
+      id: 'payment-history-filter',
+      menuKind: 'select',
+      title: 'payment.history.filter.title',
+      trigger: {
+        id: 'payment-history-filter-trigger',
+        label: labels[direction],
+        icon: 'filter_list',
+        trailingIcon: 'expand_more',
+        palette: direction === 'income' ? 'green' : direction === 'expenses' ? 'red' : 'blue',
+        layout: 'pill',
+        ariaLabel: 'payment.history.filter.title'
+      },
+      items,
+      panelAlign: 'end',
+      closeOnSelect: true
+    };
+  }
+
+  private signedTotals(
+    totals: Record<string, number>,
+    sign: '+' | '−',
+    tone: 'expense' | 'income'
+  ): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
+    return Object.entries(totals)
+      .filter(([, amount]) => Number(amount) > 0)
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([currency, amount]) => new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency
-      }).format(Number(amount) || 0));
-    return totals.length > 0
-      ? `${base} · ${this.i18n.translate('payment.history.spent')}: ${totals.join(' · ')}`
-      : base;
+      .map(([currency, amount]) => ({
+        text: this.formatSignedCurrency(Number(amount) || 0, currency, sign),
+        tone
+      }));
+  }
+
+  private formatSignedCurrency(amount: number, currency: string, sign: '+' | '−'): string {
+    const normalizedCurrency = `${currency ?? ''}`.trim().toUpperCase() || 'HUF';
+    const currencyFormatter = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: normalizedCurrency
+    });
+    const digits = currencyFormatter.resolvedOptions().maximumFractionDigits;
+    const value = new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }).format(Math.abs(Number(amount) || 0));
+    return `${normalizedCurrency} ${sign}${value}`;
   }
 
   private async openPaymentSummary(item: PaymentHistoryItemDto): Promise<void> {

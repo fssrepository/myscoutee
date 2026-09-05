@@ -2,6 +2,19 @@
   @if (!pickerMode()) {
   <app-popup [model]="mainPopupModel()" [zIndex]="22200">
     <section class="payment-methods-popup__body">
+      @if (historyHeaderTotals(); as totals) {
+        @if (totals.length) {
+          <div class="payment-methods-popup__history-totals" [attr.aria-label]="'payment.history.totals' | i18n">
+            @for (total of totals; track total.tone + ':' + total.text) {
+              <span
+                class="payment-methods-popup__history-total"
+                [class.payment-methods-popup__history-total--expense]="total.tone === 'expense'"
+                [class.payment-methods-popup__history-total--income]="total.tone === 'income'"
+              >{{ total.text }}</span>
+            }
+          </div>
+        }
+      }
       <app-smart-list
         class="payment-methods-popup__list"
         [config]="allHistoryListConfig"

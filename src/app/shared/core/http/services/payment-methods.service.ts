@@ -78,7 +78,8 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       items,
       total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
       nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
-      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals)
+      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
+      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals)
     };
   }
 
@@ -92,7 +93,8 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       items,
       total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
       nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
-      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals)
+      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
+      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals)
     };
   }
 
@@ -105,9 +107,12 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
   }
 
   private pageParams(userId: string, query: ListQuery): HttpParams {
-    return this.userParams(userId)
+    let params = this.userParams(userId)
       .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
       .set('size', `${Math.max(1, Math.min(50, Math.trunc(Number(query.pageSize) || 6)))}`);
+    const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? ''}`.trim();
+    if (direction) params = params.set('direction', direction);
+    return params;
   }
 
   private userParams(userId: string): HttpParams {

@@ -466,6 +466,7 @@ export interface PaymentCardData extends DisplayData {
   loadingLabel?: string;
   selected?: boolean;
   disabled?: boolean;
+  expired?: boolean;
   paymentMenuActions?: readonly CardMenuAction[];
 }
 

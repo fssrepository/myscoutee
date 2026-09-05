@@ -19,10 +19,17 @@
   </span>
   <span class="payment-card__shade" aria-hidden="true"></span>
   @if (!card.loading) {
+  @if (card.expired) {
+    <span class="payment-card__status payment-card__status--expired">
+      <mat-icon aria-hidden="true">event_busy</mat-icon>
+      {{ 'payment.card.expired' | i18n }}
+    </span>
+  }
   @if (showMenu && (card.paymentMenuActions?.length ?? 0) > 0) {
     <button
       type="button"
       class="payment-card__menu"
+      [class.payment-card__menu--with-status]="card.expired"
       [attr.aria-label]="'payment.card.actions.open' | i18n"
       (pointerdown)="captureMenuRect($event)"
       (click)="openMenu($event)"

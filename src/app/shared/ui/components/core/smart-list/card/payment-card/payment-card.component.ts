@@ -55,9 +55,12 @@ export class PaymentCardComponent {
   }
 
   protected ariaLabel(): string {
-    return this.card.loading
+    const label = this.card.loading
       ? this.i18n.translate(this.card.loadingLabel || 'payment.registration.pending')
       : this.resolvedBrandLabel();
+    return this.card.expired
+      ? `${label}. ${this.i18n.translate('payment.card.expired')}.`
+      : label;
   }
 
   protected onSelect(event: Event): void {

@@ -1,6 +1,7 @@
 import type { ListQuery, PageResult } from './list.interface';
 
 export type PaymentProvider = 'stripe' | 'barion';
+export type PaymentHistoryDirection = 'all' | 'expenses' | 'income';
 export type PaymentMethodRegistrationStatus = 'pending' | 'completed' | 'failed' | 'cancelled' | 'expired';
 
 export interface SavedPaymentMethodDto {
@@ -41,6 +42,7 @@ export interface PaymentMethodRegistrationDto {
 export interface PaymentHistoryItemDto {
   id: string;
   sourceId: string;
+  direction: 'expense' | 'income';
   paymentMethodId?: string | null;
   provider: string;
   status: string;
@@ -56,6 +58,7 @@ export interface PaymentHistoryItemDto {
 
 export interface PaymentHistoryPageDto extends PageResult<PaymentHistoryItemDto> {
   spendingTotals: Record<string, number>;
+  incomeTotals: Record<string, number>;
 }
 
 export interface PaymentMethodDataService {

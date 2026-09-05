@@ -82,13 +82,17 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
-      spendingTotals: this.spendingTotals(this.seedMethods(userId).flatMap(method => this.seedHistory(method)))
+      spendingTotals: this.paymentTotals(all, 'expense'),
+      incomeTotals: {}
     };
   }
 
   async queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const all = this.seedMethods(userId).flatMap(card => this.seedHistory(card))
+    const expenses = this.seedMethods(userId).flatMap(card => this.seedHistory(card));
+    const income = this.seedIncomeHistory(userId);
+    const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? 'all'}`.trim();
+    const all = (direction === 'expenses' ? expenses : direction === 'income' ? income : [...expenses, ...income])
       .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
     const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
@@ -98,7 +102,8 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
-      spendingTotals: this.spendingTotals(all)
+      spendingTotals: this.paymentTotals(expenses, 'expense'),
+      incomeTotals: this.paymentTotals(income, 'income')
     };
   }
 
@@ -150,6 +155,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     return [0, 1, 2].map((offset, index) => ({
       id: `${card.id}-payment-${index + 1}`,
       sourceId: index === 1 ? `${owner}:asset-transport-1` : 'e1',
+      direction: 'expense' as const,
       paymentMethodId: card.id,
       provider: card.provider,
       status: index === 2 ? 'released' : 'captured',
@@ -163,12 +169,36 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     }));
   }
 
-  private spendingTotals(items: readonly PaymentHistoryItemDto[]): Record<string, number> {
+  private seedIncomeHistory(userId: string): PaymentHistoryItemDto[] {
+    const owner = userId.trim() || 'local-user';
+    const now = Date.now();
+    return [0, 1].map((offset, index) => ({
+      id: `local-income-${owner}-${index + 1}`,
+      sourceId: index === 0 ? 'e1' : `${owner}:asset-transport-1`,
+      direction: 'income' as const,
+      paymentMethodId: null,
+      provider: index === 0 ? 'stripe' : 'cash',
+      status: 'captured',
+      amount: [8400, 5600][index],
+      currency: 'HUF',
+      bookingStatus: 'joined',
+      auditKind: 'payment',
+      fulfillmentKind: index === 0 ? 'event_join' : 'client',
+      checkoutSessionId: `local-income-${owner}-checkout-${index + 1}`,
+      createdAtIso: new Date(now - (offset + 1) * 86_400_000 * 7).toISOString()
+    }));
+  }
+
+  private paymentTotals(
+    items: readonly PaymentHistoryItemDto[],
+    direction: PaymentHistoryItemDto['direction']
+  ): Record<string, number> {
     return items.reduce<Record<string, number>>((totals, item) => {
-      if (item.status !== 'captured' && item.status !== 'approved') return totals;
+      if (item.direction !== direction || (item.status !== 'captured' && item.status !== 'approved')) return totals;
       const currency = item.currency.trim().toUpperCase() || 'USD';
       totals[currency] = Math.round(((totals[currency] ?? 0) + (Number(item.amount) || 0)) * 100) / 100;
       return totals;
     }, {});
   }
+
 }

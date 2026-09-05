@@ -227,6 +227,7 @@ export class HttpUsersService implements UserService {
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
         offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
+        paymentTotals?: UserRealtimeLongPollResponseDto['paymentTotals'];
         cursor?: string | null;
         serverTsIso?: string;
       };
@@ -255,6 +256,13 @@ export class HttpUsersService implements UserService {
               total: Math.max(0, Math.trunc(Number(response.offlineTicketSnapshot.total) || 0))
             }
           : response.offlineTicketSnapshot,
+        paymentTotals: response.paymentTotals
+          ? {
+            outgoing: { ...(response.paymentTotals.outgoing ?? {}) },
+            incoming: { ...(response.paymentTotals.incoming ?? {}) },
+            all: { ...(response.paymentTotals.all ?? {}) }
+          }
+          : null,
         cursor: response.cursor,
         serverTsIso: response.serverTsIso
       };
