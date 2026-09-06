@@ -70,13 +70,14 @@ export class EventCheckoutDraftStore {
     for (const draft of this.listByUser(normalizedUserId)) {
       const expiresAtMs = Date.parse(draft.expiresAtIso ?? '');
       const record = recordsById.get(draft.sourceId);
-      if (!record
-          || !Number.isFinite(expiresAtMs)
-          || expiresAtMs > nowMs
-          || record.checkoutResultState !== 'deleted') {
-        continue;
+      if (record && (
+        record.checkoutResultState === null
+        || (record.checkoutResultState === 'deleted'
+          && Number.isFinite(expiresAtMs)
+          && expiresAtMs <= nowMs)
+      )) {
+        this.clear(normalizedUserId, draft.sourceId);
       }
-      this.clear(normalizedUserId, draft.sourceId);
     }
   }
 
