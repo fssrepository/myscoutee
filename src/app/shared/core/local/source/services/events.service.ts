@@ -1090,6 +1090,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     const nextWatched = watched && !this.isAcceptedEventMember(record, normalizedUserId);
+    if (nextWatched && !this.localEventIsVisibleToWatcher(record, normalizedUserId)) {
+      return null;
+    }
     const changed = record.watched !== nextWatched;
     if (changed) {
       if (nextWatched) {
@@ -2400,7 +2403,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const recipientUserIds = [...new Set(
       (after.watchingUserIds ?? before.watchingUserIds ?? [])
         .map(userId => `${userId ?? ''}`.trim())
-        .filter(userId => !!userId && !this.isAcceptedEventMember(after, userId))
+        .filter(userId => !!userId
+          && !this.isAcceptedEventMember(after, userId)
+          && this.localEventIsVisibleToWatcher(after, userId))
     )];
     const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
       id: this.localNotificationId('event-watchlist-available', eventId, recipientUserId),
@@ -2440,7 +2445,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     const reasons: string[] = [];
     if (`${before.title ?? ''}`.trim() !== `${after.title ?? ''}`.trim()
-        || `${before.location ?? ''}`.trim() !== `${after.location ?? ''}`.trim()) {
+        || `${before.location ?? ''}`.trim() !== `${after.location ?? ''}`.trim()
+        || (before.capacityMin ?? 0) !== (after.capacityMin ?? 0)
+        || (before.capacityMax ?? 0) !== (after.capacityMax ?? 0)) {
       reasons.push('details');
     }
     if (`${before.startAtIso ?? ''}`.trim() !== `${after.startAtIso ?? ''}`.trim()
@@ -2531,7 +2538,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   private localEventIsVisibleToWatcher(event: ActivityEventRecord, watcherUserId: string): boolean {
-    if (event.visibility === 'Invitation only') {
+    if (this.localEventStatus(event) !== 'A'
+        || event.visibility === 'Invitation only') {
       return false;
     }
     return event.visibility !== 'Friends only'

@@ -403,6 +403,19 @@ describe('LocalEventsService', () => {
     });
   });
 
+  it('does not create a local Watchlist subscription for a hidden event', async () => {
+    peekKnownItemById.mockReturnValue({
+      ...lifecycleEvent('A'),
+      creatorUserId: 'host',
+      visibility: 'Invitation only',
+      watched: false
+    } as ActivityEventRecord);
+
+    const result = await TestBed.inject(LocalEventsService).watchEvent('outside-watcher', 'event-1');
+
+    expect(result).toBeNull();
+  });
+
   it('marks the related notification read after rejecting an invitation', async () => {
     queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
     markUnreadBySource.mockReturnValue(1);
