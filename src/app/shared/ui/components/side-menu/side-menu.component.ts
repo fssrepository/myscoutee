@@ -488,9 +488,7 @@ export class SideMenuComponent implements OnDestroy {
         (impressionChangeFlags.member ? 1 : 0) +
         mergedActivities.game +
         mergedActivities.chats +
-        mergedActivities.invitations +
-        mergedActivities.events +
-        mergedActivities.hosting +
+        (mergedActivities.event?.all ?? 0) +
         mergedActivities.cars +
         mergedActivities.accommodation +
         mergedActivities.supplies +
