@@ -226,7 +226,8 @@ export class LocalEventsRepository {
     const reviewItems = myEventItems.filter(record => this.isPendingReviewStatus(record));
     const watchlistItems = userItems
       .filter(record => record.watched === true)
-      .filter(record => !this.isTrashStatus(record));
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => this.shouldIncludeExploreRecord(record, userId));
 
     if (filter === 'all') {
       return [...activeEventItems, ...pendingEventItems, ...invitationItems, ...myEventItems];
@@ -2386,6 +2387,7 @@ export class LocalEventsRepository {
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !includedIds.has(record.id))
       .filter(record => this.isWatchedByUser(record, normalizedUserId))
+      .filter(record => this.shouldIncludeExploreRecord(record, normalizedUserId))
       .map(record => this.buildMembershipProjectionRecord(
         normalizedUserId,
         this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), normalizedUserId)

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityPendingReason } from '../../../common/constants';
+import { UserProfileState } from '../../../common/user-profile-state';
 import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
@@ -844,6 +845,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
     }
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
+    if (savedRecord) {
+      this.appendWatchlistDefinitionUpdateNotifications(record.creatorUserId, existingRecord, savedRecord);
+      this.appendWatchlistAvailabilityNotifications(existingRecord, savedRecord);
+    }
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
       await this.activityResourcesRepository.flushToIndexedDb();
@@ -969,6 +974,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           'notification.event.available.again.message'
         );
       }
+      this.appendWatchlistEventUpdatedNotifications(userId, published);
     }
     const result = await this.withLocalMutationCounterDelta(
       this.localLifecycleResult(sourceId, 'publish', published, changed),
@@ -2422,6 +2428,114 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       }
     }));
     this.notificationsRepository.append(records);
+  }
+
+  private appendWatchlistDefinitionUpdateNotifications(
+    actorUserId: string,
+    before: ActivityEventRecord | null,
+    after: ActivityEventRecord
+  ): void {
+    if (!before) {
+      return;
+    }
+    const reasons: string[] = [];
+    if (`${before.title ?? ''}`.trim() !== `${after.title ?? ''}`.trim()
+        || `${before.location ?? ''}`.trim() !== `${after.location ?? ''}`.trim()) {
+      reasons.push('details');
+    }
+    if (`${before.startAtIso ?? ''}`.trim() !== `${after.startAtIso ?? ''}`.trim()
+        || `${before.endAtIso ?? ''}`.trim() !== `${after.endAtIso ?? ''}`.trim()
+        || `${before.timeframe ?? ''}`.trim() !== `${after.timeframe ?? ''}`.trim()
+        || `${before.frequency ?? ''}`.trim() !== `${after.frequency ?? ''}`.trim()) {
+      reasons.push('schedule');
+    }
+    if (JSON.stringify(before.subEventDefinitions ?? []) !== JSON.stringify(after.subEventDefinitions ?? [])
+        || JSON.stringify(before.slotTemplates ?? []) !== JSON.stringify(after.slotTemplates ?? [])
+        || before.slotsEnabled !== after.slotsEnabled
+        || before.subEventsEnabled !== after.subEventsEnabled) {
+      reasons.push('sub-events');
+    }
+    if (reasons.length === 0) {
+      return;
+    }
+    this.appendWatchlistUpdateNotifications(actorUserId, after, reasons);
+  }
+
+  private appendWatchlistEventUpdatedNotifications(
+    actorUserId: string,
+    event: ActivityEventRecord
+  ): void {
+    this.appendWatchlistUpdateNotifications(actorUserId, event, ['modified']);
+  }
+
+  private appendWatchlistUpdateNotifications(
+    actorUserId: string,
+    event: ActivityEventRecord,
+    reasons: string[]
+  ): void {
+    if (this.localEventStatus(event) !== 'A') {
+      return;
+    }
+    const actorId = `${actorUserId ?? ''}`.trim();
+    const trackedUserIds = new Set([
+      ...(event.acceptedMemberUserIds ?? []),
+      ...(event.pendingMemberUserIds ?? []),
+      ...(event.invitedMemberUserIds ?? []),
+      ...(event.pendingRequestMemberUserIds ?? []),
+      actorId
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean));
+    const recipientUserIds = [...new Set((event.watchingUserIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => !!userId
+        && !trackedUserIds.has(userId)
+        && this.localEventIsVisibleToWatcher(event, userId)))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const republished = reasons.includes('modified');
+    const message = republished
+      ? 'notification.event.available.again.message'
+      : reasons.includes('schedule')
+        ? 'The event schedule changed. Open the event for details.'
+        : reasons.includes('sub-events')
+          ? 'The event program changed. Open the event for details.'
+          : 'The event was updated. Open the event for details.';
+    const kind = republished ? 'event-modified' : 'event-details-changed';
+    this.notificationsRepository.append(recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId(kind, event.id, recipientUserId),
+      recipientUserId,
+      kind,
+      category: 'event',
+      title: event.title,
+      message,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: null,
+      senderAvatarUrl: null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: event.id,
+      payload: {
+        eventId: event.id,
+        eventTitle: event.title,
+        eventScope: 'watchlist',
+        changeReasons: reasons.join(','),
+        notification_tone: republished ? 'success' : 'info',
+        notification_avatar_icon: 'visibility',
+        notification_recipient_scope: 'event-watchers',
+        ...(republished ? { notification_message_key: 'notification.event.available.again.message' } : {})
+      }
+    })));
+  }
+
+  private localEventIsVisibleToWatcher(event: ActivityEventRecord, watcherUserId: string): boolean {
+    if (event.visibility === 'Invitation only') {
+      return false;
+    }
+    return event.visibility !== 'Friends only'
+      || UserProfileState.isFriendOfActiveUser(event.creatorUserId, watcherUserId);
   }
 
   private eventAvailableCapacity(event: ActivityEventRecord): number {

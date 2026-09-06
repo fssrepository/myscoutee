@@ -371,6 +371,38 @@ describe('LocalEventsService', () => {
     });
   });
 
+  it('notifies only outside watchers when a public event is republished', async () => {
+    const draft = {
+      ...lifecycleEvent('DR'),
+      visibility: 'Public',
+      watchingUserIds: ['outside-watcher', 'accepted-member']
+    } as ActivityEventRecord;
+    const active = {
+      ...lifecycleEvent('A'),
+      visibility: 'Public',
+      watchingUserIds: ['outside-watcher', 'accepted-member']
+    } as ActivityEventRecord;
+    peekKnownItemById.mockReturnValueOnce(draft).mockReturnValue(active);
+    syncPublishedMainEventChat.mockReturnValue(false);
+
+    await TestBed.inject(LocalEventsService).publishItem('host', 'event-1');
+
+    expect(appendNotifications).toHaveBeenCalledTimes(2);
+    const watcherRecords = appendNotifications.mock.calls[1]?.[0];
+    expect(watcherRecords).toHaveLength(1);
+    expect(watcherRecords[0]).toMatchObject({
+      recipientUserId: 'outside-watcher',
+      kind: 'event-modified',
+      message: 'notification.event.available.again.message',
+      payload: {
+        eventScope: 'watchlist',
+        notification_tone: 'success',
+        notification_message_key: 'notification.event.available.again.message',
+        notification_recipient_scope: 'event-watchers'
+      }
+    });
+  });
+
   it('marks the related notification read after rejecting an invitation', async () => {
     queryInvitationItemsByUser.mockReturnValue([{ id: 'event-1' }]);
     markUnreadBySource.mockReturnValue(1);

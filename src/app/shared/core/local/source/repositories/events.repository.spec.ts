@@ -88,6 +88,22 @@ describe('LocalEventsRepository event membership pages', () => {
     expect(hosting.map(item => item.id)).toEqual(['tournament-1']);
   });
 
+  it('shows only still-public followed events in Watchlist', () => {
+    seedUsers([
+      user('owner-1', 'Owner One'),
+      user('viewer-1', 'Viewer One')
+    ]);
+    seedEvents([
+      eventRecord({ id: 'public-event', watchingUserIds: ['viewer-1'] }),
+      eventRecord({ id: 'draft-event', status: 'DR', watchingUserIds: ['viewer-1'] }),
+      eventRecord({ id: 'invite-only-event', visibility: 'Invitation only', watchingUserIds: ['viewer-1'] })
+    ]);
+
+    const watchlist = repository.queryActivitiesEventRecordPage('viewer-1', eventsPage('watchlist')).records;
+
+    expect(watchlist.map(item => item.id)).toEqual(['public-event']);
+  });
+
   function seedUsers(users: UserDto[]): void {
     memoryDb.write(state => ({
       ...state,
