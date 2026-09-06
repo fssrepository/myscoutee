@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.06.hu.76",
+  "version": "2026.09.06.hu.77",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -1225,7 +1225,7 @@
     "landing.preview.badge": "Tesztverzió",
     "landing.hero.history": "Az emberek régen társas közegben ismerkedtek.",
     "landing.hero.return": "Mi ezt újra közösségivé tesszük.",
-    "landing.hero.graph": "Hat ember, hat prioritáslista és egy csoport, ahol a prioritásaik összeérnek.",
+    "landing.hero.graph": "6 ember · 6 prioritáslista → 1 közös csoport",
     "landing.preview.open.guide": "Tesztverzió útmutató megnyitása",
     "landing.preview.close.guide": "Tesztverzió útmutató bezárása",
     "landing.preview.guide.title": "Tesztverzió",

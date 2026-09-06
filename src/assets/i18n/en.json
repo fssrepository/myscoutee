@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.06.en.76",
+  "version": "2026.09.06.en.77",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -1225,7 +1225,7 @@
     "landing.preview.badge": "Preview",
     "landing.hero.history": "Meeting people was once social.",
     "landing.hero.return": "We’re making it social again.",
-    "landing.hero.graph": "Six people, six priority lists, and one group where their priorities meet.",
+    "landing.hero.graph": "6 people · 6 priority lists → 1 shared group",
     "landing.preview.open.guide": "Open preview guide",
     "landing.preview.close.guide": "Close preview guide",
     "landing.preview.guide.title": "Preview version",

@@ -24,7 +24,7 @@ describe('EntryLandingComponent article lists', () => {
     'landing.preview.open.guide': 'Open preview guide',
     'landing.hero.history': 'Meeting people was once social.',
     'landing.hero.return': 'We’re making it social again.',
-    'landing.hero.graph': 'Six people, six priority lists, and one group where their priorities meet.',
+    'landing.hero.graph': '6 people · 6 priority lists → 1 shared group',
     'bug.report': 'Bug report',
     'close.articles': 'Close articles'
   };
@@ -201,7 +201,7 @@ describe('EntryLandingComponent article lists', () => {
     const heroText = fixture.nativeElement.querySelector('.entry-hero-content')?.textContent ?? '';
     expect(heroText).toContain('Meeting people was once social.');
     expect(heroText).toContain('We’re making it social again.');
-    expect(heroText).toContain('Six people, six priority lists,');
+    expect(heroText).toContain('6 people · 6 priority lists → 1 shared group');
     expect(heroText.toLowerCase()).not.toContain('swip');
     expect(previewBadge?.hidden).toBe(true);
     expect(partnerButton).not.toBeNull();
