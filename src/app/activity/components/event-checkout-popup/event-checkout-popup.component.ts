@@ -1284,7 +1284,12 @@ export class EventCheckoutPopupComponent {
     const dialog = this.dialog();
     if (dialog) {
       this.openCheckoutReviewEditorShell(dialog);
-      void this.persistCheckoutDraft(true, null, 'draft').catch(error => {
+      void this.persistCheckoutDraft(
+        false,
+        basketChangeContext?.pendingReason ?? null,
+        basketChangeContext?.checkoutState ?? 'draft',
+        basketChangeContext !== null
+      ).catch(error => {
         this.setCheckoutErrorMessage(dialog, error, 'Unable to update checkout pricing.');
       });
     }
