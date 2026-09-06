@@ -156,7 +156,7 @@ export const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   open: false,
   openRevision: 0,
   primaryFilter: 'chats',
-  eventScope: 'active-events',
+  eventScope: 'all',
   secondaryFilter: 'recent',
   chatContextFilter: 'all',
   supportCaseFilter: 'all',
@@ -314,7 +314,7 @@ export class ActivitiesPopupStore {
     this._uiState.update(state => ({
       ...state,
       primaryFilter: normalizedFilter,
-      eventScope: normalizedFilter === 'events' ? 'active-events' : state.eventScope,
+      eventScope: normalizedFilter === 'events' ? 'all' : state.eventScope,
       hostingPublicationFilter: 'all',
       showViewPicker: false,
       showSecondaryPicker: false,
@@ -704,7 +704,7 @@ export class ActivitiesPopupStore {
     if (primaryFilter === 'hosting') {
       return 'my-events';
     }
-    return 'active-events';
+    return 'all';
   }
 
   private normalizeEventChatRequest(request: EventChatPopupRequest): EventChatPopupRequest | null {

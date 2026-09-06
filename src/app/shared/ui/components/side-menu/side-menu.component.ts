@@ -41,6 +41,7 @@ import {
   ProfileHeaderCardConverter
 } from '../../converters';
 import {
+  cloneEventCounters,
   cloneSupportCaseCounters
 } from '../../context/stores/app-context-store.utils';
 import {
@@ -149,8 +150,6 @@ type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
 type NavigatorOperatorCommunityMenuItemId = 'operator-community';
 type NotificationAttentionMenuItemId = 'notification-attention';
-type NavigatorContextualMenuItemId = 'payment-history';
-
 interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
   impressionChangeFlags: UserImpressionChangeFlags;
@@ -165,7 +164,7 @@ type NavigatorMenuShortcutId =
   | 'chat'
   | 'invitations'
   | 'events'
-  | 'hosting'
+  | 'payment-history'
   | 'transport'
   | 'accommodation'
   | 'supplies'
@@ -451,6 +450,7 @@ export class SideMenuComponent implements OnDestroy {
       return null;
     }
     const activityOverrides = this.activityStore.getUserCounterOverrides(activeUser.id);
+    const eventCounters = activityOverrides.event ?? activeUser.activities?.event;
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
       chats: activityOverrides.chats ?? activeUser.activities?.chats ?? 0,
@@ -475,6 +475,7 @@ export class SideMenuComponent implements OnDestroy {
           activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases
         )
       },
+      ...(eventCounters ? { event: cloneEventCounters(eventCounters) } : {}),
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
@@ -623,25 +624,6 @@ export class SideMenuComponent implements OnDestroy {
       ]
     };
   });
-  protected readonly navigatorContextualMenuModel = computed<AppMenuModel<NavigatorContextualMenuItemId>>(() => {
-    const user = this.menuUser();
-    return {
-      layout: 'row',
-      density: 'compact',
-      nodes: [{
-        id: 'navigator-contextual-actions',
-        items: [{
-          id: 'payment-history',
-          label: 'payment.history.menu',
-          icon: 'receipt_long',
-          layout: 'pill',
-          palette: 'green',
-          ariaLabel: 'payment.history.open',
-          disabled: !user || this.isPrimaryMenuDisabled(user)
-        }]
-      }]
-    };
-  });
   protected readonly navigatorMenuValues = computed<AppMenuValueMap<NavigatorMenuShortcutId>>(() => {
     const user = this.menuUser();
     if (!user) {
@@ -653,8 +635,7 @@ export class SideMenuComponent implements OnDestroy {
       rates: user.activities.game,
       chat: user.activities.chats,
       invitations: user.activities.invitations,
-      events: user.activities.events,
-      hosting: user.activities.hosting,
+      events: user.activities.event?.all ?? 0,
       transport: user.activities.cars,
       accommodation: user.activities.accommodation,
       supplies: user.activities.supplies,
@@ -779,16 +760,16 @@ export class SideMenuComponent implements OnDestroy {
               id: 'events',
               label: 'Events',
               icon: 'event',
-              palette: 'orange',
+              palette: 'blue',
               ariaLabel: 'Open events',
               disabled: primaryDisabled
             },
             {
-              id: 'hosting',
-              label: 'My Events',
-              icon: 'stadium',
-              palette: 'teal',
-              ariaLabel: 'Open my events',
+              id: 'payment-history',
+              label: 'payment.history.menu',
+              icon: 'receipt_long',
+              palette: 'green',
+              ariaLabel: 'payment.history.open',
               disabled: primaryDisabled
             }
           ]
@@ -1416,14 +1397,6 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
-  protected onNavigatorContextualMenuSelect(event: AppMenuItemSelectEvent<NavigatorContextualMenuItemId>): void {
-    if (event.id !== 'payment-history') return;
-    event.sourceEvent.preventDefault();
-    event.sourceEvent.stopPropagation();
-    this.closeSideMenu();
-    void this.paymentMethodsPopupStore.openHistory();
-  }
-
   protected onNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorMenuShortcutId>): void {
     switch (event.id) {
       case 'impressions':
@@ -1444,8 +1417,8 @@ export class SideMenuComponent implements OnDestroy {
       case 'events':
         this.openEventShortcut(event.sourceEvent);
         return;
-      case 'hosting':
-        this.openHostingShortcut(event.sourceEvent);
+      case 'payment-history':
+        this.openPaymentHistoryShortcut(event.sourceEvent);
         return;
       case 'transport':
         this.openAssetTransportPopup(event.sourceEvent);
@@ -1634,12 +1607,14 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openEventShortcut(event?: Event): void {
     event?.stopPropagation();
-    this.openActivitiesShortcut('events', 'active-events');
+    this.openActivitiesShortcut('events', 'all');
   }
 
-  protected openHostingShortcut(event?: Event): void {
+  protected openPaymentHistoryShortcut(event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
-    this.openActivitiesShortcut('events', 'my-events');
+    this.closeSideMenu();
+    void this.paymentMethodsPopupStore.openHistory();
   }
 
   protected openAssetTransportPopup(event?: Event): void {

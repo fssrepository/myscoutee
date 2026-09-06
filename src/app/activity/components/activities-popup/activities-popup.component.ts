@@ -377,7 +377,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // Local copies are kept in sync via an effect() so that OnPush CD fires
   // correctly without needing toSignal() everywhere in the template.
   protected activitiesPrimaryFilter: ContractTypes.ActivitiesPrimaryFilter        = 'chats';
-  protected activitiesEventScope: ContractTypes.ActivitiesEventScope               = 'active-events';
+  protected activitiesEventScope: ContractTypes.ActivitiesEventScope               = 'all';
   protected activitiesChatContextFilter: ContractTypes.ActivitiesChatContextFilter = 'all';
   protected activitiesSupportCaseFilter: ContractTypes.SupportCaseFilter           = 'all';
   protected activitiesSecondaryFilter: ContractTypes.ActivitiesSecondaryFilter    = 'recent';
