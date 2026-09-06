@@ -156,6 +156,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected readonly loadCards: SmartListLoadPage<SavedPaymentMethodDto, PaymentListFilters> = (query, context) => from(
     this.paymentMethods.queryPage(this.activeUserId(), query, context?.signal).then(page => {
+      if (page.currentProvider) {
+        this.deploymentConfiguration.applyPaymentProviderId(
+          page.currentProvider === 'none' ? null : page.currentProvider
+        );
+      }
       this.loadedCardsById.clear();
       page.items.forEach(item => this.loadedCardsById.set(item.id, { ...item }));
       this.canAddRef.set(page.canAdd === true);

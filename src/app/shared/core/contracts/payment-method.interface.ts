@@ -22,6 +22,7 @@ export interface SavedPaymentMethodDto {
 export interface SavedPaymentMethodsPageDto extends PageResult<SavedPaymentMethodDto> {
   canAdd: boolean;
   pendingRegistration: PaymentMethodRegistrationDto | null;
+  currentProvider: PaymentProvider | 'none' | null;
 }
 
 export interface PaymentMethodRegistrationRequestDto {
