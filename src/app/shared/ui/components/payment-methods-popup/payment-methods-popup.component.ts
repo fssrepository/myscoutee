@@ -546,7 +546,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         this.errorRef.set('payment.registration.error.cancelled');
       } else if (registration.status === 'expired') {
         this.errorRef.set('payment.registration.error.expired');
-      } else if (registration.status !== 'cancelled') {
+      } else {
         this.errorRef.set('payment.registration.error.failed');
       }
     } catch (error) {
