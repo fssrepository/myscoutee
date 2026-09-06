@@ -2124,6 +2124,7 @@
     "payment.history.totals": "Összes kiadás és bevétel",
     "payment.registration.aria": "Fizetési kártya regisztrálása a szolgáltatónál",
     "payment.registration.close": "Kártyaregisztráció bezárása",
+    "payment.registration.error.cancelled": "A felhasználó megszakította a kártyaregisztrációt. A kártya nem lett mentve.",
     "payment.registration.error.ended": "A kártyaregisztráció ezzel az állapottal zárult: {status}.",
     "payment.registration.error.expired": "A kártyaregisztráció időkorlátja lejárt. A kártya hozzáadásához indítsd újra.",
     "payment.registration.error.failed": "A kártyaregisztráció sikertelen. A kártya hozzáadásához indítsd újra.",

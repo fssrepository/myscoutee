@@ -2124,6 +2124,7 @@
     "payment.history.totals": "Total expenses and income",
     "payment.registration.aria": "Register payment card with provider",
     "payment.registration.close": "Close card registration",
+    "payment.registration.error.cancelled": "Card registration was cancelled by the user. The card was not saved.",
     "payment.registration.error.ended": "Card registration ended with status: {status}.",
     "payment.registration.error.expired": "The card-registration time limit expired. Start it again to add the card.",
     "payment.registration.error.failed": "Card registration failed. Start it again to add the card.",
