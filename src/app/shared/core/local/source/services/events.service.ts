@@ -1083,9 +1083,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId || !record) {
       return null;
     }
-    const changed = record.watched !== watched;
+    const nextWatched = watched && !this.isAcceptedEventMember(record, normalizedUserId);
+    const changed = record.watched !== nextWatched;
     if (changed) {
-      if (watched) {
+      if (nextWatched) {
         this.eventsRepository.watchEvent(normalizedUserId, normalizedSourceId);
       } else {
         this.eventsRepository.unwatchEvent(normalizedUserId, normalizedSourceId);
@@ -1095,10 +1096,19 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return {
       sourceId: normalizedSourceId,
-      watched,
+      watched: nextWatched,
       changed,
       eventCounters: this.localEventCounterSnapshot(normalizedUserId).event
     };
+  }
+
+  private isAcceptedEventMember(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    return !!normalizedUserId && (
+      record.creatorUserId.trim() === normalizedUserId
+      || record.currentUserMembershipStatus === 'accepted'
+      || (record.acceptedMemberUserIds ?? []).some(memberUserId => memberUserId.trim() === normalizedUserId)
+    );
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -2384,7 +2394,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const recipientUserIds = [...new Set(
       (after.watchingUserIds ?? before.watchingUserIds ?? [])
         .map(userId => `${userId ?? ''}`.trim())
-        .filter(Boolean)
+        .filter(userId => !!userId && !this.isAcceptedEventMember(after, userId))
     )];
     const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
       id: this.localNotificationId('event-watchlist-available', eventId, recipientUserId),
