@@ -342,14 +342,13 @@
 @media (max-width: 860px) {
   .event-payment-panel-head,
   .event-payment-layout,
-  .event-payment-context,
-  .event-payment-input-head {
+  .event-payment-context {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .event-payment-total,
   .event-payment-context-time,
-  .event-payment-provider-badge {
+  .event-payment-context-time {
     justify-self: start;
     text-align: left;
   }

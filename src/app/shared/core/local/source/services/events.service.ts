@@ -632,6 +632,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         this.appendInvitationAcceptedNotifications(record, normalizedUserId);
       }
     }
+    if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
+      this.appendMemberJoinedNotifications(record, normalizedUserId);
+    }
     if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
       this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
     }
@@ -1696,6 +1699,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         this.appendInvitationAcceptedNotifications(record, normalizedUserId);
       }
     }
+    if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
+      this.appendMemberJoinedNotifications(record, normalizedUserId);
+    }
     if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
       this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
     }
@@ -2403,6 +2409,62 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         notification_message_key: 'notification.event.watchlist.available.message',
         notification_tone: 'success',
         notification_avatar_icon: 'visibility'
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendMemberJoinedNotifications(
+    event: ActivityEventRecord,
+    joinedUserId: string
+  ): void {
+    const memberUserId = joinedUserId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!memberUserId || !eventId) {
+      return;
+    }
+    const member = this.usersRepository.queryUserById(memberUserId);
+    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(memberListOpen
+        ? (event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+        : [])
+    ].filter(userId => userId && userId !== memberUserId))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: `event-member-joined:${eventId}:${memberUserId}:${occurrenceId}:${recipientUserId}`,
+      recipientUserId,
+      kind: 'event-member-joined',
+      category: 'event',
+      title: eventTitle,
+      message: `${memberName} joined ${eventTitle}.`,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: memberUserId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId,
+        memberName,
+        membershipAction: 'joined',
+        joinedAtIso: createdAtIso,
+        joinOccurrenceId: occurrenceId,
+        notification_tone: 'accent'
       }
     }));
     this.notificationsRepository.append(records);

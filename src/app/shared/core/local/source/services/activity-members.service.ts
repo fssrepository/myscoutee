@@ -401,6 +401,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           nowIso
         );
       }
+      if (refreshedEvent && action === 'accept') {
+        this.appendEventMemberJoinedNotifications(
+          refreshedEvent,
+          nextMembers.find(member => member.userId === normalizedTargetUserId) ?? targetMember,
+          nextMembers.filter(member => member.status === 'accepted'),
+          nowIso
+        );
+      }
       if (refreshedEvent && action === 'remove' && targetMember.status === 'accepted') {
         this.appendEventMemberRemovedNotifications(
           refreshedEvent,
@@ -746,6 +754,53 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       }
     };
     this.notificationsRepository.append([record]);
+  }
+
+  private appendEventMemberJoinedNotifications(
+    event: { id: string; title: string; creatorUserId?: string | null; adminIds?: readonly string[]; blindMode?: string | null },
+    joinedMember: ActivityMemberDTO,
+    activeMembers: readonly ActivityMemberDTO[],
+    joinedAtIso: string
+  ): void {
+    const member = this.localUsersRepository.queryUserById(joinedMember.userId);
+    const memberName = `${member?.name ?? joinedMember.name ?? joinedMember.userId}`.trim();
+    const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(memberListOpen ? activeMembers.map(candidate => candidate.userId.trim()) : [])
+    ].filter(userId => userId && userId !== joinedMember.userId))];
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: `event-member-joined:${event.id}:${joinedMember.userId}:${occurrenceId}:${recipientUserId}`,
+      recipientUserId,
+      kind: 'event-member-joined',
+      category: 'event',
+      title: eventTitle,
+      message: `${memberName} joined ${eventTitle}.`,
+      createdAtIso: joinedAtIso,
+      readAtIso: null,
+      senderUserId: joinedMember.userId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: event.id,
+      payload: {
+        eventId: event.id,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId: joinedMember.userId,
+        memberName,
+        membershipAction: 'joined',
+        joinedAtIso,
+        joinOccurrenceId: occurrenceId,
+        notification_tone: 'accent'
+      }
+    }));
+    this.notificationsRepository.append(records);
   }
 
   private async finalizeNewlyAcceptedEventReservations(
