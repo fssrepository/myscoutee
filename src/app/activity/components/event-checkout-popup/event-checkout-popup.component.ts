@@ -203,7 +203,7 @@ export class EventCheckoutPopupComponent {
       hideSlotsPanel: true,
       hidePaymentPanel: false,
       loading: checkoutLoading,
-      showBasketPanel: true,
+      showBasketPanel: this.showCheckoutBasketPanel(dialog),
       showPricingPanel: this.showCheckoutPricingPanel(),
       basketTone: this.checkoutBasketSurfaceTone(),
       paymentTone: this.checkoutPaymentSurfaceTone(),
@@ -1112,6 +1112,15 @@ export class EventCheckoutPopupComponent {
       return false;
     }
     return this.checkoutRecordPricingEnabled(dialog.record) || this.checkoutBasketHasPayableItems();
+  }
+
+  private showCheckoutBasketPanel(dialog: EventCheckoutDialogState): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return this.checkoutBasketPresentationItems().length > 0;
+    }
+    return dialog.record.slotsEnabled === true
+      || this.availableSlots().length > 0
+      || this.optionalSubEvents().length > 0;
   }
 
   private checkoutRecordPricingEnabled(record: ActivityEventRecord): boolean {
