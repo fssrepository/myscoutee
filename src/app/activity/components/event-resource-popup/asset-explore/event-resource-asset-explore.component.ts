@@ -140,6 +140,10 @@ import {
   AssetPopupStore
 } from '../../../../shared/ui/context/stores/asset-popup.store';
 import {
+  AssetBorrowDraftStore,
+  type AssetBorrowDraft
+} from '../../../../shared/ui/context/stores/asset-borrow-draft.store';
+import {
   SubEventResourcePopupStore
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
@@ -152,7 +156,6 @@ import type * as ContractTypes from '../../../../shared/core/contracts';
 import type { ChatDTO } from '../../../../shared/core/contracts/chat.interface';
 import type {
   AssetExploreBorrowDialogState,
-  AssetExploreBorrowDraftState,
   AssetExploreBorrowPricingPreview,
   EventResourceAssetExploreOutletActionRequest,
   AssetExplorePopupState,
@@ -257,6 +260,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly usersService = inject(UsersService);
   private readonly assetStore = inject(AssetStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
+  private readonly assetBorrowDraftStore = inject(AssetBorrowDraftStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly profileStore = inject(ProfileStore);
@@ -2294,29 +2298,20 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return null;
   }
 
-  private listBorrowDrafts(userId: string, subEventId: string): AssetExploreBorrowDraftState[] {
-    const normalizedUserId = userId.trim();
-    const normalizedSubEventId = subEventId.trim();
-    if (!normalizedUserId || !normalizedSubEventId) {
-      return [];
-    }
-    return Object.values(this.resourcePopupStore.assetExploreBorrowDraftsRef())
-      .filter(draft => draft.userId === normalizedUserId && draft.subEventId === normalizedSubEventId)
-      .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
+  private listBorrowDrafts(userId: string, subEventId: string): AssetBorrowDraft[] {
+    return this.assetBorrowDraftStore.list(userId, subEventId);
   }
 
-  private readBorrowDraft(userId: string, subEventId: string, cardId: string): AssetExploreBorrowDraftState | null {
-    const key = this.borrowDraftKey(userId, subEventId, cardId);
-    return key ? this.resourcePopupStore.assetExploreBorrowDraftsRef()[key] ?? null : null;
+  private readBorrowDraft(userId: string, subEventId: string, cardId: string): AssetBorrowDraft | null {
+    return this.assetBorrowDraftStore.read(userId, subEventId, cardId);
   }
 
   private saveBorrowDraft(userId: string, subEventId: string, dialog: AssetExploreBorrowDialogState): void {
-    const key = this.borrowDraftKey(userId, subEventId, dialog.cardId);
-    if (!key) {
+    if (!userId.trim() || !subEventId.trim() || !dialog.cardId.trim()) {
       return;
     }
     const card = this.resolveCard(dialog.cardId);
-    const next: AssetExploreBorrowDraftState = {
+    const next: AssetBorrowDraft = {
       userId: userId.trim(),
       subEventId: subEventId.trim(),
       cardId: dialog.cardId,
@@ -2331,20 +2326,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       paymentStep: dialog.paymentStep,
       updatedAtMs: Date.now()
     };
-    this.resourcePopupStore.assetExploreBorrowDraftsRef.set({
-      ...this.resourcePopupStore.assetExploreBorrowDraftsRef(),
-      [key]: next
-    });
+    this.assetBorrowDraftStore.save(next);
   }
 
   private clearBorrowDraftState(userId: string, subEventId: string, cardId: string): void {
-    const key = this.borrowDraftKey(userId, subEventId, cardId);
-    if (!key || !this.resourcePopupStore.assetExploreBorrowDraftsRef()[key]) {
-      return;
-    }
-    const next = { ...this.resourcePopupStore.assetExploreBorrowDraftsRef() };
-    delete next[key];
-    this.resourcePopupStore.assetExploreBorrowDraftsRef.set(next);
+    this.assetBorrowDraftStore.clear(userId, subEventId, cardId);
   }
 
   private shouldPersistBorrowDraft(dialog: AssetExploreBorrowDialogState, subEventId: string, userId: string): boolean {
@@ -2353,16 +2339,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       || dialog.paymentStep
       || this.readBorrowDraft(userId, subEventId, dialog.cardId)
     );
-  }
-
-  private borrowDraftKey(userId: string, subEventId: string, cardId: string): string {
-    const normalizedUserId = userId.trim();
-    const normalizedSubEventId = subEventId.trim();
-    const normalizedCardId = cardId.trim();
-    if (!normalizedUserId || !normalizedSubEventId || !normalizedCardId) {
-      return '';
-    }
-    return `${normalizedUserId}::${normalizedSubEventId}::${normalizedCardId}`;
   }
 
   private activeUser(): UserDto {

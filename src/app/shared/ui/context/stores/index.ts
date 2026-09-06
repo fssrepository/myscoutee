@@ -35,6 +35,7 @@ export {
   type AssetAvailabilityPopupOpenRequest,
   type AssetAvailabilityPopupRequest
 } from './asset-availability-popup.store';
+export { AssetBorrowDraftStore, type AssetBorrowDraft } from './asset-borrow-draft.store';
 export { AdminMenuStore, type AdminMenuKind } from './admin-menu.store';
 export { AdminWorkspaceStore } from './admin-workspace.store';
 export {
@@ -111,7 +112,6 @@ export {
 export {
   SubEventResourcePopupStore,
   type AssetExploreBorrowDialogState,
-  type AssetExploreBorrowDraftState,
   type AssetExploreBorrowPricingPreview,
   type AssetExplorePopupState,
   type AssignedAssetJoinDialogState,
