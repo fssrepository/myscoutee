@@ -267,11 +267,11 @@
 .entry-hero-thesis {
   margin: 0.92rem 0 0;
   color: var(--deployment-hero-text-muted);
-  font-size: clamp(0.98rem, 1.35vw, 1.12rem);
+  font-family: 'URW Gothic', 'Century Gothic', 'Trebuchet MS', sans-serif;
+  font-size: clamp(1.08rem, 1.5vw, 1.24rem);
   font-weight: 800;
   line-height: 1.42;
   letter-spacing: 0.005em;
-  text-wrap: balance;
 }
 
 app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
@@ -1378,7 +1378,7 @@ app-menu.entry-hero-cta-menu.app-menu-host--layout-row {
   }
 
   .entry-hero-thesis {
-    font-size: 0.96rem;
+    font-size: 1.02rem;
   }
 
   .entry-footer-grid {
