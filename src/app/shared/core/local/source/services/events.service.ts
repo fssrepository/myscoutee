@@ -1631,10 +1631,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ? this.existingCheckoutMembershipRecord(normalizedUserId, normalizedSourceId, options.slotSourceId ?? null)
       : null;
     if (existingCheckoutMembership) {
-      const result = LocalEventParticipationActionMapper.toResult(
-        existingCheckoutMembership,
-        this.resolveDemoActivityUserId(normalizedUserId),
-        options
+      const result = this.withLocalEventFull(
+        LocalEventParticipationActionMapper.toResult(
+          existingCheckoutMembership,
+          this.resolveDemoActivityUserId(normalizedUserId),
+          options
+        ),
+        normalizedUserId,
+        normalizedSourceId
       );
       if (result.membershipStatus === 'accepted' && options.checkoutState) {
         await this.updateCheckoutBasketStateRecord({
@@ -1668,7 +1672,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       options.pendingReason === 'approval'
     );
     const result = record
-      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
+      ? this.withLocalEventFull(
+          LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options),
+          normalizedUserId,
+          normalizedSourceId
+        )
       : null;
     if (result?.membershipStatus === 'accepted' && record) {
       this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
@@ -1701,6 +1709,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
     return resultWithCounterDelta;
+  }
+
+  private withLocalEventFull(
+    result: EventParticipationActionResultDTO,
+    userId: string,
+    sourceId: string
+  ): EventParticipationActionResultDTO {
+    const eventRecord = this.eventsRepository.queryEventRecordById(userId, sourceId);
+    return eventRecord
+      ? { ...result, full: eventRecord.full === true }
+      : result;
   }
 
   private isEventInvitation(userId: string, sourceId: string): boolean {
@@ -1801,6 +1820,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       slotSourceId: options.slotSourceId ?? null,
       removeMembershipOnly: options.removeMembershipOnly === true
     });
+    const eventAfterLeave = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    this.appendWatchlistAvailabilityNotifications(eventBeforeLeave, eventAfterLeave);
     if (resolvingInvitation && record) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
     }
@@ -2336,6 +2357,52 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         eventScope: invitationOnly ? 'invitations' : 'lifecycle',
         notification_tone: tone,
         ...(messageKey ? { notification_message_key: messageKey } : {})
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendWatchlistAvailabilityNotifications(
+    before: ActivityEventRecord | null,
+    after: ActivityEventRecord | null
+  ): void {
+    if (!before || !after || before.full !== true || after.full === true) {
+      return;
+    }
+    const eventId = `${after.id ?? before.id ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    const eventTitle = `${after.title ?? before.title ?? eventId}`.trim() || eventId;
+    const createdAtIso = new Date().toISOString();
+    const recipientUserIds = [...new Set(
+      (after.watchingUserIds ?? before.watchingUserIds ?? [])
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(Boolean)
+    )];
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId('event-watchlist-available', eventId, recipientUserId),
+      recipientUserId,
+      kind: 'event-watchlist-available',
+      category: 'event',
+      title: eventTitle,
+      message: 'A place is available again. Open the event to book it.',
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: null,
+      senderName: null,
+      senderAvatarUrl: null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'watchlist',
+        notification_title_key: 'notification.event.watchlist.available.title',
+        notification_message_key: 'notification.event.watchlist.available.message',
+        notification_tone: 'success',
+        notification_avatar_icon: 'visibility'
       }
     }));
     this.notificationsRepository.append(records);

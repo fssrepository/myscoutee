@@ -122,9 +122,7 @@ export class EventExploreInfoCardConverter {
     return activeUserId.length > 0
       && record.checkoutResultState != null
       && record.checkoutResultState !== 'deleted'
-      && !(record.checkoutResultState === 'succeeded'
-        && record.slotsEnabled === true
-        && this.isFull(record));
+      && !(record.slotsEnabled === true && this.isFull(record));
   }
 
   private static creatorOverlayTone(record: ActivityEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
