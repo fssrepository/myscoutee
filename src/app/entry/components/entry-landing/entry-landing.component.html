@@ -12,7 +12,7 @@
             [branding]="deploymentBranding()"
           ></app-deployment-brand>
         </span>
-        <span class="entry-preview-badge">
+        <span class="entry-preview-badge" hidden>
           <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
         </span>
       </div>
@@ -44,13 +44,14 @@
     <section class="entry-hero" id="top">
       <div class="entry-hero-main">
         <div class="entry-hero-content">
-          <p class="entry-eyebrow">{{ deploymentBranding().homeLabel }}</p>
-          <h1>Stop Swiping.</h1>
-          <h1>Start Connecting.</h1>
-          <div class="entry-hero-lead">
-            <p class="hero-line-even">Dating became swiping in the 2010s.</p>
-            <p class="hero-line-even">{{ deploymentBranding().productName }} makes meeting people social again.</p>
+          <div class="entry-heritage-statement">
+            <h1 class="entry-heritage-title">
+              <span>{{ 'landing.hero.history' | i18n: 'Meeting people was once social.' }}</span> <span>{{ 'landing.hero.return' | i18n: 'We’re making it social again.' }}</span>
+            </h1>
           </div>
+          <p class="entry-hero-thesis">
+            {{ 'landing.hero.graph' | i18n: 'Six people, six priority lists, and one group where their priorities meet.' }}
+          </p>
           <app-menu
             class="entry-hero-cta-menu"
             kind="inline"

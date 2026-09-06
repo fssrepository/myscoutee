@@ -22,6 +22,9 @@ describe('EntryLandingComponent article lists', () => {
     'landing.partners.title': 'For Partners',
     'landing.partners.open.aria': 'Open partner overview',
     'landing.preview.open.guide': 'Open preview guide',
+    'landing.hero.history': 'Meeting people was once social.',
+    'landing.hero.return': 'We’re making it social again.',
+    'landing.hero.graph': 'Six people, six priority lists, and one group where their priorities meet.',
     'bug.report': 'Bug report',
     'close.articles': 'Close articles'
   };
@@ -187,11 +190,20 @@ describe('EntryLandingComponent article lists', () => {
     const bugReportButton = fixture.nativeElement.querySelector(
       '.entry-footer-bug-report-action'
     ) as HTMLButtonElement | null;
+    const previewBadge = fixture.nativeElement.querySelector(
+      '.entry-preview-badge'
+    ) as HTMLElement | null;
     expect(ctaMenu).not.toBeNull();
     expect(heroButtons).toHaveLength(1);
     expect(ctaMenu?.textContent).not.toContain('For Partners');
     expect(ctaMenu?.textContent).not.toContain('Bug report');
     expect(ctaMenu?.textContent).not.toContain('see.how.it.works');
+    const heroText = fixture.nativeElement.querySelector('.entry-hero-content')?.textContent ?? '';
+    expect(heroText).toContain('Meeting people was once social.');
+    expect(heroText).toContain('We’re making it social again.');
+    expect(heroText).toContain('Six people, six priority lists,');
+    expect(heroText.toLowerCase()).not.toContain('swip');
+    expect(previewBadge?.hidden).toBe(true);
     expect(partnerButton).not.toBeNull();
     expect(bugReportButton).not.toBeNull();
     expect(bugReportButton?.parentElement).toBe(partnerButton?.parentElement);
