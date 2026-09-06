@@ -47,6 +47,7 @@ import type {
   EventCheckoutSlotsQuery,
   EventCheckoutSlotsResult,
   EventParticipationActionResultDTO,
+  EventWatchActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
@@ -194,6 +195,7 @@ export class HttpEventsService implements IEventsService {
       invitations: count(value.invitations),
       hosting: count(value.hosting),
       drafts: count(value.drafts),
+      watchlist: count(value.watchlist),
       trash: count(value.trash)
     };
   }
@@ -228,6 +230,7 @@ export class HttpEventsService implements IEventsService {
       || value === 'invitations'
       || value === 'my-events'
       || value === 'drafts'
+      || value === 'watchlist'
       || value === 'trash'
     ) {
       return value;
@@ -697,6 +700,41 @@ export class HttpEventsService implements IEventsService {
       )
       .toPromise();
     return this.normalizeParticipationActionResult(response);
+  }
+
+  async watchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.setEventWatchState(userId, sourceId, true);
+  }
+
+  async unwatchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.setEventWatchState(userId, sourceId, false);
+  }
+
+  private async setEventWatchState(
+    userId: string,
+    sourceId: string,
+    watched: boolean
+  ): Promise<EventWatchActionResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    const response = await this.http
+      .post<EventWatchActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/${watched ? 'watch' : 'unwatch'}`,
+        { userId: normalizedUserId, sourceId: normalizedSourceId }
+      )
+      .toPromise();
+    if (!response) {
+      return null;
+    }
+    return {
+      sourceId: `${response.sourceId ?? normalizedSourceId}`.trim() || normalizedSourceId,
+      watched: response.watched === true,
+      changed: response.changed === true,
+      eventCounters: this.normalizeEventCounterSnapshot(response.eventCounters)
+    };
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -1674,6 +1712,7 @@ export class HttpEventsService implements IEventsService {
         pendingReason: record.pendingReason ?? null,
         currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(record.currentUserMembershipStatus),
         checkoutResultState: this.normalizeCheckoutResultState(record.checkoutResultState),
+        watched: record.watched === true,
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,
@@ -1709,7 +1748,8 @@ export class HttpEventsService implements IEventsService {
       invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])],
       currentUserMembershipStatus: this.normalizeCurrentUserMembershipStatus(item.currentUserMembershipStatus),
-      checkoutResultState: this.normalizeCheckoutResultState(item.checkoutResultState)
+      checkoutResultState: this.normalizeCheckoutResultState(item.checkoutResultState),
+      watched: item.watched === true
     }));
   }
 

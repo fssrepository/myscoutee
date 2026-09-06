@@ -23,6 +23,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   eventScope?: string | null;
   checkoutMenuAction?: 'continueBooking' | 'paymentSummary' | null;
   checkoutState?: EventCheckoutState | null;
+  watched?: boolean;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -42,6 +43,7 @@ export type ActivityEventEditorAction = 'edit' | 'manage' | 'view';
 export class ActivityEventInfoCardMenuConverter {
   private static readonly availableActions: readonly string[] = [
     'restore',
+    'removeWatchlist',
     'takeOver',
     'publish',
     'manageEvent',
@@ -147,6 +149,8 @@ export class ActivityEventInfoCardMenuConverter {
     switch (actionId) {
       case 'restore':
         return false;
+      case 'removeWatchlist':
+        return subject.eventScope === 'watchlist' && subject.watched === true;
       case 'takeOver':
         return this.statusCode(subject.status) === 'UR'
           && this.isAdmin(subject, activeUserId);
@@ -307,6 +311,9 @@ export class ActivityEventInfoCardMenuConverter {
   }
 
   private static actionPalette(actionId: string, tone: CardMenuAction['tone']): AppMenuPalette {
+    if (actionId === 'addWatchlist' || actionId === 'removeWatchlist') {
+      return 'blue';
+    }
     if (actionId === 'paymentSummary') {
       return 'teal';
     }

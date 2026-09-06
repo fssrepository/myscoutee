@@ -2248,7 +2248,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private openActivitiesShortcut(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash'
   ): void {
     if (!this.runtimeStore.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;

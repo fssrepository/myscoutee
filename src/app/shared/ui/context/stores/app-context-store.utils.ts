@@ -250,6 +250,7 @@ export function cloneEventCounters(counters: Partial<ActivityEventCounters> | un
     invitations: normalizeCounterValue(Number(counters?.invitations) || 0),
     hosting: normalizeCounterValue(Number(counters?.hosting) || 0),
     drafts: normalizeCounterValue(Number(counters?.drafts) || 0),
+    watchlist: normalizeCounterValue(Number(counters?.watchlist) || 0),
     trash: normalizeCounterValue(Number(counters?.trash) || 0)
   };
 }

@@ -299,6 +299,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected get hostingBadge(): number { return this.activityCounterValue('hosting'); }
   protected get invitationsBadge(): number { return this.activityCounterValue('invitations'); }
   protected get draftsBadge(): number { return this.eventCounterValue('drafts'); }
+  protected get watchlistBadge(): number { return this.eventCounterValue('watchlist'); }
   protected get trashBadge(): number { return this.eventCounterValue('trash'); }
   protected get gameBadge(): number { return this.activityCounterValue('game'); }
 
@@ -597,7 +598,30 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isEventStyleActivity(row)) {
       return;
     }
+    if (action.actionId === 'removeWatchlist') {
+      void this.removeActivityEventFromWatchlist(row as ActivityEventListItem);
+      return;
+    }
     this.activitiesEvents.onActivityEventCardMenuAction(row, action);
+  }
+
+  private async removeActivityEventFromWatchlist(row: ActivityEventListItem): Promise<void> {
+    const activeUserId = this.activeUser.id.trim();
+    const dto = this.activityEventDTOFromVisibleSource(row);
+    if (!activeUserId || !row.id.trim()) {
+      return;
+    }
+    const result = await this.eventsService.unwatchEvent(activeUserId, row.id);
+    if (!result) {
+      return;
+    }
+    this.activityStore.signalUserEventCounterSnapshot(activeUserId, result.eventCounters);
+    if (!result.watched && this.activitiesEventScope === 'watchlist') {
+      this.removeVisibleActivityEventRow(row.id);
+    } else if (dto) {
+      this.applyActivityEventSync({ ...dto, watched: result.watched });
+    }
+    this.cdr.markForCheck();
   }
 
   protected activitySmartListMenuItems(
@@ -656,6 +680,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       activity: dto?.activity ?? row.menuBadgeCount ?? 0,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? record?.checkoutBasket?.status ?? null,
+      watched: dto?.watched ?? record?.watched ?? false,
       checkoutMenuAction: this.activityCheckoutMenuAction(
         draft,
         record?.checkoutBasket ?? null,
@@ -1634,7 +1659,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private shouldShowStandaloneEventExploreAction(): boolean {
     return this.isEventActivitiesPrimaryFilter()
-      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
+      && (
+        this.activitiesEventScope === 'all'
+        || this.activitiesEventScope === 'active-events'
+        || this.activitiesEventScope === 'watchlist'
+      );
   }
 
   private activitiesSupportCaseFilters(): Array<{ key: ContractTypes.SupportCaseFilter; labelKey: string; icon: string }> {
@@ -1664,6 +1693,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       { key: 'invitations', label: 'Invitations', icon: 'mail' },
       { key: 'my-events', label: 'My Events', icon: 'stadium' },
       { key: 'drafts', label: 'Drafts', icon: 'drafts' },
+      { key: 'watchlist', label: 'Watchlist', icon: 'visibility' },
       { key: 'trash', label: 'Trash', icon: 'delete' }
     ];
   }
@@ -1891,6 +1921,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'green';
       case 'pending':
         return 'amber';
+      case 'watchlist':
+        return 'blue';
       case 'all':
         return 'blue';
       case 'active-events':
@@ -2007,6 +2039,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       invitations: this.invitationsBadge,
       'my-events': this.hostingBadge,
       drafts: this.draftsBadge,
+      watchlist: this.watchlistBadge,
       trash: this.trashBadge
     };
   }
@@ -2596,6 +2629,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return isAdmin;
       case 'drafts':
         return isAdmin && status === 'DR';
+      case 'watchlist':
+        return sync.watched === true;
       case 'active-events':
       default:
         return !isAdmin && !isInvited && isAccepted && !isPendingReview;
@@ -2782,6 +2817,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'My Events';
       case 'drafts':
         return 'Drafts';
+      case 'watchlist':
+        return 'Watchlist';
       case 'trash':
         return 'Trash';
       case 'active-events':
@@ -2864,6 +2901,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && this.activitiesEventScope !== 'active-events'
       && this.activitiesEventScope !== 'pending'
       && this.activitiesEventScope !== 'invitations'
+      && this.activitiesEventScope !== 'watchlist'
       && this.activitiesEventScope !== 'trash';
   }
 

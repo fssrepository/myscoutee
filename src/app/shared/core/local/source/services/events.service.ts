@@ -34,6 +34,7 @@ import type {
   EventCheckoutSlotsQuery,
   EventCheckoutSlotsResult,
   EventParticipationActionResultDTO,
+  EventWatchActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
@@ -102,6 +103,7 @@ interface LocalEventCounterSnapshot {
     invitations: number;
     hosting: number;
     drafts: number;
+    watchlist: number;
     trash: number;
   };
 }
@@ -1057,6 +1059,43 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return result;
+  }
+
+  async watchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.setLocalEventWatchState(userId, sourceId, true);
+  }
+
+  async unwatchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.setLocalEventWatchState(userId, sourceId, false);
+  }
+
+  private async setLocalEventWatchState(
+    userId: string,
+    sourceId: string,
+    watched: boolean
+  ): Promise<EventWatchActionResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    const record = this.eventsRepository.peekKnownItemById(normalizedUserId, normalizedSourceId);
+    if (!normalizedUserId || !normalizedSourceId || !record) {
+      return null;
+    }
+    const changed = record.watched !== watched;
+    if (changed) {
+      if (watched) {
+        this.eventsRepository.watchEvent(normalizedUserId, normalizedSourceId);
+      } else {
+        this.eventsRepository.unwatchEvent(normalizedUserId, normalizedSourceId);
+      }
+      await this.eventsRepository.flushToIndexedDb();
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return {
+      sourceId: normalizedSourceId,
+      watched,
+      changed,
+      eventCounters: this.localEventCounterSnapshot(normalizedUserId).event
+    };
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -2479,7 +2518,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       }
     }
     const event = this.localNestedCounterDelta(before.event, after.event, [
-      'all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash'
+      'all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash'
     ]);
     if (event) {
       delta.event = event;

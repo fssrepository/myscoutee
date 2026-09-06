@@ -224,6 +224,9 @@ export class LocalEventsRepository {
       .filter(record => !this.isTrashStatus(record));
     const draftItems = myEventItems.filter(record => this.isDraftStatus(record.status));
     const reviewItems = myEventItems.filter(record => this.isPendingReviewStatus(record));
+    const watchlistItems = userItems
+      .filter(record => record.watched === true)
+      .filter(record => !this.isTrashStatus(record));
 
     if (filter === 'all') {
       return [...activeEventItems, ...pendingEventItems, ...invitationItems, ...myEventItems];
@@ -239,6 +242,9 @@ export class LocalEventsRepository {
     }
     if (filter === 'drafts') {
       return draftItems;
+    }
+    if (filter === 'watchlist') {
+      return watchlistItems;
     }
     if (filter === 'trash') {
       return this.queryTrashRecordsByUser(userId);
@@ -532,6 +538,7 @@ export class LocalEventsRepository {
       || value === 'invitations'
       || value === 'my-events'
       || value === 'drafts'
+      || value === 'watchlist'
       || value === 'trash'
     ) {
       return value;
@@ -586,7 +593,7 @@ export class LocalEventsRepository {
         continue;
       }
       const resolvedRecord = this.withCurrentUserMembershipStatus(
-        this.withResolvedSlotContext(record, table),
+        this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), normalizedUserId),
         normalizedUserId
       );
       if (!this.shouldIncludeExploreRecord(resolvedRecord, normalizedUserId)) {
@@ -614,7 +621,7 @@ export class LocalEventsRepository {
     }
     const viewerCoordinates = this.queryUserLocationCoordinates(userId);
     return this.withResolvedDistance(
-      this.withResolvedSlotContext(record, table),
+      this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), userId),
       viewerCoordinates
     );
   }
@@ -1047,6 +1054,53 @@ export class LocalEventsRepository {
     this.materializeSlotRecords();
     this.syncStageRuntimeGroupCountsForDefinitions(record.id);
     return this.peekKnownItemById(record.creatorUserId, record.id);
+  }
+
+  watchEvent(userId: string, sourceId: string): ActivityEventRecord | null {
+    return this.setEventWatchState(userId, sourceId, true);
+  }
+
+  unwatchEvent(userId: string, sourceId: string): ActivityEventRecord | null {
+    return this.setEventWatchState(userId, sourceId, false);
+  }
+
+  private setEventWatchState(userId: string, sourceId: string, watched: boolean): ActivityEventRecord | null {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    const record = this.peekKnownItemById(normalizedUserId, normalizedSourceId);
+    if (!normalizedUserId || !normalizedSourceId || !record) {
+      return null;
+    }
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const byId = { ...table.byId };
+      let changed = false;
+      for (const recordKey of table.ids) {
+        const current = table.byId[recordKey];
+        if (!current || current.id !== normalizedSourceId || !this.isRootActivityRecord(current)) {
+          continue;
+        }
+        const watchingUserIds = new Set(this.normalizeUserIds(current.watchingUserIds));
+        if (watched) {
+          watchingUserIds.add(normalizedUserId);
+        } else {
+          watchingUserIds.delete(normalizedUserId);
+        }
+        const nextWatchingUserIds = [...watchingUserIds];
+        if (JSON.stringify(nextWatchingUserIds) === JSON.stringify(current.watchingUserIds ?? [])) {
+          continue;
+        }
+        byId[recordKey] = {
+          ...current,
+          watchingUserIds: nextWatchingUserIds
+        };
+        changed = true;
+      }
+      return changed
+        ? { ...state, [EVENTS_TABLE_NAME]: { ...table, byId } }
+        : state;
+    });
+    return this.peekKnownItemById(normalizedUserId, normalizedSourceId);
   }
 
   trashItem(userId: string, sourceId: string): void {
@@ -2182,7 +2236,7 @@ export class LocalEventsRepository {
         events: 0,
         invitations: 0,
         hosting: 0,
-        event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, trash: 0 }
+        event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, watchlist: 0, trash: 0 }
       };
     }
     const invitations = this.queryInvitationItemsByUser(normalizedUserId).length;
@@ -2196,6 +2250,9 @@ export class LocalEventsRepository {
     ).length;
     const active = this.countUpcomingActiveEventItemsByUser(normalizedUserId);
     const hosting = hostingItems.length;
+    const watchlist = this.queryUserRecords(normalizedUserId)
+      .filter(record => record.watched === true && !this.isTrashStatus(record))
+      .length;
     return {
       events: active,
       invitations,
@@ -2207,6 +2264,7 @@ export class LocalEventsRepository {
         invitations,
         hosting,
         drafts: hostingItems.filter(record => this.normalizeEventStatus(record.status) === 'DR').length,
+        watchlist,
         trash: this.queryTrashedItemsByUser(normalizedUserId).length
       }
     };
@@ -2310,7 +2368,7 @@ export class LocalEventsRepository {
       .filter(record => this.isRootActivityRecord(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
-      .map(record => this.withResolvedSlotContext(record, table));
+      .map(record => this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), normalizedUserId));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
@@ -2318,8 +2376,21 @@ export class LocalEventsRepository {
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
-      .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
-    return [...directRecords, ...membershipRecords];
+      .map(record => this.buildMembershipProjectionRecord(
+        normalizedUserId,
+        this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), normalizedUserId)
+      ));
+    const includedIds = new Set([...directIds, ...membershipRecords.map(record => record.id)]);
+    const watchlistRecords = preferredRecords
+      .filter(record => this.isRootActivityRecord(record))
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => !includedIds.has(record.id))
+      .filter(record => this.isWatchedByUser(record, normalizedUserId))
+      .map(record => this.buildMembershipProjectionRecord(
+        normalizedUserId,
+        this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), normalizedUserId)
+      ));
+    return [...directRecords, ...membershipRecords, ...watchlistRecords];
   }
 
   private queryTrashRecordsByUser(userId: string): ActivityEventRecord[] {
@@ -2373,7 +2444,7 @@ export class LocalEventsRepository {
         continue;
       }
       recordsByUserId.get(recordUserId)?.push(
-        this.withResolvedSlotContext(record, table)
+        this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), recordUserId)
       );
       const directIds = directIdsByUserId.get(recordUserId) ?? new Set<string>();
       directIds.add(record.id);
@@ -2388,8 +2459,21 @@ export class LocalEventsRepository {
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
         .filter(record => this.hasTrackedUserParticipation(record, userId))
-        .map(record => this.buildMembershipProjectionRecord(userId, this.withResolvedSlotContext(record, table)));
-      recordsByUserId.get(userId)?.push(...membershipRecords);
+        .map(record => this.buildMembershipProjectionRecord(
+          userId,
+          this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), userId)
+        ));
+      const includedIds = new Set([...directIds, ...membershipRecords.map(record => record.id)]);
+      const watchlistRecords = preferredRecords
+        .filter(record => this.isRootActivityRecord(record))
+        .filter(record => !this.isTrashStatus(record))
+        .filter(record => !includedIds.has(record.id))
+        .filter(record => this.isWatchedByUser(record, userId))
+        .map(record => this.buildMembershipProjectionRecord(
+          userId,
+          this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), userId)
+        ));
+      recordsByUserId.get(userId)?.push(...membershipRecords, ...watchlistRecords);
     }
 
     return recordsByUserId;
@@ -2924,6 +3008,21 @@ export class LocalEventsRepository {
     };
   }
 
+  private withCurrentUserWatchState(
+    record: ActivityEventRecord,
+    viewerUserId: string
+  ): ActivityEventRecord {
+    return {
+      ...record,
+      watched: this.isWatchedByUser(record, viewerUserId)
+    };
+  }
+
+  private isWatchedByUser(record: ActivityEventRecord, viewerUserId: string): boolean {
+    const normalizedUserId = viewerUserId.trim();
+    return !!normalizedUserId && this.normalizeUserIds(record.watchingUserIds).includes(normalizedUserId);
+  }
+
   private shouldPreferExploreRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
     const nextPublished = this.isPublishedStatus(next.status);
     const currentPublished = this.isPublishedStatus(current.status);
@@ -2997,6 +3096,7 @@ export class LocalEventsRepository {
       pendingMemberUserIds: this.normalizeUserIds(record.pendingMemberUserIds),
       invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
       pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
+      watchingUserIds: this.normalizeUserIds(record.watchingUserIds),
       policiesEnabled: record.policiesEnabled === true,
       approvalRequired: record.approvalRequired === true,
       policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),

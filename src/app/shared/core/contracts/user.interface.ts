@@ -173,6 +173,7 @@ export interface UserEventCountersDto {
   invitations?: number;
   hosting?: number;
   drafts?: number;
+  watchlist?: number;
   trash?: number;
 }
 
@@ -183,6 +184,7 @@ export interface UserEventCounterDeltasDto {
   invitations?: number;
   hosting?: number;
   drafts?: number;
+  watchlist?: number;
   trash?: number;
 }
 

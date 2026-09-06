@@ -117,6 +117,7 @@ export class LocalActivityEventsMapper {
       pendingReason: record.pendingReason,
       approvalRequired: record.approvalRequired === true,
       checkoutResultState: null,
+      watched: record.watched === true,
       boost: record.boost
     };
   }

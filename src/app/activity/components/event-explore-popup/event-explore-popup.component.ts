@@ -913,6 +913,10 @@ export class EventExplorePopupComponent {
       });
       return;
     }
+    if (action.actionId === 'addWatchlist' || action.actionId === 'removeWatchlist') {
+      void this.setEventExploreWatchState(record, action.actionId === 'addWatchlist');
+      return;
+    }
     if (this.isEventExploreJoinMenuAction(action.actionId)) {
       this.runEventExploreJoinAction(record);
       return;
@@ -932,6 +936,22 @@ export class EventExplorePopupComponent {
     if (action.actionId === 'reportOrganizer') {
       this.runEventExploreReportAction(record);
     }
+  }
+
+  private async setEventExploreWatchState(record: ActivityEventRecord, watched: boolean): Promise<void> {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId || !record.id.trim()) {
+      return;
+    }
+    const result = watched
+      ? await this.eventsService.watchEvent(activeUserId, record.id)
+      : await this.eventsService.unwatchEvent(activeUserId, record.id);
+    if (!result) {
+      return;
+    }
+    this.restoreVisibleEventExploreRecord({ ...record, watched: result.watched });
+    this.activityStore.signalUserEventCounterSnapshot(activeUserId, result.eventCounters);
+    this.cdr.markForCheck();
   }
 
   protected checkoutDraftCount(): number {
@@ -1737,6 +1757,7 @@ export class EventExplorePopupComponent {
             dto.capacityTotal ?? existing.capacityTotal
           ),
           full: dto.full ?? existing.full,
+          watched: dto.watched ?? existing.watched,
           eventType: dto.eventType ?? existing.eventType,
           status: dto.status ?? existing.status
         };

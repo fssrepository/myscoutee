@@ -205,6 +205,7 @@ export interface CardMenuAction {
 
 export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuActionConfig>> = {
   accept: { label: 'accept', icon: 'done', tone: 'accent' },
+  addWatchlist: { label: 'Add to watchlist', icon: 'visibility', tone: 'accent' },
   addOrganizerNote: { label: 'add.organizer.note', icon: 'edit_note' },
   askOrganizer: { label: 'ask.organizer', icon: 'support_agent' },
   assetAvailability: { label: 'asset.availability', icon: 'event_available', tone: 'accent' },
@@ -242,6 +243,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long', tone: 'positive' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
+  removeWatchlist: { label: 'Remove from watchlist', icon: 'visibility_off', tone: 'warning' },
   remove: { label: 'reject', icon: 'delete', tone: 'destructive' },
   removeAssignment: { label: 'remove', icon: 'link_off', tone: 'destructive' },
   removeFeedback: { label: 'remove', icon: 'remove_circle', tone: 'destructive' },

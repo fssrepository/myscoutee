@@ -100,14 +100,18 @@ export class EventExploreInfoCardConverter {
     activeUserId: string | null
   ): readonly CardMenuActionId[] {
     const normalizedUserId = `${activeUserId ?? ''}`.trim();
+    const watchAction = this.watchActionId(record);
     if (normalizedUserId && record.creatorUserId === normalizedUserId) {
-      return ['view', 'notifyParticipants'];
+      return ['view', 'notifyParticipants', watchAction];
     }
     if (normalizedUserId && this.hasVisibleCheckoutBasket(record, normalizedUserId)) {
-      return ['view', 'continueBookingPending', 'askOrganizer', 'shareEvent', 'reportOrganizer'];
+      return ['view', 'continueBookingPending', watchAction, 'askOrganizer', 'shareEvent', 'reportOrganizer'];
     }
     const actions: CardMenuActionId[] = ['view'];
-    actions.push(this.joinActionId(record));
+    if (!(record.slotsEnabled === true && this.isFull(record))) {
+      actions.push(this.joinActionId(record));
+    }
+    actions.push(watchAction);
     actions.push('askOrganizer');
     actions.push('shareEvent');
     actions.push('reportOrganizer');
@@ -195,6 +199,10 @@ export class EventExploreInfoCardConverter {
     return this.requiresBookingFlow(record)
       ? 'bookEvent'
       : 'requestJoin';
+  }
+
+  private static watchActionId(record: ActivityEventRecord): CardMenuActionId {
+    return record.watched === true ? 'removeWatchlist' : 'addWatchlist';
   }
 
   private static requiresBookingFlow(record: ActivityEventRecord): boolean {
