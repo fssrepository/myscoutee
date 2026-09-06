@@ -72,6 +72,7 @@ export class EventCheckoutDraftStore {
       const record = recordsById.get(draft.sourceId);
       if (record && (
         record.checkoutResultState === null
+        || record.checkoutResultState === 'succeeded'
         || (record.checkoutResultState === 'deleted'
           && Number.isFinite(expiresAtMs)
           && expiresAtMs <= nowMs)

@@ -117,7 +117,10 @@ export class EventExploreInfoCardConverter {
   private static hasVisibleCheckoutBasket(record: ActivityEventRecord, activeUserId: string): boolean {
     return activeUserId.length > 0
       && record.checkoutResultState != null
-      && record.checkoutResultState !== 'deleted';
+      && record.checkoutResultState !== 'deleted'
+      && !(record.checkoutResultState === 'succeeded'
+        && record.slotsEnabled === true
+        && this.isFull(record));
   }
 
   private static creatorOverlayTone(record: ActivityEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
