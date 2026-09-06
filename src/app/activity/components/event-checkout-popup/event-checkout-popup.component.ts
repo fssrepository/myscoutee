@@ -2767,7 +2767,9 @@ export class EventCheckoutPopupComponent {
       this.switchCheckoutReviewPhase();
       try {
         this.checkoutSessionId = null;
-        await this.persistCheckoutDraft(true, null, 'confirmed');
+        await this.persistCheckoutDraft(true, null, 'confirmed', false, {
+          submitPendingMembership: true
+        });
         this.refreshCheckoutBaseline();
       } catch (error) {
         this.paymentStep = false;
@@ -3597,7 +3599,8 @@ export class EventCheckoutPopupComponent {
     syncRuntimeBasket = true,
     pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
     checkoutStateOverride?: ActivityContracts.EventCheckoutState,
-    basketChanged = false
+    basketChanged = false,
+    options: { submitPendingMembership?: boolean } = {}
   ): Promise<void> {
     const dialog = this.dialog();
     const updateStepActive = this.checkoutUpdateStepActive();
@@ -3632,6 +3635,14 @@ export class EventCheckoutPopupComponent {
       basketChanged,
       updatedAtMs: Date.now()
     });
+    if (options.submitPendingMembership === true) {
+      await dialog.onSubmit(this.buildSelection(null, false, {
+        checkoutState,
+        pendingReason,
+        includeBasketPayload: true
+      }));
+      return;
+    }
     if (syncRuntimeBasket) {
       await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason, updateStepActive);
     }
