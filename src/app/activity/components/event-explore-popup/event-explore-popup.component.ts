@@ -1446,7 +1446,8 @@ export class EventExplorePopupComponent {
         topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
       }
     });
-    this.eventCheckoutDraftStore.reconcileServerEventDrafts(this.activeUserId, page.items);
+    this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
+    this.eventCheckoutDraftStore.reconcileRecreatedEventDrafts(this.activeUserId, page.items);
     await this.restoreServerCheckoutDrafts(page.items);
     return page;
   }

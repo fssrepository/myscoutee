@@ -57,9 +57,32 @@ export class EventCheckoutDraftStore {
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
   }
 
-  reconcileServerEventDrafts(
+  reconcileExpiredEventDrafts(
     userId: string,
     records: readonly Pick<ActivityEventRecord, 'id' | 'checkoutResultState'>[],
+    nowMs = Date.now()
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || records.length === 0) {
+      return;
+    }
+    const recordsById = new Map(records.map(record => [record.id, record]));
+    for (const draft of this.listByUser(normalizedUserId)) {
+      const expiresAtMs = Date.parse(draft.expiresAtIso ?? '');
+      const record = recordsById.get(draft.sourceId);
+      if (!record
+          || !Number.isFinite(expiresAtMs)
+          || expiresAtMs > nowMs
+          || record.checkoutResultState !== 'deleted') {
+        continue;
+      }
+      this.clear(normalizedUserId, draft.sourceId);
+    }
+  }
+
+  reconcileRecreatedEventDrafts(
+    userId: string,
+    records: readonly Pick<ActivityEventRecord, 'id' | 'checkoutResultState' | 'timeframe'>[]
   ): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || records.length === 0) {
@@ -68,8 +91,13 @@ export class EventCheckoutDraftStore {
     const recordsById = new Map(records.map(record => [record.id, record]));
     for (const draft of this.listByUser(normalizedUserId)) {
       const record = recordsById.get(draft.sourceId);
+      const draftTimeframe = draft.eventTimeframe.trim();
+      const recordTimeframe = record?.timeframe?.trim() ?? '';
       if (!record
-          || (record.checkoutResultState !== null && record.checkoutResultState !== 'deleted')) {
+          || record.checkoutResultState !== null
+          || !draftTimeframe
+          || !recordTimeframe
+          || draftTimeframe === recordTimeframe) {
         continue;
       }
       this.clear(normalizedUserId, draft.sourceId);
