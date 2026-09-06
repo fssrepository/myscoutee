@@ -42,13 +42,9 @@
       [class.event-payment-status--danger]="statusTone === 'danger'"
     >
       <span>{{ 'event.editor.payment.status' | i18n }}</span>
-      <strong>{{ paymentStatusLabel() | i18n }}</strong>
+      <strong>{{ paymentStatusMessage() | i18n }}</strong>
     </article>
   </div>
-
-  @if (paymentNote(); as note) {
-    <p class="event-payment-note">{{ note | i18n }}</p>
-  }
 
   @if (showPaymentMethod()) {
   <div class="event-payment-method-shell">

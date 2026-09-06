@@ -600,6 +600,7 @@ export class HttpUsersService implements UserService {
           invitations: 0,
           hosting: 0,
           drafts: 0,
+          watchlist: 0,
           trash: 0
         },
         asset: {
@@ -660,6 +661,7 @@ export class HttpUsersService implements UserService {
         invitations: this.normalizeInitialCounterValue(overrides?.event?.invitations, user.activities?.event?.invitations),
         hosting: this.normalizeInitialCounterValue(overrides?.event?.hosting, user.activities?.event?.hosting),
         drafts: this.normalizeInitialCounterValue(overrides?.event?.drafts, user.activities?.event?.drafts),
+        watchlist: this.normalizeInitialCounterValue(overrides?.event?.watchlist, user.activities?.event?.watchlist),
         trash: this.normalizeInitialCounterValue(overrides?.event?.trash, user.activities?.event?.trash)
       },
       asset: {

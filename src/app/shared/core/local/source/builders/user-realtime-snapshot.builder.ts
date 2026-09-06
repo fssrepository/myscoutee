@@ -235,6 +235,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       invitations: this.count(current.event?.invitations) + this.count(increments.invitations),
       hosting: this.count(current.event?.hosting) + this.count(increments.hosting),
       drafts: this.count(current.event?.drafts),
+      watchlist: this.count(current.event?.watchlist),
       trash: this.count(current.event?.trash)
     };
     next.asset = {
@@ -282,7 +283,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       current.event,
       previousBase.event,
       nextBase.event,
-      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash']
     );
     next.asset = this.rebaseNestedCounters(
       current.asset,

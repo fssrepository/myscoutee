@@ -648,10 +648,11 @@ export class UsersService extends BaseRouteModeService {
     const eventInvitations = normalizeWithFallback(counterOverrides.event?.invitations, fallbackActivities.event?.invitations);
     const eventHosting = normalizeWithFallback(counterOverrides.event?.hosting, fallbackActivities.event?.hosting);
     const eventDrafts = normalizeWithFallback(counterOverrides.event?.drafts, fallbackActivities.event?.drafts);
+    const eventWatchlist = normalizeWithFallback(counterOverrides.event?.watchlist, fallbackActivities.event?.watchlist);
     const eventTrash = normalizeWithFallback(counterOverrides.event?.trash, fallbackActivities.event?.trash);
     if (eventAll !== undefined || eventActive !== undefined || eventPending !== undefined
       || eventInvitations !== undefined || eventHosting !== undefined
-      || eventDrafts !== undefined || eventTrash !== undefined
+      || eventDrafts !== undefined || eventWatchlist !== undefined || eventTrash !== undefined
     ) {
       patch.event = {
         all: eventAll ?? 0,
@@ -660,6 +661,7 @@ export class UsersService extends BaseRouteModeService {
         invitations: eventInvitations ?? 0,
         hosting: eventHosting ?? 0,
         drafts: eventDrafts ?? 0,
+        watchlist: eventWatchlist ?? 0,
         trash: eventTrash ?? 0
       };
     }
@@ -744,6 +746,7 @@ export class UsersService extends BaseRouteModeService {
           invitations: Math.max(0, Math.trunc(Number(user.activities?.event?.invitations) || 0)),
           hosting: Math.max(0, Math.trunc(Number(user.activities?.event?.hosting) || 0)),
           drafts: Math.max(0, Math.trunc(Number(user.activities?.event?.drafts) || 0)),
+          watchlist: Math.max(0, Math.trunc(Number(user.activities?.event?.watchlist) || 0)),
           trash: Math.max(0, Math.trunc(Number(user.activities?.event?.trash) || 0))
         },
         asset: {

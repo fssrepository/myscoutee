@@ -36,7 +36,8 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
       canAdd: false,
-      pendingRegistration: null
+      pendingRegistration: null,
+      currentProvider: null
     };
   }
 

@@ -180,22 +180,6 @@ export interface AssignedAssetJoinDialogState {
   error: string | null;
 }
 
-export interface AssetExploreBorrowDraftState {
-  userId: string;
-  subEventId: string;
-  cardId: string;
-  ownerUserId: string;
-  title: string;
-  quantity: number;
-  startAtIso: string;
-  endAtIso: string;
-  acceptedPolicyIds: string[];
-  checkoutSessionId: string | null;
-  paymentMethod: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
-  paymentStep: boolean;
-  updatedAtMs: number;
-}
-
 export type AssetExploreBorrowPricingPreview = AssetBorrowPricingPreview;
 
 export interface SupplyBringDialogState {
@@ -238,7 +222,6 @@ export class SubEventResourcePopupStore {
   readonly assetExploreOnlyRef = signal(false);
   readonly assetExploreBorrowDialogRef = signal<AssetExploreBorrowDialogState | null>(null);
   readonly assignedAssetJoinDialogRef = signal<AssignedAssetJoinDialogState | null>(null);
-  readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   readonly assignContextRef = signal<{ subEventId: string; type: AppConstants.AssetType } | null>(null);
   readonly selectedAssignAssetIdsRef = signal<string[]>([]);
   private readonly visibleResourceStatesRef = signal<AppDTOs.ActivitySubEventResourceStateDTO[]>([]);

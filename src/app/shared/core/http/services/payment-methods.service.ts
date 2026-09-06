@@ -33,7 +33,8 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       canAdd: response?.canAdd === true,
       pendingRegistration: response?.pendingRegistration?.id?.trim()
         ? this.requireRegistration(response.pendingRegistration)
-        : null
+        : null,
+      currentProvider: this.normalizeCurrentProvider(response?.currentProvider)
     };
   }
 
@@ -104,6 +105,13 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       const numeric = Number(amount);
       return key && Number.isFinite(numeric) && numeric >= 0 ? [[key, numeric]] : [];
     }));
+  }
+
+  private normalizeCurrentProvider(value: unknown): 'stripe' | 'barion' | 'none' | null {
+    const provider = `${value ?? ''}`.trim().toLowerCase();
+    return provider === 'stripe' || provider === 'barion' || provider === 'none'
+      ? provider
+      : null;
   }
 
   private pageParams(userId: string, query: ListQuery): HttpParams {

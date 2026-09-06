@@ -913,6 +913,10 @@ export class EventExplorePopupComponent {
       });
       return;
     }
+    if (action.actionId === 'addWatchlist' || action.actionId === 'removeWatchlist') {
+      void this.setEventExploreWatchState(record, action.actionId === 'addWatchlist');
+      return;
+    }
     if (this.isEventExploreJoinMenuAction(action.actionId)) {
       this.runEventExploreJoinAction(record);
       return;
@@ -932,6 +936,30 @@ export class EventExplorePopupComponent {
     if (action.actionId === 'reportOrganizer') {
       this.runEventExploreReportAction(record);
     }
+  }
+
+  private async setEventExploreWatchState(record: ActivityEventRecord, watched: boolean): Promise<void> {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId || !record.id.trim()) {
+      return;
+    }
+    const result = watched
+      ? await this.eventsService.watchEvent(activeUserId, record.id)
+      : await this.eventsService.unwatchEvent(activeUserId, record.id);
+    if (!result) {
+      return;
+    }
+    const nextRecord = { ...record, watched: result.watched };
+    this.restoreVisibleEventExploreRecord(nextRecord);
+    this.activitiesStore.emitActivityEventSaveResult({
+      ...this.buildActivityEventDetailDTO(nextRecord, this.buildMemberEntries(nextRecord)),
+      userId: activeUserId,
+      adminIds: [...(nextRecord.adminIds ?? [])],
+      currentUserMembershipStatus: nextRecord.currentUserMembershipStatus,
+      watched: result.watched
+    });
+    this.activityStore.signalUserEventCounterSnapshot(activeUserId, result.eventCounters);
+    this.cdr.markForCheck();
   }
 
   protected checkoutDraftCount(): number {
@@ -1737,6 +1765,7 @@ export class EventExplorePopupComponent {
             dto.capacityTotal ?? existing.capacityTotal
           ),
           full: dto.full ?? existing.full,
+          watched: dto.watched ?? existing.watched,
           eventType: dto.eventType ?? existing.eventType,
           status: dto.status ?? existing.status
         };
@@ -2139,8 +2168,7 @@ export class EventExplorePopupComponent {
       if (!joinResult || (joinResult.membershipStatus === 'unchanged' && !checkoutUpdateRequested)) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
-      const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
-      const displayMembers = [...(persistedMembers.length > 0 ? persistedMembers : nextMembers)];
+      const displayMembers = [...nextMembers];
       const nextRecord = this.withEventExploreMemberDelta(record, {
         acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
         pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
@@ -2467,11 +2495,11 @@ export class EventExplorePopupComponent {
     if (this.isEventExploreSelectionFull(record, selection)) {
       return false;
     }
-    if (record.ticketing !== true) {
-      return false;
-    }
     if (selection?.bookingConfirmed === true) {
       return true;
+    }
+    if (record.ticketing !== true) {
+      return false;
     }
     return !selection && !this.shouldUseCheckoutFlow(record);
   }

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityPendingReason } from '../../../common/constants';
+import { UserProfileState } from '../../../common/user-profile-state';
 import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
@@ -34,6 +35,7 @@ import type {
   EventCheckoutSlotsQuery,
   EventCheckoutSlotsResult,
   EventParticipationActionResultDTO,
+  EventWatchActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
@@ -102,6 +104,7 @@ interface LocalEventCounterSnapshot {
     invitations: number;
     hosting: number;
     drafts: number;
+    watchlist: number;
     trash: number;
   };
 }
@@ -630,6 +633,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         this.appendInvitationAcceptedNotifications(record, normalizedUserId);
       }
     }
+    if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
+      this.appendMemberJoinedNotifications(record, normalizedUserId);
+    }
     if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
       this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
     }
@@ -839,6 +845,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
     }
     const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
+    if (savedRecord) {
+      this.appendWatchlistDefinitionUpdateNotifications(record.creatorUserId, existingRecord, savedRecord);
+      this.appendWatchlistAvailabilityNotifications(existingRecord, savedRecord);
+    }
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
       await this.activityResourcesRepository.flushToIndexedDb();
@@ -964,6 +974,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           'notification.event.available.again.message'
         );
       }
+      this.appendWatchlistEventUpdatedNotifications(userId, published);
     }
     const result = await this.withLocalMutationCounterDelta(
       this.localLifecycleResult(sourceId, 'publish', published, changed),
@@ -1057,6 +1068,56 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return result;
+  }
+
+  async watchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.setLocalEventWatchState(userId, sourceId, true);
+  }
+
+  async unwatchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.setLocalEventWatchState(userId, sourceId, false);
+  }
+
+  private async setLocalEventWatchState(
+    userId: string,
+    sourceId: string,
+    watched: boolean
+  ): Promise<EventWatchActionResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    const record = this.eventsRepository.peekKnownItemById(normalizedUserId, normalizedSourceId);
+    if (!normalizedUserId || !normalizedSourceId || !record) {
+      return null;
+    }
+    const nextWatched = watched && !this.isAcceptedEventMember(record, normalizedUserId);
+    if (nextWatched && !this.localEventIsVisibleToWatcher(record, normalizedUserId)) {
+      return null;
+    }
+    const changed = record.watched !== nextWatched;
+    if (changed) {
+      if (nextWatched) {
+        this.eventsRepository.watchEvent(normalizedUserId, normalizedSourceId);
+      } else {
+        this.eventsRepository.unwatchEvent(normalizedUserId, normalizedSourceId);
+      }
+      await this.eventsRepository.flushToIndexedDb();
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return {
+      sourceId: normalizedSourceId,
+      watched: nextWatched,
+      changed,
+      eventCounters: this.localEventCounterSnapshot(normalizedUserId).event
+    };
+  }
+
+  private isAcceptedEventMember(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    return !!normalizedUserId && (
+      record.creatorUserId.trim() === normalizedUserId
+      || record.currentUserMembershipStatus === 'accepted'
+      || (record.acceptedMemberUserIds ?? []).some(memberUserId => memberUserId.trim() === normalizedUserId)
+    );
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -1592,10 +1653,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ? this.existingCheckoutMembershipRecord(normalizedUserId, normalizedSourceId, options.slotSourceId ?? null)
       : null;
     if (existingCheckoutMembership) {
-      const result = LocalEventParticipationActionMapper.toResult(
-        existingCheckoutMembership,
-        this.resolveDemoActivityUserId(normalizedUserId),
-        options
+      const result = this.withLocalEventFull(
+        LocalEventParticipationActionMapper.toResult(
+          existingCheckoutMembership,
+          this.resolveDemoActivityUserId(normalizedUserId),
+          options
+        ),
+        normalizedUserId,
+        normalizedSourceId
       );
       if (result.membershipStatus === 'accepted' && options.checkoutState) {
         await this.updateCheckoutBasketStateRecord({
@@ -1629,7 +1694,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       options.pendingReason === 'approval'
     );
     const result = record
-      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
+      ? this.withLocalEventFull(
+          LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options),
+          normalizedUserId,
+          normalizedSourceId
+        )
       : null;
     if (result?.membershipStatus === 'accepted' && record) {
       this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
@@ -1649,6 +1718,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         this.appendInvitationAcceptedNotifications(record, normalizedUserId);
       }
     }
+    if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
+      this.appendMemberJoinedNotifications(record, normalizedUserId);
+    }
     if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
       this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
     }
@@ -1662,6 +1734,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
     return resultWithCounterDelta;
+  }
+
+  private withLocalEventFull(
+    result: EventParticipationActionResultDTO,
+    userId: string,
+    sourceId: string
+  ): EventParticipationActionResultDTO {
+    const eventRecord = this.eventsRepository.queryEventRecordById(userId, sourceId);
+    return eventRecord
+      ? { ...result, full: eventRecord.full === true }
+      : result;
   }
 
   private isEventInvitation(userId: string, sourceId: string): boolean {
@@ -1762,6 +1845,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       slotSourceId: options.slotSourceId ?? null,
       removeMembershipOnly: options.removeMembershipOnly === true
     });
+    const eventAfterLeave = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    this.appendWatchlistAvailabilityNotifications(eventBeforeLeave, eventAfterLeave);
     if (resolvingInvitation && record) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
     }
@@ -2302,6 +2387,235 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     this.notificationsRepository.append(records);
   }
 
+  private appendWatchlistAvailabilityNotifications(
+    before: ActivityEventRecord | null,
+    after: ActivityEventRecord | null
+  ): void {
+    if (!before || !after || this.eventAvailableCapacity(after) <= this.eventAvailableCapacity(before)) {
+      return;
+    }
+    const eventId = `${after.id ?? before.id ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    const eventTitle = `${after.title ?? before.title ?? eventId}`.trim() || eventId;
+    const createdAtIso = new Date().toISOString();
+    const recipientUserIds = [...new Set(
+      (after.watchingUserIds ?? before.watchingUserIds ?? [])
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(userId => !!userId
+          && !this.isAcceptedEventMember(after, userId)
+          && this.localEventIsVisibleToWatcher(after, userId))
+    )];
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId('event-watchlist-available', eventId, recipientUserId),
+      recipientUserId,
+      kind: 'event-watchlist-available',
+      category: 'event',
+      title: eventTitle,
+      message: 'A new spot is available. Open the event to book it.',
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: null,
+      senderName: null,
+      senderAvatarUrl: null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'watchlist',
+        notification_title_key: 'notification.event.watchlist.available.title',
+        notification_message_key: 'notification.event.watchlist.available.message',
+        notification_tone: 'success',
+        notification_avatar_icon: 'visibility'
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
+  private appendWatchlistDefinitionUpdateNotifications(
+    actorUserId: string,
+    before: ActivityEventRecord | null,
+    after: ActivityEventRecord
+  ): void {
+    if (!before) {
+      return;
+    }
+    const reasons: string[] = [];
+    if (`${before.title ?? ''}`.trim() !== `${after.title ?? ''}`.trim()
+        || `${before.location ?? ''}`.trim() !== `${after.location ?? ''}`.trim()) {
+      reasons.push('details');
+    }
+    if (`${before.startAtIso ?? ''}`.trim() !== `${after.startAtIso ?? ''}`.trim()
+        || `${before.endAtIso ?? ''}`.trim() !== `${after.endAtIso ?? ''}`.trim()
+        || `${before.timeframe ?? ''}`.trim() !== `${after.timeframe ?? ''}`.trim()
+        || `${before.frequency ?? ''}`.trim() !== `${after.frequency ?? ''}`.trim()) {
+      reasons.push('schedule');
+    }
+    if (JSON.stringify(before.subEventDefinitions ?? []) !== JSON.stringify(after.subEventDefinitions ?? [])
+        || JSON.stringify(before.slotTemplates ?? []) !== JSON.stringify(after.slotTemplates ?? [])
+        || before.slotsEnabled !== after.slotsEnabled
+        || before.subEventsEnabled !== after.subEventsEnabled) {
+      reasons.push('sub-events');
+    }
+    if (reasons.length === 0) {
+      return;
+    }
+    this.appendWatchlistUpdateNotifications(actorUserId, after, reasons);
+  }
+
+  private appendWatchlistEventUpdatedNotifications(
+    actorUserId: string,
+    event: ActivityEventRecord
+  ): void {
+    this.appendWatchlistUpdateNotifications(actorUserId, event, ['modified']);
+  }
+
+  private appendWatchlistUpdateNotifications(
+    actorUserId: string,
+    event: ActivityEventRecord,
+    reasons: string[]
+  ): void {
+    if (this.localEventStatus(event) !== 'A') {
+      return;
+    }
+    const actorId = `${actorUserId ?? ''}`.trim();
+    const trackedUserIds = new Set([
+      ...(event.acceptedMemberUserIds ?? []),
+      ...(event.pendingMemberUserIds ?? []),
+      ...(event.invitedMemberUserIds ?? []),
+      ...(event.pendingRequestMemberUserIds ?? []),
+      actorId
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean));
+    const recipientUserIds = [...new Set((event.watchingUserIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => !!userId
+        && !trackedUserIds.has(userId)
+        && this.localEventIsVisibleToWatcher(event, userId)))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const republished = reasons.includes('modified');
+    const message = republished
+      ? 'notification.event.available.again.message'
+      : reasons.includes('schedule')
+        ? 'The event schedule changed. Open the event for details.'
+        : reasons.includes('sub-events')
+          ? 'The event program changed. Open the event for details.'
+          : 'The event was updated. Open the event for details.';
+    const kind = republished ? 'event-modified' : 'event-details-changed';
+    this.notificationsRepository.append(recipientUserIds.map(recipientUserId => ({
+      id: this.localNotificationId(kind, event.id, recipientUserId),
+      recipientUserId,
+      kind,
+      category: 'event',
+      title: event.title,
+      message,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: actorId || null,
+      senderName: null,
+      senderAvatarUrl: null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: event.id,
+      payload: {
+        eventId: event.id,
+        eventTitle: event.title,
+        eventScope: 'watchlist',
+        changeReasons: reasons.join(','),
+        notification_tone: republished ? 'success' : 'info',
+        notification_avatar_icon: 'visibility',
+        notification_recipient_scope: 'event-watchers',
+        ...(republished ? { notification_message_key: 'notification.event.available.again.message' } : {})
+      }
+    })));
+  }
+
+  private localEventIsVisibleToWatcher(event: ActivityEventRecord, watcherUserId: string): boolean {
+    if (this.localEventStatus(event) !== 'A'
+        || event.visibility === 'Invitation only') {
+      return false;
+    }
+    return event.visibility !== 'Friends only'
+      || UserProfileState.isFriendOfActiveUser(event.creatorUserId, watcherUserId);
+  }
+
+  private eventAvailableCapacity(event: ActivityEventRecord): number {
+    if (event.slotsEnabled === true) {
+      return (event.upcomingSlots ?? []).reduce((total, slot) => {
+        const capacity = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+        const accepted = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
+        return total + (capacity > 0 ? Math.max(0, capacity - accepted) : 0);
+      }, 0);
+    }
+    if (event.full === true) {
+      return 0;
+    }
+    const capacity = Math.max(0, Math.trunc(Number(event.capacityTotal) || 0));
+    const accepted = Math.max(0, Math.trunc(Number(event.acceptedMembers) || 0));
+    return capacity > 0 ? Math.max(0, capacity - accepted) : 0;
+  }
+
+  private appendMemberJoinedNotifications(
+    event: ActivityEventRecord,
+    joinedUserId: string
+  ): void {
+    const memberUserId = joinedUserId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!memberUserId || !eventId) {
+      return;
+    }
+    const member = this.usersRepository.queryUserById(memberUserId);
+    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(memberListOpen
+        ? (event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+        : [])
+    ].filter(userId => userId && userId !== memberUserId))];
+    if (recipientUserIds.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: `event-member-joined:${eventId}:${memberUserId}:${occurrenceId}:${recipientUserId}`,
+      recipientUserId,
+      kind: 'event-member-joined',
+      category: 'event',
+      title: eventTitle,
+      message: `${memberName} joined ${eventTitle}.`,
+      createdAtIso,
+      readAtIso: null,
+      senderUserId: memberUserId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: eventId,
+      payload: {
+        eventId,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId,
+        memberName,
+        membershipAction: 'joined',
+        joinedAtIso: createdAtIso,
+        joinOccurrenceId: occurrenceId,
+        notification_tone: 'accent'
+      }
+    }));
+    this.notificationsRepository.append(records);
+  }
+
   private appendInvitationAcceptedNotifications(
     event: ActivityEventRecord,
     acceptedUserId: string
@@ -2479,7 +2793,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       }
     }
     const event = this.localNestedCounterDelta(before.event, after.event, [
-      'all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash'
+      'all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash'
     ]);
     if (event) {
       delta.event = event;

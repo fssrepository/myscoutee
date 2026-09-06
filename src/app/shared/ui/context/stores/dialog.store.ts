@@ -149,6 +149,12 @@ export class DialogStore {
     this.stateRef.set(null);
   }
 
+  clearWarningMessage(): void {
+    this.stateRef.update(current => current
+      ? { ...current, warningMessage: '' }
+      : current);
+  }
+
   private resolveErrorMessage(error: unknown, fallback: string): string {
     if (typeof error === 'string' && error.trim().length > 0) {
       return error.trim();

@@ -689,7 +689,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterPatch(
       current,
       patch,
-      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash']
     );
   }
 
@@ -700,7 +700,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterDeltas(
       current,
       deltas,
-      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash']
     );
   }
 
@@ -834,6 +834,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         invitations: normalizeCounter(event?.invitations ?? invitations),
         hosting: normalizeCounter(event?.hosting ?? hosting),
         drafts: normalizeCounter(event?.drafts),
+        watchlist: normalizeCounter(event?.watchlist),
         trash: normalizeCounter(event?.trash)
       },
       asset: {

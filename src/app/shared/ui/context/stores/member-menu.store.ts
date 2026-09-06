@@ -22,7 +22,7 @@ import type {
 export interface NavigatorActivitiesRequest {
   updatedMs: number;
   primaryFilter: 'rates' | 'chats' | 'events';
-  eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
+  eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash';
   adminServiceOnly?: boolean;
 }
 
@@ -109,7 +109,7 @@ export class MemberMenuStore {
 
   openNavigatorActivitiesRequest(
     primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash',
+    eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash',
     options: { adminServiceOnly?: boolean } = {}
   ): void {
     this.navigatorActivitiesRequestRef.set({

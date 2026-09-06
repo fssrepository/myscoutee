@@ -401,6 +401,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           nowIso
         );
       }
+      if (refreshedEvent && action === 'accept') {
+        this.appendEventMemberJoinedNotifications(
+          refreshedEvent,
+          nextMembers.find(member => member.userId === normalizedTargetUserId) ?? targetMember,
+          nextMembers.filter(member => member.status === 'accepted'),
+          nowIso
+        );
+      }
       if (refreshedEvent && action === 'remove' && targetMember.status === 'accepted') {
         this.appendEventMemberRemovedNotifications(
           refreshedEvent,
@@ -527,6 +535,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const actor = this.localUsersRepository.queryUserById(actorUserId);
     const memberName = `${removedUser?.name ?? removedMember.name ?? removedMember.userId}`.trim();
     const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
+    const voluntaryLeave = removedMember.userId === actorUserId;
     const occurrenceId = globalThis.crypto?.randomUUID?.()
       ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const commonPayload = {
@@ -536,10 +545,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       eventScope: 'members',
       memberUserId: removedMember.userId,
       memberName,
-      membershipAction: 'removed',
+      membershipAction: voluntaryLeave ? 'left' : 'removed',
       senderUserId: actorUserId,
-      removedAtIso,
-      removalOccurrenceId: occurrenceId,
+      ...(voluntaryLeave
+        ? { leftAtIso: removedAtIso, leaveOccurrenceId: occurrenceId }
+        : { removedAtIso, removalOccurrenceId: occurrenceId }),
       notification_tone: 'warning'
     };
     const notifications: NotificationRecord[] = [];
@@ -565,12 +575,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     for (const participant of remainingMembers.filter(member =>
       member.userId !== actorUserId && member.userId !== removedMember.userId)) {
       notifications.push({
-        id: `event-member-removed:${event.id}:${removedMember.userId}:${occurrenceId}:participant:${participant.userId}`,
+        id: `event-member-${voluntaryLeave ? 'left' : 'removed'}:${event.id}:${removedMember.userId}:${occurrenceId}:participant:${participant.userId}`,
         recipientUserId: participant.userId,
-        kind: 'event-member-removed',
+        kind: voluntaryLeave ? 'event-member-left' : 'event-member-removed',
         category: 'event',
         title: eventTitle,
-        message: `${memberName} was removed from ${eventTitle}.`,
+        message: voluntaryLeave
+          ? `${memberName} left ${eventTitle}.`
+          : `${memberName} was removed from ${eventTitle}.`,
         createdAtIso: removedAtIso,
         readAtIso: null,
         senderUserId: actorUserId || null,
@@ -746,6 +758,53 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       }
     };
     this.notificationsRepository.append([record]);
+  }
+
+  private appendEventMemberJoinedNotifications(
+    event: { id: string; title: string; creatorUserId?: string | null; adminIds?: readonly string[]; blindMode?: string | null },
+    joinedMember: ActivityMemberDTO,
+    activeMembers: readonly ActivityMemberDTO[],
+    joinedAtIso: string
+  ): void {
+    const member = this.localUsersRepository.queryUserById(joinedMember.userId);
+    const memberName = `${member?.name ?? joinedMember.name ?? joinedMember.userId}`.trim();
+    const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    const recipientUserIds = [...new Set([
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(memberListOpen ? activeMembers.map(candidate => candidate.userId.trim()) : [])
+    ].filter(userId => userId && userId !== joinedMember.userId))];
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
+      id: `event-member-joined:${event.id}:${joinedMember.userId}:${occurrenceId}:${recipientUserId}`,
+      recipientUserId,
+      kind: 'event-member-joined',
+      category: 'event',
+      title: eventTitle,
+      message: `${memberName} joined ${eventTitle}.`,
+      createdAtIso: joinedAtIso,
+      readAtIso: null,
+      senderUserId: joinedMember.userId,
+      senderName: memberName,
+      senderAvatarUrl: member?.images?.[0] ?? null,
+      actionPath: '/game',
+      sourceType: 'event',
+      sourceId: event.id,
+      payload: {
+        eventId: event.id,
+        eventTitle,
+        eventScope: 'members',
+        memberUserId: joinedMember.userId,
+        memberName,
+        membershipAction: 'joined',
+        joinedAtIso,
+        joinOccurrenceId: occurrenceId,
+        notification_tone: 'accent'
+      }
+    }));
+    this.notificationsRepository.append(records);
   }
 
   private async finalizeNewlyAcceptedEventReservations(

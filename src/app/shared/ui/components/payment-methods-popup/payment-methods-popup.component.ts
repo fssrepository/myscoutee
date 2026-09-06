@@ -156,8 +156,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected readonly loadCards: SmartListLoadPage<SavedPaymentMethodDto, PaymentListFilters> = (query, context) => from(
     this.paymentMethods.queryPage(this.activeUserId(), query, context?.signal).then(page => {
+      if (page.currentProvider) {
+        this.deploymentConfiguration.applyPaymentProviderId(
+          page.currentProvider === 'none' ? null : page.currentProvider
+        );
+      }
+      const orderedItems = this.orderPaymentMethods(page.items);
       this.loadedCardsById.clear();
-      page.items.forEach(item => this.loadedCardsById.set(item.id, { ...item }));
+      orderedItems.forEach(item => this.loadedCardsById.set(item.id, { ...item }));
       this.canAddRef.set(page.canAdd === true);
       if (page.pendingRegistration?.status === 'pending') {
         this.trackRegistration(page.pendingRegistration, false);
@@ -165,12 +171,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       const pending = page.pendingRegistration?.status === 'pending'
         ? this.pendingPaymentMethod(page.pendingRegistration)
         : null;
-      if (!pending) return page;
+      if (!pending) return { ...page, items: orderedItems };
       const replacedId = page.pendingRegistration?.replacesPaymentMethodId?.trim() || null;
-      const replaced = Boolean(replacedId && page.items.some(item => item.id === replacedId));
+      const replaced = Boolean(replacedId && orderedItems.some(item => item.id === replacedId));
       const items = replaced
-        ? page.items.map(item => item.id === replacedId ? pending : item)
-        : [...page.items, pending];
+        ? orderedItems.map(item => item.id === replacedId ? pending : item)
+        : [...orderedItems, pending];
       return { ...page, items, total: Math.min(6, page.total + (replaced ? 0 : 1)) };
     })
   );
@@ -483,6 +489,20 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     return Boolean(activeProvider && tokenProvider && activeProvider !== tokenProvider);
   }
 
+  private orderPaymentMethods(methods: readonly SavedPaymentMethodDto[]): SavedPaymentMethodDto[] {
+    return methods
+      .map((method, index) => ({ method, index }))
+      .sort((left, right) => this.paymentMethodDisplayRank(left.method)
+        - this.paymentMethodDisplayRank(right.method)
+        || left.index - right.index)
+      .map(({ method }) => method);
+  }
+
+  private paymentMethodDisplayRank(method: SavedPaymentMethodDto): number {
+    if (this.paymentMethodExpired(method)) return 2;
+    return this.paymentMethodRequiresRetokenization(method) ? 1 : 0;
+  }
+
   private paymentMethodExpired(method: SavedPaymentMethodDto): boolean {
     if (`${method.status ?? ''}`.trim().toLowerCase() === 'expired') return true;
     const year = Number(method.expiryYear);
@@ -537,9 +557,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.finishRegistration(registration.status);
       if (registration.status === 'completed') {
         this.errorRef.set('');
+      } else if (registration.status === 'cancelled') {
+        this.errorRef.set('payment.registration.error.cancelled');
       } else if (registration.status === 'expired') {
         this.errorRef.set('payment.registration.error.expired');
-      } else if (registration.status !== 'cancelled') {
+      } else {
         this.errorRef.set('payment.registration.error.failed');
       }
     } catch (error) {
@@ -884,9 +906,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
             ? 'event.editor.payment.recorded.revised'
             : this.paymentStatusLabel(audit?.status ?? item.status),
           paymentStatusTone: this.paymentStatusTone(audit?.status ?? item.status),
-          paymentNote: audit?.auditKind === 'booking_price_revision'
-            ? 'event.editor.payment.recorded.revision.note'
-            : this.paymentHistoryNote(item),
+          paymentNote: this.paymentHistoryNote(item),
           paymentMethod
         }
       });
@@ -928,7 +948,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const failureReason = `${item.failureReason ?? ''}`.trim();
     return item.status.trim().toLowerCase() === 'failed' && failureReason
       ? failureReason
-      : 'event.editor.payment.recorded.note';
+      : '';
   }
 
   private async findPaymentAsset(

@@ -364,6 +364,7 @@ export class SeedUsersRepository {
             invitations: 0,
             hosting: 0,
             drafts: 0,
+            watchlist: 0,
             trash: 0,
           },
           asset: {
@@ -442,6 +443,7 @@ export class SeedUsersRepository {
     const eventDrafts = sources.hostingItems
       ? sources.hostingItems.filter(item => this.isDraftEventStatus(item.status)).length
       : normalizeCounter(event?.drafts);
+    const eventWatchlist = normalizeCounter(event?.watchlist);
     const eventTrash = normalizeCounter(event?.trash);
     const eventActive = hasEventSources ? events : normalizeCounter(event?.active ?? events);
     const eventInvitations = hasEventSources ? invitations : normalizeCounter(event?.invitations ?? invitations);
@@ -486,6 +488,7 @@ export class SeedUsersRepository {
           invitations: eventInvitations,
           hosting: eventHosting,
           drafts: eventDrafts,
+          watchlist: eventWatchlist,
           trash: eventTrash,
         },
         asset: {
