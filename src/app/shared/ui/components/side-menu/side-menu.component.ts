@@ -154,7 +154,6 @@ interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
   impressionChangeFlags: UserImpressionChangeFlags;
   memberImpressionTitle: string;
-  totalBadgeCount: number;
 }
 
 type NavigatorMenuShortcutId =
@@ -481,29 +480,13 @@ export class SideMenuComponent implements OnDestroy {
     };
     const impressionChangeFlags = this.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveSideMenuPresentation('trait', activeUser.traitLabel ?? '');
-    const totalBadgeCount = this.userProfileStore.isAdminUserProfile(activeUser)
-      ? this.adminNavigatorBadgeCount(mergedActivities)
-      : (
-        (impressionChangeFlags.host ? 1 : 0) +
-        (impressionChangeFlags.member ? 1 : 0) +
-        mergedActivities.game +
-        mergedActivities.chats +
-        (mergedActivities.event?.all ?? 0) +
-        mergedActivities.cars +
-        mergedActivities.accommodation +
-        mergedActivities.supplies +
-        mergedActivities.tickets +
-        mergedActivities.contacts +
-        mergedActivities.feedback
-      );
     return {
       ...activeUser,
       completion: this.resolveCompletionPercent(activeUser),
       impressions: this.userProfileStore.getUserImpressions(activeUser.id) ?? activeUser.impressions,
       activities: mergedActivities,
       impressionChangeFlags,
-      memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
-      totalBadgeCount
+      memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee'
     };
   });
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
@@ -2205,14 +2188,13 @@ export class SideMenuComponent implements OnDestroy {
       });
     }
     const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
+    const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
     return (
       (impressionFlags.host ? 1 : 0) +
       (impressionFlags.member ? 1 : 0) +
       this.resolveActivityBadge(user, 'game') +
       this.resolveActivityBadge(user, 'chats') +
-      this.resolveActivityBadge(user, 'invitations') +
-      this.resolveActivityBadge(user, 'events') +
-      this.resolveActivityBadge(user, 'hosting') +
+      (activityOverrides.event?.all ?? user.activities?.event?.all ?? 0) +
       this.resolveActivityBadge(user, 'cars') +
       this.resolveActivityBadge(user, 'accommodation') +
       this.resolveActivityBadge(user, 'supplies') +
