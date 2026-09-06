@@ -116,6 +116,10 @@ export class EventPaymentInputComponent {
           : 'event.editor.payment.review.before.confirm');
   }
 
+  protected paymentStatusMessage(): string {
+    return this.paymentNote() || this.paymentStatusLabel();
+  }
+
   protected paymentNote(): string {
     return this.note.trim()
       || (this.cashOnly()
