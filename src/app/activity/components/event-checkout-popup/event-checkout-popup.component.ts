@@ -211,7 +211,7 @@ export class EventCheckoutPopupComponent {
       paymentMethodReadOnly: this.isReadOnlyCheckoutSummary(),
       paymentProvider: this.isReadOnlyCheckoutSummary()
         ? dialog.paymentProvider
-        : `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase(),
+        : () => `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase(),
       paymentStatusLabel: dialog.paymentStatusLabel,
       paymentStatusTone: dialog.paymentStatusTone,
       paymentNote: dialog.paymentNote,
@@ -275,6 +275,18 @@ export class EventCheckoutPopupComponent {
       }
       this.openCheckoutReviewEditorShell(dialog);
     });
+  }
+
+  private applyCheckoutPaymentProviderChange(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)
+        || !this.deploymentConfiguration.applyPaymentProviderChangeResponse(error.error)) {
+      return false;
+    }
+    const provider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase();
+    this.errorMessage = provider
+      ? `Payment provider changed to ${provider === 'barion' ? 'Barion' : provider === 'stripe' ? 'Stripe' : provider}. Select a compatible card and confirm again.`
+      : 'Payment provider changed to Cash only. Confirm the payment again.';
+    return true;
   }
 
   private closeCheckoutDialog(): void {
@@ -2749,6 +2761,7 @@ export class EventCheckoutPopupComponent {
         this.closeCheckoutDialog();
       } catch (error) {
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+        this.applyCheckoutPaymentProviderChange(error);
         throw new Error(this.errorMessage);
       } finally {
         this.busy = false;
@@ -2804,12 +2817,7 @@ export class EventCheckoutPopupComponent {
       this.closeCheckoutDialog();
     } catch (error) {
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
-      if (error instanceof HttpErrorResponse
-        && this.deploymentConfiguration.applyPaymentProviderChangeResponse(error.error)) {
-        if (this.dialog()?.id === dialog.id && this.checkoutReviewDialogId === dialog.id) {
-          this.openCheckoutReviewEditorShell(dialog);
-        }
-      }
+      this.applyCheckoutPaymentProviderChange(error);
       throw new Error(this.errorMessage);
     } finally {
       this.paymentAuthorization.closeProviderWindow(providerWindow);

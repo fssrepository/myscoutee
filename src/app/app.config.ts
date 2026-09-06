@@ -6,6 +6,7 @@ import { routes } from './app.routes';
 import { adminAccessInterceptor } from './shared/core/http/admin-access.interceptor';
 import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interceptor';
 import { operatorBootstrapAuthInterceptor } from './shared/core/http/operator-bootstrap-auth.interceptor';
+import { paymentProviderSyncInterceptor } from './shared/core/http/payment-provider-sync.interceptor';
 import { sessionModeInterceptor } from './shared/core/http/session-mode.interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -16,7 +17,8 @@ export const appConfig: ApplicationConfig = {
       sessionModeInterceptor,
       operatorBootstrapAuthInterceptor,
       firebaseAuthInterceptor,
-      adminAccessInterceptor
+      adminAccessInterceptor,
+      paymentProviderSyncInterceptor
     ]))
   ]
 };
