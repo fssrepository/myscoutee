@@ -1679,6 +1679,11 @@ export class HttpEventsService implements IEventsService {
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
         })),
+        subEventsEnabled: record.subEventsEnabled !== false,
+        subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
+          ...item,
+          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
+        })),
         mode: ActivityEventDetailDTO.normalizeMode(record.mode),
         rating: Math.max(0, Number(record.rating) || 0),
         boost: Math.max(0, Number(record.boost) || 0),

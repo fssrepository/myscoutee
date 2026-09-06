@@ -525,7 +525,17 @@ export interface ActivityEventDTO {
   eventType?: EventContracts.EventRecordKind;
   mode?: EventContracts.EventMode;
   currentStage?: EventContracts.TournamentCurrentStageDTO | null;
+  ticketing?: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
+  policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+  subEvents?: EventContracts.SubEventDTO[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -537,7 +547,6 @@ export interface ActivityEventDTO {
   approvalRequired?: boolean;
   checkoutResultState?: EventCheckoutResultState | null;
   boost: number;
-  subEventDefinitions?: SubEventDefinitionDTO[];
 }
 
 export interface ActivityEventSubEventsQueryDTO {

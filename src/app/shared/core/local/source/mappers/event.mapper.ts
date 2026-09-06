@@ -83,7 +83,31 @@ export class LocalActivityEventsMapper {
       eventType: record.eventType,
       mode: ActivityEventDetailDTO.normalizeMode(record.mode),
       currentStage: record.currentStage ? { ...record.currentStage } : null,
+      ticketing: record.ticketing === true,
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : record.pricing,
+      policiesEnabled: record.policiesEnabled === true,
+      policies: (record.policies ?? []).map(item => ({ ...item })),
       slotsEnabled: record.slotsEnabled === true,
+      slotTemplates: (record.slotTemplates ?? []).map(item => ({
+        ...item,
+        subEventDefinitions: (item.subEventDefinitions ?? []).map(definition => ({
+          ...definition,
+          pricing: definition.pricing
+            ? PricingBuilder.clonePricingConfig(definition.pricing)
+            : definition.pricing
+        }))
+      })),
+      nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
+      upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
+        ...item,
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
+      subEvents: (record.subEvents ?? []).map(item => ({
+        ...item,
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
