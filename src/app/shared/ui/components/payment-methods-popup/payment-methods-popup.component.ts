@@ -161,8 +161,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
           page.currentProvider === 'none' ? null : page.currentProvider
         );
       }
+      const orderedItems = this.orderPaymentMethods(page.items);
       this.loadedCardsById.clear();
-      page.items.forEach(item => this.loadedCardsById.set(item.id, { ...item }));
+      orderedItems.forEach(item => this.loadedCardsById.set(item.id, { ...item }));
       this.canAddRef.set(page.canAdd === true);
       if (page.pendingRegistration?.status === 'pending') {
         this.trackRegistration(page.pendingRegistration, false);
@@ -170,12 +171,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       const pending = page.pendingRegistration?.status === 'pending'
         ? this.pendingPaymentMethod(page.pendingRegistration)
         : null;
-      if (!pending) return page;
+      if (!pending) return { ...page, items: orderedItems };
       const replacedId = page.pendingRegistration?.replacesPaymentMethodId?.trim() || null;
-      const replaced = Boolean(replacedId && page.items.some(item => item.id === replacedId));
+      const replaced = Boolean(replacedId && orderedItems.some(item => item.id === replacedId));
       const items = replaced
-        ? page.items.map(item => item.id === replacedId ? pending : item)
-        : [...page.items, pending];
+        ? orderedItems.map(item => item.id === replacedId ? pending : item)
+        : [...orderedItems, pending];
       return { ...page, items, total: Math.min(6, page.total + (replaced ? 0 : 1)) };
     })
   );
@@ -486,6 +487,20 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const activeProvider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase();
     const tokenProvider = `${method.provider ?? ''}`.trim().toLowerCase();
     return Boolean(activeProvider && tokenProvider && activeProvider !== tokenProvider);
+  }
+
+  private orderPaymentMethods(methods: readonly SavedPaymentMethodDto[]): SavedPaymentMethodDto[] {
+    return methods
+      .map((method, index) => ({ method, index }))
+      .sort((left, right) => this.paymentMethodDisplayRank(left.method)
+        - this.paymentMethodDisplayRank(right.method)
+        || left.index - right.index)
+      .map(({ method }) => method);
+  }
+
+  private paymentMethodDisplayRank(method: SavedPaymentMethodDto): number {
+    if (this.paymentMethodExpired(method)) return 2;
+    return this.paymentMethodRequiresRetokenization(method) ? 1 : 0;
   }
 
   private paymentMethodExpired(method: SavedPaymentMethodDto): boolean {
