@@ -889,9 +889,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
             ? 'event.editor.payment.recorded.revised'
             : this.paymentStatusLabel(audit?.status ?? item.status),
           paymentStatusTone: this.paymentStatusTone(audit?.status ?? item.status),
-          paymentNote: audit?.auditKind === 'booking_price_revision'
-            ? 'event.editor.payment.recorded.revision.note'
-            : this.paymentHistoryNote(item),
+          paymentNote: this.paymentHistoryNote(item),
           paymentMethod
         }
       });
@@ -933,7 +931,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const failureReason = `${item.failureReason ?? ''}`.trim();
     return item.status.trim().toLowerCase() === 'failed' && failureReason
       ? failureReason
-      : 'event.editor.payment.recorded.note';
+      : '';
   }
 
   private async findPaymentAsset(
