@@ -535,6 +535,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const actor = this.localUsersRepository.queryUserById(actorUserId);
     const memberName = `${removedUser?.name ?? removedMember.name ?? removedMember.userId}`.trim();
     const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
+    const voluntaryLeave = removedMember.userId === actorUserId;
     const occurrenceId = globalThis.crypto?.randomUUID?.()
       ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const commonPayload = {
@@ -544,10 +545,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       eventScope: 'members',
       memberUserId: removedMember.userId,
       memberName,
-      membershipAction: 'removed',
+      membershipAction: voluntaryLeave ? 'left' : 'removed',
       senderUserId: actorUserId,
-      removedAtIso,
-      removalOccurrenceId: occurrenceId,
+      ...(voluntaryLeave
+        ? { leftAtIso: removedAtIso, leaveOccurrenceId: occurrenceId }
+        : { removedAtIso, removalOccurrenceId: occurrenceId }),
       notification_tone: 'warning'
     };
     const notifications: NotificationRecord[] = [];
@@ -573,12 +575,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     for (const participant of remainingMembers.filter(member =>
       member.userId !== actorUserId && member.userId !== removedMember.userId)) {
       notifications.push({
-        id: `event-member-removed:${event.id}:${removedMember.userId}:${occurrenceId}:participant:${participant.userId}`,
+        id: `event-member-${voluntaryLeave ? 'left' : 'removed'}:${event.id}:${removedMember.userId}:${occurrenceId}:participant:${participant.userId}`,
         recipientUserId: participant.userId,
-        kind: 'event-member-removed',
+        kind: voluntaryLeave ? 'event-member-left' : 'event-member-removed',
         category: 'event',
         title: eventTitle,
-        message: `${memberName} was removed from ${eventTitle}.`,
+        message: voluntaryLeave
+          ? `${memberName} left ${eventTitle}.`
+          : `${memberName} was removed from ${eventTitle}.`,
         createdAtIso: removedAtIso,
         readAtIso: null,
         senderUserId: actorUserId || null,
