@@ -2139,8 +2139,7 @@ export class EventExplorePopupComponent {
       if (!joinResult || (joinResult.membershipStatus === 'unchanged' && !checkoutUpdateRequested)) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
-      const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
-      const displayMembers = [...(persistedMembers.length > 0 ? persistedMembers : nextMembers)];
+      const displayMembers = [...nextMembers];
       const nextRecord = this.withEventExploreMemberDelta(record, {
         acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
         pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
