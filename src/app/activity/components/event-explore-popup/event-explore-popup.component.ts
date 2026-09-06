@@ -2467,11 +2467,11 @@ export class EventExplorePopupComponent {
     if (this.isEventExploreSelectionFull(record, selection)) {
       return false;
     }
-    if (record.ticketing !== true) {
-      return false;
-    }
     if (selection?.bookingConfirmed === true) {
       return true;
+    }
+    if (record.ticketing !== true) {
+      return false;
     }
     return !selection && !this.shouldUseCheckoutFlow(record);
   }
