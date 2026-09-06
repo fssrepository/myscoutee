@@ -949,7 +949,15 @@ export class EventExplorePopupComponent {
     if (!result) {
       return;
     }
-    this.restoreVisibleEventExploreRecord({ ...record, watched: result.watched });
+    const nextRecord = { ...record, watched: result.watched };
+    this.restoreVisibleEventExploreRecord(nextRecord);
+    this.activitiesStore.emitActivityEventSaveResult({
+      ...this.buildActivityEventDetailDTO(nextRecord, this.buildMemberEntries(nextRecord)),
+      userId: activeUserId,
+      adminIds: [...(nextRecord.adminIds ?? [])],
+      currentUserMembershipStatus: nextRecord.currentUserMembershipStatus,
+      watched: result.watched
+    });
     this.activityStore.signalUserEventCounterSnapshot(activeUserId, result.eventCounters);
     this.cdr.markForCheck();
   }
