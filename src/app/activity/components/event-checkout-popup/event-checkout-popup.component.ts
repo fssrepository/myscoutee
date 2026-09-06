@@ -203,7 +203,7 @@ export class EventCheckoutPopupComponent {
       hideSlotsPanel: true,
       hidePaymentPanel: false,
       loading: checkoutLoading,
-      showBasketPanel: true,
+      showBasketPanel: this.showCheckoutBasketPanel(dialog),
       showPricingPanel: this.showCheckoutPricingPanel(),
       basketTone: this.checkoutBasketSurfaceTone(),
       paymentTone: this.checkoutPaymentSurfaceTone(),
@@ -211,7 +211,7 @@ export class EventCheckoutPopupComponent {
       paymentMethodReadOnly: this.isReadOnlyCheckoutSummary(),
       paymentProvider: this.isReadOnlyCheckoutSummary()
         ? dialog.paymentProvider
-        : `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase(),
+        : () => `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase(),
       paymentStatusLabel: dialog.paymentStatusLabel,
       paymentStatusTone: dialog.paymentStatusTone,
       paymentNote: dialog.paymentNote,
@@ -277,6 +277,19 @@ export class EventCheckoutPopupComponent {
     });
   }
 
+  private applyCheckoutPaymentProviderChange(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)
+        || !this.deploymentConfiguration.applyPaymentProviderChangeResponse(error.error)) {
+      return false;
+    }
+    const provider = `${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim().toLowerCase();
+    this.errorMessage = provider
+      ? `Payment provider changed to ${provider === 'barion' ? 'Barion' : provider === 'stripe' ? 'Stripe' : provider}. Select a compatible card and confirm again.`
+      : 'Payment provider changed to Cash only. Confirm the payment again.';
+    this.confirmationDialogStore.clearWarningMessage();
+    return true;
+  }
+
   private closeCheckoutDialog(): void {
     this.dialogStore.close();
     this.closeCheckoutReviewEditor();
@@ -338,7 +351,40 @@ export class EventCheckoutPopupComponent {
   }
 
   protected optionalSubEvents(): ContractTypes.SubEventDTO[] {
-    return (this.dialog()?.record.subEvents ?? []).filter(item => item.optional);
+    const record = this.dialog()?.record;
+    const runtimeItems = (record?.subEvents ?? []).filter(item => item.optional);
+    const runtimeById = new Map(runtimeItems.map(item => [item.id, item] as const));
+    const selectedTemplateId = this.selectedSlot()?.slotTemplateId?.trim() ?? '';
+    const templateDefinitions = selectedTemplateId
+      ? record?.slotTemplates?.find(item => item.id === selectedTemplateId)?.subEventDefinitions ?? []
+      : [];
+    const definitions = templateDefinitions.length > 0
+      ? templateDefinitions
+      : record?.subEventDefinitions ?? [];
+    if (definitions.length === 0) {
+      return runtimeItems;
+    }
+    return definitions.filter(item => item.optional).map(item => {
+      const runtime = runtimeById.get(item.id);
+      return {
+        ...runtime,
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        startAt: runtime?.startAt ?? '',
+        endAt: runtime?.endAt ?? '',
+        location: item.location ?? runtime?.location ?? '',
+        optional: true,
+        pricing: item.pricing ?? runtime?.pricing ?? null,
+        capacityMin: item.capacityMin,
+        capacityMax: item.capacityMax,
+        membersAccepted: runtime?.membersAccepted ?? 0,
+        membersPending: runtime?.membersPending ?? 0,
+        carsPending: runtime?.carsPending ?? 0,
+        accommodationPending: runtime?.accommodationPending ?? 0,
+        suppliesPending: runtime?.suppliesPending ?? 0
+      };
+    });
   }
 
   protected slotCalendarFilter = (value: Date | null): boolean => {
@@ -1068,6 +1114,15 @@ export class EventCheckoutPopupComponent {
     return this.checkoutRecordPricingEnabled(dialog.record) || this.checkoutBasketHasPayableItems();
   }
 
+  private showCheckoutBasketPanel(dialog: EventCheckoutDialogState): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return this.checkoutBasketPresentationItems().length > 0;
+    }
+    return dialog.record.slotsEnabled === true
+      || this.availableSlots().length > 0
+      || this.optionalSubEvents().length > 0;
+  }
+
   private checkoutRecordPricingEnabled(record: ActivityEventRecord): boolean {
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
     return PricingBuilder.compactPricingConfig(record.pricing, {
@@ -1238,7 +1293,12 @@ export class EventCheckoutPopupComponent {
     const dialog = this.dialog();
     if (dialog) {
       this.openCheckoutReviewEditorShell(dialog);
-      void this.persistCheckoutDraft(true, null, 'draft').catch(error => {
+      void this.persistCheckoutDraft(
+        false,
+        basketChangeContext?.pendingReason ?? null,
+        basketChangeContext?.checkoutState ?? 'draft',
+        basketChangeContext !== null
+      ).catch(error => {
         this.setCheckoutErrorMessage(dialog, error, 'Unable to update checkout pricing.');
       });
     }
@@ -2721,7 +2781,9 @@ export class EventCheckoutPopupComponent {
       this.switchCheckoutReviewPhase();
       try {
         this.checkoutSessionId = null;
-        await this.persistCheckoutDraft(true, null, 'confirmed');
+        await this.persistCheckoutDraft(true, null, 'confirmed', false, {
+          submitPendingMembership: true
+        });
         this.refreshCheckoutBaseline();
       } catch (error) {
         this.paymentStep = false;
@@ -2749,6 +2811,7 @@ export class EventCheckoutPopupComponent {
         this.closeCheckoutDialog();
       } catch (error) {
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+        this.applyCheckoutPaymentProviderChange(error);
         throw new Error(this.errorMessage);
       } finally {
         this.busy = false;
@@ -2804,12 +2867,7 @@ export class EventCheckoutPopupComponent {
       this.closeCheckoutDialog();
     } catch (error) {
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
-      if (error instanceof HttpErrorResponse
-        && this.deploymentConfiguration.applyPaymentProviderChangeResponse(error.error)) {
-        if (this.dialog()?.id === dialog.id && this.checkoutReviewDialogId === dialog.id) {
-          this.openCheckoutReviewEditorShell(dialog);
-        }
-      }
+      this.applyCheckoutPaymentProviderChange(error);
       throw new Error(this.errorMessage);
     } finally {
       this.paymentAuthorization.closeProviderWindow(providerWindow);
@@ -2929,6 +2987,13 @@ export class EventCheckoutPopupComponent {
     this.selectedSlotSourceId = firstSlotSourceId && validSlotIds.has(firstSlotSourceId)
       ? firstSlotSourceId
       : this.selectedSlotSourceId;
+    const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
+    this.selectedOptionalSubEventIds = new Set(
+      basket.items
+        .map(item => item.subEventId?.trim() ?? '')
+        .filter(id => Boolean(id) && validOptionalIds.has(id))
+    );
+    this.checkoutBasket = this.repriceCheckoutBasketItems(basket.items) ?? basket;
     const selectedDateKey = basket.selectedDateKey
       ?? basket.items.find(item => item.selectedDateKey?.trim())?.selectedDateKey
       ?? null;
@@ -3548,7 +3613,8 @@ export class EventCheckoutPopupComponent {
     syncRuntimeBasket = true,
     pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
     checkoutStateOverride?: ActivityContracts.EventCheckoutState,
-    basketChanged = false
+    basketChanged = false,
+    options: { submitPendingMembership?: boolean } = {}
   ): Promise<void> {
     const dialog = this.dialog();
     const updateStepActive = this.checkoutUpdateStepActive();
@@ -3583,6 +3649,14 @@ export class EventCheckoutPopupComponent {
       basketChanged,
       updatedAtMs: Date.now()
     });
+    if (options.submitPendingMembership === true) {
+      await dialog.onSubmit(this.buildSelection(null, false, {
+        checkoutState,
+        pendingReason,
+        includeBasketPayload: true
+      }));
+      return;
+    }
     if (syncRuntimeBasket) {
       await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason, updateStepActive);
     }

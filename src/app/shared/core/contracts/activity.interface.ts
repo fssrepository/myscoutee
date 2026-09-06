@@ -8,7 +8,7 @@ import type * as PricingContracts from './pricing.interface';
 import type * as UserContracts from './user.interface';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
-export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
+export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash';
 export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
 export type HostingPublicationFilter = 'all' | 'drafts';
 export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
@@ -130,6 +130,8 @@ export interface IEventsService {
   publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  watchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null>;
+  unwatchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null>;
   applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
   queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
@@ -295,6 +297,8 @@ export interface ActivityEventRecord {
   upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
   checkoutBasket?: EventCheckoutBasket | null;
   checkoutResultState?: EventCheckoutResultState | null;
+  watched?: boolean;
+  watchingUserIds?: string[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -361,6 +365,13 @@ export interface EventParticipationActionResultDTO {
   counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
   paymentStatus?: string | null;
   paymentUrl?: string | null;
+}
+
+export interface EventWatchActionResultDTO {
+  sourceId: string;
+  watched: boolean;
+  changed: boolean;
+  eventCounters?: UserContracts.UserEventCountersDto | null;
 }
 
 export interface SubEventResourceCardDTO {
@@ -525,7 +536,17 @@ export interface ActivityEventDTO {
   eventType?: EventContracts.EventRecordKind;
   mode?: EventContracts.EventMode;
   currentStage?: EventContracts.TournamentCurrentStageDTO | null;
+  ticketing?: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
+  policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+  subEvents?: EventContracts.SubEventDTO[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -536,8 +557,8 @@ export interface ActivityEventDTO {
   currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   approvalRequired?: boolean;
   checkoutResultState?: EventCheckoutResultState | null;
+  watched?: boolean;
   boost: number;
-  subEventDefinitions?: SubEventDefinitionDTO[];
 }
 
 export interface ActivityEventSubEventsQueryDTO {

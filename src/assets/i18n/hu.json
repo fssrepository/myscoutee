@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.05.hu.74",
+  "version": "2026.09.06.hu.77",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -1223,6 +1223,9 @@
     "fresh.article": "Friss cikk",
     "fresh.myscoutee.articles.will.show.here": "Itt jelennek meg a friss MyScoutee cikkek.",
     "landing.preview.badge": "Tesztverzió",
+    "landing.hero.history": "Az emberek régen társas közegben ismerkedtek.",
+    "landing.hero.return": "Mi ezt újra közösségivé tesszük.",
+    "landing.hero.graph": "6 ember · 6 prioritáslista → 1 közös csoport",
     "landing.preview.open.guide": "Tesztverzió útmutató megnyitása",
     "landing.preview.close.guide": "Tesztverzió útmutató bezárása",
     "landing.preview.guide.title": "Tesztverzió",
@@ -2124,6 +2127,7 @@
     "payment.history.totals": "Összes kiadás és bevétel",
     "payment.registration.aria": "Fizetési kártya regisztrálása a szolgáltatónál",
     "payment.registration.close": "Kártyaregisztráció bezárása",
+    "payment.registration.error.cancelled": "A felhasználó megszakította a kártyaregisztrációt. A kártya nem lett mentve.",
     "payment.registration.error.ended": "A kártyaregisztráció ezzel az állapottal zárult: {status}.",
     "payment.registration.error.expired": "A kártyaregisztráció időkorlátja lejárt. A kártya hozzáadásához indítsd újra.",
     "payment.registration.error.failed": "A kártyaregisztráció sikertelen. A kártya hozzáadásához indítsd újra.",

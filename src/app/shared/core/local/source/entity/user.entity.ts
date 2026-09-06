@@ -58,6 +58,7 @@ export interface UserEventCountersRecord {
   invitations?: number;
   hosting?: number;
   drafts?: number;
+  watchlist?: number;
   trash?: number;
 }
 

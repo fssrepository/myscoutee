@@ -92,6 +92,7 @@ export interface ActivityEventCounters {
   invitations: number;
   hosting: number;
   drafts: number;
+  watchlist: number;
   trash: number;
 }
 
@@ -387,6 +388,9 @@ export class ActivityStore {
       case 'drafts':
         event.drafts = normalizedCount;
         break;
+      case 'watchlist':
+        event.watchlist = normalizedCount;
+        break;
       case 'trash':
         event.trash = normalizedCount;
         break;
@@ -565,7 +569,7 @@ export class ActivityStore {
       delta.event,
       currentOverrides.event,
       baseCounters?.event,
-      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash']
     );
     if (event) {
       normalizedPatch.event = event;

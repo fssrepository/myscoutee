@@ -39,6 +39,7 @@ import type {
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
   EventParticipationActionResultDTO,
+  EventWatchActionResultDTO,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
@@ -369,6 +370,14 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.restoreItem(userId, sourceId);
+  }
+
+  watchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.eventsService.watchEvent(userId, sourceId);
+  }
+
+  unwatchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null> {
+    return this.eventsService.unwatchEvent(userId, sourceId);
   }
 
   takeOverItem(userId: string, sourceId: string): Promise<void> {

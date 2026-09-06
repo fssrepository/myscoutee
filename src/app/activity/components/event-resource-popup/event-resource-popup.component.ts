@@ -1452,11 +1452,7 @@ export class EventResourcePopupComponent {
             ? 'event.editor.payment.recorded.approved'
             : paymentAudit.status)
         : null,
-      paymentNote: paymentAudit
-        ? (paymentAudit.auditKind === 'booking_price_revision'
-            ? 'event.editor.payment.recorded.revision.note'
-            : 'event.editor.payment.recorded.note')
-        : null
+      paymentNote: null
     };
     const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
     const generation = this.assetStore.openAssetEditorEdit({

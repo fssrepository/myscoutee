@@ -81,15 +81,6 @@
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
         ></app-header-card>
-        @if (!isPrivilegedWorkspaceMode()) {
-          <app-menu
-            class="navigator-header-contextual-menu"
-            kind="inline"
-            layout="row"
-            [model]="navigatorContextualMenuModel()"
-            (itemSelect)="onNavigatorContextualMenuSelect($event)"
-          ></app-menu>
-        }
         <div class="navigator-header-actions">
           @if (!runtimeStore.isOnline()) {
             <div class="navigator-offline-badge" role="status">

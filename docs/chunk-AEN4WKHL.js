@@ -1,0 +1,1 @@
+function a(e){let o=e.trim().toLowerCase();return o==="localhost"||o==="127.0.0.1"||o==="[::1]"||o==="::1"||o.endsWith(".localhost")}function t(e){return e.activitiesDataSource!=="http"||!e.firebaseMessagingEnabled?!1:a(e.hostname)?!e.production&&e.standalone&&e.devServiceWorkerOverrideEnabled:!0}export{t as a};
