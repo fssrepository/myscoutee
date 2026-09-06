@@ -286,6 +286,7 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = provider
       ? `Payment provider changed to ${provider === 'barion' ? 'Barion' : provider === 'stripe' ? 'Stripe' : provider}. Select a compatible card and confirm again.`
       : 'Payment provider changed to Cash only. Confirm the payment again.';
+    this.confirmationDialogStore.clearWarningMessage();
     return true;
   }
 
