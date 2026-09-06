@@ -117,6 +117,9 @@ export class EventPaymentInputComponent {
   }
 
   protected paymentStatusMessage(): string {
+    if (this.statusTone === 'success') {
+      return this.paymentStatusLabel();
+    }
     return this.paymentNote() || this.paymentStatusLabel();
   }
 
