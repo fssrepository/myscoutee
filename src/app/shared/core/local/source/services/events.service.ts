@@ -2402,7 +2402,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       kind: 'event-watchlist-available',
       category: 'event',
       title: eventTitle,
-      message: 'A place is available again. Open the event to book it.',
+      message: 'A new spot is available. Open the event to book it.',
       createdAtIso,
       readAtIso: null,
       senderUserId: null,
