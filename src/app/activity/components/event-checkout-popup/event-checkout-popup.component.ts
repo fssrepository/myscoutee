@@ -350,7 +350,40 @@ export class EventCheckoutPopupComponent {
   }
 
   protected optionalSubEvents(): ContractTypes.SubEventDTO[] {
-    return (this.dialog()?.record.subEvents ?? []).filter(item => item.optional);
+    const record = this.dialog()?.record;
+    const runtimeItems = (record?.subEvents ?? []).filter(item => item.optional);
+    const runtimeById = new Map(runtimeItems.map(item => [item.id, item] as const));
+    const selectedTemplateId = this.selectedSlot()?.slotTemplateId?.trim() ?? '';
+    const templateDefinitions = selectedTemplateId
+      ? record?.slotTemplates?.find(item => item.id === selectedTemplateId)?.subEventDefinitions ?? []
+      : [];
+    const definitions = templateDefinitions.length > 0
+      ? templateDefinitions
+      : record?.subEventDefinitions ?? [];
+    if (definitions.length === 0) {
+      return runtimeItems;
+    }
+    return definitions.filter(item => item.optional).map(item => {
+      const runtime = runtimeById.get(item.id);
+      return {
+        ...runtime,
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        startAt: runtime?.startAt ?? '',
+        endAt: runtime?.endAt ?? '',
+        location: item.location ?? runtime?.location ?? '',
+        optional: true,
+        pricing: item.pricing ?? runtime?.pricing ?? null,
+        capacityMin: item.capacityMin,
+        capacityMax: item.capacityMax,
+        membersAccepted: runtime?.membersAccepted ?? 0,
+        membersPending: runtime?.membersPending ?? 0,
+        carsPending: runtime?.carsPending ?? 0,
+        accommodationPending: runtime?.accommodationPending ?? 0,
+        suppliesPending: runtime?.suppliesPending ?? 0
+      };
+    });
   }
 
   protected slotCalendarFilter = (value: Date | null): boolean => {
@@ -2937,6 +2970,13 @@ export class EventCheckoutPopupComponent {
     this.selectedSlotSourceId = firstSlotSourceId && validSlotIds.has(firstSlotSourceId)
       ? firstSlotSourceId
       : this.selectedSlotSourceId;
+    const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
+    this.selectedOptionalSubEventIds = new Set(
+      basket.items
+        .map(item => item.subEventId?.trim() ?? '')
+        .filter(id => Boolean(id) && validOptionalIds.has(id))
+    );
+    this.checkoutBasket = this.repriceCheckoutBasketItems(basket.items) ?? basket;
     const selectedDateKey = basket.selectedDateKey
       ?? basket.items.find(item => item.selectedDateKey?.trim())?.selectedDateKey
       ?? null;
