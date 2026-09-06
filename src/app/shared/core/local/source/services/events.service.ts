@@ -2445,9 +2445,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     const reasons: string[] = [];
     if (`${before.title ?? ''}`.trim() !== `${after.title ?? ''}`.trim()
-        || `${before.location ?? ''}`.trim() !== `${after.location ?? ''}`.trim()
-        || (before.capacityMin ?? 0) !== (after.capacityMin ?? 0)
-        || (before.capacityMax ?? 0) !== (after.capacityMax ?? 0)) {
+        || `${before.location ?? ''}`.trim() !== `${after.location ?? ''}`.trim()) {
       reasons.push('details');
     }
     if (`${before.startAtIso ?? ''}`.trim() !== `${after.startAtIso ?? ''}`.trim()
