@@ -2382,7 +2382,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     before: ActivityEventRecord | null,
     after: ActivityEventRecord | null
   ): void {
-    if (!before || !after || before.full !== true || after.full === true) {
+    if (!before || !after || this.eventAvailableCapacity(after) <= this.eventAvailableCapacity(before)) {
       return;
     }
     const eventId = `${after.id ?? before.id ?? ''}`.trim();
@@ -2422,6 +2422,22 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       }
     }));
     this.notificationsRepository.append(records);
+  }
+
+  private eventAvailableCapacity(event: ActivityEventRecord): number {
+    if (event.slotsEnabled === true) {
+      return (event.upcomingSlots ?? []).reduce((total, slot) => {
+        const capacity = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+        const accepted = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
+        return total + (capacity > 0 ? Math.max(0, capacity - accepted) : 0);
+      }, 0);
+    }
+    if (event.full === true) {
+      return 0;
+    }
+    const capacity = Math.max(0, Math.trunc(Number(event.capacityTotal) || 0));
+    const accepted = Math.max(0, Math.trunc(Number(event.acceptedMembers) || 0));
+    return capacity > 0 ? Math.max(0, capacity - accepted) : 0;
   }
 
   private appendMemberJoinedNotifications(
