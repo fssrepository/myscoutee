@@ -6,7 +6,7 @@
           class="payment-simulator-frame"
           [src]="url"
           [attr.title]="titleKey() | i18n"
-          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+          sandbox="allow-forms allow-scripts allow-same-origin"
           (load)="frameLoaded()"
         ></iframe>
       }
