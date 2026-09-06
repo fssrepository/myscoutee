@@ -80,30 +80,6 @@ export class EventCheckoutDraftStore {
     }
   }
 
-  reconcileRecreatedEventDrafts(
-    userId: string,
-    records: readonly Pick<ActivityEventRecord, 'id' | 'checkoutResultState' | 'timeframe'>[]
-  ): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId || records.length === 0) {
-      return;
-    }
-    const recordsById = new Map(records.map(record => [record.id, record]));
-    for (const draft of this.listByUser(normalizedUserId)) {
-      const record = recordsById.get(draft.sourceId);
-      const draftTimeframe = draft.eventTimeframe.trim();
-      const recordTimeframe = record?.timeframe?.trim() ?? '';
-      if (!record
-          || record.checkoutResultState !== null
-          || !draftTimeframe
-          || !recordTimeframe
-          || draftTimeframe === recordTimeframe) {
-        continue;
-      }
-      this.clear(normalizedUserId, draft.sourceId);
-    }
-  }
-
   save(draft: EventCheckoutDraft): void {
     const normalized = this.normalizeDraft(draft);
     if (!normalized) {

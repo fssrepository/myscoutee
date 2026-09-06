@@ -1447,7 +1447,6 @@ export class EventExplorePopupComponent {
       }
     });
     this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
-    this.eventCheckoutDraftStore.reconcileRecreatedEventDrafts(this.activeUserId, page.items);
     await this.restoreServerCheckoutDrafts(page.items);
     return page;
   }
