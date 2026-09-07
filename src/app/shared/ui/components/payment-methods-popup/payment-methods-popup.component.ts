@@ -348,7 +348,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected historyRow(item: PaymentHistoryItemDto, withMenu = false): SingleRowData<PaymentHistoryItemDto> {
     const refundAudit = item.auditKind === 'refund';
-    const refundedOriginal = !refundAudit && this.isRefundedPaymentStatus(item.status);
     const amount = this.formatSignedCurrency(
       Number(item.amount) || 0,
       item.currency || 'HUF',
@@ -395,14 +394,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
               tone: 'warning' as const,
               position: 'inline' as const
             }]
-          : item.refundRequestStatus === 'approved' && !refundedOriginal && !refundAudit
-            ? [{
-                label: this.i18n.translate('payment.history.refund.approved'),
-                icon: 'currency_exchange',
-                tone: 'success' as const,
-                position: 'inline' as const
-              }]
-            : [])
+          : [])
       ],
       menuActions: withMenu ? this.paymentHistoryMenuActions(item) : [],
       eagerDetail: item
