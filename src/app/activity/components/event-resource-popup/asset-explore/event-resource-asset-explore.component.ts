@@ -2059,7 +2059,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       }`.trim() || null,
       paymentMethod: draft?.paymentMethod ? { ...draft.paymentMethod } : null,
       paymentStep: Boolean(
-        (draft?.paymentStep && !this.borrowDraftSelectionChanged(draft))
+        (draft?.confirmedSelectionSignature && !this.borrowDraftSelectionChanged(draft))
         || existingRequest?.booking?.paymentSessionId
       ),
       confirmedSelectionSignature: draft?.confirmedSelectionSignature ?? null,
