@@ -1226,6 +1226,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!card) {
       return false;
     }
+    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
+    if ((AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [])
+      .some(policy => policy.required !== false && !acceptedPolicyIds.has(`${policy.id ?? ''}`.trim()))) {
+      return false;
+    }
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
     if (
       dialog.paymentStep
@@ -2043,7 +2048,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1));
     const activePolicies = AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [];
-    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
+    const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
+    const requiredPolicyIds = activePolicies
+      .filter(policy => policy.required !== false)
+      .map(policy => `${policy.id ?? ''}`.trim())
+      .filter(Boolean);
     if (popup.error) {
       this.resourcePopupStore.assetExplorePopupRef.set({
         ...popup,
@@ -2058,7 +2067,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       endAtIso,
       borrowWindow: null,
       availableQuantity,
-      acceptedPolicyIds: [...(draft?.acceptedPolicyIds ?? existingRequest?.booking?.acceptedPolicyIds ?? [])]
+      acceptedPolicyIds: [...new Set([
+        ...requiredPolicyIds,
+        ...(draft?.acceptedPolicyIds ?? existingRequest?.booking?.acceptedPolicyIds ?? [])
+      ])]
+        .map(policyId => `${policyId ?? ''}`.trim())
         .filter(policyId => validPolicyIds.has(policyId)),
       checkoutSessionId: `${
         draft?.checkoutSessionId

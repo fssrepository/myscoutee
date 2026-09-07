@@ -2694,6 +2694,7 @@
     "notification.kind.payment-card-expired.message": "A(z) {last4} végződésű mentett kártyád lejárt.",
     "notification.kind.payment-refund-approved.title": "Fizetés visszatérítve",
     "notification.kind.payment-refund-approved.message": "A fizetésedet visszatérítették.",
+    "notification.payment.refund.takeover.message": "A(z) {assetTitle} eszközhöz tartozó fizetésedet visszatérítettük, mert valaki átvette az eszközt.",
     "notification.kind.payment-refund-requested.title": "Visszatérítés kérve",
     "notification.kind.payment-refund-requested.message": "Egy fizető visszatérítést kért.",
     "notification.kind.user-rated.title": "Új értékelés",

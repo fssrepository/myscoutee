@@ -2140,12 +2140,19 @@ export class EventResourcePopupComponent {
     }
     const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
     const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
-    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
+    const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
+    const requiredPolicyIds = activePolicies
+      .filter(policy => policy.required !== false)
+      .map(policy => `${policy.id ?? ''}`.trim())
+      .filter(Boolean);
     const dialog: AssignedAssetJoinDialogState = {
       cardId: card.id,
       type,
       sourceAssetId: sourceCard.id,
-      acceptedPolicyIds: [...new Set(existingRequest?.booking?.acceptedPolicyIds ?? [])]
+      acceptedPolicyIds: [...new Set([
+        ...requiredPolicyIds,
+        ...(existingRequest?.booking?.acceptedPolicyIds ?? [])
+      ])]
         .map(item => `${item ?? ''}`.trim())
         .filter(item => item.length > 0 && validPolicyIds.has(item)),
       busy: false,
@@ -2171,6 +2178,12 @@ export class EventResourcePopupComponent {
     }
     const takeOverAmount = Math.max(0, Number(successorRequest.booking?.previousTotalAmount) || 0);
     const takeOverCurrency = `${successorRequest.booking?.currency ?? sourceCard.pricing?.currency ?? 'USD'}`.trim() || 'USD';
+    const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
+    const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
+    const requiredPolicyIds = activePolicies
+      .filter(policy => policy.required !== false)
+      .map(policy => `${policy.id ?? ''}`.trim())
+      .filter(Boolean);
     const dialog: AssignedAssetJoinDialogState = {
       cardId: resourceCard.id,
       type: sourceCard.type,
@@ -2179,7 +2192,12 @@ export class EventResourcePopupComponent {
       previousManagerUserId: previousManagerUserId.trim(),
       takeOverAmount,
       takeOverCurrency,
-      acceptedPolicyIds: [...(successorRequest.booking?.acceptedPolicyIds ?? [])],
+      acceptedPolicyIds: [...new Set([
+        ...requiredPolicyIds,
+        ...(successorRequest.booking?.acceptedPolicyIds ?? [])
+      ])]
+        .map(policyId => `${policyId ?? ''}`.trim())
+        .filter(policyId => validPolicyIds.has(policyId)),
       checkoutSessionId: null,
       paymentMethod: null,
       paymentStep: false,
@@ -2524,7 +2542,9 @@ export class EventResourcePopupComponent {
     if (!sourceCard) {
       return false;
     }
-    return true;
+    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
+    return !(AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [])
+      .some(policy => policy.required !== false && !acceptedPolicyIds.has(`${policy.id ?? ''}`.trim()));
   }
 
   async confirmAssignedAssetJoin(event?: Event): Promise<void> {

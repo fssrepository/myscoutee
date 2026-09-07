@@ -478,6 +478,15 @@ export class LocalAssetsRepository {
       || previous?.status === 'pending'
       ? previous.status
       : null;
+    const hasAcceptedRequiredPolicies = (acceptedPolicyIds: string[] | undefined): boolean => {
+      if (record.policiesEnabled !== true) {
+        return true;
+      }
+      const accepted = new Set((acceptedPolicyIds ?? []).map(item => item.trim()).filter(Boolean));
+      return (record.policies ?? [])
+        .filter(policy => policy.required !== false)
+        .every(policy => Boolean(policy.id.trim()) && accepted.has(policy.id.trim()));
+    };
     if (request.action === 'leave' && !previous) {
       return null;
     }
@@ -493,6 +502,7 @@ export class LocalAssetsRepository {
       if (!previous
         || previous.status !== 'accepted'
         || previous.requestKind !== 'borrow'
+        || !hasAcceptedRequiredPolicies(request.acceptedPolicyIds)
         || !previousManagerUserId
         || previousManagerUserId === actorUserId
         || !predecessor) {
@@ -559,6 +569,7 @@ export class LocalAssetsRepository {
         || joinedRequest.status !== 'pending'
         || `${joinedRequest.booking?.eventId ?? ''}`.trim() !== eventId
         || `${joinedRequest.booking?.subEventId ?? ''}`.trim() !== subEventId
+        || !hasAcceptedRequiredPolicies(joinedRequest.booking?.acceptedPolicyIds)
       )
     ) {
       return null;

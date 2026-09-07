@@ -2694,6 +2694,7 @@
     "notification.kind.payment-card-expired.message": "Your saved card ending in {last4} has expired.",
     "notification.kind.payment-refund-approved.title": "Payment refunded",
     "notification.kind.payment-refund-approved.message": "Your payment was refunded.",
+    "notification.payment.refund.takeover.message": "Your payment for {assetTitle} was refunded because the Asset was taken over.",
     "notification.kind.payment-refund-requested.title": "Refund requested",
     "notification.kind.payment-refund-requested.message": "A payer requested a refund.",
     "notification.kind.user-rated.title": "New rating",
