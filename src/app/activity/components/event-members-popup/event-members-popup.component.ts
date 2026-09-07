@@ -2100,6 +2100,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       && this.canTakeOverAssetResponsibility
       && (!this.scopedBorrowAsset || this.takeOverAssetHandler !== null)
       && entry.status === 'accepted'
+      && entry.role !== 'Manager'
       && this.isCurrentUser(entry);
   }
 
