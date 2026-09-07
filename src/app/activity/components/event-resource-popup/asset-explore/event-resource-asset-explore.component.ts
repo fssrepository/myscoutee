@@ -2803,11 +2803,23 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     card: ResourceAssetDTO,
     persistedState: AppDTOs.ActivitySubEventResourceStateDTO
   ): void {
+    const persistedCards = persistedState.fallbackAssetCardsByType?.[card.type] ?? [];
+    const nextPersistedState: AppDTOs.ActivitySubEventResourceStateDTO = {
+      ...persistedState,
+      fallbackAssetCardsByType: {
+        ...(persistedState.fallbackAssetCardsByType ?? {}),
+        [card.type]: [
+          ...persistedCards.filter(item => item.id !== card.id),
+          this.toAssetDetailDto(card)
+        ]
+      }
+    };
+    this.resourcePopupStore.upsertVisibleResourceState(nextPersistedState);
     for (const type of AppConstants.ASSET_TYPES) {
       const key = this.assignmentKey(context.subEvent.id, type);
-      this.resourcePopupStore.assignedAssetIdsByKey[key] = [...(persistedState.assetAssignmentIds[type] ?? [])];
+      this.resourcePopupStore.assignedAssetIdsByKey[key] = [...(nextPersistedState.assetAssignmentIds[type] ?? [])];
       this.resourcePopupStore.assignedAssetSettingsByKey[key] = {
-        ...(persistedState.assetSettingsByType[type] ?? {})
+        ...(nextPersistedState.assetSettingsByType[type] ?? {})
       };
     }
     for (const key of Object.keys(this.resourcePopupStore.supplyContributionEntriesByAssignmentKey)) {
@@ -2815,7 +2827,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         delete this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[key];
       }
     }
-    for (const [assetId, entries] of Object.entries(persistedState.supplyContributionEntriesByAssetId)) {
+    for (const [assetId, entries] of Object.entries(nextPersistedState.supplyContributionEntriesByAssetId)) {
       this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[
         this.supplyAssignmentKey(context.subEvent.id, assetId)
       ] = entries.map(entry => ({ ...entry }));
@@ -2824,21 +2836,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (activeContext?.subEvent.id === context.subEvent.id) {
       const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
       const existingCards = nextFallbackCards[card.type] ?? [];
-      if (!existingCards.some(item => item.id === card.id)) {
-        nextFallbackCards[card.type] = [
-          ...existingCards,
-          this.assignedFallbackAssetSnapshot(context.subEvent.id, card)
-        ];
-      }
+      nextFallbackCards[card.type] = [
+        ...existingCards.filter(item => item.id !== card.id),
+        this.assignedFallbackAssetSnapshot(context.subEvent.id, card)
+      ];
       const nextContext = {
         ...activeContext,
         fallbackCardsByType: nextFallbackCards
       };
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.syncMetrics(false, persistedState);
+      this.syncMetrics(false, nextPersistedState);
       return;
     }
-    this.syncMetrics(false, persistedState);
+    this.syncMetrics(false, nextPersistedState);
   }
 
   private async persistBorrowedAssetAssignment(
