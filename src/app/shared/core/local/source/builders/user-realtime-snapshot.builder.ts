@@ -292,7 +292,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       current.asset,
       previousBase.asset,
       nextBase.asset,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
     next.eventFeedback = this.rebaseNestedCounters(
       current.eventFeedback,
