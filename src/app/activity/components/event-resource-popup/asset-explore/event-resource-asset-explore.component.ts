@@ -690,7 +690,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const owner = this.resolveOwnerUser(card);
     this.userProfileStore.setUserProfile(owner);
     void this.loadOwnerProfile(ownerUserId);
-    this.profileStore.openImpressionsPopup(ownerUserId);
+    this.profileStore.openImpressionsPopup(ownerUserId, {
+      contextLabel: 'Asset Owner',
+      sourceLabel: card.title
+    });
   }
 
   protected onMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {

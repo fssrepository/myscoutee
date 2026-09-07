@@ -1961,7 +1961,9 @@ export class SideMenuComponent implements OnDestroy {
     if (normalizedUserId && !cachedUser) {
       void this.usersService.loadUserById(normalizedUserId);
     }
-    this.profileStore.openImpressionsPopup(normalizedUserId);
+    this.profileStore.openImpressionsPopup(normalizedUserId, {
+      contextLabel: 'My Impressions'
+    });
   }
 
   private openDeleteAccountConfirm(): void {

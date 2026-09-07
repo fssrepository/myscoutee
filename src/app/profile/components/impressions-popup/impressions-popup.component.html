@@ -1,6 +1,44 @@
 @if (popupOpen() && viewModel(); as vm) {
-  <app-popup [model]="impressionsPopupModel()" [zIndex]="impressionsPopupZIndex()">
+  <app-popup [model]="impressionsPopupModel(vm)" [zIndex]="impressionsPopupZIndex()">
     <div class="profile-impressions-popup">
+        <section class="profile-impressions-person-stage">
+          <article
+            class="profile-impressions-person-card"
+            [class.has-photo]="!!vm.activeProfilePhoto"
+            [ngClass]="profileAvatarClass(vm.user)"
+            [style.backgroundImage]="vm.activeProfilePhoto ? 'url(' + vm.activeProfilePhoto + ')' : null"
+            >
+            @if (!vm.activeProfilePhoto) {
+              <span class="profile-impressions-person-initials">{{ profileInitials(vm.user) }}</span>
+            }
+            @if (vm.profilePhotos.length > 1) {
+              <div class="profile-impressions-person-indicators" aria-hidden="true">
+                @for (photo of vm.profilePhotos; track trackProfilePhoto($index, photo); let index = $index) {
+                  <span [class.active]="index === vm.profilePhotoIndex"></span>
+                }
+              </div>
+              <div class="profile-impressions-person-hit-area">
+                @for (photo of vm.profilePhotos; track trackProfilePhoto($index, photo); let index = $index) {
+                  <button
+                    type="button"
+                    (click)="selectProfilePhoto(index, $event)"
+                    [attr.aria-label]="'Show profile photo ' + (index + 1)"
+                  ></button>
+                }
+              </div>
+            }
+            <div class="profile-impressions-person-overlay">
+              <h3>{{ displayTitle(vm.user) }}</h3>
+              <p>
+                <mat-icon>location_on</mat-icon>
+                <span>{{ vm.user.city || 'City not set yet' }}</span>
+              </p>
+              @if (vm.user.headline || vm.user.statusText) {
+                <small>{{ vm.user.headline || vm.user.statusText }}</small>
+              }
+            </div>
+          </article>
+        </section>
         @if (!vm.hasAvailableData) {
           <div class="profile-impressions-empty-state">
             <mat-icon>insights</mat-icon>
