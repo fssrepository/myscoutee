@@ -345,7 +345,14 @@ export class HttpAssetsService {
         ? response.previousStatus
         : null,
       acceptedMemberDelta: Math.trunc(Number(response.acceptedMemberDelta) || 0),
-      pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0)
+      pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0),
+      paymentTotals: response.paymentTotals
+        ? {
+            outgoing: { ...(response.paymentTotals.outgoing ?? {}) },
+            incoming: { ...(response.paymentTotals.incoming ?? {}) },
+            all: { ...(response.paymentTotals.all ?? {}) }
+          }
+        : null
     };
   }
 

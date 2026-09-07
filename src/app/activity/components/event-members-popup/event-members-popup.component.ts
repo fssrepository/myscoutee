@@ -1976,6 +1976,9 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return true;
+    }
     if (this.ownerRef?.ownerType === 'asset' && entry.status === 'accepted') {
       return this.canManageMembers
         && !this.isCurrentUser(entry)

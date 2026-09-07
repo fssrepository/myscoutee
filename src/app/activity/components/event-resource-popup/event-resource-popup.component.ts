@@ -2708,6 +2708,15 @@ export class EventResourcePopupComponent {
         });
       }
       this.applyAssignedAssetMemberStatusChange(sourceCard.type, change);
+      if (change.paymentTotals) {
+        this.userProfileStore.patchActiveUserProfile({
+          paymentTotals: {
+            outgoing: { ...change.paymentTotals.outgoing },
+            incoming: { ...change.paymentTotals.incoming },
+            all: { ...change.paymentTotals.all }
+          }
+        });
+      }
       this.closeAssignedAssetJoinDialog();
       await this.hydratePopupResourceState(context);
     } catch (error) {

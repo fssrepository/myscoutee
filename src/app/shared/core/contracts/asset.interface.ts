@@ -1,5 +1,6 @@
 import * as AppConstants from '../common/constants';
 import type { PricingConfig } from './pricing.interface';
+import type { UserPaymentTotalsDto } from './user.interface';
 
 export interface EventPolicyItemDTO {
   id: string;
@@ -61,6 +62,7 @@ export interface AssetMemberStatusChangeDTO {
   status: AppConstants.ActivityMemberStatus;
   acceptedMemberDelta: number;
   pendingMemberDelta: number;
+  paymentTotals?: UserPaymentTotalsDto | null;
 }
 
 export interface AssetRequestMetricsDTO {
