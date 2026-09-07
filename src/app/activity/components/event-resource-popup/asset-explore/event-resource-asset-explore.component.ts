@@ -3115,6 +3115,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       inventoryApplied?: boolean | null;
     } = {}
   ): AppDTOs.AssetHireRequestBookingDTO | null {
+    const absoluteStartAtIso = AppUtils.isoLocalDateTimeToDate(startAtIso)?.toISOString();
+    const absoluteEndAtIso = AppUtils.isoLocalDateTimeToDate(endAtIso)?.toISOString();
     return {
       eventId: ActivityResourceBuilder.authorizationEventId(ownerId, subEvent.id),
       eventTitle: parentTitle,
@@ -3123,8 +3125,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       slotKey: subEvent.id,
       slotLabel: subEvent.name,
       timeframe: this.timeframeLabel(startAtIso, endAtIso),
-      startAtIso: startAtIso || undefined,
-      endAtIso: endAtIso || undefined,
+      startAtIso: absoluteStartAtIso,
+      endAtIso: absoluteEndAtIso,
       quantity,
       totalAmount: options.totalAmount ?? null,
       currency: options.currency ?? null,
@@ -3250,10 +3252,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     endAtIso: string,
     borrowWindow: AppDTOs.AssetBorrowWindowDTO
   ): boolean {
-    const start = this.parseLocalDateMs(startAtIso);
-    const end = this.parseLocalDateMs(endAtIso);
-    const lowerBound = this.parseLocalDateMs(borrowWindow.startAtIso);
-    const upperBound = this.parseLocalDateMs(borrowWindow.endAtIso);
+    const start = this.parseLocalDateMinute(startAtIso);
+    const end = this.parseLocalDateMinute(endAtIso);
+    const lowerBound = this.parseLocalDateMinute(borrowWindow.startAtIso);
+    const upperBound = this.parseLocalDateMinute(borrowWindow.endAtIso);
     return start !== null
       && end !== null
       && lowerBound !== null
@@ -3300,6 +3302,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private parseLocalDateMs(value: string | null | undefined): number | null {
     const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
     return parsed ? parsed.getTime() : null;
+  }
+
+  private parseLocalDateMinute(value: string | null | undefined): number | null {
+    const parsedMs = this.parseLocalDateMs(value);
+    return parsedMs === null ? null : Math.floor(parsedMs / 60_000);
   }
 
   private priceAmount(card: ResourceAssetDTO): number {
