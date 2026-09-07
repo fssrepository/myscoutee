@@ -2174,6 +2174,7 @@
     "payment.status.failed": "Sikertelen",
     "payment.status.pending": "Függőben",
     "payment.status.released": "Felszabadítva",
+    "payment.status.refund_requested": "Visszatérítés kérve",
     "payment.status.refunded": "Visszatérítve",
     "payment.status.partially_refunded": "Részben visszatérítve",
     "payment.status.requires_action": "Felhasználói jóváhagyás szükséges",

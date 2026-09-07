@@ -247,7 +247,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   openNotificationSupplies: { label: 'Open supplies', icon: 'inventory_2', tone: 'accent' },
   openNotificationTransport: { label: 'Open transport', icon: 'directions_car', tone: 'accent' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
-  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long', tone: 'positive' },
+  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long' },
   requestRefund: { label: 'payment.history.refund.request', icon: 'currency_exchange', tone: 'warning' },
   approveRefund: { label: 'payment.history.refund.approve', icon: 'price_check', tone: 'positive' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },

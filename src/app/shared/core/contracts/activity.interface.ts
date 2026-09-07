@@ -379,6 +379,7 @@ export interface SubEventResourceCardDTO {
   type: AppConstants.SubEventResourceFilter;
   sourceAssetId: string | null;
   assetOwnerUserId?: string | null;
+  assetManagerUserId?: string | null;
   title: string;
   subtitle: string;
   city: string;

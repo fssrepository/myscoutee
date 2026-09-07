@@ -190,7 +190,8 @@ export class ActivitySubEventResourceInfoCardConverter {
     ) {
       return false;
     }
-    const scopedManagerUserId = this.normalizeId(this.assetManagerUserId(card, options));
+    const scopedManagerUserId = this.normalizeId(card.assetManagerUserId)
+      || this.normalizeId(this.assetManagerUserId(card, options));
     const managerUserId = scopedManagerUserId || sourceOwnerUserId;
     return activeUserId.length > 0 && managerUserId === activeUserId;
   }

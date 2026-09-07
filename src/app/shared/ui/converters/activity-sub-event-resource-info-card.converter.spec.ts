@@ -85,6 +85,23 @@ describe('ActivitySubEventResourceInfoCardConverter member status changes', () =
     expect(converted.menuActions).toContain('removeAssignment');
   });
 
+  it('uses the card assignment manager when the viewer state still contains the previous manager', () => {
+    const converted = ActivitySubEventResourceInfoCardConverter.convert({
+      ...resourceCard(),
+      assetManagerUserId: 'viewer'
+    }, {
+      ...options([{ ...memberRequest(), status: 'accepted' }]),
+      activeUserId: 'viewer',
+      assetSettingsByKey: {
+        'subevent-1:Transport': {
+          'asset-1': assignmentSettings('previous-manager')
+        }
+      }
+    });
+
+    expect(converted.menuActions).toContain('removeAssignment');
+  });
+
   it('keeps Remove assignment for an owned manually assigned asset', () => {
     const converted = ActivitySubEventResourceInfoCardConverter.convert(resourceCard(), {
       ...options([]),

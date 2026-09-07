@@ -387,7 +387,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
             : 'payment-history-status-badge--danger',
           position: 'top-right'
         },
-        ...(item.refundRequestStatus === 'pending'
+        ...(!refundAudit && item.refundRequestStatus === 'pending'
           ? [{
               label: this.i18n.translate('payment.history.refund.pending'),
               icon: 'pending_actions',
@@ -777,7 +777,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         palette: value === 'income' ? 'green' : value === 'expenses' ? 'red' : 'blue',
         active: value === direction,
         checked: value === direction,
-        counter: value === 'all' || value === 'income' ? pendingRefundCount || undefined : undefined,
+        counter: value === 'all' || value === 'expenses' ? pendingRefundCount || undefined : undefined,
         context: { action: 'set-history-direction', direction: value }
       }));
     return {
@@ -802,7 +802,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   private paymentHistoryMenuActions(item: PaymentHistoryItemDto): string[] {
-    if (item.auditKind === 'refund') return [];
+    if (item.auditKind === 'refund') {
+      return item.canApproveRefund === true ? ['approveRefund'] : [];
+    }
     const actions = ['paymentSummary'];
     if (item.direction === 'expense' && `${item.recipientUserId ?? ''}`.trim()) {
       actions.push(item.serviceContext === 'asset' ? 'askAssetOwner' : 'askOrganizer');

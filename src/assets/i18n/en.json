@@ -2174,6 +2174,7 @@
     "payment.status.failed": "Failed",
     "payment.status.pending": "Pending",
     "payment.status.released": "Released",
+    "payment.status.refund_requested": "Refund requested",
     "payment.status.refunded": "Refunded",
     "payment.status.partially_refunded": "Partially refunded",
     "payment.status.requires_action": "Customer approval required",

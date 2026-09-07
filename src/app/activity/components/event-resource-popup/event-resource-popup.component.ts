@@ -1799,6 +1799,7 @@ export class EventResourcePopupComponent {
           type: card.type,
           sourceAssetId: card.id,
           assetOwnerUserId: `${card.ownerUserId ?? ''}`.trim() || state.assetOwnerUserId,
+          assetManagerUserId: managerUserId,
           title: card.title,
           subtitle: card.subtitle,
           city: card.city,
