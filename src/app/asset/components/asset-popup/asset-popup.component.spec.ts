@@ -306,7 +306,17 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     expect(patchUserCounterDeltas).toHaveBeenCalledWith(
       'owner-1',
       { asset: { carsPending: -1 } },
-      undefined
+      {
+        asset: {
+          cars: 0,
+          accommodation: 0,
+          supplies: 0,
+          tickets: 0,
+          carsPending: 0,
+          accommodationPending: 0,
+          suppliesPending: 0
+        }
+      }
     );
   });
 
