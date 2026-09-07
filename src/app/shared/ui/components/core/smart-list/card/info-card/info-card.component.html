@@ -337,7 +337,7 @@
                   (click)="onMenuActionSelected(action, menuAction, $event)"
                   >
                   <mat-icon>{{ menuAction.icon }}</mat-icon>
-                  <span>{{ menuAction.label | i18n }}</span>
+                  <span>{{ menuAction.label | i18n: menuAction.fallback }}</span>
                 </button>
               }
             }

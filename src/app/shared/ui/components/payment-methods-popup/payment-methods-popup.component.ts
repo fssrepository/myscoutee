@@ -8,7 +8,8 @@ import {
   DeploymentConfigurationService,
   EventsService,
   I18nService,
-  PaymentMethodsService
+  PaymentMethodsService,
+  UsersService
 } from '../../../core';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
@@ -51,6 +52,7 @@ import {
   type SingleRowData
 } from '../core/smart-list/card';
 import { I18nPipe } from '../../pipes';
+import { ChatPopupHeaderContextConverter } from '../../converters/chat-popup-header-context.converter';
 
 interface PaymentListFilters { revision: number; direction?: PaymentHistoryDirection; }
 interface PaymentPopupMenuContext {
@@ -69,6 +71,7 @@ interface PaymentPopupMenuContext {
 export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly store = inject(PaymentMethodsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly users = inject(UsersService);
   private readonly activityStore = inject(ActivityStore);
   private readonly paymentMethods = inject(PaymentMethodsService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
@@ -902,6 +905,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.errorRef.set('payment.history.ask.owner.error');
       return;
     }
+    await this.users.warmCachedUsers([activeUserId, targetUserId]);
+    const activeUser = this.users.peekCachedUserById(activeUserId)
+      ?? this.userProfileStore.activeUserProfile();
+    const targetUser = this.users.peekCachedUserById(targetUserId);
     const chat: AppDTOs.ChatDTO = {
       id: serviceContext === 'asset'
         ? `c-service-asset-${assetId}-${subEventId}-${activeUserId}`
@@ -913,6 +920,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         : `Service chat with the organizer for ${title}.`,
       lastSenderId: targetUserId,
       memberIds: [activeUserId, targetUserId],
+      members: ChatPopupHeaderContextConverter.memberSummaries([
+        { id: activeUserId, user: activeUser },
+        {
+          id: targetUserId,
+          user: targetUser,
+          fallbackName: serviceContext === 'asset' ? 'Asset owner' : 'Organizer'
+        }
+      ]),
       unread: 0,
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',

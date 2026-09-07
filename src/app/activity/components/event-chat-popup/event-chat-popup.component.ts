@@ -730,7 +730,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatPopupToolbarControls(): readonly PopupControl<ChatMenuContext>[] {
-    const membersControl = this.isAppSupportChat() || this.isServiceChat() || this.isBlockedSupportChat()
+    const membersControl = this.isAppSupportChat() || this.isBlockedSupportChat()
       ? null
       : this.chatHeaderMembersControl();
     return [{

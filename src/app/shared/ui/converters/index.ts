@@ -30,6 +30,7 @@ export {
 } from './activity-chat-single-row.converter';
 export {
   ChatPopupHeaderContextConverter,
+  type ChatMemberSummarySource,
   type ChatPopupHeaderContextConverterOptions
 } from './chat-popup-header-context.converter';
 export {

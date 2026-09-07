@@ -71,6 +71,9 @@ import {
   AssetInfoCardConverter
 } from '../../../../shared/ui/converters/asset-info-card.converter';
 import {
+  ChatPopupHeaderContextConverter
+} from '../../../../shared/ui/converters/chat-popup-header-context.converter';
+import {
   AppUtils
 } from '../../../../shared/app-utils';
 import {
@@ -1981,6 +1984,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !activeUserId || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
+    await this.usersService.warmCachedUsers([activeUserId, ownerUserId]);
+    const activeUser = this.usersService.peekCachedUserById(activeUserId) ?? this.activeUser();
+    const ownerUser = this.usersService.peekCachedUserById(ownerUserId) ?? this.resolveOwnerUser(card);
     const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
@@ -1995,6 +2001,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       lastMessage: `Service chat with the asset owner for ${card.title}.`,
       lastSenderId: ownerUserId,
       memberIds: [activeUserId, ownerUserId],
+      members: ChatPopupHeaderContextConverter.memberSummaries([
+        { id: activeUserId, user: activeUser },
+        { id: ownerUserId, user: ownerUser, fallbackName: card.ownerName }
+      ]),
       unread: 0,
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',

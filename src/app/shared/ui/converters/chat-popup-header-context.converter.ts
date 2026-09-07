@@ -3,6 +3,7 @@ import type {
   ChatDTO,
   ChatMemberSummaryDto
 } from '../../core/contracts/chat.interface';
+import type { UserDto } from '../../core/contracts/user.interface';
 import type {
   PopupHeaderContext,
   PopupHeaderControl,
@@ -13,7 +14,35 @@ export interface ChatPopupHeaderContextConverterOptions {
   includeThumbs?: boolean;
 }
 
+export interface ChatMemberSummarySource {
+  id: string;
+  user?: Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images' | 'profileStatus'> | null;
+  fallbackName?: string | null;
+}
+
 export class ChatPopupHeaderContextConverter {
+  static memberSummaries(sources: readonly ChatMemberSummarySource[]): ChatMemberSummaryDto[] {
+    const seenUserIds = new Set<string>();
+    return sources.flatMap(source => {
+      const id = `${source.id ?? ''}`.trim();
+      if (!id || seenUserIds.has(id)) {
+        return [];
+      }
+      seenUserIds.add(id);
+      const user = source.user?.id?.trim() === id ? source.user : null;
+      const name = `${user?.name ?? source.fallbackName ?? ''}`.trim() || 'User';
+      return [{
+        id,
+        name,
+        initials: `${user?.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
+        gender: user?.profileStatus === 'deleted'
+          ? 'deleted' as const
+          : user?.gender === 'woman' ? 'woman' as const : 'man' as const,
+        imageUrl: AppUtils.firstImageUrl(user?.images) || null
+      }];
+    });
+  }
+
   static convert(
     chat: ChatDTO,
     options: ChatPopupHeaderContextConverterOptions = {}

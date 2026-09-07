@@ -70,6 +70,7 @@ import {
 import {
   ActivityChatSingleRowConverter,
   ActivitySubEventResourceInfoCardConverter,
+  ChatPopupHeaderContextConverter,
   type ActivitySubEventResourceInfoCardConverterOptions
 } from '../../../shared/ui/converters';
 import {
@@ -581,6 +582,10 @@ export class EventResourcePopupComponent {
     if (!targetUserId || targetUserId === activeUserId) {
       return;
     }
+    await this.usersService.warmCachedUsers([activeUserId, targetUserId]);
+    const activeUser = this.usersService.peekCachedUserById(activeUserId) ?? this.activeUser();
+    const targetUser = this.usersService.peekCachedUserById(targetUserId);
+    const targetName = sourceCard?.ownerName?.trim() || target?.name?.trim() || 'Asset owner';
     const serviceContext = sourceCard ? 'asset' as const : 'event' as const;
     const sourceId = sourceCard?.id ?? eventId;
     const chat: ChatDTO = {
@@ -594,6 +599,10 @@ export class EventResourcePopupComponent {
         : `Service chat with the organizer for ${context.parentTitle}.`,
       lastSenderId: targetUserId,
       memberIds: [activeUserId, targetUserId],
+      members: ChatPopupHeaderContextConverter.memberSummaries([
+        { id: activeUserId, user: activeUser },
+        { id: targetUserId, user: targetUser, fallbackName: targetName }
+      ]),
       unread: 0,
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
