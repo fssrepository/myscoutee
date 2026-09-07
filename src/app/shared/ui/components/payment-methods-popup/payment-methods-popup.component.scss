@@ -43,13 +43,13 @@
   border: 1px solid rgba(255, 255, 255, .82);
   box-shadow: 0 4px 11px rgba(31, 54, 88, .16);
 }
-:host ::ng-deep .payment-history-avatar--expense {
+:host ::ng-deep .ui-single-row__avatar.payment-history-avatar--expense {
   background: linear-gradient(180deg, #ef6472 0%, #c4313c 100%);
 }
-:host ::ng-deep .payment-history-avatar--income {
+:host ::ng-deep .ui-single-row__avatar.payment-history-avatar--income {
   background: linear-gradient(180deg, #3db981 0%, #16845b 100%);
 }
-:host ::ng-deep .payment-history-avatar--failed {
+:host ::ng-deep .ui-single-row__avatar.payment-history-avatar--failed {
   background: linear-gradient(180deg, #dc4050 0%, #991f2b 100%);
 }
 :host ::ng-deep .payment-history-avatar--refunded {

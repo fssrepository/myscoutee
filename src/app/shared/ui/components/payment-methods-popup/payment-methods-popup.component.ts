@@ -359,7 +359,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     return {
       id: item.id,
       title: amount,
-      surfaceTone: refundAudit ? 'accent' : item.direction === 'income' ? 'success' : 'danger',
+      surfaceTone: item.direction === 'income' ? 'success' : 'danger',
       subtitle: item.sourceId || this.i18n.translate('payment'),
       detail: Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
         year: 'numeric',
@@ -371,7 +371,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       }),
       icon: item.status === 'captured' ? 'check_circle' : refundAudit ? 'currency_exchange' : 'payments',
       avatarToneClass: `payment-history-avatar payment-history-avatar--${
-        item.status === 'failed' ? 'failed' : refundAudit ? 'refunded' : item.direction
+        item.status === 'failed' ? 'failed' : item.direction
       }`,
       badges: [
         {
@@ -382,14 +382,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         },
         {
           label: statusLabel,
-          tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : refundAudit ? 'accent' : 'muted',
-          className: item.status === 'captured'
+          tone: item.direction === 'income' ? 'success' : 'danger',
+          className: item.direction === 'income'
             ? 'payment-history-status-badge--success'
-            : item.status === 'failed'
-              ? 'payment-history-status-badge--danger'
-              : refundAudit
-                ? 'payment-history-status-badge--refunded'
-                : null,
+            : 'payment-history-status-badge--danger',
           position: 'top-right'
         },
         ...(item.refundRequestStatus === 'pending'
@@ -723,9 +719,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private paymentStatusLabel(status: string): string {
     const normalized = `${status ?? ''}`.trim().toLowerCase();
-    if (normalized === 'released' || normalized === 'refunded' || normalized === 'partially_refunded') {
-      return this.i18n.translate('payment.status.refunded', 'Refunded');
-    }
     return normalized ? this.i18n.translate(`payment.status.${normalized}`, status) : '';
   }
 
