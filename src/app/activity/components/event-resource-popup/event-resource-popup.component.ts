@@ -39,6 +39,12 @@ import {
   EventsService
 } from '../../../shared/core/base/services/events.service';
 import {
+  DeploymentConfigurationService
+} from '../../../shared/core/base/services/deployment-configuration.service';
+import {
+  PaymentAuthorizationService
+} from '../../../shared/core/base/services/payment-authorization.service';
+import {
   ShareTokensService
 } from '../../../shared/core/base/services/share-tokens.service';
 import {
@@ -146,6 +152,8 @@ export class EventResourcePopupComponent {
   private readonly assetStore = inject(AssetStore);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  private readonly paymentAuthorization = inject(PaymentAuthorizationService);
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
   private readonly dialogStore = inject(DialogStore);
@@ -1643,6 +1651,21 @@ export class EventResourcePopupComponent {
     const capacityTotal = this.assignedAssetOccupancyCapacityTotal(sourceCard, assignmentSettings);
     const subtitle = `${sourceCard.title} · ${this.subEventDisplayName(context.subEvent) || 'Sub Event'}`;
     const parentOwner = this.resourceMemberParent(context);
+    const activeUserId = this.activeUser().id.trim();
+    const scopedBorrowRequests = sourceCard.requests.filter(request =>
+      request.requestKind === 'borrow'
+      && ActivityResourceBuilder.isSubEventScopedAssetRequest(
+        request,
+        context.subEvent.id,
+        context.ownerId
+      )
+    );
+    const scopedBorrowAsset = scopedBorrowRequests.length > 0;
+    const canTakeOverScopedAsset = scopedBorrowAsset
+      && managerUserId !== null
+      && managerUserId !== activeUserId
+      && scopedBorrowRequests.some(request => request.userId === activeUserId && request.status === 'accepted')
+      && !scopedBorrowRequests.some(request => request.userId === managerUserId && request.status === 'accepted');
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
@@ -1653,7 +1676,8 @@ export class EventResourcePopupComponent {
       subEventId: context.subEvent.id,
       resourceType: assetType,
       assetOwnerUserId: `${sourceCard.ownerUserId ?? card.assetOwnerUserId ?? ''}`.trim(),
-      canTakeOverAsset: !context.viewOnly && (sourceCard.menuActions ?? []).includes('takeOver'),
+      scopedBorrowAsset,
+      canTakeOverAsset: !context.viewOnly && (canTakeOverScopedAsset || (sourceCard.menuActions ?? []).includes('takeOver')),
       subtitle,
       canManage: !context.viewOnly && this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
       viewOnly: context.viewOnly === true,
@@ -1673,7 +1697,10 @@ export class EventResourcePopupComponent {
           capacityTotal: Math.max(acceptedMemberCount, capacityTotal)
         });
         this.hydratePopupResourceState(context);
-      }
+      },
+      onTakeOverAsset: canTakeOverScopedAsset && managerUserId
+        ? () => this.openScopedAssetTakeOver(card, sourceCard, managerUserId)
+        : undefined
     });
   }
 
@@ -2110,6 +2137,41 @@ export class EventResourcePopupComponent {
     void this.openAssignedAssetJoinCheckoutEditor(card, sourceCard, dialog);
   }
 
+  private openScopedAssetTakeOver(
+    resourceCard: AppDTOs.SubEventResourceCardDTO,
+    sourceCard: ResourceAssetDTO,
+    previousManagerUserId: string
+  ): void {
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!context || !activeUserId || !previousManagerUserId.trim()) {
+      return;
+    }
+    const successorRequest = this.findBorrowedAssetRequest(sourceCard, context.subEvent.id, activeUserId);
+    if (!successorRequest || successorRequest.status !== 'accepted') {
+      return;
+    }
+    const takeOverAmount = Math.max(0, Number(successorRequest.booking?.previousTotalAmount) || 0);
+    const takeOverCurrency = `${successorRequest.booking?.currency ?? sourceCard.pricing?.currency ?? 'USD'}`.trim() || 'USD';
+    const dialog: AssignedAssetJoinDialogState = {
+      cardId: resourceCard.id,
+      type: sourceCard.type,
+      sourceAssetId: sourceCard.id,
+      mode: 'takeover',
+      previousManagerUserId: previousManagerUserId.trim(),
+      takeOverAmount,
+      takeOverCurrency,
+      acceptedPolicyIds: [...(successorRequest.booking?.acceptedPolicyIds ?? [])],
+      checkoutSessionId: null,
+      paymentMethod: null,
+      paymentStep: false,
+      busy: false,
+      error: null
+    };
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(dialog);
+    void this.openAssignedAssetJoinCheckoutEditor(resourceCard, sourceCard, dialog, { loadDetail: false });
+  }
+
   private async openAssignedAssetJoinCheckoutEditor(
     resourceCard: AppDTOs.SubEventResourceCardDTO,
     sourceCard: ResourceAssetDTO,
@@ -2184,12 +2246,19 @@ export class EventResourcePopupComponent {
       this.activeUser().id,
       managerUserId
     );
+    const takeOver = dialog.mode === 'takeover';
+    const checkoutAmount = takeOver
+      ? Math.max(0, Number(dialog.takeOverAmount) || 0)
+      : pricing.shareAmount;
+    const checkoutCurrency = takeOver
+      ? (`${dialog.takeOverCurrency ?? pricing.currency}`.trim() || pricing.currency)
+      : pricing.currency;
     const hasError = !dialog.busy && Boolean(dialog.error);
     return {
       sourceId: sourceCard.id,
-      mode: 'join',
-      phase: 'review',
-      title: `Join ${sourceCard.title}`,
+      mode: takeOver ? 'takeover' : 'join',
+      phase: takeOver && dialog.paymentStep ? 'payment' : 'review',
+      title: takeOver ? `Take over ${sourceCard.title}` : `Join ${sourceCard.title}`,
       subtitle: this.popupSubtitle(),
       dateRange: {
         startAt: startAtIso,
@@ -2209,45 +2278,32 @@ export class EventResourcePopupComponent {
       pricingPreview: {
         rows: [{
           key: `assigned-asset-join:${sourceCard.id}`,
-          label: pricing.chargeType === 'per_attendee' ? 'Per-member price' : 'Your share',
+          label: takeOver
+            ? 'Replacement payment'
+            : pricing.chargeType === 'per_attendee' ? 'Per-member price' : 'Your share',
           detail: timeframe,
-          amount: pricing.shareAmount,
-          currency: pricing.currency
+          amount: checkoutAmount,
+          currency: checkoutCurrency
         }],
-        totalAmount: pricing.shareAmount,
-        currency: pricing.currency
+        totalAmount: checkoutAmount,
+        currency: checkoutCurrency
       },
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
-      footerItems: [
-        {
-          id: 'join-cancel',
-          label: this.i18n.translate('cancel'),
-          layout: 'action',
-          palette: 'neutral',
-          disabled: dialog.busy
-        },
-        {
-          id: 'join-confirm',
-          label: dialog.busy ? 'Sending request...' : 'Send join request',
-          layout: 'action',
-          palette: hasError ? 'danger' : 'blue',
-          disabled: !this.canSubmitAssignedAssetJoin(),
-          progress: dialog.busy || hasError
-            ? {
-                state: dialog.busy ? 'loading' : 'error',
-                shape: 'button'
-              }
-            : null
-        }
-      ],
+      paymentMethod: dialog.paymentMethod ? { ...dialog.paymentMethod } : null,
+      footerItems: this.assignedAssetJoinFooterItems(dialog, checkoutAmount, hasError),
       pendingFooterItemId: 'join-confirm',
-      pendingFooterLabel: 'Sending request...',
+      pendingFooterLabel: takeOver ? 'Taking over...' : 'Sending request...',
       busy: dialog.busy,
       error: dialog.error,
       onPolicyToggle: policyId => this.toggleAssignedAssetJoinPolicy(policyId),
+      onPaymentMethodChange: paymentMethod => this.selectAssignedAssetTakeOverPaymentMethod(paymentMethod),
       onFooterItemSelect: (itemId, sourceEvent) => {
         if (itemId === 'join-cancel') {
           this.closeAssignedAssetJoinDialog(sourceEvent);
+          return;
+        }
+        if (takeOver) {
+          void this.confirmScopedAssetTakeOver(sourceCard, sourceEvent);
           return;
         }
         void this.confirmAssignedAssetJoin(sourceEvent);
@@ -2260,7 +2316,7 @@ export class EventResourcePopupComponent {
     const checkout = this.assetStore.assetFormCheckout();
     const context = this.resourcePopupStore.popupContextRef();
     if (
-      checkout?.mode !== 'join'
+      (checkout?.mode !== 'join' && checkout?.mode !== 'takeover')
       || checkout.sourceId !== dialog.sourceAssetId
       || !context
     ) {
@@ -2277,6 +2333,60 @@ export class EventResourcePopupComponent {
     this.assetStore.setAssetEditorCheckoutState(
       this.assignedAssetJoinCheckoutState(sourceCard, dialog, context)
     );
+  }
+
+  private assignedAssetJoinFooterItems(
+    dialog: AssignedAssetJoinDialogState,
+    amount: number,
+    hasError: boolean
+  ): readonly import('../../../shared/ui/components/core/menu').AppMenuItem<string>[] {
+    const takeOver = dialog.mode === 'takeover';
+    const paymentRequired = takeOver && amount > 0;
+    const requiresPaymentMethod = paymentRequired && dialog.paymentStep && !this.cashOnly();
+    return [
+      {
+        id: 'join-cancel',
+        label: this.i18n.translate('cancel'),
+        layout: 'action',
+        palette: takeOver ? 'danger' : 'neutral',
+        disabled: dialog.busy
+      },
+      {
+        id: 'join-confirm',
+        label: dialog.busy
+          ? (takeOver ? 'Taking over...' : 'Sending request...')
+          : takeOver
+            ? paymentRequired
+              ? dialog.paymentStep ? (this.cashOnly() ? 'Confirm payment' : 'Pay and take over') : 'Continue to payment'
+              : 'Take Over'
+            : 'Send join request',
+        layout: 'action',
+        palette: hasError ? 'danger' : takeOver && dialog.paymentStep ? 'success' : 'blue',
+        disabled: !this.canSubmitAssignedAssetJoin()
+          || (requiresPaymentMethod && !dialog.paymentMethod),
+        progress: dialog.busy || hasError
+          ? {
+              state: dialog.busy ? 'loading' : 'error',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
+  }
+
+  private selectAssignedAssetTakeOverPaymentMethod(paymentMethod: AppDTOs.SavedPaymentMethodDto): void {
+    const dialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
+    if (!dialog || dialog.mode !== 'takeover' || dialog.busy) {
+      return;
+    }
+    const nextDialog: AssignedAssetJoinDialogState = {
+      ...dialog,
+      paymentMethod: { ...paymentMethod },
+      checkoutSessionId: null,
+      error: null
+    };
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+    this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
   }
 
   private restoreAssignedAssetJoinAfterFailure(dialog: AssignedAssetJoinDialogState): void {
@@ -2356,7 +2466,8 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
     this.assetStore.setAssetEditorCheckoutPending(false);
     const checkout = this.assetStore.assetFormCheckout();
-    if (checkout?.mode === 'join' && (!dialog || checkout.sourceId === dialog.sourceAssetId)) {
+    if ((checkout?.mode === 'join' || checkout?.mode === 'takeover')
+      && (!dialog || checkout.sourceId === dialog.sourceAssetId)) {
       this.assetStore.closeAssetEditor();
     }
   }
@@ -2495,6 +2606,212 @@ export class EventResourcePopupComponent {
       };
       this.restoreAssignedAssetJoinAfterFailure(nextDialog);
     }
+  }
+
+  private async confirmScopedAssetTakeOver(
+    sourceCard: ResourceAssetDTO,
+    event?: Event
+  ): Promise<void> {
+    event?.stopPropagation();
+    const dialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
+    const context = this.resourcePopupStore.popupContextRef();
+    if (!dialog || dialog.mode !== 'takeover' || !context || dialog.busy) {
+      return;
+    }
+    const activeUser = this.activeUser();
+    const previousManagerUserId = `${dialog.previousManagerUserId ?? ''}`.trim();
+    const amount = Math.max(0, Number(dialog.takeOverAmount) || 0);
+    const onlinePayment = amount > 0 && !this.cashOnly();
+    if (!previousManagerUserId || (onlinePayment && dialog.paymentStep && !dialog.paymentMethod)) {
+      return;
+    }
+
+    const checkoutRequest = amount > 0
+      ? this.scopedAssetTakeOverCheckoutRequest(sourceCard, dialog, context, activeUser.id)
+      : null;
+    if (amount > 0 && !dialog.paymentStep) {
+      const busyDialog: AssignedAssetJoinDialogState = {
+        ...dialog,
+        busy: true,
+        error: null
+      };
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set(busyDialog);
+      this.syncAssignedAssetJoinCheckoutEditor(busyDialog);
+      try {
+        await this.eventsService.saveCheckoutBasket(checkoutRequest!);
+        const current = this.resourcePopupStore.assignedAssetJoinDialogRef();
+        if (!current || current.mode !== 'takeover' || current.sourceAssetId !== dialog.sourceAssetId) {
+          return;
+        }
+        const paymentDialog: AssignedAssetJoinDialogState = {
+          ...current,
+          paymentStep: true,
+          busy: false,
+          error: null
+        };
+        this.resourcePopupStore.assignedAssetJoinDialogRef.set(paymentDialog);
+        this.syncAssignedAssetJoinCheckoutEditor(paymentDialog);
+      } catch (error) {
+        this.restoreAssignedAssetJoinAfterFailure({
+          ...dialog,
+          busy: false,
+          error: this.checkoutErrorMessage(error, 'Unable to prepare the replacement payment.')
+        });
+      }
+      return;
+    }
+
+    const providerWindow = onlinePayment ? this.paymentAuthorization.openProviderWindow() : null;
+    const busyDialog: AssignedAssetJoinDialogState = {
+      ...dialog,
+      busy: true,
+      error: null
+    };
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(busyDialog);
+    this.syncAssignedAssetJoinCheckoutEditor(busyDialog);
+    let checkoutSessionId: string | null = null;
+    try {
+      if (onlinePayment) {
+        const session = await this.eventsService.authorizeCheckout(checkoutRequest!);
+        if (!session?.id) {
+          throw new Error('Unable to authorize the replacement payment.');
+        }
+        checkoutSessionId = session.id;
+        await this.paymentAuthorization.completeCustomerAction(
+          session,
+          activeUser.id,
+          sourceCard.id,
+          providerWindow
+        );
+      }
+      const change = await this.assetsService.applyMemberStatusChange({
+        assetId: sourceCard.id,
+        eventId: context.ownerId,
+        subEventId: context.subEvent.id,
+        actorUserId: activeUser.id,
+        action: 'take-over',
+        paymentSessionId: checkoutSessionId,
+        previousManagerUserId
+      });
+      if (!change || change.status !== 'accepted') {
+        throw new Error('The Asset responsibility was not transferred.');
+      }
+      if (checkoutRequest) {
+        await this.eventsService.updateCheckoutBasketState({
+          userId: activeUser.id,
+          sourceId: sourceCard.id,
+          slotSourceId: null,
+          checkoutState: onlinePayment ? 'pay' : 'confirmed',
+          resultState: 'succeeded',
+          checkoutSessionId,
+          checkoutRequest
+        });
+      }
+      this.applyAssignedAssetMemberStatusChange(sourceCard.type, change);
+      this.closeAssignedAssetJoinDialog();
+      await this.hydratePopupResourceState(context);
+    } catch (error) {
+      if (checkoutRequest) {
+        void this.eventsService.updateCheckoutBasketState({
+          userId: activeUser.id,
+          sourceId: sourceCard.id,
+          slotSourceId: null,
+          checkoutState: onlinePayment ? 'pay' : 'confirmed',
+          resultState: 'failed',
+          checkoutSessionId,
+          checkoutRequest
+        });
+      }
+      this.restoreAssignedAssetJoinAfterFailure({
+        ...dialog,
+        checkoutSessionId,
+        paymentStep: amount > 0,
+        busy: false,
+        error: this.checkoutErrorMessage(error, 'Unable to take over this Asset.')
+      });
+    } finally {
+      this.paymentAuthorization.closeProviderWindow(providerWindow);
+    }
+  }
+
+  private scopedAssetTakeOverCheckoutRequest(
+    sourceCard: ResourceAssetDTO,
+    dialog: AssignedAssetJoinDialogState,
+    context: ResourcePopupContext,
+    activeUserId: string
+  ): ActivityContracts.EventCheckoutRequest {
+    const amount = Math.max(0, Number(dialog.takeOverAmount) || 0);
+    const currency = `${dialog.takeOverCurrency ?? sourceCard.pricing?.currency ?? 'USD'}`.trim() || 'USD';
+    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(
+      `${context.subEvent.startAt ?? ''}`.trim(),
+      `${context.subEvent.endAt ?? ''}`.trim()
+    );
+    const nowIso = new Date().toISOString();
+    const expiresAtIso = new Date(Date.now() + (10 * 60 * 1000)).toISOString();
+    const lineItem: ActivityContracts.EventCheckoutLineItem = {
+      id: `resource-takeover:${sourceCard.id}`,
+      kind: 'resource',
+      label: sourceCard.title,
+      detail: timeframe || 'Asset responsibility takeover',
+      amount,
+      currency
+    };
+    const pricingSummaryRows: ActivityContracts.EventCheckoutPricingSummaryRow[] = [{
+      key: `asset-takeover:${sourceCard.id}`,
+      label: 'Replacement payment',
+      detail: timeframe || null,
+      amount,
+      currency,
+      multiplier: 1
+    }];
+    return {
+      userId: activeUserId,
+      sourceId: sourceCard.id,
+      slotSourceId: null,
+      optionalSubEventIds: [],
+      assetSelections: [{
+        subEventId: context.subEvent.id,
+        resourceType: sourceCard.type
+      }],
+      acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+      appliedPromoCodes: [],
+      basketItems: [{
+        id: `resource-takeover:${sourceCard.id}:${context.subEvent.id}`,
+        kind: 'resource',
+        sourceId: sourceCard.id,
+        slotSourceId: null,
+        subEventId: context.subEvent.id,
+        resourceType: sourceCard.type,
+        label: sourceCard.title,
+        detail: lineItem.detail,
+        amount,
+        currency,
+        quantity: 1,
+        status: 'confirmed',
+        resultState: 'pending',
+        pricingSummaryRows,
+        createdAtIso: nowIso,
+        updatedAtIso: nowIso,
+        expiresAtIso
+      }],
+      pricingSummaryRows,
+      checkoutState: 'confirmed',
+      lineItems: [lineItem],
+      totalAmount: amount,
+      currency,
+      paymentMethodId: this.cashOnly() ? null : dialog.paymentMethod?.id ?? null
+    };
+  }
+
+  private cashOnly(): boolean {
+    return !`${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim();
+  }
+
+  private checkoutErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.trim();
+    }
+    return fallback;
   }
 
   private resolveViewableCarRoutes(
@@ -2985,13 +3302,13 @@ export class EventResourcePopupComponent {
       title: card.title
     };
     this.dialogStore.open({
-      title: 'Remove assignment',
-      message: `Remove "${pending.title}" from this event assignment?`,
+      title: `Remove ${pending.title}?`,
+      message: `Remove this Asset from the event?`,
       cancelLabel: 'Cancel',
       confirmLabel: 'Remove',
       busyConfirmLabel: 'Removing...',
       confirmTone: 'danger',
-      failureMessage: 'Unable to remove assignment.',
+      failureMessage: 'Unable to remove this Asset.',
       onConfirm: () => this.removeResourceAssignment(pending)
     });
   }

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.07.hu.79",
+  "version": "2026.09.07.hu.80",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2162,6 +2162,7 @@
     "payment.status.failed": "Sikertelen",
     "payment.status.pending": "Függőben",
     "payment.status.released": "Felszabadítva",
+    "payment.status.refunded": "Visszatérítve",
     "payment.status.requires_action": "Felhasználói jóváhagyás szükséges",
     "payment.status.requires_capture": "Engedélyezve, terhelésre vár",
     "payment.summary.error.asset.unavailable": "Az eszközfizetés összegzése már nem érhető el.",

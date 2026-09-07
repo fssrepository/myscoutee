@@ -113,8 +113,6 @@ export class ActivitySubEventResourceInfoCardConverter {
     }
     if (this.canJoin(card, options)) {
       actions.push('joinResource');
-    } else if (this.canLeave(card, options)) {
-      actions.push('leaveResource');
     }
     if (this.hasActiveUserBorrowRequest(card, options)) {
       actions.push('paymentSummary');
@@ -124,7 +122,7 @@ export class ActivitySubEventResourceInfoCardConverter {
     if (this.canReportResourceManager(card, options)) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
     }
-    if (this.isSourceAssetManagedByActiveUser(card, options)) {
+    if (this.canRemoveAssignment(card, options)) {
       actions.push('removeAssignment');
     }
     return actions;
@@ -161,12 +159,11 @@ export class ActivitySubEventResourceInfoCardConverter {
       && !this.hasActiveUserJoinRequest(card, options);
   }
 
-  private static canLeave(
+  private static canRemoveAssignment(
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
-    return this.isJoinableAssignedAsset(card, options)
-      && this.hasActiveUserJoinRequest(card, options);
+    return this.isSourceAssetManagedByActiveUser(card, options);
   }
 
   private static isJoinableAssignedAsset(
@@ -193,8 +190,8 @@ export class ActivitySubEventResourceInfoCardConverter {
     ) {
       return false;
     }
-    const managerUserId = sourceOwnerUserId
-      || this.normalizeId(this.assetManagerUserId(card, options));
+    const scopedManagerUserId = this.normalizeId(this.assetManagerUserId(card, options));
+    const managerUserId = scopedManagerUserId || sourceOwnerUserId;
     return activeUserId.length > 0 && managerUserId === activeUserId;
   }
 
@@ -202,22 +199,30 @@ export class ActivitySubEventResourceInfoCardConverter {
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
+    const status = this.activeUserRequestStatus(card, options);
+    return status === 'accepted' || status === 'pending';
+  }
+
+  private static activeUserRequestStatus(
+    card: AppDTOs.SubEventResourceCardDTO,
+    options: ActivitySubEventResourceInfoCardConverterOptions
+  ): AppConstants.ActivityMemberStatus | null {
     const sourceAsset = this.sourceAsset(card, options);
     const subEventId = this.contextSubEventId(options);
     const activeUserId = this.normalizeId(options.activeUserId);
     if (!sourceAsset || !subEventId || !activeUserId) {
-      return false;
+      return null;
     }
     const syncedStatus = this.activeUserStatusChange(card, options);
     if (syncedStatus) {
-      return syncedStatus === 'accepted' || syncedStatus === 'pending';
+      return syncedStatus;
     }
     const users = options.users ?? [];
-    return (sourceAsset.requests ?? []).some(request =>
+    return (sourceAsset.requests ?? []).find(request =>
       request.requestKind !== 'manual'
       && ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)
       && AppUtils.resolveAssetRequestUserId(request, users) === activeUserId
-    );
+    )?.status ?? null;
   }
 
   private static hasActiveUserBorrowRequest(

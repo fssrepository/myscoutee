@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.07.en.79",
+  "version": "2026.09.07.en.80",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2162,6 +2162,7 @@
     "payment.status.failed": "Failed",
     "payment.status.pending": "Pending",
     "payment.status.released": "Released",
+    "payment.status.refunded": "Refunded",
     "payment.status.requires_action": "Customer approval required",
     "payment.status.requires_capture": "Authorized, awaiting capture",
     "payment.summary.error.asset.unavailable": "The asset payment summary is no longer available.",

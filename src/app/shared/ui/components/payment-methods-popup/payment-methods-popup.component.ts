@@ -342,6 +342,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   protected historyRow(item: PaymentHistoryItemDto, withMenu = false): SingleRowData<PaymentHistoryItemDto> {
+    const refunded = this.isRefundedPaymentStatus(item.status);
     const amount = this.formatSignedCurrency(
       Number(item.amount) || 0,
       item.currency || 'HUF',
@@ -352,7 +353,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     return {
       id: item.id,
       title: amount,
-      surfaceTone: item.direction === 'income' ? 'success' : 'danger',
+      surfaceTone: refunded ? 'accent' : item.direction === 'income' ? 'success' : 'danger',
       subtitle: item.sourceId || this.i18n.translate('payment'),
       detail: Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
         year: 'numeric',
@@ -362,9 +363,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         minute: '2-digit',
         second: '2-digit'
       }),
-      icon: item.status === 'captured' ? 'check_circle' : item.status === 'released' ? 'undo' : 'payments',
+      icon: item.status === 'captured' ? 'check_circle' : refunded ? 'currency_exchange' : 'payments',
       avatarToneClass: `payment-history-avatar payment-history-avatar--${
-        item.status === 'failed' ? 'failed' : item.status === 'released' ? 'released' : item.direction
+        item.status === 'failed' ? 'failed' : refunded ? 'refunded' : item.direction
       }`,
       badges: [
         {
@@ -375,12 +376,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         },
         {
           label: statusLabel,
-          tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : 'muted',
+          tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : refunded ? 'accent' : 'muted',
           className: item.status === 'captured'
             ? 'payment-history-status-badge--success'
             : item.status === 'failed'
               ? 'payment-history-status-badge--danger'
-              : null,
+              : refunded
+                ? 'payment-history-status-badge--refunded'
+                : null,
           position: 'top-right'
         },
         ...(item.refundRequestStatus === 'pending'
@@ -711,10 +714,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private paymentStatusLabel(status: string): string {
     const normalized = `${status ?? ''}`.trim().toLowerCase();
+    if (normalized === 'released' || normalized === 'refunded') {
+      return this.i18n.translate('payment.status.refunded', 'Refunded');
+    }
     return normalized ? this.i18n.translate(`payment.status.${normalized}`, status) : '';
   }
 
-  private paymentStatusTone(status: string): 'neutral' | 'success' | 'danger' {
+  private paymentStatusTone(status: string): 'neutral' | 'success' | 'danger' | 'refund' {
     switch (`${status ?? ''}`.trim().toLowerCase()) {
       case 'failed':
       case 'declined':
@@ -725,9 +731,17 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       case 'succeeded':
       case 'authorized':
         return 'success';
+      case 'released':
+      case 'refunded':
+        return 'refund';
       default:
         return 'neutral';
     }
+  }
+
+  private isRefundedPaymentStatus(status: string): boolean {
+    const normalized = `${status ?? ''}`.trim().toLowerCase();
+    return normalized === 'released' || normalized === 'refunded';
   }
 
   protected historyHeaderTotals(): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {

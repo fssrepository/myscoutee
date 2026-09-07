@@ -77,6 +77,7 @@ export type ActivitiesNavigationRequest =
       subEventId?: string;
       resourceType?: AssetType;
       assetOwnerUserId?: string;
+      scopedBorrowAsset?: boolean;
       canTakeOverAsset?: boolean;
       subtitle?: string;
       canManage?: boolean;
@@ -88,6 +89,7 @@ export type ActivitiesNavigationRequest =
       metricIdentity?: string;
       lookup?: PopupHeaderLookup;
       onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
+      onTakeOverAsset?: () => void;
     }
   | { type: 'eventEditorMembers'; ownerId: string; title?: string; canManage?: boolean }
   | { type: 'eventEditorCreate'; target: EventEditorTarget }

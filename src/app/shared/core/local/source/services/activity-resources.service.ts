@@ -112,6 +112,103 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return null;
   }
 
+  async transferAssignedAssetManager(
+    ownerId: string,
+    subEventId: string,
+    assetId: string,
+    expectedManagerUserId: string,
+    successorUserId: string
+  ): Promise<boolean> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedExpectedManagerUserId = expectedManagerUserId.trim();
+    const normalizedSuccessorUserId = successorUserId.trim();
+    const state = this.assignedAssetState(ownerId, subEventId, normalizedAssetId);
+    if (
+      !state
+      || !normalizedExpectedManagerUserId
+      || !normalizedSuccessorUserId
+      || normalizedExpectedManagerUserId === normalizedSuccessorUserId
+    ) {
+      return false;
+    }
+    let changed = false;
+    const nextSettingsByType = { ...state.assetSettingsByType };
+    for (const type of AppConstants.ASSET_TYPES) {
+      const settingsByAssetId = { ...(nextSettingsByType[type] ?? {}) };
+      const settings = settingsByAssetId[normalizedAssetId];
+      if (`${settings?.addedByUserId ?? ''}`.trim() !== normalizedExpectedManagerUserId) {
+        continue;
+      }
+      settingsByAssetId[normalizedAssetId] = {
+        ...settings,
+        addedByUserId: normalizedSuccessorUserId
+      };
+      nextSettingsByType[type] = settingsByAssetId;
+      changed = true;
+    }
+    if (!changed) {
+      return false;
+    }
+    return Boolean(await this.replaceSubEventResourceState({
+      ...state,
+      assetSettingsByType: nextSettingsByType
+    }, undefined, normalizedSuccessorUserId));
+  }
+
+  async removeAssignedAsset(
+    ownerId: string,
+    subEventId: string,
+    assetId: string,
+    expectedManagerUserId: string
+  ): Promise<boolean> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedExpectedManagerUserId = expectedManagerUserId.trim();
+    const state = this.assignedAssetState(ownerId, subEventId, normalizedAssetId);
+    if (
+      !state
+      || !normalizedExpectedManagerUserId
+      || this.peekAssignedAssetManagerUserId(ownerId, subEventId, normalizedAssetId) !== normalizedExpectedManagerUserId
+    ) {
+      return false;
+    }
+    const nextAssignmentIds = { ...state.assetAssignmentIds };
+    const nextSettingsByType = { ...state.assetSettingsByType };
+    for (const type of AppConstants.ASSET_TYPES) {
+      nextAssignmentIds[type] = (nextAssignmentIds[type] ?? [])
+        .filter(id => id.trim() !== normalizedAssetId);
+      const settingsByAssetId = { ...(nextSettingsByType[type] ?? {}) };
+      delete settingsByAssetId[normalizedAssetId];
+      nextSettingsByType[type] = settingsByAssetId;
+    }
+    const nextSupplyEntries = { ...state.supplyContributionEntriesByAssetId };
+    delete nextSupplyEntries[normalizedAssetId];
+    return Boolean(await this.replaceSubEventResourceState({
+      ...state,
+      assetAssignmentIds: nextAssignmentIds,
+      assetSettingsByType: nextSettingsByType,
+      supplyContributionEntriesByAssetId: nextSupplyEntries
+    }, undefined, normalizedExpectedManagerUserId));
+  }
+
+  private assignedAssetState(
+    ownerId: string,
+    subEventId: string,
+    assetId: string
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetId) {
+      return null;
+    }
+    return this.repository
+      .peekSubEventResourceRecords(normalizedOwnerId, normalizedSubEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state))
+      .find(state => Object.values(state.assetAssignmentIds ?? {})
+        .some(ids => (ids ?? []).some(id => id.trim() === normalizedAssetId))) ?? null;
+  }
+
   async markResourceTypeRead(
     request: AppDTOs.ActivitySubEventResourceReadRequestDTO
   ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {

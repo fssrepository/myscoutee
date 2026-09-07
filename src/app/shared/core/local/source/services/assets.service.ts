@@ -6,6 +6,7 @@ import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
+import { LocalActivityResourcesService } from './activity-resources.service';
 
 import type * as AppDTOs from '../../../contracts';
 @Injectable({
@@ -18,6 +19,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
   private readonly assetRequestsRepository = inject(LocalAssetRequestsRepository);
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly activityResourcesService = inject(LocalActivityResourcesService);
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     return this.assetsRepository.peekOwnedAssetsByUser(userId);
@@ -143,7 +145,36 @@ export class LocalAssetsService extends LocalRouteDelayService {
     request: AppDTOs.AssetMemberStatusChangeRequestDTO
   ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.applyMemberStatusChange(request);
+    const asset = this.assetsRepository.peekAssetDetailForMembershipById(request.assetId);
+    const managerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(
+      request.eventId,
+      request.subEventId,
+      request.assetId
+    );
+    const result = await this.assetsRepository.applyMemberStatusChange(request);
+    if (
+      result
+      && request.action === 'leave'
+      && result.previousStatus === 'accepted'
+      && managerUserId === request.actorUserId.trim()
+    ) {
+      const acceptedSuccessorRemains = (asset?.requests ?? []).some(candidate =>
+        candidate.requestKind === 'borrow'
+        && candidate.status === 'accepted'
+        && `${candidate.userId ?? ''}`.trim() !== request.actorUserId.trim()
+        && `${candidate.booking?.eventId ?? ''}`.trim() === request.eventId.trim()
+        && `${candidate.booking?.subEventId ?? ''}`.trim() === request.subEventId.trim()
+      );
+      if (!acceptedSuccessorRemains) {
+        await this.activityResourcesService.removeAssignedAsset(
+          request.eventId,
+          request.subEventId,
+          request.assetId,
+          request.actorUserId
+        );
+      }
+    }
+    return result;
   }
 
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {

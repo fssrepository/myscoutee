@@ -7,7 +7,7 @@ import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-meth
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
 export type EventEditorCheckoutPhase = 'review' | 'payment';
 export type EventEditorCheckoutSurfaceTone = 'neutral' | 'ready' | 'payment' | 'waiting' | 'approval' | 'changed';
-export type EventPaymentStatusTone = 'neutral' | 'success' | 'danger';
+export type EventPaymentStatusTone = 'neutral' | 'success' | 'danger' | 'refund';
 export type EventEditorPresentationValue<TValue> = TValue | (() => TValue);
 
 export interface EventEditorBasketPricingSummaryRow {

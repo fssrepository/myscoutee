@@ -40,6 +40,7 @@
       class="event-payment-status"
       [class.event-payment-status--success]="statusTone === 'success'"
       [class.event-payment-status--danger]="statusTone === 'danger'"
+      [class.event-payment-status--refund]="statusTone === 'refund'"
     >
       <span>{{ 'event.editor.payment.status' | i18n }}</span>
       <strong>{{ paymentStatusMessage() | i18n }}</strong>

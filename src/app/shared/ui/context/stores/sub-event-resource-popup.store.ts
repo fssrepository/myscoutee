@@ -176,9 +176,16 @@ export interface AssetExploreBorrowDialogState {
 
 export interface AssignedAssetJoinDialogState {
   cardId: string;
-  type: typeof AppConstants.ASSET_TYPE_TRANSPORT | typeof AppConstants.ASSET_TYPE_ACCOMMODATION;
+  type: AppConstants.AssetType;
   sourceAssetId: string;
+  mode?: 'join' | 'takeover';
+  previousManagerUserId?: string | null;
+  takeOverAmount?: number;
+  takeOverCurrency?: string;
   acceptedPolicyIds: string[];
+  checkoutSessionId?: string | null;
+  paymentMethod?: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
+  paymentStep?: boolean;
   busy: boolean;
   error: string | null;
 }

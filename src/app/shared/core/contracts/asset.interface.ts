@@ -46,8 +46,10 @@ export interface AssetMemberStatusChangeRequestDTO {
   eventId: string;
   subEventId: string;
   actorUserId: string;
-  action: 'join' | 'leave';
+  action: 'join' | 'leave' | 'take-over';
   request?: AssetMemberRequestDTO | null;
+  paymentSessionId?: string | null;
+  previousManagerUserId?: string | null;
 }
 
 export interface AssetMemberStatusChangeDTO {

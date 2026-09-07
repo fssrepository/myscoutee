@@ -33,6 +33,12 @@
   color: #9f1f2b;
   box-shadow: 0 5px 12px rgba(196, 49, 60, .16);
 }
+:host ::ng-deep .payment-history-status-badge--refunded {
+  border-color: #6d5bd0;
+  background: #e5dfff;
+  color: #4c3ca7;
+  box-shadow: 0 5px 12px rgba(109, 91, 208, .18);
+}
 :host ::ng-deep .payment-history-avatar {
   border: 1px solid rgba(255, 255, 255, .82);
   box-shadow: 0 4px 11px rgba(31, 54, 88, .16);
@@ -46,6 +52,6 @@
 :host ::ng-deep .payment-history-avatar--failed {
   background: linear-gradient(180deg, #dc4050 0%, #991f2b 100%);
 }
-:host ::ng-deep .payment-history-avatar--released {
-  background: linear-gradient(180deg, #8b9ab0 0%, #64748b 100%);
+:host ::ng-deep .payment-history-avatar--refunded {
+  background: linear-gradient(180deg, #8b78e8 0%, #5a48bd 100%);
 }
