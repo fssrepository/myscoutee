@@ -167,6 +167,8 @@ export interface AssetExploreBorrowDialogState {
   checkoutSessionId: string | null;
   paymentMethod: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
   paymentStep: boolean;
+  confirmedSelectionSignature: string | null;
+  expiresAtIso: string | null;
   busy: boolean;
   error: string | null;
 }

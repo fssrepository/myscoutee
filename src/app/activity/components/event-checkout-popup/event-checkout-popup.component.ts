@@ -79,7 +79,7 @@ type CheckoutFooterDecisionState = {
 })
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
-  private static readonly CHECKOUT_BASKET_TTL_MS = 20 * 60 * 1000;
+  private static readonly CHECKOUT_BASKET_TTL_MS = 10 * 60 * 1000;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
   protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetRequestsRepository } from '../repositories/asset-requests.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
+import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 
 import type * as AppDTOs from '../../../contracts';
@@ -14,6 +15,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
   private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly assetRequestsRepository = inject(LocalAssetRequestsRepository);
+  private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     return this.assetsRepository.peekOwnedAssetsByUser(userId);
@@ -40,7 +42,26 @@ export class LocalAssetsService extends LocalRouteDelayService {
 
   async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.queryVisibleAssetsPage(query);
+    const page = this.assetsRepository.queryVisibleAssetsPage(query);
+    const baskets = await this.eventCheckoutBasketsRepository.loadBasketsByEvents(
+      query.userId,
+      page.items.map(item => item.id)
+    );
+    const checkoutResultStates: Record<string, AppDTOs.EventCheckoutResultState> = {};
+    for (const [sourceId, basket] of baskets) {
+      const resultStates = (basket.items ?? []).map(item => item.resultState ?? 'pending');
+      checkoutResultStates[sourceId] = resultStates.some(resultState => resultState === 'failed')
+        ? 'failed'
+        : resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted')
+          ? 'deleted'
+          : resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')
+            ? 'succeeded'
+            : 'pending';
+    }
+    return {
+      ...page,
+      checkoutResultStates
+    };
   }
 
   async loadOccupancyByAssetId(query: {

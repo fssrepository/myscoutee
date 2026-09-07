@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 
 import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
 import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
+import type { EventCheckoutResultState } from '../../../core/contracts/activity.interface';
 
 export interface AssetBorrowDraft {
   userId: string;
@@ -16,7 +17,23 @@ export interface AssetBorrowDraft {
   checkoutSessionId: string | null;
   paymentMethod: SavedPaymentMethodDto | null;
   paymentStep: boolean;
+  confirmedSelectionSignature: string | null;
+  expiresAtIso: string | null;
   updatedAtMs: number;
+}
+
+export function assetBorrowSelectionSignature(
+  selection: Pick<AssetBorrowDraft, 'quantity' | 'startAtIso' | 'endAtIso' | 'acceptedPolicyIds'>
+): string {
+  return JSON.stringify([
+    Math.max(1, Math.trunc(Number(selection.quantity) || 1)),
+    `${selection.startAtIso ?? ''}`.trim(),
+    `${selection.endAtIso ?? ''}`.trim(),
+    [...new Set(selection.acceptedPolicyIds ?? [])]
+      .map(item => `${item ?? ''}`.trim())
+      .filter(Boolean)
+      .sort()
+  ]);
 }
 
 @Injectable({
@@ -68,6 +85,35 @@ export class AssetBorrowDraftStore {
     this.persist(next);
   }
 
+  reconcileServerCheckoutStates(
+    userId: string,
+    subEventId: string,
+    cardIds: readonly string[],
+    checkoutResultStates: Readonly<Record<string, EventCheckoutResultState>>,
+    nowMs = Date.now()
+  ): void {
+    const normalizedUserId = userId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const visibleCardIds = new Set(cardIds.map(cardId => cardId.trim()).filter(Boolean));
+    if (!normalizedUserId || !normalizedSubEventId || visibleCardIds.size === 0) {
+      return;
+    }
+    for (const draft of this.list(normalizedUserId, normalizedSubEventId)) {
+      if (!visibleCardIds.has(draft.cardId)) {
+        continue;
+      }
+      const resultState = checkoutResultStates[draft.cardId] ?? null;
+      const expiresAtMs = Date.parse(draft.expiresAtIso ?? '');
+      if (
+        resultState === null
+        || resultState === 'succeeded'
+        || (resultState === 'deleted' && Number.isFinite(expiresAtMs) && expiresAtMs <= nowMs)
+      ) {
+        this.clear(normalizedUserId, normalizedSubEventId, draft.cardId);
+      }
+    }
+  }
+
   private buildKey(userId: string, subEventId: string, cardId: string): string {
     return `${userId.trim()}::${subEventId.trim()}::${cardId.trim()}`;
   }
@@ -81,7 +127,7 @@ export class AssetBorrowDraftStore {
       return null;
     }
     const paymentMethodId = draft?.paymentMethod?.id?.trim() ?? '';
-    return {
+    const normalized: AssetBorrowDraft = {
       userId,
       subEventId,
       cardId,
@@ -98,8 +144,14 @@ export class AssetBorrowDraftStore {
         ? { ...draft.paymentMethod, id: paymentMethodId }
         : null,
       paymentStep: draft?.paymentStep === true,
+      confirmedSelectionSignature: draft?.confirmedSelectionSignature?.trim() || null,
+      expiresAtIso: draft?.expiresAtIso?.trim() || null,
       updatedAtMs: Math.max(0, Math.trunc(Number(draft?.updatedAtMs) || Date.now()))
     };
+    if (!normalized.confirmedSelectionSignature && (normalized.paymentStep || normalized.checkoutSessionId)) {
+      normalized.confirmedSelectionSignature = assetBorrowSelectionSignature(normalized);
+    }
+    return normalized;
   }
 
   private readInitialDrafts(): Record<string, AssetBorrowDraft> {

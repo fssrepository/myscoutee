@@ -137,7 +137,8 @@ export class HttpAssetsService {
         return {
           items,
           total: items.length,
-          nextCursor: null
+          nextCursor: null,
+          checkoutResultStates: undefined
         };
       }
       const items = this.normalizeCards(response?.items ?? []);
@@ -148,7 +149,10 @@ export class HttpAssetsService {
           : items.length,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor
-          : null
+          : null,
+        checkoutResultStates: response?.checkoutResultStates
+          ? { ...response.checkoutResultStates }
+          : undefined
       };
     } catch (error) {
       if (this.isAbortError(error)) {

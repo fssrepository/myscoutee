@@ -83,7 +83,7 @@ type SlotListView = 'day' | 'basket';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventCheckoutSlotPickerPopupComponent {
-  private static readonly CHECKOUT_BASKET_TTL_MS = 20 * 60 * 1000;
+  private static readonly CHECKOUT_BASKET_TTL_MS = 10 * 60 * 1000;
 
   private readonly store = inject(EventCheckoutSlotPickerStore);
   private readonly eventsService = inject(EventsService);

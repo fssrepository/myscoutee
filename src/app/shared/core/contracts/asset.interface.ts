@@ -405,6 +405,7 @@ export interface AssetExplorePageResultDTO {
   items: AssetDTO[];
   total: number;
   nextCursor?: string | null;
+  checkoutResultStates?: Record<string, import('./activity.interface').EventCheckoutResultState>;
 }
 
 export interface AssetTicketPageQueryDTO {
