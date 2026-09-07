@@ -355,9 +355,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       item.direction === 'income' ? '+' : '−'
     );
     const date = new Date(item.createdAtIso);
-    const statusLabel = refundedOriginal
-      ? this.i18n.translate('payment.history.original.payment', 'Original payment')
-      : this.paymentStatusLabel(item.status);
+    const statusLabel = this.paymentStatusLabel(item.status);
     return {
       id: item.id,
       title: amount,
