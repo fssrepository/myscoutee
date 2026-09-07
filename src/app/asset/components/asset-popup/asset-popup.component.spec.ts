@@ -184,6 +184,48 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     );
   });
 
+  it('does not expose manager role actions for an accepted Borrow request', () => {
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    const request: AssetContracts.AssetMemberRequestDTO = {
+      id: 'borrow-request-1',
+      userId: 'borrower-1',
+      name: 'Borrower',
+      initials: 'BO',
+      gender: 'woman',
+      status: 'accepted',
+      note: 'Borrow request approved by the owner.',
+      requestKind: 'borrow',
+      requestedAtIso: '2026-09-07T06:00:00.000Z',
+      booking: {
+        eventId: 'event-1',
+        subEventId: 'sub-event-1',
+        quantity: 1
+      },
+      menuActions: ['makeManager', 'revokeManager']
+    };
+
+    expect((component as any).supplyRequestMenuActions(request)).toEqual([]);
+  });
+
+  it('retains the generic manager action outside a scoped Borrow request', () => {
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    const request: AssetContracts.AssetMemberRequestDTO = {
+      id: 'generic-request-1',
+      userId: 'member-1',
+      name: 'Member',
+      initials: 'ME',
+      gender: 'woman',
+      status: 'accepted',
+      note: '',
+      requestKind: 'join',
+      requestedAtIso: '2026-09-07T06:00:00.000Z',
+      booking: null,
+      menuActions: ['makeManager']
+    };
+
+    expect((component as any).supplyRequestMenuActions(request)).toEqual(['makeManager']);
+  });
+
   it('uses the existing SmartList delta contract for Ticket polling without changing SmartList core paging', async () => {
     const row = ticketRow();
     syncTickets.mockResolvedValue({

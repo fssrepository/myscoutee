@@ -188,7 +188,10 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
 
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
-    const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
+    const scopedAssetMembers = this.scopedAssetMembers(normalizedOwner, options);
+    const previousMembers = scopedAssetMembers
+      ? LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers)
+      : this.entriesFromRecords(previousRecords, normalizedOwner);
     const normalizedActorUserId = actorUserId.trim();
     const targetMember = previousMembers.find(member => member.userId === normalizedTargetUserId) ?? null;
     const actorCanManage = this.canManageOwnerMembers(
@@ -330,6 +333,28 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         || member.invitedByUserId !== previousMembers[index]?.invitedByUserId);
     if (!changed) {
       return previousMembers;
+    }
+
+    if (scopedAssetMembers) {
+      if (action !== 'accept' && action !== 'remove') {
+        return previousMembers;
+      }
+      const eventId = `${options?.eventId ?? ''}`.trim();
+      const subEventId = `${options?.subEventId ?? ''}`.trim();
+      const authorizationEventId = ActivityResourceBuilder.authorizationEventId(eventId, subEventId);
+      const persisted = this.assetsRepository.applyScopedAssetMemberAction(
+        normalizedOwner.ownerId,
+        [eventId, authorizationEventId],
+        subEventId,
+        normalizedTargetUserId,
+        action
+      );
+      if (!persisted) {
+        return previousMembers;
+      }
+      return LocalActivityMembersBuilder.sortEntriesForManagement(
+        this.scopedAssetMembers(normalizedOwner, options) ?? []
+      );
     }
 
     const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
@@ -852,6 +877,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
     if (this.canManageMembers(members, normalizedUserId)) {
       return true;
+    }
+    if (owner.ownerType === 'asset') {
+      const asset = this.assetsRepository.peekAssetForMembershipById(owner.ownerId);
+      if (asset?.ownerUserId === normalizedUserId && !asset.ownerReleasedAtIso) {
+        return true;
+      }
     }
     const eventId = `${options?.eventId ?? ''}`.trim().split(':slot:')[0];
     if (owner.ownerType === 'event' || !eventId) {

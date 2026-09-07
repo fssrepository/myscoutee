@@ -1618,7 +1618,8 @@ export class AssetPopupComponent {
   }
 
   protected canPromoteSupplyRequestToManager(request: AppDTOs.AssetMemberRequestDTO): boolean {
-    return (request.menuActions ?? []).includes('makeManager');
+    return !this.isScopedBorrowRequest(request)
+      && (request.menuActions ?? []).includes('makeManager');
   }
 
   protected async approveSupplyRequest(request: AppDTOs.AssetMemberRequestDTO, event: Event): Promise<void> {
@@ -1675,6 +1676,12 @@ export class AssetPopupComponent {
 
   private isAssignedSupplyRequest(request: AppDTOs.AssetMemberRequestDTO): boolean {
     return request.requestKind === 'manual';
+  }
+
+  private isScopedBorrowRequest(request: AppDTOs.AssetMemberRequestDTO): boolean {
+    return request.requestKind === 'borrow'
+      && `${request.booking?.eventId ?? ''}`.trim().length > 0
+      && `${request.booking?.subEventId ?? ''}`.trim().length > 0;
   }
 
   private supplyRequestsForFilter(filter: AssetSupplyRequestFilter): AppDTOs.AssetMemberRequestDTO[] {

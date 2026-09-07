@@ -312,6 +312,80 @@ export class LocalAssetsRepository {
     );
   }
 
+  applyScopedAssetMemberAction(
+    assetId: string,
+    eventIds: readonly string[],
+    subEventId: string,
+    targetUserId: string,
+    action: 'accept' | 'remove'
+  ): boolean {
+    const normalizedAssetId = assetId.trim();
+    const acceptedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    if (!normalizedAssetId || acceptedEventIds.size === 0 || !normalizedSubEventId || !normalizedTargetUserId) {
+      return false;
+    }
+
+    let changed = false;
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (!current) {
+        return state;
+      }
+      const users = this.queryUsers();
+      const isTargetRequest = (request: AssetMemberRequestRecord): boolean => {
+        const requestUserId = AppUtils.resolveAssetRequestUserId(request, users).trim();
+        const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+        const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
+        return request.recordStatus !== 'D'
+          && requestUserId === normalizedTargetUserId
+          && acceptedEventIds.has(bookingEventId)
+          && bookingSubEventId === normalizedSubEventId;
+      };
+      const targetRequest = current.requests.find(isTargetRequest) ?? null;
+      if (!targetRequest || (action === 'accept' && targetRequest.status !== 'pending')) {
+        return state;
+      }
+      const now = new Date();
+      const nextRequests = action === 'remove'
+        ? current.requests.filter(request => !isTargetRequest(request)).map(request => LocalAssetsMapper.cloneRequest(request))
+        : current.requests.map(request => isTargetRequest(request)
+          ? {
+              ...LocalAssetsMapper.cloneRequest(request),
+              status: 'accepted' as const,
+              note: 'Borrow request approved by the owner.',
+              menuActions: []
+            }
+          : LocalAssetsMapper.cloneRequest(request));
+      const nextRecord = this.withResolvedAssetRelevance({
+        ...current,
+        requests: nextRequests,
+        updatedMs: now.getTime(),
+        updatedAtIso: now.toISOString()
+      });
+      const nextTable = this.upsertRecordCollection(table, nextRecord);
+      changed = true;
+      return {
+        ...state,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
+        [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
+          requestTable,
+          nextRecord,
+          current.requests
+        )
+      };
+    });
+    return changed;
+  }
+
   statusDeleteAssignmentScopeRequests(
     assetOwnerUserId: string,
     assetIds: readonly string[],

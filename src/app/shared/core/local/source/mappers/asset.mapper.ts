@@ -503,14 +503,20 @@ export class LocalAssetsMapper {
 
   private static assetRequestMenuActions(request: AssetRequestRecord): AppConstants.AssetRequestAction[] {
     if (this.isPendingAssetRequest(request)) {
-      return (request.menuActions ?? []).includes('makeManager')
+      const scopedBorrow = request.requestKind === 'borrow'
+        && Boolean(request.booking?.eventId)
+        && Boolean(request.booking?.subEventId);
+      return !scopedBorrow && (request.menuActions ?? []).includes('makeManager')
         ? ['accept', 'makeManager', 'remove']
         : ['accept', 'remove'];
     }
     if (request.requestKind === 'manual') {
       return request.booking?.eventId && request.booking?.subEventId ? ['manage'] : [];
     }
-    return (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
+    const scopedBorrow = request.requestKind === 'borrow'
+      && Boolean(request.booking?.eventId)
+      && Boolean(request.booking?.subEventId);
+    return !scopedBorrow && (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
   }
 
   private static normalizedCount(value: unknown): number {

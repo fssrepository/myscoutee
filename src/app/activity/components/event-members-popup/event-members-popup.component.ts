@@ -475,6 +475,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canShowActionMenu(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.isAcceptedScopedAssetBorrower(entry)) {
+      return false;
+    }
     return this.canShowMemberInvolvement(entry)
       || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
@@ -487,6 +490,14 @@ export class EventMembersPopupComponent implements OnDestroy {
       || this.canTakeOverAsset(entry)
       || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
+  }
+
+  private isAcceptedScopedAssetBorrower(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.ownerRef?.ownerType === 'asset'
+      && this.memberEventId.length > 0
+      && this.memberSubEventId.length > 0
+      && entry.status === 'accepted'
+      && entry.userId !== this.memberAssetOwnerUserId;
   }
 
   protected isActionMenuOpen(entry: ActivityContracts.ActivityMemberDTO): boolean {
