@@ -162,6 +162,7 @@ export interface AssetExploreBorrowDialogState {
   quantity: number;
   startAtIso: string;
   endAtIso: string;
+  borrowWindow: AppDTOs.AssetBorrowWindowDTO | null;
   availableQuantity: number;
   acceptedPolicyIds: string[];
   checkoutSessionId: string | null;

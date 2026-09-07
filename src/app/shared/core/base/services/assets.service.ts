@@ -43,13 +43,17 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.queryOwnedAssetsByUser(normalizedUserId);
   }
 
-  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
+  async loadOwnedAssetDetailById(
+    userId: string,
+    assetId: string,
+    scope?: AppDTOs.AssetDetailLoadScopeDTO
+  ): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
-    return this.assetsService.loadOwnedAssetDetailById(normalizedUserId, normalizedAssetId);
+    return this.assetsService.loadOwnedAssetDetailById(normalizedUserId, normalizedAssetId, scope);
   }
 
   async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {

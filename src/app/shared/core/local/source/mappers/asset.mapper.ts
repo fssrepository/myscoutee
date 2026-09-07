@@ -84,6 +84,18 @@ export class LocalAssetsMapper {
     };
   }
 
+  private static normalizeBorrowWindow(
+    window: AppDTOs.AssetBorrowWindowDTO | null | undefined
+  ): AppDTOs.AssetBorrowWindowDTO | null {
+    const eventId = `${window?.eventId ?? ''}`.trim();
+    const subEventId = `${window?.subEventId ?? ''}`.trim();
+    const startAtIso = `${window?.startAtIso ?? ''}`.trim();
+    const endAtIso = `${window?.endAtIso ?? ''}`.trim();
+    return eventId && subEventId && startAtIso && endAtIso
+      ? { eventId, subEventId, startAtIso, endAtIso }
+      : null;
+  }
+
   static fallbackAssetDto(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
     const requests = this.normalizeRequests(card.requests);
     return this.normalizeCard(card) ?? {
@@ -169,6 +181,7 @@ export class LocalAssetsMapper {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
+      borrowWindow: this.normalizeBorrowWindow(card?.borrowWindow),
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };

@@ -1068,15 +1068,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected setBorrowDateRange(start: Date | null, end: Date | null): void {
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog) {
+    if (!dialog || !dialog.borrowWindow) {
       return;
     }
     const card = this.resolveCard(dialog.cardId);
     if (!card) {
       return;
     }
-    const startAtIso = start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso;
-    const endAtIso = end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso;
+    const normalizedWindow = this.normalizeBorrowSelectionToWindow(
+      start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso,
+      end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso,
+      dialog.borrowWindow
+    );
+    if (!normalizedWindow) {
+      return;
+    }
+    const { startAtIso, endAtIso } = normalizedWindow;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
     const quantity = AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity));
@@ -1094,15 +1101,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected setBorrowTime(edge: 'start' | 'end', value: string): void {
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog) {
+    if (!dialog || !dialog.borrowWindow) {
       return;
     }
     const card = this.resolveCard(dialog.cardId);
     if (!card) {
       return;
     }
-    const startAtIso = edge === 'start' ? AppUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso;
-    const endAtIso = edge === 'end' ? AppUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso;
+    const normalizedWindow = this.normalizeBorrowSelectionToWindow(
+      edge === 'start' ? AppUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso,
+      edge === 'end' ? AppUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso,
+      dialog.borrowWindow
+    );
+    if (!normalizedWindow) {
+      return;
+    }
+    const { startAtIso, endAtIso } = normalizedWindow;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
     const quantity = AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity));
@@ -1215,7 +1229,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     ) {
       return false;
     }
-    return this.isValidWindow(dialog.startAtIso, dialog.endAtIso);
+    const borrowWindow = dialog.borrowWindow;
+    return borrowWindow !== null
+      && this.isBorrowSelectionWithinWindow(dialog.startAtIso, dialog.endAtIso, borrowWindow);
   }
 
   protected confirmBorrow(event?: Event): void {
@@ -1504,7 +1520,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           ...persistedPopup,
           cards: nextCards
         });
-        this.closeBorrowDialog();
+        this.dismissBorrowDialog(persistedDialog);
       })
       .catch(error => {
         const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
@@ -1542,11 +1558,71 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (dialog && context && !dialog.busy && this.shouldPersistBorrowDraft(dialog, context.subEvent.id, activeUserId)) {
       this.saveBorrowDraft(activeUserId, context.subEvent.id, dialog);
     }
+    this.dismissBorrowDialog(dialog);
+  }
+
+  private dismissBorrowDialog(dialog: AssetExploreBorrowDialogState | null): void {
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     const checkout = this.assetStore.assetFormCheckout();
     if (checkout?.mode === 'borrow' && (!dialog || checkout.sourceId === dialog.cardId)) {
       this.assetStore.closeAssetEditor();
     }
+  }
+
+  private requestCancelBorrowLifecycle(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const persistedDraft = context && activeUserId
+      ? this.readBorrowDraft(activeUserId, context.subEvent.id, dialog.cardId)
+      : null;
+    const lifecycleStarted = Boolean(
+      dialog.confirmedSelectionSignature
+      || dialog.checkoutSessionId
+      || dialog.paymentStep
+      || persistedDraft?.confirmedSelectionSignature
+    );
+    if (!lifecycleStarted) {
+      this.dismissBorrowDialog(dialog);
+      return;
+    }
+    const card = this.resolveCard(dialog.cardId);
+    this.dialogStore.open({
+      title: 'Cancel borrow?',
+      message: card?.title ?? 'Borrow',
+      warningMessage: 'The current borrow basket will be cancelled and removed.',
+      cancelLabel: 'Back',
+      confirmLabel: 'Cancel borrow',
+      busyConfirmLabel: 'Cancelling...',
+      confirmTone: 'danger',
+      confirmPalette: 'danger',
+      failureMessage: 'Unable to cancel this borrow.',
+      onConfirm: async () => this.cancelBorrowLifecycle(dialog)
+    });
+  }
+
+  private async cancelBorrowLifecycle(dialog: AssetExploreBorrowDialogState): Promise<void> {
+    const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!currentDialog || currentDialog.cardId !== dialog.cardId || !context || !activeUserId) {
+      throw new Error('Unable to resolve the current borrow basket.');
+    }
+    await this.eventsService.updateCheckoutBasketState({
+      userId: activeUserId,
+      sourceId: dialog.cardId,
+      slotSourceId: null,
+      checkoutState: 'cancelled',
+      resultState: 'deleted',
+      checkoutSessionId: currentDialog.checkoutSessionId
+    });
+    this.clearBorrowDraftState(activeUserId, context.subEvent.id, dialog.cardId);
+    this.dismissBorrowDialog(currentDialog);
   }
 
   protected resumeBorrowDraft(cardId: string, event?: Event): void {
@@ -1972,6 +2048,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       quantity: AppUtils.clampNumber(requestedQuantity, 1, Math.max(1, availableQuantity)),
       startAtIso,
       endAtIso,
+      borrowWindow: null,
       availableQuantity,
       acceptedPolicyIds: [...(draft?.acceptedPolicyIds ?? existingRequest?.booking?.acceptedPolicyIds ?? [])]
         .filter(policyId => validPolicyIds.has(policyId)),
@@ -2015,11 +2092,26 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     try {
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+      const context = this.resourcePopupStore.popupContextRef();
+      if (!context) {
+        throw new Error(this.i18n.translate('asset.borrow.error.checkout'));
+      }
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id, {
+        eventId: context.ownerId,
+        subEventId: context.subEvent.id
+      });
       if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
         return;
       }
-      if (loadedCard) {
+      const loadedBorrowWindow = loadedCard?.borrowWindow;
+      const borrowWindow = loadedBorrowWindow?.eventId.trim() === context.ownerId.trim()
+        && loadedBorrowWindow.subEventId.trim() === context.subEvent.id.trim()
+        ? loadedBorrowWindow
+        : null;
+      const normalizedSelection = borrowWindow
+        ? this.normalizeBorrowSelectionToWindow(dialog.startAtIso, dialog.endAtIso, borrowWindow)
+        : null;
+      if (loadedCard && borrowWindow && normalizedSelection) {
         this.assetStore.applyAssetEditorForm(
           loadedCard.id,
           AssetCardBuilder.visibilityFromCard(loadedCard),
@@ -2038,8 +2130,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         if (currentDialog?.cardId === loadedCard.id) {
           const availableQuantity = this.availableQuantityForWindow(
             loadedCard,
-            currentDialog.startAtIso,
-            currentDialog.endAtIso
+            normalizedSelection.startAtIso,
+            normalizedSelection.endAtIso
           );
           const quantity = AppUtils.clampNumber(
             currentDialog.quantity,
@@ -2048,15 +2140,35 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           );
           this.resourcePopupStore.assetExploreBorrowDialogRef.set({
             ...currentDialog,
+            startAtIso: normalizedSelection.startAtIso,
+            endAtIso: normalizedSelection.endAtIso,
+            borrowWindow: { ...borrowWindow },
             availableQuantity,
             quantity,
             error: this.borrowAvailabilityError(quantity, availableQuantity)
+          });
+        }
+      } else {
+        const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+        if (currentDialog?.cardId === card.id) {
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            borrowWindow: null,
+            error: this.i18n.translate('asset.borrow.error.checkout')
           });
         }
       }
       this.assetStore.setAssetEditorLoading(false);
     } catch {
       if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+        if (currentDialog?.cardId === card.id) {
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            borrowWindow: null,
+            error: this.i18n.translate('asset.borrow.error.checkout')
+          });
+        }
         this.assetStore.setAssetEditorLoading(false);
       }
     }
@@ -2132,7 +2244,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         endAt: dialog.endAtIso,
         precision: 'minute'
       },
-      dateRangeModel: this.borrowCheckoutDateRangeModel(),
+      dateRangeModel: this.borrowCheckoutDateRangeModel(dialog),
       availableQuantity: dialog.availableQuantity,
       pricingPreview: this.borrowPricingRuntimePreview(
         card,
@@ -2150,7 +2262,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       onPaymentMethodChange: paymentMethod => this.selectBorrowPaymentMethod(paymentMethod),
       onFooterItemSelect: (itemId, sourceEvent) => {
         if (itemId === 'borrow-cancel') {
-          this.closeBorrowDialog(sourceEvent);
+          this.requestCancelBorrowLifecycle(sourceEvent);
           return;
         }
         if (itemId === 'borrow-back') {
@@ -2173,12 +2285,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       : (pricing.amount > 0 ? this.borrowSubmitLabel(dialog) : this.i18n.translate('asset.borrow.send.request'));
     const hasError = !dialog.busy && Boolean(dialog.error);
     const paymentReviewStarted = pricing.amount > 0 && this.borrowPaymentReviewStarted(dialog);
-    return [
-      {
-        id: dialog.paymentStep ? 'borrow-back' : 'borrow-cancel',
-        label: dialog.paymentStep ? this.i18n.translate('back') : this.i18n.translate('cancel'),
+    const items: AppMenuItem<string>[] = [];
+    if (dialog.paymentStep) {
+      items.push({
+        id: 'borrow-back',
+        label: this.i18n.translate('back'),
         layout: 'action',
         palette: 'neutral',
+        disabled: dialog.busy
+      });
+    }
+    items.push(
+      {
+        id: 'borrow-cancel',
+        label: this.i18n.translate('cancel'),
+        layout: 'action',
+        palette: 'danger',
         disabled: dialog.busy
       },
       {
@@ -2205,7 +2327,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             }
           : null
       }
-    ];
+    );
+    return items;
   }
 
   private cashOnly(): boolean {
@@ -2240,14 +2363,30 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return this.i18n.translate('asset.borrow.confirming');
   }
 
-  private borrowCheckoutDateRangeModel(): DateInputModel {
+  private borrowCheckoutDateRangeModel(
+    dialog?: Pick<AssetExploreBorrowDialogState, 'borrowWindow' | 'paymentStep' | 'busy'>
+  ): DateInputModel {
+    const borrowWindow = dialog?.borrowWindow ?? null;
     return {
       mode: 'range',
       precision: 'minute',
       valueFormat: 'iso-date-time',
+      disabled: dialog !== undefined
+        && (!borrowWindow || dialog.paymentStep === true || dialog.busy === true),
       range: {
-        start: { label: this.i18n.translate('asset.borrow.start') },
-        end: { label: this.i18n.translate('asset.borrow.end') }
+        bounds: borrowWindow
+          ? { start: borrowWindow.startAtIso, end: borrowWindow.endAtIso }
+          : null,
+        start: {
+          label: this.i18n.translate('asset.borrow.start'),
+          min: borrowWindow?.startAtIso,
+          max: borrowWindow?.endAtIso
+        },
+        end: {
+          label: this.i18n.translate('asset.borrow.end'),
+          min: borrowWindow?.startAtIso,
+          max: borrowWindow?.endAtIso
+        }
       }
     };
   }
@@ -3104,6 +3243,58 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
     const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
     return !!start && !!end && start.getTime() < end.getTime();
+  }
+
+  private isBorrowSelectionWithinWindow(
+    startAtIso: string,
+    endAtIso: string,
+    borrowWindow: AppDTOs.AssetBorrowWindowDTO
+  ): boolean {
+    const start = this.parseLocalDateMs(startAtIso);
+    const end = this.parseLocalDateMs(endAtIso);
+    const lowerBound = this.parseLocalDateMs(borrowWindow.startAtIso);
+    const upperBound = this.parseLocalDateMs(borrowWindow.endAtIso);
+    return start !== null
+      && end !== null
+      && lowerBound !== null
+      && upperBound !== null
+      && lowerBound < upperBound
+      && lowerBound <= start
+      && start < end
+      && end <= upperBound;
+  }
+
+  private normalizeBorrowSelectionToWindow(
+    startAtIso: string,
+    endAtIso: string,
+    borrowWindow: AppDTOs.AssetBorrowWindowDTO
+  ): { startAtIso: string; endAtIso: string } | null {
+    const lowerBound = AppUtils.isoLocalDateTimeToDate(borrowWindow.startAtIso);
+    const upperBound = AppUtils.isoLocalDateTimeToDate(borrowWindow.endAtIso);
+    if (!lowerBound || !upperBound || lowerBound.getTime() >= upperBound.getTime()) {
+      return null;
+    }
+    const lowerMs = lowerBound.getTime();
+    const upperMs = upperBound.getTime();
+    const minimumDurationMs = 60 * 60 * 1000;
+    const requestedStart = AppUtils.isoLocalDateTimeToDate(startAtIso)?.getTime() ?? lowerMs;
+    const requestedEnd = AppUtils.isoLocalDateTimeToDate(endAtIso)?.getTime() ?? upperMs;
+    let safeStartMs = Math.min(upperMs, Math.max(lowerMs, requestedStart));
+    let safeEndMs = Math.min(upperMs, Math.max(lowerMs, requestedEnd));
+    if (safeEndMs <= safeStartMs) {
+      if (safeStartMs + minimumDurationMs <= upperMs) {
+        safeEndMs = safeStartMs + minimumDurationMs;
+      } else {
+        safeStartMs = Math.max(lowerMs, upperMs - minimumDurationMs);
+        safeEndMs = upperMs;
+      }
+    }
+    return safeStartMs < safeEndMs
+      ? {
+          startAtIso: AppUtils.toIsoDateTimeLocal(new Date(safeStartMs)),
+          endAtIso: AppUtils.toIsoDateTimeLocal(new Date(safeEndMs))
+        }
+      : null;
   }
 
   private parseLocalDateMs(value: string | null | undefined): number | null {

@@ -120,6 +120,19 @@ export interface AssetDetailDTO {
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
+  borrowWindow?: AssetBorrowWindowDTO | null;
+}
+
+export interface AssetBorrowWindowDTO {
+  eventId: string;
+  subEventId: string;
+  startAtIso: string;
+  endAtIso: string;
+}
+
+export interface AssetDetailLoadScopeDTO {
+  eventId: string;
+  subEventId: string;
 }
 
 export class AssetDto implements AssetDTO {
@@ -354,6 +367,7 @@ export class AssetDetailDto implements AssetDetailDTO {
   requests: AssetMemberRequestDTO[] = [];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
+  borrowWindow?: AssetBorrowWindowDTO | null;
 
   constructor(card?: AssetDetailDTO | null) {
     if (!card) {
@@ -375,7 +389,8 @@ export class AssetDetailDto implements AssetDetailDTO {
           : null
       })),
       metrics: AssetDto.cloneMetrics(card.metrics),
-      menuActions: card.menuActions ? [...card.menuActions] : undefined
+      menuActions: card.menuActions ? [...card.menuActions] : undefined,
+      borrowWindow: card.borrowWindow ? { ...card.borrowWindow } : null
     });
   }
 

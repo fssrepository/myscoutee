@@ -4,6 +4,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetRequestsRepository } from '../repositories/asset-requests.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 
 import type * as AppDTOs from '../../../contracts';
@@ -16,6 +17,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly assetRequestsRepository = inject(LocalAssetRequestsRepository);
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     return this.assetsRepository.peekOwnedAssetsByUser(userId);
@@ -30,9 +32,36 @@ export class LocalAssetsService extends LocalRouteDelayService {
     return this.assetsRepository.queryOwnedAssetsByUser(userId);
   }
 
-  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
+  async loadOwnedAssetDetailById(
+    userId: string,
+    assetId: string,
+    scope?: AppDTOs.AssetDetailLoadScopeDTO
+  ): Promise<AppDTOs.AssetDetailDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.loadOwnedAssetDetailById(userId, assetId);
+    const detail = await this.assetsRepository.loadOwnedAssetDetailById(userId, assetId);
+    if (!detail || !scope) {
+      return detail;
+    }
+    const eventId = scope.eventId.trim();
+    const subEventId = scope.subEventId.trim();
+    const event = eventId ? this.eventsRepository.queryEventRecordById(userId, eventId) : null;
+    const subEvent = event?.subEvents?.find(item => item.id.trim() === subEventId);
+    if (!event
+      || event.status !== 'A'
+      || !subEvent
+      || !subEvent.startAt?.trim()
+      || !subEvent.endAt?.trim()) {
+      return null;
+    }
+    return {
+      ...detail,
+      borrowWindow: {
+        eventId: event.id,
+        subEventId,
+        startAtIso: subEvent.startAt.trim(),
+        endAtIso: subEvent.endAt.trim()
+      }
+    };
   }
 
   async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {

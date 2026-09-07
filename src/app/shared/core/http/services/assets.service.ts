@@ -55,16 +55,26 @@ export class HttpAssetsService {
     }
   }
 
-  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
+  async loadOwnedAssetDetailById(
+    userId: string,
+    assetId: string,
+    scope?: AppDTOs.AssetDetailLoadScopeDTO
+  ): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
     try {
+      let params = new HttpParams().set('userId', normalizedUserId);
+      if (scope) {
+        params = params
+          .set('eventId', scope.eventId.trim())
+          .set('subEventId', scope.subEventId.trim());
+      }
       const response = await this.http
         .get<AppDTOs.AssetDetailDTO | null>(`${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}`, {
-          params: new HttpParams().set('userId', normalizedUserId)
+          params
         })
         .toPromise();
       const detail = this.normalizeDetail(response);
@@ -570,6 +580,18 @@ export class HttpAssetsService {
     };
   }
 
+  private normalizeBorrowWindow(
+    window: AppDTOs.AssetBorrowWindowDTO | null | undefined
+  ): AppDTOs.AssetBorrowWindowDTO | null {
+    const eventId = `${window?.eventId ?? ''}`.trim();
+    const subEventId = `${window?.subEventId ?? ''}`.trim();
+    const startAtIso = `${window?.startAtIso ?? ''}`.trim();
+    const endAtIso = `${window?.endAtIso ?? ''}`.trim();
+    return eventId && subEventId && startAtIso && endAtIso
+      ? { eventId, subEventId, startAtIso, endAtIso }
+      : null;
+  }
+
   private normalizeDetail(card: AppDTOs.AssetDetailDTO | null | undefined): AppDTOs.AssetDetailDTO | null {
     const id = card?.id?.trim() ?? '';
     if (!id) {
@@ -626,6 +648,7 @@ export class HttpAssetsService {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
+      borrowWindow: this.normalizeBorrowWindow(card?.borrowWindow),
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };
