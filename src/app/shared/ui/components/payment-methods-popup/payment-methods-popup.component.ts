@@ -103,6 +103,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly incomeTotalsRef = signal<Record<string, number>>({});
   private readonly historyDirectionRef = signal<PaymentHistoryDirection>('all');
   private readonly pendingRefundCountRef = signal(0);
+  private readonly historyTotalsLoadedRef = signal(false);
   private readonly loadedCardsById = new Map<string, SavedPaymentMethodDto>();
   private registrationPoll: ReturnType<typeof setTimeout> | null = null;
   private registrationRefreshInFlight = false;
@@ -195,6 +196,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.paymentMethods.queryAllHistory(this.activeUserId(), query, context?.signal).then(page => {
       this.spendingTotalsRef.set({ ...page.spendingTotals });
       this.incomeTotalsRef.set({ ...page.incomeTotals });
+      this.historyTotalsLoadedRef.set(true);
       this.pendingRefundCountRef.set(Math.max(0, Math.trunc(Number(page.pendingRefundCount) || 0)));
       return page;
     })
@@ -626,6 +628,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.closeRegistration();
     this.cardsOpenRef.set(false);
     this.errorRef.set('');
+    this.historyTotalsLoadedRef.set(false);
+    this.spendingTotalsRef.set({});
+    this.incomeTotalsRef.set({});
     this.store.close();
   }
 
@@ -754,8 +759,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
     const loadedOutgoing = this.spendingTotalsRef();
     const loadedIncoming = this.incomeTotalsRef();
-    const outgoing = Object.keys(loadedOutgoing).length > 0 ? loadedOutgoing : stored?.outgoing ?? {};
-    const incoming = Object.keys(loadedIncoming).length > 0 ? loadedIncoming : stored?.incoming ?? {};
+    const outgoing = this.historyTotalsLoadedRef() ? loadedOutgoing : stored?.outgoing ?? {};
+    const incoming = this.historyTotalsLoadedRef() ? loadedIncoming : stored?.incoming ?? {};
     const currencies = [...new Set([...Object.keys(outgoing), ...Object.keys(incoming)])]
       .map(currency => currency.trim().toUpperCase())
       .filter(Boolean)
@@ -894,6 +899,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const pendingRefundCount = Math.max(0, Math.trunc(Number(mutation.pendingRefundCount) || 0));
     this.spendingTotalsRef.set({ ...mutation.spendingTotals });
     this.incomeTotalsRef.set({ ...mutation.incomeTotals });
+    this.historyTotalsLoadedRef.set(true);
     this.pendingRefundCountRef.set(pendingRefundCount);
     this.activityStore.patchUserCounterOverrides(userId, { paymentRefundsPending: pendingRefundCount });
     this.userProfileStore.patchActiveUserProfile(current => ({
