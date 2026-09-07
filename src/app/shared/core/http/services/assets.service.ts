@@ -578,6 +578,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
@@ -651,6 +652,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)

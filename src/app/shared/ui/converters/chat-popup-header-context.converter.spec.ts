@@ -33,7 +33,8 @@ describe('ChatPopupHeaderContextConverter event lifecycle', () => {
       {
         id: 'owner-1',
         user: null,
-        fallbackName: 'Casey Bridge'
+        fallbackName: 'Casey Bridge',
+        imageUrl: 'casey.webp'
       }
     ]);
     const context = ChatPopupHeaderContextConverter.convert(chat({
@@ -48,7 +49,7 @@ describe('ChatPopupHeaderContextConverter event lifecycle', () => {
       maxVisible: 4,
       thumbs: [
         { id: 'member-1', label: 'Nova Social', initials: 'NS', imageUrl: 'nova.webp' },
-        { id: 'owner-1', label: 'Casey Bridge', initials: 'CB', imageUrl: null }
+        { id: 'owner-1', label: 'Casey Bridge', initials: 'CB', imageUrl: 'casey.webp' }
       ]
     });
   });

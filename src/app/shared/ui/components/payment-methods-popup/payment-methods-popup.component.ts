@@ -886,11 +886,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     let subEventId = `${item.contextSubEventId ?? ''}`.trim();
     const assetId = `${item.contextAssetId ?? (serviceContext === 'asset' ? item.sourceId : '')}`.trim();
     let title = item.sourceId;
+    let assetCard: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null = null;
     if (serviceContext === 'asset') {
-      const card = await this.findPaymentAsset(activeUserId, assetId);
-      title = card?.title ?? item.sourceId;
+      assetCard = await this.findPaymentAsset(activeUserId, assetId);
+      title = assetCard?.title ?? item.sourceId;
       if (!eventId || !subEventId) {
-        const request = (card?.requests ?? []).find(candidate =>
+        const request = (assetCard?.requests ?? []).find(candidate =>
           `${candidate.userId ?? ''}`.trim() === activeUserId
           && (!item.checkoutSessionId || candidate.booking?.paymentSessionId === item.checkoutSessionId)
         );
@@ -905,10 +906,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.errorRef.set('payment.history.ask.owner.error');
       return;
     }
-    await this.users.warmCachedUsers([activeUserId, targetUserId]);
-    const activeUser = this.users.peekCachedUserById(activeUserId)
-      ?? this.userProfileStore.activeUserProfile();
-    const targetUser = this.users.peekCachedUserById(targetUserId);
+    if (serviceContext === 'event') {
+      await this.users.warmCachedUsers([targetUserId]);
+    }
+    const activeUser = this.userProfileStore.activeUserProfile()
+      ?? this.users.peekCachedUserById(activeUserId);
+    const targetUser = serviceContext === 'asset' ? null : this.users.peekCachedUserById(targetUserId);
     const chat: AppDTOs.ChatDTO = {
       id: serviceContext === 'asset'
         ? `c-service-asset-${assetId}-${subEventId}-${activeUserId}`
@@ -925,7 +928,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         {
           id: targetUserId,
           user: targetUser,
-          fallbackName: serviceContext === 'asset' ? 'Asset owner' : 'Organizer'
+          fallbackName: serviceContext === 'asset' ? assetCard?.ownerName || 'Asset owner' : 'Organizer',
+          imageUrl: serviceContext === 'asset' ? assetCard?.ownerAvatarUrl : null
         }
       ]),
       unread: 0,

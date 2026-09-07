@@ -18,6 +18,7 @@ export interface ChatMemberSummarySource {
   id: string;
   user?: Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images' | 'profileStatus'> | null;
   fallbackName?: string | null;
+  imageUrl?: string | null;
 }
 
 export class ChatPopupHeaderContextConverter {
@@ -38,7 +39,7 @@ export class ChatPopupHeaderContextConverter {
         gender: user?.profileStatus === 'deleted'
           ? 'deleted' as const
           : user?.gender === 'woman' ? 'woman' as const : 'man' as const,
-        imageUrl: AppUtils.firstImageUrl(user?.images) || null
+        imageUrl: AppUtils.firstImageUrl(user?.images) || `${source.imageUrl ?? ''}`.trim() || null
       }];
     });
   }

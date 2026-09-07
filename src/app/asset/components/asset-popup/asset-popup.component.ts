@@ -2498,6 +2498,7 @@ export class AssetPopupComponent {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => this.cloneAssetRequest(request)),
       menuActions: card.menuActions ? [...card.menuActions] : undefined
     };

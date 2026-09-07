@@ -889,6 +889,7 @@ export class AssetEditorPopupComponent {
           visibility: resolvedVisibility,
           ownerUserId: existing?.ownerUserId,
           ownerName: existing?.ownerName ?? ownerName,
+          ownerAvatarUrl: existing?.ownerAvatarUrl ?? null,
           requests: existing?.requests.map(request => ({ ...request })) ?? [],
           menuActions: [...(existing?.menuActions ?? [])]
         };

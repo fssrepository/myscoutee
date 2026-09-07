@@ -1474,12 +1474,17 @@ export class LocalAssetsRepository {
     viewerUserId = '',
     requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null
   ): AppDTOs.AssetDTO {
-    return LocalAssetsMapper.toAssetDto(record, {
+    const card = LocalAssetsMapper.toAssetDto(record, {
       viewerUserId,
       requestMetrics,
       resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
       resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
     });
+    const owner = this.usersRepository.queryUserById(record.ownerUserId);
+    return {
+      ...card,
+      ownerAvatarUrl: AppUtils.firstImageUrl(owner?.images) || null
+    };
   }
 
   private toAssetDetailDto(
@@ -1487,12 +1492,17 @@ export class LocalAssetsRepository {
     viewerUserId = '',
     requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null
   ): AppDTOs.AssetDetailDTO {
-    return LocalAssetsMapper.toAssetDetailDto(record, {
+    const card = LocalAssetsMapper.toAssetDetailDto(record, {
       viewerUserId,
       requestMetrics,
       resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
       resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
     });
+    const owner = this.usersRepository.queryUserById(record.ownerUserId);
+    return {
+      ...card,
+      ownerAvatarUrl: AppUtils.firstImageUrl(owner?.images) || null
+    };
   }
 
   private mergeAssetRecord(

@@ -93,6 +93,7 @@ export interface AssetDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
@@ -120,6 +121,7 @@ export interface AssetDetailDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
@@ -159,6 +161,7 @@ export class AssetDto implements AssetDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[] = [];
   metrics?: AssetRequestMetricsDTO | null;
@@ -192,6 +195,7 @@ export class AssetDto implements AssetDTO {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       ownerReleasedAtIso: card.ownerReleasedAtIso ?? null,
       requests: card.requests.map(request => ({
         ...request,
@@ -230,6 +234,7 @@ export class AssetDto implements AssetDTO {
       && (this.status ?? '') === (other.status ?? '')
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
+      && (this.ownerAvatarUrl ?? '') === (other.ownerAvatarUrl ?? '')
       && (this.ownerReleasedAtIso ?? '') === (other.ownerReleasedAtIso ?? '')
       && AssetDto.sameRequests(this.requests, other.requests)
       && AssetDto.sameMetrics(this.metrics, other.metrics)
@@ -368,6 +373,7 @@ export class AssetDetailDto implements AssetDetailDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   requests: AssetMemberRequestDTO[] = [];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];

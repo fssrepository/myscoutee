@@ -582,9 +582,11 @@ export class EventResourcePopupComponent {
     if (!targetUserId || targetUserId === activeUserId) {
       return;
     }
-    await this.usersService.warmCachedUsers([activeUserId, targetUserId]);
-    const activeUser = this.usersService.peekCachedUserById(activeUserId) ?? this.activeUser();
-    const targetUser = this.usersService.peekCachedUserById(targetUserId);
+    if (!sourceCard) {
+      await this.usersService.warmCachedUsers([targetUserId]);
+    }
+    const activeUser = this.activeUser();
+    const targetUser = sourceCard ? null : this.usersService.peekCachedUserById(targetUserId);
     const targetName = sourceCard?.ownerName?.trim() || target?.name?.trim() || 'Asset owner';
     const serviceContext = sourceCard ? 'asset' as const : 'event' as const;
     const sourceId = sourceCard?.id ?? eventId;
@@ -601,7 +603,12 @@ export class EventResourcePopupComponent {
       memberIds: [activeUserId, targetUserId],
       members: ChatPopupHeaderContextConverter.memberSummaries([
         { id: activeUserId, user: activeUser },
-        { id: targetUserId, user: targetUser, fallbackName: targetName }
+        {
+          id: targetUserId,
+          user: targetUser,
+          fallbackName: targetName,
+          imageUrl: sourceCard?.ownerAvatarUrl
+        }
       ]),
       unread: 0,
       dateIso: new Date().toISOString(),
@@ -4166,6 +4173,7 @@ export class EventResourcePopupComponent {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking

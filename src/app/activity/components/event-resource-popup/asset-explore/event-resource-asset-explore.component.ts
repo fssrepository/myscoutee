@@ -1700,17 +1700,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         );
       }
       const items = result.items.map(card => this.cloneAsset(card));
-      await this.warmOwnerProfiles(items);
-      const currentAfterProfileWarmup = this.resourcePopupStore.assetExplorePopupRef();
-      if (!currentAfterProfileWarmup
-          || this.queryKey(this.queryFromPopup(currentAfterProfileWarmup), pageQuery.order) !== requestKey) {
-        return {
-          items: [],
-          total: 0,
-          nextCursor: null
-        };
-      }
-      this.mergeLoadedPage(currentAfterProfileWarmup, items, pageQuery);
+      this.mergeLoadedPage(current, items, pageQuery);
       return {
         items,
         total: result.total,
@@ -1984,9 +1974,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !activeUserId || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
-    await this.usersService.warmCachedUsers([activeUserId, ownerUserId]);
-    const activeUser = this.usersService.peekCachedUserById(activeUserId) ?? this.activeUser();
-    const ownerUser = this.usersService.peekCachedUserById(ownerUserId) ?? this.resolveOwnerUser(card);
+    const activeUser = this.activeUser();
     const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
@@ -2003,7 +1991,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       memberIds: [activeUserId, ownerUserId],
       members: ChatPopupHeaderContextConverter.memberSummaries([
         { id: activeUserId, user: activeUser },
-        { id: ownerUserId, user: ownerUser, fallbackName: card.ownerName }
+        {
+          id: ownerUserId,
+          fallbackName: card.ownerName,
+          imageUrl: card.ownerAvatarUrl
+        }
       ]),
       unread: 0,
       dateIso: new Date().toISOString(),
@@ -2673,6 +2665,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private ownerAvatarUrl(card: ResourceAssetDTO): string | null {
+    const projectedOwnerAvatarUrl = `${card.ownerAvatarUrl ?? ''}`.trim();
+    if (projectedOwnerAvatarUrl) {
+      return projectedOwnerAvatarUrl;
+    }
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
     if (!ownerUserId) {
       return null;
@@ -2691,13 +2687,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         name: card.ownerName?.trim() || 'Asset owner',
         initials: AppUtils.initialsFromText(card.ownerName?.trim() || 'Asset owner')
       };
-  }
-
-  private async warmOwnerProfiles(cards: readonly ResourceAssetDTO[]): Promise<void> {
-    const ownerUserIds = [...new Set(cards
-      .map(card => `${card.ownerUserId ?? ''}`.trim())
-      .filter(ownerUserId => ownerUserId.length > 0))];
-    await Promise.all(ownerUserIds.map(ownerUserId => this.loadOwnerProfile(ownerUserId)));
   }
 
   private async loadOwnerProfile(ownerUserId: string): Promise<void> {
@@ -3396,6 +3385,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
@@ -3431,6 +3421,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
