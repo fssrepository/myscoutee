@@ -1871,11 +1871,13 @@ export class EventResourcePopupComponent {
     assetOwnerUserId?: string | null
   ): AppDTOs.SubEventAssignedAssetSettingsDTO | undefined {
     const normalizedAssetOwnerUserId = `${assetOwnerUserId ?? ''}`.trim();
-    const state = this.resourcePopupStore.visibleResourceStates().find(candidate => (
+    const matchingStates = this.resourcePopupStore.visibleResourceStates().filter(candidate => (
       candidate.subEventId === subEventId
-      && (!normalizedAssetOwnerUserId || candidate.assetOwnerUserId === normalizedAssetOwnerUserId)
       && (candidate.assetAssignmentIds[type] ?? []).includes(assetId)
     ));
+    const state = matchingStates.find(candidate => (
+      !normalizedAssetOwnerUserId || candidate.assetOwnerUserId === normalizedAssetOwnerUserId
+    )) ?? matchingStates[0];
     return state?.assetSettingsByType[type]?.[assetId]
       ?? this.getSubEventAssignedAssetSettings(subEventId, type)[assetId];
   }

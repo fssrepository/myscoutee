@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.07.en.80",
+  "version": "2026.09.07.en.81",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2569,6 +2569,8 @@
     "notification.event.join.cancelled.message": "Join request cancelled.",
     "notification.event.join.pending.badge": "Pending",
     "notification.event.join.cancelled.badge": "Cancelled",
+    "notification.asset.takeover.required.title": "Asset needs a new manager — Take Over",
+    "notification.asset.takeover.required.message": "Open the Asset.",
     "notification.ticket.checked.in.message": "Your ticket was checked in.",
     "notification.ticket.reuse.message": "This ticket was already used.",
     "asset.ticket.scan.camera.off": "Camera off",

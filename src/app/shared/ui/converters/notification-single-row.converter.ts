@@ -34,7 +34,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     const systemRandomRoom = this.isSystemGeneratedRoom(notification);
     const stageAvatar = this.hasStageAvatar(notification);
     const tournamentRoom = `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'tournament-room';
-    const sourceLabel = this.sourceLabel(notification.category);
+    const sourceLabel = this.sourceLabel(notification.category, options);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
     const statusBadgeKey = `${notification.payload?.['notification_status_badge_key'] ?? ''}`.trim();
@@ -74,8 +74,18 @@ export class NotificationSingleRowConverter implements UiConverter<
         ...(occurrenceCount > 1 ? [{
           label: `${occurrenceCount}`,
           icon: 'repeat',
-          ariaLabel: `${occurrenceCount} matching notifications`,
-          title: `${occurrenceCount} matching notifications`,
+          ariaLabel: this.translation(
+            options,
+            'notification.matches.count',
+            `${occurrenceCount} matching notifications`,
+            { count: `${occurrenceCount}` }
+          ),
+          title: this.translation(
+            options,
+            'notification.matches.count',
+            `${occurrenceCount} matching notifications`,
+            { count: `${occurrenceCount}` }
+          ),
           tone: 'warning' as const,
           position: 'inline' as const
         }] : []),
@@ -88,7 +98,7 @@ export class NotificationSingleRowConverter implements UiConverter<
           position: 'top-right'
         },
         ...(read ? [{
-          label: 'Read',
+          label: this.translation(options, 'notification.status.read', 'Read'),
           icon: 'done_all',
           tone: 'muted' as const,
           position: 'inline' as const
@@ -137,7 +147,8 @@ export class NotificationSingleRowConverter implements UiConverter<
     notification: NotificationDto,
     options: NotificationSingleRowConverterOptions
   ): string {
-    const key = `${notification.payload?.['notification_message_key'] ?? ''}`.trim();
+    const key = `${notification.payload?.['notification_message_key']
+      ?? this.notificationKey(notification.kind, 'message')}`.trim();
     const translated = key && options.translate
       ? options.translate(key, notification.message)
       : notification.message;
@@ -148,29 +159,7 @@ export class NotificationSingleRowConverter implements UiConverter<
   }
 
   private compactMessage(notification: NotificationDto, fallback: string): string {
-    const payload = notification.payload;
-    const assetTitle = `${payload?.['assetTitle'] ?? ''}`.trim();
-    const quantity = `${payload?.['quantity'] ?? ''}`.trim();
-    switch (notification.kind) {
-      case 'event-invite': {
-        const location = `${payload?.['location'] ?? ''}`.trim();
-        return location ? `Invitation · ${location}` : 'Event invitation';
-      }
-      case 'asset-member-invite':
-        return 'Asset invitation';
-      case 'asset-admin-join-request': {
-        const memberName = `${payload?.['memberName'] ?? ''}`.trim();
-        return memberName ? `${memberName} requested access` : 'Access requested';
-      }
-      case 'event-supplies-open':
-        return assetTitle ? `Contributions open · ${assetTitle}` : 'Contributions open';
-      case 'event-supplies-contribution-added':
-        return [quantity ? `${quantity} added` : 'Added', assetTitle].filter(Boolean).join(' · ');
-      case 'event-supplies-contribution-removed':
-        return [quantity ? `${quantity} removed` : 'Removed', assetTitle].filter(Boolean).join(' · ');
-      default:
-        return this.withoutRepeatedSender(fallback, notification.senderName);
-    }
+    return this.withoutRepeatedSender(fallback, notification.senderName);
   }
 
   private withoutRepeatedSender(value: string, senderName?: string | null): string {
@@ -187,7 +176,8 @@ export class NotificationSingleRowConverter implements UiConverter<
     notification: NotificationDto,
     options: NotificationSingleRowConverterOptions
   ): string {
-    const key = `${notification.payload?.['notification_title_key'] ?? ''}`.trim();
+    const key = `${notification.payload?.['notification_title_key']
+      ?? this.notificationKey(notification.kind, 'title')}`.trim();
     const translated = key && options.translate
       ? options.translate(key, notification.title)
       : notification.title;
@@ -202,6 +192,25 @@ export class NotificationSingleRowConverter implements UiConverter<
       const replacement = payload?.[key];
       return replacement == null ? match : `${replacement}`;
     });
+  }
+
+  private notificationKey(kind: string, field: 'title' | 'message'): string {
+    const normalizedKind = `${kind ?? ''}`
+      .trim()
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return normalizedKind ? `notification.kind.${normalizedKind}.${field}` : '';
+  }
+
+  private translation(
+    options: NotificationSingleRowConverterOptions,
+    key: string,
+    fallback: string,
+    payload?: Record<string, string>
+  ): string {
+    const translated = options.translate ? options.translate(key, fallback) : fallback;
+    return this.interpolatePayload(translated, payload ?? null);
   }
 
   private isSystemGeneratedRoom(notification: NotificationDto): boolean {
@@ -319,22 +328,25 @@ export class NotificationSingleRowConverter implements UiConverter<
     }
   }
 
-  private sourceLabel(category: NotificationCategory): string {
+  private sourceLabel(
+    category: NotificationCategory,
+    options: NotificationSingleRowConverterOptions
+  ): string {
     switch (category) {
       case 'user':
-        return 'Member';
+        return this.translation(options, 'notification.source.member', 'Member');
       case 'chat':
-        return 'Chat';
+        return this.translation(options, 'notification.source.chat', 'Chat');
       case 'event':
-        return 'Event';
+        return this.translation(options, 'notification.source.event', 'Event');
       case 'event-admin':
-        return 'Event admin';
+        return this.translation(options, 'notification.source.event.admin', 'Event admin');
       case 'asset':
-        return 'Asset';
+        return this.translation(options, 'notification.source.asset', 'Asset');
       case 'app-admin':
         return 'MyScoutee';
       case 'scheduled':
-        return 'Scheduled';
+        return this.translation(options, 'notification.source.scheduled', 'Scheduled');
     }
   }
 

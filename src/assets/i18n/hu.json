@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.07.hu.80",
+  "version": "2026.09.07.hu.81",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2569,6 +2569,8 @@
     "notification.event.join.cancelled.message": "A csatlakozási kérelmet visszavonták.",
     "notification.event.join.pending.badge": "Függő",
     "notification.event.join.cancelled.badge": "Visszavonva",
+    "notification.asset.takeover.required.title": "Az eszközhöz új manager kell — Átvétel",
+    "notification.asset.takeover.required.message": "Nyisd meg az eszközt.",
     "notification.ticket.checked.in.message": "A jegyeddel beléptettek.",
     "notification.ticket.reuse.message": "Ezt a jegyet már felhasználták.",
     "asset.ticket.scan.camera.off": "Kamera ki",

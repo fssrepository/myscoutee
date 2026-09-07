@@ -485,6 +485,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   protected canShowActionMenu(entry: ActivityContracts.ActivityMemberDTO): boolean {
     if (this.isAcceptedScopedAssetBorrower(entry)) {
       return this.canLeaveScopedAssetBorrower(entry)
+        || this.canTakeOverAsset(entry)
         || this.canDeleteMember(entry)
         || this.canShowMemberInvolvement(entry)
         || this.canReportMember(entry);
