@@ -27,16 +27,11 @@
         (menuItemSelect)="onPaymentHistoryMenuSelect($event)"
       ></app-smart-list>
       <ng-template #paymentHistoryTemplate let-item let-openMenu="openMenu">
-        <div class="payment-methods-popup__history-entry">
-          <single-row
-            [row]="historyRow(item, true)"
-            [useSharedMenu]="true"
-            (menuRequest)="openMenu($event)"
-          ></single-row>
-          @if (refundHistoryRow(item); as refundRow) {
-            <single-row [row]="refundRow"></single-row>
-          }
-        </div>
+        <single-row
+          [row]="historyRow(item, true)"
+          [useSharedMenu]="true"
+          (menuRequest)="openMenu($event)"
+        ></single-row>
       </ng-template>
     </section>
   </app-popup>

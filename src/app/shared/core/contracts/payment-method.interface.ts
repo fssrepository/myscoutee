@@ -62,7 +62,6 @@ export interface PaymentHistoryItemDto {
   contextAssetId?: string | null;
   refundRequestStatus?: 'none' | 'pending' | 'approved' | 'rejected' | string | null;
   refundRequestedAtIso?: string | null;
-  refundedAtIso?: string | null;
   canRequestRefund?: boolean;
   canApproveRefund?: boolean;
   refundPreview?: PaymentRefundPreviewDto | null;
