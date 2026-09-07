@@ -589,7 +589,9 @@ button.ui-info-card__overlay-action {
   width: 26px;
   min-width: 26px;
   height: 26px;
+  border: 2px solid rgba(255, 255, 255, 0.94);
   border-radius: 50%;
+  box-shadow: none;
   font-size: 0.58rem;
   font-weight: 800;
   line-height: 1;
