@@ -148,7 +148,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     options: NotificationSingleRowConverterOptions
   ): string {
     const key = `${notification.payload?.['notification_message_key']
-      ?? this.notificationKey(notification.kind, 'message')}`.trim();
+      ?? this.notificationMessageKey(notification)}`.trim();
     const translated = key && options.translate
       ? options.translate(key, notification.message)
       : notification.message;
@@ -201,6 +201,14 @@ export class NotificationSingleRowConverter implements UiConverter<
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
     return normalizedKind ? `notification.kind.${normalizedKind}.${field}` : '';
+  }
+
+  private notificationMessageKey(notification: NotificationDto): string {
+    const key = this.notificationKey(notification.kind, 'message');
+    return notification.kind === 'event-invite'
+      && `${notification.payload?.['location'] ?? ''}`.trim()
+      ? `${key}.location`
+      : key;
   }
 
   private translation(

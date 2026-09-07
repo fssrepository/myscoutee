@@ -126,7 +126,11 @@ describe('NotificationSingleRowConverter badges', () => {
       title: 'Long Event Title',
       message: 'You were invited to Long Event Title at Austin.',
       payload: { location: 'Austin' }
-    }));
+    }), {
+      translate: key => key === 'notification.kind.event-invite.message.location'
+        ? 'Invitation · {location}'
+        : key
+    });
 
     expect(row.detail).toBe('Invitation · Austin');
   });
@@ -139,7 +143,11 @@ describe('NotificationSingleRowConverter badges', () => {
         quantity: '2',
         assetTitle: 'Shared Supplies'
       }
-    }));
+    }), {
+      translate: key => key === 'notification.kind.event-supplies-contribution-added.message'
+        ? '{quantity} added · {assetTitle}'
+        : key
+    });
 
     expect(row.detail).toBe('2 added · Shared Supplies');
   });
@@ -149,15 +157,41 @@ describe('NotificationSingleRowConverter badges', () => {
       kind: 'asset-member-invite',
       message: 'You were invited to use a very long asset title.',
       payload: { assetTitle: 'Very Long Asset Title' }
-    }));
+    }), {
+      translate: key => key === 'notification.kind.asset-member-invite.message'
+        ? 'Asset invitation'
+        : key
+    });
     const request = converter.convert(notification({
       kind: 'asset-admin-join-request',
       message: 'Riley Outside requested to use a very long asset title.',
       payload: { memberName: 'Riley Outside', assetTitle: 'Very Long Asset Title' }
-    }));
+    }), {
+      translate: key => key === 'notification.kind.asset-admin-join-request.message'
+        ? '{memberName} requested access'
+        : key
+    });
 
     expect(invite.detail).toBe('Asset invitation');
     expect(request.detail).toBe('Riley Outside requested access');
+  });
+
+  it('derives bundle keys from the notification kind when the backend payload has no explicit keys', () => {
+    const row = converter.convert(notification({
+      kind: 'asset-unavailable',
+      title: 'English title fallback',
+      message: 'English message fallback',
+      payload: { assetTitle: 'Minibus' }
+    }), {
+      translate: key => key === 'notification.kind.asset-unavailable.title'
+        ? 'Az eszköz nem elérhető'
+        : key === 'notification.kind.asset-unavailable.message'
+          ? 'A(z) {assetTitle} már nem elérhető.'
+          : key
+    });
+
+    expect(row.title).toBe('Az eszköz nem elérhető');
+    expect(row.detail).toBe('A(z) Minibus már nem elérhető.');
   });
 
   it('does not repeat the sender already shown in the subtitle', () => {
