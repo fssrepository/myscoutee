@@ -1270,11 +1270,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
     const activeUser = this.activeUser();
     const existingRequest = this.findPendingBorrowRequest(card, context.subEvent.id, activeUser.id);
-    const inventoryWasAlreadyApplied = existingRequest?.booking?.inventoryApplied === true;
     const requestVersion = ++this.pendingBorrowRequestVersion;
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
-    const inventoryApplied = pricing.amount > 0;
-    const onlinePayment = inventoryApplied && !this.cashOnly();
+    const paymentRequired = pricing.amount > 0;
+    const onlinePayment = paymentRequired && !this.cashOnly();
     const lineItems: ActivityContracts.EventCheckoutLineItem[] = [
       {
         id: `resource:${card.id}`,
@@ -1297,7 +1296,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const expiresAtIso = new Date(
       Date.now() + EventResourceAssetExploreComponent.BORROW_BASKET_TTL_MS
     ).toISOString();
-    const checkoutRequest = inventoryApplied
+    const checkoutRequest = paymentRequired
       ? {
           userId: activeUser.id,
           sourceId: card.id,
@@ -1341,7 +1340,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         } satisfies ActivityContracts.EventCheckoutRequest
       : null;
 
-    if (inventoryApplied && !dialog.paymentStep) {
+    if (paymentRequired && !dialog.paymentStep) {
       if (this.borrowPaymentReviewStarted(dialog) && !this.borrowSelectionChanged(dialog)) {
         const nextDialog: AssetExploreBorrowDialogState = {
           ...dialog,
@@ -1442,7 +1441,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           status: 'pending',
           note: onlinePayment
             ? this.i18n.translate('asset.borrow.note.payment.approved')
-            : inventoryApplied
+            : paymentRequired
               ? this.i18n.translate('asset.borrow.note.cash.payment')
               : this.i18n.translate('asset.borrow.note.awaiting.owner'),
           requestKind: 'borrow',
@@ -1459,15 +1458,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
               paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null,
-              inventoryApplied
+              inventoryApplied: existingRequest?.booking?.inventoryApplied === true
             }
           )
         };
         const nextCard: ResourceAssetDTO = {
           ...card,
-          quantity: inventoryApplied && !inventoryWasAlreadyApplied
-            ? Math.max(0, AssetCardBuilder.storedQuantityValue(card) - dialog.quantity)
-            : AssetCardBuilder.storedQuantityValue(card),
+          quantity: AssetCardBuilder.storedQuantityValue(card),
           requests: [
             nextRequest,
             ...card.requests
@@ -1510,17 +1507,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         }
         this.clearBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
         this.attachBoughtAssetToSubEventLocally(context, savedCard, persistedState);
-        if (inventoryApplied) {
-          this.clearLocalReservation(context.subEvent.id, savedCard.id);
-        } else {
-          this.rememberLocalReservation(
-            context.subEvent.id,
-            savedCard.id,
-            currentDialog.startAtIso,
-            currentDialog.endAtIso,
-            currentDialog.quantity
-          );
-        }
+        this.clearLocalReservation(context.subEvent.id, savedCard.id);
         const remainingAvailability = this.availableQuantityForWindow(
           savedCard,
           currentDialog.startAtIso,
@@ -1936,7 +1923,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private availableQuantityForWindow(card: ResourceAssetDTO, startAtIso: string, endAtIso: string): number {
     const totalQuantity = AssetCardBuilder.storedQuantityValue(card);
     const overlappingCommitted = card.requests
-      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.status === 'accepted'
+        || request.requestKind === 'manual'
+        || (request.status === 'pending' && request.requestKind === 'borrow'))
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.requestQuantity(request), 0);
@@ -2788,13 +2777,18 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private resolveBorrowPricing(card: ResourceAssetDTO, startAtIso: string, endAtIso: string, quantity: number): AssetExploreBorrowPricingPreview {
+    const subEventId = `${this.resourcePopupStore.popupContextRef()?.subEvent.id ?? ''}`.trim();
+    const existingRequest = subEventId
+      ? this.findPendingBorrowRequest(card, subEventId)
+      : null;
     return PricingBuilder.resolveAssetBorrowPricing({
       pricing: card.pricing,
       totalQuantity: AssetCardBuilder.storedQuantityValue(card),
       requestedQuantity: quantity,
       startAtIso,
       endAtIso,
-      requests: card.requests
+      requests: card.requests,
+      excludeRequestId: existingRequest?.id ?? null
     });
   }
 

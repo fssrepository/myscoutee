@@ -5,6 +5,22 @@ import type * as AppDTOs from '../../core/contracts';
 import { ActivitySubEventResourceInfoCardConverter } from './activity-sub-event-resource-info-card.converter';
 
 describe('ActivitySubEventResourceInfoCardConverter member status changes', () => {
+  it('keeps pending demand out of accepted occupancy until approval', () => {
+    const pending = ActivitySubEventResourceInfoCardConverter.convert({
+      ...resourceCard(),
+      accepted: 0,
+      pending: 1
+    }, options([memberRequest()]));
+    const accepted = ActivitySubEventResourceInfoCardConverter.convert({
+      ...resourceCard(),
+      accepted: 1,
+      pending: 0
+    }, options([{ ...memberRequest(), status: 'accepted' }]));
+
+    expect(pending.mediaEnd).toMatchObject({ label: '0 / 4', pendingCount: 1 });
+    expect(accepted.mediaEnd).toMatchObject({ label: '1 / 4', pendingCount: 0 });
+  });
+
   it('keeps a foreign Group resource card read-only', () => {
     const converted = ActivitySubEventResourceInfoCardConverter.convert(resourceCard(), {
       ...options([]),

@@ -794,7 +794,6 @@ export class AssetPopupComponent {
     }
     const previousRequest = existing.requests.find(request => request.id === normalizedRequestId) ?? null;
 
-    let nextQuantity = AssetCardBuilder.storedQuantityValue(existing);
     const nextRequests = existing.requests
       .map(request => AssetCardBuilder.cloneRequest(request))
       .filter(request => {
@@ -808,21 +807,12 @@ export class AssetPopupComponent {
         request.note = request.requestKind === 'manual'
           ? 'Reserved and assigned by the owner.'
           : 'Borrow request approved by the owner.';
-        if (request.requestKind !== 'manual' && request.booking?.inventoryApplied !== true) {
-          nextQuantity = Math.max(0, nextQuantity - this.assetRequestQuantity(request));
-          request.booking = request.booking
-            ? {
-                ...request.booking,
-                inventoryApplied: true
-              }
-            : null;
-        }
         return true;
       });
 
     const nextCard: AppDTOs.AssetDTO = {
       ...existing,
-      quantity: nextQuantity,
+      quantity: AssetCardBuilder.storedQuantityValue(existing),
       requests: nextRequests
     };
 
@@ -840,7 +830,7 @@ export class AssetPopupComponent {
     }
     const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, {
       ...assetDetail,
-      quantity: nextQuantity,
+      quantity: AssetCardBuilder.storedQuantityValue(assetDetail),
       requests: nextRequests
     });
     if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
@@ -1766,7 +1756,9 @@ export class AssetPopupComponent {
   }
 
   private isCommittedSupplyRequest(request: AppDTOs.AssetMemberRequestDTO): boolean {
-    return request.status === 'accepted' || this.isAssignedSupplyRequest(request);
+    return request.status === 'accepted'
+      || this.isAssignedSupplyRequest(request)
+      || (request.status === 'pending' && request.requestKind === 'borrow');
   }
 
   private isSupplyRequestTimeOverlap(

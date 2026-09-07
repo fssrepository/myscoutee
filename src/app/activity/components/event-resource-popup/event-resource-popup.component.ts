@@ -1371,7 +1371,8 @@ export class EventResourcePopupComponent {
       requestedQuantity: quantity,
       startAtIso,
       endAtIso,
-      requests: sourceCard.requests
+      requests: sourceCard.requests,
+      excludeRequestId: request.id
     });
     const amount = paymentAudit
       ? Math.max(0, Number(paymentAudit.amount) || 0)
@@ -2522,14 +2523,44 @@ export class EventResourcePopupComponent {
     const reservedQuantity = reservation
       ? this.assignedRuntimeQuantityValue(reservation.booking?.quantity, settings?.quantity)
       : 0;
-    const reservedInventoryQuantity = reservation?.booking?.inventoryApplied === true
+    const legacyReservedInventoryQuantity = reservation?.booking?.inventoryApplied === true
       ? reservedQuantity
       : 0;
+    const totalQuantity = Math.max(0, remainingQuantity + legacyReservedInventoryQuantity);
+    const overlappingReservedQuantity = reservation
+      ? card.requests
+          .filter(request => request.id !== reservation.id)
+          .filter(request => this.isAvailabilityReservation(request))
+          .filter(request => request.booking?.inventoryApplied !== true)
+          .filter(request => this.assignedAssetRequestWindowsOverlap(reservation, request))
+          .reduce((sum, request) => sum + this.assignedRuntimeQuantityValue(request.booking?.quantity), 0)
+      : 0;
     return {
-      quantityMax: Math.max(1, remainingQuantity + reservedInventoryQuantity),
+      quantityMax: Math.max(1, totalQuantity - overlappingReservedQuantity),
       reservedQuantity,
       reservation
     };
+  }
+
+  private isAvailabilityReservation(request: AppDTOs.AssetMemberRequestDTO): boolean {
+    return request.status === 'accepted'
+      || request.requestKind === 'manual'
+      || (request.status === 'pending' && request.requestKind === 'borrow');
+  }
+
+  private assignedAssetRequestWindowsOverlap(
+    left: AppDTOs.AssetMemberRequestDTO,
+    right: AppDTOs.AssetMemberRequestDTO
+  ): boolean {
+    const leftStart = AppUtils.isoLocalDateTimeToDate(`${left.booking?.startAtIso ?? ''}`.trim());
+    const leftEnd = AppUtils.isoLocalDateTimeToDate(`${left.booking?.endAtIso ?? ''}`.trim());
+    const rightStart = AppUtils.isoLocalDateTimeToDate(`${right.booking?.startAtIso ?? ''}`.trim());
+    const rightEnd = AppUtils.isoLocalDateTimeToDate(`${right.booking?.endAtIso ?? ''}`.trim());
+    if (leftStart && leftEnd && rightStart && rightEnd) {
+      return leftStart.getTime() < rightEnd.getTime() && rightStart.getTime() < leftEnd.getTime();
+    }
+    return `${left.booking?.eventId ?? ''}`.trim() === `${right.booking?.eventId ?? ''}`.trim()
+      && `${left.booking?.subEventId ?? ''}`.trim() === `${right.booking?.subEventId ?? ''}`.trim();
   }
 
   private assignedAssetReservationRequest(
@@ -2590,7 +2621,8 @@ export class EventResourcePopupComponent {
       totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
       startAtIso,
       endAtIso,
-      requests: card.requests
+      requests: card.requests,
+      excludeRequestId: reservation.id
     };
     const currentPricing = PricingBuilder.resolveAssetBorrowPricing({
       ...pricingOptions,
@@ -2775,7 +2807,8 @@ export class EventResourcePopupComponent {
       requestedQuantity: quantity,
       startAtIso,
       endAtIso,
-      requests: card.requests
+      requests: card.requests,
+      excludeRequestId: reservation.id
     });
     const previousPricing = PricingBuilder.resolveAssetBorrowPricing({
       pricing: card.pricing,
@@ -2783,7 +2816,8 @@ export class EventResourcePopupComponent {
       requestedQuantity: previousQuantity,
       startAtIso,
       endAtIso,
-      requests: card.requests
+      requests: card.requests,
+      excludeRequestId: reservation.id
     });
     const nextRequests = card.requests.map(request => (
       request.id === reservation.id

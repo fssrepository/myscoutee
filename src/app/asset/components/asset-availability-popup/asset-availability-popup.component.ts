@@ -1154,15 +1154,6 @@ export class AssetAvailabilityPopupComponent {
         request.note = request.requestKind === 'manual'
           ? 'Reserved and assigned by the owner.'
           : 'Borrow request approved by the owner.';
-        if (request.requestKind !== 'manual' && request.booking?.inventoryApplied !== true) {
-          nextQuantity = Math.max(0, nextQuantity - this.assetRequestQuantity(request));
-          request.booking = request.booking
-            ? {
-                ...request.booking,
-                inventoryApplied: true
-              }
-            : null;
-        }
         return true;
       });
     if (!targetFound) {

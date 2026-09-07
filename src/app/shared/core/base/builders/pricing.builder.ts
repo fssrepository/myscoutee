@@ -25,6 +25,7 @@ export interface AssetBorrowPricingOptions {
   startAtIso: string;
   endAtIso: string;
   requests?: readonly ContractTypes.AssetMemberRequestDTO[];
+  excludeRequestId?: string | null;
 }
 
 export class PricingBuilder {
@@ -266,8 +267,12 @@ export class PricingBuilder {
 
     const totalQuantity = Math.max(1, Math.trunc(Number(options.totalQuantity) || 1));
     const requestedQuantity = Math.max(1, Math.trunc(Number(options.requestedQuantity) || 1));
+    const excludedRequestId = `${options.excludeRequestId ?? ''}`.trim();
     const overlappingCommitted = (options.requests ?? [])
-      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => !excludedRequestId || request.id !== excludedRequestId)
+      .filter(request => request.status === 'accepted'
+        || request.requestKind === 'manual'
+        || (request.status === 'pending' && request.requestKind === 'borrow'))
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isPricingWindowOverlap(request, options.startAtIso, options.endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);

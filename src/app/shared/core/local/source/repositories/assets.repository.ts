@@ -1203,7 +1203,9 @@ export class LocalAssetsRepository {
     const totalQuantity = AssetCardBuilder.storedQuantityValue(record);
     const overlappingCommitted = (record.requests ?? [])
       .filter(request => request.recordStatus !== 'D')
-      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.status === 'accepted'
+        || request.requestKind === 'manual'
+        || (request.status === 'pending' && request.requestKind === 'borrow'))
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetRequestWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
