@@ -1031,7 +1031,8 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const session = this.session();
-    const memberCount = Math.max(0, session?.item.memberIds?.length ?? session?.item.members?.length ?? 0);
+    const members = session ? this.chatMemberEntries(session.item, session.openedAtIso) : [];
+    const memberCount = Math.max(0, members.length || session?.item.memberIds?.length || session?.item.members?.length || 0);
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
@@ -1040,7 +1041,47 @@ export class EventChatPopupComponent implements OnDestroy {
       acceptedMembers: memberCount,
       pendingMembers: 0,
       capacityTotal: memberCount,
+      members: members.length > 0 ? members : undefined,
       lookup: lookup ? { ...lookup } : undefined
+    });
+  }
+
+  private chatMemberEntries(
+    chat: Pick<ChatDTO, 'id' | 'memberIds' | 'members'>,
+    actionAtIso: string
+  ): ContractTypes.ActivityMemberDTO[] {
+    const summariesByUserId = new Map(
+      (chat.members ?? [])
+        .map(member => [`${member.id ?? ''}`.trim(), member] as const)
+        .filter(([userId]) => userId.length > 0)
+    );
+    const userIds = [...new Set([
+      ...(chat.memberIds ?? []),
+      ...summariesByUserId.keys()
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))];
+    const normalizedActionAtIso = `${actionAtIso ?? ''}`.trim() || new Date().toISOString();
+
+    return userIds.map(userId => {
+      const summary = summariesByUserId.get(userId);
+      const name = `${summary?.name ?? ''}`.trim() || userId;
+      return {
+        id: `chat:${chat.id}:${userId}`,
+        userId,
+        name,
+        initials: `${summary?.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
+        gender: summary?.gender === 'woman' ? 'woman' : 'man',
+        city: '',
+        statusText: 'Chat member',
+        role: 'Member',
+        status: 'accepted',
+        pendingSource: null,
+        requestKind: null,
+        invitedByActiveUser: false,
+        metAtIso: normalizedActionAtIso,
+        actionAtIso: normalizedActionAtIso,
+        metWhere: 'Chat',
+        avatarUrl: `${summary?.imageUrl ?? ''}`.trim()
+      };
     });
   }
 

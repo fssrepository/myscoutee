@@ -1536,15 +1536,17 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
-    const providedInitialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
+    const providedInitialMembers = (ownerType !== 'event' || lookup?.type === 'chat') && Array.isArray(options?.initialMembers)
       ? [...options.initialMembers]
       : null;
     const isScopedAssetOwner = ownerType === 'asset'
       && `${options?.eventId ?? ''}`.trim().length > 0
       && `${options?.subEventId ?? ''}`.trim().length > 0;
-    const initialMembers = this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
+    const initialMembers = lookup?.type === 'chat'
       ? providedInitialMembers
-      : null;
+      : this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
+        ? providedInitialMembers
+        : null;
     this.isOpen = true;
     this.membersListPollScheduler.stop({ abort: true });
     this.ownerId = normalizedOwnerId;
@@ -1595,12 +1597,16 @@ export class EventMembersPopupComponent implements OnDestroy {
         this.membersCacheKey(normalizedOwnerId, true),
         initialMembers.filter(member => member.status === 'pending')
       );
-      this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
-      void this.usersService.warmCachedUsers(
-        initialMembers
-          .map(member => `${member.userId ?? ''}`.trim())
-          .filter(userId => userId.length > 0)
-      );
+      if (lookup?.type === 'chat') {
+        this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
+      } else {
+        this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
+        void this.usersService.warmCachedUsers(
+          initialMembers
+            .map(member => `${member.userId ?? ''}`.trim())
+            .filter(userId => userId.length > 0)
+        );
+      }
       this.syncCanManageMembers(initialMembers);
     } else {
       this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
@@ -1713,12 +1719,11 @@ export class EventMembersPopupComponent implements OnDestroy {
       };
     }
 
-    if (this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId) {
-      return this.chatsService.queryChatMemberEntriesPage(ownerId, query);
-    }
-
     const cacheKey = this.membersCacheKey(ownerId, pendingOnly);
     let members = this.membersCacheByOwnerId.get(cacheKey);
+    if (this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId && !members) {
+      return this.chatsService.queryChatMemberEntriesPage(ownerId, query);
+    }
     if (!pendingOnly && members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
       await this.activityMembersService.waitForMembersRouteDelay();
       if (!this.isOpen || this.ownerId !== ownerId) {
