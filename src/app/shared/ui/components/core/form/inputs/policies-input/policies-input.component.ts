@@ -504,7 +504,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
 
   protected togglePolicyApproval(policy: PolicyInputModel, event: Event): void {
     event.stopPropagation();
-    if (this.policyApprovalDisabled()) {
+    if (this.policyApprovalDisabled() || this.policyRequired(policy)) {
       return;
     }
     const policyId = `${policy.id ?? ''}`.trim();

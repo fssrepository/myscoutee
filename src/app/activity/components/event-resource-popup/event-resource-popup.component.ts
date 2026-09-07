@@ -2517,6 +2517,15 @@ export class EventResourcePopupComponent {
     if (!normalizedPolicyId) {
       return;
     }
+    const context = this.resourcePopupStore.popupContextRef();
+    const sourceCard = context
+      ? this.resolveSubEventAssignedAssetCard(context.subEvent.id, dialog.type, dialog.sourceAssetId)
+      : null;
+    const policy = (sourceCard && AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [])
+      .find(item => `${item.id ?? ''}`.trim() === normalizedPolicyId);
+    if (!policy || policy.required !== false) {
+      return;
+    }
     const nextAccepted = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
     if (nextAccepted.has(normalizedPolicyId)) {
       nextAccepted.delete(normalizedPolicyId);

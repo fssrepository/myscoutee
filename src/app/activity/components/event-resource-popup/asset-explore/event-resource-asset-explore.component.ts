@@ -1189,6 +1189,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!normalizedPolicyId) {
       return;
     }
+    const card = this.resolveCard(dialog.cardId);
+    const policy = (card && AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [])
+      .find(item => `${item.id ?? ''}`.trim() === normalizedPolicyId);
+    if (!policy || policy.required !== false) {
+      return;
+    }
     const nextAccepted = new Set(dialog.acceptedPolicyIds);
     if (nextAccepted.has(normalizedPolicyId)) {
       nextAccepted.delete(normalizedPolicyId);
