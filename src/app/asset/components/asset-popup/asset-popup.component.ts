@@ -882,11 +882,22 @@ export class AssetPopupComponent {
     const assetOwnerUserId = this.assetStore.activeOwnerUserIdRef().trim()
       || this.userProfileStore.activeUserId().trim();
     if (assetPendingDelta && assetOwnerUserId) {
+      const storedAssetCounters = (this.userProfileStore.getUserProfile(assetOwnerUserId)
+        ?? this.userProfileStore.activeUserProfile())?.activities?.asset;
       this.activityStore.patchUserCounterDeltas(
         assetOwnerUserId,
         { asset: assetPendingDelta },
-        this.userProfileStore.getUserProfile(assetOwnerUserId)?.activities
-          ?? this.userProfileStore.activeUserProfile()?.activities
+        {
+          asset: {
+            cars: this.normalizeAssetFilterCount(storedAssetCounters?.cars),
+            accommodation: this.normalizeAssetFilterCount(storedAssetCounters?.accommodation),
+            supplies: this.normalizeAssetFilterCount(storedAssetCounters?.supplies),
+            tickets: this.normalizeAssetFilterCount(storedAssetCounters?.tickets),
+            carsPending: this.normalizeAssetFilterCount(storedAssetCounters?.carsPending),
+            accommodationPending: this.normalizeAssetFilterCount(storedAssetCounters?.accommodationPending),
+            suppliesPending: this.normalizeAssetFilterCount(storedAssetCounters?.suppliesPending)
+          }
+        }
       );
     }
   }

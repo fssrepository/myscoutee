@@ -670,12 +670,19 @@ export class UsersService extends BaseRouteModeService {
     const assetAccommodation = normalizeWithFallback(counterOverrides.asset?.accommodation, fallbackActivities.asset?.accommodation);
     const assetSupplies = normalizeWithFallback(counterOverrides.asset?.supplies, fallbackActivities.asset?.supplies);
     const assetTickets = normalizeWithFallback(counterOverrides.asset?.tickets, fallbackActivities.asset?.tickets);
-    if (assetCars !== undefined || assetAccommodation !== undefined || assetSupplies !== undefined || assetTickets !== undefined) {
+    const assetCarsPending = normalizeWithFallback(counterOverrides.asset?.carsPending, fallbackActivities.asset?.carsPending);
+    const assetAccommodationPending = normalizeWithFallback(counterOverrides.asset?.accommodationPending, fallbackActivities.asset?.accommodationPending);
+    const assetSuppliesPending = normalizeWithFallback(counterOverrides.asset?.suppliesPending, fallbackActivities.asset?.suppliesPending);
+    if (assetCars !== undefined || assetAccommodation !== undefined || assetSupplies !== undefined || assetTickets !== undefined
+      || assetCarsPending !== undefined || assetAccommodationPending !== undefined || assetSuppliesPending !== undefined) {
       patch.asset = {
         cars: assetCars ?? 0,
         accommodation: assetAccommodation ?? 0,
         supplies: assetSupplies ?? 0,
-        tickets: assetTickets ?? 0
+        tickets: assetTickets ?? 0,
+        carsPending: assetCarsPending ?? 0,
+        accommodationPending: assetAccommodationPending ?? 0,
+        suppliesPending: assetSuppliesPending ?? 0
       };
     }
 
