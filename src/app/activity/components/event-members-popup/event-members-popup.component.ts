@@ -78,6 +78,7 @@ import {
 } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { canManageScopedAssetMembers } from './scoped-asset-member-management.policy';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -1582,7 +1583,10 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
     this.viewOnlyMode = options?.viewOnly === true;
-    this.canManageMembers = !this.viewOnlyMode && lookup?.type !== 'chat' && this.requestedCanManageMembers;
+    this.canManageMembers = !this.viewOnlyMode
+      && lookup?.type !== 'chat'
+      && !this.scopedBorrowAsset
+      && this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
@@ -2162,7 +2166,9 @@ export class EventMembersPopupComponent implements OnDestroy {
     );
     this.canManageMembers = this.ownerRef?.ownerType === 'event'
       ? ownerRecordCanManage || activeMemberCanManage
-      : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
+      : this.scopedBorrowAsset
+        ? canManageScopedAssetMembers(activeUserId, members)
+        : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers
       || (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
