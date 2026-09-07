@@ -346,10 +346,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected historyRow(item: PaymentHistoryItemDto, withMenu = false): SingleRowData<PaymentHistoryItemDto> {
     const refunded = this.isRefundedPaymentStatus(item.status);
+    const displayedAmount = refunded
+      ? Number(item.refundPreview?.refundableAmount) || Number(item.amount) || 0
+      : Number(item.amount) || 0;
     const amount = this.formatSignedCurrency(
-      Number(item.amount) || 0,
+      displayedAmount,
       item.currency || 'HUF',
-      item.direction === 'income' ? '+' : '−'
+      refunded || item.direction === 'income' ? '+' : '−'
     );
     const date = new Date(item.createdAtIso);
     const statusLabel = this.paymentStatusLabel(item.status);
@@ -717,7 +720,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private paymentStatusLabel(status: string): string {
     const normalized = `${status ?? ''}`.trim().toLowerCase();
-    if (normalized === 'released' || normalized === 'refunded') {
+    if (normalized === 'released' || normalized === 'refunded' || normalized === 'partially_refunded') {
       return this.i18n.translate('payment.status.refunded', 'Refunded');
     }
     return normalized ? this.i18n.translate(`payment.status.${normalized}`, status) : '';
@@ -744,13 +747,15 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private isRefundedPaymentStatus(status: string): boolean {
     const normalized = `${status ?? ''}`.trim().toLowerCase();
-    return normalized === 'released' || normalized === 'refunded';
+    return normalized === 'released' || normalized === 'refunded' || normalized === 'partially_refunded';
   }
 
   protected historyHeaderTotals(): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
     const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
-    const outgoing = stored?.outgoing ?? this.spendingTotalsRef();
-    const incoming = stored?.incoming ?? this.incomeTotalsRef();
+    const loadedOutgoing = this.spendingTotalsRef();
+    const loadedIncoming = this.incomeTotalsRef();
+    const outgoing = Object.keys(loadedOutgoing).length > 0 ? loadedOutgoing : stored?.outgoing ?? {};
+    const incoming = Object.keys(loadedIncoming).length > 0 ? loadedIncoming : stored?.incoming ?? {};
     const currencies = [...new Set([...Object.keys(outgoing), ...Object.keys(incoming)])]
       .map(currency => currency.trim().toUpperCase())
       .filter(Boolean)
@@ -821,7 +826,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private confirmRefundRequest(item: PaymentHistoryItemDto): void {
     this.dialogStore.open({
       title: 'payment.history.refund.request.title',
-      message: 'payment.history.refund.request.message',
+      message: this.refundConfirmationMessage(item, 'payment.history.refund.request.message'),
       cancelLabel: 'cancel',
       confirmLabel: 'payment.history.refund.request',
       confirmTone: 'warning',
@@ -835,7 +840,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private confirmRefundApproval(item: PaymentHistoryItemDto): void {
     this.dialogStore.open({
       title: 'payment.history.refund.approve.title',
-      message: 'payment.history.refund.approve.message',
+      message: this.refundConfirmationMessage(item, 'payment.history.refund.approve.message'),
       cancelLabel: 'cancel',
       confirmLabel: 'payment.history.refund.approve',
       confirmTone: 'accent',
@@ -843,6 +848,44 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       onConfirm: async () => this.applyPaymentHistoryMutation(
         await this.paymentMethods.approveRefund(this.activeUserId(), item.id)
       )
+    });
+  }
+
+  private refundConfirmationMessage(item: PaymentHistoryItemDto, leadKey: string): string {
+    const preview = item.refundPreview;
+    if (!preview) return this.i18n.translate(leadKey);
+    const currency = preview.currency || item.currency || 'HUF';
+    return [
+      this.i18n.translate(leadKey),
+      this.i18n.translateParams('payment.history.refund.preview.amount', {
+        amount: this.formatSignedCurrency(preview.refundableAmount, currency, '+')
+      }),
+      this.i18n.translateParams('payment.history.refund.preview.retained', {
+        amount: this.formatSignedCurrency(preview.retainedAmount, currency, '−')
+      }),
+      this.refundPolicyBasis(item)
+    ].filter(Boolean).join('\n');
+  }
+
+  private refundPolicyBasis(item: PaymentHistoryItemDto): string {
+    const preview = item.refundPreview;
+    if (!preview?.ruleId) {
+      return preview?.ruleDescription || this.i18n.translate('payment.history.refund.preview.no.policy');
+    }
+    const currency = preview.currency || item.currency || 'HUF';
+    const refund = preview.refundKind === 'full'
+      ? this.i18n.translate('payment.history.refund.preview.full')
+      : preview.refundKind === 'fixed_amount'
+        ? this.formatSignedCurrency(Number(preview.refundValue) || 0, currency, '+')
+        : preview.refundKind === 'none'
+          ? this.i18n.translate('payment.history.refund.preview.none')
+          : this.i18n.translateParams('payment.history.refund.preview.percent', {
+              percent: Number(preview.refundValue) || 0
+            });
+    return this.i18n.translateParams('payment.history.refund.preview.policy', {
+      refund,
+      offset: Math.max(0, Number(preview.ruleOffsetValue) || 0),
+      unit: this.i18n.translate(`payment.history.refund.preview.unit.${preview.ruleOffsetUnit || 'days'}`)
     });
   }
 
@@ -1138,9 +1181,19 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private paymentHistoryNote(item: PaymentHistoryItemDto): string {
     const failureReason = `${item.failureReason ?? ''}`.trim();
-    return item.status.trim().toLowerCase() === 'failed' && failureReason
-      ? failureReason
-      : '';
+    if (item.status.trim().toLowerCase() === 'failed' && failureReason) return failureReason;
+    if (!this.isRefundedPaymentStatus(item.status) || !item.refundPreview) return '';
+    const preview = item.refundPreview;
+    return [
+      this.i18n.translateParams('payment.history.refund.preview.amount', {
+        amount: this.formatSignedCurrency(
+          preview.refundableAmount,
+          preview.currency || item.currency || 'HUF',
+          '+'
+        )
+      }),
+      this.refundPolicyBasis(item)
+    ].filter(Boolean).join('\n');
   }
 
   private async findPaymentAsset(

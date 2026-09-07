@@ -64,7 +64,22 @@ export interface PaymentHistoryItemDto {
   refundRequestedAtIso?: string | null;
   canRequestRefund?: boolean;
   canApproveRefund?: boolean;
+  refundPreview?: PaymentRefundPreviewDto | null;
   paymentMethod?: SavedPaymentMethodDto | null;
+}
+
+export interface PaymentRefundPreviewDto {
+  paidAmount: number;
+  refundableAmount: number;
+  retainedAmount: number;
+  currency: string;
+  status: 'none' | 'not_eligible' | 'partial' | 'full' | string;
+  ruleId?: string | null;
+  ruleOffsetUnit?: 'hours' | 'days' | 'weeks' | 'months' | string | null;
+  ruleOffsetValue?: number | null;
+  refundKind?: 'full' | 'percent' | 'fixed_amount' | 'none' | string | null;
+  refundValue?: number | null;
+  ruleDescription?: string | null;
 }
 
 export interface PaymentHistoryPageDto extends PageResult<PaymentHistoryItemDto> {
