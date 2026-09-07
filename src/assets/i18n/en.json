@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.07.en.86",
+  "version": "2026.09.07.en.87",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2175,6 +2175,7 @@
     "payment.status.pending": "Pending",
     "payment.status.released": "Released",
     "payment.status.refunded": "Refunded",
+    "payment.history.original.payment": "Original payment",
     "payment.status.partially_refunded": "Partially refunded",
     "payment.status.requires_action": "Customer approval required",
     "payment.status.requires_capture": "Authorized, awaiting capture",

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.07.hu.86",
+  "version": "2026.09.07.hu.87",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2175,6 +2175,7 @@
     "payment.status.pending": "Függőben",
     "payment.status.released": "Felszabadítva",
     "payment.status.refunded": "Visszatérítve",
+    "payment.history.original.payment": "Eredeti fizetés",
     "payment.status.partially_refunded": "Részben visszatérítve",
     "payment.status.requires_action": "Felhasználói jóváhagyás szükséges",
     "payment.status.requires_capture": "Engedélyezve, terhelésre vár",

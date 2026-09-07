@@ -348,20 +348,19 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected historyRow(item: PaymentHistoryItemDto, withMenu = false): SingleRowData<PaymentHistoryItemDto> {
     const refunded = this.isRefundedPaymentStatus(item.status);
-    const displayedAmount = refunded
-      ? Number(item.refundPreview?.refundableAmount) || Number(item.amount) || 0
-      : Number(item.amount) || 0;
     const amount = this.formatSignedCurrency(
-      displayedAmount,
+      Number(item.amount) || 0,
       item.currency || 'HUF',
-      refunded || item.direction === 'income' ? '+' : '−'
+      item.direction === 'income' ? '+' : '−'
     );
     const date = new Date(item.createdAtIso);
-    const statusLabel = this.paymentStatusLabel(item.status);
+    const statusLabel = refunded
+      ? this.i18n.translate('payment.history.original.payment')
+      : this.paymentStatusLabel(item.status);
     return {
       id: item.id,
       title: amount,
-      surfaceTone: refunded ? 'accent' : item.direction === 'income' ? 'success' : 'danger',
+      surfaceTone: item.direction === 'income' ? 'success' : 'danger',
       subtitle: item.sourceId || this.i18n.translate('payment'),
       detail: Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
         year: 'numeric',
@@ -371,9 +370,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         minute: '2-digit',
         second: '2-digit'
       }),
-      icon: item.status === 'captured' ? 'check_circle' : refunded ? 'currency_exchange' : 'payments',
+      icon: item.status === 'captured' ? 'check_circle' : 'payments',
       avatarToneClass: `payment-history-avatar payment-history-avatar--${
-        item.status === 'failed' ? 'failed' : refunded ? 'refunded' : item.direction
+        item.status === 'failed' ? 'failed' : item.direction
       }`,
       badges: [
         {
@@ -384,14 +383,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         },
         {
           label: statusLabel,
-          tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : refunded ? 'accent' : 'muted',
+          tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : 'muted',
           className: item.status === 'captured'
             ? 'payment-history-status-badge--success'
             : item.status === 'failed'
               ? 'payment-history-status-badge--danger'
-              : refunded
-                ? 'payment-history-status-badge--refunded'
-                : null,
+              : null,
           position: 'top-right'
         },
         ...(item.refundRequestStatus === 'pending'
@@ -401,7 +398,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
               tone: 'warning' as const,
               position: 'inline' as const
             }]
-          : item.refundRequestStatus === 'approved'
+          : item.refundRequestStatus === 'approved' && !refunded
             ? [{
                 label: this.i18n.translate('payment.history.refund.approved'),
                 icon: 'currency_exchange',
@@ -412,6 +409,49 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       ],
       menuActions: withMenu ? this.paymentHistoryMenuActions(item) : [],
       eagerDetail: item
+    };
+  }
+
+  protected refundHistoryRow(item: PaymentHistoryItemDto): SingleRowData | null {
+    if (!this.isRefundedPaymentStatus(item.status)) return null;
+    const refundAmount = Number(item.refundPreview?.refundableAmount) || 0;
+    if (refundAmount <= 0) return null;
+    const payerRefund = item.direction === 'expense';
+    const date = new Date(item.refundedAtIso || item.refundRequestedAtIso || item.createdAtIso);
+    return {
+      id: `${item.id}:refund`,
+      title: this.formatSignedCurrency(
+        refundAmount,
+        item.refundPreview?.currency || item.currency || 'HUF',
+        payerRefund ? '+' : '−'
+      ),
+      surfaceTone: 'accent',
+      subtitle: item.sourceId || this.i18n.translate('payment'),
+      detail: Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }),
+      icon: 'currency_exchange',
+      avatarToneClass: 'payment-history-avatar payment-history-avatar--refunded',
+      badges: [
+        {
+          label: item.provider,
+          icon: item.provider.toLowerCase() === 'stripe' ? 'payment' : 'account_balance_wallet',
+          tone: item.provider.toLowerCase() === 'stripe' ? 'info' : 'accent',
+          position: 'inline'
+        },
+        {
+          label: this.paymentStatusLabel(item.status),
+          tone: 'accent',
+          className: 'payment-history-status-badge--refunded',
+          position: 'top-right'
+        }
+      ],
+      menuActions: []
     };
   }
 

@@ -9,6 +9,7 @@
 }
 
 .payment-methods-popup__list { flex: 1 1 auto; min-height: 0; height: 100%; }
+.payment-methods-popup__history-entry { display: grid; gap: .35rem; }
 .payment-methods-popup__history-totals { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .4rem; min-height: 1.9rem; font-size: .82rem; font-weight: 900; }
 .payment-methods-popup__history-total { display: inline-flex; align-items: center; min-height: 1.8rem; padding: .2rem .62rem; border: 1px solid currentColor; border-radius: 999px; white-space: nowrap; }
 .payment-methods-popup__history-total--expense { color: #c4313c; background: #fff1f2; }
