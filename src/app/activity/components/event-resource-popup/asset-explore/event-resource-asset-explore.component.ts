@@ -1413,6 +1413,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           throw new Error(this.i18n.translate('asset.borrow.error.payment'));
         }
         if (onlinePayment && session) {
+          const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+          if (!currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
+            throw new Error(this.i18n.translate('asset.borrow.error.payment'));
+          }
+          const pendingDialog: AssetExploreBorrowDialogState = {
+            ...currentDialog,
+            checkoutSessionId: session.id,
+            paymentStep: true,
+            busy: true,
+            error: null
+          };
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set(pendingDialog);
+          this.saveBorrowDraft(activeUser.id, context.subEvent.id, pendingDialog);
           await this.paymentAuthorization.completeCustomerAction(
             session,
             activeUser.id,
@@ -2901,6 +2914,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context) {
       return;
     }
+    const previousPendingActivity = this.resourcePendingActivityCount(context.subEvent);
     let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
@@ -2923,10 +2937,20 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       subEvent: nextSubEvent
     };
     this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, {
+      activityDelta: this.resourcePendingActivityCount(nextSubEvent) - previousPendingActivity
+    });
     if (persistResourceState) {
       this.persistResourceState(nextContext);
     }
+  }
+
+  private resourcePendingActivityCount(subEvent: ContractTypes.SubEventDTO): number {
+    return [
+      subEvent.carsPending,
+      subEvent.accommodationPending,
+      subEvent.suppliesPending
+    ].reduce((sum, value) => sum + Math.max(0, Math.trunc(Number(value) || 0)), 0);
   }
 
   private persistResourceState(context: ResourcePopupContext | null = this.resourcePopupStore.popupContextRef()): void {
