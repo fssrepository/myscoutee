@@ -730,6 +730,7 @@ export class UsersService extends BaseRouteModeService {
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
         notifications: Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
+        paymentRefundsPending: Math.max(0, Math.trunc(Number(user.activities?.paymentRefundsPending) || 0)),
         chat: {
           all: Math.max(0, Math.trunc(Number(user.activities?.chat?.all) || 0)),
           event: Math.max(0, Math.trunc(Number(user.activities?.chat?.event) || 0)),

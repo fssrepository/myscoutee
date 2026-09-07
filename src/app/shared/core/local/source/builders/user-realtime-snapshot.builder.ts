@@ -19,7 +19,8 @@ type LocalRealtimeCounterKey =
   | 'tickets'
   | 'contacts'
   | 'feedback'
-  | 'notifications';
+  | 'notifications'
+  | 'paymentRefundsPending';
 
 const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'game',
@@ -33,7 +34,8 @@ const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'tickets',
   'contacts',
   'feedback',
-  'notifications'
+  'notifications',
+  'paymentRefundsPending'
 ];
 
 export interface LocalUserRealtimeSnapshotState {
@@ -161,6 +163,7 @@ export class LocalUserRealtimeSnapshotBuilder {
         contacts: activities.contacts,
         feedback: activities.feedback,
         notifications: activities.notifications,
+        paymentRefundsPending: activities.paymentRefundsPending,
         chat: activities.chat ? { ...activities.chat } : undefined,
         event: activities.event ? { ...activities.event } : undefined,
         asset: activities.asset ? { ...activities.asset } : undefined,

@@ -55,12 +55,29 @@ export interface PaymentHistoryItemDto {
   fulfillmentKind?: string | null;
   checkoutSessionId?: string | null;
   createdAtIso: string;
+  recipientUserId?: string | null;
+  serviceContext?: 'asset' | 'event' | null;
+  contextEventId?: string | null;
+  contextSubEventId?: string | null;
+  contextAssetId?: string | null;
+  refundRequestStatus?: 'none' | 'pending' | 'approved' | 'rejected' | string | null;
+  refundRequestedAtIso?: string | null;
+  canRequestRefund?: boolean;
+  canApproveRefund?: boolean;
   paymentMethod?: SavedPaymentMethodDto | null;
 }
 
 export interface PaymentHistoryPageDto extends PageResult<PaymentHistoryItemDto> {
   spendingTotals: Record<string, number>;
   incomeTotals: Record<string, number>;
+  pendingRefundCount: number;
+}
+
+export interface PaymentHistoryMutationDto {
+  item: PaymentHistoryItemDto;
+  spendingTotals: Record<string, number>;
+  incomeTotals: Record<string, number>;
+  pendingRefundCount: number;
 }
 
 export interface PaymentMethodDataService {
@@ -79,4 +96,6 @@ export interface PaymentMethodDataService {
     signal?: AbortSignal
   ): Promise<PaymentHistoryPageDto>;
   queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto>;
+  requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto>;
+  approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto>;
 }

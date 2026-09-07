@@ -463,6 +463,7 @@ export class SideMenuComponent implements OnDestroy {
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
+      paymentRefundsPending: activityOverrides.paymentRefundsPending ?? activeUser.activities?.paymentRefundsPending ?? 0,
       chat: {
         all: activityOverrides.chat?.all ?? activeUser.activities?.chat?.all ?? 0,
         event: activityOverrides.chat?.event ?? activeUser.activities?.chat?.event ?? 0,
@@ -750,6 +751,7 @@ export class SideMenuComponent implements OnDestroy {
               label: 'payment.history.menu',
               icon: 'receipt_long',
               palette: 'green',
+              counter: this.menuUser()?.activities?.paymentRefundsPending || undefined,
               ariaLabel: 'payment.history.open',
               disabled: primaryDisabled
             }

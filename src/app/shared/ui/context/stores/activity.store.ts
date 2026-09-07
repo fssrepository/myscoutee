@@ -42,6 +42,7 @@ export type ActivityCounterKey =
   | 'contacts'
   | 'feedback'
   | 'notifications'
+  | 'paymentRefundsPending'
   | 'adminJobs'
   | 'adminMetrics';
 
@@ -58,6 +59,7 @@ export interface ActivityCounters {
   contacts: number;
   feedback: number;
   notifications?: number;
+  paymentRefundsPending?: number;
   chat?: ActivityChatCounters;
   event?: ActivityEventCounters;
   asset?: ActivityAssetCounters;
@@ -184,6 +186,7 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'contacts',
   'feedback',
   'notifications',
+  'paymentRefundsPending',
   'adminJobs',
   'adminMetrics'
 ];

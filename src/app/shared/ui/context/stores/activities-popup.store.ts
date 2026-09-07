@@ -26,6 +26,8 @@ export interface EventChatHeaderState extends EventChatPopupRequest {
   lastMessage?: string | null;
   lastSenderId?: string | null;
   ownerUserId?: string | null;
+  serviceContext?: 'event' | 'asset' | 'notification' | null;
+  assetId?: string | null;
   eventId?: string | null;
   subEventId?: string | null;
   groupId?: string | null;
@@ -73,6 +75,8 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     lastMessage: chat.lastMessage,
     lastSenderId: chat.lastSenderId,
     ownerUserId: chat.ownerUserId ?? null,
+    serviceContext: chat.serviceContext ?? null,
+    assetId: chat.assetId ?? null,
     eventId: chat.eventId ?? null,
     subEventId: chat.subEventId ?? null,
     groupId: chat.groupId ?? null,

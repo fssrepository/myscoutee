@@ -782,6 +782,8 @@ export class EventChatPopupComponent implements OnDestroy {
       contextStartAtIso: header.contextStartAtIso ?? null,
       contextEndAtIso: header.contextEndAtIso ?? null,
       channelType: header.channelType ?? undefined,
+      serviceContext: header.serviceContext ?? undefined,
+      assetId: `${header.assetId ?? ''}`.trim() || undefined,
       ownerId: ownerId || undefined,
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
       subEventId: `${header.subEventId ?? ''}`.trim() || undefined,
@@ -2717,7 +2719,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.schedulePendingMessageTimeout(messageId);
     this.closeTransientMessageUi();
 
-    void this.chatsService.sendChatMessageWithAttachments(
+    void this.sendPersistedChatMessageWithAttachments(
       session.item,
       retriedMessage.text,
       (retriedMessage.attachments ?? []).map(attachment => ({ ...attachment })),
@@ -2951,7 +2953,13 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.chatsService.sendChatMessageWithAttachments(session.item, text, [], optimisticMessage.clientId, optimisticMessage.replyTo)
+    void this.sendPersistedChatMessageWithAttachments(
+      session.item,
+      text,
+      [],
+      optimisticMessage.clientId,
+      optimisticMessage.replyTo
+    )
       .then(message => {
         if (this.loadedSessionKey !== sessionKey) {
           return;
@@ -2966,6 +2974,61 @@ export class EventChatPopupComponent implements OnDestroy {
         }
         this.cdr.markForCheck();
       });
+  }
+
+  private async sendPersistedChatMessageWithAttachments(
+    chat: ChatDTO,
+    text: string,
+    attachments: readonly ContractTypes.ChatMessageAttachment[],
+    clientId?: string,
+    replyTo?: ContractTypes.ChatMessageDto['replyTo']
+  ): Promise<ContractTypes.ChatMessageDto | null> {
+    const persistedChat = await this.ensureServiceChatBeforeFirstMessage(chat);
+    return this.chatsService.sendChatMessageWithAttachments(
+      persistedChat,
+      text,
+      attachments,
+      clientId,
+      replyTo
+    );
+  }
+
+  private async ensureServiceChatBeforeFirstMessage(chat: ChatDTO): Promise<ChatDTO> {
+    if (chat.serviceContext !== 'event' && chat.serviceContext !== 'asset') {
+      return chat;
+    }
+    const activeUserId = this.activeUserId().trim();
+    const targetUserId = (chat.memberIds ?? [])
+      .map(memberId => `${memberId ?? ''}`.trim())
+      .find(memberId => memberId && memberId !== activeUserId) ?? '';
+    const eventId = `${chat.eventId ?? (chat.serviceContext === 'event' ? chat.ownerId : '') ?? ''}`.trim();
+    const assetId = `${chat.assetId ?? (chat.serviceContext === 'asset' ? chat.ownerId : '') ?? ''}`.trim();
+    const subEventId = `${chat.subEventId ?? ''}`.trim();
+    if (!activeUserId || !targetUserId || !eventId || (chat.serviceContext === 'asset' && (!assetId || !subEventId))) {
+      throw new Error('Service chat context is incomplete.');
+    }
+    const persisted = await this.chatsService.ensureServiceChat({
+      serviceContext: chat.serviceContext,
+      eventId,
+      subEventId: subEventId || null,
+      assetId: assetId || null,
+      targetUserId,
+      title: chat.title,
+      lastMessage: chat.lastMessage,
+      avatarSource: chat.avatar
+    });
+    if (!persisted) {
+      throw new Error('The service chat could not be created.');
+    }
+    const merged: ChatDTO = {
+      ...persisted,
+      serviceContext: chat.serviceContext,
+      assetId: assetId || undefined,
+      eventId: eventId || persisted.eventId,
+      subEventId: subEventId || persisted.subEventId
+    };
+    this.patchCurrentEventChatHeader(() => eventChatHeaderStateFromChat(merged));
+    return merged;
   }
 
   private async sendLocalImageAttachment(file: File): Promise<void> {
@@ -3012,7 +3075,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     try {
       const persistedAttachment = await this.resolvePersistableImageAttachment(session.item, imageAttachment, file);
-      const persistedMessage = await this.chatsService.sendChatMessageWithAttachments(
+      const persistedMessage = await this.sendPersistedChatMessageWithAttachments(
         session.item,
         caption,
         [persistedAttachment],
@@ -3054,7 +3117,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.chatsService.sendChatMessageWithAttachments(
+    void this.sendPersistedChatMessageWithAttachments(
       session.item,
       caption,
       [{ ...attachment }],

@@ -119,7 +119,7 @@ export class ActivitySubEventResourceInfoCardConverter {
     if (this.hasActiveUserBorrowRequest(card, options)) {
       actions.push('paymentSummary');
     }
-    actions.push('askOrganizer');
+    actions.push(card.sourceAssetId ? 'askAssetOwner' : 'askOrganizer');
     actions.push('shareAsset');
     if (this.canReportResourceManager(card, options)) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');

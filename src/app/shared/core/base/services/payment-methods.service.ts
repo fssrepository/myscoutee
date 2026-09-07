@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type { ListQuery } from '../../contracts/list.interface';
 import type {
   PaymentHistoryPageDto,
+  PaymentHistoryMutationDto,
   PaymentMethodRegistrationDto,
   PaymentMethodRegistrationRequestDto,
   SavedPaymentMethodsPageDto
@@ -52,6 +53,14 @@ export class PaymentMethodsService extends BaseRouteModeService {
 
   queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto> {
     return this.service.queryAllHistory(userId, query, signal);
+  }
+
+  requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
+    return this.service.requestRefund(userId, paymentId, signal);
+  }
+
+  approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
+    return this.service.approveRefund(userId, paymentId, signal);
   }
 
   private get service(): LocalPaymentMethodsService | HttpPaymentMethodsService {

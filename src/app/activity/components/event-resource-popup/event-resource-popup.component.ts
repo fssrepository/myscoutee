@@ -475,7 +475,7 @@ export class EventResourcePopupComponent {
       this.openResourceAssetView(card, 'edit', new Event('click'));
       return;
     }
-    if (event.actionId === 'askOrganizer') {
+    if (event.actionId === 'askOrganizer' || event.actionId === 'askAssetOwner') {
       void this.openResourceServiceChat(card, new Event('click'));
       return;
     }
@@ -573,27 +573,29 @@ export class EventResourcePopupComponent {
     if (!targetUserId || targetUserId === activeUserId) {
       return;
     }
-    const titlePrefix = sourceCard ? 'Asset Service' : 'Event Service';
-    const chat = await this.chatsService.ensureServiceChat({
-      serviceContext: sourceCard ? 'asset' : 'event',
-      eventId,
-      subEventId: context.subEvent.id,
-      assetId: sourceCard?.id ?? null,
-      targetUserId,
-      title: `${titlePrefix} · ${card.title}`,
+    const serviceContext = sourceCard ? 'asset' as const : 'event' as const;
+    const sourceId = sourceCard?.id ?? eventId;
+    const chat: ChatDTO = {
+      id: sourceCard
+        ? `c-service-asset-${sourceCard.id}-${context.subEvent.id}-${activeUserId}`
+        : `c-service-event-${eventId}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(sourceCard?.ownerName || target?.name || sourceCard?.title || card.title),
+      title: sourceCard ? `Ask Asset Owner · ${card.title}` : `Contact Organizer · ${card.title}`,
       lastMessage: sourceCard
-        ? `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`
+        ? `Service chat with the asset owner for ${card.title}.`
         : `Service chat with the organizer for ${context.parentTitle}.`,
-      avatarSource: sourceCard?.ownerName || target?.name || sourceCard?.title || card.title
-    });
-    if (!chat) {
-      this.dialogStore.open({
-        title: 'Unable to open chat',
-        message: 'The service chat could not be created. Please try again.',
-        confirmLabel: 'OK'
-      });
-      return;
-    }
+      lastSenderId: targetUserId,
+      memberIds: [activeUserId, targetUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext,
+      assetId: sourceCard?.id,
+      ownerId: sourceId,
+      ownerUserId: activeUserId,
+      eventId,
+      subEventId: context.subEvent.id
+    };
     await this.openStackedResourceServiceChat(chat);
   }
 

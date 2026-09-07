@@ -214,6 +214,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       contacts: user.activities?.contacts ?? 0,
       feedback: user.activities?.feedback ?? 0,
       notifications: user.activities?.notifications ?? 0,
+      paymentRefundsPending: user.activities?.paymentRefundsPending ?? 0,
       chat: cloneChatCounters(user.activities?.chat),
       event: cloneEventCounters(user.activities?.event),
       asset: cloneAssetCounters(user.activities?.asset),

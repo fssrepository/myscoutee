@@ -1988,22 +1988,23 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       runtimeKind: context.subEvent.runtimeKind,
       eventId: context.subEvent.eventId
     }).eventId;
-    const chat = await this.chatsService.ensureServiceChat({
+    const chat: ChatDTO = {
+      id: `c-service-asset-${card.id}-${context.subEvent.id}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(card.ownerName || card.title),
+      title: `Ask Asset Owner · ${card.title}`,
+      lastMessage: `Service chat with the asset owner for ${card.title}.`,
+      lastSenderId: ownerUserId,
+      memberIds: [activeUserId, ownerUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
       serviceContext: 'asset',
-      eventId,
-      subEventId: context.subEvent.id,
       assetId: card.id,
-      targetUserId: ownerUserId,
-      title: `Asset Service · ${card.title}`,
-      lastMessage: `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`,
-      avatarSource: card.ownerName || card.title
-    });
-    if (!chat) {
-      this.dialogStore.openInfo('The service chat could not be created. Please try again.', {
-        title: 'Unable to open chat'
-      });
-      return;
-    }
+      ownerId: card.id,
+      ownerUserId: activeUserId,
+      eventId,
+      subEventId: context.subEvent.id
+    };
     await this.openStackedServiceChat(chat);
   }
 
