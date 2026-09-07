@@ -711,7 +711,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterPatch(
       current,
       patch,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
   }
 
@@ -722,7 +722,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterDeltas(
       current,
       deltas,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
   }
 
@@ -841,7 +841,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         cars: normalizeCounter(asset?.cars ?? cars),
         accommodation: normalizeCounter(asset?.accommodation ?? accommodation),
         supplies: normalizeCounter(asset?.supplies ?? supplies),
-        tickets: normalizeCounter(asset?.tickets ?? tickets)
+        tickets: normalizeCounter(asset?.tickets ?? tickets),
+        carsPending: normalizeCounter(asset?.carsPending),
+        accommodationPending: normalizeCounter(asset?.accommodationPending),
+        suppliesPending: normalizeCounter(asset?.suppliesPending)
       },
       eventFeedback: {
         ownEvents: normalizeCounter(eventFeedback?.ownEvents),

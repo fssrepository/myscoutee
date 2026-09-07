@@ -35,6 +35,8 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     return 1;
   });
   const signalUserTicketBucketCount = vi.fn();
+  const emitActivityResourceMemberDeltaSync = vi.fn();
+  const patchUserCounterDeltas = vi.fn();
   const syncTickets = vi.fn();
 
   beforeEach(() => {
@@ -43,6 +45,8 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     dbRevision.set(0);
     peekTicketCountByUser.mockClear();
     signalUserTicketBucketCount.mockClear();
+    emitActivityResourceMemberDeltaSync.mockClear();
+    patchUserCounterDeltas.mockClear();
     syncTickets.mockReset().mockResolvedValue({ upserts: [], removedIds: [], total: 0 });
     TestBed.configureTestingModule({
       providers: [
@@ -55,7 +59,8 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
           useValue: {
             activeUserId: activeUserId.asReadonly(),
             activeUserProfile: () => activeUserProfile(),
-            getActiveUserId: () => activeUserId()
+            getActiveUserId: () => activeUserId(),
+            getUserProfile: () => activeUserProfile()
           }
         },
         {
@@ -66,7 +71,9 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
           provide: ActivityStore,
           useValue: {
             getUserCounterOverrides: () => ({}),
-            signalUserTicketBucketCount
+            signalUserTicketBucketCount,
+            emitActivityResourceMemberDeltaSync,
+            patchUserCounterDeltas
           }
         },
         {
@@ -223,6 +230,86 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     expect(config.cacheable.identity(row, 0, {})).toBe('events:event-1');
   });
 
+  it('shows a category-wide Pending toggle before Add and filters assets with pending requests', async () => {
+    activeUserProfile.set({
+      id: 'owner-1',
+      activities: {
+        asset: {
+          carsPending: 2,
+          accommodationPending: 2,
+          suppliesPending: 2
+        }
+      }
+    } as UserDto);
+    const assetStore = TestBed.inject(AssetStore);
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    TestBed.tick();
+    await Promise.resolve();
+    const types = [
+      AppConstants.ASSET_TYPE_TRANSPORT,
+      AppConstants.ASSET_TYPE_ACCOMMODATION,
+      AppConstants.ASSET_TYPE_SUPPLIES
+    ];
+    assetStore.applyAssetCards(types.flatMap((type, index) => [
+      ownedAsset(`pending-${index}`, type, [
+        ownedAssetRequest(`request-${index}-1`, 'pending'),
+        ownedAssetRequest(`request-${index}-2`, 'pending')
+      ]),
+      ownedAsset(`clear-${index}`, type, [ownedAssetRequest(`accepted-${index}`, 'accepted')])
+    ]), { reloadList: false });
+    assetStore.openAssetPopup(AppConstants.ASSET_TYPE_TRANSPORT);
+
+    const controls = (component as any).assetPopupToolbarControls();
+
+    expect(controls.map((control: { id: string }) => control.id)).toEqual([
+      'asset-filter',
+      'asset-pending-only',
+      'asset-add'
+    ]);
+    expect(controls[1]).toMatchObject({ palette: 'rose', counter: 2, active: false });
+    for (const type of types) {
+      expect((component as any).assetPendingRequestCount(type)).toBe(2);
+    }
+
+    (component as any).toggleAssetPendingOnly(new Event('click'));
+    const page = await (component as any).loadOwnedAssetSmartListPage({
+      page: 0,
+      pageSize: 18,
+      filters: {
+        userId: 'owner-1',
+        type: AppConstants.ASSET_TYPE_TRANSPORT,
+        pendingOnly: true
+      }
+    });
+
+    expect(page.total).toBe(1);
+    expect(page.items.map((card: { id: string }) => card.id)).toEqual(['pending-0']);
+  });
+
+  it('publishes the exact outward pending delta when an Asset request is resolved', () => {
+    const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
+    const request = ownedAssetRequest('request-1', 'pending');
+    const previousCard = ownedAsset('transport-1', AppConstants.ASSET_TYPE_TRANSPORT, [request]);
+    const savedCard = ownedAsset('transport-1', AppConstants.ASSET_TYPE_TRANSPORT, [
+      { ...request, status: 'accepted' }
+    ]);
+
+    (component as any).emitResolvedAssetPendingDelta(previousCard, request, savedCard);
+
+    expect(emitActivityResourceMemberDeltaSync).toHaveBeenCalledWith({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'transport-1',
+      resourceType: AppConstants.ASSET_TYPE_TRANSPORT,
+      pendingMemberDelta: -1
+    });
+    expect(patchUserCounterDeltas).toHaveBeenCalledWith(
+      'owner-1',
+      { asset: { carsPending: -1 } },
+      undefined
+    );
+  });
+
   it('publishes the saved main-event assignment metrics before closing the basket', () => {
     const user = {
       id: 'owner-1',
@@ -342,5 +429,42 @@ function scanPayload(): AssetContracts.TicketScanPayloadDTO {
     eventDateLabel: 'Tonight',
     issuedAtIso: '2030-04-18T19:00:00.000Z',
     usedAtIso: '2030-04-18T18:45:00.000Z'
+  };
+}
+
+function ownedAssetRequest(id: string, status: 'pending' | 'accepted'): any {
+  return {
+    id,
+    userId: 'borrower-1',
+    name: 'Borrower One',
+    initials: 'BO',
+    gender: 'man',
+    status,
+    note: '',
+    requestKind: 'borrow',
+    requestedAtIso: '2030-04-18T18:00:00.000Z',
+    booking: {
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      quantity: 1,
+      acceptedPolicyIds: []
+    },
+    menuActions: []
+  };
+}
+
+function ownedAsset(id: string, type: AppConstants.AssetType, requests: any[]): any {
+  return {
+    id,
+    type,
+    title: id,
+    subtitle: '',
+    city: 'Austin',
+    capacityTotal: 3,
+    quantity: 3,
+    description: '',
+    imageUrl: '',
+    ownerUserId: 'owner-1',
+    requests
   };
 }

@@ -607,7 +607,10 @@ export class HttpUsersService implements UserService {
           cars: 0,
           accommodation: 0,
           supplies: 0,
-          tickets: 0
+          tickets: 0,
+          carsPending: 0,
+          accommodationPending: 0,
+          suppliesPending: 0
         },
         eventFeedback: {
           ownEvents: 0,
@@ -668,7 +671,10 @@ export class HttpUsersService implements UserService {
         cars: this.normalizeInitialCounterValue(overrides?.asset?.cars, user.activities?.asset?.cars),
         accommodation: this.normalizeInitialCounterValue(overrides?.asset?.accommodation, user.activities?.asset?.accommodation),
         supplies: this.normalizeInitialCounterValue(overrides?.asset?.supplies, user.activities?.asset?.supplies),
-        tickets: this.normalizeInitialCounterValue(overrides?.asset?.tickets, user.activities?.asset?.tickets)
+        tickets: this.normalizeInitialCounterValue(overrides?.asset?.tickets, user.activities?.asset?.tickets),
+        carsPending: this.normalizeInitialCounterValue(overrides?.asset?.carsPending, user.activities?.asset?.carsPending),
+        accommodationPending: this.normalizeInitialCounterValue(overrides?.asset?.accommodationPending, user.activities?.asset?.accommodationPending),
+        suppliesPending: this.normalizeInitialCounterValue(overrides?.asset?.suppliesPending, user.activities?.asset?.suppliesPending)
       },
       eventFeedback: {
         ownEvents: this.normalizeInitialCounterValue(overrides?.eventFeedback?.ownEvents, user.activities?.eventFeedback?.ownEvents),

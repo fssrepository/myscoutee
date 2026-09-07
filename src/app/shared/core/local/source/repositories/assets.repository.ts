@@ -8,6 +8,10 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 import { LocalUsersRepository } from './users.repository';
 import {
+  USERS_TABLE_NAME,
+  type UsersRecordCollection
+} from '../entity/user.entity';
+import {
   ASSET_REQUESTS_TABLE_NAME,
   ASSETS_TABLE_NAME,
   type AssetMemberRequestRecord,
@@ -278,10 +282,16 @@ export class LocalAssetsRepository {
       const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
       const existing = table.byId[incomingRecord.id];
       const nextRecord = this.withResolvedAssetRelevance(this.mergeAssetRecord(existing, incomingRecord, nowMs, 'detail'));
+      const nextTable = this.upsertRecordCollection(table, nextRecord);
       saved = nextRecord;
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, nextRecord),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
           requestTable,
           nextRecord,
@@ -357,6 +367,11 @@ export class LocalAssetsRepository {
       }
       return {
         ...state,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          table,
+          [normalizedAssetOwnerUserId]
+        ),
         [ASSETS_TABLE_NAME]: table,
         [ASSET_REQUESTS_TABLE_NAME]: requestTable
       };
@@ -512,6 +527,11 @@ export class LocalAssetsRepository {
       }
       return {
         ...state,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
         [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: nextRequestTable
       };
@@ -533,9 +553,15 @@ export class LocalAssetsRepository {
       if (!current || current.ownerUserId !== normalizedUserId) {
         return state;
       }
+      const nextTable = this.deleteRecordCollection(table, normalizedAssetId);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.deleteRecordCollection(table, normalizedAssetId),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: this.deleteAssetRequestCollection(requestTable, normalizedAssetId)
       };
     });
@@ -583,9 +609,15 @@ export class LocalAssetsRepository {
       const nextIdsByOwnerKey = this.cloneActivityOwnerKeyIndex(membersTable.idsByOwnerKey);
       nextIdsByOwnerKey[ownerKey] = (nextIdsByOwnerKey[ownerKey] ?? [])
         .filter(memberId => !releasedMemberIds.has(memberId));
+      const nextTable = this.upsertRecordCollection(table, saved);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
           requestTable,
           saved,
@@ -625,9 +657,15 @@ export class LocalAssetsRepository {
         updatedMs: Date.now(),
         updatedAtIso: new Date().toISOString()
       });
+      const nextTable = this.upsertRecordCollection(table, saved);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId, normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable
       };
     });
     return saved ? this.toAssetDto(saved, normalizedUserId) : null;
@@ -664,9 +702,16 @@ export class LocalAssetsRepository {
         updatedMs: now.getTime(),
         updatedAtIso: now.toISOString()
       });
+      const nextTable = this.upsertRecordCollection(table, saved);
+      const nextState = this.upsertDemoAssetManagerRecord(state, saved, normalizedUserId, normalizedTargetUserId, now);
       return {
-        ...this.upsertDemoAssetManagerRecord(state, saved, normalizedUserId, normalizedTargetUserId, now),
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
+        ...nextState,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          nextState[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable
       };
     });
     return saved ? this.toAssetDto(saved, normalizedUserId) : null;
@@ -727,9 +772,15 @@ export class LocalAssetsRepository {
           updatedAtIso: now.toISOString()
         };
       }
+      const nextTable = this.upsertRecordCollection(table, saved);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextMembersById,
           ids: [...membersTable.ids],
@@ -1550,6 +1601,61 @@ export class LocalAssetsRepository {
       byId: nextById,
       ids: nextIds,
       idsByOwnerUserId: nextIdsByOwnerUserId
+    };
+  }
+
+  private synchronizeOwnerAssetPendingCounters(
+    users: UsersRecordCollection,
+    assets: AssetsRecordCollection,
+    ownerUserIds: readonly string[]
+  ): UsersRecordCollection {
+    const nextById = { ...users.byId };
+    for (const ownerUserId of new Set(ownerUserIds.map(id => id.trim()).filter(Boolean))) {
+      const user = nextById[ownerUserId];
+      if (!user) {
+        continue;
+      }
+      let carsPending = 0;
+      let accommodationPending = 0;
+      let suppliesPending = 0;
+      for (const assetId of assets.idsByOwnerUserId[ownerUserId] ?? []) {
+        const asset = assets.byId[assetId];
+        if (!asset || this.isSuppressedAssetStatus(asset.status)) {
+          continue;
+        }
+        const pending = asset.requests.filter(request => (
+          request.recordStatus !== 'D'
+          && request.status === 'pending'
+          && request.requestKind !== 'manual'
+        )).length;
+        switch (asset.type) {
+          case 'Transport':
+            carsPending += pending;
+            break;
+          case 'Accommodation':
+            accommodationPending += pending;
+            break;
+          case 'Supplies':
+            suppliesPending += pending;
+            break;
+        }
+      }
+      nextById[ownerUserId] = {
+        ...user,
+        activities: {
+          ...user.activities,
+          asset: {
+            ...(user.activities.asset ?? {}),
+            carsPending,
+            accommodationPending,
+            suppliesPending
+          }
+        }
+      };
+    }
+    return {
+      byId: nextById,
+      ids: [...users.ids]
     };
   }
 

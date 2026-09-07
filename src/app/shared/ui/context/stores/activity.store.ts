@@ -101,6 +101,9 @@ export interface ActivityAssetCounters {
   accommodation: number;
   supplies: number;
   tickets: number;
+  carsPending: number;
+  accommodationPending: number;
+  suppliesPending: number;
 }
 
 export interface ActivityEventFeedbackCounters {
@@ -579,7 +582,7 @@ export class ActivityStore {
       delta.asset,
       currentOverrides.asset,
       baseCounters?.asset,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
     if (asset) {
       normalizedPatch.asset = asset;

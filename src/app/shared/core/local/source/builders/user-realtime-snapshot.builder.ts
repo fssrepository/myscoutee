@@ -242,7 +242,10 @@ export class LocalUserRealtimeSnapshotBuilder {
       cars: this.count(current.asset?.cars),
       accommodation: this.count(current.asset?.accommodation),
       supplies: this.count(current.asset?.supplies),
-      tickets: this.count(current.asset?.tickets) + this.count(increments.tickets)
+      tickets: this.count(current.asset?.tickets) + this.count(increments.tickets),
+      carsPending: this.count(current.asset?.carsPending),
+      accommodationPending: this.count(current.asset?.accommodationPending),
+      suppliesPending: this.count(current.asset?.suppliesPending)
     };
     next.eventFeedback = {
       ownEvents: this.count(current.eventFeedback?.ownEvents),

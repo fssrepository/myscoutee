@@ -193,6 +193,9 @@ export interface UserAssetCountersDto {
   accommodation?: number;
   supplies?: number;
   tickets?: number;
+  carsPending?: number;
+  accommodationPending?: number;
+  suppliesPending?: number;
 }
 
 export interface UserAssetCounterDeltasDto {
@@ -200,6 +203,9 @@ export interface UserAssetCounterDeltasDto {
   accommodation?: number;
   supplies?: number;
   tickets?: number;
+  carsPending?: number;
+  accommodationPending?: number;
+  suppliesPending?: number;
 }
 
 export interface UserEventFeedbackCountersDto {

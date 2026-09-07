@@ -260,7 +260,10 @@ export function cloneAssetCounters(counters: Partial<ActivityAssetCounters> | un
     cars: normalizeCounterValue(Number(counters?.cars) || 0),
     accommodation: normalizeCounterValue(Number(counters?.accommodation) || 0),
     supplies: normalizeCounterValue(Number(counters?.supplies) || 0),
-    tickets: normalizeCounterValue(Number(counters?.tickets) || 0)
+    tickets: normalizeCounterValue(Number(counters?.tickets) || 0),
+    carsPending: normalizeCounterValue(Number(counters?.carsPending) || 0),
+    accommodationPending: normalizeCounterValue(Number(counters?.accommodationPending) || 0),
+    suppliesPending: normalizeCounterValue(Number(counters?.suppliesPending) || 0)
   };
 }
 

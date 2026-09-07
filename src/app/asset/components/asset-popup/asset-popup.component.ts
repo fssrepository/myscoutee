@@ -109,6 +109,7 @@ interface AssetTicketListFilters {
 interface OwnedAssetListFilters {
   userId?: string;
   type?: AppConstants.AssetType;
+  pendingOnly?: boolean;
   refreshToken?: number;
 }
 
@@ -173,6 +174,7 @@ export class AssetPopupComponent {
   private readonly explanationGuide = inject(ExplanationGuideService);
   protected showSupplyRequestList = false;
   protected selectedSupplyAssetId: string | null = null;
+  protected assetPendingOnly = false;
   protected supplyRequestFilter: AssetSupplyRequestFilter = 'all';
   protected supplyRequestBusyKey = '';
   protected readonly cancelOwnedAssetDelete = (): void => this.assetStore.cancelAssetDelete();
@@ -207,8 +209,12 @@ export class AssetPopupComponent {
   protected readonly assetSmartListConfig: SmartListConfig<AppDTOs.AssetDTO, OwnedAssetListFilters> = {
     pageSize: 18,
     defaultView: 'list',
-    emptyLabel: query => this.ownedAssetEmptyLabelKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
-    emptyDescription: query => this.ownedAssetEmptyDescriptionKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
+    emptyLabel: query => query.filters?.pendingOnly === true
+      ? 'No pending asset requests'
+      : this.ownedAssetEmptyLabelKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
+    emptyDescription: query => query.filters?.pendingOnly === true
+      ? 'Pending borrow requests for this asset category will appear here.'
+      : this.ownedAssetEmptyDescriptionKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
     headerProgress: {
       enabled: true,
       state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
@@ -430,6 +436,18 @@ export class AssetPopupComponent {
         compactOnMobile: true
       });
     } else {
+      const pendingCount = this.assetPendingRequestCount();
+      controls.push({
+        id: 'asset-pending-only',
+        align: 'end',
+        icon: 'pending_actions',
+        label: 'Pending only',
+        ariaLabel: this.assetPendingOnly ? 'Show all assets' : 'Show assets with pending requests only',
+        palette: 'rose',
+        active: this.assetPendingOnly,
+        counter: pendingCount > 0 ? pendingCount : null,
+        compactOnMobile: true
+      });
       controls.push({
         id: 'asset-add',
         align: 'end',
@@ -445,6 +463,9 @@ export class AssetPopupComponent {
     switch (event.action.id) {
       case 'asset-add':
         this.openAssetEditorCreate();
+        return;
+      case 'asset-pending-only':
+        this.toggleAssetPendingOnly(event.sourceEvent);
         return;
       case 'ticket-scan':
         this.openTicketScannerPopup(event.sourceEvent);
@@ -465,6 +486,33 @@ export class AssetPopupComponent {
     }
     const card = this.assetStore.findAsset(pendingCardId);
     return card ? `Delete ${card.title}?` : 'Delete this item?';
+  }
+
+  protected assetPendingRequestCount(type = this.currentAssetSmartListType()): number {
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.activeUserId().trim();
+    const source = this.userProfileStore.getUserProfile(ownerUserId)
+      ?? this.userProfileStore.activeUserProfile();
+    const assetCounters = this.activityStore.getUserCounterOverrides(ownerUserId).asset
+      ?? source?.activities?.asset;
+    switch (type) {
+      case AppConstants.ASSET_TYPE_TRANSPORT:
+        return this.normalizeAssetFilterCount(assetCounters?.carsPending);
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
+        return this.normalizeAssetFilterCount(assetCounters?.accommodationPending);
+      case AppConstants.ASSET_TYPE_SUPPLIES:
+        return this.normalizeAssetFilterCount(assetCounters?.suppliesPending);
+      default:
+        return 0;
+    }
+  }
+
+  private toggleAssetPendingOnly(event?: Event): void {
+    event?.stopPropagation();
+    this.assetPendingOnly = !this.assetPendingOnly;
+    this.appMenuDispatcher.close();
+    this.syncSmartListQueries();
+    this.cdr.markForCheck();
   }
 
   protected assetAssignBasketCount(): number {
@@ -744,6 +792,7 @@ export class AssetPopupComponent {
     if (!existing) {
       return;
     }
+    const previousRequest = existing.requests.find(request => request.id === normalizedRequestId) ?? null;
 
     let nextQuantity = AssetCardBuilder.storedQuantityValue(existing);
     const nextRequests = existing.requests
@@ -797,6 +846,53 @@ export class AssetPopupComponent {
     if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
       this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
     }
+    this.emitResolvedAssetPendingDelta(existing, previousRequest, savedCard);
+  }
+
+  private emitResolvedAssetPendingDelta(
+    previousCard: AppDTOs.AssetDTO,
+    previousRequest: AppDTOs.AssetMemberRequestDTO | null,
+    savedCard: AppDTOs.AssetDTO
+  ): void {
+    if (!previousRequest || !this.isPendingAssetRequest(previousRequest)) {
+      return;
+    }
+    const stillPending = savedCard.requests.some(request => (
+      request.id === previousRequest.id && this.isPendingAssetRequest(request)
+    ));
+    const ownerId = `${previousRequest.booking?.eventId ?? ''}`.trim();
+    const subEventId = `${previousRequest.booking?.subEventId ?? ''}`.trim();
+    if (stillPending || !ownerId || !subEventId) {
+      return;
+    }
+    this.activityStore.emitActivityResourceMemberDeltaSync({
+      ownerId,
+      subEventId,
+      assetId: previousCard.id,
+      resourceType: previousCard.type,
+      pendingMemberDelta: -1
+    });
+    const assetPendingDelta = previousCard.type === AppConstants.ASSET_TYPE_TRANSPORT
+      ? { carsPending: -1 }
+      : previousCard.type === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? { accommodationPending: -1 }
+        : previousCard.type === AppConstants.ASSET_TYPE_SUPPLIES
+          ? { suppliesPending: -1 }
+          : null;
+    const assetOwnerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.activeUserId().trim();
+    if (assetPendingDelta && assetOwnerUserId) {
+      this.activityStore.patchUserCounterDeltas(
+        assetOwnerUserId,
+        { asset: assetPendingDelta },
+        this.userProfileStore.getUserProfile(assetOwnerUserId)?.activities
+          ?? this.userProfileStore.activeUserProfile()?.activities
+      );
+    }
+  }
+
+  private isPendingAssetRequest(request: AppDTOs.AssetMemberRequestDTO): boolean {
+    return request.status === 'pending' && request.requestKind !== 'manual';
   }
 
   private async promoteAssetRequestToManager(assetId: string, requestId: string): Promise<void> {
@@ -1775,6 +1871,7 @@ export class AssetPopupComponent {
       filters: {
         userId: this.userProfileStore.activeUserId().trim(),
         type: filter === AppConstants.ASSET_FILTER_TICKET ? AppConstants.ASSET_TYPE_TRANSPORT : filter,
+        pendingOnly: filter === AppConstants.ASSET_FILTER_TICKET ? false : this.assetPendingOnly,
         refreshToken: this.assetStore.assetListReloadRevision()
       }
     };
@@ -1842,6 +1939,7 @@ export class AssetPopupComponent {
       return;
     }
     this.appMenuDispatcher.close();
+    this.assetPendingOnly = false;
     this.assetStore.closeAssetPopup();
     this.assetPopupStore.resetTicketState();
     this.clearAssetsExplanationContext();
@@ -2475,7 +2573,8 @@ export class AssetPopupComponent {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     const assetType = this.currentAssetSmartListType();
     const basketMode = this.isBasketMode();
-    const assetKey = `${activeUserId}:${assetType}:${basketMode ? 'basket' : 'assets'}:${this.assetStore.assetListReloadRevision()}`;
+    const pendingOnly = !basketMode && !this.assetStore.ticketPopup() && this.assetPendingOnly;
+    const assetKey = `${activeUserId}:${assetType}:${basketMode ? 'basket' : pendingOnly ? 'pending' : 'assets'}:${this.assetStore.assetListReloadRevision()}`;
     if (assetKey !== this.assetSmartListQueryKey) {
       this.assetSmartListQueryKey = assetKey;
       this.assetSmartListQueryRevision += 1;
@@ -2483,6 +2582,7 @@ export class AssetPopupComponent {
         filters: {
           userId: activeUserId,
           type: assetType,
+          pendingOnly,
           refreshToken: this.assetSmartListQueryRevision
         }
       };
@@ -2615,12 +2715,13 @@ export class AssetPopupComponent {
     const selectedAssetKey = this.isBasketMode()
       ? this.assetAssignBasketCards().map(card => card.id).join('|')
       : '';
-    const contextKey = `${this.userProfileStore.activeUserId().trim()}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : 'assets'}`;
+    const pendingOnly = !this.isBasketMode() && this.assetPendingOnly;
+    const contextKey = `${this.userProfileStore.activeUserId().trim()}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : pendingOnly ? 'pending' : 'assets'}`;
     this.applyVisibleOwnedAssetPatch(
       this.assetStore.syncVisibleAssetList({
         active,
         contextKey,
-        cards: this.orderedOwnedAssetCards(assetType),
+        cards: this.orderedOwnedAssetCards(assetType, pendingOnly),
         renderedCount: this.assetSmartList?.itemsSnapshot().length ?? 0
       })
     );
@@ -2636,11 +2737,14 @@ export class AssetPopupComponent {
     });
   }
 
-  private orderedOwnedAssetCards(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {
+  private orderedOwnedAssetCards(type: AppConstants.AssetType, pendingOnly = this.assetPendingOnly): AppDTOs.AssetDTO[] {
     const selectedAssetIds = this.isBasketMode()
       ? new Set(this.resourcePopupStore.selectedAssignAssetIdsRef().map(id => id.trim()).filter(Boolean))
       : null;
-    return this.assetStore.orderedCardsByType(type, selectedAssetIds);
+    const cards = this.assetStore.orderedCardsByType(type, selectedAssetIds);
+    return pendingOnly && !this.isBasketMode()
+      ? cards.filter(card => card.requests.some(request => this.isPendingAssetRequest(request)))
+      : cards;
   }
 
   private async loadTicketSmartListPage(
@@ -2720,7 +2824,7 @@ export class AssetPopupComponent {
       };
     }
     await this.waitForAssetListLoad(userId);
-    const filtered = this.orderedOwnedAssetCards(type);
+    const filtered = this.orderedOwnedAssetCards(type, query.filters?.pendingOnly === true);
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const start = page * pageSize;
