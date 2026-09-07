@@ -459,7 +459,8 @@ export class LocalAssetsRepository {
     const eventId = request.eventId.trim();
     const subEventId = request.subEventId.trim();
     const actorUserId = request.actorUserId.trim();
-    if (!assetId || !eventId || !subEventId || !actorUserId) {
+    if (!assetId || !eventId || !subEventId || !actorUserId
+      || (request.action !== 'join' && request.action !== 'leave' && request.action !== 'take-over')) {
       return null;
     }
     const record = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]).byId[assetId];
@@ -479,6 +480,60 @@ export class LocalAssetsRepository {
       : null;
     if (request.action === 'leave' && !previous) {
       return null;
+    }
+    if (request.action === 'take-over') {
+      const previousManagerUserId = `${request.previousManagerUserId ?? ''}`.trim();
+      const predecessor = record.requests.find(entry =>
+        entry.recordStatus === 'D'
+        && entry.requestKind === 'borrow'
+        && `${entry.userId ?? ''}`.trim() === previousManagerUserId
+        && `${entry.booking?.eventId ?? ''}`.trim() === eventId
+        && `${entry.booking?.subEventId ?? ''}`.trim() === subEventId
+      ) ?? null;
+      if (!previous
+        || previous.status !== 'accepted'
+        || previous.requestKind !== 'borrow'
+        || !previousManagerUserId
+        || previousManagerUserId === actorUserId
+        || !predecessor) {
+        return null;
+      }
+      const replacementTotal = Math.max(
+        0,
+        Number(previous.booking?.previousTotalAmount ?? predecessor.booking?.totalAmount) || 0
+      );
+      const nextRequests = record.requests
+        .filter(entry => entry.recordStatus !== 'D')
+        .map(entry => entry === previous
+          ? {
+              ...LocalAssetsMapper.cloneRequest(entry),
+              status: 'accepted' as const,
+              booking: entry.booking
+                ? {
+                    ...entry.booking,
+                    totalAmount: replacementTotal,
+                    previousTotalAmount: null,
+                    paymentSessionId: `${request.paymentSessionId ?? ''}`.trim() || null,
+                    acceptedPolicyIds: [...(entry.booking.acceptedPolicyIds ?? [])]
+                  }
+                : null
+            }
+          : LocalAssetsMapper.cloneRequest(entry));
+      const detail = this.toAssetDetailDto(record, actorUserId);
+      await this.saveOwnedAsset(record.ownerUserId, {
+        ...detail,
+        requests: nextRequests
+      });
+      return {
+        assetId,
+        eventId,
+        subEventId,
+        userId: actorUserId,
+        previousStatus: 'accepted',
+        status: 'accepted',
+        acceptedMemberDelta: 0,
+        pendingMemberDelta: 0
+      };
     }
     if (request.action === 'join' && previous) {
       return {
@@ -547,6 +602,79 @@ export class LocalAssetsRepository {
       acceptedMemberDelta: this.memberStatusDelta(previousStatus, status, 'accepted'),
       pendingMemberDelta: this.memberStatusDelta(previousStatus, status, 'pending')
     };
+  }
+
+  markScopedAssetTakeOverAmount(
+    assetId: string,
+    eventId: string,
+    subEventId: string,
+    departedManagerUserId: string
+  ): void {
+    const normalizedAssetId = assetId.trim();
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedDepartedManagerUserId = departedManagerUserId.trim();
+    if (!normalizedAssetId || !normalizedEventId || !normalizedSubEventId || !normalizedDepartedManagerUserId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (!current) {
+        return state;
+      }
+      const predecessor = current.requests.find(entry =>
+        entry.recordStatus === 'D'
+        && entry.requestKind === 'borrow'
+        && `${entry.userId ?? ''}`.trim() === normalizedDepartedManagerUserId
+        && `${entry.booking?.eventId ?? ''}`.trim() === normalizedEventId
+        && `${entry.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId
+      );
+      const replacementTotal = Math.max(0, Number(predecessor?.booking?.totalAmount) || 0);
+      const replacementCurrency = `${predecessor?.booking?.currency ?? ''}`.trim();
+      let changed = false;
+      const requests = current.requests.map(entry => {
+        const eligible = entry.recordStatus !== 'D'
+          && entry.requestKind === 'borrow'
+          && entry.status === 'accepted'
+          && `${entry.userId ?? ''}`.trim() !== normalizedDepartedManagerUserId
+          && `${entry.booking?.eventId ?? ''}`.trim() === normalizedEventId
+          && `${entry.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId;
+        if (!eligible || !entry.booking) {
+          return LocalAssetsMapper.cloneRequest(entry);
+        }
+        changed = true;
+        return {
+          ...LocalAssetsMapper.cloneRequest(entry),
+          booking: {
+            ...entry.booking,
+            previousTotalAmount: replacementTotal,
+            currency: replacementCurrency || entry.booking.currency,
+            acceptedPolicyIds: [...(entry.booking.acceptedPolicyIds ?? [])]
+          }
+        };
+      });
+      if (!changed) {
+        return state;
+      }
+      const next: AssetRecord = {
+        ...current,
+        requests,
+        updatedAtIso: new Date().toISOString(),
+        updatedMs: Date.now()
+      };
+      const nextTable = this.upsertRecordCollection(table, next);
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: nextTable,
+        [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
+          requestTable,
+          next,
+          current.requests
+        )
+      };
+    });
   }
 
   private memberStatusDelta(

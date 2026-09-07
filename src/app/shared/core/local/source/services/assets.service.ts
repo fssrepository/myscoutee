@@ -152,6 +152,16 @@ export class LocalAssetsService extends LocalRouteDelayService {
       request.assetId
     );
     const result = await this.assetsRepository.applyMemberStatusChange(request);
+    if (result && request.action === 'take-over' && result.status === 'accepted') {
+      const transferred = await this.activityResourcesService.transferAssignedAssetManager(
+        request.eventId,
+        request.subEventId,
+        request.assetId,
+        `${request.previousManagerUserId ?? ''}`.trim(),
+        request.actorUserId
+      );
+      return transferred ? result : null;
+    }
     if (
       result
       && request.action === 'leave'
@@ -170,6 +180,13 @@ export class LocalAssetsService extends LocalRouteDelayService {
           request.eventId,
           request.subEventId,
           request.assetId,
+          request.actorUserId
+        );
+      } else {
+        this.assetsRepository.markScopedAssetTakeOverAmount(
+          request.assetId,
+          request.eventId,
+          request.subEventId,
           request.actorUserId
         );
       }
