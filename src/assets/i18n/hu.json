@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.07.hu.85",
+  "version": "2026.09.07.hu.86",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2140,6 +2140,7 @@
     "payment.history.refund.preview.none": "nincs visszatérítés",
     "payment.history.refund.preview.percent": "{percent}% visszatérítés",
     "payment.history.refund.preview.no.policy": "Nincs alkalmazható visszatérítési szabály.",
+    "payment.history.refund.preview.takeover": "Teljes fizetőcsere; a lemondási visszatérítési szabályzat nem alkalmazandó.",
     "payment.history.refund.preview.unit.hours": "órával",
     "payment.history.refund.preview.unit.days": "nappal",
     "payment.history.refund.preview.unit.weeks": "héttel",

@@ -874,6 +874,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private refundPolicyBasis(item: PaymentHistoryItemDto): string {
     const preview = item.refundPreview;
+    if (preview?.ruleId === 'assignment-manager-takeover') {
+      return this.i18n.translate('payment.history.refund.preview.takeover');
+    }
     if (!preview?.ruleId) {
       return preview?.ruleDescription || this.i18n.translate('payment.history.refund.preview.no.policy');
     }

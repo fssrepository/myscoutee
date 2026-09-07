@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.07.en.85",
+  "version": "2026.09.07.en.86",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2140,6 +2140,7 @@
     "payment.history.refund.preview.none": "no refund",
     "payment.history.refund.preview.percent": "{percent}% refund",
     "payment.history.refund.preview.no.policy": "No applicable refund-policy rule.",
+    "payment.history.refund.preview.takeover": "Full payer swap; the cancellation refund policy does not apply.",
     "payment.history.refund.preview.unit.hours": "hours",
     "payment.history.refund.preview.unit.days": "days",
     "payment.history.refund.preview.unit.weeks": "weeks",
