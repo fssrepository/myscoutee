@@ -2640,7 +2640,9 @@ export class EventResourcePopupComponent {
     const previousManagerUserId = `${dialog.previousManagerUserId ?? ''}`.trim();
     const amount = Math.max(0, Number(dialog.takeOverAmount) || 0);
     const onlinePayment = amount > 0 && !this.cashOnly();
-    if (!previousManagerUserId || (onlinePayment && dialog.paymentStep && !dialog.paymentMethod)) {
+    if (!previousManagerUserId
+      || !this.canSubmitAssignedAssetJoin()
+      || (onlinePayment && dialog.paymentStep && !dialog.paymentMethod)) {
       return;
     }
 
@@ -2709,7 +2711,8 @@ export class EventResourcePopupComponent {
         actorUserId: activeUser.id,
         action: 'take-over',
         paymentSessionId: checkoutSessionId,
-        previousManagerUserId
+        previousManagerUserId,
+        acceptedPolicyIds: [...dialog.acceptedPolicyIds]
       });
       if (!change || change.status !== 'accepted') {
         throw new Error('The Asset responsibility was not transferred.');

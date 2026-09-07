@@ -51,6 +51,7 @@ export interface AssetMemberStatusChangeRequestDTO {
   request?: AssetMemberRequestDTO | null;
   paymentSessionId?: string | null;
   previousManagerUserId?: string | null;
+  acceptedPolicyIds?: string[];
 }
 
 export interface AssetMemberStatusChangeDTO {

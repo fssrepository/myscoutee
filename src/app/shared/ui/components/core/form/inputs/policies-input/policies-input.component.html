@@ -53,7 +53,7 @@
                   >
                     {{ policyRequirementLabel(policy) }}
                   </span>
-                  @if (policyApprovalEnabled() && !policyRequired(policy)) {
+                  @if (policyApprovalEnabled()) {
                     <label
                       class="event-policy-summary-approval"
                       (click)="$event.stopPropagation()"

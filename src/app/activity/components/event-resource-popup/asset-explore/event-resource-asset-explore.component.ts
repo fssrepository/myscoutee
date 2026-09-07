@@ -1226,6 +1226,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!card) {
       return false;
     }
+    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
+    if ((AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [])
+      .some(policy => policy.required !== false && !acceptedPolicyIds.has(`${policy.id ?? ''}`.trim()))) {
+      return false;
+    }
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
     if (
       dialog.paymentStep
