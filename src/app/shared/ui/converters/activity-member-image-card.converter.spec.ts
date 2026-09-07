@@ -13,6 +13,20 @@ describe('ActivityMemberImageCardConverter', () => {
     expect(card.statusChip?.title).toBe('Invitation Pending');
   });
 
+  it('labels a scoped Asset Borrow request as waiting for owner approval', () => {
+    const card = ActivityMemberImageCardConverter.convert({
+      ...pendingInvitation(),
+      pendingSource: 'member',
+      requestKind: 'join',
+      statusText: 'Waiting for owner approval.'
+    }, {
+      ownerType: 'asset'
+    });
+
+    expect(card.detail).toBe('Waiting For Owner Approval');
+    expect(card.statusChip?.title).toBe('Waiting For Owner Approval');
+  });
+
   it('shows checked-in attendance without replacing the accepted member role', () => {
     const member: ActivityMemberDTO = {
       ...pendingInvitation(),

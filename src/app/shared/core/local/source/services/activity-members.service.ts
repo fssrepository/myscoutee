@@ -1034,7 +1034,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         gender: profile.gender,
         city: profile.city || asset.city,
         statusText: pending
-          ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
+          ? (borrowerInitiated ? 'Waiting for owner approval.' : 'Invitation pending.')
           : 'Borrowing this asset.',
         role: managerRecord || (!pending && userId === scopedManagerUserId) ? 'Manager' : 'Member',
         status: pending ? 'pending' : 'accepted',
