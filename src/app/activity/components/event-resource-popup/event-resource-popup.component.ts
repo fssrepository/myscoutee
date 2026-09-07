@@ -2524,9 +2524,7 @@ export class EventResourcePopupComponent {
     if (!sourceCard) {
       return false;
     }
-    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
-    return !(AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [])
-      .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
+    return true;
   }
 
   async confirmAssignedAssetJoin(event?: Event): Promise<void> {
