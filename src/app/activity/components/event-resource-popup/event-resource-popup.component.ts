@@ -3393,11 +3393,11 @@ export class EventResourcePopupComponent {
     assetId: string
   ): boolean {
     const activeUserId = this.activeUser().id.trim();
-    return activeUserId.length > 0
-      && (
-        this.isAssetOwnedByActiveUser(sourceCard, activeUserId)
-        || this.assignedAssetManagerUserId(subEventId, sourceCard.type, assetId) === activeUserId
-      );
+    const managerUserId = this.assignedAssetManagerUserId(subEventId, sourceCard.type, assetId);
+    if (managerUserId) {
+      return activeUserId.length > 0 && managerUserId === activeUserId;
+    }
+    return activeUserId.length > 0 && this.isAssetOwnedByActiveUser(sourceCard, activeUserId);
   }
 
   private async removeResourceAssignment(pending: ResourceAssignmentRemovalRequest): Promise<void> {
