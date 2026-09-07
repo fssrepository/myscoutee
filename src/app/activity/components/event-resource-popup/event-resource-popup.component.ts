@@ -1353,6 +1353,22 @@ export class EventResourcePopupComponent {
           AssetCardBuilder.visibilityFromCard(loadedCard),
           AssetCardBuilder.buildAssetFormFromCard(loadedCard)
         );
+        const currentDialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
+        if (currentDialog?.sourceAssetId === loadedCard.id) {
+          const activePolicies = AssetCardBuilder.assetPoliciesEnabled(loadedCard) ? loadedCard.policies ?? [] : [];
+          const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
+          const requiredPolicyIds = activePolicies
+            .filter(policy => policy.required !== false)
+            .map(policy => `${policy.id ?? ''}`.trim())
+            .filter(Boolean);
+          this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+            ...currentDialog,
+            acceptedPolicyIds: [...new Set([
+              ...requiredPolicyIds,
+              ...currentDialog.acceptedPolicyIds
+            ])].filter(policyId => validPolicyIds.has(policyId))
+          });
+        }
       }
       this.assetStore.setAssetEditorLoading(false);
     } catch {
