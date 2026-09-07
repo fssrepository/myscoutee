@@ -929,13 +929,21 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const users = this.localActivityMemberUsers;
     const ownerUserId = `${asset.ownerUserId ?? ''}`.trim();
+    const scopedManagerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(
+      eventId,
+      subEventId,
+      asset.id
+    );
     const storedManagersByUserId = new Map(
       this.activityMembersRepository.peekRecordsByOwner(owner)
         .filter(record => record.status === 'accepted' && (record.role === 'Manager' || record.role === 'Admin'))
         .map(record => [record.userId, record] as const)
     );
     const members: ActivityMemberDTO[] = [];
-    if (options?.pendingOnly !== true && ownerUserId && !asset.ownerReleasedAtIso) {
+    if (options?.pendingOnly !== true
+        && ownerUserId
+        && !asset.ownerReleasedAtIso
+        && (!scopedManagerUserId || scopedManagerUserId === ownerUserId)) {
       const profile = this.resolveDemoUser(ownerUserId, {
         name: asset.ownerName,
         city: asset.city
@@ -997,7 +1005,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         statusText: pending
           ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
           : 'Borrowing this asset.',
-        role: managerRecord ? 'Manager' : 'Member',
+        role: managerRecord || (!pending && userId === scopedManagerUserId) ? 'Manager' : 'Member',
         status: pending ? 'pending' : 'accepted',
         pendingSource: pending ? (borrowerInitiated ? 'member' : 'admin') : null,
         requestKind: pending ? (borrowerInitiated ? 'join' : 'invite') : null,

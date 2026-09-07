@@ -82,6 +82,36 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return ActivityResourceBuilder.normalizeScope({ viewerState, visibleStates }, viewerRef);
   }
 
+  peekAssignedAssetManagerUserId(ownerId: string, subEventId: string, assetId: string): string | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetId) {
+      return null;
+    }
+    const states = this.repository
+      .peekSubEventResourceRecords(normalizedOwnerId, normalizedSubEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state));
+    for (const state of states) {
+      for (const settingsByAssetId of Object.values(state.assetSettingsByType ?? {})) {
+        const managerUserId = `${settingsByAssetId?.[normalizedAssetId]?.addedByUserId ?? ''}`.trim();
+        if (managerUserId) {
+          return managerUserId;
+        }
+      }
+      const assigned = Object.values(state.assetAssignmentIds ?? {})
+        .some(ids => (ids ?? []).some(id => id.trim() === normalizedAssetId));
+      if (assigned) {
+        const fallbackManagerUserId = state.assetOwnerUserId.trim();
+        if (fallbackManagerUserId) {
+          return fallbackManagerUserId;
+        }
+      }
+    }
+    return null;
+  }
+
   async markResourceTypeRead(
     request: AppDTOs.ActivitySubEventResourceReadRequestDTO
   ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
