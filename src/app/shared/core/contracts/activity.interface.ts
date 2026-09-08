@@ -378,6 +378,10 @@ export interface SubEventResourceCardDTO {
   id: string;
   type: AppConstants.SubEventResourceFilter;
   sourceAssetId: string | null;
+  sourceRequestId?: string | null;
+  bookingStartAtIso?: string | null;
+  bookingEndAtIso?: string | null;
+  bookingQuantity?: number | null;
   assetOwnerUserId?: string | null;
   assetManagerUserId?: string | null;
   title: string;

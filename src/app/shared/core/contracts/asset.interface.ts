@@ -56,6 +56,7 @@ export interface AssetMemberStatusChangeRequestDTO {
 
 export interface AssetMemberStatusChangeDTO {
   assetId: string;
+  requestId?: string | null;
   eventId: string;
   subEventId: string;
   userId: string;

@@ -659,11 +659,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       ownerAvatarUrl: this.ownerAvatarUrl(card),
       availabilityLabel: this.availabilityLabel(card),
       canBorrow: this.availableQuantity(card) > 0,
-      canReportOwner: this.canReportOwner(card),
-      showPaymentSummary: this.findActiveBorrowRequest(
-        card,
-        this.resourcePopupStore.popupContextRef()?.subEvent.id ?? ''
-      ) !== null
+      canReportOwner: this.canReportOwner(card)
     });
   }
 
@@ -879,10 +875,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     if (event.actionId === 'shareAsset') {
       this.openShareDialog(card);
-      return;
-    }
-    if (event.actionId === 'paymentSummary') {
-      void this.openBorrowPaymentSummary(card, new Event('click'));
       return;
     }
     if (event.actionId === 'reportOwner') {
@@ -1290,7 +1282,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
 
     const activeUser = this.activeUser();
-    const existingRequest = this.findPendingBorrowRequest(card, context.subEvent.id, activeUser.id);
     const requestVersion = ++this.pendingBorrowRequestVersion;
     const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
     const paymentRequired = pricing.amount > 0;
@@ -1418,6 +1409,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const providerWindow = onlinePayment
       ? this.paymentAuthorization.openProviderWindow()
       : null;
+    let submittedRequestId: string | null = null;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...dialog,
       busy: true,
@@ -1453,8 +1445,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             providerWindow
           );
         }
+        submittedRequestId = this.newBorrowRequestId(activeUser.id, card.id, context.subEvent.id);
         const nextRequest: AppDTOs.AssetMemberRequestDTO = {
-          id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
+          id: submittedRequestId,
           userId: activeUser.id,
           name: activeUser.name,
           initials: activeUser.initials,
@@ -1479,7 +1472,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
               paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null,
-              inventoryApplied: existingRequest?.booking?.inventoryApplied === true
+              inventoryApplied: false
             }
           )
         };
@@ -1527,7 +1520,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           });
         }
         this.clearBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
-        this.signalBorrowedAssetMemberDelta(context, savedCard, persistedState);
+        this.signalBorrowedAssetMemberDelta(
+          context,
+          savedCard,
+          persistedState,
+          submittedRequestId
+        );
         this.attachBoughtAssetToSubEventLocally(context, savedCard, persistedState);
         this.clearLocalReservation(context.subEvent.id, savedCard.id);
         const remainingAvailability = this.availableQuantityForWindow(
@@ -2053,11 +2051,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const activeUserId = this.activeUser().id.trim();
     const draft = this.readBorrowDraft(activeUserId, context.subEvent.id, card.id);
-    const existingRequest = this.findPendingBorrowRequest(card, context.subEvent.id);
-    const startAtIso = `${draft?.startAtIso ?? existingRequest?.booking?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
-    const endAtIso = `${draft?.endAtIso ?? existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
+    const startAtIso = `${draft?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
+    const endAtIso = `${draft?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
-    const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1));
+    const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity) || 1));
     const activePolicies = AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [];
     const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
     const requiredPolicyIds = activePolicies
@@ -2080,19 +2077,17 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       availableQuantity,
       acceptedPolicyIds: [...new Set([
         ...requiredPolicyIds,
-        ...(draft?.acceptedPolicyIds ?? existingRequest?.booking?.acceptedPolicyIds ?? [])
+        ...(draft?.acceptedPolicyIds ?? [])
       ])]
         .map(policyId => `${policyId ?? ''}`.trim())
         .filter(policyId => validPolicyIds.has(policyId)),
       checkoutSessionId: `${
         draft?.checkoutSessionId
-        ?? existingRequest?.booking?.paymentSessionId
         ?? ''
       }`.trim() || null,
       paymentMethod: draft?.paymentMethod ? { ...draft.paymentMethod } : null,
       paymentStep: Boolean(
-        (draft?.confirmedSelectionSignature && !this.borrowDraftSelectionChanged(draft))
-        || existingRequest?.booking?.paymentSessionId
+        draft?.confirmedSelectionSignature && !this.borrowDraftSelectionChanged(draft)
       ),
       confirmedSelectionSignature: draft?.confirmedSelectionSignature ?? null,
       expiresAtIso: draft?.expiresAtIso ?? null,
@@ -2501,106 +2496,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
-  private async openBorrowPaymentSummary(card: ResourceAssetDTO, event?: Event): Promise<void> {
-    event?.stopPropagation();
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
-      return;
-    }
-    const request = this.findActiveBorrowRequest(card, context.subEvent.id);
-    if (!request) {
-      return;
-    }
-    this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
-    const range = this.defaultRange(context.subEvent);
-    const startAtIso = `${request.booking?.startAtIso ?? range.startAtIso}`.trim() || range.startAtIso;
-    const endAtIso = `${request.booking?.endAtIso ?? range.endAtIso}`.trim() || range.endAtIso;
-    const quantity = Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
-    const paymentSessionId = `${request.booking?.paymentSessionId ?? ''}`.trim();
-    const paymentAudit = paymentSessionId
-      ? await this.eventsService.loadCheckoutPaymentAudit(
-          this.activeUser().id,
-          card.id,
-          paymentSessionId
-        )
-      : null;
-    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
-    const generation = this.assetStore.openAssetEditorEdit({
-      cardId: card.id,
-      form: AssetCardBuilder.buildAssetFormFromCard(card),
-      visibility: AssetCardBuilder.visibilityFromCard(card),
-      loading: Boolean(ownerUserId),
-      readOnly: true,
-      parentZIndex: this.assetExplorePopupZIndex(),
-      runtimeAssignment: {
-        quantity,
-        quantityMax: quantity,
-        quantityLabel: this.i18n.translate('quantity'),
-        quantityDescription: this.timeframeLabel(startAtIso, endAtIso),
-        editable: false
-      },
-      checkout: {
-        sourceId: card.id,
-        mode: 'payment-summary',
-        phase: 'payment',
-        title: this.i18n.translate('event.checkout.payment.summary'),
-        subtitle: card.title,
-        dateRange: {
-          startAt: startAtIso,
-          endAt: endAtIso,
-          precision: 'minute'
-        },
-        dateRangeModel: this.borrowCheckoutDateRangeModel(),
-        availableQuantity: quantity,
-        pricingPreview: this.borrowPricingRuntimePreview(
-          card,
-          startAtIso,
-          endAtIso,
-          quantity,
-          request.booking?.totalAmount,
-          request.booking?.currency,
-          paymentAudit
-        ),
-        acceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
-        footerItems: [],
-        busy: false,
-        error: null,
-        paymentProviderLabel: paymentAudit ? 'event.editor.payment.recorded' : null,
-        paymentStatusLabel: paymentAudit
-          ? (paymentAudit.auditKind === 'booking_price_revision'
-              ? 'event.editor.payment.recorded.revised'
-              : paymentAudit.status === 'approved' || paymentAudit.bookingStatus === 'joined'
-              ? 'event.editor.payment.recorded.approved'
-              : paymentAudit.status)
-          : null,
-        paymentNote: null
-      }
-    });
-    void this.assetPopupStore.ensureAssetPopupLoaded();
-    if (!ownerUserId) {
-      this.assetStore.setAssetEditorLoading(false);
-      return;
-    }
-    try {
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
-      if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        return;
-      }
-      if (loadedCard) {
-        this.assetStore.applyAssetEditorForm(
-          loadedCard.id,
-          AssetCardBuilder.visibilityFromCard(loadedCard),
-          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
-        );
-      }
-      this.assetStore.setAssetEditorLoading(false);
-    } catch {
-      if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        this.assetStore.setAssetEditorLoading(false);
-      }
-    }
-  }
-
   private invalidateBorrowCheckout(dialog: AssetExploreBorrowDialogState): AssetExploreBorrowDialogState {
     if (!dialog.paymentStep && !dialog.checkoutSessionId) {
       return dialog;
@@ -2821,18 +2716,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private resolveBorrowPricing(card: ResourceAssetDTO, startAtIso: string, endAtIso: string, quantity: number): AssetExploreBorrowPricingPreview {
-    const subEventId = `${this.resourcePopupStore.popupContextRef()?.subEvent.id ?? ''}`.trim();
-    const existingRequest = subEventId
-      ? this.findPendingBorrowRequest(card, subEventId)
-      : null;
     return PricingBuilder.resolveAssetBorrowPricing({
       pricing: card.pricing,
       totalQuantity: AssetCardBuilder.storedQuantityValue(card),
       requestedQuantity: quantity,
       startAtIso,
       endAtIso,
-      requests: card.requests,
-      excludeRequestId: existingRequest?.id ?? null
+      requests: card.requests
     });
   }
 
@@ -2892,7 +2782,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private signalBorrowedAssetMemberDelta(
     context: ResourcePopupContext,
     card: ResourceAssetDTO,
-    persistedState: AppDTOs.ActivitySubEventResourceStateDTO
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO,
+    requestId: string | null
   ): void {
     if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return;
@@ -2903,6 +2794,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       && previousMemberSync.subEventId === context.subEvent.id;
     this.activityStore.cacheActivityMemberStatusChange({
       assetId: card.id,
+      requestId,
       eventId: context.ownerId,
       subEventId: context.subEvent.id,
       userId: activeUserId,
@@ -3280,6 +3172,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
+  private newBorrowRequestId(userId: string, assetId: string, subEventId: string): string {
+    const generation = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `borrow:${userId}:${assetId}:${subEventId}:${generation}`;
+  }
+
   private requestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
     return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 0));
   }
@@ -3315,37 +3213,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private assetAcceptedCount(card: ResourceAssetDTO, subEventId?: string, managerUserId: string | null = null): number {
     const requests = subEventId ? this.assetRequestsForView(card, subEventId, managerUserId) : card.requests;
     return requests.filter(request => request.status === 'accepted').length;
-  }
-
-  private findPendingBorrowRequest(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    activeUserId = this.activeUser().id
-  ): AppDTOs.AssetMemberRequestDTO | null {
-    return card.requests.find(request =>
-      request.requestKind !== 'manual'
-      && request.status === 'pending'
-      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
-      && request.booking?.subEventId === subEventId
-    ) ?? null;
-  }
-
-  private findActiveBorrowRequest(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    activeUserId = this.activeUser().id
-  ): AppDTOs.AssetMemberRequestDTO | null {
-    const normalizedSubEventId = subEventId.trim();
-    const normalizedUserId = activeUserId.trim();
-    if (!normalizedSubEventId || !normalizedUserId) {
-      return null;
-    }
-    return card.requests.find(request =>
-      request.requestKind !== 'manual'
-      && (request.status === 'pending' || request.status === 'accepted')
-      && AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedUserId
-      && request.booking?.subEventId === normalizedSubEventId
-    ) ?? null;
   }
 
   private isWindowOverlap(request: AppDTOs.AssetMemberRequestDTO, startAtIso: string, endAtIso: string): boolean {

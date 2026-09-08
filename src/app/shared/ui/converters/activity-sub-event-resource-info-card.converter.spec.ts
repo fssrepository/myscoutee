@@ -21,6 +21,19 @@ describe('ActivitySubEventResourceInfoCardConverter member status changes', () =
     expect(accepted.mediaEnd).toMatchObject({ label: '1 / 4', pendingCount: 0 });
   });
 
+  it('shows the booking date range on a request-backed resource card', () => {
+    const converted = ActivitySubEventResourceInfoCardConverter.convert({
+      ...resourceCard(),
+      sourceRequestId: 'request-1',
+      bookingStartAtIso: '2026-09-08T08:00:00Z',
+      bookingEndAtIso: '2026-09-15T08:00:00Z'
+    }, options([memberRequest()]));
+
+    expect(converted.metaRows).toHaveLength(2);
+    expect(converted.metaRows?.[1]).toContain('Sep 8');
+    expect(converted.metaRows?.[1]).toContain('Sep 15');
+  });
+
   it('keeps a foreign Group resource card read-only', () => {
     const converted = ActivitySubEventResourceInfoCardConverter.convert(resourceCard(), {
       ...options([]),

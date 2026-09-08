@@ -49,12 +49,19 @@ export class ActivitySubEventResourceInfoCardConverter {
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): InfoCardData {
+    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(
+      `${card.bookingStartAtIso ?? ''}`.trim(),
+      `${card.bookingEndAtIso ?? ''}`.trim()
+    );
     return {
       id: card.id,
       groupLabel: options.groupLabel ?? null,
       title: card.title,
       imageUrl: card.imageUrl,
-      metaRows: [`${card.type} · ${card.subtitle} · ${card.city}`],
+      metaRows: [
+        `${card.type} · ${card.subtitle} · ${card.city}`,
+        timeframe
+      ].filter(Boolean),
       description: card.details,
       leadingIcon: {
         icon: this.resourceTypeIcon(card.type)

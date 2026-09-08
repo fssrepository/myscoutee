@@ -307,6 +307,44 @@ describe('activity runtime counter signals', () => {
     expect(store.activityMembersSyncByOwnerId()['asset-1']?.memberStatusChange).toBeUndefined();
   });
 
+  it('applies identical pending deltas from distinct borrow requests', () => {
+    const store = new ActivityStore();
+    const first = store.cacheActivityMemberStatusChange({
+      assetId: 'asset-1',
+      requestId: 'borrow-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      userId: 'viewer',
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 4
+    });
+    const second = store.cacheActivityMemberStatusChange({
+      assetId: 'asset-1',
+      requestId: 'borrow-2',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      userId: 'viewer',
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 4
+    });
+
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(store.activityMembersSyncByOwnerId()['asset-1']?.pendingMembers).toBe(2);
+  });
+
   it('exposes a published resource activity delta to its parent exactly once', () => {
     const store = new SubEventResourcePopupStore();
     const context = {

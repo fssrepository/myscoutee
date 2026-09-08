@@ -761,6 +761,7 @@ export class ActivityStore {
     const acceptedMemberDelta = Math.trunc(Number(change.acceptedMemberDelta) || 0);
     const pendingMemberDelta = Math.trunc(Number(change.pendingMemberDelta) || 0);
     const duplicateTransition = sameScope
+      && `${previousChange.requestId ?? ''}`.trim() === `${change.requestId ?? ''}`.trim()
       && previousChange.previousStatus === change.previousStatus
       && previousChange.status === change.status
       && previousChange.acceptedMemberDelta === acceptedMemberDelta
