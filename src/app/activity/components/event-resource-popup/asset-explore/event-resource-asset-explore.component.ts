@@ -71,6 +71,9 @@ import {
   AssetInfoCardConverter
 } from '../../../../shared/ui/converters/asset-info-card.converter';
 import {
+  ChatPopupHeaderContextConverter
+} from '../../../../shared/ui/converters/chat-popup-header-context.converter';
+import {
   AppUtils
 } from '../../../../shared/app-utils';
 import {
@@ -122,6 +125,9 @@ import type {
   UserDto
 } from '../../../../shared/core/contracts/user.interface';
 import {
+  ActivityStore
+} from '../../../../shared/ui/context/stores/activity.store';
+import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
@@ -141,6 +147,7 @@ import {
 } from '../../../../shared/ui/context/stores/asset-popup.store';
 import {
   AssetBorrowDraftStore,
+  assetBorrowSelectionSignature,
   type AssetBorrowDraft
 } from '../../../../shared/ui/context/stores/asset-borrow-draft.store';
 import {
@@ -246,8 +253,12 @@ interface AssetExploreBorrowDraftViewState {
   providers: [AppMenuDispatcher]
 })
 export class EventResourceAssetExploreComponent implements DoCheck {
+  private static readonly BORROW_BASKET_TTL_MS = 10 * 60 * 1000;
+  private static readonly BORROW_QUANTITY = 1;
+
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
@@ -373,10 +384,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return null;
     }
     const timeframe = this.timeframeLabel(dialog.startAtIso, dialog.endAtIso);
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
-    const detail = dialog.quantity > 1
-      ? this.i18n.translateParams('asset.borrow.quantity.detail', { timeframe, quantity: dialog.quantity })
-      : timeframe;
+    const pricing = this.resolveBorrowPricing(
+      card,
+      dialog.startAtIso,
+      dialog.endAtIso,
+      EventResourceAssetExploreComponent.BORROW_QUANTITY
+    );
     const cancellationPolicy = PricingBuilder.compactPricingConfig(card.pricing, {
       context: 'asset',
       allowSlotFeatures: false
@@ -385,7 +398,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       title: this.i18n.translateParams('asset.borrow.title', { asset: card.title }),
       subtitle: this.popupSubtitle(),
       timeframe,
-      quantity: dialog.quantity,
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
       availableQuantity: dialog.availableQuantity,
       dateRange: {
         startAt: dialog.startAtIso,
@@ -397,7 +410,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           id: `resource:${card.id}`,
           kind: 'resource',
           label: card.title,
-          detail: detail || this.i18n.translate('asset.borrow.request'),
+          detail: timeframe || this.i18n.translate('asset.borrow.request'),
           amount: pricing.amount,
           currency: pricing.currency
         }
@@ -411,14 +424,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       payable: pricing.amount > 0,
       paymentStep: dialog.paymentStep,
       submitLabel: pricing.amount > 0
-        ? (dialog.paymentStep && !this.cashOnly()
-            ? this.i18n.translate('asset.borrow.pay')
-            : this.i18n.translate('asset.borrow.confirm'))
+        ? this.borrowSubmitLabel(dialog)
         : this.i18n.translate('asset.borrow.send.request'),
       busyLabel: pricing.amount > 0
-        ? (dialog.paymentStep && !this.cashOnly()
-            ? this.i18n.translate('asset.borrow.paying')
-            : this.i18n.translate('asset.borrow.confirming'))
+        ? this.borrowBusyLabel(dialog)
         : this.i18n.translate('asset.borrow.sending.request'),
       busy: dialog.busy,
       error: dialog.error
@@ -653,11 +662,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       ownerAvatarUrl: this.ownerAvatarUrl(card),
       availabilityLabel: this.availabilityLabel(card),
       canBorrow: this.availableQuantity(card) > 0,
-      canReportOwner: this.canReportOwner(card),
-      showPaymentSummary: this.findActiveBorrowRequest(
-        card,
-        this.resourcePopupStore.popupContextRef()?.subEvent.id ?? ''
-      ) !== null
+      canReportOwner: this.canReportOwner(card)
     });
   }
 
@@ -688,7 +693,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const owner = this.resolveOwnerUser(card);
     this.userProfileStore.setUserProfile(owner);
     void this.loadOwnerProfile(ownerUserId);
-    this.profileStore.openImpressionsPopup(ownerUserId);
+    this.profileStore.openImpressionsPopup(ownerUserId, {
+      contextLabel: 'Asset Owner',
+      sourceLabel: card.title
+    });
   }
 
   protected onMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -872,10 +880,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.openShareDialog(card);
       return;
     }
-    if (event.actionId === 'paymentSummary') {
-      void this.openBorrowPaymentSummary(card, new Event('click'));
-      return;
-    }
     if (event.actionId === 'reportOwner') {
       this.reportOwner(card, new Event('click'));
       return;
@@ -928,7 +932,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private borrowDraftMenuStatusLabel(entry: AssetExploreBorrowDraftViewState): string {
-    return this.borrowDraftUnavailable(entry) ? 'Review request' : 'Continue request';
+    return this.borrowDraftUnavailable(entry)
+      ? this.i18n.translate('asset.borrow.review')
+      : this.i18n.translate('asset.borrow.continue');
   }
 
   private borrowDraftMenuPalette(entry: AssetExploreBorrowDraftViewState): AppMenuPalette {
@@ -1067,18 +1073,25 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected setBorrowDateRange(start: Date | null, end: Date | null): void {
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog) {
+    if (!dialog || !dialog.borrowWindow) {
       return;
     }
     const card = this.resolveCard(dialog.cardId);
     if (!card) {
       return;
     }
-    const startAtIso = start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso;
-    const endAtIso = end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso;
+    const normalizedWindow = this.normalizeBorrowSelectionToWindow(
+      start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso,
+      end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso,
+      dialog.borrowWindow
+    );
+    if (!normalizedWindow) {
+      return;
+    }
+    const { startAtIso, endAtIso } = normalizedWindow;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity));
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...invalidated,
       startAtIso,
@@ -1088,22 +1101,30 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
       error: this.borrowAvailabilityError(quantity, availableQuantity)
     });
+    this.persistChangedBorrowDraft();
   }
 
   protected setBorrowTime(edge: 'start' | 'end', value: string): void {
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog) {
+    if (!dialog || !dialog.borrowWindow) {
       return;
     }
     const card = this.resolveCard(dialog.cardId);
     if (!card) {
       return;
     }
-    const startAtIso = edge === 'start' ? AppUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso;
-    const endAtIso = edge === 'end' ? AppUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso;
+    const normalizedWindow = this.normalizeBorrowSelectionToWindow(
+      edge === 'start' ? AppUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso,
+      edge === 'end' ? AppUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso,
+      dialog.borrowWindow
+    );
+    if (!normalizedWindow) {
+      return;
+    }
+    const { startAtIso, endAtIso } = normalizedWindow;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity));
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...invalidated,
       startAtIso,
@@ -1113,6 +1134,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
       error: this.borrowAvailabilityError(quantity, availableQuantity)
     });
+    this.persistChangedBorrowDraft();
   }
 
   protected onBorrowQuantityChange(value: number | string): void {
@@ -1120,39 +1142,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!dialog || dialog.busy) {
       return;
     }
-    const parsed = Number(value);
-    const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(
-      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-      1,
-      Math.max(1, dialog.availableQuantity)
-    );
+    void value;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-      ...invalidated,
-      quantity,
-      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: this.borrowAvailabilityError(quantity, dialog.availableQuantity)
+      ...dialog,
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
+      error: this.borrowAvailabilityError(
+        EventResourceAssetExploreComponent.BORROW_QUANTITY,
+        dialog.availableQuantity
+      )
     });
   }
 
   protected normalizeBorrowQuantityOnBlur(value: number | string): void {
-    const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog || dialog.busy) {
-      return;
-    }
-    const parsed = Number(value);
-    const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(
-      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-      1,
-      Math.max(1, dialog.availableQuantity)
-    );
-    this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-      ...invalidated,
-      quantity,
-      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: this.borrowAvailabilityError(quantity, dialog.availableQuantity)
-    });
+    this.onBorrowQuantityChange(value);
   }
 
   protected toggleBorrowPolicy(policyId: string): void {
@@ -1162,6 +1164,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const normalizedPolicyId = `${policyId ?? ''}`.trim();
     if (!normalizedPolicyId) {
+      return;
+    }
+    const card = this.resolveCard(dialog.cardId);
+    const policy = (card && AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [])
+      .find(item => `${item.id ?? ''}`.trim() === normalizedPolicyId);
+    if (!policy || policy.required !== false) {
       return;
     }
     const nextAccepted = new Set(dialog.acceptedPolicyIds);
@@ -1176,6 +1184,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       acceptedPolicyIds: [...nextAccepted],
       error: null
     });
+    this.persistChangedBorrowDraft();
   }
 
   protected backToBorrowDetails(event?: Event): void {
@@ -1193,14 +1202,24 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected canSubmitBorrow(): boolean {
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog || dialog.busy || dialog.availableQuantity <= 0 || dialog.quantity > dialog.availableQuantity) {
+    if (!dialog || dialog.busy || dialog.availableQuantity <= 0) {
       return false;
     }
     const card = this.resolveCard(dialog.cardId);
     if (!card) {
       return false;
     }
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
+    if ((AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [])
+      .some(policy => policy.required !== false && !acceptedPolicyIds.has(`${policy.id ?? ''}`.trim()))) {
+      return false;
+    }
+    const pricing = this.resolveBorrowPricing(
+      card,
+      dialog.startAtIso,
+      dialog.endAtIso,
+      EventResourceAssetExploreComponent.BORROW_QUANTITY
+    );
     if (
       dialog.paymentStep
       && !this.cashOnly()
@@ -1209,7 +1228,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     ) {
       return false;
     }
-    return this.isValidWindow(dialog.startAtIso, dialog.endAtIso);
+    const borrowWindow = dialog.borrowWindow;
+    return borrowWindow !== null
+      && this.isBorrowSelectionWithinWindow(dialog.startAtIso, dialog.endAtIso, borrowWindow);
   }
 
   protected confirmBorrow(event?: Event): void {
@@ -1230,13 +1251,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     const availableQuantity = this.availableQuantityForWindow(card, dialog.startAtIso, dialog.endAtIso);
-    const availabilityError = this.borrowAvailabilityError(dialog.quantity, availableQuantity);
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
+    const availabilityError = this.borrowAvailabilityError(quantity, availableQuantity);
     if (availabilityError) {
       const invalidated = this.invalidateBorrowCheckout(dialog);
       this.resourcePopupStore.assetExploreBorrowDialogRef.set({
         ...invalidated,
         availableQuantity,
-        quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
+        quantity,
         acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
         error: availabilityError
       });
@@ -1247,28 +1269,29 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
 
     const activeUser = this.activeUser();
-    const existingRequest = this.findPendingBorrowRequest(card, context.subEvent.id, activeUser.id);
-    const inventoryWasAlreadyApplied = existingRequest?.booking?.inventoryApplied === true;
     const requestVersion = ++this.pendingBorrowRequestVersion;
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
-    const inventoryApplied = pricing.amount > 0;
-    const onlinePayment = inventoryApplied && !this.cashOnly();
+    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, quantity);
+    const paymentRequired = pricing.amount > 0;
+    const onlinePayment = paymentRequired && !this.cashOnly();
     const lineItems: ActivityContracts.EventCheckoutLineItem[] = [
       {
         id: `resource:${card.id}`,
         kind: 'resource',
         label: card.title,
-        detail: dialog.quantity > 1
-          ? this.i18n.translateParams('asset.borrow.quantity.detail', {
-              timeframe: this.timeframeLabel(dialog.startAtIso, dialog.endAtIso),
-              quantity: dialog.quantity
-            })
-          : this.timeframeLabel(dialog.startAtIso, dialog.endAtIso) || this.i18n.translate('asset.borrow.request'),
+        detail: this.timeframeLabel(dialog.startAtIso, dialog.endAtIso)
+          || this.i18n.translate('asset.borrow.request'),
         amount: pricing.amount,
         currency: pricing.currency
       }
     ];
-    const checkoutRequest = inventoryApplied
+    const pricingSummaryRows: ActivityContracts.EventCheckoutPricingSummaryRow[] = pricing.rows.map(row => ({
+      ...row
+    }));
+    const nowIso = new Date().toISOString();
+    const expiresAtIso = new Date(
+      Date.now() + EventResourceAssetExploreComponent.BORROW_BASKET_TTL_MS
+    ).toISOString();
+    const checkoutRequest = paymentRequired
       ? {
           userId: activeUser.id,
           sourceId: card.id,
@@ -1282,6 +1305,29 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           ],
           acceptedPolicyIds: [...dialog.acceptedPolicyIds],
           appliedPromoCodes: [],
+          basketItems: [
+            {
+              id: `resource:${card.id}:${context.subEvent.id}`,
+              kind: 'resource',
+              sourceId: card.id,
+              slotSourceId: null,
+              subEventId: context.subEvent.id,
+              resourceType: card.type,
+              label: card.title,
+              detail: lineItems[0].detail,
+              amount: pricing.amount,
+              currency: pricing.currency,
+              quantity,
+              status: 'confirmed',
+              resultState: 'pending',
+              pricingSummaryRows,
+              createdAtIso: nowIso,
+              updatedAtIso: nowIso,
+              expiresAtIso
+            }
+          ],
+          pricingSummaryRows,
+          checkoutState: 'confirmed',
           lineItems,
           totalAmount: pricing.amount,
           currency: pricing.currency,
@@ -1289,22 +1335,64 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         } satisfies ActivityContracts.EventCheckoutRequest
       : null;
 
-    if (inventoryApplied && !dialog.paymentStep) {
-      const nextDialog: AssetExploreBorrowDialogState = {
+    if (paymentRequired && !dialog.paymentStep) {
+      if (this.borrowPaymentReviewStarted(dialog) && !this.borrowSelectionChanged(dialog)) {
+        const nextDialog: AssetExploreBorrowDialogState = {
+          ...dialog,
+          checkoutSessionId: null,
+          paymentStep: true,
+          busy: false,
+          error: null
+        };
+        this.resourcePopupStore.assetExploreBorrowDialogRef.set(nextDialog);
+        this.saveBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
+        return;
+      }
+      this.resourcePopupStore.assetExploreBorrowDialogRef.set({
         ...dialog,
         checkoutSessionId: null,
-        paymentStep: true,
-        busy: false,
+        paymentStep: false,
+        busy: true,
         error: null
-      };
-      this.resourcePopupStore.assetExploreBorrowDialogRef.set(nextDialog);
-      this.saveBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
+      });
+      void this.eventsService.saveCheckoutBasket(checkoutRequest!)
+        .then(savedBasket => {
+          const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+          if (!savedBasket || !currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
+            throw new Error(this.i18n.translate('asset.borrow.error.checkout'));
+          }
+          const nextDialog: AssetExploreBorrowDialogState = {
+            ...currentDialog,
+            checkoutSessionId: null,
+            paymentStep: true,
+            confirmedSelectionSignature: this.borrowSelectionSignature(currentDialog),
+            expiresAtIso: savedBasket.expiresAtIso?.trim()
+              || savedBasket.items.find(item => item.expiresAtIso?.trim())?.expiresAtIso?.trim()
+              || expiresAtIso,
+            busy: false,
+            error: null
+          };
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set(nextDialog);
+          this.saveBorrowDraft(activeUser.id, context.subEvent.id, nextDialog);
+        })
+        .catch(error => {
+          const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+          if (!currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
+            return;
+          }
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            busy: false,
+            error: this.errorMessage(error, this.i18n.translate('asset.borrow.error.checkout'))
+          });
+        });
       return;
     }
 
     const providerWindow = onlinePayment
       ? this.paymentAuthorization.openProviderWindow()
       : null;
+    let submittedRequestId: string | null = null;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...dialog,
       busy: true,
@@ -1320,6 +1408,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           throw new Error(this.i18n.translate('asset.borrow.error.payment'));
         }
         if (onlinePayment && session) {
+          const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+          if (!currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
+            throw new Error(this.i18n.translate('asset.borrow.error.payment'));
+          }
+          const pendingDialog: AssetExploreBorrowDialogState = {
+            ...currentDialog,
+            checkoutSessionId: session.id,
+            paymentStep: true,
+            busy: true,
+            error: null
+          };
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set(pendingDialog);
+          this.saveBorrowDraft(activeUser.id, context.subEvent.id, pendingDialog);
           await this.paymentAuthorization.completeCustomerAction(
             session,
             activeUser.id,
@@ -1327,8 +1428,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             providerWindow
           );
         }
+        submittedRequestId = this.newBorrowRequestId(activeUser.id, card.id, context.subEvent.id);
         const nextRequest: AppDTOs.AssetMemberRequestDTO = {
-          id: existingRequest?.id ?? `borrow:${activeUser.id}:${card.id}:${context.subEvent.id}`,
+          id: submittedRequestId,
           userId: activeUser.id,
           name: activeUser.name,
           initials: activeUser.initials,
@@ -1336,7 +1438,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           status: 'pending',
           note: onlinePayment
             ? this.i18n.translate('asset.borrow.note.payment.approved')
-            : inventoryApplied
+            : paymentRequired
               ? this.i18n.translate('asset.borrow.note.cash.payment')
               : this.i18n.translate('asset.borrow.note.awaiting.owner'),
           requestKind: 'borrow',
@@ -1347,21 +1449,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             context.parentTitle,
             dialog.startAtIso,
             dialog.endAtIso,
-            dialog.quantity,
+            quantity,
             {
               totalAmount: pricing.amount,
               currency: pricing.currency,
               acceptedPolicyIds: dialog.acceptedPolicyIds,
               paymentSessionId: session?.id ?? dialog.checkoutSessionId ?? null,
-              inventoryApplied
+              inventoryApplied: false
             }
           )
         };
         const nextCard: ResourceAssetDTO = {
           ...card,
-          quantity: inventoryApplied && !inventoryWasAlreadyApplied
-            ? Math.max(0, AssetCardBuilder.storedQuantityValue(card) - dialog.quantity)
-            : AssetCardBuilder.storedQuantityValue(card),
+          quantity: AssetCardBuilder.storedQuantityValue(card),
           requests: [
             nextRequest,
             ...card.requests
@@ -1385,25 +1485,35 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         if (!currentDialog || !currentPopup || requestVersion !== this.pendingBorrowRequestVersion) {
           return;
         }
-        const persistedState = await this.persistBorrowedAssetAssignment(context, savedCard, currentDialog.quantity);
+        const persistedState = await this.persistBorrowedAssetAssignment(
+          context,
+          savedCard
+        );
         const persistedDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
         const persistedPopup = this.resourcePopupStore.assetExplorePopupRef();
         if (!persistedDialog || !persistedPopup || requestVersion !== this.pendingBorrowRequestVersion) {
           return;
         }
-        this.clearBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
-        this.attachBoughtAssetToSubEventLocally(context, savedCard, persistedState);
-        if (inventoryApplied) {
-          this.clearLocalReservation(context.subEvent.id, savedCard.id);
-        } else {
-          this.rememberLocalReservation(
-            context.subEvent.id,
-            savedCard.id,
-            currentDialog.startAtIso,
-            currentDialog.endAtIso,
-            currentDialog.quantity
-          );
+        if (checkoutRequest) {
+          await this.eventsService.updateCheckoutBasketState({
+            userId: activeUser.id,
+            sourceId: card.id,
+            slotSourceId: null,
+            checkoutState: onlinePayment ? 'pay' : 'confirmed',
+            resultState: 'succeeded',
+            checkoutSessionId: persistedDialog.checkoutSessionId,
+            checkoutRequest
+          });
         }
+        this.clearBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
+        this.signalBorrowedAssetMemberDelta(
+          context,
+          savedCard,
+          persistedState,
+          submittedRequestId
+        );
+        this.attachBoughtAssetToSubEventLocally(context, savedCard, persistedState);
+        this.clearLocalReservation(context.subEvent.id, savedCard.id);
         const remainingAvailability = this.availableQuantityForWindow(
           savedCard,
           currentDialog.startAtIso,
@@ -1416,12 +1526,23 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           ...persistedPopup,
           cards: nextCards
         });
-        this.closeBorrowDialog();
+        this.dismissBorrowDialog(persistedDialog);
       })
       .catch(error => {
         const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
         if (!currentDialog || requestVersion !== this.pendingBorrowRequestVersion) {
           return;
+        }
+        if (checkoutRequest) {
+          void this.eventsService.updateCheckoutBasketState({
+            userId: activeUser.id,
+            sourceId: card.id,
+            slotSourceId: null,
+            checkoutState: onlinePayment ? 'pay' : 'confirmed',
+            resultState: 'failed',
+            checkoutSessionId: currentDialog.checkoutSessionId,
+            checkoutRequest
+          });
         }
         this.resourcePopupStore.assetExploreBorrowDialogRef.set({
           ...currentDialog,
@@ -1435,16 +1556,79 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   protected closeBorrowDialog(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    if (dialog?.busy) {
+      return;
+    }
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
     if (dialog && context && !dialog.busy && this.shouldPersistBorrowDraft(dialog, context.subEvent.id, activeUserId)) {
       this.saveBorrowDraft(activeUserId, context.subEvent.id, dialog);
     }
+    this.dismissBorrowDialog(dialog);
+  }
+
+  private dismissBorrowDialog(dialog: AssetExploreBorrowDialogState | null): void {
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     const checkout = this.assetStore.assetFormCheckout();
     if (checkout?.mode === 'borrow' && (!dialog || checkout.sourceId === dialog.cardId)) {
       this.assetStore.closeAssetEditor();
     }
+  }
+
+  private requestCancelBorrowLifecycle(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const persistedDraft = context && activeUserId
+      ? this.readBorrowDraft(activeUserId, context.subEvent.id, dialog.cardId)
+      : null;
+    const lifecycleStarted = Boolean(
+      dialog.confirmedSelectionSignature
+      || dialog.checkoutSessionId
+      || dialog.paymentStep
+      || persistedDraft?.confirmedSelectionSignature
+    );
+    if (!lifecycleStarted) {
+      this.dismissBorrowDialog(dialog);
+      return;
+    }
+    const card = this.resolveCard(dialog.cardId);
+    this.dialogStore.open({
+      title: 'Cancel borrow?',
+      message: card?.title ?? 'Borrow',
+      warningMessage: 'The current borrow basket will be cancelled and removed.',
+      cancelLabel: 'Back',
+      confirmLabel: 'Cancel borrow',
+      busyConfirmLabel: 'Cancelling...',
+      confirmTone: 'danger',
+      confirmPalette: 'danger',
+      failureMessage: 'Unable to cancel this borrow.',
+      onConfirm: async () => this.cancelBorrowLifecycle(dialog)
+    });
+  }
+
+  private async cancelBorrowLifecycle(dialog: AssetExploreBorrowDialogState): Promise<void> {
+    const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!currentDialog || currentDialog.cardId !== dialog.cardId || !context || !activeUserId) {
+      throw new Error('Unable to resolve the current borrow basket.');
+    }
+    await this.eventsService.updateCheckoutBasketState({
+      userId: activeUserId,
+      sourceId: dialog.cardId,
+      slotSourceId: null,
+      checkoutState: 'cancelled',
+      resultState: 'deleted',
+      checkoutSessionId: currentDialog.checkoutSessionId
+    });
+    this.clearBorrowDraftState(activeUserId, context.subEvent.id, dialog.cardId);
+    this.dismissBorrowDialog(currentDialog);
   }
 
   protected resumeBorrowDraft(cardId: string, event?: Event): void {
@@ -1510,18 +1694,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           nextCursor: null
         };
       }
-      const items = result.items.map(card => this.cloneAsset(card));
-      await this.warmOwnerProfiles(items);
-      const currentAfterProfileWarmup = this.resourcePopupStore.assetExplorePopupRef();
-      if (!currentAfterProfileWarmup
-          || this.queryKey(this.queryFromPopup(currentAfterProfileWarmup), pageQuery.order) !== requestKey) {
-        return {
-          items: [],
-          total: 0,
-          nextCursor: null
-        };
+      if (result.checkoutResultStates !== undefined) {
+        this.assetBorrowDraftStore.reconcileServerCheckoutStates(
+          this.activeUser().id,
+          current.subEventId,
+          result.items.map(card => card.id),
+          result.checkoutResultStates
+        );
       }
-      this.mergeLoadedPage(currentAfterProfileWarmup, items, pageQuery);
+      const items = result.items.map(card => this.cloneAsset(card));
+      this.mergeLoadedPage(current, items, pageQuery);
       return {
         items,
         total: result.total,
@@ -1737,7 +1919,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private availableQuantityForWindow(card: ResourceAssetDTO, startAtIso: string, endAtIso: string): number {
     const totalQuantity = AssetCardBuilder.storedQuantityValue(card);
     const overlappingCommitted = card.requests
-      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.status === 'accepted'
+        || request.requestKind === 'manual'
+        || (request.status === 'pending' && request.requestKind === 'borrow'))
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.requestQuantity(request), 0);
@@ -1793,6 +1977,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !activeUserId || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
+    const activeUser = this.activeUser();
     const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
@@ -1800,22 +1985,31 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       runtimeKind: context.subEvent.runtimeKind,
       eventId: context.subEvent.eventId
     }).eventId;
-    const chat = await this.chatsService.ensureServiceChat({
+    const chat: ChatDTO = {
+      id: `c-service-asset-${card.id}-${context.subEvent.id}-${activeUserId}`,
+      avatar: AppUtils.initialsFromText(card.ownerName || card.title),
+      title: `Ask Asset Owner · ${card.title}`,
+      lastMessage: `Service chat with the asset owner for ${card.title}.`,
+      lastSenderId: ownerUserId,
+      memberIds: [activeUserId, ownerUserId],
+      members: ChatPopupHeaderContextConverter.memberSummaries([
+        { id: activeUserId, user: activeUser },
+        {
+          id: ownerUserId,
+          fallbackName: card.ownerName,
+          imageUrl: card.ownerAvatarUrl
+        }
+      ]),
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
       serviceContext: 'asset',
-      eventId,
-      subEventId: context.subEvent.id,
       assetId: card.id,
-      targetUserId: ownerUserId,
-      title: `Asset Service · ${card.title}`,
-      lastMessage: `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`,
-      avatarSource: card.ownerName || card.title
-    });
-    if (!chat) {
-      this.dialogStore.openInfo('The service chat could not be created. Please try again.', {
-        title: 'Unable to open chat'
-      });
-      return;
-    }
+      ownerId: card.id,
+      ownerUserId: activeUserId,
+      eventId,
+      subEventId: context.subEvent.id
+    };
     await this.openStackedServiceChat(chat);
   }
 
@@ -1843,13 +2037,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const activeUserId = this.activeUser().id.trim();
     const draft = this.readBorrowDraft(activeUserId, context.subEvent.id, card.id);
-    const existingRequest = this.findPendingBorrowRequest(card, context.subEvent.id);
-    const startAtIso = `${draft?.startAtIso ?? existingRequest?.booking?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
-    const endAtIso = `${draft?.endAtIso ?? existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
+    const startAtIso = `${draft?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
+    const endAtIso = `${draft?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
-    const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1));
+    const requestedQuantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
     const activePolicies = AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [];
-    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
+    const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
+    const requiredPolicyIds = activePolicies
+      .filter(policy => policy.required !== false)
+      .map(policy => `${policy.id ?? ''}`.trim())
+      .filter(Boolean);
     if (popup.error) {
       this.resourcePopupStore.assetExplorePopupRef.set({
         ...popup,
@@ -1859,22 +2056,27 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const nextDialog: AssetExploreBorrowDialogState = {
       cardId: card.id,
       ownerUserId,
-      quantity: AppUtils.clampNumber(requestedQuantity, 1, Math.max(1, availableQuantity)),
+      quantity: requestedQuantity,
       startAtIso,
       endAtIso,
+      borrowWindow: null,
       availableQuantity,
-      acceptedPolicyIds: [...(draft?.acceptedPolicyIds ?? existingRequest?.booking?.acceptedPolicyIds ?? [])]
+      acceptedPolicyIds: [...new Set([
+        ...requiredPolicyIds,
+        ...(draft?.acceptedPolicyIds ?? [])
+      ])]
+        .map(policyId => `${policyId ?? ''}`.trim())
         .filter(policyId => validPolicyIds.has(policyId)),
       checkoutSessionId: `${
         draft?.checkoutSessionId
-        ?? existingRequest?.booking?.paymentSessionId
         ?? ''
       }`.trim() || null,
       paymentMethod: draft?.paymentMethod ? { ...draft.paymentMethod } : null,
       paymentStep: Boolean(
-        draft?.paymentStep
-        || existingRequest?.booking?.paymentSessionId
+        draft?.confirmedSelectionSignature && !this.borrowDraftSelectionChanged(draft)
       ),
+      confirmedSelectionSignature: draft?.confirmedSelectionSignature ?? null,
+      expiresAtIso: draft?.expiresAtIso ?? null,
       busy: false,
       error: this.borrowAvailabilityError(requestedQuantity, availableQuantity)
     };
@@ -1903,11 +2105,33 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     try {
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+      const context = this.resourcePopupStore.popupContextRef();
+      if (!context) {
+        throw new Error(this.i18n.translate('asset.borrow.error.checkout'));
+      }
+      const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+        ownerId: context.ownerId,
+        subEventId: context.subEvent.id,
+        groupId: context.groupId,
+        runtimeKind: context.subEvent.runtimeKind,
+        eventId: context.subEvent.eventId
+      }).eventId;
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id, {
+        eventId,
+        subEventId: context.subEvent.id
+      });
       if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
         return;
       }
-      if (loadedCard) {
+      const loadedBorrowWindow = loadedCard?.borrowWindow;
+      const borrowWindow = loadedBorrowWindow?.eventId.trim() === eventId
+        && loadedBorrowWindow.subEventId.trim() === context.subEvent.id.trim()
+        ? loadedBorrowWindow
+        : null;
+      const normalizedSelection = borrowWindow
+        ? this.normalizeBorrowSelectionToWindow(dialog.startAtIso, dialog.endAtIso, borrowWindow)
+        : null;
+      if (loadedCard && borrowWindow && normalizedSelection) {
         this.assetStore.applyAssetEditorForm(
           loadedCard.id,
           AssetCardBuilder.visibilityFromCard(loadedCard),
@@ -1924,27 +2148,53 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         }
         const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
         if (currentDialog?.cardId === loadedCard.id) {
+          const activePolicies = AssetCardBuilder.assetPoliciesEnabled(loadedCard) ? loadedCard.policies ?? [] : [];
+          const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
+          const requiredPolicyIds = activePolicies
+            .filter(policy => policy.required !== false)
+            .map(policy => `${policy.id ?? ''}`.trim())
+            .filter(Boolean);
           const availableQuantity = this.availableQuantityForWindow(
             loadedCard,
-            currentDialog.startAtIso,
-            currentDialog.endAtIso
+            normalizedSelection.startAtIso,
+            normalizedSelection.endAtIso
           );
-          const quantity = AppUtils.clampNumber(
-            currentDialog.quantity,
-            1,
-            Math.max(1, availableQuantity)
-          );
+          const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
           this.resourcePopupStore.assetExploreBorrowDialogRef.set({
             ...currentDialog,
+            startAtIso: normalizedSelection.startAtIso,
+            endAtIso: normalizedSelection.endAtIso,
+            borrowWindow: { ...borrowWindow },
             availableQuantity,
             quantity,
+            acceptedPolicyIds: [...new Set([
+              ...requiredPolicyIds,
+              ...currentDialog.acceptedPolicyIds
+            ])].filter(policyId => validPolicyIds.has(policyId)),
             error: this.borrowAvailabilityError(quantity, availableQuantity)
+          });
+        }
+      } else {
+        const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+        if (currentDialog?.cardId === card.id) {
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            borrowWindow: null,
+            error: this.i18n.translate('asset.borrow.error.checkout')
           });
         }
       }
       this.assetStore.setAssetEditorLoading(false);
     } catch {
       if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+        if (currentDialog?.cardId === card.id) {
+          this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+            ...currentDialog,
+            borrowWindow: null,
+            error: this.i18n.translate('asset.borrow.error.checkout')
+          });
+        }
         this.assetStore.setAssetEditorLoading(false);
       }
     }
@@ -1979,8 +2229,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   ): AssetEditorRuntimeAssignmentState {
     const availableQuantity = Math.max(0, Math.trunc(Number(dialog.availableQuantity) || 0));
     return {
-      quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
-      quantityMax: Math.max(1, availableQuantity),
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
+      quantityMax: EventResourceAssetExploreComponent.BORROW_QUANTITY,
       quantityLabel: this.i18n.translate('quantity'),
       quantityDescription: this.i18n.translateParams(
         availableQuantity === 1
@@ -1988,8 +2238,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           : 'asset.borrow.available.many',
         { count: availableQuantity }
       ),
-      editable: dialog.paymentStep !== true && dialog.busy !== true && availableQuantity > 0,
-      onChange: quantity => this.onBorrowQuantityChange(quantity)
+      editable: false
     };
   }
 
@@ -2002,6 +2251,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       checkoutSessionId: null,
       error: null
     });
+    this.persistChangedBorrowDraft();
   }
 
   private borrowCheckoutState(
@@ -2019,13 +2269,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         endAt: dialog.endAtIso,
         precision: 'minute'
       },
-      dateRangeModel: this.borrowCheckoutDateRangeModel(),
+      dateRangeModel: this.borrowCheckoutDateRangeModel(dialog),
       availableQuantity: dialog.availableQuantity,
       pricingPreview: this.borrowPricingRuntimePreview(
         card,
         dialog.startAtIso,
         dialog.endAtIso,
-        dialog.quantity
+        EventResourceAssetExploreComponent.BORROW_QUANTITY
       ),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       paymentMethod: dialog.paymentMethod ? { ...dialog.paymentMethod } : null,
@@ -2037,7 +2287,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       onPaymentMethodChange: paymentMethod => this.selectBorrowPaymentMethod(paymentMethod),
       onFooterItemSelect: (itemId, sourceEvent) => {
         if (itemId === 'borrow-cancel') {
-          this.closeBorrowDialog(sourceEvent);
+          this.requestCancelBorrowLifecycle(sourceEvent);
           return;
         }
         if (itemId === 'borrow-back') {
@@ -2054,32 +2304,44 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     card: ResourceAssetDTO,
     dialog: AssetExploreBorrowDialogState
   ): readonly AppMenuItem<string>[] {
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const pricing = this.resolveBorrowPricing(
+      card,
+      dialog.startAtIso,
+      dialog.endAtIso,
+      EventResourceAssetExploreComponent.BORROW_QUANTITY
+    );
     const submitLabel = dialog.busy
-      ? (pricing.amount > 0
-          ? (dialog.paymentStep && !this.cashOnly()
-              ? this.i18n.translate('asset.borrow.paying')
-              : this.i18n.translate('asset.borrow.confirming'))
-          : this.i18n.translate('asset.borrow.sending.request'))
-      : (pricing.amount > 0
-          ? (dialog.paymentStep && !this.cashOnly()
-              ? this.i18n.translate('asset.borrow.pay')
-              : this.i18n.translate('asset.borrow.confirm'))
-          : this.i18n.translate('asset.borrow.send.request'));
+      ? (pricing.amount > 0 ? this.borrowBusyLabel(dialog) : this.i18n.translate('asset.borrow.sending.request'))
+      : (pricing.amount > 0 ? this.borrowSubmitLabel(dialog) : this.i18n.translate('asset.borrow.send.request'));
     const hasError = !dialog.busy && Boolean(dialog.error);
-    return [
-      {
-        id: dialog.paymentStep ? 'borrow-back' : 'borrow-cancel',
-        label: dialog.paymentStep ? this.i18n.translate('back') : this.i18n.translate('cancel'),
+    const paymentReviewStarted = pricing.amount > 0 && this.borrowPaymentReviewStarted(dialog);
+    const items: AppMenuItem<string>[] = [];
+    if (dialog.paymentStep) {
+      items.push({
+        id: 'borrow-back',
+        label: this.i18n.translate('back'),
         layout: 'action',
         palette: 'neutral',
+        disabled: dialog.busy
+      });
+    }
+    items.push(
+      {
+        id: 'borrow-cancel',
+        label: this.i18n.translate('cancel'),
+        layout: 'action',
+        palette: 'danger',
         disabled: dialog.busy
       },
       {
         id: 'borrow-confirm',
         label: submitLabel,
         layout: 'action',
-        palette: hasError ? 'danger' : 'blue',
+        palette: hasError
+          ? 'danger'
+          : paymentReviewStarted
+            ? (this.borrowSelectionChanged(dialog) ? 'orange' : 'success')
+            : 'blue',
         disabled: !this.canSubmitBorrow()
           || dialog.busy
           || (
@@ -2095,21 +2357,66 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             }
           : null
       }
-    ];
+    );
+    return items;
   }
 
   private cashOnly(): boolean {
     return !`${this.deploymentConfiguration.paymentProviderId() ?? ''}`.trim();
   }
 
-  private borrowCheckoutDateRangeModel(): DateInputModel {
+  private borrowSubmitLabel(dialog: AssetExploreBorrowDialogState): string {
+    if (dialog.paymentStep) {
+      return this.cashOnly()
+        ? this.i18n.translate('event.editor.payment.cash.confirm')
+        : this.i18n.translate('asset.borrow.pay');
+    }
+    if (this.borrowPaymentReviewStarted(dialog)) {
+      return this.i18n.translate(
+        this.borrowSelectionChanged(dialog) ? 'asset.borrow.update' : 'asset.borrow.continue'
+      );
+    }
+    return this.i18n.translate('asset.borrow.confirm');
+  }
+
+  private borrowBusyLabel(dialog: AssetExploreBorrowDialogState): string {
+    if (dialog.paymentStep) {
+      return this.cashOnly()
+        ? this.i18n.translate('event.editor.payment.cash.confirming')
+        : this.i18n.translate('asset.borrow.paying');
+    }
+    if (this.borrowPaymentReviewStarted(dialog)) {
+      return this.i18n.translate(
+        this.borrowSelectionChanged(dialog) ? 'asset.borrow.updating' : 'asset.borrow.continuing'
+      );
+    }
+    return this.i18n.translate('asset.borrow.confirming');
+  }
+
+  private borrowCheckoutDateRangeModel(
+    dialog?: Pick<AssetExploreBorrowDialogState, 'borrowWindow' | 'paymentStep' | 'busy'>
+  ): DateInputModel {
+    const borrowWindow = dialog?.borrowWindow ?? null;
     return {
       mode: 'range',
       precision: 'minute',
       valueFormat: 'iso-date-time',
+      disabled: dialog !== undefined
+        && (!borrowWindow || dialog.paymentStep === true || dialog.busy === true),
       range: {
-        start: { label: this.i18n.translate('asset.borrow.start') },
-        end: { label: this.i18n.translate('asset.borrow.end') }
+        bounds: borrowWindow
+          ? { start: borrowWindow.startAtIso, end: borrowWindow.endAtIso }
+          : null,
+        start: {
+          label: this.i18n.translate('asset.borrow.start'),
+          min: borrowWindow?.startAtIso,
+          max: borrowWindow?.endAtIso
+        },
+        end: {
+          label: this.i18n.translate('asset.borrow.end'),
+          min: borrowWindow?.startAtIso,
+          max: borrowWindow?.endAtIso
+        }
       }
     };
   }
@@ -2175,106 +2482,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
-  private async openBorrowPaymentSummary(card: ResourceAssetDTO, event?: Event): Promise<void> {
-    event?.stopPropagation();
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
-      return;
-    }
-    const request = this.findActiveBorrowRequest(card, context.subEvent.id);
-    if (!request) {
-      return;
-    }
-    this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
-    const range = this.defaultRange(context.subEvent);
-    const startAtIso = `${request.booking?.startAtIso ?? range.startAtIso}`.trim() || range.startAtIso;
-    const endAtIso = `${request.booking?.endAtIso ?? range.endAtIso}`.trim() || range.endAtIso;
-    const quantity = Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
-    const paymentSessionId = `${request.booking?.paymentSessionId ?? ''}`.trim();
-    const paymentAudit = paymentSessionId
-      ? await this.eventsService.loadCheckoutPaymentAudit(
-          this.activeUser().id,
-          card.id,
-          paymentSessionId
-        )
-      : null;
-    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
-    const generation = this.assetStore.openAssetEditorEdit({
-      cardId: card.id,
-      form: AssetCardBuilder.buildAssetFormFromCard(card),
-      visibility: AssetCardBuilder.visibilityFromCard(card),
-      loading: Boolean(ownerUserId),
-      readOnly: true,
-      parentZIndex: this.assetExplorePopupZIndex(),
-      runtimeAssignment: {
-        quantity,
-        quantityMax: quantity,
-        quantityLabel: this.i18n.translate('quantity'),
-        quantityDescription: this.timeframeLabel(startAtIso, endAtIso),
-        editable: false
-      },
-      checkout: {
-        sourceId: card.id,
-        mode: 'payment-summary',
-        phase: 'payment',
-        title: this.i18n.translate('event.checkout.payment.summary'),
-        subtitle: card.title,
-        dateRange: {
-          startAt: startAtIso,
-          endAt: endAtIso,
-          precision: 'minute'
-        },
-        dateRangeModel: this.borrowCheckoutDateRangeModel(),
-        availableQuantity: quantity,
-        pricingPreview: this.borrowPricingRuntimePreview(
-          card,
-          startAtIso,
-          endAtIso,
-          quantity,
-          request.booking?.totalAmount,
-          request.booking?.currency,
-          paymentAudit
-        ),
-        acceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
-        footerItems: [],
-        busy: false,
-        error: null,
-        paymentProviderLabel: paymentAudit ? 'event.editor.payment.recorded' : null,
-        paymentStatusLabel: paymentAudit
-          ? (paymentAudit.auditKind === 'booking_price_revision'
-              ? 'event.editor.payment.recorded.revised'
-              : paymentAudit.status === 'approved' || paymentAudit.bookingStatus === 'joined'
-              ? 'event.editor.payment.recorded.approved'
-              : paymentAudit.status)
-          : null,
-        paymentNote: null
-      }
-    });
-    void this.assetPopupStore.ensureAssetPopupLoaded();
-    if (!ownerUserId) {
-      this.assetStore.setAssetEditorLoading(false);
-      return;
-    }
-    try {
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
-      if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        return;
-      }
-      if (loadedCard) {
-        this.assetStore.applyAssetEditorForm(
-          loadedCard.id,
-          AssetCardBuilder.visibilityFromCard(loadedCard),
-          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
-        );
-      }
-      this.assetStore.setAssetEditorLoading(false);
-    } catch {
-      if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        this.assetStore.setAssetEditorLoading(false);
-      }
-    }
-  }
-
   private invalidateBorrowCheckout(dialog: AssetExploreBorrowDialogState): AssetExploreBorrowDialogState {
     if (!dialog.paymentStep && !dialog.checkoutSessionId) {
       return dialog;
@@ -2284,6 +2491,36 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       checkoutSessionId: null,
       paymentStep: false
     };
+  }
+
+  private borrowPaymentReviewStarted(dialog: AssetExploreBorrowDialogState): boolean {
+    return !dialog.paymentStep && Boolean(dialog.confirmedSelectionSignature?.trim());
+  }
+
+  private borrowSelectionSignature(
+    dialog: Pick<AssetExploreBorrowDialogState, 'quantity' | 'startAtIso' | 'endAtIso' | 'acceptedPolicyIds'>
+  ): string {
+    return assetBorrowSelectionSignature(dialog);
+  }
+
+  private borrowSelectionChanged(dialog: AssetExploreBorrowDialogState): boolean {
+    const baseline = dialog.confirmedSelectionSignature?.trim() ?? '';
+    return Boolean(baseline) && this.borrowSelectionSignature(dialog) !== baseline;
+  }
+
+  private borrowDraftSelectionChanged(draft: AssetBorrowDraft): boolean {
+    const baseline = draft.confirmedSelectionSignature?.trim() ?? '';
+    return Boolean(baseline) && assetBorrowSelectionSignature(draft) !== baseline;
+  }
+
+  private persistChangedBorrowDraft(): void {
+    const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    if (!dialog || !context || !activeUserId || !dialog.confirmedSelectionSignature) {
+      return;
+    }
+    this.saveBorrowDraft(activeUserId, context.subEvent.id, dialog);
   }
 
   private borrowAvailabilityError(requestedQuantity: number, availableQuantity: number): string | null {
@@ -2317,13 +2554,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       cardId: dialog.cardId,
       ownerUserId: dialog.ownerUserId,
       title: card?.title?.trim() || 'Borrow draft',
-      quantity: Math.max(1, Math.trunc(Number(dialog.quantity) || 1)),
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
       startAtIso: dialog.startAtIso,
       endAtIso: dialog.endAtIso,
       acceptedPolicyIds: [...new Set(dialog.acceptedPolicyIds)].map(item => item.trim()).filter(Boolean),
       checkoutSessionId: dialog.checkoutSessionId?.trim() || null,
       paymentMethod: dialog.paymentMethod ? { ...dialog.paymentMethod } : null,
       paymentStep: dialog.paymentStep,
+      confirmedSelectionSignature: dialog.confirmedSelectionSignature?.trim() || null,
+      expiresAtIso: dialog.expiresAtIso?.trim() || null,
       updatedAtMs: Date.now()
     };
     this.assetBorrowDraftStore.save(next);
@@ -2337,6 +2576,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return Boolean(
       dialog.checkoutSessionId
       || dialog.paymentStep
+      || dialog.confirmedSelectionSignature
       || this.readBorrowDraft(userId, subEventId, dialog.cardId)
     );
   }
@@ -2350,6 +2590,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private ownerAvatarUrl(card: ResourceAssetDTO): string | null {
+    const projectedOwnerAvatarUrl = `${card.ownerAvatarUrl ?? ''}`.trim();
+    if (projectedOwnerAvatarUrl) {
+      return projectedOwnerAvatarUrl;
+    }
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
     if (!ownerUserId) {
       return null;
@@ -2368,13 +2612,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         name: card.ownerName?.trim() || 'Asset owner',
         initials: AppUtils.initialsFromText(card.ownerName?.trim() || 'Asset owner')
       };
-  }
-
-  private async warmOwnerProfiles(cards: readonly ResourceAssetDTO[]): Promise<void> {
-    const ownerUserIds = [...new Set(cards
-      .map(card => `${card.ownerUserId ?? ''}`.trim())
-      .filter(ownerUserId => ownerUserId.length > 0))];
-    await Promise.all(ownerUserIds.map(ownerUserId => this.loadOwnerProfile(ownerUserId)));
   }
 
   private async loadOwnerProfile(ownerUserId: string): Promise<void> {
@@ -2480,11 +2717,23 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     card: ResourceAssetDTO,
     persistedState: AppDTOs.ActivitySubEventResourceStateDTO
   ): void {
+    const persistedCards = persistedState.fallbackAssetCardsByType?.[card.type] ?? [];
+    const nextPersistedState: AppDTOs.ActivitySubEventResourceStateDTO = {
+      ...persistedState,
+      fallbackAssetCardsByType: {
+        ...(persistedState.fallbackAssetCardsByType ?? {}),
+        [card.type]: [
+          ...persistedCards.filter(item => item.id !== card.id),
+          this.toAssetDetailDto(card)
+        ]
+      }
+    };
+    this.resourcePopupStore.upsertVisibleResourceState(nextPersistedState);
     for (const type of AppConstants.ASSET_TYPES) {
       const key = this.assignmentKey(context.subEvent.id, type);
-      this.resourcePopupStore.assignedAssetIdsByKey[key] = [...(persistedState.assetAssignmentIds[type] ?? [])];
+      this.resourcePopupStore.assignedAssetIdsByKey[key] = [...(nextPersistedState.assetAssignmentIds[type] ?? [])];
       this.resourcePopupStore.assignedAssetSettingsByKey[key] = {
-        ...(persistedState.assetSettingsByType[type] ?? {})
+        ...(nextPersistedState.assetSettingsByType[type] ?? {})
       };
     }
     for (const key of Object.keys(this.resourcePopupStore.supplyContributionEntriesByAssignmentKey)) {
@@ -2492,7 +2741,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         delete this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[key];
       }
     }
-    for (const [assetId, entries] of Object.entries(persistedState.supplyContributionEntriesByAssetId)) {
+    for (const [assetId, entries] of Object.entries(nextPersistedState.supplyContributionEntriesByAssetId)) {
       this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[
         this.supplyAssignmentKey(context.subEvent.id, assetId)
       ] = entries.map(entry => ({ ...entry }));
@@ -2501,27 +2750,93 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (activeContext?.subEvent.id === context.subEvent.id) {
       const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
       const existingCards = nextFallbackCards[card.type] ?? [];
-      if (!existingCards.some(item => item.id === card.id)) {
-        nextFallbackCards[card.type] = [
-          ...existingCards,
-          this.assignedFallbackAssetSnapshot(context.subEvent.id, card)
-        ];
-      }
+      nextFallbackCards[card.type] = [
+        ...existingCards.filter(item => item.id !== card.id),
+        this.assignedFallbackAssetSnapshot(context.subEvent.id, card)
+      ];
       const nextContext = {
         ...activeContext,
         fallbackCardsByType: nextFallbackCards
       };
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.syncMetrics(false, persistedState);
+      this.syncMetrics(false, nextPersistedState, false);
       return;
     }
-    this.syncMetrics(false, persistedState);
+    this.syncMetrics(false, nextPersistedState, false);
+  }
+
+  private signalBorrowedAssetMemberDelta(
+    context: ResourcePopupContext,
+    card: ResourceAssetDTO,
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO,
+    requestId: string | null
+  ): void {
+    if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
+      return;
+    }
+    const activeUserId = this.activeUser().id.trim();
+    const previousMemberSync = this.activityStore.activityMembersSyncByOwnerId()[card.id];
+    const previousMemberSyncMatchesScope = previousMemberSync?.eventId === context.ownerId
+      && previousMemberSync.subEventId === context.subEvent.id;
+    this.activityStore.cacheActivityMemberStatusChange({
+      assetId: card.id,
+      requestId,
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      userId: activeUserId,
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: previousMemberSyncMatchesScope ? previousMemberSync.acceptedMembers : 0,
+      pendingMembers: previousMemberSyncMatchesScope ? previousMemberSync.pendingMembers : 0,
+      capacityTotal: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
+    });
+
+    const persistedMetrics = persistedState.resourceMetricsByType?.[card.type];
+    const previousMetrics = this.subEventResourceMetrics(context.subEvent, card.type);
+    this.activityStore.emitActivityResourceMemberDeltaSync({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      assetId: card.id,
+      resourceType: card.type,
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1,
+      capacityMinDelta: persistedMetrics
+        ? Math.max(0, Math.trunc(Number(persistedMetrics.capacityMin) || 0)) - previousMetrics.capacityMin
+        : 0,
+      capacityMaxDelta: persistedMetrics
+        ? Math.max(0, Math.trunc(Number(persistedMetrics.capacityMax) || 0)) - previousMetrics.capacityMax
+        : 0
+    });
+  }
+
+  private subEventResourceMetrics(
+    subEvent: ContractTypes.SubEventDTO,
+    type: AppConstants.AssetType
+  ): { capacityMin: number; capacityMax: number } {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return {
+        capacityMin: Math.max(0, Math.trunc(Number(subEvent.carsCapacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(subEvent.carsCapacityMax) || 0))
+      };
+    }
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      return {
+        capacityMin: Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMax) || 0))
+      };
+    }
+    return {
+      capacityMin: Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMin) || 0)),
+      capacityMax: Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMax) || 0))
+    };
   }
 
   private async persistBorrowedAssetAssignment(
     context: ResourcePopupContext,
-    card: ResourceAssetDTO,
-    quantity: number
+    card: ResourceAssetDTO
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO> {
     const currentState = this.buildResourceState(context);
     if (!currentState) {
@@ -2531,7 +2846,18 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const currentIds = currentState.assetAssignmentIds[type] ?? [];
     const currentSettings = currentState.assetSettingsByType[type] ?? {};
     const capacityLimit = Math.max(0, card.capacityTotal);
-    const quantityLimit = Math.max(1, AssetCardBuilder.storedQuantityValue(card));
+    const activeUserId = this.activeUser().id;
+    const assignedItemCount = card.requests.filter(request =>
+      request.requestKind === 'borrow'
+      && (request.status === 'pending' || request.status === 'accepted')
+      && ActivityResourceBuilder.isSubEventScopedAssetRequest(
+        request,
+        context.subEvent.id,
+        context.ownerId
+      )
+      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
+    ).length;
+    const currentAssignment = currentSettings[card.id];
     const nextState: AppDTOs.ActivitySubEventResourceStateDTO = {
       ...currentState,
       assetAssignmentIds: {
@@ -2542,14 +2868,20 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         ...currentState.assetSettingsByType,
         [type]: {
           ...currentSettings,
-          [card.id]: currentSettings[card.id] ?? {
+          [card.id]: {
+            ...currentAssignment,
             capacityMin: 0,
-            capacityMax: capacityLimit,
-            quantity: Math.min(quantityLimit, Math.max(1, Math.trunc(Number(quantity) || 1))),
-            addedByUserId: this.activeUser().id,
-            routeEnabled: type === AppConstants.ASSET_TYPE_TRANSPORT
-              && this.normalizeRoutes(type, card.routes).length > 0,
-            routes: this.normalizeRoutes(type, card.routes)
+            capacityMax: currentAssignment?.capacityMax ?? capacityLimit,
+            quantity: Math.max(
+              EventResourceAssetExploreComponent.BORROW_QUANTITY,
+              assignedItemCount
+            ),
+            addedByUserId: currentAssignment?.addedByUserId ?? activeUserId,
+            routeEnabled: currentAssignment?.routeEnabled ?? (
+              type === AppConstants.ASSET_TYPE_TRANSPORT
+              && this.normalizeRoutes(type, card.routes).length > 0
+            ),
+            routes: currentAssignment?.routes ?? this.normalizeRoutes(type, card.routes)
           }
         }
       },
@@ -2559,8 +2891,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             [card.id]: [
               {
                 id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                userId: this.activeUser().id,
-                quantity: Math.max(1, Math.trunc(Number(quantity) || 1)),
+                userId: activeUserId,
+                quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
                 addedAtIso: AppUtils.toIsoDateTime(new Date())
               },
               ...(currentState.supplyContributionEntriesByAssetId[card.id] ?? [])
@@ -2576,7 +2908,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         ]
       }
     };
-    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
+    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState, undefined, {
+      emitActivityResourceSync: false
+    });
     if (!savedState?.assetAssignmentIds[type]?.includes(card.id)) {
       throw new Error(this.i18n.translate('asset.borrow.error.send'));
     }
@@ -2585,12 +2919,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private syncMetrics(
     persistResourceState = false,
-    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null,
+    publishUpdate = true
   ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
     }
+    const previousPendingActivity = this.resourcePendingActivityCount(context.subEvent);
     let nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
@@ -2613,10 +2949,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       subEvent: nextSubEvent
     };
     this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+    if (publishUpdate) {
+      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, {
+        activityDelta: this.resourcePendingActivityCount(nextSubEvent) - previousPendingActivity
+      });
+    }
     if (persistResourceState) {
       this.persistResourceState(nextContext);
     }
+  }
+
+  private resourcePendingActivityCount(subEvent: ContractTypes.SubEventDTO): number {
+    return [
+      subEvent.carsPending,
+      subEvent.accommodationPending,
+      subEvent.suppliesPending
+    ].reduce((sum, value) => sum + Math.max(0, Math.trunc(Number(value) || 0)), 0);
   }
 
   private persistResourceState(context: ResourcePopupContext | null = this.resourcePopupStore.popupContextRef()): void {
@@ -2805,6 +3153,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       inventoryApplied?: boolean | null;
     } = {}
   ): AppDTOs.AssetHireRequestBookingDTO | null {
+    const absoluteStartAtIso = AppUtils.isoLocalDateTimeToDate(startAtIso)?.toISOString();
+    const absoluteEndAtIso = AppUtils.isoLocalDateTimeToDate(endAtIso)?.toISOString();
     return {
       eventId: ActivityResourceBuilder.authorizationEventId(ownerId, subEvent.id),
       eventTitle: parentTitle,
@@ -2813,8 +3163,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       slotKey: subEvent.id,
       slotLabel: subEvent.name,
       timeframe: this.timeframeLabel(startAtIso, endAtIso),
-      startAtIso: startAtIso || undefined,
-      endAtIso: endAtIso || undefined,
+      startAtIso: absoluteStartAtIso,
+      endAtIso: absoluteEndAtIso,
       quantity,
       totalAmount: options.totalAmount ?? null,
       currency: options.currency ?? null,
@@ -2822,6 +3172,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       paymentSessionId: options.paymentSessionId ?? null,
       inventoryApplied: options.inventoryApplied === true ? true : null
     };
+  }
+
+  private newBorrowRequestId(userId: string, assetId: string, subEventId: string): string {
+    const generation = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `borrow:${userId}:${assetId}:${subEventId}:${generation}`;
   }
 
   private requestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
@@ -2859,37 +3215,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private assetAcceptedCount(card: ResourceAssetDTO, subEventId?: string, managerUserId: string | null = null): number {
     const requests = subEventId ? this.assetRequestsForView(card, subEventId, managerUserId) : card.requests;
     return requests.filter(request => request.status === 'accepted').length;
-  }
-
-  private findPendingBorrowRequest(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    activeUserId = this.activeUser().id
-  ): AppDTOs.AssetMemberRequestDTO | null {
-    return card.requests.find(request =>
-      request.requestKind !== 'manual'
-      && request.status === 'pending'
-      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
-      && request.booking?.subEventId === subEventId
-    ) ?? null;
-  }
-
-  private findActiveBorrowRequest(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    activeUserId = this.activeUser().id
-  ): AppDTOs.AssetMemberRequestDTO | null {
-    const normalizedSubEventId = subEventId.trim();
-    const normalizedUserId = activeUserId.trim();
-    if (!normalizedSubEventId || !normalizedUserId) {
-      return null;
-    }
-    return card.requests.find(request =>
-      request.requestKind !== 'manual'
-      && (request.status === 'pending' || request.status === 'accepted')
-      && AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedUserId
-      && request.booking?.subEventId === normalizedSubEventId
-    ) ?? null;
   }
 
   private isWindowOverlap(request: AppDTOs.AssetMemberRequestDTO, startAtIso: string, endAtIso: string): boolean {
@@ -2935,9 +3260,66 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return !!start && !!end && start.getTime() < end.getTime();
   }
 
+  private isBorrowSelectionWithinWindow(
+    startAtIso: string,
+    endAtIso: string,
+    borrowWindow: AppDTOs.AssetBorrowWindowDTO
+  ): boolean {
+    const start = this.parseLocalDateMinute(startAtIso);
+    const end = this.parseLocalDateMinute(endAtIso);
+    const lowerBound = this.parseLocalDateMinute(borrowWindow.startAtIso);
+    const upperBound = this.parseLocalDateMinute(borrowWindow.endAtIso);
+    return start !== null
+      && end !== null
+      && lowerBound !== null
+      && upperBound !== null
+      && lowerBound < upperBound
+      && lowerBound <= start
+      && start < end
+      && end <= upperBound;
+  }
+
+  private normalizeBorrowSelectionToWindow(
+    startAtIso: string,
+    endAtIso: string,
+    borrowWindow: AppDTOs.AssetBorrowWindowDTO
+  ): { startAtIso: string; endAtIso: string } | null {
+    const lowerBound = AppUtils.isoLocalDateTimeToDate(borrowWindow.startAtIso);
+    const upperBound = AppUtils.isoLocalDateTimeToDate(borrowWindow.endAtIso);
+    if (!lowerBound || !upperBound || lowerBound.getTime() >= upperBound.getTime()) {
+      return null;
+    }
+    const lowerMs = lowerBound.getTime();
+    const upperMs = upperBound.getTime();
+    const minimumDurationMs = 60 * 60 * 1000;
+    const requestedStart = AppUtils.isoLocalDateTimeToDate(startAtIso)?.getTime() ?? lowerMs;
+    const requestedEnd = AppUtils.isoLocalDateTimeToDate(endAtIso)?.getTime() ?? upperMs;
+    let safeStartMs = Math.min(upperMs, Math.max(lowerMs, requestedStart));
+    let safeEndMs = Math.min(upperMs, Math.max(lowerMs, requestedEnd));
+    if (safeEndMs <= safeStartMs) {
+      if (safeStartMs + minimumDurationMs <= upperMs) {
+        safeEndMs = safeStartMs + minimumDurationMs;
+      } else {
+        safeStartMs = Math.max(lowerMs, upperMs - minimumDurationMs);
+        safeEndMs = upperMs;
+      }
+    }
+    return safeStartMs < safeEndMs
+      ? {
+          startAtIso: AppUtils.toIsoDateTimeLocal(new Date(safeStartMs)),
+          endAtIso: AppUtils.toIsoDateTimeLocal(new Date(safeEndMs))
+        }
+      : null;
+  }
+
   private parseLocalDateMs(value: string | null | undefined): number | null {
     const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
     return parsed ? parsed.getTime() : null;
+  }
+
+  private parseLocalDateMinute(value: string | null | undefined): number | null {
+    const parsedMs = this.parseLocalDateMs(value);
+    return parsedMs === null ? null : Math.floor(parsedMs / 60_000);
   }
 
   private priceAmount(card: ResourceAssetDTO): number {
@@ -2988,6 +3370,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
@@ -3023,6 +3406,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
@@ -3198,11 +3582,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         id: actionId,
         ...config
       };
+      const continueBorrow = actionId === 'borrowAsset' && this.hasBorrowDraft(card.id);
       return [{
         id: actionId,
-        label: config.label,
-        icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
+        label: continueBorrow ? this.i18n.translate('asset.borrow.continue') : config.label,
+        icon: continueBorrow ? 'shopping_basket' : config.icon,
+        palette: continueBorrow ? 'orange' : this.infoCardActionPalette(config.tone),
         surface: 'tinted',
         context: {
           menu: 'asset-explore-card',
@@ -3212,6 +3597,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         }
       }];
     });
+  }
+
+  private hasBorrowDraft(cardId: string): boolean {
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    return Boolean(
+      context
+      && activeUserId
+      && this.readBorrowDraft(activeUserId, context.subEvent.id, cardId)?.confirmedSelectionSignature
+    );
   }
 
   private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {

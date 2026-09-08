@@ -11,6 +11,146 @@
   text-align: left;
 }
 
+.profile-impressions-popup .profile-impressions-person-stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  margin: 0 auto 0.9rem;
+}
+
+.profile-impressions-popup .profile-impressions-person-card {
+  position: relative;
+  width: min(330px, 100%);
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(22, 42, 72, 0.24);
+  border-radius: 14px;
+  background-color: #13243a;
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 18px 42px rgba(18, 32, 54, 0.22);
+}
+
+.profile-impressions-popup .profile-impressions-person-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(8, 16, 28, 0.16) 0%, rgba(8, 15, 28, 0.12) 42%, rgba(8, 15, 28, 0.86) 100%),
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.12), transparent 44%);
+}
+
+.profile-impressions-popup .profile-impressions-person-initials {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 3rem;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.profile-impressions-popup .profile-impressions-person-indicators {
+  position: absolute;
+  top: 0.42rem;
+  left: 0.48rem;
+  right: 0.48rem;
+  z-index: 4;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0.22rem;
+}
+
+.profile-impressions-popup .profile-impressions-person-indicators span {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.36);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.profile-impressions-popup .profile-impressions-person-indicators span::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: #fff;
+  transform: scaleX(0.12);
+  transform-origin: left center;
+}
+
+.profile-impressions-popup .profile-impressions-person-indicators span.active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.profile-impressions-popup .profile-impressions-person-hit-area {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.profile-impressions-popup .profile-impressions-person-hit-area button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.profile-impressions-popup .profile-impressions-person-overlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  padding: 1rem;
+  color: #fff;
+}
+
+.profile-impressions-popup .profile-impressions-person-overlay h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 950;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
+}
+
+.profile-impressions-popup .profile-impressions-person-overlay p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  margin: 0.24rem 0 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 0.84rem;
+  font-weight: 850;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.42);
+}
+
+.profile-impressions-popup .profile-impressions-person-overlay p .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.profile-impressions-popup .profile-impressions-person-overlay small {
+  display: block;
+  margin-top: 0.42rem;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .profile-impressions-popup .profile-impressions-empty-state {
   min-height: 260px;
   display: flex;
@@ -646,6 +786,10 @@
 @media (max-width: 760px) {
   .profile-impressions-popup {
     padding: 0.05rem;
+  }
+
+  .profile-impressions-popup .profile-impressions-person-card {
+    width: min(280px, 100%);
   }
 
   .profile-impressions-popup .social-proof-grid {

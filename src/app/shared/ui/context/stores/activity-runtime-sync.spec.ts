@@ -119,6 +119,34 @@ describe('activity runtime counter signals', () => {
     vi.restoreAllMocks();
   });
 
+  it('broadcasts every removed resource metric in one authoritative signal', () => {
+    const store = new ActivityStore();
+
+    store.emitActivityResourceMemberDeltaSync({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      acceptedMemberDelta: -1,
+      pendingMemberDelta: -2,
+      capacityMinDelta: -1,
+      capacityMaxDelta: -4,
+      resourceAssignmentRemoved: true
+    });
+
+    expect(store.activityResourceMemberDeltaSync()).toMatchObject({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      acceptedMemberDelta: -1,
+      pendingMemberDelta: -2,
+      capacityMinDelta: -1,
+      capacityMaxDelta: -4,
+      resourceAssignmentRemoved: true
+    });
+  });
+
   it('carries a lean member status transition with its signed counter deltas', () => {
     const store = new ActivityStore();
 
@@ -152,6 +180,44 @@ describe('activity runtime counter signals', () => {
         previousStatus: 'pending',
         status: 'deleted',
         pendingMemberDelta: -1
+      }
+    });
+  });
+
+  it('retains the authoritative assignment-removal result with the canonical zero-member snapshot', () => {
+    const store = new ActivityStore();
+
+    store.emitActivityMembersSync({
+      id: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 3,
+      acceptedMemberDelta: -1,
+      pendingMemberDelta: 0,
+      resourceAssignmentRemoved: true,
+      memberStatusChange: {
+        assetId: 'asset-1',
+        eventId: 'event-1',
+        subEventId: 'subevent-1',
+        userId: 'viewer',
+        previousStatus: 'accepted',
+        status: 'deleted',
+        acceptedMemberDelta: -1,
+        pendingMemberDelta: 0,
+        resourceAssignmentRemoved: true
+      }
+    });
+
+    expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      resourceAssignmentRemoved: true,
+      memberStatusChange: {
+        previousStatus: 'accepted',
+        status: 'deleted',
+        resourceAssignmentRemoved: true
       }
     });
   });
@@ -239,6 +305,44 @@ describe('activity runtime counter signals', () => {
       capacityTotal: 4
     });
     expect(store.activityMembersSyncByOwnerId()['asset-1']?.memberStatusChange).toBeUndefined();
+  });
+
+  it('applies identical pending deltas from distinct borrow requests', () => {
+    const store = new ActivityStore();
+    const first = store.cacheActivityMemberStatusChange({
+      assetId: 'asset-1',
+      requestId: 'borrow-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      userId: 'viewer',
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 4
+    });
+    const second = store.cacheActivityMemberStatusChange({
+      assetId: 'asset-1',
+      requestId: 'borrow-2',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      userId: 'viewer',
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 4
+    });
+
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(store.activityMembersSyncByOwnerId()['asset-1']?.pendingMembers).toBe(2);
   });
 
   it('exposes a published resource activity delta to its parent exactly once', () => {

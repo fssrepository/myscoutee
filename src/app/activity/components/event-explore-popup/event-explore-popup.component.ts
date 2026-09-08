@@ -888,7 +888,10 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
-    this.profileStore.openImpressionsPopup(record.creatorUserId);
+    this.profileStore.openImpressionsPopup(record.creatorUserId, {
+      contextLabel: 'Event Host',
+      sourceLabel: record.title
+    });
   }
 
   protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {

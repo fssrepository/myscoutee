@@ -162,20 +162,30 @@ export interface AssetExploreBorrowDialogState {
   quantity: number;
   startAtIso: string;
   endAtIso: string;
+  borrowWindow: AppDTOs.AssetBorrowWindowDTO | null;
   availableQuantity: number;
   acceptedPolicyIds: string[];
   checkoutSessionId: string | null;
   paymentMethod: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
   paymentStep: boolean;
+  confirmedSelectionSignature: string | null;
+  expiresAtIso: string | null;
   busy: boolean;
   error: string | null;
 }
 
 export interface AssignedAssetJoinDialogState {
   cardId: string;
-  type: typeof AppConstants.ASSET_TYPE_TRANSPORT | typeof AppConstants.ASSET_TYPE_ACCOMMODATION;
+  type: AppConstants.AssetType;
   sourceAssetId: string;
+  mode?: 'join' | 'takeover';
+  previousManagerUserId?: string | null;
+  takeOverAmount?: number;
+  takeOverCurrency?: string;
   acceptedPolicyIds: string[];
+  checkoutSessionId?: string | null;
+  paymentMethod?: import('../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
+  paymentStep?: boolean;
   busy: boolean;
   error: string | null;
 }

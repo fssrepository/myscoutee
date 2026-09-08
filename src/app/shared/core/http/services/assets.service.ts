@@ -55,16 +55,26 @@ export class HttpAssetsService {
     }
   }
 
-  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
+  async loadOwnedAssetDetailById(
+    userId: string,
+    assetId: string,
+    scope?: AppDTOs.AssetDetailLoadScopeDTO
+  ): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
     try {
+      let params = new HttpParams().set('userId', normalizedUserId);
+      if (scope) {
+        params = params
+          .set('eventId', scope.eventId.trim())
+          .set('subEventId', scope.subEventId.trim());
+      }
       const response = await this.http
         .get<AppDTOs.AssetDetailDTO | null>(`${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}`, {
-          params: new HttpParams().set('userId', normalizedUserId)
+          params
         })
         .toPromise();
       const detail = this.normalizeDetail(response);
@@ -137,7 +147,8 @@ export class HttpAssetsService {
         return {
           items,
           total: items.length,
-          nextCursor: null
+          nextCursor: null,
+          checkoutResultStates: undefined
         };
       }
       const items = this.normalizeCards(response?.items ?? []);
@@ -148,7 +159,10 @@ export class HttpAssetsService {
           : items.length,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor
-          : null
+          : null,
+        checkoutResultStates: response?.checkoutResultStates
+          ? { ...response.checkoutResultStates }
+          : undefined
       };
     } catch (error) {
       if (this.isAbortError(error)) {
@@ -295,6 +309,34 @@ export class HttpAssetsService {
     return this.cloneCards([savedAsset])[0] ?? savedAsset;
   }
 
+  async saveOwnedAssetRequests(
+    userId: string,
+    assetId: string,
+    requests: readonly AppDTOs.AssetMemberRequestDTO[]
+  ): Promise<AppDTOs.AssetDTO> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      throw new Error('A valid asset and owner are required.');
+    }
+    const response = await this.http
+      .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/requests`, {
+        userId: normalizedUserId,
+        assetId: normalizedAssetId,
+        requests: this.normalizeRequests(requests)
+      })
+      .toPromise();
+    const savedAsset = this.normalizeCard(response);
+    if (!savedAsset) {
+      throw new Error('The asset requests were not accepted by the server.');
+    }
+    this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
+      this.peekOwnedAssetsByUser(normalizedUserId),
+      savedAsset
+    );
+    return this.cloneCards([savedAsset])[0] ?? savedAsset;
+  }
+
   async applyMemberStatusChange(
     request: AppDTOs.AssetMemberStatusChangeRequestDTO
   ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
@@ -331,7 +373,15 @@ export class HttpAssetsService {
         ? response.previousStatus
         : null,
       acceptedMemberDelta: Math.trunc(Number(response.acceptedMemberDelta) || 0),
-      pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0)
+      pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0),
+      resourceAssignmentRemoved: response.resourceAssignmentRemoved === true,
+      paymentTotals: response.paymentTotals
+        ? {
+            outgoing: { ...(response.paymentTotals.outgoing ?? {}) },
+            incoming: { ...(response.paymentTotals.incoming ?? {}) },
+            all: { ...(response.paymentTotals.all ?? {}) }
+          }
+        : null
     };
   }
 
@@ -557,6 +607,7 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
@@ -564,6 +615,18 @@ export class HttpAssetsService {
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };
+  }
+
+  private normalizeBorrowWindow(
+    window: AppDTOs.AssetBorrowWindowDTO | null | undefined
+  ): AppDTOs.AssetBorrowWindowDTO | null {
+    const eventId = `${window?.eventId ?? ''}`.trim();
+    const subEventId = `${window?.subEventId ?? ''}`.trim();
+    const startAtIso = `${window?.startAtIso ?? ''}`.trim();
+    const endAtIso = `${window?.endAtIso ?? ''}`.trim();
+    return eventId && subEventId && startAtIso && endAtIso
+      ? { eventId, subEventId, startAtIso, endAtIso }
+      : null;
   }
 
   private normalizeDetail(card: AppDTOs.AssetDetailDTO | null | undefined): AppDTOs.AssetDetailDTO | null {
@@ -618,10 +681,12 @@ export class HttpAssetsService {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
+      borrowWindow: this.normalizeBorrowWindow(card?.borrowWindow),
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };

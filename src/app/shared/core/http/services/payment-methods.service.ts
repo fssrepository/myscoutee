@@ -7,6 +7,7 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
 import type { ListQuery } from '../../contracts/list.interface';
 import type {
   PaymentHistoryPageDto,
+  PaymentHistoryMutationDto,
   PaymentMethodDataService,
   PaymentMethodRegistrationDto,
   PaymentMethodRegistrationRequestDto,
@@ -80,7 +81,8 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
       nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
       spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
-      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals)
+      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
+      pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
     };
   }
 
@@ -95,8 +97,25 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
       nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
       spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
-      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals)
+      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
+      pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
     };
+  }
+
+  async requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
+    return this.requireHistoryMutation(await this.withTimeout(this.http.post<PaymentHistoryMutationDto | null>(
+      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history/${encodeURIComponent(paymentId.trim())}/refund-request`,
+      {},
+      { params: this.userParams(userId) }
+    ), signal));
+  }
+
+  async approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
+    return this.requireHistoryMutation(await this.withTimeout(this.http.post<PaymentHistoryMutationDto | null>(
+      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history/${encodeURIComponent(paymentId.trim())}/refund-approve`,
+      {},
+      { params: this.userParams(userId) }
+    ), signal));
   }
 
   private normalizeSpendingTotals(value: Record<string, number> | null | undefined): Record<string, number> {
@@ -105,6 +124,18 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       const numeric = Number(amount);
       return key && Number.isFinite(numeric) && numeric >= 0 ? [[key, numeric]] : [];
     }));
+  }
+
+  private requireHistoryMutation(value: PaymentHistoryMutationDto | null): PaymentHistoryMutationDto {
+    if (!value?.item?.id?.trim()) {
+      throw new Error('Payment provider returned an invalid refund response.');
+    }
+    return {
+      item: { ...value.item },
+      spendingTotals: this.normalizeSpendingTotals(value.spendingTotals),
+      incomeTotals: this.normalizeSpendingTotals(value.incomeTotals),
+      pendingRefundCount: Math.max(0, Math.trunc(Number(value.pendingRefundCount) || 0))
+    };
   }
 
   private normalizeCurrentProvider(value: unknown): 'stripe' | 'barion' | 'none' | null {

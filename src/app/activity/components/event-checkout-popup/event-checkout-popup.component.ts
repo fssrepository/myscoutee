@@ -79,7 +79,7 @@ type CheckoutFooterDecisionState = {
 })
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
-  private static readonly CHECKOUT_BASKET_TTL_MS = 20 * 60 * 1000;
+  private static readonly CHECKOUT_BASKET_TTL_MS = 10 * 60 * 1000;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
   protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);
@@ -2912,7 +2912,12 @@ export class EventCheckoutPopupComponent {
     const firstSlot = dialog.record.upcomingSlots?.[0] ?? null;
     const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
     const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
-    const validPolicyIds = new Set(this.policies().map(item => item.id));
+    const policies = this.policies();
+    const validPolicyIds = new Set(policies.map(item => item.id));
+    const requiredPolicyIds = policies
+      .filter(item => item.required !== false)
+      .map(item => item.id)
+      .filter(Boolean);
     const validSlotIds = new Set(this.availableSlots().map(item => item.id));
     this.selectedSlotSourceId = draft?.slotSourceId && validSlotIds.has(draft.slotSourceId)
       ? draft.slotSourceId
@@ -2926,7 +2931,10 @@ export class EventCheckoutPopupComponent {
         ?? (firstSlot ? this.slotDateValueFromIso(firstSlot.startAtIso) : null);
     this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set((draft?.optionalSubEventIds ?? []).filter(item => validOptionalIds.has(item)));
-    this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
+    this.acceptedPolicyIds = new Set([
+      ...requiredPolicyIds,
+      ...(draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item))
+    ]);
     this.appliedPromoCodes = this.validAppliedPromoCodes(draft?.appliedPromoCodes ?? []);
     const draftHasVisibleItems = this.hasVisibleCheckoutItems(draft?.basketItems);
     this.paymentStep = draftHasVisibleItems ? this.shouldOpenPaymentStepFromDraft(draft) : false;

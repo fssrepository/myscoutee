@@ -1232,19 +1232,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       result.sourceId,
       `${stage.id ?? ''}`.trim()
     );
-    const acceptedUserIds = new Set((event.acceptedMemberUserIds ?? [])
-      .map(userId => `${userId ?? ''}`.trim())
-      .filter(Boolean));
     const leaderboardWinnerUserIds = [...new Set((leaderboard?.groups ?? [])
       .flatMap(group => group.advancingMemberIds ?? [])
       .map(userId => `${userId ?? ''}`.trim())
       .filter(Boolean))];
-    const advancingUserIds = leaderboardWinnerUserIds.filter(userId => acceptedUserIds.has(userId));
+    // Stage membership is scope-local. A later root-Event participation
+    // change must not rewrite this stage's members or leaderboard result.
+    const advancingUserIds = leaderboardWinnerUserIds;
     const notAdvancingUserIds = [...new Set((leaderboard?.groups ?? [])
       .flatMap(group => group.members ?? [])
       .map(member => `${member?.id ?? ''}`.trim())
       .filter(userId => userId
-        && acceptedUserIds.has(userId)
         && !advancingUserIds.includes(userId)))];
     if (finalStage) {
       const finalistUserIds = new Set(stageParticipantUserIds);

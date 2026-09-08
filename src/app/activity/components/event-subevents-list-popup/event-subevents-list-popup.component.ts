@@ -1375,8 +1375,20 @@ export class EventSubeventsListPopupComponent {
   private applyResourceMemberDeltaSync(sync: ActivityResourceMemberDeltaSyncState): void {
     const ownerId = `${sync.ownerId ?? ''}`.trim();
     const subEventId = `${sync.subEventId ?? ''}`.trim();
+    const acceptedMemberDelta = Math.trunc(Number(sync.acceptedMemberDelta) || 0);
     const pendingMemberDelta = Math.trunc(Number(sync.pendingMemberDelta) || 0);
-    if (!ownerId || !subEventId || pendingMemberDelta === 0) {
+    const capacityMinDelta = Math.trunc(Number(sync.capacityMinDelta) || 0);
+    const capacityMaxDelta = Math.trunc(Number(sync.capacityMaxDelta) || 0);
+    if (
+      !ownerId
+      || !subEventId
+      || (
+        acceptedMemberDelta === 0
+        && pendingMemberDelta === 0
+        && capacityMinDelta === 0
+        && capacityMaxDelta === 0
+      )
+    ) {
       return;
     }
 
@@ -1390,17 +1402,26 @@ export class EventSubeventsListPopupComponent {
         case AppConstants.ASSET_TYPE_TRANSPORT:
           return {
             ...item,
-            carsPending: Math.max(0, Math.trunc(Number(item.carsPending) || 0) + pendingMemberDelta)
+            carsAccepted: Math.max(0, Math.trunc(Number(item.carsAccepted) || 0) + acceptedMemberDelta),
+            carsPending: Math.max(0, Math.trunc(Number(item.carsPending) || 0) + pendingMemberDelta),
+            carsCapacityMin: Math.max(0, Math.trunc(Number(item.carsCapacityMin) || 0) + capacityMinDelta),
+            carsCapacityMax: Math.max(0, Math.trunc(Number(item.carsCapacityMax) || 0) + capacityMaxDelta)
           };
         case AppConstants.ASSET_TYPE_ACCOMMODATION:
           return {
             ...item,
-            accommodationPending: Math.max(0, Math.trunc(Number(item.accommodationPending) || 0) + pendingMemberDelta)
+            accommodationAccepted: Math.max(0, Math.trunc(Number(item.accommodationAccepted) || 0) + acceptedMemberDelta),
+            accommodationPending: Math.max(0, Math.trunc(Number(item.accommodationPending) || 0) + pendingMemberDelta),
+            accommodationCapacityMin: Math.max(0, Math.trunc(Number(item.accommodationCapacityMin) || 0) + capacityMinDelta),
+            accommodationCapacityMax: Math.max(0, Math.trunc(Number(item.accommodationCapacityMax) || 0) + capacityMaxDelta)
           };
         case AppConstants.ASSET_TYPE_SUPPLIES:
           return {
             ...item,
-            suppliesPending: Math.max(0, Math.trunc(Number(item.suppliesPending) || 0) + pendingMemberDelta)
+            suppliesAccepted: Math.max(0, Math.trunc(Number(item.suppliesAccepted) || 0) + acceptedMemberDelta),
+            suppliesPending: Math.max(0, Math.trunc(Number(item.suppliesPending) || 0) + pendingMemberDelta),
+            suppliesCapacityMin: Math.max(0, Math.trunc(Number(item.suppliesCapacityMin) || 0) + capacityMinDelta),
+            suppliesCapacityMax: Math.max(0, Math.trunc(Number(item.suppliesCapacityMax) || 0) + capacityMaxDelta)
           };
       }
       return item;

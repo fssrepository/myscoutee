@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PricingConfig } from '../../contracts';
+import type { AssetMemberRequestDTO, PricingConfig } from '../../contracts';
 import { PricingBuilder } from './pricing.builder';
 
 describe('PricingBuilder', () => {
@@ -220,5 +220,68 @@ describe('PricingBuilder', () => {
       { key: 'quantity-rule:two-item-uplift', amount: 3 },
       { key: 'quantity', amount: 15, multiplier: 2 }
     ]);
+  });
+
+  it('counts overlapping pending borrows as dated demand without counting the edited request twice', () => {
+    const pricing: PricingConfig = {
+      ...PricingBuilder.createDefaultPricingConfig('asset'),
+      enabled: true,
+      mode: 'demand-based',
+      basePrice: 10,
+      demandRulesEnabled: true,
+      demandRules: [{
+        id: 'two-thirds-full',
+        operator: 'gte',
+        capacityFilledPercent: 60,
+        action: { kind: 'increase_amount', value: 5 },
+        appliesTo: 'all_slots',
+        slotIds: []
+      }]
+    };
+    const pendingRequest: AssetMemberRequestDTO = {
+      id: 'pending-1',
+      userId: 'borrower-1',
+      name: 'Borrower',
+      initials: 'B',
+      gender: 'man',
+      status: 'pending',
+      requestKind: 'borrow',
+      booking: {
+        startAtIso: '2026-09-09T09:00:00',
+        endAtIso: '2026-09-09T11:00:00',
+        quantity: 1,
+        inventoryApplied: null
+      }
+    };
+
+    const overlapping = PricingBuilder.resolveAssetBorrowPricing({
+      pricing,
+      totalQuantity: 3,
+      requestedQuantity: 1,
+      startAtIso: '2026-09-09T09:30:00',
+      endAtIso: '2026-09-09T10:30:00',
+      requests: [pendingRequest]
+    });
+    const nonOverlapping = PricingBuilder.resolveAssetBorrowPricing({
+      pricing,
+      totalQuantity: 3,
+      requestedQuantity: 1,
+      startAtIso: '2026-09-10T09:30:00',
+      endAtIso: '2026-09-10T10:30:00',
+      requests: [pendingRequest]
+    });
+    const editingCurrent = PricingBuilder.resolveAssetBorrowPricing({
+      pricing,
+      totalQuantity: 3,
+      requestedQuantity: 1,
+      startAtIso: '2026-09-09T09:30:00',
+      endAtIso: '2026-09-09T10:30:00',
+      requests: [pendingRequest],
+      excludeRequestId: pendingRequest.id
+    });
+
+    expect(overlapping.amount).toBe(15);
+    expect(nonOverlapping.amount).toBe(10);
+    expect(editingCurrent.amount).toBe(10);
   });
 });

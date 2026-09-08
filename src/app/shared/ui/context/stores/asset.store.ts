@@ -60,7 +60,7 @@ export interface AssetEditorRuntimeAssignmentState {
     | Promise<void | { quantity: number; routeEnabled: boolean; routes: readonly string[] }>;
 }
 
-export type AssetEditorCheckoutMode = 'borrow' | 'join' | 'payment-summary';
+export type AssetEditorCheckoutMode = 'borrow' | 'join' | 'takeover' | 'payment-summary';
 export type AssetEditorCheckoutPhase = 'review' | 'payment' | 'summary';
 
 export interface AssetEditorCheckoutState {

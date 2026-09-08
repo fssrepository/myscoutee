@@ -24,8 +24,100 @@ for (const language of languages) {
 if (bundles.size === languages.length) {
   validateSourceKeySets();
   validateLiteralSourceReferences();
+  validateLiteralNotificationKeyReferences();
+  validateGeneratedNotificationKinds();
   for (const databaseName of seedDatabases) {
     validateSeedDatabase(databaseName);
+  }
+}
+
+function validateLiteralNotificationKeyReferences() {
+  const roots = [
+    path.join(frontendRoot, 'src'),
+    path.join(repoRoot, 'server/projects/profile/src/main/java')
+  ];
+  const knownKeys = new Set(Object.keys(bundles.get('en').messages));
+  const expression = /['"](notification\.[A-Za-z0-9_.-]+)['"]/g;
+  for (const root of roots) {
+    for (const filePath of sourceFilesByExtension(root, /\.(?:html|java|ts)$/)) {
+      const source = fs.readFileSync(filePath, 'utf8');
+      expression.lastIndex = 0;
+      for (const match of source.matchAll(expression)) {
+        const key = match[1];
+        if (!knownKeys.has(key)) {
+          const line = source.slice(0, match.index).split('\n').length;
+          issues.push(
+            `${relativePath(filePath)}:${line}: notification references missing key ${formatValue(key)}`
+          );
+        }
+      }
+    }
+  }
+}
+
+function validateGeneratedNotificationKinds() {
+  const javaRoot = path.join(repoRoot, 'server/projects/profile/src/main/java');
+  const kinds = new Set([
+    'asset-admin-join-request',
+    'asset-invitation-declined',
+    'asset-member-invitation-withdrawn',
+    'asset-member-invite',
+    'asset-member-left',
+    'asset-member-removed',
+    'asset-member-request-accepted',
+    'asset-member-request-declined',
+    'asset-review',
+    'event-admin-join-request',
+    'event-admin-join-request-cancelled',
+    'event-member-disqualified',
+    'event-member-left',
+    'event-member-reinstated',
+    'event-random-groups',
+    'event-restored',
+    'event-review',
+    'event-stage-closed',
+    'event-stage-finalized',
+    'event-stage-review',
+    'event-stage-scores-under-review',
+    'event-tournament-not-won',
+    'event-tournament-start-review',
+    'event-tournament-started',
+    'event-tournament-suspended',
+    'event-tournament-won',
+    'event-unavailable',
+    'payment-refund-requested'
+  ]);
+  const expressions = [
+    /new\s+NotificationIntent\s*\(\s*"([a-z][a-z0-9-]+)"/g,
+    /enqueueEventNotification\s*\(\s*"([a-z][a-z0-9-]+)"/g
+  ];
+  for (const filePath of sourceFilesByExtension(javaRoot, /\.java$/)) {
+    const source = fs.readFileSync(filePath, 'utf8');
+    for (const expression of expressions) {
+      expression.lastIndex = 0;
+      for (const match of source.matchAll(expression)) {
+        kinds.add(match[1]);
+      }
+    }
+  }
+
+  // These carry user-authored or database-template content, not translatable
+  // application copy.
+  for (const dynamicKind of ['chat-message', 'feedback-resolved', 'scheduled-template']) {
+    kinds.delete(dynamicKind);
+  }
+
+  for (const kind of [...kinds].sort()) {
+    for (const field of ['title', 'message']) {
+      const key = `notification.kind.${kind}.${field}`;
+      for (const language of languages) {
+        if (!Object.hasOwn(bundles.get(language).messages, key)) {
+          issues.push(
+            `generated notification ${formatValue(kind)} is missing ${formatValue(key)} from ${language}`
+          );
+        }
+      }
+    }
   }
 }
 
@@ -132,6 +224,12 @@ function validateLiteralSourceReferences() {
 }
 
 function sourceFiles(directory) {
+  return sourceFilesByExtension(directory, /\.(?:html|ts)$/).filter(
+    filePath => !/\.spec\.ts$/.test(filePath)
+  );
+}
+
+function sourceFilesByExtension(directory, extensionPattern) {
   const files = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name);
@@ -139,7 +237,7 @@ function sourceFiles(directory) {
       files.push(...sourceFiles(entryPath));
       continue;
     }
-    if (!entry.isFile() || !/\.(?:html|ts)$/.test(entry.name) || /\.spec\.ts$/.test(entry.name)) {
+    if (!entry.isFile() || !extensionPattern.test(entry.name)) {
       continue;
     }
     files.push(entryPath);

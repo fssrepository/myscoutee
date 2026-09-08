@@ -75,6 +75,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
@@ -82,6 +83,18 @@ export class LocalAssetsMapper {
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };
+  }
+
+  private static normalizeBorrowWindow(
+    window: AppDTOs.AssetBorrowWindowDTO | null | undefined
+  ): AppDTOs.AssetBorrowWindowDTO | null {
+    const eventId = `${window?.eventId ?? ''}`.trim();
+    const subEventId = `${window?.subEventId ?? ''}`.trim();
+    const startAtIso = `${window?.startAtIso ?? ''}`.trim();
+    const endAtIso = `${window?.endAtIso ?? ''}`.trim();
+    return eventId && subEventId && startAtIso && endAtIso
+      ? { eventId, subEventId, startAtIso, endAtIso }
+      : null;
   }
 
   static fallbackAssetDto(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
@@ -106,6 +119,7 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card.status),
       ownerUserId: `${card.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card.ownerReleasedAtIso ?? ''}`.trim() || null,
       requests,
       metrics: this.assetRequestMetrics(card.metrics),
@@ -165,10 +179,12 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card?.status),
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
       ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
+      borrowWindow: this.normalizeBorrowWindow(card?.borrowWindow),
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };
@@ -490,14 +506,20 @@ export class LocalAssetsMapper {
 
   private static assetRequestMenuActions(request: AssetRequestRecord): AppConstants.AssetRequestAction[] {
     if (this.isPendingAssetRequest(request)) {
-      return (request.menuActions ?? []).includes('makeManager')
+      const scopedBorrow = request.requestKind === 'borrow'
+        && Boolean(request.booking?.eventId)
+        && Boolean(request.booking?.subEventId);
+      return !scopedBorrow && (request.menuActions ?? []).includes('makeManager')
         ? ['accept', 'makeManager', 'remove']
         : ['accept', 'remove'];
     }
     if (request.requestKind === 'manual') {
       return request.booking?.eventId && request.booking?.subEventId ? ['manage'] : [];
     }
-    return (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
+    const scopedBorrow = request.requestKind === 'borrow'
+      && Boolean(request.booking?.eventId)
+      && Boolean(request.booking?.subEventId);
+    return !scopedBorrow && (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
   }
 
   private static normalizedCount(value: unknown): number {

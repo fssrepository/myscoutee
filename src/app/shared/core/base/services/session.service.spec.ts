@@ -379,6 +379,37 @@ describe('SessionService operator bootstrap session', () => {
       });
   });
 
+  it('publishes an admin help perspective only after its server session is registered', async () => {
+    const service = TestBed.inject(SessionService);
+    service.startDemoSession('admin-demo-ava');
+    const storedAdminSession = localStorage.getItem(APP_STORAGE_KEYS.session);
+
+    await expect(service.startTrackedDemoSession('reported-user', {
+      supportContext: {
+        kind: 'admin-support',
+        targetUrl: '/game?supportTarget=member'
+      }
+    })).resolves.toMatchObject({
+      kind: 'demo',
+      userId: 'reported-user',
+      supportContext: { kind: 'admin-support' }
+    });
+
+    expect(registerDemoLogin).toHaveBeenCalledWith(
+      expect.stringMatching(/^session:/),
+      'reported-user',
+      expect.objectContaining({ provider: 'demo' })
+    );
+    expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBe(storedAdminSession);
+    expect(JSON.parse(sessionStorage.getItem(APP_STORAGE_KEYS.adminSupportSession) ?? '{}'))
+      .toMatchObject({
+        kind: 'demo',
+        userId: 'reported-user',
+        sessionId: expect.stringMatching(/^session:/),
+        supportContext: { kind: 'admin-support' }
+      });
+  });
+
   it('restores the tab-scoped admin help perspective before the shared browser session', () => {
     localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
       kind: 'demo',
@@ -403,6 +434,7 @@ describe('SessionService operator bootstrap session', () => {
   });
 
   it('does not clear the admin session when the tab-scoped help perspective logs out', async () => {
+    environment.activitiesDataSource = 'http';
     const service = TestBed.inject(SessionService);
     service.startDemoSession('admin-demo-ava');
     const storedAdminSession = localStorage.getItem(APP_STORAGE_KEYS.session);
@@ -416,7 +448,10 @@ describe('SessionService operator bootstrap session', () => {
     expect(sessionStorage.getItem(APP_STORAGE_KEYS.adminSupportSession)).toBeNull();
     expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBe(storedAdminSession);
     expect(localStorage.getItem(APP_STORAGE_KEYS.demoActiveUser)).toBe('admin-demo-ava');
-    expect(revokeDemoSession).not.toHaveBeenCalled();
+    expect(revokeDemoSession).toHaveBeenCalledWith(
+      expect.stringMatching(/^session:/),
+      'reported-user'
+    );
   });
 
   it('clears the bootstrap token on logout', async () => {

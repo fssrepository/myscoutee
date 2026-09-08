@@ -1507,22 +1507,38 @@ export class EventTournamentGroupsPopupComponent {
 
   private applyResourceMemberDeltaSync(sync: ActivityResourceMemberDeltaSyncState): void {
     const match = this.groupResourceScope(sync.ownerId, sync.subEventId);
+    const acceptedDelta = Math.trunc(Number(sync.acceptedMemberDelta) || 0);
     const pendingDelta = Math.trunc(Number(sync.pendingMemberDelta) || 0);
-    if (!match || pendingDelta === 0) {
+    const capacityMinDelta = Math.trunc(Number(sync.capacityMinDelta) || 0);
+    const capacityMaxDelta = Math.trunc(Number(sync.capacityMaxDelta) || 0);
+    if (
+      !match
+      || (
+        acceptedDelta === 0
+        && pendingDelta === 0
+        && capacityMinDelta === 0
+        && capacityMaxDelta === 0
+      )
+    ) {
       return;
     }
-    const nextState = EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+    const nextState = EventTournamentGroupsPopupConverter.withResourceMetricDeltas(
       this.state,
       match.stage.subEventId,
       match.group.id,
       sync.resourceType,
-      pendingDelta
+      {
+        accepted: acceptedDelta,
+        pending: pendingDelta,
+        capacityMin: capacityMinDelta,
+        capacityMax: capacityMaxDelta
+      }
     );
     if (nextState === this.state) {
       return;
     }
     this.state = nextState;
-    this.emitGroupsUpdate(match.stage.subEventId);
+    this.emitGroupsUpdate(match.stage.subEventId, pendingDelta);
     this.cdr.markForCheck();
   }
 

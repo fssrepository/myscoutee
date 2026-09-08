@@ -42,6 +42,11 @@ export interface ProfileViewTarget {
   label: string | null;
 }
 
+export interface ProfileImpressionsPopupContext {
+  contextLabel?: string | null;
+  sourceLabel?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -56,6 +61,7 @@ export class ProfileStore {
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly contactsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
+  private readonly impressionsPopupContextRef = signal<ProfileImpressionsPopupContext | null>(null);
   private readonly impressionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -74,6 +80,7 @@ export class ProfileStore {
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
   readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
+  readonly impressionsPopupContext = this.impressionsPopupContextRef.asReadonly();
   readonly impressionsPopupComponent = this.impressionsPopupComponentRef.asReadonly();
   readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
   readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
@@ -180,14 +187,19 @@ export class ProfileStore {
     this.settingsPopupRef.set('report-user');
   }
 
-  openImpressionsPopup(userId: string): void {
+  openImpressionsPopup(userId: string, context: ProfileImpressionsPopupContext = {}): void {
     this.impressionsPopupUserIdRef.set(userId.trim());
+    this.impressionsPopupContextRef.set({
+      contextLabel: `${context.contextLabel ?? ''}`.trim() || null,
+      sourceLabel: `${context.sourceLabel ?? ''}`.trim() || null
+    });
     this.impressionsPopupOpenRef.set(true);
   }
 
   closeImpressionsPopup(): void {
     this.impressionsPopupOpenRef.set(false);
     this.impressionsPopupUserIdRef.set('');
+    this.impressionsPopupContextRef.set(null);
   }
 
   openContactsPopup(): void {

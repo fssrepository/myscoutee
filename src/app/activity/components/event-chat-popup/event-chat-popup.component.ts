@@ -730,7 +730,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatPopupToolbarControls(): readonly PopupControl<ChatMenuContext>[] {
-    const membersControl = this.isAppSupportChat() || this.isServiceChat() || this.isBlockedSupportChat()
+    const membersControl = this.isAppSupportChat() || this.isBlockedSupportChat()
       ? null
       : this.chatHeaderMembersControl();
     return [{
@@ -782,6 +782,8 @@ export class EventChatPopupComponent implements OnDestroy {
       contextStartAtIso: header.contextStartAtIso ?? null,
       contextEndAtIso: header.contextEndAtIso ?? null,
       channelType: header.channelType ?? undefined,
+      serviceContext: header.serviceContext ?? undefined,
+      assetId: `${header.assetId ?? ''}`.trim() || undefined,
       ownerId: ownerId || undefined,
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
       subEventId: `${header.subEventId ?? ''}`.trim() || undefined,
@@ -1029,7 +1031,8 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const session = this.session();
-    const memberCount = Math.max(0, session?.item.memberIds?.length ?? session?.item.members?.length ?? 0);
+    const members = session ? this.chatMemberEntries(session.item, session.openedAtIso) : [];
+    const memberCount = Math.max(0, members.length || session?.item.memberIds?.length || session?.item.members?.length || 0);
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
@@ -1038,7 +1041,47 @@ export class EventChatPopupComponent implements OnDestroy {
       acceptedMembers: memberCount,
       pendingMembers: 0,
       capacityTotal: memberCount,
+      members: members.length > 0 ? members : undefined,
       lookup: lookup ? { ...lookup } : undefined
+    });
+  }
+
+  private chatMemberEntries(
+    chat: Pick<ChatDTO, 'id' | 'memberIds' | 'members'>,
+    actionAtIso: string
+  ): ContractTypes.ActivityMemberDTO[] {
+    const summariesByUserId = new Map(
+      (chat.members ?? [])
+        .map(member => [`${member.id ?? ''}`.trim(), member] as const)
+        .filter(([userId]) => userId.length > 0)
+    );
+    const userIds = [...new Set([
+      ...(chat.memberIds ?? []),
+      ...summariesByUserId.keys()
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))];
+    const normalizedActionAtIso = `${actionAtIso ?? ''}`.trim() || new Date().toISOString();
+
+    return userIds.map(userId => {
+      const summary = summariesByUserId.get(userId);
+      const name = `${summary?.name ?? ''}`.trim() || userId;
+      return {
+        id: `chat:${chat.id}:${userId}`,
+        userId,
+        name,
+        initials: `${summary?.initials ?? ''}`.trim() || AppUtils.initialsFromText(name),
+        gender: summary?.gender === 'woman' ? 'woman' : 'man',
+        city: '',
+        statusText: 'Chat member',
+        role: 'Member',
+        status: 'accepted',
+        pendingSource: null,
+        requestKind: null,
+        invitedByActiveUser: false,
+        metAtIso: normalizedActionAtIso,
+        actionAtIso: normalizedActionAtIso,
+        metWhere: 'Chat',
+        avatarUrl: `${summary?.imageUrl ?? ''}`.trim()
+      };
     });
   }
 
@@ -2717,7 +2760,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.schedulePendingMessageTimeout(messageId);
     this.closeTransientMessageUi();
 
-    void this.chatsService.sendChatMessageWithAttachments(
+    void this.sendPersistedChatMessageWithAttachments(
       session.item,
       retriedMessage.text,
       (retriedMessage.attachments ?? []).map(attachment => ({ ...attachment })),
@@ -2951,7 +2994,13 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.chatsService.sendChatMessageWithAttachments(session.item, text, [], optimisticMessage.clientId, optimisticMessage.replyTo)
+    void this.sendPersistedChatMessageWithAttachments(
+      session.item,
+      text,
+      [],
+      optimisticMessage.clientId,
+      optimisticMessage.replyTo
+    )
       .then(message => {
         if (this.loadedSessionKey !== sessionKey) {
           return;
@@ -2966,6 +3015,61 @@ export class EventChatPopupComponent implements OnDestroy {
         }
         this.cdr.markForCheck();
       });
+  }
+
+  private async sendPersistedChatMessageWithAttachments(
+    chat: ChatDTO,
+    text: string,
+    attachments: readonly ContractTypes.ChatMessageAttachment[],
+    clientId?: string,
+    replyTo?: ContractTypes.ChatMessageDto['replyTo']
+  ): Promise<ContractTypes.ChatMessageDto | null> {
+    const persistedChat = await this.ensureServiceChatBeforeFirstMessage(chat);
+    return this.chatsService.sendChatMessageWithAttachments(
+      persistedChat,
+      text,
+      attachments,
+      clientId,
+      replyTo
+    );
+  }
+
+  private async ensureServiceChatBeforeFirstMessage(chat: ChatDTO): Promise<ChatDTO> {
+    if (chat.serviceContext !== 'event' && chat.serviceContext !== 'asset') {
+      return chat;
+    }
+    const activeUserId = this.activeUserId().trim();
+    const targetUserId = (chat.memberIds ?? [])
+      .map(memberId => `${memberId ?? ''}`.trim())
+      .find(memberId => memberId && memberId !== activeUserId) ?? '';
+    const eventId = `${chat.eventId ?? (chat.serviceContext === 'event' ? chat.ownerId : '') ?? ''}`.trim();
+    const assetId = `${chat.assetId ?? (chat.serviceContext === 'asset' ? chat.ownerId : '') ?? ''}`.trim();
+    const subEventId = `${chat.subEventId ?? ''}`.trim();
+    if (!activeUserId || !targetUserId || !eventId || (chat.serviceContext === 'asset' && (!assetId || !subEventId))) {
+      throw new Error('Service chat context is incomplete.');
+    }
+    const persisted = await this.chatsService.ensureServiceChat({
+      serviceContext: chat.serviceContext,
+      eventId,
+      subEventId: subEventId || null,
+      assetId: assetId || null,
+      targetUserId,
+      title: chat.title,
+      lastMessage: chat.lastMessage,
+      avatarSource: chat.avatar
+    });
+    if (!persisted) {
+      throw new Error('The service chat could not be created.');
+    }
+    const merged: ChatDTO = {
+      ...persisted,
+      serviceContext: chat.serviceContext,
+      assetId: assetId || undefined,
+      eventId: eventId || persisted.eventId,
+      subEventId: subEventId || persisted.subEventId
+    };
+    this.patchCurrentEventChatHeader(() => eventChatHeaderStateFromChat(merged));
+    return merged;
   }
 
   private async sendLocalImageAttachment(file: File): Promise<void> {
@@ -3012,7 +3116,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     try {
       const persistedAttachment = await this.resolvePersistableImageAttachment(session.item, imageAttachment, file);
-      const persistedMessage = await this.chatsService.sendChatMessageWithAttachments(
+      const persistedMessage = await this.sendPersistedChatMessageWithAttachments(
         session.item,
         caption,
         [persistedAttachment],
@@ -3054,7 +3158,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.chatsService.sendChatMessageWithAttachments(
+    void this.sendPersistedChatMessageWithAttachments(
       session.item,
       caption,
       [{ ...attachment }],

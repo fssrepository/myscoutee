@@ -303,6 +303,16 @@
   color: #a7192d;
 }
 
+.event-payment-status-grid .event-payment-status--refund {
+  border-color: rgba(109, 91, 208, 0.5);
+  background: rgba(239, 236, 255, 0.97);
+}
+
+.event-payment-status-grid .event-payment-status--refund span,
+.event-payment-status-grid .event-payment-status--refund strong {
+  color: #5140ad;
+}
+
 .event-payment-method-shell {
   width: min(100%, 34rem);
   min-width: 0;

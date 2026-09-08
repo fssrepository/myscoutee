@@ -40,6 +40,7 @@ export interface ActivityMemberRecord {
   checkedInByUserId?: string | null;
   checkedInTicketId?: string | null;
   managerGrantedByUserId?: string | null;
+  organizerOnly?: boolean;
   updatedUser?: string | null;
   ownerType: ActivityMemberOwnerType;
   ownerId: string;

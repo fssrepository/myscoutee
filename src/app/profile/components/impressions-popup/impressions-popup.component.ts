@@ -45,6 +45,9 @@ interface ProfileImpressionsPulseFlags {
 
 interface ProfileImpressionsViewModel {
   user: UserDto;
+  profilePhotos: string[];
+  activeProfilePhoto: string;
+  profilePhotoIndex: number;
   hasAvailableData: boolean;
   pulseFlags: ProfileImpressionsPulseFlags;
   hostTierPresentation: SideMenuPresentation;
@@ -109,6 +112,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   });
   private readonly hostTraitIndexRef = signal(0);
   private readonly memberTraitIndexRef = signal(0);
+  private readonly profilePhotoIndexRef = signal(0);
   private lastPopupOpen = false;
   private lastTrackedUserId = '';
   private lastTrackedImpressions: UserDto['impressions'] | null = null;
@@ -130,10 +134,15 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
     const memberTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'member') : [];
     const hostTraitIndex = this.normalizeTraitIndex(this.hostTraitIndexRef(), hostTraitCards.length);
     const memberTraitIndex = this.normalizeTraitIndex(this.memberTraitIndexRef(), memberTraitCards.length);
+    const profilePhotos = this.profilePhotos(user);
+    const profilePhotoIndex = this.normalizeTraitIndex(this.profilePhotoIndexRef(), profilePhotos.length);
     const hostTierPresentation = resolveSideMenuPresentation('hostTier', user.hostTier);
     const traitPresentation = resolveSideMenuPresentation('trait', user.traitLabel ?? '');
     return {
       user,
+      profilePhotos,
+      activeProfilePhoto: profilePhotos[profilePhotoIndex] ?? '',
+      profilePhotoIndex,
       hasAvailableData,
       pulseFlags: this.pulseFlagsRef(),
       hostTierPresentation,
@@ -163,11 +172,20 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
     };
   });
 
-  protected impressionsPopupModel(): PopupModel {
+  protected impressionsPopupModel(vm: ProfileImpressionsViewModel): PopupModel {
+    const context = this.profileStore.impressionsPopupContext();
+    const contextLabel = `${context?.contextLabel ?? ''}`.trim();
+    const sourceLabel = `${context?.sourceLabel ?? ''}`.trim();
+    const title = contextLabel
+      ? `${this.displayTitle(vm.user)} · ${contextLabel}`
+      : `${this.displayTitle(vm.user)} · Impressions`;
     return {
-      title: 'Impressions',
-      ariaLabel: 'Impressions',
+      title,
+      subtitle: sourceLabel || null,
+      ariaLabel: title,
       closeAriaLabel: 'Close',
+      translateTitle: false,
+      translateSubtitle: false,
       size: 'wide',
       height: 'auto',
       headerTone: 'accent',
@@ -177,6 +195,33 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
 
   protected impressionsPopupZIndex(): number {
     return 2640;
+  }
+
+  protected displayTitle(user: UserDto): string {
+    const name = `${user.name ?? ''}`.trim() || 'Profile';
+    return user.age > 0 ? `${name}, ${user.age}` : name;
+  }
+
+  protected profileInitials(user: UserDto): string {
+    const source = `${user.initials ?? ''}`.trim() || `${user.name ?? ''}`.trim() || 'Profile';
+    return AppUtils.initialsFromText(source);
+  }
+
+  protected profileAvatarClass(user: UserDto): string[] {
+    return [`user-color-${user.gender === 'woman' ? 'woman' : 'man'}`];
+  }
+
+  protected selectProfilePhoto(index: number, event: Event): void {
+    event.stopPropagation();
+    const photos = this.viewModel()?.profilePhotos ?? [];
+    if (photos.length <= 1) {
+      return;
+    }
+    this.profilePhotoIndexRef.set(Math.max(0, Math.min(index, photos.length - 1)));
+  }
+
+  protected trackProfilePhoto(index: number, photo: string): string {
+    return `${index}:${photo}`;
   }
 
   constructor() {
@@ -349,6 +394,15 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   private resetTraitCarouselIndices(): void {
     this.hostTraitIndexRef.set(0);
     this.memberTraitIndexRef.set(0);
+    this.profilePhotoIndexRef.set(0);
+  }
+
+  private profilePhotos(user: UserDto): string[] {
+    return [...new Set(
+      (Array.isArray(user.images) ? user.images : [])
+        .map(image => `${image ?? ''}`.trim())
+        .filter(Boolean)
+    )];
   }
 
   private clearPulseTimers(): void {

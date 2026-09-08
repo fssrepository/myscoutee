@@ -356,6 +356,9 @@ export class DateInputComponent implements ControlValueAccessor {
 
   protected onStartDateChange(value: Date | null): void {
     this.startDateValue = value;
+    if (this.isCompactRange()) {
+      return;
+    }
     this.emitRangeValue();
   }
 
@@ -366,6 +369,9 @@ export class DateInputComponent implements ControlValueAccessor {
 
   protected onEndDateChange(value: Date | null): void {
     this.endDateValue = value;
+    if (this.isCompactRange() && (!this.startDateValue || !this.endDateValue)) {
+      return;
+    }
     this.emitRangeValue();
   }
 

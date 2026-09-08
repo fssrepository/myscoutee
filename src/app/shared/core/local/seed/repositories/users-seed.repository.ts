@@ -496,6 +496,9 @@ export class SeedUsersRepository {
           accommodation: assetAccommodation,
           supplies: assetSupplies,
           tickets: assetTickets,
+          carsPending: normalizeCounter(asset?.carsPending),
+          accommodationPending: normalizeCounter(asset?.accommodationPending),
+          suppliesPending: normalizeCounter(asset?.suppliesPending),
         },
         eventFeedback: {
           ownEvents: eventFeedbackOwnEvents,
@@ -839,6 +842,9 @@ export class SeedUsersRepository {
       && normalizeCounter(leftAsset?.accommodation) === normalizeCounter(rightAsset?.accommodation)
       && normalizeCounter(leftAsset?.supplies) === normalizeCounter(rightAsset?.supplies)
       && normalizeCounter(leftAsset?.tickets) === normalizeCounter(rightAsset?.tickets)
+      && normalizeCounter(leftAsset?.carsPending) === normalizeCounter(rightAsset?.carsPending)
+      && normalizeCounter(leftAsset?.accommodationPending) === normalizeCounter(rightAsset?.accommodationPending)
+      && normalizeCounter(leftAsset?.suppliesPending) === normalizeCounter(rightAsset?.suppliesPending)
       && Boolean(left.activities.eventFeedback) === Boolean(right.activities.eventFeedback)
       && normalizeCounter(leftEventFeedback?.ownEvents) === normalizeCounter(rightEventFeedback?.ownEvents)
       && normalizeCounter(leftEventFeedback?.pending) === normalizeCounter(rightEventFeedback?.pending)

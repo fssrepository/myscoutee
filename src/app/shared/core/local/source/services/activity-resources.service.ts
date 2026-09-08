@@ -82,6 +82,133 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return ActivityResourceBuilder.normalizeScope({ viewerState, visibleStates }, viewerRef);
   }
 
+  peekAssignedAssetManagerUserId(ownerId: string, subEventId: string, assetId: string): string | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetId) {
+      return null;
+    }
+    const states = this.repository
+      .peekSubEventResourceRecords(normalizedOwnerId, normalizedSubEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state));
+    for (const state of states) {
+      for (const settingsByAssetId of Object.values(state.assetSettingsByType ?? {})) {
+        const managerUserId = `${settingsByAssetId?.[normalizedAssetId]?.addedByUserId ?? ''}`.trim();
+        if (managerUserId) {
+          return managerUserId;
+        }
+      }
+      const assigned = Object.values(state.assetAssignmentIds ?? {})
+        .some(ids => (ids ?? []).some(id => id.trim() === normalizedAssetId));
+      if (assigned) {
+        const fallbackManagerUserId = state.assetOwnerUserId.trim();
+        if (fallbackManagerUserId) {
+          return fallbackManagerUserId;
+        }
+      }
+    }
+    return null;
+  }
+
+  async transferAssignedAssetManager(
+    ownerId: string,
+    subEventId: string,
+    assetId: string,
+    expectedManagerUserId: string,
+    successorUserId: string
+  ): Promise<boolean> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedExpectedManagerUserId = expectedManagerUserId.trim();
+    const normalizedSuccessorUserId = successorUserId.trim();
+    const state = this.assignedAssetState(ownerId, subEventId, normalizedAssetId);
+    if (
+      !state
+      || !normalizedExpectedManagerUserId
+      || !normalizedSuccessorUserId
+      || normalizedExpectedManagerUserId === normalizedSuccessorUserId
+    ) {
+      return false;
+    }
+    let changed = false;
+    const nextSettingsByType = { ...state.assetSettingsByType };
+    for (const type of AppConstants.ASSET_TYPES) {
+      const settingsByAssetId = { ...(nextSettingsByType[type] ?? {}) };
+      const settings = settingsByAssetId[normalizedAssetId];
+      if (`${settings?.addedByUserId ?? ''}`.trim() !== normalizedExpectedManagerUserId) {
+        continue;
+      }
+      settingsByAssetId[normalizedAssetId] = {
+        ...settings,
+        addedByUserId: normalizedSuccessorUserId
+      };
+      nextSettingsByType[type] = settingsByAssetId;
+      changed = true;
+    }
+    if (!changed) {
+      return false;
+    }
+    return Boolean(await this.replaceSubEventResourceState({
+      ...state,
+      assetSettingsByType: nextSettingsByType
+    }, undefined, normalizedSuccessorUserId));
+  }
+
+  async removeAssignedAsset(
+    ownerId: string,
+    subEventId: string,
+    assetId: string,
+    expectedManagerUserId: string
+  ): Promise<boolean> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedExpectedManagerUserId = expectedManagerUserId.trim();
+    const state = this.assignedAssetState(ownerId, subEventId, normalizedAssetId);
+    if (
+      !state
+      || !normalizedExpectedManagerUserId
+      || this.peekAssignedAssetManagerUserId(ownerId, subEventId, normalizedAssetId) !== normalizedExpectedManagerUserId
+    ) {
+      return false;
+    }
+    const nextAssignmentIds = { ...state.assetAssignmentIds };
+    const nextSettingsByType = { ...state.assetSettingsByType };
+    for (const type of AppConstants.ASSET_TYPES) {
+      nextAssignmentIds[type] = (nextAssignmentIds[type] ?? [])
+        .filter(id => id.trim() !== normalizedAssetId);
+      const settingsByAssetId = { ...(nextSettingsByType[type] ?? {}) };
+      delete settingsByAssetId[normalizedAssetId];
+      nextSettingsByType[type] = settingsByAssetId;
+    }
+    const nextSupplyEntries = { ...state.supplyContributionEntriesByAssetId };
+    delete nextSupplyEntries[normalizedAssetId];
+    return Boolean(await this.replaceSubEventResourceState({
+      ...state,
+      assetAssignmentIds: nextAssignmentIds,
+      assetSettingsByType: nextSettingsByType,
+      supplyContributionEntriesByAssetId: nextSupplyEntries
+    }, undefined, normalizedExpectedManagerUserId));
+  }
+
+  private assignedAssetState(
+    ownerId: string,
+    subEventId: string,
+    assetId: string
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetId) {
+      return null;
+    }
+    return this.repository
+      .peekSubEventResourceRecords(normalizedOwnerId, normalizedSubEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state))
+      .find(state => Object.values(state.assetAssignmentIds ?? {})
+        .some(ids => (ids ?? []).some(id => id.trim() === normalizedAssetId))) ?? null;
+  }
+
   async markResourceTypeRead(
     request: AppDTOs.ActivitySubEventResourceReadRequestDTO
   ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
@@ -208,6 +335,30 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
       ...(savedState ?? normalizedState),
       resourceMetricsByType: commonMetricsByType
     };
+  }
+
+  async removeSubEventResourceAssignment(
+    request: AppDTOs.ActivitySubEventAssetRemovalRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const actorUserId = request.userId.trim();
+    const assetId = request.assetId.trim();
+    const state = this.assignedAssetState(request.ownerId, request.subEventId, assetId);
+    if (!state || !actorUserId || !assetId) {
+      return null;
+    }
+    const managedType = AppConstants.ASSET_TYPES.find(type =>
+      (state.assetAssignmentIds[type] ?? []).includes(assetId)
+      && `${state.assetSettingsByType[type]?.[assetId]?.addedByUserId ?? ''}`.trim() === actorUserId
+    );
+    if (!managedType) {
+      return null;
+    }
+    state.assetAssignmentIds[managedType] = (state.assetAssignmentIds[managedType] ?? [])
+      .filter(id => id !== assetId);
+    delete state.assetSettingsByType[managedType]?.[assetId];
+    delete state.supplyContributionEntriesByAssetId[assetId];
+    return this.replaceSubEventResourceState(state, signal, actorUserId);
   }
 
   async removeManagedResourcesForRemovedEventMember(

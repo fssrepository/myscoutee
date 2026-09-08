@@ -76,6 +76,9 @@ export interface UserAssetCountersRecord {
   accommodation?: number;
   supplies?: number;
   tickets?: number;
+  carsPending?: number;
+  accommodationPending?: number;
+  suppliesPending?: number;
 }
 
 export interface UserEventFeedbackCountersRecord {
@@ -137,6 +140,7 @@ export interface UserRecord {
     contacts?: number;
     feedback?: number;
     notifications?: number;
+    paymentRefundsPending?: number;
     chat?: UserChatCountersRecord;
     event?: UserEventCountersRecord;
     asset?: UserAssetCountersRecord;

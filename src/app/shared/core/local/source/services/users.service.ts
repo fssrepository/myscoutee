@@ -592,6 +592,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'contacts',
       'feedback',
       'notifications',
+      'paymentRefundsPending',
       'adminJobs',
       'adminMetrics'
     ];
@@ -635,6 +636,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'contacts',
       'feedback',
       'notifications',
+      'paymentRefundsPending',
       'adminJobs',
       'adminMetrics'
     ];
@@ -711,7 +713,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterPatch(
       current,
       patch,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
   }
 
@@ -722,7 +724,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterDeltas(
       current,
       deltas,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
   }
 
@@ -819,6 +821,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       contacts: normalizeCounter(activities?.contacts),
       feedback,
       notifications: normalizeCounter(activities?.notifications),
+      paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
         event: normalizeCounter(chat?.event),
@@ -841,7 +844,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         cars: normalizeCounter(asset?.cars ?? cars),
         accommodation: normalizeCounter(asset?.accommodation ?? accommodation),
         supplies: normalizeCounter(asset?.supplies ?? supplies),
-        tickets: normalizeCounter(asset?.tickets ?? tickets)
+        tickets: normalizeCounter(asset?.tickets ?? tickets),
+        carsPending: normalizeCounter(asset?.carsPending),
+        accommodationPending: normalizeCounter(asset?.accommodationPending),
+        suppliesPending: normalizeCounter(asset?.suppliesPending)
       },
       eventFeedback: {
         ownEvents: normalizeCounter(eventFeedback?.ownEvents),
@@ -877,6 +883,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         contacts: counters.contacts ?? user.activities.contacts,
         feedback: counters.feedback ?? user.activities.feedback,
         notifications: counters.notifications ?? user.activities.notifications,
+        paymentRefundsPending: counters.paymentRefundsPending ?? user.activities.paymentRefundsPending,
         chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,

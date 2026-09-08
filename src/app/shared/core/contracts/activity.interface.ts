@@ -378,7 +378,12 @@ export interface SubEventResourceCardDTO {
   id: string;
   type: AppConstants.SubEventResourceFilter;
   sourceAssetId: string | null;
+  sourceRequestId?: string | null;
+  bookingStartAtIso?: string | null;
+  bookingEndAtIso?: string | null;
+  bookingQuantity?: number | null;
   assetOwnerUserId?: string | null;
+  assetManagerUserId?: string | null;
   title: string;
   subtitle: string;
   city: string;
@@ -461,6 +466,11 @@ export interface ActivitySubEventResourceReadRequestDTO {
 export interface ActivitySubEventResourceReadReceiptDTO extends ActivitySubEventResourceReadRequestDTO {
   groupId: string;
   readAtIso: string;
+}
+
+export interface ActivitySubEventAssetRemovalRequestDTO extends ActivitySubEventResourceStateRefDTO {
+  assetId: string;
+  userId: string;
 }
 
 export interface SubEventResourceMetricDTO {
@@ -1308,6 +1318,7 @@ export interface ActivityMemberDTO {
   checkedInByUserId?: string | null;
   checkedInTicketId?: string | null;
   managerGrantedByUserId?: string | null;
+  organizerOnly?: boolean;
 }
 
 export interface ActivityMemberOwnerRef {
@@ -1319,6 +1330,8 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
   eventId?: string;
   subEventId?: string;
+  /** Targets one independently submitted scoped Asset Borrow request. */
+  targetMemberId?: string;
 }
 
 export interface ActivityMemberSyncKnownItemDTO {
