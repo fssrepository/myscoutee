@@ -59,11 +59,13 @@
               <div class="asset-explore-borrow-policy-list">
                 @for (policy of dialog.policies; track policy.id) {
                   <label class="asset-explore-borrow-policy-card" [class.is-required]="policy.required !== false">
-                    <input
-                      type="checkbox"
-                      [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
-                      (change)="togglePolicy(policy.id)"
-                    />
+                    @if (policy.required === false) {
+                      <input
+                        type="checkbox"
+                        [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
+                        (change)="togglePolicy(policy.id)"
+                      />
+                    }
                     <div>
                       <strong>{{ policy.title }}</strong>
                       @if (policy.description) {

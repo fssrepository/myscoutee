@@ -49,12 +49,19 @@ export class ActivitySubEventResourceInfoCardConverter {
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): InfoCardData {
+    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(
+      `${card.bookingStartAtIso ?? ''}`.trim(),
+      `${card.bookingEndAtIso ?? ''}`.trim()
+    );
     return {
       id: card.id,
       groupLabel: options.groupLabel ?? null,
       title: card.title,
       imageUrl: card.imageUrl,
-      metaRows: [`${card.type} · ${card.subtitle} · ${card.city}`],
+      metaRows: [
+        `${card.type} · ${card.subtitle} · ${card.city}`,
+        timeframe
+      ].filter(Boolean),
       description: card.details,
       leadingIcon: {
         icon: this.resourceTypeIcon(card.type)
@@ -113,18 +120,16 @@ export class ActivitySubEventResourceInfoCardConverter {
     }
     if (this.canJoin(card, options)) {
       actions.push('joinResource');
-    } else if (this.canLeave(card, options)) {
-      actions.push('leaveResource');
     }
     if (this.hasActiveUserBorrowRequest(card, options)) {
       actions.push('paymentSummary');
     }
-    actions.push('askOrganizer');
+    actions.push(card.sourceAssetId ? 'askAssetOwner' : 'askOrganizer');
     actions.push('shareAsset');
     if (this.canReportResourceManager(card, options)) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
     }
-    if (this.isSourceAssetManagedByActiveUser(card, options)) {
+    if (this.canRemoveAssignment(card, options)) {
       actions.push('removeAssignment');
     }
     return actions;
@@ -161,12 +166,11 @@ export class ActivitySubEventResourceInfoCardConverter {
       && !this.hasActiveUserJoinRequest(card, options);
   }
 
-  private static canLeave(
+  private static canRemoveAssignment(
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
-    return this.isJoinableAssignedAsset(card, options)
-      && this.hasActiveUserJoinRequest(card, options);
+    return this.isSourceAssetManagedByActiveUser(card, options);
   }
 
   private static isJoinableAssignedAsset(
@@ -193,8 +197,9 @@ export class ActivitySubEventResourceInfoCardConverter {
     ) {
       return false;
     }
-    const managerUserId = sourceOwnerUserId
+    const scopedManagerUserId = this.normalizeId(card.assetManagerUserId)
       || this.normalizeId(this.assetManagerUserId(card, options));
+    const managerUserId = scopedManagerUserId || sourceOwnerUserId;
     return activeUserId.length > 0 && managerUserId === activeUserId;
   }
 
@@ -202,22 +207,30 @@ export class ActivitySubEventResourceInfoCardConverter {
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
+    const status = this.activeUserRequestStatus(card, options);
+    return status === 'accepted' || status === 'pending';
+  }
+
+  private static activeUserRequestStatus(
+    card: AppDTOs.SubEventResourceCardDTO,
+    options: ActivitySubEventResourceInfoCardConverterOptions
+  ): AppConstants.ActivityMemberStatus | null {
     const sourceAsset = this.sourceAsset(card, options);
     const subEventId = this.contextSubEventId(options);
     const activeUserId = this.normalizeId(options.activeUserId);
     if (!sourceAsset || !subEventId || !activeUserId) {
-      return false;
+      return null;
     }
     const syncedStatus = this.activeUserStatusChange(card, options);
     if (syncedStatus) {
-      return syncedStatus === 'accepted' || syncedStatus === 'pending';
+      return syncedStatus;
     }
     const users = options.users ?? [];
-    return (sourceAsset.requests ?? []).some(request =>
+    return (sourceAsset.requests ?? []).find(request =>
       request.requestKind !== 'manual'
       && ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)
       && AppUtils.resolveAssetRequestUserId(request, users) === activeUserId
-    );
+    )?.status ?? null;
   }
 
   private static hasActiveUserBorrowRequest(

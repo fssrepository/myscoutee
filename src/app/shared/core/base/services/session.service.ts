@@ -134,21 +134,27 @@ export class SessionService {
     return session;
   }
 
-  async startTrackedDemoSession(userId: string): Promise<AppSession | null> {
+  async startTrackedDemoSession(
+    userId: string,
+    options: { supportContext?: SupportSessionContext } = {}
+  ): Promise<AppSession | null> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
     }
+    const supportContext = this.normalizeSupportContext(options.supportContext);
     const current = this.sessionRef();
     const currentSessionId = current?.kind === 'demo'
       && !current.supportContext
+      && !supportContext
       && current.userId.trim() === normalizedUserId
       ? `${current.sessionId ?? ''}`.trim()
       : '';
     const session: Extract<AppSession, { kind: 'demo' }> & { sessionId: string } = {
       kind: 'demo',
       userId: normalizedUserId,
-      sessionId: currentSessionId || this.newOpaqueId('session')
+      sessionId: currentSessionId || this.newOpaqueId('session'),
+      supportContext
     };
     try {
       const response = await (await this.firebaseSessionRegistryService()).registerDemoLogin(
@@ -160,6 +166,9 @@ export class SessionService {
         }
       );
       if (response.accepted) {
+        if (supportContext) {
+          return this.persistAdminSupportSession(session) ? session : null;
+        }
         localStorage.setItem(SessionService.DEMO_ACTIVE_USER_KEY, normalizedUserId);
         this.persistSession(session);
         return session;
@@ -292,7 +301,7 @@ export class SessionService {
     if (!adminSupportSession && typeof localStorage !== 'undefined') {
       localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
     }
-    if (sessionRegistryEnabled && !adminSupportSession) {
+    if (sessionRegistryEnabled) {
       try {
         const sessionId = current?.kind === 'demo' || current?.kind === 'firebase'
           ? `${current.sessionId ?? ''}`.trim()

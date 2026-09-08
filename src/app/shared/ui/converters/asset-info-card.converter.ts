@@ -25,7 +25,6 @@ export interface AssetExploreInfoCardConverterOptions {
   availabilityLabel: string;
   canBorrow: boolean;
   canReportOwner: boolean;
-  showPaymentSummary?: boolean;
 }
 
 export type AssetInfoCardConverterOptions =
@@ -139,8 +138,7 @@ export class AssetInfoCardConverter {
       },
       menuActions: this.assetExploreMenuActions(
         canBorrow,
-        options.canReportOwner === true,
-        options.showPaymentSummary === true
+        options.canReportOwner === true
       ),
       clickable: false
     };
@@ -187,15 +185,11 @@ export class AssetInfoCardConverter {
 
   private static assetExploreMenuActions(
     canBorrow: boolean,
-    canReportOwner: boolean,
-    showPaymentSummary: boolean
+    canReportOwner: boolean
   ): readonly CardMenuActionId[] {
     const actions: CardMenuActionId[] = ['viewAsset'];
     if (canBorrow) {
       actions.push('borrowAsset');
-    }
-    if (showPaymentSummary) {
-      actions.push('paymentSummary');
     }
     actions.push('contactOwner');
     actions.push('shareAsset');

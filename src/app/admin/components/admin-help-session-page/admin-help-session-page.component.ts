@@ -112,9 +112,9 @@ export class AdminHelpSessionPageComponent implements OnInit {
     });
   }
 
-  private openSelectedSharedUser(userId: string, targetUrl: string): boolean {
+  private async openSelectedSharedUser(userId: string, targetUrl: string): Promise<boolean> {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !this.sessionService.startDemoSession(normalizedUserId, {
+    if (!normalizedUserId || !await this.sessionService.startTrackedDemoSession(normalizedUserId, {
       supportContext: {
         kind: 'admin-support',
         targetUrl: this.safeTargetUrl(targetUrl)

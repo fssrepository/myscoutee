@@ -113,6 +113,21 @@ describe('ActivityResourceBuilder group request scoping', () => {
     expect(ActivityResourceBuilder.subEventOccupancyRequestCount(card, 'stage-1', 'pending', groupB)).toBe(1);
   });
 
+  it('counts borrow requests rather than their requested quantity', () => {
+    const groupA = 'event-1:stage-1:stage-1:group:1';
+    const card = {
+      requests: [{
+        ...request('request-a', 'user-a', groupA),
+        booking: {
+          ...request('request-a', 'user-a', groupA).booking,
+          quantity: 3
+        }
+      }]
+    } as AssetDTO;
+
+    expect(ActivityResourceBuilder.subEventOccupancyRequestCount(card, 'stage-1', 'pending', groupA)).toBe(1);
+  });
+
   it('matches a base-event booking to its ungrouped slot runtime owner', () => {
     const slotOwnerId = 'event-1:slot:slot-1:2026-07-23T06:30:00Z';
     const scopedRequest = request('request-slot', 'user-slot', 'event-1');

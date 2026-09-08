@@ -75,6 +75,7 @@ export interface LocalActivityMembersOwnerSnapshot {
   ownerId: string;
   records: ActivityMemberRecord[];
   acceptedMemberUserIds: string[];
+  capacityOccupyingAcceptedMemberUserIds: string[];
   pendingMemberUserIds: string[];
   invitedMemberUserIds: string[];
   pendingRequestMemberUserIds: string[];
@@ -113,6 +114,7 @@ export class LocalActivityMembersBuilder {
       checkedInByUserId: record.checkedInByUserId ?? null,
       checkedInTicketId: record.checkedInTicketId ?? null,
       managerGrantedByUserId: record.managerGrantedByUserId ?? null,
+      organizerOnly: record.organizerOnly === true,
       profile: resolveProfile(record.userId, {
         name: record.name,
         initials: record.initials,
@@ -160,13 +162,21 @@ export class LocalActivityMembersBuilder {
   ): LocalActivityMembersOwnerSnapshot {
     const normalizedOwner = this.normalizeOwner(owner);
     const normalizedRecords = this.cloneRecords(records);
-    const acceptedMemberUserIds = this.memberUserIds(normalizedRecords, record => record.status === 'accepted');
+    const acceptedMemberUserIds = this.memberUserIds(
+      normalizedRecords,
+      record => record.status === 'accepted' && record.organizerOnly !== true
+    );
+    const capacityOccupyingAcceptedMemberUserIds = this.memberUserIds(
+      normalizedRecords,
+      record => record.status === 'accepted' && record.organizerOnly !== true
+    );
     const pendingMemberUserIds = this.memberUserIds(normalizedRecords, record => record.status === 'pending');
     return {
       ownerType: normalizedOwner.ownerType,
       ownerId: normalizedOwner.ownerId,
       records: normalizedRecords,
       acceptedMemberUserIds,
+      capacityOccupyingAcceptedMemberUserIds,
       pendingMemberUserIds,
       invitedMemberUserIds: this.memberUserIds(
         normalizedRecords,
@@ -180,7 +190,10 @@ export class LocalActivityMembersBuilder {
         normalizedRecords,
         record => record.status === 'accepted' && (record.role === 'Admin' || record.role === 'Manager')
       ),
-      capacityTotal: Math.max(acceptedMemberUserIds.length, this.normalizeCount(capacityTotal) ?? acceptedMemberUserIds.length)
+      capacityTotal: Math.max(
+        capacityOccupyingAcceptedMemberUserIds.length,
+        this.normalizeCount(capacityTotal) ?? capacityOccupyingAcceptedMemberUserIds.length
+      )
     };
   }
 
@@ -188,9 +201,12 @@ export class LocalActivityMembersBuilder {
     return {
       ownerType: snapshot.ownerType,
       ownerId: snapshot.ownerId,
-      acceptedMembers: snapshot.acceptedMemberUserIds.length,
+      acceptedMembers: snapshot.capacityOccupyingAcceptedMemberUserIds.length,
       pendingMembers: snapshot.pendingMemberUserIds.length,
-      capacityTotal: Math.max(snapshot.acceptedMemberUserIds.length, this.normalizeCount(snapshot.capacityTotal) ?? 0),
+      capacityTotal: Math.max(
+        snapshot.capacityOccupyingAcceptedMemberUserIds.length,
+        this.normalizeCount(snapshot.capacityTotal) ?? 0
+      ),
       acceptedMemberUserIds: [...snapshot.acceptedMemberUserIds],
       pendingMemberUserIds: [...snapshot.pendingMemberUserIds]
     };

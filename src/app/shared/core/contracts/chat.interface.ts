@@ -183,6 +183,7 @@ export interface ChatDTO {
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
+  assetId?: string;
   ownerId?: string;
   eventId?: string;
   subEventId?: string;

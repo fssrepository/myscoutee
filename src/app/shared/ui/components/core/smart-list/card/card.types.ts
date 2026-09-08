@@ -192,6 +192,7 @@ export type CardMenuActionId = string;
 
 export interface CardMenuActionConfig {
   label: string;
+  fallback?: string;
   icon: string;
   tone?: CardMenuActionTone;
 }
@@ -199,6 +200,7 @@ export interface CardMenuActionConfig {
 export interface CardMenuAction {
   id: CardMenuActionId;
   label: string;
+  fallback?: string;
   icon: string;
   tone?: CardMenuActionTone;
 }
@@ -208,6 +210,11 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   addWatchlist: { label: 'Add to watchlist', icon: 'visibility', tone: 'accent' },
   addOrganizerNote: { label: 'add.organizer.note', icon: 'edit_note' },
   askOrganizer: { label: 'ask.organizer', icon: 'support_agent' },
+  askAssetOwner: {
+    label: 'payment.history.ask.asset.owner',
+    fallback: 'Ask Asset Owner',
+    icon: 'support_agent'
+  },
   assetAvailability: { label: 'asset.availability', icon: 'event_available', tone: 'accent' },
   bookEvent: { label: 'book.event', icon: 'person_add', tone: 'accent' },
   borrowAsset: { label: 'borrow', icon: 'volunteer_activism', tone: 'accent' },
@@ -240,7 +247,9 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   openNotificationSupplies: { label: 'Open supplies', icon: 'inventory_2', tone: 'accent' },
   openNotificationTransport: { label: 'Open transport', icon: 'directions_car', tone: 'accent' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
-  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long', tone: 'positive' },
+  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long' },
+  requestRefund: { label: 'payment.history.refund.request', icon: 'currency_exchange', tone: 'warning' },
+  approveRefund: { label: 'payment.history.refund.approve', icon: 'price_check', tone: 'positive' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
   removeWatchlist: { label: 'Remove from watchlist', icon: 'visibility_off', tone: 'warning' },

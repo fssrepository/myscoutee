@@ -17,7 +17,7 @@ export class ActivityMemberImageCardConverter {
     options: ActivityMemberImageCardConverterOptions = {}
   ): ImageCardData {
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
-    const statusLabel = this.statusLabel(dto);
+    const statusLabel = this.statusLabel(dto, options.ownerType);
     const checkedIn = this.isCheckedIn(dto);
     const checkedInLabel = options.checkedInLabel?.trim() || 'Checked in';
     const checkedInAt = `${dto.checkedInAtIso ?? ''}`.trim();
@@ -28,7 +28,9 @@ export class ActivityMemberImageCardConverter {
           .filter(Boolean)
           .join(' · ')
       : null;
-    const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
+    const pendingDetail = dto.organizerOnly === true
+      ? 'Organizer only'
+      : dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
     const statusChipLabel = checkedIn
@@ -141,7 +143,7 @@ export class ActivityMemberImageCardConverter {
     return 'outgoing_mail';
   }
 
-  private static statusLabel(dto: ActivityMemberDTO): string {
+  private static statusLabel(dto: ActivityMemberDTO, ownerType?: ActivityMemberOwnerType | null): string {
     if (dto.status === 'disqualified') {
       return 'Disqualified';
     }
@@ -154,6 +156,9 @@ export class ActivityMemberImageCardConverter {
     if (this.isJoinRequest(dto)) {
       if (dto.requestKind === 'waitlist') {
         return 'waiting.list';
+      }
+      if (ownerType === 'asset') {
+        return 'Waiting For Owner Approval';
       }
       return 'Waiting For Admin Approval';
     }

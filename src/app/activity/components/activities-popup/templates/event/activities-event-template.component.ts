@@ -33,6 +33,7 @@ import {
 import {
   ActivityEventInfoCardConverter,
   ActivityEventInfoCardMenuConverter,
+  ChatPopupHeaderContextConverter,
   type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
 } from '../../../../../shared/ui/converters';
@@ -851,7 +852,7 @@ export class ActivitiesEventsController {
       || card?.title?.trim()
       || this.activityInfoCardForRow(row)?.title?.trim()
       || 'Event';
-    return this.chatsService.buildActivityServiceChat({
+    const chat = this.chatsService.buildActivityServiceChat({
       activeUserId,
       eventId,
       ownerId,
@@ -861,6 +862,17 @@ export class ActivitiesEventsController {
       hosting: this.isActivityRowAdmin(row),
       notification: this.isActivityRowAdmin(row)
     });
+    return {
+      ...chat,
+      members: ChatPopupHeaderContextConverter.memberSummaries([
+        { id: activeUserId, user: this.activeUser },
+        {
+          id: ownerId,
+          fallbackName: `${source?.creatorName ?? ''}`.trim() || 'Organizer',
+          imageUrl: `${source?.creatorAvatarUrl ?? ''}`.trim() || null
+        }
+      ])
+    };
   }
 
   private activityInfoCardEntityId(card: InfoCardData | null | undefined): string {

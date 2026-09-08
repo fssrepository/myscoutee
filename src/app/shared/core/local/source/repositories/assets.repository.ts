@@ -8,6 +8,10 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 import { LocalUsersRepository } from './users.repository';
 import {
+  USERS_TABLE_NAME,
+  type UsersRecordCollection
+} from '../entity/user.entity';
+import {
   ASSET_REQUESTS_TABLE_NAME,
   ASSETS_TABLE_NAME,
   type AssetMemberRequestRecord,
@@ -278,10 +282,16 @@ export class LocalAssetsRepository {
       const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
       const existing = table.byId[incomingRecord.id];
       const nextRecord = this.withResolvedAssetRelevance(this.mergeAssetRecord(existing, incomingRecord, nowMs, 'detail'));
+      const nextTable = this.upsertRecordCollection(table, nextRecord);
       saved = nextRecord;
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, nextRecord),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
           requestTable,
           nextRecord,
@@ -300,6 +310,100 @@ export class LocalAssetsRepository {
       normalizedUserId,
       this.assetRequestMetricsByAssetId(requestTable, [savedRecord]).get(savedRecord.id)
     );
+  }
+
+  async saveOwnedAssetRequests(
+    userId: string,
+    assetId: string,
+    requests: readonly AppDTOs.AssetMemberRequestDTO[]
+  ): Promise<AppDTOs.AssetDTO> {
+    const detail = this.peekOwnedAssetDetailById(userId, assetId);
+    if (!detail) {
+      throw new Error('The asset details could not be loaded before saving its requests.');
+    }
+    return this.saveOwnedAsset(userId, {
+      ...detail,
+      quantity: AssetCardBuilder.storedQuantityValue(detail),
+      requests: requests.map(request => LocalAssetsMapper.cloneRequest(request))
+    });
+  }
+
+  applyScopedAssetMemberAction(
+    assetId: string,
+    eventIds: readonly string[],
+    subEventId: string,
+    targetUserId: string,
+    targetRequestId: string,
+    action: 'accept' | 'remove'
+  ): boolean {
+    const normalizedAssetId = assetId.trim();
+    const acceptedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedTargetUserId = targetUserId.trim();
+    const normalizedTargetRequestId = targetRequestId.trim();
+    if (!normalizedAssetId || acceptedEventIds.size === 0 || !normalizedSubEventId
+        || !normalizedTargetUserId || !normalizedTargetRequestId) {
+      return false;
+    }
+
+    let changed = false;
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (!current) {
+        return state;
+      }
+      const users = this.queryUsers();
+      const isTargetRequest = (request: AssetMemberRequestRecord): boolean => {
+        const requestUserId = AppUtils.resolveAssetRequestUserId(request, users).trim();
+        const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+        const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
+        return request.recordStatus !== 'D'
+          && request.id === normalizedTargetRequestId
+          && requestUserId === normalizedTargetUserId
+          && acceptedEventIds.has(bookingEventId)
+          && bookingSubEventId === normalizedSubEventId;
+      };
+      const targetRequest = current.requests.find(isTargetRequest) ?? null;
+      if (!targetRequest || (action === 'accept' && targetRequest.status !== 'pending')) {
+        return state;
+      }
+      const now = new Date();
+      const nextRequests = action === 'remove'
+        ? current.requests.filter(request => !isTargetRequest(request)).map(request => LocalAssetsMapper.cloneRequest(request))
+        : current.requests.map(request => isTargetRequest(request)
+          ? {
+              ...LocalAssetsMapper.cloneRequest(request),
+              status: 'accepted' as const,
+              note: 'Borrow request approved by the owner.',
+              menuActions: []
+            }
+          : LocalAssetsMapper.cloneRequest(request));
+      const nextRecord = this.withResolvedAssetRelevance({
+        ...current,
+        requests: nextRequests,
+        updatedMs: now.getTime(),
+        updatedAtIso: now.toISOString()
+      });
+      const nextTable = this.upsertRecordCollection(table, nextRecord);
+      changed = true;
+      return {
+        ...state,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
+        [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
+          requestTable,
+          nextRecord,
+          current.requests
+        )
+      };
+    });
+    return changed;
   }
 
   statusDeleteAssignmentScopeRequests(
@@ -357,6 +461,11 @@ export class LocalAssetsRepository {
       }
       return {
         ...state,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          table,
+          [normalizedAssetOwnerUserId]
+        ),
         [ASSETS_TABLE_NAME]: table,
         [ASSET_REQUESTS_TABLE_NAME]: requestTable
       };
@@ -370,7 +479,8 @@ export class LocalAssetsRepository {
     const eventId = request.eventId.trim();
     const subEventId = request.subEventId.trim();
     const actorUserId = request.actorUserId.trim();
-    if (!assetId || !eventId || !subEventId || !actorUserId) {
+    if (!assetId || !eventId || !subEventId || !actorUserId
+      || (request.action !== 'join' && request.action !== 'leave' && request.action !== 'take-over')) {
       return null;
     }
     const record = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]).byId[assetId];
@@ -388,8 +498,74 @@ export class LocalAssetsRepository {
       || previous?.status === 'pending'
       ? previous.status
       : null;
+    const hasAcceptedRequiredPolicies = (acceptedPolicyIds: string[] | undefined): boolean => {
+      if (record.policiesEnabled !== true) {
+        return true;
+      }
+      const accepted = new Set((acceptedPolicyIds ?? []).map(item => item.trim()).filter(Boolean));
+      return (record.policies ?? [])
+        .filter(policy => policy.required !== false)
+        .every(policy => Boolean(policy.id.trim()) && accepted.has(policy.id.trim()));
+    };
     if (request.action === 'leave' && !previous) {
       return null;
+    }
+    if (request.action === 'take-over') {
+      const previousManagerUserId = `${request.previousManagerUserId ?? ''}`.trim();
+      const predecessor = record.requests.find(entry =>
+        entry.recordStatus === 'D'
+        && entry.requestKind === 'borrow'
+        && `${entry.userId ?? ''}`.trim() === previousManagerUserId
+        && `${entry.booking?.eventId ?? ''}`.trim() === eventId
+        && `${entry.booking?.subEventId ?? ''}`.trim() === subEventId
+      ) ?? null;
+      if (!previous
+        || previous.status !== 'accepted'
+        || previous.requestKind !== 'borrow'
+        || !hasAcceptedRequiredPolicies(request.acceptedPolicyIds)
+        || !previousManagerUserId
+        || previousManagerUserId === actorUserId
+        || !predecessor) {
+        return null;
+      }
+      const replacementTotal = Math.max(
+        0,
+        Number(previous.booking?.previousTotalAmount ?? predecessor.booking?.totalAmount) || 0
+      );
+      const nextRequests = record.requests
+        .filter(entry => entry.recordStatus !== 'D')
+        .map(entry => entry === previous
+          ? {
+              ...LocalAssetsMapper.cloneRequest(entry),
+              status: 'accepted' as const,
+              booking: entry.booking
+                ? {
+                    ...entry.booking,
+                    totalAmount: replacementTotal,
+                    previousTotalAmount: null,
+                    paymentSessionId: `${request.paymentSessionId ?? ''}`.trim() || null,
+                    acceptedPolicyIds: [...new Set(request.acceptedPolicyIds ?? [])]
+                      .map(item => item.trim())
+                      .filter(Boolean)
+                  }
+                : null
+            }
+          : LocalAssetsMapper.cloneRequest(entry));
+      const detail = this.toAssetDetailDto(record, actorUserId);
+      await this.saveOwnedAsset(record.ownerUserId, {
+        ...detail,
+        requests: nextRequests
+      });
+      return {
+        assetId,
+        eventId,
+        subEventId,
+        userId: actorUserId,
+        previousStatus: 'accepted',
+        status: 'accepted',
+        acceptedMemberDelta: 0,
+        pendingMemberDelta: 0
+      };
     }
     if (request.action === 'join' && previous) {
       return {
@@ -413,6 +589,7 @@ export class LocalAssetsRepository {
         || joinedRequest.status !== 'pending'
         || `${joinedRequest.booking?.eventId ?? ''}`.trim() !== eventId
         || `${joinedRequest.booking?.subEventId ?? ''}`.trim() !== subEventId
+        || !hasAcceptedRequiredPolicies(joinedRequest.booking?.acceptedPolicyIds)
       )
     ) {
       return null;
@@ -458,6 +635,79 @@ export class LocalAssetsRepository {
       acceptedMemberDelta: this.memberStatusDelta(previousStatus, status, 'accepted'),
       pendingMemberDelta: this.memberStatusDelta(previousStatus, status, 'pending')
     };
+  }
+
+  markScopedAssetTakeOverAmount(
+    assetId: string,
+    eventId: string,
+    subEventId: string,
+    departedManagerUserId: string
+  ): void {
+    const normalizedAssetId = assetId.trim();
+    const normalizedEventId = eventId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedDepartedManagerUserId = departedManagerUserId.trim();
+    if (!normalizedAssetId || !normalizedEventId || !normalizedSubEventId || !normalizedDepartedManagerUserId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+      const current = table.byId[normalizedAssetId];
+      if (!current) {
+        return state;
+      }
+      const predecessor = current.requests.find(entry =>
+        entry.recordStatus === 'D'
+        && entry.requestKind === 'borrow'
+        && `${entry.userId ?? ''}`.trim() === normalizedDepartedManagerUserId
+        && `${entry.booking?.eventId ?? ''}`.trim() === normalizedEventId
+        && `${entry.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId
+      );
+      const replacementTotal = Math.max(0, Number(predecessor?.booking?.totalAmount) || 0);
+      const replacementCurrency = `${predecessor?.booking?.currency ?? ''}`.trim();
+      let changed = false;
+      const requests = current.requests.map(entry => {
+        const eligible = entry.recordStatus !== 'D'
+          && entry.requestKind === 'borrow'
+          && entry.status === 'accepted'
+          && `${entry.userId ?? ''}`.trim() !== normalizedDepartedManagerUserId
+          && `${entry.booking?.eventId ?? ''}`.trim() === normalizedEventId
+          && `${entry.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId;
+        if (!eligible || !entry.booking) {
+          return LocalAssetsMapper.cloneRequest(entry);
+        }
+        changed = true;
+        return {
+          ...LocalAssetsMapper.cloneRequest(entry),
+          booking: {
+            ...entry.booking,
+            previousTotalAmount: replacementTotal,
+            currency: replacementCurrency || entry.booking.currency,
+            acceptedPolicyIds: [...(entry.booking.acceptedPolicyIds ?? [])]
+          }
+        };
+      });
+      if (!changed) {
+        return state;
+      }
+      const next: AssetRecord = {
+        ...current,
+        requests,
+        updatedAtIso: new Date().toISOString(),
+        updatedMs: Date.now()
+      };
+      const nextTable = this.upsertRecordCollection(table, next);
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: nextTable,
+        [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
+          requestTable,
+          next,
+          current.requests
+        )
+      };
+    });
   }
 
   private memberStatusDelta(
@@ -512,6 +762,11 @@ export class LocalAssetsRepository {
       }
       return {
         ...state,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
         [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: nextRequestTable
       };
@@ -533,9 +788,15 @@ export class LocalAssetsRepository {
       if (!current || current.ownerUserId !== normalizedUserId) {
         return state;
       }
+      const nextTable = this.deleteRecordCollection(table, normalizedAssetId);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.deleteRecordCollection(table, normalizedAssetId),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: this.deleteAssetRequestCollection(requestTable, normalizedAssetId)
       };
     });
@@ -583,9 +844,15 @@ export class LocalAssetsRepository {
       const nextIdsByOwnerKey = this.cloneActivityOwnerKeyIndex(membersTable.idsByOwnerKey);
       nextIdsByOwnerKey[ownerKey] = (nextIdsByOwnerKey[ownerKey] ?? [])
         .filter(memberId => !releasedMemberIds.has(memberId));
+      const nextTable = this.upsertRecordCollection(table, saved);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
           requestTable,
           saved,
@@ -625,9 +892,15 @@ export class LocalAssetsRepository {
         updatedMs: Date.now(),
         updatedAtIso: new Date().toISOString()
       });
+      const nextTable = this.upsertRecordCollection(table, saved);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId, normalizedUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable
       };
     });
     return saved ? this.toAssetDto(saved, normalizedUserId) : null;
@@ -664,9 +937,16 @@ export class LocalAssetsRepository {
         updatedMs: now.getTime(),
         updatedAtIso: now.toISOString()
       });
+      const nextTable = this.upsertRecordCollection(table, saved);
+      const nextState = this.upsertDemoAssetManagerRecord(state, saved, normalizedUserId, normalizedTargetUserId, now);
       return {
-        ...this.upsertDemoAssetManagerRecord(state, saved, normalizedUserId, normalizedTargetUserId, now),
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
+        ...nextState,
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          nextState[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable
       };
     });
     return saved ? this.toAssetDto(saved, normalizedUserId) : null;
@@ -727,9 +1007,15 @@ export class LocalAssetsRepository {
           updatedAtIso: now.toISOString()
         };
       }
+      const nextTable = this.upsertRecordCollection(table, saved);
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved),
+        [USERS_TABLE_NAME]: this.synchronizeOwnerAssetPendingCounters(
+          state[USERS_TABLE_NAME],
+          nextTable,
+          [current.ownerUserId]
+        ),
+        [ASSETS_TABLE_NAME]: nextTable,
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextMembersById,
           ids: [...membersTable.ids],
@@ -1152,7 +1438,9 @@ export class LocalAssetsRepository {
     const totalQuantity = AssetCardBuilder.storedQuantityValue(record);
     const overlappingCommitted = (record.requests ?? [])
       .filter(request => request.recordStatus !== 'D')
-      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.status === 'accepted'
+        || request.requestKind === 'manual'
+        || (request.status === 'pending' && request.requestKind === 'borrow'))
       .filter(request => request.booking?.inventoryApplied !== true)
       .filter(request => this.isAssetRequestWindowOverlap(request, startAtIso, endAtIso))
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
@@ -1219,12 +1507,17 @@ export class LocalAssetsRepository {
     viewerUserId = '',
     requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null
   ): AppDTOs.AssetDTO {
-    return LocalAssetsMapper.toAssetDto(record, {
+    const card = LocalAssetsMapper.toAssetDto(record, {
       viewerUserId,
       requestMetrics,
       resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
       resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
     });
+    const owner = this.usersRepository.queryUserById(record.ownerUserId);
+    return {
+      ...card,
+      ownerAvatarUrl: AppUtils.firstImageUrl(owner?.images) || null
+    };
   }
 
   private toAssetDetailDto(
@@ -1232,12 +1525,17 @@ export class LocalAssetsRepository {
     viewerUserId = '',
     requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null
   ): AppDTOs.AssetDetailDTO {
-    return LocalAssetsMapper.toAssetDetailDto(record, {
+    const card = LocalAssetsMapper.toAssetDetailDto(record, {
       viewerUserId,
       requestMetrics,
       resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
       resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
     });
+    const owner = this.usersRepository.queryUserById(record.ownerUserId);
+    return {
+      ...card,
+      ownerAvatarUrl: AppUtils.firstImageUrl(owner?.images) || null
+    };
   }
 
   private mergeAssetRecord(
@@ -1550,6 +1848,61 @@ export class LocalAssetsRepository {
       byId: nextById,
       ids: nextIds,
       idsByOwnerUserId: nextIdsByOwnerUserId
+    };
+  }
+
+  private synchronizeOwnerAssetPendingCounters(
+    users: UsersRecordCollection,
+    assets: AssetsRecordCollection,
+    ownerUserIds: readonly string[]
+  ): UsersRecordCollection {
+    const nextById = { ...users.byId };
+    for (const ownerUserId of new Set(ownerUserIds.map(id => id.trim()).filter(Boolean))) {
+      const user = nextById[ownerUserId];
+      if (!user) {
+        continue;
+      }
+      let carsPending = 0;
+      let accommodationPending = 0;
+      let suppliesPending = 0;
+      for (const assetId of assets.idsByOwnerUserId[ownerUserId] ?? []) {
+        const asset = assets.byId[assetId];
+        if (!asset || this.isSuppressedAssetStatus(asset.status)) {
+          continue;
+        }
+        const pending = asset.requests.filter(request => (
+          request.recordStatus !== 'D'
+          && request.status === 'pending'
+          && request.requestKind !== 'manual'
+        )).length;
+        switch (asset.type) {
+          case 'Transport':
+            carsPending += pending;
+            break;
+          case 'Accommodation':
+            accommodationPending += pending;
+            break;
+          case 'Supplies':
+            suppliesPending += pending;
+            break;
+        }
+      }
+      nextById[ownerUserId] = {
+        ...user,
+        activities: {
+          ...user.activities,
+          asset: {
+            ...(user.activities.asset ?? {}),
+            carsPending,
+            accommodationPending,
+            suppliesPending
+          }
+        }
+      };
+    }
+    return {
+      byId: nextById,
+      ids: [...users.ids]
     };
   }
 

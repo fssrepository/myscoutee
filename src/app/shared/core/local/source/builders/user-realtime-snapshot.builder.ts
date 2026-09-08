@@ -19,7 +19,8 @@ type LocalRealtimeCounterKey =
   | 'tickets'
   | 'contacts'
   | 'feedback'
-  | 'notifications';
+  | 'notifications'
+  | 'paymentRefundsPending';
 
 const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'game',
@@ -33,7 +34,8 @@ const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'tickets',
   'contacts',
   'feedback',
-  'notifications'
+  'notifications',
+  'paymentRefundsPending'
 ];
 
 export interface LocalUserRealtimeSnapshotState {
@@ -161,6 +163,7 @@ export class LocalUserRealtimeSnapshotBuilder {
         contacts: activities.contacts,
         feedback: activities.feedback,
         notifications: activities.notifications,
+        paymentRefundsPending: activities.paymentRefundsPending,
         chat: activities.chat ? { ...activities.chat } : undefined,
         event: activities.event ? { ...activities.event } : undefined,
         asset: activities.asset ? { ...activities.asset } : undefined,
@@ -242,7 +245,10 @@ export class LocalUserRealtimeSnapshotBuilder {
       cars: this.count(current.asset?.cars),
       accommodation: this.count(current.asset?.accommodation),
       supplies: this.count(current.asset?.supplies),
-      tickets: this.count(current.asset?.tickets) + this.count(increments.tickets)
+      tickets: this.count(current.asset?.tickets) + this.count(increments.tickets),
+      carsPending: this.count(current.asset?.carsPending),
+      accommodationPending: this.count(current.asset?.accommodationPending),
+      suppliesPending: this.count(current.asset?.suppliesPending)
     };
     next.eventFeedback = {
       ownEvents: this.count(current.eventFeedback?.ownEvents),
@@ -289,7 +295,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       current.asset,
       previousBase.asset,
       nextBase.asset,
-      ['cars', 'accommodation', 'supplies', 'tickets']
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
     );
     next.eventFeedback = this.rebaseNestedCounters(
       current.eventFeedback,

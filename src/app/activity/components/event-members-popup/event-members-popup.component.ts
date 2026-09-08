@@ -69,6 +69,7 @@ import {
 import type { ActivityMemberOwnerType, AssetType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/asset.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -78,6 +79,7 @@ import {
 } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { canManageScopedAssetMembers } from './scoped-asset-member-management.policy';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -93,8 +95,10 @@ type MemberMenuAction =
   | 'promoteAdmin'
   | 'revokeManager'
   | 'leaveAsset'
+  | 'leaveScopedAsset'
   | 'takeOverAsset'
   | 'stepDownAdmin'
+  | 'toggleOrganizerParticipation'
   | 'report'
   | 'involvement';
 
@@ -104,7 +108,9 @@ type PersistedMemberAction =
   | 'disqualify'
   | 'reinstate'
   | 'promote-admin'
-  | 'step-down-admin';
+  | 'step-down-admin'
+  | 'set-organizer-only'
+  | 'set-participant';
 
 type MemberMenuContext = {
   menu: 'member-action';
@@ -189,7 +195,9 @@ export class EventMembersPopupComponent implements OnDestroy {
   private memberEventId = '';
   private memberSubEventId = '';
   private memberResourceType: AssetType | null = null;
+  private memberResourceCapacityMin = 0;
   private memberAssetOwnerUserId = '';
+  private scopedBorrowAsset = false;
   private canTakeOverAssetResponsibility = false;
   private canManageMembers = false;
   private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberDTO> = [];
@@ -200,7 +208,11 @@ export class EventMembersPopupComponent implements OnDestroy {
     capacityTotal: 0
   };
   private isLocalMembersSource = false;
-  private membersChangeHandler: ((members: readonly ActivityContracts.ActivityMemberDTO[]) => void) | null = null;
+  private membersChangeHandler: ((
+    members: readonly ActivityContracts.ActivityMemberDTO[],
+    statusChange?: AssetMemberStatusChangeDTO
+  ) => void) | null = null;
+  private takeOverAssetHandler: (() => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
   private viewOnlyMode = false;
@@ -273,17 +285,20 @@ export class EventMembersPopupComponent implements OnDestroy {
           subEventId: request.subEventId,
           resourceType: request.resourceType,
           assetOwnerUserId: request.assetOwnerUserId,
+          scopedBorrowAsset: request.scopedBorrowAsset,
           canTakeOverAsset: request.canTakeOverAsset,
           subtitle: request.subtitle,
           canManage: request.canManage,
           viewOnly: request.viewOnly,
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
+          capacityMin: request.capacityMin,
           capacityTotal: request.capacityTotal,
           metricIdentity: request.metricIdentity,
           initialMembers: request.members,
           lookup: request.lookup,
-          onMembersChanged: request.onMembersChanged
+          onMembersChanged: request.onMembersChanged,
+          onTakeOverAsset: request.onTakeOverAsset
         });
         return;
       }
@@ -432,7 +447,9 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberEventId = '';
     this.memberSubEventId = '';
     this.memberResourceType = null;
+    this.memberResourceCapacityMin = 0;
     this.memberAssetOwnerUserId = '';
+    this.scopedBorrowAsset = false;
     this.canTakeOverAssetResponsibility = false;
     this.lookupRef = null;
     this.ownerRecord = null;
@@ -443,6 +460,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberInvolvementPopup = null;
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
+    this.takeOverAssetHandler = null;
     this.suppressedOwnerSyncId = null;
     this.requestedCanManageMembers = false;
     this.viewOnlyMode = false;
@@ -475,7 +493,16 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canShowActionMenu(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.isAcceptedScopedAssetBorrower(entry)) {
+      return this.canLeaveScopedAssetBorrower(entry)
+        || this.canTakeOverAsset(entry)
+        || this.canToggleOrganizerParticipation(entry)
+        || this.canDeleteMember(entry)
+        || this.canShowMemberInvolvement(entry)
+        || this.canReportMember(entry);
+    }
     return this.canShowMemberInvolvement(entry)
+      || this.canToggleOrganizerParticipation(entry)
       || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
       || this.canLeaveEvent(entry)
@@ -487,6 +514,15 @@ export class EventMembersPopupComponent implements OnDestroy {
       || this.canTakeOverAsset(entry)
       || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
+  }
+
+  private isAcceptedScopedAssetBorrower(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.scopedBorrowAsset
+      && this.ownerRef?.ownerType === 'asset'
+      && this.memberEventId.length > 0
+      && this.memberSubEventId.length > 0
+      && entry.status === 'accepted'
+      && entry.userId !== this.memberAssetOwnerUserId;
   }
 
   protected isActionMenuOpen(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -523,6 +559,15 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   protected memberActionMenuItems(entry: ActivityContracts.ActivityMemberDTO): readonly AppMenuItem<string, MemberMenuContext>[] {
     const items: AppMenuItem<string, MemberMenuContext>[] = [];
+    if (this.canLeaveScopedAssetBorrower(entry)) {
+      items.push({
+        id: `member-action-leave-scoped-asset-${entry.id}`,
+        label: 'Leave',
+        icon: 'logout',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'leaveScopedAsset' }
+      });
+    }
     if (this.canShowMemberInvolvement(entry)) {
       items.push({
         id: `member-action-involvement-${entry.id}`,
@@ -530,6 +575,15 @@ export class EventMembersPopupComponent implements OnDestroy {
         icon: 'assignment_ind',
         palette: 'teal',
         context: { menu: 'member-action', member: entry, action: 'involvement' }
+      });
+    }
+    if (this.canToggleOrganizerParticipation(entry)) {
+      items.push({
+        id: `member-action-organizer-participation-${entry.id}`,
+        label: entry.organizerOnly === true ? 'Count as participant' : 'Organizer only',
+        icon: entry.organizerOnly === true ? 'person' : 'person_off',
+        palette: entry.organizerOnly === true ? 'success' : 'warning',
+        context: { menu: 'member-action', member: entry, action: 'toggleOrganizerParticipation' }
       });
     }
     if (this.canPromoteAdmin(entry)) {
@@ -668,11 +722,17 @@ export class EventMembersPopupComponent implements OnDestroy {
       case 'leaveAsset':
         this.requestLeaveAssetOwner(context.member, event.sourceEvent);
         break;
+      case 'leaveScopedAsset':
+        this.requestLeaveScopedAsset(context.member, event.sourceEvent);
+        break;
       case 'takeOverAsset':
         this.requestTakeOverAsset(context.member, event.sourceEvent);
         break;
       case 'stepDownAdmin':
         this.requestStepDownAdmin(context.member, event.sourceEvent);
+        break;
+      case 'toggleOrganizerParticipation':
+        this.requestToggleOrganizerParticipation(context.member, event.sourceEvent);
         break;
       case 'report':
         this.reportMember(context.member, event.sourceEvent);
@@ -828,6 +888,33 @@ export class EventMembersPopupComponent implements OnDestroy {
     });
   }
 
+  protected requestToggleOrganizerParticipation(
+    entry: ActivityContracts.ActivityMemberDTO,
+    event: Event
+  ): void {
+    event.stopPropagation();
+    if (!this.canToggleOrganizerParticipation(entry)) {
+      return;
+    }
+    const setAsParticipant = entry.organizerOnly === true;
+    this.membersSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: setAsParticipant ? 'Count as participant?' : 'Organizer only?',
+      message: setAsParticipant
+        ? 'You will count toward the available participant places in this scope.'
+        : 'You will keep your organizer role but will not count toward the available participant places in this scope.',
+      cancelLabel: 'Cancel',
+      confirmLabel: setAsParticipant ? 'Count as participant' : 'Organizer only',
+      busyConfirmLabel: 'Saving...',
+      confirmTone: setAsParticipant ? 'accent' : 'warning',
+      failureMessage: 'Unable to update participant status.',
+      onConfirm: () => this.confirmMemberAction(
+        entry,
+        setAsParticipant ? 'set-participant' : 'set-organizer-only'
+      )
+    });
+  }
+
   protected requestRevokeAssetManager(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
     event.stopPropagation();
     if (!this.canRevokeAssetManager(entry)) {
@@ -865,6 +952,25 @@ export class EventMembersPopupComponent implements OnDestroy {
     });
   }
 
+  protected requestLeaveScopedAsset(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canLeaveScopedAssetBorrower(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Leave asset?',
+      message: 'You will leave this borrowed Asset.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Leave',
+      busyConfirmLabel: 'Leaving...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to leave this Asset.',
+      onConfirm: () => this.confirmLeaveScopedAsset(entry)
+    });
+  }
+
   protected requestTakeOverAsset(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
     event.stopPropagation();
     if (!this.canTakeOverAsset(entry)) {
@@ -872,6 +978,12 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
+    if (this.scopedBorrowAsset && this.takeOverAssetHandler) {
+      const handler = this.takeOverAssetHandler;
+      this.closeMembersPopup();
+      handler();
+      return;
+    }
     this.dialogStore.open({
       title: 'Take over asset?',
       message: 'You will become responsible for this Asset and it will return to its previous active status.',
@@ -1033,7 +1145,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     if (owner) {
-      await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers, entry.id);
       return;
     }
     const nextMembers = previousMembers.map(member => member.id === entry.id
@@ -1052,7 +1164,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     if (owner) {
-      await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers, entry.id);
       return;
     }
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
@@ -1141,7 +1253,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       return;
     }
     const previousMembers = this.currentOwnerMembers();
-    const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers);
+    const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers, entry.id);
     await actionPromise;
   }
 
@@ -1207,6 +1319,37 @@ export class EventMembersPopupComponent implements OnDestroy {
           }
         : member);
     this.applyCommittedMembers(nextMembers, previousMembers);
+  }
+
+  private async confirmLeaveScopedAsset(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (
+      !owner
+      || owner.ownerType !== 'asset'
+      || !actorUserId
+      || actorUserId !== entry.userId
+      || !this.memberEventId
+      || !this.memberSubEventId
+    ) {
+      throw new Error('Unable to resolve the borrowed Asset membership.');
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const change = await this.assetsService.applyMemberStatusChange({
+      assetId: owner.ownerId,
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId,
+      actorUserId,
+      action: 'leave'
+    });
+    if (!change || change.status !== 'deleted') {
+      throw new Error('Unable to leave this Asset.');
+    }
+    const nextMembers = change.resourceAssignmentRemoved
+      ? []
+      : previousMembers.filter(member => member.userId !== entry.userId);
+    this.applyCommittedMembers(nextMembers, previousMembers, change);
   }
 
   private async confirmLeaveAssetOwner(): Promise<void> {
@@ -1427,14 +1570,20 @@ export class EventMembersPopupComponent implements OnDestroy {
       subEventId?: string;
       resourceType?: AssetType;
       assetOwnerUserId?: string;
+      scopedBorrowAsset?: boolean;
       canTakeOverAsset?: boolean;
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
+      capacityMin?: number;
       capacityTotal?: number;
       metricIdentity?: string;
       initialMembers?: readonly ActivityContracts.ActivityMemberDTO[];
-      onMembersChanged?: (members: readonly ActivityContracts.ActivityMemberDTO[]) => void;
+      onMembersChanged?: (
+        members: readonly ActivityContracts.ActivityMemberDTO[],
+        statusChange?: AssetMemberStatusChangeDTO
+      ) => void;
+      onTakeOverAsset?: () => void;
     }
   ): void {
     const normalizedOwnerId = ownerId.trim();
@@ -1443,15 +1592,17 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
-    const providedInitialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
+    const providedInitialMembers = (ownerType !== 'event' || lookup?.type === 'chat') && Array.isArray(options?.initialMembers)
       ? [...options.initialMembers]
       : null;
     const isScopedAssetOwner = ownerType === 'asset'
       && `${options?.eventId ?? ''}`.trim().length > 0
       && `${options?.subEventId ?? ''}`.trim().length > 0;
-    const initialMembers = this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
+    const initialMembers = lookup?.type === 'chat'
       ? providedInitialMembers
-      : null;
+      : this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
+        ? providedInitialMembers
+        : null;
     this.isOpen = true;
     this.membersListPollScheduler.stop({ abort: true });
     this.ownerId = normalizedOwnerId;
@@ -1467,7 +1618,9 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberEventId = `${options?.eventId ?? ''}`.trim();
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
     this.memberResourceType = options?.resourceType ?? null;
+    this.memberResourceCapacityMin = Math.max(0, Math.trunc(Number(options?.capacityMin) || 0));
     this.memberAssetOwnerUserId = `${options?.assetOwnerUserId ?? ''}`.trim();
+    this.scopedBorrowAsset = options?.scopedBorrowAsset === true;
     this.canTakeOverAssetResponsibility = options?.canTakeOverAsset === true;
     const explicitParentOwnerId = `${options?.parentOwnerId ?? ''}`.trim();
     const fallbackParentOwnerId = ownerType === 'event' ? '' : this.memberEventId;
@@ -1489,7 +1642,10 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
     this.viewOnlyMode = options?.viewOnly === true;
-    this.canManageMembers = !this.viewOnlyMode && lookup?.type !== 'chat' && this.requestedCanManageMembers;
+    this.canManageMembers = !this.viewOnlyMode
+      && lookup?.type !== 'chat'
+      && !this.scopedBorrowAsset
+      && this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
@@ -1498,17 +1654,22 @@ export class EventMembersPopupComponent implements OnDestroy {
         this.membersCacheKey(normalizedOwnerId, true),
         initialMembers.filter(member => member.status === 'pending')
       );
-      this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
-      void this.usersService.warmCachedUsers(
-        initialMembers
-          .map(member => `${member.userId ?? ''}`.trim())
-          .filter(userId => userId.length > 0)
-      );
+      if (lookup?.type === 'chat') {
+        this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
+      } else {
+        this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
+        void this.usersService.warmCachedUsers(
+          initialMembers
+            .map(member => `${member.userId ?? ''}`.trim())
+            .filter(userId => userId.length > 0)
+        );
+      }
       this.syncCanManageMembers(initialMembers);
     } else {
       this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
+    this.takeOverAssetHandler = options?.onTakeOverAsset ?? null;
     this.membersSmartListQuery = {};
     if (providedInitialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
       this.applySummaryFromMembers(providedInitialMembers);
@@ -1615,12 +1776,11 @@ export class EventMembersPopupComponent implements OnDestroy {
       };
     }
 
-    if (this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId) {
-      return this.chatsService.queryChatMemberEntriesPage(ownerId, query);
-    }
-
     const cacheKey = this.membersCacheKey(ownerId, pendingOnly);
     let members = this.membersCacheByOwnerId.get(cacheKey);
+    if (this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId && !members) {
+      return this.chatsService.queryChatMemberEntriesPage(ownerId, query);
+    }
     if (!pendingOnly && members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
       await this.activityMembersService.waitForMembersRouteDelay();
       if (!this.isOpen || this.ownerId !== ownerId) {
@@ -1677,7 +1837,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const normalizedMembers = [...members];
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     const capacityTotal = Math.max(
-      normalizedMembers.filter(member => member.status === 'accepted').length,
+      normalizedMembers.filter(member => this.countsAsParticipant(member)).length,
       this.capacityTotal
     );
     if (!this.isLocalMembersSource) {
@@ -1713,7 +1873,8 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private applyCommittedMembers(
     normalizedMembers: readonly ActivityContracts.ActivityMemberDTO[],
-    previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    statusChange?: AssetMemberStatusChangeDTO
   ): void {
     if (!this.ownerId) {
       return;
@@ -1723,18 +1884,22 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
     this.syncCanManageMembers(nextMembers);
     this.applySummaryFromMembers(nextMembers);
-    this.emitResourcePendingDelta(previousMembers, nextMembers);
+    this.emitResourceMemberDelta(previousMembers, nextMembers, statusChange);
     this.membersSmartList?.closeMenu();
     this.syncVisibleMembers(previousMembers, nextMembers);
     if (this.membersChangeHandler) {
-      this.membersChangeHandler(nextMembers);
+      this.membersChangeHandler(nextMembers, statusChange);
+    }
+    if (statusChange) {
+      this.emitScopedAssetMemberStatusSync(statusChange, nextMembers);
     }
     this.cdr.markForCheck();
   }
 
-  private emitResourcePendingDelta(
+  private emitResourceMemberDelta(
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
-    nextMembers: readonly ActivityContracts.ActivityMemberDTO[]
+    nextMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    statusChange?: AssetMemberStatusChangeDTO
   ): void {
     if (
       this.ownerRef?.ownerType !== 'asset'
@@ -1744,9 +1909,12 @@ export class EventMembersPopupComponent implements OnDestroy {
     ) {
       return;
     }
+    const acceptedMemberDelta = nextMembers.filter(member => this.countsAsParticipant(member)).length
+      - previousMembers.filter(member => this.countsAsParticipant(member)).length;
     const pendingMemberDelta = nextMembers.filter(member => member.status === 'pending').length
       - previousMembers.filter(member => member.status === 'pending').length;
-    if (pendingMemberDelta === 0) {
+    const resourceAssignmentRemoved = statusChange?.resourceAssignmentRemoved === true;
+    if (acceptedMemberDelta === 0 && pendingMemberDelta === 0 && !resourceAssignmentRemoved) {
       return;
     }
     this.activityStore.emitActivityResourceMemberDeltaSync({
@@ -1754,7 +1922,41 @@ export class EventMembersPopupComponent implements OnDestroy {
       subEventId: this.memberSubEventId,
       assetId: this.ownerRef.ownerId,
       resourceType: this.memberResourceType,
-      pendingMemberDelta
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      capacityMinDelta: resourceAssignmentRemoved ? -this.memberResourceCapacityMin : 0,
+      capacityMaxDelta: resourceAssignmentRemoved ? -this.capacityTotal : 0,
+      ...(resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {})
+    });
+  }
+
+  private emitScopedAssetMemberStatusSync(
+    change: AssetMemberStatusChangeDTO,
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): void {
+    if (
+      this.ownerRef?.ownerType !== 'asset'
+      || change.assetId !== this.ownerId
+      || change.eventId !== this.memberEventId
+      || change.subEventId !== this.memberSubEventId
+      || change.userId !== this.activeUserId()
+    ) {
+      return;
+    }
+    const acceptedMembers = members.filter(member => this.countsAsParticipant(member)).length;
+    const pendingMembers = members.filter(member => member.status === 'pending').length;
+    this.suppressedOwnerSyncId = change.assetId;
+    this.activityStore.emitActivityMembersSync({
+      id: change.assetId,
+      eventId: change.eventId,
+      subEventId: change.subEventId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, this.capacityTotal),
+      acceptedMemberDelta: change.acceptedMemberDelta,
+      pendingMemberDelta: change.pendingMemberDelta,
+      ...(change.resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {}),
+      memberStatusChange: change
     });
   }
 
@@ -1882,6 +2084,9 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
+      return true;
+    }
     if (this.ownerRef?.ownerType === 'asset' && entry.status === 'accepted') {
       return this.canManageMembers
         && !this.isCurrentUser(entry)
@@ -1941,6 +2146,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   protected canPromoteAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
     if (this.viewOnlyMode
         || !this.ownerRef
+        || (this.ownerRef.ownerType === 'asset' && this.scopedBorrowAsset)
         || entry.status !== 'accepted'
         || entry.role === 'Admin'
         || this.isCurrentUser(entry)) {
@@ -1954,10 +2160,23 @@ export class EventMembersPopupComponent implements OnDestroy {
       : this.canManageMembers;
   }
 
+  protected canToggleOrganizerParticipation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    const ownsScopedBorrowRequest = this.scopedBorrowAsset
+      && this.isCurrentUser(entry)
+      && (entry.status === 'accepted' || entry.status === 'pending');
+    return this.lookupRef?.type !== 'chat'
+      && !this.viewOnlyMode
+      && this.ownerRef != null
+      && this.isCurrentUser(entry)
+      && (this.canManageMembers || ownsScopedBorrowRequest)
+      && (entry.status === 'accepted' || entry.status === 'pending');
+  }
+
   protected canRevokeAssetManager(entry: ActivityContracts.ActivityMemberDTO): boolean {
     const activeUserId = this.activeUserId();
     return !this.viewOnlyMode
       && this.ownerRef?.ownerType === 'asset'
+      && !this.scopedBorrowAsset
       && this.canManageMembers
       && entry.status === 'accepted'
       && entry.role === 'Manager'
@@ -1974,11 +2193,24 @@ export class EventMembersPopupComponent implements OnDestroy {
       && this.isActiveUserAssetOwner();
   }
 
+  protected canLeaveScopedAssetBorrower(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.scopedBorrowAsset
+      && this.ownerRef?.ownerType === 'asset'
+      && this.memberEventId.length > 0
+      && this.memberSubEventId.length > 0
+      && entry.status === 'accepted'
+      && entry.userId !== this.memberAssetOwnerUserId
+      && this.isCurrentUser(entry);
+  }
+
   protected canTakeOverAsset(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return !this.viewOnlyMode
       && this.ownerRef?.ownerType === 'asset'
       && this.canTakeOverAssetResponsibility
+      && (!this.scopedBorrowAsset || this.takeOverAssetHandler !== null)
       && entry.status === 'accepted'
+      && entry.role !== 'Manager'
       && this.isCurrentUser(entry);
   }
 
@@ -2051,14 +2283,16 @@ export class EventMembersPopupComponent implements OnDestroy {
     );
     this.canManageMembers = this.ownerRef?.ownerType === 'event'
       ? ownerRecordCanManage || activeMemberCanManage
-      : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
+      : this.scopedBorrowAsset
+        ? canManageScopedAssetMembers(activeUserId, members)
+        : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers
       || (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
     const visibleMembers = [...members];
-    const acceptedCount = visibleMembers.filter(member => member.status === 'accepted').length;
+    const acceptedCount = visibleMembers.filter(member => this.countsAsParticipant(member)).length;
     const pendingCount = visibleMembers.filter(member => member.status === 'pending').length;
     this.applySummary(
       acceptedCount,
@@ -2164,7 +2398,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
     action: PersistedMemberAction,
-    previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    targetMemberId?: string | null
   ): Promise<void> {
     await this.waitForMemberActionRender();
     if (!this.ownerId) {
@@ -2175,7 +2410,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     try {
       normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action, null, {
         eventId: this.memberEventId,
-        subEventId: this.memberSubEventId
+        subEventId: this.memberSubEventId,
+        targetMemberId: `${targetMemberId ?? ''}`.trim() || undefined
       })];
     } catch (error) {
       if (this.suppressedOwnerSyncId === this.ownerId) {
@@ -2188,6 +2424,10 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private isCurrentUser(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.userId === this.activeUserId();
+  }
+
+  private countsAsParticipant(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return entry.status === 'accepted' && entry.organizerOnly !== true;
   }
 
   private isSelfManagedAssetJoinRequestCancellation(entry: ActivityContracts.ActivityMemberDTO): boolean {

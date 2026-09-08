@@ -1,5 +1,6 @@
 import * as AppConstants from '../common/constants';
 import type { PricingConfig } from './pricing.interface';
+import type { UserPaymentTotalsDto } from './user.interface';
 
 export interface EventPolicyItemDTO {
   id: string;
@@ -46,12 +47,16 @@ export interface AssetMemberStatusChangeRequestDTO {
   eventId: string;
   subEventId: string;
   actorUserId: string;
-  action: 'join' | 'leave';
+  action: 'join' | 'leave' | 'take-over';
   request?: AssetMemberRequestDTO | null;
+  paymentSessionId?: string | null;
+  previousManagerUserId?: string | null;
+  acceptedPolicyIds?: string[];
 }
 
 export interface AssetMemberStatusChangeDTO {
   assetId: string;
+  requestId?: string | null;
   eventId: string;
   subEventId: string;
   userId: string;
@@ -59,6 +64,8 @@ export interface AssetMemberStatusChangeDTO {
   status: AppConstants.ActivityMemberStatus;
   acceptedMemberDelta: number;
   pendingMemberDelta: number;
+  resourceAssignmentRemoved?: boolean;
+  paymentTotals?: UserPaymentTotalsDto | null;
 }
 
 export interface AssetRequestMetricsDTO {
@@ -89,6 +96,7 @@ export interface AssetDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
@@ -116,10 +124,24 @@ export interface AssetDetailDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
+  borrowWindow?: AssetBorrowWindowDTO | null;
+}
+
+export interface AssetBorrowWindowDTO {
+  eventId: string;
+  subEventId: string;
+  startAtIso: string;
+  endAtIso: string;
+}
+
+export interface AssetDetailLoadScopeDTO {
+  eventId: string;
+  subEventId: string;
 }
 
 export class AssetDto implements AssetDTO {
@@ -142,6 +164,7 @@ export class AssetDto implements AssetDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   ownerReleasedAtIso?: string | null;
   requests: AssetMemberRequestDTO[] = [];
   metrics?: AssetRequestMetricsDTO | null;
@@ -175,6 +198,7 @@ export class AssetDto implements AssetDTO {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       ownerReleasedAtIso: card.ownerReleasedAtIso ?? null,
       requests: card.requests.map(request => ({
         ...request,
@@ -213,6 +237,7 @@ export class AssetDto implements AssetDTO {
       && (this.status ?? '') === (other.status ?? '')
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
+      && (this.ownerAvatarUrl ?? '') === (other.ownerAvatarUrl ?? '')
       && (this.ownerReleasedAtIso ?? '') === (other.ownerReleasedAtIso ?? '')
       && AssetDto.sameRequests(this.requests, other.requests)
       && AssetDto.sameMetrics(this.metrics, other.metrics)
@@ -351,9 +376,11 @@ export class AssetDetailDto implements AssetDetailDTO {
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
+  ownerAvatarUrl?: string | null;
   requests: AssetMemberRequestDTO[] = [];
   metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
+  borrowWindow?: AssetBorrowWindowDTO | null;
 
   constructor(card?: AssetDetailDTO | null) {
     if (!card) {
@@ -375,7 +402,8 @@ export class AssetDetailDto implements AssetDetailDTO {
           : null
       })),
       metrics: AssetDto.cloneMetrics(card.metrics),
-      menuActions: card.menuActions ? [...card.menuActions] : undefined
+      menuActions: card.menuActions ? [...card.menuActions] : undefined,
+      borrowWindow: card.borrowWindow ? { ...card.borrowWindow } : null
     });
   }
 
@@ -405,6 +433,7 @@ export interface AssetExplorePageResultDTO {
   items: AssetDTO[];
   total: number;
   nextCursor?: string | null;
+  checkoutResultStates?: Record<string, import('./activity.interface').EventCheckoutResultState>;
 }
 
 export interface AssetTicketPageQueryDTO {

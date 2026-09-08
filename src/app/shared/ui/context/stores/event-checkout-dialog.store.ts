@@ -120,7 +120,9 @@ export class EventCheckoutDialogStore {
       paymentMethod: config.paymentMethod ? { ...config.paymentMethod } : null,
       paymentProvider: config.paymentProvider?.trim().toLowerCase() || '',
       paymentStatusLabel: config.paymentStatusLabel?.trim() || '',
-      paymentStatusTone: config.paymentStatusTone === 'success' || config.paymentStatusTone === 'danger'
+      paymentStatusTone: config.paymentStatusTone === 'success'
+        || config.paymentStatusTone === 'danger'
+        || config.paymentStatusTone === 'refund'
         ? config.paymentStatusTone
         : 'neutral',
       paymentNote: config.paymentNote?.trim() || '',

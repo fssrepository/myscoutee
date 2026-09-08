@@ -1013,6 +1013,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       status: card.status,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
+      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking

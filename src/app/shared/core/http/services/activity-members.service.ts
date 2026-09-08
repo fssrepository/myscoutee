@@ -229,7 +229,7 @@ export class HttpActivityMembersService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberActionResultDTO> {
@@ -251,7 +251,8 @@ export class HttpActivityMembersService {
           action,
           reason: reason?.trim() || null,
           eventId: `${options?.eventId ?? ''}`.trim() || null,
-          subEventId: `${options?.subEventId ?? ''}`.trim() || null
+          subEventId: `${options?.subEventId ?? ''}`.trim() || null,
+          targetMemberId: `${options?.targetMemberId ?? ''}`.trim() || null
         })
         .toPromise();
     } catch (error) {
@@ -377,7 +378,7 @@ export class HttpActivityMembersService {
     capacityTotal?: number | null
   ): ActivityMembersSummaryDto {
     const acceptedMemberUserIds = members
-      .filter(member => member.status === 'accepted')
+      .filter(member => member.status === 'accepted' && member.organizerOnly !== true)
       .map(member => member.userId);
     const pendingMemberUserIds = members
       .filter(member => member.status === 'pending')

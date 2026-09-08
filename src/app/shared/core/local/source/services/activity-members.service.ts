@@ -150,7 +150,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberActionResultDTO> {
@@ -175,7 +175,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
@@ -188,9 +188,16 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
 
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
-    const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
+    const scopedAssetMembers = this.scopedAssetMembers(normalizedOwner, options);
+    const previousMembers = scopedAssetMembers
+      ? LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers)
+      : this.entriesFromRecords(previousRecords, normalizedOwner);
     const normalizedActorUserId = actorUserId.trim();
-    const targetMember = previousMembers.find(member => member.userId === normalizedTargetUserId) ?? null;
+    const normalizedTargetMemberId = `${options?.targetMemberId ?? ''}`.trim();
+    const targetMember = previousMembers.find(member =>
+      member.userId === normalizedTargetUserId
+      && (!normalizedTargetMemberId || member.id === normalizedTargetMemberId)
+    ) ?? null;
     const actorCanManage = this.canManageOwnerMembers(
       normalizedOwner,
       previousMembers,
@@ -205,6 +212,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       && normalizedActorUserId === normalizedTargetUserId;
     const targetIsApprovalRequest = targetMember?.status === 'pending'
       && !targetIsInvitation;
+    const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
+    const organizerParticipationAllowed = organizerParticipationAction
+      && normalizedActorUserId === normalizedTargetUserId
+      && (actorCanManage || scopedAssetMembers != null)
+      && (targetMember?.status === 'accepted' || targetMember?.status === 'pending');
     const removingOwnAcceptedMembership = action === 'remove'
       && targetMember?.status === 'accepted'
       && normalizedActorUserId === normalizedTargetUserId
@@ -213,7 +225,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const withdrawingOwnApprovalRequest = action === 'remove'
       && targetIsApprovalRequest
       && normalizedActorUserId === normalizedTargetUserId;
-    const actionAllowed = action === 'accept'
+    const actionAllowed = organizerParticipationAction
+      ? organizerParticipationAllowed
+      : action === 'accept'
       ? (
         (actorIsInvitee && targetIsInvitation)
         || (actorCanManage && targetIsApprovalRequest)
@@ -239,7 +253,10 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
 
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextMembers = previousMembers.map(member => {
-      if (member.userId !== normalizedTargetUserId) {
+      const targetExactMember = member.id === targetMember?.id;
+      const targetOrganizerScope = organizerParticipationAction
+        && member.userId === normalizedTargetUserId;
+      if (!targetExactMember && !targetOrganizerScope) {
         return member;
       }
       const acceptingOwnManagedInvitation = action === 'accept'
@@ -319,6 +336,13 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           actionAtIso: nowIso
         };
       }
+      if (action === 'set-organizer-only' || action === 'set-participant') {
+        return {
+          ...member,
+          organizerOnly: action === 'set-organizer-only',
+          actionAtIso: nowIso
+        };
+      }
       return member;
     }).filter((member): member is ActivityMemberDTO => member !== null);
     const changed = nextMembers.length !== previousMembers.length
@@ -327,9 +351,56 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         || member.role !== previousMembers[index]?.role
         || member.pendingSource !== previousMembers[index]?.pendingSource
         || member.requestKind !== previousMembers[index]?.requestKind
-        || member.invitedByUserId !== previousMembers[index]?.invitedByUserId);
+        || member.invitedByUserId !== previousMembers[index]?.invitedByUserId
+        || member.organizerOnly !== previousMembers[index]?.organizerOnly);
     if (!changed) {
       return previousMembers;
+    }
+
+    if (scopedAssetMembers) {
+      if (organizerParticipationAction) {
+        const nextMember = nextMembers.find(member => member.userId === normalizedTargetUserId);
+        if (!nextMember) {
+          return previousMembers;
+        }
+        const existingTargetRecord = previousRecords.find(record => record.userId === normalizedTargetUserId) ?? null;
+        const nextTargetRecord = LocalActivityMembersBuilder.toRecord(
+          normalizedOwner,
+          nextMember,
+          existingTargetRecord
+        );
+        this.activityMembersRepository.replaceRecordsByOwner(
+          normalizedOwner,
+          [
+            ...previousRecords.filter(record => record.userId !== normalizedTargetUserId),
+            nextTargetRecord
+          ],
+          this.ownerSnapshotFromOwner(normalizedOwner)?.capacityTotal ?? null
+        );
+        return LocalActivityMembersBuilder.sortEntriesForManagement(
+          this.scopedAssetMembers(normalizedOwner, options) ?? []
+        );
+      }
+      if (action !== 'accept' && action !== 'remove') {
+        return previousMembers;
+      }
+      const eventId = `${options?.eventId ?? ''}`.trim();
+      const subEventId = `${options?.subEventId ?? ''}`.trim();
+      const authorizationEventId = ActivityResourceBuilder.authorizationEventId(eventId, subEventId);
+      const persisted = this.assetsRepository.applyScopedAssetMemberAction(
+        normalizedOwner.ownerId,
+        [eventId, authorizationEventId],
+        subEventId,
+        normalizedTargetUserId,
+        targetMember.id,
+        action
+      );
+      if (!persisted) {
+        return previousMembers;
+      }
+      return LocalActivityMembersBuilder.sortEntriesForManagement(
+        this.scopedAssetMembers(normalizedOwner, options) ?? []
+      );
     }
 
     const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
@@ -691,7 +762,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   }
 
   private eventMembershipSystemMessage(
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     previousMember: ActivityMemberDTO,
     nextMember: ActivityMemberDTO | null,
     actorUserId: string
@@ -853,8 +924,31 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     if (this.canManageMembers(members, normalizedUserId)) {
       return true;
     }
+    if (owner.ownerType === 'event') {
+      const event = this.eventsRepository.peekKnownItemById(normalizedUserId, owner.ownerId);
+      return event?.creatorUserId === normalizedUserId
+        || (event?.adminIds ?? []).includes(normalizedUserId);
+    }
+    if (owner.ownerType === 'asset') {
+      const eventId = `${options?.eventId ?? ''}`.trim();
+      const subEventId = `${options?.subEventId ?? ''}`.trim();
+      if (eventId && subEventId) {
+        const scopedManagerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(
+          eventId,
+          subEventId,
+          owner.ownerId
+        );
+        if (scopedManagerUserId === normalizedUserId) {
+          return true;
+        }
+      }
+      const asset = this.assetsRepository.peekAssetForMembershipById(owner.ownerId);
+      if (asset?.ownerUserId === normalizedUserId && !asset.ownerReleasedAtIso) {
+        return true;
+      }
+    }
     const eventId = `${options?.eventId ?? ''}`.trim().split(':slot:')[0];
-    if (owner.ownerType === 'event' || !eventId) {
+    if (!eventId) {
       return false;
     }
     const event = this.eventsRepository.peekKnownItemById(normalizedUserId, eventId);
@@ -896,7 +990,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       return null;
     }
     const records = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
-    const acceptedMembers = records.filter(record => record.status === 'accepted').length;
+    const acceptedMembers = records
+      .filter(record => record.status === 'accepted' && record.organizerOnly !== true)
+      .length;
     const capacityTotal = this.activityMembersRepository.resolveOwnerCapacityTotal(normalizedOwner, acceptedMembers);
     return this.ownerSnapshotFromRecords(normalizedOwner, records, capacityTotal);
   }
@@ -929,17 +1025,25 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const users = this.localActivityMemberUsers;
     const ownerUserId = `${asset.ownerUserId ?? ''}`.trim();
-    const storedManagersByUserId = new Map(
+    const scopedManagerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(
+      eventId,
+      subEventId,
+      asset.id
+    );
+    const storedMembersByUserId = new Map(
       this.activityMembersRepository.peekRecordsByOwner(owner)
-        .filter(record => record.status === 'accepted' && (record.role === 'Manager' || record.role === 'Admin'))
         .map(record => [record.userId, record] as const)
     );
     const members: ActivityMemberDTO[] = [];
-    if (options?.pendingOnly !== true && ownerUserId && !asset.ownerReleasedAtIso) {
+    if (options?.pendingOnly !== true
+        && ownerUserId
+        && !asset.ownerReleasedAtIso
+        && scopedManagerUserId === ownerUserId) {
       const profile = this.resolveDemoUser(ownerUserId, {
         name: asset.ownerName,
         city: asset.city
       });
+      const storedOwnerRecord = storedMembersByUserId.get(ownerUserId) ?? null;
       members.push({
         id: `${asset.id}:owner`,
         userId: profile.id,
@@ -958,6 +1062,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         actionAtIso: nowIso,
         metWhere: asset.title,
         avatarUrl: AppUtils.firstImageUrl(profile.images),
+        organizerOnly: storedOwnerRecord?.organizerOnly === true,
         profile
       });
     }
@@ -986,7 +1091,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       const requestedAtIso = `${request.requestedAtIso ?? ''}`.trim() || nowIso;
       const pending = request.status === 'pending';
       const borrowerInitiated = request.requestKind === 'borrow';
-      const managerRecord = pending ? null : storedManagersByUserId.get(userId) ?? null;
+      const storedMemberRecord = storedMembersByUserId.get(userId) ?? null;
+      const managerRecord = !pending
+        && storedMemberRecord?.status === 'accepted'
+        && (storedMemberRecord.role === 'Manager' || storedMemberRecord.role === 'Admin')
+          ? storedMemberRecord
+          : null;
       members.push({
         id: request.id?.trim() || `${asset.id}:request:${userId}`,
         userId: profile.id,
@@ -995,9 +1105,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         gender: profile.gender,
         city: profile.city || asset.city,
         statusText: pending
-          ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
+          ? (borrowerInitiated ? 'Waiting for owner approval.' : 'Invitation pending.')
           : 'Borrowing this asset.',
-        role: managerRecord ? 'Manager' : 'Member',
+        role: managerRecord || userId === scopedManagerUserId ? 'Manager' : 'Member',
         status: pending ? 'pending' : 'accepted',
         pendingSource: pending ? (borrowerInitiated ? 'member' : 'admin') : null,
         requestKind: pending ? (borrowerInitiated ? 'join' : 'invite') : null,
@@ -1009,6 +1119,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         avatarUrl: AppUtils.firstImageUrl(profile.images),
         revision: managerRecord?.updatedAtIso ?? requestedAtIso,
         managerGrantedByUserId: managerRecord?.managerGrantedByUserId ?? null,
+        organizerOnly: storedMemberRecord?.organizerOnly === true,
         profile
       });
     }

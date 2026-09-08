@@ -128,6 +128,7 @@ export class LocalActivityMembersRepository {
         const record = table.byId[id];
         if (
           record?.status === 'accepted'
+          && record.organizerOnly !== true
           && record.userId?.trim() === normalizedUserId
           && record.ownerType === ownerType
           && record.ownerId?.trim() === ownerId
@@ -786,7 +787,9 @@ export class LocalActivityMembersRepository {
       };
     });
 
-    const acceptedMembers = normalizedRecords.filter(record => record.status === 'accepted').length;
+    const acceptedMembers = normalizedRecords
+      .filter(record => record.status === 'accepted' && record.organizerOnly !== true)
+      .length;
     const pendingMembers = normalizedRecords.filter(record => record.status === 'pending').length;
     const resolvedCapacityTotal = Math.max(
       acceptedMembers,

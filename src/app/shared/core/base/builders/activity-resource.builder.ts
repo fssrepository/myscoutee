@@ -660,7 +660,7 @@ export class ActivityResourceBuilder {
         && this.isSubEventScopedAssetRequest(request, normalizedSubEventId, ownerId)
         && !this.isSubEventManualAssignmentRequest(request, normalizedSubEventId)
       )
-      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+      .length;
   }
 
   static assetRequestSyncSignature(request: AppDTOs.AssetMemberRequestDTO): string {

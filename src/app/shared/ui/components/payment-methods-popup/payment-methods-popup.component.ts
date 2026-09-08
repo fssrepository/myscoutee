@@ -8,7 +8,8 @@ import {
   DeploymentConfigurationService,
   EventsService,
   I18nService,
-  PaymentMethodsService
+  PaymentMethodsService,
+  UsersService
 } from '../../../core';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
@@ -21,8 +22,13 @@ import type {
   SavedPaymentMethodDto
 } from '../../../core/contracts/payment-method.interface';
 import { UserProfileStore } from '../../context/stores/user-profile.store';
+import { ActivityStore } from '../../context/stores/activity.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
-import { ActivitiesPopupStore } from '../../context/stores/activities-popup.store';
+import {
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
+} from '../../context/stores/activities-popup.store';
 import { EventCheckoutDialogStore } from '../../context/stores/event-checkout-dialog.store';
 import { AssetStore } from '../../context/stores/asset.store';
 import { AssetPopupStore } from '../../context/stores/asset-popup.store';
@@ -46,6 +52,7 @@ import {
   type SingleRowData
 } from '../core/smart-list/card';
 import { I18nPipe } from '../../pipes';
+import { ChatPopupHeaderContextConverter } from '../../converters/chat-popup-header-context.converter';
 
 interface PaymentListFilters { revision: number; direction?: PaymentHistoryDirection; }
 interface PaymentPopupMenuContext {
@@ -64,6 +71,8 @@ interface PaymentPopupMenuContext {
 export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly store = inject(PaymentMethodsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly users = inject(UsersService);
+  private readonly activityStore = inject(ActivityStore);
   private readonly paymentMethods = inject(PaymentMethodsService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly events = inject(EventsService);
@@ -93,6 +102,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly spendingTotalsRef = signal<Record<string, number>>({});
   private readonly incomeTotalsRef = signal<Record<string, number>>({});
   private readonly historyDirectionRef = signal<PaymentHistoryDirection>('all');
+  private readonly pendingRefundCountRef = signal(0);
+  private readonly historyTotalsLoadedRef = signal(false);
   private readonly loadedCardsById = new Map<string, SavedPaymentMethodDto>();
   private registrationPoll: ReturnType<typeof setTimeout> | null = null;
   private registrationRefreshInFlight = false;
@@ -185,6 +196,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.paymentMethods.queryAllHistory(this.activeUserId(), query, context?.signal).then(page => {
       this.spendingTotalsRef.set({ ...page.spendingTotals });
       this.incomeTotalsRef.set({ ...page.incomeTotals });
+      this.historyTotalsLoadedRef.set(true);
+      this.pendingRefundCountRef.set(Math.max(0, Math.trunc(Number(page.pendingRefundCount) || 0)));
       return page;
     })
   );
@@ -334,6 +347,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   protected historyRow(item: PaymentHistoryItemDto, withMenu = false): SingleRowData<PaymentHistoryItemDto> {
+    const refundAudit = item.auditKind === 'refund';
     const amount = this.formatSignedCurrency(
       Number(item.amount) || 0,
       item.currency || 'HUF',
@@ -354,9 +368,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         minute: '2-digit',
         second: '2-digit'
       }),
-      icon: item.status === 'captured' ? 'check_circle' : item.status === 'released' ? 'undo' : 'payments',
+      icon: item.status === 'captured' ? 'check_circle' : refundAudit ? 'currency_exchange' : 'payments',
       avatarToneClass: `payment-history-avatar payment-history-avatar--${
-        item.status === 'failed' ? 'failed' : item.status === 'released' ? 'released' : item.direction
+        item.status === 'failed' ? 'failed' : item.direction
       }`,
       badges: [
         {
@@ -367,25 +381,39 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         },
         {
           label: statusLabel,
-          tone: item.status === 'captured' ? 'success' : item.status === 'failed' ? 'danger' : 'muted',
-          className: item.status === 'captured'
+          tone: item.direction === 'income' ? 'success' : 'danger',
+          className: item.direction === 'income'
             ? 'payment-history-status-badge--success'
-            : item.status === 'failed'
-              ? 'payment-history-status-badge--danger'
-              : null,
+            : 'payment-history-status-badge--danger',
           position: 'top-right'
-        }
+        },
+        ...(!refundAudit && item.refundRequestStatus === 'pending'
+          ? [{
+              label: this.i18n.translate('payment.history.refund.pending'),
+              icon: 'pending_actions',
+              tone: 'warning' as const,
+              position: 'inline' as const
+            }]
+          : [])
       ],
-      menuActions: withMenu ? ['paymentSummary'] : [],
+      menuActions: withMenu ? this.paymentHistoryMenuActions(item) : [],
       eagerDetail: item
     };
   }
 
   protected onPaymentHistoryMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    if (event.id !== 'paymentSummary') return;
     const row = (event.context as { row?: SingleRowData<PaymentHistoryItemDto> } | undefined)?.row;
     const item = row?.eagerDetail;
-    if (item) void this.openPaymentSummary(item);
+    if (!item) return;
+    if (event.id === 'paymentSummary') {
+      void this.openPaymentSummary(item);
+    } else if (event.id === 'requestRefund') {
+      this.confirmRefundRequest(item);
+    } else if (event.id === 'approveRefund') {
+      this.confirmRefundApproval(item);
+    } else if (event.id === 'askAssetOwner' || event.id === 'askOrganizer') {
+      void this.openPaymentServiceChat(item);
+    }
   }
 
   protected selectCard(method: SavedPaymentMethodDto, event: Event): void {
@@ -586,6 +614,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.closeRegistration();
     this.cardsOpenRef.set(false);
     this.errorRef.set('');
+    this.historyTotalsLoadedRef.set(false);
+    this.spendingTotalsRef.set({});
+    this.incomeTotalsRef.set({});
     this.store.close();
   }
 
@@ -683,7 +714,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     return normalized ? this.i18n.translate(`payment.status.${normalized}`, status) : '';
   }
 
-  private paymentStatusTone(status: string): 'neutral' | 'success' | 'danger' {
+  private paymentStatusTone(status: string): 'neutral' | 'success' | 'danger' | 'refund' {
     switch (`${status ?? ''}`.trim().toLowerCase()) {
       case 'failed':
       case 'declined':
@@ -694,15 +725,25 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       case 'succeeded':
       case 'authorized':
         return 'success';
+      case 'released':
+      case 'refunded':
+        return 'refund';
       default:
         return 'neutral';
     }
   }
 
+  private isRefundedPaymentStatus(status: string): boolean {
+    const normalized = `${status ?? ''}`.trim().toLowerCase();
+    return normalized === 'released' || normalized === 'refunded' || normalized === 'partially_refunded';
+  }
+
   protected historyHeaderTotals(): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
     const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
-    const outgoing = stored?.outgoing ?? this.spendingTotalsRef();
-    const incoming = stored?.incoming ?? this.incomeTotalsRef();
+    const loadedOutgoing = this.spendingTotalsRef();
+    const loadedIncoming = this.incomeTotalsRef();
+    const outgoing = this.historyTotalsLoadedRef() ? loadedOutgoing : stored?.outgoing ?? {};
+    const incoming = this.historyTotalsLoadedRef() ? loadedIncoming : stored?.incoming ?? {};
     const currencies = [...new Set([...Object.keys(outgoing), ...Object.keys(incoming)])]
       .map(currency => currency.trim().toUpperCase())
       .filter(Boolean)
@@ -726,6 +767,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       expenses: 'payment.history.filter.expenses',
       income: 'payment.history.filter.income'
     };
+    const pendingRefundCount = this.pendingRefundCountRef();
     const items: AppMenuItem<string, PaymentPopupMenuContext>[] = (['all', 'expenses', 'income'] as const)
       .map(value => ({
         id: `payment-history-${value}`,
@@ -735,6 +777,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         palette: value === 'income' ? 'green' : value === 'expenses' ? 'red' : 'blue',
         active: value === direction,
         checked: value === direction,
+        counter: value === 'all' || value === 'expenses' ? pendingRefundCount || undefined : undefined,
         context: { action: 'set-history-direction', direction: value }
       }));
     return {
@@ -747,6 +790,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         label: labels[direction],
         icon: 'filter_list',
         trailingIcon: 'expand_more',
+        counter: pendingRefundCount || undefined,
         palette: direction === 'income' ? 'green' : direction === 'expenses' ? 'red' : 'blue',
         layout: 'pill',
         ariaLabel: 'payment.history.filter.title'
@@ -755,6 +799,192 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       panelAlign: 'end',
       closeOnSelect: true
     };
+  }
+
+  private paymentHistoryMenuActions(item: PaymentHistoryItemDto): string[] {
+    if (item.auditKind === 'refund') {
+      return item.canApproveRefund === true ? ['approveRefund'] : [];
+    }
+    const actions = ['paymentSummary'];
+    if (item.direction === 'expense' && `${item.recipientUserId ?? ''}`.trim()) {
+      actions.push(item.serviceContext === 'asset' ? 'askAssetOwner' : 'askOrganizer');
+    }
+    if (item.canRequestRefund === true) actions.push('requestRefund');
+    if (item.canApproveRefund === true) actions.push('approveRefund');
+    return actions;
+  }
+
+  private confirmRefundRequest(item: PaymentHistoryItemDto): void {
+    this.dialogStore.open({
+      title: 'payment.history.refund.request.title',
+      message: this.refundConfirmationMessage(item, 'payment.history.refund.request.message'),
+      cancelLabel: 'cancel',
+      confirmLabel: 'payment.history.refund.request',
+      confirmTone: 'warning',
+      failureMessage: 'payment.history.refund.request.error',
+      onConfirm: async () => this.applyPaymentHistoryMutation(
+        await this.paymentMethods.requestRefund(this.activeUserId(), item.id)
+      )
+    });
+  }
+
+  private confirmRefundApproval(item: PaymentHistoryItemDto): void {
+    this.dialogStore.open({
+      title: 'payment.history.refund.approve.title',
+      message: this.refundConfirmationMessage(item, 'payment.history.refund.approve.message'),
+      cancelLabel: 'cancel',
+      confirmLabel: 'payment.history.refund.approve',
+      confirmTone: 'accent',
+      failureMessage: 'payment.history.refund.approve.error',
+      onConfirm: async () => this.applyPaymentHistoryMutation(
+        await this.paymentMethods.approveRefund(this.activeUserId(), item.id)
+      )
+    });
+  }
+
+  private refundConfirmationMessage(item: PaymentHistoryItemDto, leadKey: string): string {
+    const preview = item.refundPreview;
+    if (!preview) return this.i18n.translate(leadKey);
+    const currency = preview.currency || item.currency || 'HUF';
+    return [
+      this.i18n.translate(leadKey),
+      this.i18n.translateParams('payment.history.refund.preview.amount', {
+        amount: this.formatSignedCurrency(preview.refundableAmount, currency, '+')
+      }),
+      this.i18n.translateParams('payment.history.refund.preview.retained', {
+        amount: this.formatSignedCurrency(preview.retainedAmount, currency, '−')
+      }),
+      this.refundPolicyBasis(item)
+    ].filter(Boolean).join('\n');
+  }
+
+  private refundPolicyBasis(item: PaymentHistoryItemDto): string {
+    const preview = item.refundPreview;
+    if (preview?.ruleId === 'assignment-manager-takeover') {
+      return this.i18n.translate('payment.history.refund.preview.takeover');
+    }
+    if (!preview?.ruleId) {
+      return preview?.ruleDescription || this.i18n.translate('payment.history.refund.preview.no.policy');
+    }
+    const currency = preview.currency || item.currency || 'HUF';
+    const refund = preview.refundKind === 'full'
+      ? this.i18n.translate('payment.history.refund.preview.full')
+      : preview.refundKind === 'fixed_amount'
+        ? this.formatSignedCurrency(Number(preview.refundValue) || 0, currency, '+')
+        : preview.refundKind === 'none'
+          ? this.i18n.translate('payment.history.refund.preview.none')
+          : this.i18n.translateParams('payment.history.refund.preview.percent', {
+              percent: Number(preview.refundValue) || 0
+            });
+    return this.i18n.translateParams('payment.history.refund.preview.policy', {
+      refund,
+      offset: Math.max(0, Number(preview.ruleOffsetValue) || 0),
+      unit: this.i18n.translate(`payment.history.refund.preview.unit.${preview.ruleOffsetUnit || 'days'}`)
+    });
+  }
+
+  private applyPaymentHistoryMutation(mutation: AppDTOs.PaymentHistoryMutationDto): void {
+    const userId = this.activeUserId();
+    const pendingRefundCount = Math.max(0, Math.trunc(Number(mutation.pendingRefundCount) || 0));
+    this.spendingTotalsRef.set({ ...mutation.spendingTotals });
+    this.incomeTotalsRef.set({ ...mutation.incomeTotals });
+    this.historyTotalsLoadedRef.set(true);
+    this.pendingRefundCountRef.set(pendingRefundCount);
+    this.activityStore.patchUserCounterOverrides(userId, { paymentRefundsPending: pendingRefundCount });
+    this.userProfileStore.patchActiveUserProfile(current => ({
+      paymentTotals: {
+        outgoing: { ...mutation.spendingTotals },
+        incoming: { ...mutation.incomeTotals },
+        all: this.mergePaymentTotals(mutation.spendingTotals, mutation.incomeTotals)
+      },
+      activities: {
+        ...current.activities,
+        paymentRefundsPending: pendingRefundCount
+      }
+    }));
+    this.revisionRef.update(value => value + 1);
+  }
+
+  private mergePaymentTotals(
+    spending: Record<string, number>,
+    income: Record<string, number>
+  ): Record<string, number> {
+    const currencies = new Set([...Object.keys(spending), ...Object.keys(income)]);
+    return Object.fromEntries([...currencies].map(currency => [
+      currency,
+      Math.round(((Number(spending[currency]) || 0) + (Number(income[currency]) || 0)) * 100) / 100
+    ]));
+  }
+
+  private async openPaymentServiceChat(item: PaymentHistoryItemDto): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const targetUserId = `${item.recipientUserId ?? ''}`.trim();
+    const serviceContext = item.serviceContext === 'asset' ? 'asset' as const : 'event' as const;
+    let eventId = `${item.contextEventId ?? (serviceContext === 'event' ? item.sourceId : '')}`.trim();
+    let subEventId = `${item.contextSubEventId ?? ''}`.trim();
+    const assetId = `${item.contextAssetId ?? (serviceContext === 'asset' ? item.sourceId : '')}`.trim();
+    let title = item.sourceId;
+    let assetCard: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null = null;
+    if (serviceContext === 'asset') {
+      assetCard = await this.findPaymentAsset(activeUserId, assetId);
+      title = assetCard?.title ?? item.sourceId;
+      if (!eventId || !subEventId) {
+        const request = (assetCard?.requests ?? []).find(candidate =>
+          `${candidate.userId ?? ''}`.trim() === activeUserId
+          && (!item.checkoutSessionId || candidate.booking?.paymentSessionId === item.checkoutSessionId)
+        );
+        eventId = `${request?.booking?.eventId ?? eventId}`.trim();
+        subEventId = `${request?.booking?.subEventId ?? subEventId}`.trim();
+      }
+    } else {
+      title = item.sourceId;
+    }
+    if (!activeUserId || !targetUserId || targetUserId === activeUserId || !eventId
+      || (serviceContext === 'asset' && (!assetId || !subEventId))) {
+      this.errorRef.set('payment.history.ask.owner.error');
+      return;
+    }
+    if (serviceContext === 'event') {
+      await this.users.warmCachedUsers([targetUserId]);
+    }
+    const activeUser = this.userProfileStore.activeUserProfile()
+      ?? this.users.peekCachedUserById(activeUserId);
+    const targetUser = serviceContext === 'asset' ? null : this.users.peekCachedUserById(targetUserId);
+    const chat: AppDTOs.ChatDTO = {
+      id: serviceContext === 'asset'
+        ? `c-service-asset-${assetId}-${subEventId}-${activeUserId}`
+        : `c-service-event-${eventId}-${activeUserId}`,
+      avatar: targetUserId.slice(0, 2).toUpperCase(),
+      title: serviceContext === 'asset' ? `Ask Asset Owner · ${title}` : `Contact Organizer · ${title}`,
+      lastMessage: serviceContext === 'asset'
+        ? `Service chat with the asset owner for ${title}.`
+        : `Service chat with the organizer for ${title}.`,
+      lastSenderId: targetUserId,
+      memberIds: [activeUserId, targetUserId],
+      members: ChatPopupHeaderContextConverter.memberSummaries([
+        { id: activeUserId, user: activeUser },
+        {
+          id: targetUserId,
+          user: targetUser,
+          fallbackName: serviceContext === 'asset' ? assetCard?.ownerName || 'Asset owner' : 'Organizer',
+          imageUrl: serviceContext === 'asset' ? assetCard?.ownerAvatarUrl : null
+        }
+      ]),
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext,
+      assetId: serviceContext === 'asset' ? assetId : undefined,
+      ownerId: serviceContext === 'asset' ? assetId : eventId,
+      ownerUserId: activeUserId,
+      eventId,
+      subEventId: subEventId || undefined
+    };
+    await this.activities.ensureEventChatPopupLoaded();
+    this.activities.openStackedEventChat(
+      { ...eventChatPopupRequestFromChat(chat), parentZIndex: 22200 },
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private formatSignedCurrency(amount: number, currency: string, sign: '+' | '−'): string {
@@ -946,9 +1176,19 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private paymentHistoryNote(item: PaymentHistoryItemDto): string {
     const failureReason = `${item.failureReason ?? ''}`.trim();
-    return item.status.trim().toLowerCase() === 'failed' && failureReason
-      ? failureReason
-      : '';
+    if (item.status.trim().toLowerCase() === 'failed' && failureReason) return failureReason;
+    if (!this.isRefundedPaymentStatus(item.status) || !item.refundPreview) return '';
+    const preview = item.refundPreview;
+    return [
+      this.i18n.translateParams('payment.history.refund.preview.amount', {
+        amount: this.formatSignedCurrency(
+          preview.refundableAmount,
+          preview.currency || item.currency || 'HUF',
+          '+'
+        )
+      }),
+      this.refundPolicyBasis(item)
+    ].filter(Boolean).join('\n');
   }
 
   private async findPaymentAsset(

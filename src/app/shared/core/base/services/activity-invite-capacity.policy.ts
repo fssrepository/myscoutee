@@ -31,6 +31,9 @@ export function partitionEventInvitesByCapacity(
 }
 
 function occupiesEventCapacity(member: ActivityMemberDTO): boolean {
+  if (member.organizerOnly === true) {
+    return false;
+  }
   return member.status === 'accepted'
     || (member.status === 'pending'
       && (member.requestKind === 'invite' || member.pendingSource === 'admin'));

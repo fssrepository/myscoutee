@@ -3555,7 +3555,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!owner) {
       return;
     }
-    const acceptedMembers = this.selectedActivityMembers.filter(member => member.status === 'accepted').length;
+    const acceptedMembers = this.selectedActivityMembers
+      .filter(member => member.status === 'accepted' && member.organizerOnly !== true)
+      .length;
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       owner,
       this.selectedActivityMembers,

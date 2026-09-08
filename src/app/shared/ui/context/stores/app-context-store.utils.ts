@@ -214,6 +214,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       contacts: user.activities?.contacts ?? 0,
       feedback: user.activities?.feedback ?? 0,
       notifications: user.activities?.notifications ?? 0,
+      paymentRefundsPending: user.activities?.paymentRefundsPending ?? 0,
       chat: cloneChatCounters(user.activities?.chat),
       event: cloneEventCounters(user.activities?.event),
       asset: cloneAssetCounters(user.activities?.asset),
@@ -260,7 +261,10 @@ export function cloneAssetCounters(counters: Partial<ActivityAssetCounters> | un
     cars: normalizeCounterValue(Number(counters?.cars) || 0),
     accommodation: normalizeCounterValue(Number(counters?.accommodation) || 0),
     supplies: normalizeCounterValue(Number(counters?.supplies) || 0),
-    tickets: normalizeCounterValue(Number(counters?.tickets) || 0)
+    tickets: normalizeCounterValue(Number(counters?.tickets) || 0),
+    carsPending: normalizeCounterValue(Number(counters?.carsPending) || 0),
+    accommodationPending: normalizeCounterValue(Number(counters?.accommodationPending) || 0),
+    suppliesPending: normalizeCounterValue(Number(counters?.suppliesPending) || 0)
   };
 }
 
