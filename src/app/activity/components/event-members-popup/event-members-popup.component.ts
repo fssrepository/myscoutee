@@ -2161,11 +2161,14 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canToggleOrganizerParticipation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    const ownsScopedBorrowRequest = this.scopedBorrowAsset
+      && this.isCurrentUser(entry)
+      && (entry.status === 'accepted' || entry.status === 'pending');
     return this.lookupRef?.type !== 'chat'
       && !this.viewOnlyMode
       && this.ownerRef != null
       && this.isCurrentUser(entry)
-      && this.canManageMembers
+      && (this.canManageMembers || ownsScopedBorrowRequest)
       && (entry.status === 'accepted' || entry.status === 'pending');
   }
 

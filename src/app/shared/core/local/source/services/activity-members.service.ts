@@ -215,7 +215,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
     const organizerParticipationAllowed = organizerParticipationAction
       && normalizedActorUserId === normalizedTargetUserId
-      && actorCanManage
+      && (actorCanManage || scopedAssetMembers != null)
       && (targetMember?.status === 'accepted' || targetMember?.status === 'pending');
     const removingOwnAcceptedMembership = action === 'remove'
       && targetMember?.status === 'accepted'
