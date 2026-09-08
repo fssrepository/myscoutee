@@ -167,8 +167,7 @@ describe('activity runtime counter signals', () => {
         previousStatus: 'pending',
         status: 'deleted',
         acceptedMemberDelta: 0,
-        pendingMemberDelta: -1,
-        resourceAssignmentRemoved: true
+        pendingMemberDelta: -1
       }
     });
 
@@ -177,11 +176,47 @@ describe('activity runtime counter signals', () => {
       subEventId: 'subevent-1',
       pendingMembers: 0,
       pendingMemberDelta: -1,
-      resourceAssignmentRemoved: true,
       memberStatusChange: {
         previousStatus: 'pending',
         status: 'deleted',
-        pendingMemberDelta: -1,
+        pendingMemberDelta: -1
+      }
+    });
+  });
+
+  it('retains the authoritative assignment-removal result with the canonical zero-member snapshot', () => {
+    const store = new ActivityStore();
+
+    store.emitActivityMembersSync({
+      id: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 3,
+      acceptedMemberDelta: -1,
+      pendingMemberDelta: 0,
+      resourceAssignmentRemoved: true,
+      memberStatusChange: {
+        assetId: 'asset-1',
+        eventId: 'event-1',
+        subEventId: 'subevent-1',
+        userId: 'viewer',
+        previousStatus: 'accepted',
+        status: 'deleted',
+        acceptedMemberDelta: -1,
+        pendingMemberDelta: 0,
+        resourceAssignmentRemoved: true
+      }
+    });
+
+    expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      resourceAssignmentRemoved: true,
+      memberStatusChange: {
+        previousStatus: 'accepted',
+        status: 'deleted',
         resourceAssignmentRemoved: true
       }
     });
