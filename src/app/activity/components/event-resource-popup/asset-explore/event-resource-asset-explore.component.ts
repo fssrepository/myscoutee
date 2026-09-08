@@ -125,6 +125,9 @@ import type {
   UserDto
 } from '../../../../shared/core/contracts/user.interface';
 import {
+  ActivityStore
+} from '../../../../shared/ui/context/stores/activity.store';
+import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
@@ -254,6 +257,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
@@ -1523,6 +1527,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           });
         }
         this.clearBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
+        this.signalBorrowedAssetMemberMetrics(context, savedCard);
         this.attachBoughtAssetToSubEventLocally(context, savedCard, persistedState);
         this.clearLocalReservation(context.subEvent.id, savedCard.id);
         const remainingAvailability = this.availableQuantityForWindow(
@@ -2882,6 +2887,47 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     this.syncMetrics(false, nextPersistedState);
+  }
+
+  private signalBorrowedAssetMemberMetrics(
+    context: ResourcePopupContext,
+    card: ResourceAssetDTO
+  ): void {
+    if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
+      return;
+    }
+    const authorizationEventId = ActivityResourceBuilder.authorizationEventId(
+      context.ownerId,
+      context.subEvent.id
+    );
+    const statusByMember = new Map<string, 'accepted' | 'pending'>();
+    for (const request of card.requests) {
+      const status = request.status === 'accepted' || request.status === 'pending'
+        ? request.status
+        : null;
+      const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+      const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
+      const memberId = `${request.userId ?? request.id ?? ''}`.trim();
+      if (
+        !status
+        || !memberId
+        || bookingSubEventId !== context.subEvent.id
+        || (bookingEventId !== context.ownerId && bookingEventId !== authorizationEventId)
+      ) {
+        continue;
+      }
+      if (status === 'accepted' || statusByMember.get(memberId) !== 'accepted') {
+        statusByMember.set(memberId, status);
+      }
+    }
+    this.activityStore.emitActivityMembersSync({
+      id: card.id,
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      acceptedMembers: [...statusByMember.values()].filter(status => status === 'accepted').length,
+      pendingMembers: [...statusByMember.values()].filter(status => status === 'pending').length,
+      capacityTotal: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
+    });
   }
 
   private async persistBorrowedAssetAssignment(
