@@ -1330,6 +1330,7 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
   eventId?: string;
   subEventId?: string;
+  /** Targets one independently submitted scoped Asset Borrow request. */
   targetMemberId?: string;
 }
 
