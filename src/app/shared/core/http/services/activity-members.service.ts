@@ -251,7 +251,8 @@ export class HttpActivityMembersService {
           action,
           reason: reason?.trim() || null,
           eventId: `${options?.eventId ?? ''}`.trim() || null,
-          subEventId: `${options?.subEventId ?? ''}`.trim() || null
+          subEventId: `${options?.subEventId ?? ''}`.trim() || null,
+          targetMemberId: `${options?.targetMemberId ?? ''}`.trim() || null
         })
         .toPromise();
     } catch (error) {

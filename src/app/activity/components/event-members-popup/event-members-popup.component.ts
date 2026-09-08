@@ -1145,7 +1145,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     if (owner) {
-      await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers, entry.id);
       return;
     }
     const nextMembers = previousMembers.map(member => member.id === entry.id
@@ -1164,7 +1164,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     if (owner) {
-      await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers, entry.id);
       return;
     }
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
@@ -1253,7 +1253,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       return;
     }
     const previousMembers = this.currentOwnerMembers();
-    const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers);
+    const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers, entry.id);
     await actionPromise;
   }
 
@@ -2395,7 +2395,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
     action: PersistedMemberAction,
-    previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    targetMemberId?: string | null
   ): Promise<void> {
     await this.waitForMemberActionRender();
     if (!this.ownerId) {
@@ -2406,7 +2407,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     try {
       normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action, null, {
         eventId: this.memberEventId,
-        subEventId: this.memberSubEventId
+        subEventId: this.memberSubEventId,
+        targetMemberId: `${targetMemberId ?? ''}`.trim() || undefined
       })];
     } catch (error) {
       if (this.suppressedOwnerSyncId === this.ownerId) {

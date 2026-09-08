@@ -193,7 +193,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       ? LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers)
       : this.entriesFromRecords(previousRecords, normalizedOwner);
     const normalizedActorUserId = actorUserId.trim();
-    const targetMember = previousMembers.find(member => member.userId === normalizedTargetUserId) ?? null;
+    const normalizedTargetMemberId = `${options?.targetMemberId ?? ''}`.trim();
+    const targetMember = previousMembers.find(member =>
+      member.userId === normalizedTargetUserId
+      && (!normalizedTargetMemberId || member.id === normalizedTargetMemberId)
+    ) ?? null;
     const actorCanManage = this.canManageOwnerMembers(
       normalizedOwner,
       previousMembers,
@@ -249,7 +253,10 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
 
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextMembers = previousMembers.map(member => {
-      if (member.userId !== normalizedTargetUserId) {
+      const targetExactMember = member.id === targetMember?.id;
+      const targetOrganizerScope = organizerParticipationAction
+        && member.userId === normalizedTargetUserId;
+      if (!targetExactMember && !targetOrganizerScope) {
         return member;
       }
       const acceptingOwnManagedInvitation = action === 'accept'
@@ -385,6 +392,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         [eventId, authorizationEventId],
         subEventId,
         normalizedTargetUserId,
+        targetMember.id,
         action
       );
       if (!persisted) {

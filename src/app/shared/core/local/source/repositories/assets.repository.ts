@@ -317,13 +317,16 @@ export class LocalAssetsRepository {
     eventIds: readonly string[],
     subEventId: string,
     targetUserId: string,
+    targetRequestId: string,
     action: 'accept' | 'remove'
   ): boolean {
     const normalizedAssetId = assetId.trim();
     const acceptedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
     const normalizedSubEventId = subEventId.trim();
     const normalizedTargetUserId = targetUserId.trim();
-    if (!normalizedAssetId || acceptedEventIds.size === 0 || !normalizedSubEventId || !normalizedTargetUserId) {
+    const normalizedTargetRequestId = targetRequestId.trim();
+    if (!normalizedAssetId || acceptedEventIds.size === 0 || !normalizedSubEventId
+        || !normalizedTargetUserId || !normalizedTargetRequestId) {
       return false;
     }
 
@@ -341,6 +344,7 @@ export class LocalAssetsRepository {
         const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
         const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
         return request.recordStatus !== 'D'
+          && request.id === normalizedTargetRequestId
           && requestUserId === normalizedTargetUserId
           && acceptedEventIds.has(bookingEventId)
           && bookingSubEventId === normalizedSubEventId;

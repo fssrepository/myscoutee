@@ -1330,6 +1330,7 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
   eventId?: string;
   subEventId?: string;
+  targetMemberId?: string;
 }
 
 export interface ActivityMemberSyncKnownItemDTO {
