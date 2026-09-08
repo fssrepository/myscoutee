@@ -127,7 +127,7 @@ import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.s
 
 interface ResourceAssignmentRemovalRequest {
   assetId: string;
-  type: AppConstants.AssetType;
+  assetOwnerUserId: string;
   title: string;
 }
 
@@ -3372,7 +3372,7 @@ export class EventResourcePopupComponent {
     }
     const pending: ResourceAssignmentRemovalRequest = {
       assetId: card.sourceAssetId,
-      type: card.type,
+      assetOwnerUserId: `${sourceCard.ownerUserId ?? card.assetOwnerUserId ?? ''}`.trim(),
       title: card.title
     };
     this.dialogStore.open({
@@ -3398,18 +3398,20 @@ export class EventResourcePopupComponent {
   }
 
   private async removeResourceAssignment(pending: ResourceAssignmentRemovalRequest): Promise<void> {
-    const nextState = this.buildResourceAssignmentRemovalState(pending);
-    if (!nextState) {
+    const context = this.resourcePopupStore.popupContextRef();
+    const ownerId = `${context?.ownerId ?? ''}`.trim();
+    const subEventId = `${context?.subEvent.id ?? ''}`.trim();
+    if (!ownerId || !subEventId || !pending.assetOwnerUserId) {
       throw new Error('Unable to remove assignment.');
     }
     const savedState = await this.activityResourcesService.removeSubEventResourceAssignment({
-      ownerId: nextState.ownerId,
-      subEventId: nextState.subEventId,
-      assetOwnerUserId: nextState.assetOwnerUserId,
+      ownerId,
+      subEventId,
+      assetOwnerUserId: pending.assetOwnerUserId,
       assetId: pending.assetId,
       userId: this.activeUser().id
     });
-    const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState);
+    const resolvedState = ActivityResourceBuilder.normalizeState(savedState);
     if (!resolvedState) {
       throw new Error('Unable to remove assignment.');
     }
@@ -3431,37 +3433,6 @@ export class EventResourcePopupComponent {
         }
       : card);
     this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false });
-  }
-
-  private buildResourceAssignmentRemovalState(
-    pending: ResourceAssignmentRemovalRequest
-  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
-    const context = this.resourcePopupStore.popupContextRef();
-    const nextState = this.buildPopupResourceState(context);
-    if (!context || !nextState) {
-      return null;
-    }
-    const currentIds = nextState.assetAssignmentIds[pending.type] ?? [];
-    const nextIds = currentIds.filter(assetId => assetId !== pending.assetId);
-    if (nextIds.length === currentIds.length) {
-      return null;
-    }
-    const nextSettings = { ...(nextState.assetSettingsByType[pending.type] ?? {}) };
-    delete nextSettings[pending.assetId];
-    nextState.assetAssignmentIds = {
-      ...nextState.assetAssignmentIds,
-      [pending.type]: nextIds
-    };
-    nextState.assetSettingsByType = {
-      ...nextState.assetSettingsByType,
-      [pending.type]: nextSettings
-    };
-    if (pending.type === AppConstants.ASSET_TYPE_SUPPLIES) {
-      const nextSupplyEntries = { ...nextState.supplyContributionEntriesByAssetId };
-      delete nextSupplyEntries[pending.assetId];
-      nextState.supplyContributionEntriesByAssetId = nextSupplyEntries;
-    }
-    return nextState;
   }
 
   private isAssignableAssetType(type: AppConstants.SubEventResourceFilter): type is AppConstants.AssetType {

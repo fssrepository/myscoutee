@@ -343,8 +343,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     const actorUserId = request.userId.trim();
     const assetId = request.assetId.trim();
-    const record = this.repository.peekSubEventResourceRecord(request);
-    const state = record ? this.toVisibleState(record) : null;
+    const state = this.assignedAssetState(request.ownerId, request.subEventId, assetId);
     if (!state || !actorUserId || !assetId) {
       return null;
     }

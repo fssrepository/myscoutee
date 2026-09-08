@@ -198,7 +198,7 @@ export class HttpActivityResourcesService {
       ),
       signal
     );
-    const savedState = ActivityResourceBuilder.normalizeState(response, request);
+    const savedState = ActivityResourceBuilder.normalizeState(response);
     if (!savedState) {
       throw new Error('Activity resource assignment was not removed.');
     }
