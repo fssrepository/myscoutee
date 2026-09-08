@@ -974,7 +974,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     if (options?.pendingOnly !== true
         && ownerUserId
         && !asset.ownerReleasedAtIso
-        && (!scopedManagerUserId || scopedManagerUserId === ownerUserId)) {
+        && scopedManagerUserId === ownerUserId) {
       const profile = this.resolveDemoUser(ownerUserId, {
         name: asset.ownerName,
         city: asset.city
