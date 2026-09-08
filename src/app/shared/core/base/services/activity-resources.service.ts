@@ -151,7 +151,8 @@ export class ActivityResourcesService extends BaseRouteModeService {
 
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options: { emitActivityResourceSync?: boolean } = {}
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     if (!state) {
       return null;
@@ -166,7 +167,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
       subEventId: normalizedState.subEventId,
       assetOwnerUserId: normalizedState.assetOwnerUserId
     }, signal, this.activeAssetOwnerUserId());
-    if (savedState) {
+    if (savedState && options.emitActivityResourceSync !== false) {
       this.activityStore.emitActivityResourceSync({
         ownerId: savedState.ownerId,
         subEventId: savedState.subEventId,

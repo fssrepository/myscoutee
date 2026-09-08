@@ -1527,7 +1527,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           });
         }
         this.clearBorrowDraftState(activeUser.id, context.subEvent.id, currentDialog.cardId);
-        this.signalBorrowedAssetMemberMetrics(context, savedCard);
+        this.signalBorrowedAssetMemberDelta(context, savedCard, persistedState);
         this.attachBoughtAssetToSubEventLocally(context, savedCard, persistedState);
         this.clearLocalReservation(context.subEvent.id, savedCard.id);
         const remainingAvailability = this.availableQuantityForWindow(
@@ -2883,51 +2883,77 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         fallbackCardsByType: nextFallbackCards
       };
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.syncMetrics(false, nextPersistedState);
+      this.syncMetrics(false, nextPersistedState, false);
       return;
     }
-    this.syncMetrics(false, nextPersistedState);
+    this.syncMetrics(false, nextPersistedState, false);
   }
 
-  private signalBorrowedAssetMemberMetrics(
+  private signalBorrowedAssetMemberDelta(
     context: ResourcePopupContext,
-    card: ResourceAssetDTO
+    card: ResourceAssetDTO,
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO
   ): void {
     if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return;
     }
-    const authorizationEventId = ActivityResourceBuilder.authorizationEventId(
-      context.ownerId,
-      context.subEvent.id
-    );
-    const statusByMember = new Map<string, 'accepted' | 'pending'>();
-    for (const request of card.requests) {
-      const status = request.status === 'accepted' || request.status === 'pending'
-        ? request.status
-        : null;
-      const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
-      const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
-      const memberId = `${request.userId ?? request.id ?? ''}`.trim();
-      if (
-        !status
-        || !memberId
-        || bookingSubEventId !== context.subEvent.id
-        || (bookingEventId !== context.ownerId && bookingEventId !== authorizationEventId)
-      ) {
-        continue;
-      }
-      if (status === 'accepted' || statusByMember.get(memberId) !== 'accepted') {
-        statusByMember.set(memberId, status);
-      }
-    }
-    this.activityStore.emitActivityMembersSync({
-      id: card.id,
+    const activeUserId = this.activeUser().id.trim();
+    const previousMemberSync = this.activityStore.activityMembersSyncByOwnerId()[card.id];
+    const previousMemberSyncMatchesScope = previousMemberSync?.eventId === context.ownerId
+      && previousMemberSync.subEventId === context.subEvent.id;
+    this.activityStore.cacheActivityMemberStatusChange({
+      assetId: card.id,
       eventId: context.ownerId,
       subEventId: context.subEvent.id,
-      acceptedMembers: [...statusByMember.values()].filter(status => status === 'accepted').length,
-      pendingMembers: [...statusByMember.values()].filter(status => status === 'pending').length,
+      userId: activeUserId,
+      previousStatus: null,
+      status: 'pending',
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: previousMemberSyncMatchesScope ? previousMemberSync.acceptedMembers : 0,
+      pendingMembers: previousMemberSyncMatchesScope ? previousMemberSync.pendingMembers : 0,
       capacityTotal: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
     });
+
+    const persistedMetrics = persistedState.resourceMetricsByType?.[card.type];
+    const previousMetrics = this.subEventResourceMetrics(context.subEvent, card.type);
+    this.activityStore.emitActivityResourceMemberDeltaSync({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      assetId: card.id,
+      resourceType: card.type,
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: 1,
+      capacityMinDelta: persistedMetrics
+        ? Math.max(0, Math.trunc(Number(persistedMetrics.capacityMin) || 0)) - previousMetrics.capacityMin
+        : 0,
+      capacityMaxDelta: persistedMetrics
+        ? Math.max(0, Math.trunc(Number(persistedMetrics.capacityMax) || 0)) - previousMetrics.capacityMax
+        : 0
+    });
+  }
+
+  private subEventResourceMetrics(
+    subEvent: ContractTypes.SubEventDTO,
+    type: AppConstants.AssetType
+  ): { capacityMin: number; capacityMax: number } {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return {
+        capacityMin: Math.max(0, Math.trunc(Number(subEvent.carsCapacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(subEvent.carsCapacityMax) || 0))
+      };
+    }
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      return {
+        capacityMin: Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMax) || 0))
+      };
+    }
+    return {
+      capacityMin: Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMin) || 0)),
+      capacityMax: Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMax) || 0))
+    };
   }
 
   private async persistBorrowedAssetAssignment(
@@ -2988,7 +3014,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         ]
       }
     };
-    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
+    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState, undefined, {
+      emitActivityResourceSync: false
+    });
     if (!savedState?.assetAssignmentIds[type]?.includes(card.id)) {
       throw new Error(this.i18n.translate('asset.borrow.error.send'));
     }
@@ -2997,7 +3025,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private syncMetrics(
     persistResourceState = false,
-    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
+    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null,
+    publishUpdate = true
   ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
@@ -3026,9 +3055,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       subEvent: nextSubEvent
     };
     this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, {
-      activityDelta: this.resourcePendingActivityCount(nextSubEvent) - previousPendingActivity
-    });
+    if (publishUpdate) {
+      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, {
+        activityDelta: this.resourcePendingActivityCount(nextSubEvent) - previousPendingActivity
+      });
+    }
     if (persistResourceState) {
       this.persistResourceState(nextContext);
     }

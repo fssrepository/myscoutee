@@ -1538,7 +1538,7 @@ export class EventTournamentGroupsPopupComponent {
       return;
     }
     this.state = nextState;
-    this.emitGroupsUpdate(match.stage.subEventId);
+    this.emitGroupsUpdate(match.stage.subEventId, pendingDelta);
     this.cdr.markForCheck();
   }
 

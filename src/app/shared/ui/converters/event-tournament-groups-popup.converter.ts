@@ -409,7 +409,7 @@ export class EventTournamentGroupsPopupConverter
               return group;
             }
             const current = group.resourceMetricsByType?.[resourceType];
-            if (!current) {
+            if (!current && capacityMaxDelta <= 0) {
               return group;
             }
             changed = true;

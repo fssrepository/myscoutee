@@ -110,6 +110,26 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
     )).toBe(state);
     expect(state.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toBeUndefined();
   });
+
+  it('creates the resource metric when the first assignment arrives as deltas', () => {
+    const state = tournamentState();
+    state.stages[0]!.groups[0]!.resourceMetricsByType = {};
+
+    const next = EventTournamentGroupsPopupConverter.withResourceMetricDeltas(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      { accepted: 0, pending: 1, capacityMin: 0, capacityMax: 4 }
+    );
+
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toEqual({
+      accepted: 0,
+      pending: 1,
+      capacityMin: 0,
+      capacityMax: 4
+    });
+  });
 });
 
 function tournamentState(): EventTournamentGroupsStateDTO {
