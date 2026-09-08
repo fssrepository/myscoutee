@@ -168,12 +168,12 @@ describe('NotificationSingleRowConverter badges', () => {
       payload: { memberName: 'Riley Outside', assetTitle: 'Very Long Asset Title' }
     }), {
       translate: key => key === 'notification.kind.asset-admin-join-request.message'
-        ? '{memberName} requested access'
+        ? '{memberName} requested access · {assetTitle}'
         : key
     });
 
     expect(invite.detail).toBe('Asset invitation');
-    expect(request.detail).toBe('Riley Outside requested access');
+    expect(request.detail).toBe('Riley Outside requested access · Very Long Asset Title');
   });
 
   it('derives bundle keys from the notification kind when the backend payload has no explicit keys', () => {

@@ -2620,7 +2620,7 @@
     "notification.kind.asset-member-invite.title": "Asset invitation",
     "notification.kind.asset-member-invite.message": "Asset invitation",
     "notification.kind.asset-admin-join-request.title": "Asset access requested",
-    "notification.kind.asset-admin-join-request.message": "{memberName} requested access.",
+    "notification.kind.asset-admin-join-request.message": "{memberName} requested access · {assetTitle}",
     "notification.kind.asset-member-request-accepted.title": "Borrow accepted",
     "notification.kind.asset-member-request-accepted.message": "Your request for {assetTitle} was accepted.",
     "notification.kind.asset-member-left.title": "Asset member left",

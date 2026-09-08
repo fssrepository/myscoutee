@@ -2620,7 +2620,7 @@
     "notification.kind.asset-member-invite.title": "Eszközmeghívás",
     "notification.kind.asset-member-invite.message": "Eszközmeghívás",
     "notification.kind.asset-admin-join-request.title": "Eszköz-hozzáférési kérelem",
-    "notification.kind.asset-admin-join-request.message": "{memberName} hozzáférést kért.",
+    "notification.kind.asset-admin-join-request.message": "{memberName} hozzáférést kért · {assetTitle}",
     "notification.kind.asset-member-request-accepted.title": "Kölcsönzés elfogadva",
     "notification.kind.asset-member-request-accepted.message": "A(z) {assetTitle} eszközre küldött kérelmedet elfogadták.",
     "notification.kind.asset-member-left.title": "Egy eszköztag távozott",
