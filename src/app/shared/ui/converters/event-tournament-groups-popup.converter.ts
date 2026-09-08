@@ -368,10 +368,35 @@ export class EventTournamentGroupsPopupConverter
     resourceType: AssetType,
     pendingDelta: number
   ): EventTournamentGroupsStateDTO | null {
+    return this.withResourceMetricDeltas(state, stageId, groupId, resourceType, {
+      pending: pendingDelta
+    });
+  }
+
+  static withResourceMetricDeltas(
+    state: EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    resourceType: AssetType,
+    deltas: { accepted?: number; pending?: number; capacityMin?: number; capacityMax?: number }
+  ): EventTournamentGroupsStateDTO | null {
     const normalizedStageId = `${stageId ?? ''}`.trim();
     const normalizedGroupId = `${groupId ?? ''}`.trim();
-    const delta = Math.trunc(Number(pendingDelta) || 0);
-    if (!state || !normalizedStageId || !normalizedGroupId || delta === 0) {
+    const acceptedDelta = Math.trunc(Number(deltas.accepted) || 0);
+    const pendingDelta = Math.trunc(Number(deltas.pending) || 0);
+    const capacityMinDelta = Math.trunc(Number(deltas.capacityMin) || 0);
+    const capacityMaxDelta = Math.trunc(Number(deltas.capacityMax) || 0);
+    if (
+      !state
+      || !normalizedStageId
+      || !normalizedGroupId
+      || (
+        acceptedDelta === 0
+        && pendingDelta === 0
+        && capacityMinDelta === 0
+        && capacityMaxDelta === 0
+      )
+    ) {
       return state;
     }
 
@@ -393,10 +418,10 @@ export class EventTournamentGroupsPopupConverter
               resourceMetricsByType: {
                 ...group.resourceMetricsByType,
                 [resourceType]: {
-                  accepted: this.count(current?.accepted),
-                  pending: Math.max(0, this.count(current?.pending) + delta),
-                  capacityMin: this.count(current?.capacityMin),
-                  capacityMax: this.count(current?.capacityMax)
+                  accepted: Math.max(0, this.count(current?.accepted) + acceptedDelta),
+                  pending: Math.max(0, this.count(current?.pending) + pendingDelta),
+                  capacityMin: Math.max(0, this.count(current?.capacityMin) + capacityMinDelta),
+                  capacityMax: Math.max(0, this.count(current?.capacityMax) + capacityMaxDelta)
                 }
               }
             };

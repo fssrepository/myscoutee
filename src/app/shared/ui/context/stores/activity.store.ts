@@ -128,6 +128,7 @@ export interface ActivityMembersSyncState {
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
   viewerMembershipRemoved?: boolean;
+  resourceAssignmentRemoved?: boolean;
   currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   memberStatusChange?: AppDTOs.AssetMemberStatusChangeDTO | null;
 }
@@ -147,7 +148,11 @@ export interface ActivityResourceMemberDeltaSyncState {
   subEventId: string;
   assetId: string;
   resourceType: AssetType;
+  acceptedMemberDelta?: number;
   pendingMemberDelta: number;
+  capacityMinDelta?: number;
+  capacityMaxDelta?: number;
+  resourceAssignmentRemoved?: boolean;
 }
 
 export interface ActivityEventRuntimeSyncState {
@@ -716,6 +721,7 @@ export class ActivityStore {
       ...(payload.full === true ? { full: true } : {}),
       ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
       ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {}),
+      ...(payload.resourceAssignmentRemoved === true ? { resourceAssignmentRemoved: true } : {}),
       ...(payload.currentUserMembershipStatus ? { currentUserMembershipStatus: payload.currentUserMembershipStatus } : {}),
       ...(payload.memberStatusChange
         ? {
@@ -792,6 +798,7 @@ export class ActivityStore {
       ),
       acceptedMemberDelta,
       pendingMemberDelta,
+      ...(change.resourceAssignmentRemoved === true ? { resourceAssignmentRemoved: true } : {}),
       memberStatusChange: {
         ...change,
         assetId,
@@ -836,8 +843,23 @@ export class ActivityStore {
     const ownerId = payload.ownerId.trim();
     const subEventId = payload.subEventId.trim();
     const assetId = payload.assetId.trim();
+    const acceptedMemberDelta = Math.trunc(Number(payload.acceptedMemberDelta) || 0);
     const pendingMemberDelta = Math.trunc(Number(payload.pendingMemberDelta) || 0);
-    if (!ownerId || !subEventId || !assetId || pendingMemberDelta === 0) {
+    const capacityMinDelta = Math.trunc(Number(payload.capacityMinDelta) || 0);
+    const capacityMaxDelta = Math.trunc(Number(payload.capacityMaxDelta) || 0);
+    const resourceAssignmentRemoved = payload.resourceAssignmentRemoved === true;
+    if (
+      !ownerId
+      || !subEventId
+      || !assetId
+      || (
+        acceptedMemberDelta === 0
+        && pendingMemberDelta === 0
+        && capacityMinDelta === 0
+        && capacityMaxDelta === 0
+        && !resourceAssignmentRemoved
+      )
+    ) {
       return;
     }
     const updatedMs = Math.max(
@@ -850,7 +872,11 @@ export class ActivityStore {
       subEventId,
       assetId,
       resourceType: payload.resourceType,
-      pendingMemberDelta
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      capacityMinDelta,
+      capacityMaxDelta,
+      ...(resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {})
     });
   }
 

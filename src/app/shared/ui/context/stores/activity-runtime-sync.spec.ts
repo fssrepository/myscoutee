@@ -119,6 +119,34 @@ describe('activity runtime counter signals', () => {
     vi.restoreAllMocks();
   });
 
+  it('broadcasts every removed resource metric in one authoritative signal', () => {
+    const store = new ActivityStore();
+
+    store.emitActivityResourceMemberDeltaSync({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      acceptedMemberDelta: -1,
+      pendingMemberDelta: -2,
+      capacityMinDelta: -1,
+      capacityMaxDelta: -4,
+      resourceAssignmentRemoved: true
+    });
+
+    expect(store.activityResourceMemberDeltaSync()).toMatchObject({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      assetId: 'asset-1',
+      resourceType: 'Transport',
+      acceptedMemberDelta: -1,
+      pendingMemberDelta: -2,
+      capacityMinDelta: -1,
+      capacityMaxDelta: -4,
+      resourceAssignmentRemoved: true
+    });
+  });
+
   it('carries a lean member status transition with its signed counter deltas', () => {
     const store = new ActivityStore();
 
@@ -139,7 +167,8 @@ describe('activity runtime counter signals', () => {
         previousStatus: 'pending',
         status: 'deleted',
         acceptedMemberDelta: 0,
-        pendingMemberDelta: -1
+        pendingMemberDelta: -1,
+        resourceAssignmentRemoved: true
       }
     });
 
@@ -148,10 +177,12 @@ describe('activity runtime counter signals', () => {
       subEventId: 'subevent-1',
       pendingMembers: 0,
       pendingMemberDelta: -1,
+      resourceAssignmentRemoved: true,
       memberStatusChange: {
         previousStatus: 'pending',
         status: 'deleted',
-        pendingMemberDelta: -1
+        pendingMemberDelta: -1,
+        resourceAssignmentRemoved: true
       }
     });
   });

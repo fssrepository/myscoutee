@@ -11,7 +11,7 @@ import type {
 } from '../../../core/common/constants';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../../core/contracts/chat.interface';
-import type { AssetDTO } from '../../../core/contracts';
+import type { AssetDTO, AssetMemberStatusChangeDTO } from '../../../core/contracts';
 import type { EventEditorTarget, SubEventDTO } from '../../../core/contracts/event.interface';
 import type { PopupHeaderLookup } from '../../models';
 import type {
@@ -84,11 +84,15 @@ export type ActivitiesNavigationRequest =
       viewOnly?: boolean;
       acceptedMembers?: number;
       pendingMembers?: number;
+      capacityMin?: number;
       capacityTotal?: number;
       members?: readonly ActivityMemberDTO[];
       metricIdentity?: string;
       lookup?: PopupHeaderLookup;
-      onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
+      onMembersChanged?: (
+        members: readonly ActivityMemberDTO[],
+        statusChange?: AssetMemberStatusChangeDTO
+      ) => void;
       onTakeOverAsset?: () => void;
     }
   | { type: 'eventEditorMembers'; ownerId: string; title?: string; canManage?: boolean }

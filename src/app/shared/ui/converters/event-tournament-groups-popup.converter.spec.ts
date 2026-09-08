@@ -66,6 +66,25 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
     expect(EventTournamentGroupsPopupConverter.stagePendingTotal(next?.stages[0])).toBe(5);
   });
 
+  it('removes accepted, pending and capacity metrics from the matching menu scope together', () => {
+    const state = tournamentState();
+    const next = EventTournamentGroupsPopupConverter.withResourceMetricDeltas(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      { accepted: -2, pending: -3, capacityMin: 0, capacityMax: -5 }
+    );
+
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toEqual({
+      accepted: 0,
+      pending: 0,
+      capacityMin: 0,
+      capacityMax: 0
+    });
+    expect(EventTournamentGroupsPopupConverter.stagePendingTotal(next?.stages[0])).toBe(1);
+  });
+
   it('ignores a scoped resource-member delta for another group', () => {
     const state = tournamentState();
 

@@ -152,6 +152,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
       request.assetId
     );
     const result = await this.assetsRepository.applyMemberStatusChange(request);
+    let resourceAssignmentRemoved = false;
     if (result && request.action === 'take-over' && result.status === 'accepted') {
       const transferred = await this.activityResourcesService.transferAssignedAssetManager(
         request.eventId,
@@ -176,7 +177,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
         && `${candidate.booking?.subEventId ?? ''}`.trim() === request.subEventId.trim()
       );
       if (!acceptedSuccessorRemains) {
-        await this.activityResourcesService.removeAssignedAsset(
+        resourceAssignmentRemoved = await this.activityResourcesService.removeAssignedAsset(
           request.eventId,
           request.subEventId,
           request.assetId,
@@ -191,7 +192,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
         );
       }
     }
-    return result;
+    return result ? { ...result, resourceAssignmentRemoved } : null;
   }
 
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {

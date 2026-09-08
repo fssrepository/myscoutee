@@ -63,6 +63,7 @@ export interface AssetMemberStatusChangeDTO {
   status: AppConstants.ActivityMemberStatus;
   acceptedMemberDelta: number;
   pendingMemberDelta: number;
+  resourceAssignmentRemoved?: boolean;
   paymentTotals?: UserPaymentTotalsDto | null;
 }
 

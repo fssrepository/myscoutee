@@ -1699,19 +1699,22 @@ export class EventResourcePopupComponent {
       viewOnly: context.viewOnly === true,
       acceptedMembers,
       pendingMembers,
+      capacityMin: Math.max(0, Math.trunc(Number(assignmentSettings?.capacityMin) || 0)),
       capacityTotal,
       members: fallbackMembers,
-      onMembersChanged: members => {
+      onMembersChanged: (members, statusChange) => {
         const acceptedMemberCount = members.filter(member => member.status === 'accepted').length;
         const pendingMemberCount = members.filter(member => member.status === 'pending').length;
-        this.activityStore.emitActivityMembersSync({
-          id: sourceCard.id,
-          eventId: context.ownerId,
-          subEventId: context.subEvent.id,
-          acceptedMembers: acceptedMemberCount,
-          pendingMembers: pendingMemberCount,
-          capacityTotal: Math.max(acceptedMemberCount, capacityTotal)
-        });
+        if (!statusChange) {
+          this.activityStore.emitActivityMembersSync({
+            id: sourceCard.id,
+            eventId: context.ownerId,
+            subEventId: context.subEvent.id,
+            acceptedMembers: acceptedMemberCount,
+            pendingMembers: pendingMemberCount,
+            capacityTotal: Math.max(acceptedMemberCount, capacityTotal)
+          });
+        }
         this.hydratePopupResourceState(context);
       },
       onTakeOverAsset: canTakeOverScopedAsset && managerUserId
@@ -1777,6 +1780,9 @@ export class EventResourcePopupComponent {
         (state.fallbackAssetCardsByType?.[type] ?? []).map(card => [card.id, card] as const)
       );
       for (const assetId of state.assetAssignmentIds[type] ?? []) {
+        if (this.assignedAssetMembersSync(assetId, context)?.resourceAssignmentRemoved) {
+          continue;
+        }
         const card = fallbackCardById.get(assetId)
           ?? this.ownedAssetCards().find(item => item.id === assetId && item.type === type)
           ?? null;
@@ -3798,14 +3804,51 @@ export class EventResourcePopupComponent {
     if (!memberSync) {
       return;
     }
+    const { updatedMs: _updatedMs, ...memberSyncPayload } = memberSync;
+    this.activityStore.emitActivityMembersSync({
+      ...memberSyncPayload,
+      ...(change.resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {})
+    });
 
-    if (change.acceptedMemberDelta === 0 && change.pendingMemberDelta === 0) {
+    const resourceAssignmentRemoved = change.resourceAssignmentRemoved === true;
+    const acceptedMemberDelta = resourceAssignmentRemoved
+      ? -Math.max(0, Math.trunc(Number(card.accepted) || 0))
+      : change.acceptedMemberDelta;
+    const pendingMemberDelta = resourceAssignmentRemoved
+      ? -Math.max(0, Math.trunc(Number(card.pending) || 0))
+      : change.pendingMemberDelta;
+    const assignmentSettings = this.visibleAssignedAssetSettings(
+      context.subEvent.id,
+      assetType,
+      change.assetId,
+      card.assetOwnerUserId
+    );
+    this.activityStore.emitActivityResourceMemberDeltaSync({
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      assetId: change.assetId,
+      resourceType: assetType,
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      capacityMinDelta: resourceAssignmentRemoved
+        ? -Math.max(0, Math.trunc(Number(assignmentSettings?.capacityMin) || 0))
+        : 0,
+      capacityMaxDelta: resourceAssignmentRemoved
+        ? -Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
+        : 0,
+      ...(resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {})
+    });
+
+    if (acceptedMemberDelta === 0 && pendingMemberDelta === 0 && !resourceAssignmentRemoved) {
       return;
     }
     this.syncPopupSubEventMetrics({
       syncManualAssetRequests: false,
-      activityDelta: change.pendingMemberDelta
+      activityDelta: pendingMemberDelta
     });
+    if (resourceAssignmentRemoved) {
+      this.hydratePopupResourceState(context);
+    }
   }
 
   private assignedAssetMemberStatusChange(

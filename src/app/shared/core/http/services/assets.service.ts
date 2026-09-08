@@ -346,6 +346,7 @@ export class HttpAssetsService {
         : null,
       acceptedMemberDelta: Math.trunc(Number(response.acceptedMemberDelta) || 0),
       pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0),
+      resourceAssignmentRemoved: response.resourceAssignmentRemoved === true,
       paymentTotals: response.paymentTotals
         ? {
             outgoing: { ...(response.paymentTotals.outgoing ?? {}) },

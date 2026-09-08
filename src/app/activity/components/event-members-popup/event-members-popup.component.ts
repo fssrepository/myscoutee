@@ -69,6 +69,7 @@ import {
 import type { ActivityMemberOwnerType, AssetType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/asset.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -191,6 +192,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private memberEventId = '';
   private memberSubEventId = '';
   private memberResourceType: AssetType | null = null;
+  private memberResourceCapacityMin = 0;
   private memberAssetOwnerUserId = '';
   private scopedBorrowAsset = false;
   private canTakeOverAssetResponsibility = false;
@@ -203,7 +205,10 @@ export class EventMembersPopupComponent implements OnDestroy {
     capacityTotal: 0
   };
   private isLocalMembersSource = false;
-  private membersChangeHandler: ((members: readonly ActivityContracts.ActivityMemberDTO[]) => void) | null = null;
+  private membersChangeHandler: ((
+    members: readonly ActivityContracts.ActivityMemberDTO[],
+    statusChange?: AssetMemberStatusChangeDTO
+  ) => void) | null = null;
   private takeOverAssetHandler: (() => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
@@ -284,6 +289,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           viewOnly: request.viewOnly,
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
+          capacityMin: request.capacityMin,
           capacityTotal: request.capacityTotal,
           metricIdentity: request.metricIdentity,
           initialMembers: request.members,
@@ -438,6 +444,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberEventId = '';
     this.memberSubEventId = '';
     this.memberResourceType = null;
+    this.memberResourceCapacityMin = 0;
     this.memberAssetOwnerUserId = '';
     this.scopedBorrowAsset = false;
     this.canTakeOverAssetResponsibility = false;
@@ -1295,10 +1302,10 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (!change || change.status !== 'deleted') {
       throw new Error('Unable to leave this Asset.');
     }
-    this.applyCommittedMembers(
-      previousMembers.filter(member => member.userId !== entry.userId),
-      previousMembers
-    );
+    const nextMembers = change.resourceAssignmentRemoved
+      ? []
+      : previousMembers.filter(member => member.userId !== entry.userId);
+    this.applyCommittedMembers(nextMembers, previousMembers, change);
   }
 
   private async confirmLeaveAssetOwner(): Promise<void> {
@@ -1524,10 +1531,14 @@ export class EventMembersPopupComponent implements OnDestroy {
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
+      capacityMin?: number;
       capacityTotal?: number;
       metricIdentity?: string;
       initialMembers?: readonly ActivityContracts.ActivityMemberDTO[];
-      onMembersChanged?: (members: readonly ActivityContracts.ActivityMemberDTO[]) => void;
+      onMembersChanged?: (
+        members: readonly ActivityContracts.ActivityMemberDTO[],
+        statusChange?: AssetMemberStatusChangeDTO
+      ) => void;
       onTakeOverAsset?: () => void;
     }
   ): void {
@@ -1563,6 +1574,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberEventId = `${options?.eventId ?? ''}`.trim();
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
     this.memberResourceType = options?.resourceType ?? null;
+    this.memberResourceCapacityMin = Math.max(0, Math.trunc(Number(options?.capacityMin) || 0));
     this.memberAssetOwnerUserId = `${options?.assetOwnerUserId ?? ''}`.trim();
     this.scopedBorrowAsset = options?.scopedBorrowAsset === true;
     this.canTakeOverAssetResponsibility = options?.canTakeOverAsset === true;
@@ -1817,7 +1829,8 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private applyCommittedMembers(
     normalizedMembers: readonly ActivityContracts.ActivityMemberDTO[],
-    previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    statusChange?: AssetMemberStatusChangeDTO
   ): void {
     if (!this.ownerId) {
       return;
@@ -1827,18 +1840,22 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
     this.syncCanManageMembers(nextMembers);
     this.applySummaryFromMembers(nextMembers);
-    this.emitResourcePendingDelta(previousMembers, nextMembers);
+    this.emitResourceMemberDelta(previousMembers, nextMembers, statusChange);
     this.membersSmartList?.closeMenu();
     this.syncVisibleMembers(previousMembers, nextMembers);
     if (this.membersChangeHandler) {
-      this.membersChangeHandler(nextMembers);
+      this.membersChangeHandler(nextMembers, statusChange);
+    }
+    if (statusChange) {
+      this.emitScopedAssetMemberStatusSync(statusChange, nextMembers);
     }
     this.cdr.markForCheck();
   }
 
-  private emitResourcePendingDelta(
+  private emitResourceMemberDelta(
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
-    nextMembers: readonly ActivityContracts.ActivityMemberDTO[]
+    nextMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    statusChange?: AssetMemberStatusChangeDTO
   ): void {
     if (
       this.ownerRef?.ownerType !== 'asset'
@@ -1848,9 +1865,12 @@ export class EventMembersPopupComponent implements OnDestroy {
     ) {
       return;
     }
+    const acceptedMemberDelta = nextMembers.filter(member => member.status === 'accepted').length
+      - previousMembers.filter(member => member.status === 'accepted').length;
     const pendingMemberDelta = nextMembers.filter(member => member.status === 'pending').length
       - previousMembers.filter(member => member.status === 'pending').length;
-    if (pendingMemberDelta === 0) {
+    const resourceAssignmentRemoved = statusChange?.resourceAssignmentRemoved === true;
+    if (acceptedMemberDelta === 0 && pendingMemberDelta === 0 && !resourceAssignmentRemoved) {
       return;
     }
     this.activityStore.emitActivityResourceMemberDeltaSync({
@@ -1858,7 +1878,41 @@ export class EventMembersPopupComponent implements OnDestroy {
       subEventId: this.memberSubEventId,
       assetId: this.ownerRef.ownerId,
       resourceType: this.memberResourceType,
-      pendingMemberDelta
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      capacityMinDelta: resourceAssignmentRemoved ? -this.memberResourceCapacityMin : 0,
+      capacityMaxDelta: resourceAssignmentRemoved ? -this.capacityTotal : 0,
+      ...(resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {})
+    });
+  }
+
+  private emitScopedAssetMemberStatusSync(
+    change: AssetMemberStatusChangeDTO,
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): void {
+    if (
+      this.ownerRef?.ownerType !== 'asset'
+      || change.assetId !== this.ownerId
+      || change.eventId !== this.memberEventId
+      || change.subEventId !== this.memberSubEventId
+      || change.userId !== this.activeUserId()
+    ) {
+      return;
+    }
+    const acceptedMembers = members.filter(member => member.status === 'accepted').length;
+    const pendingMembers = members.filter(member => member.status === 'pending').length;
+    this.suppressedOwnerSyncId = change.assetId;
+    this.activityStore.emitActivityMembersSync({
+      id: change.assetId,
+      eventId: change.eventId,
+      subEventId: change.subEventId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, this.capacityTotal),
+      acceptedMemberDelta: change.acceptedMemberDelta,
+      pendingMemberDelta: change.pendingMemberDelta,
+      ...(change.resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {}),
+      memberStatusChange: change
     });
   }
 
