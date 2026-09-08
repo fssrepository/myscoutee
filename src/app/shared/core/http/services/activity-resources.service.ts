@@ -187,6 +187,30 @@ export class HttpActivityResourcesService {
     return ActivityResourceBuilder.cloneState(savedState);
   }
 
+  async removeSubEventResourceAssignment(
+    request: AppDTOs.ActivitySubEventAssetRemovalRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const response = await this.requestWithAbort(
+      this.http.post<AppDTOs.ActivitySubEventResourceStateDTO | null>(
+        `${this.apiBaseUrl}/activities/events/subevent-resources/remove-assignment`,
+        request
+      ),
+      signal
+    );
+    const savedState = ActivityResourceBuilder.normalizeState(response, request);
+    if (!savedState) {
+      throw new Error('Activity resource assignment was not removed.');
+    }
+    const savedRecordId = ActivityResourceBuilder.recordId(savedState);
+    if (ActivityResourceBuilder.hasResourceData(savedState)) {
+      this.cachedStateByRecordId[savedRecordId] = savedState;
+    } else {
+      delete this.cachedStateByRecordId[savedRecordId];
+    }
+    return ActivityResourceBuilder.cloneState(savedState);
+  }
+
   private createAbortError(): Error {
     const error = new Error('Activity resources request aborted.');
     error.name = 'AbortError';

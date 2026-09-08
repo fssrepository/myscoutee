@@ -464,6 +464,11 @@ export interface ActivitySubEventResourceReadReceiptDTO extends ActivitySubEvent
   readAtIso: string;
 }
 
+export interface ActivitySubEventAssetRemovalRequestDTO extends ActivitySubEventResourceStateRefDTO {
+  assetId: string;
+  userId: string;
+}
+
 export interface SubEventResourceMetricDTO {
   accepted: number;
   pending: number;

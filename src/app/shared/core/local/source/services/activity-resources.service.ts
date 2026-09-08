@@ -337,6 +337,31 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     };
   }
 
+  async removeSubEventResourceAssignment(
+    request: AppDTOs.ActivitySubEventAssetRemovalRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const actorUserId = request.userId.trim();
+    const assetId = request.assetId.trim();
+    const record = this.repository.peekSubEventResourceRecord(request);
+    const state = record ? this.toVisibleState(record) : null;
+    if (!state || !actorUserId || !assetId) {
+      return null;
+    }
+    const managedType = AppConstants.ASSET_TYPES.find(type =>
+      (state.assetAssignmentIds[type] ?? []).includes(assetId)
+      && `${state.assetSettingsByType[type]?.[assetId]?.addedByUserId ?? ''}`.trim() === actorUserId
+    );
+    if (!managedType) {
+      return null;
+    }
+    state.assetAssignmentIds[managedType] = (state.assetAssignmentIds[managedType] ?? [])
+      .filter(id => id !== assetId);
+    delete state.assetSettingsByType[managedType]?.[assetId];
+    delete state.supplyContributionEntriesByAssetId[assetId];
+    return this.replaceSubEventResourceState(state, signal, actorUserId);
+  }
+
   async removeManagedResourcesForRemovedEventMember(
     eventId: string,
     removedUserId: string,

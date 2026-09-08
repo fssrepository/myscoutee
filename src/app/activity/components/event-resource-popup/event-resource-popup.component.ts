@@ -3394,10 +3394,7 @@ export class EventResourcePopupComponent {
   ): boolean {
     const activeUserId = this.activeUser().id.trim();
     const managerUserId = this.assignedAssetManagerUserId(subEventId, sourceCard.type, assetId);
-    if (managerUserId) {
-      return activeUserId.length > 0 && managerUserId === activeUserId;
-    }
-    return activeUserId.length > 0 && this.isAssetOwnedByActiveUser(sourceCard, activeUserId);
+    return activeUserId.length > 0 && managerUserId === activeUserId;
   }
 
   private async removeResourceAssignment(pending: ResourceAssignmentRemovalRequest): Promise<void> {
@@ -3405,8 +3402,17 @@ export class EventResourcePopupComponent {
     if (!nextState) {
       throw new Error('Unable to remove assignment.');
     }
-    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
-    const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+    const savedState = await this.activityResourcesService.removeSubEventResourceAssignment({
+      ownerId: nextState.ownerId,
+      subEventId: nextState.subEventId,
+      assetOwnerUserId: nextState.assetOwnerUserId,
+      assetId: pending.assetId,
+      userId: this.activeUser().id
+    });
+    const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState);
+    if (!resolvedState) {
+      throw new Error('Unable to remove assignment.');
+    }
     this.applyPersistedPopupState(resolvedState);
     this.retireScopedAssetRequestsFromStore(pending.assetId, resolvedState.ownerId, resolvedState.subEventId);
     this.syncPopupSubEventMetrics({ persistAssetRequests: false, persistedState: resolvedState });

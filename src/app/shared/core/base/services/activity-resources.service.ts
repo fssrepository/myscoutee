@@ -176,6 +176,31 @@ export class ActivityResourcesService extends BaseRouteModeService {
     return savedState;
   }
 
+  async removeSubEventResourceAssignment(
+    request: AppDTOs.ActivitySubEventAssetRemovalRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const ref = this.normalizeRef(request.ownerId, request.subEventId, request.assetOwnerUserId);
+    const assetId = this.normalizeId(request.assetId);
+    const userId = this.activeAssetOwnerUserId();
+    if (!ref || !assetId || !userId) {
+      return null;
+    }
+    const savedState = await this.activityResourcesService.removeSubEventResourceAssignment({
+      ...ref,
+      assetId,
+      userId
+    }, signal);
+    if (savedState) {
+      this.activityStore.emitActivityResourceSync({
+        ownerId: savedState.ownerId,
+        subEventId: savedState.subEventId,
+        assetOwnerUserId: savedState.assetOwnerUserId
+      });
+    }
+    return savedState;
+  }
+
   private normalizeRef(
     ownerId: string | null | undefined,
     subEventId: string | null | undefined,
