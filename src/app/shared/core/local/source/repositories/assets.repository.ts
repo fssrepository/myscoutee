@@ -312,6 +312,22 @@ export class LocalAssetsRepository {
     );
   }
 
+  async saveOwnedAssetRequests(
+    userId: string,
+    assetId: string,
+    requests: readonly AppDTOs.AssetMemberRequestDTO[]
+  ): Promise<AppDTOs.AssetDTO> {
+    const detail = this.peekOwnedAssetDetailById(userId, assetId);
+    if (!detail) {
+      throw new Error('The asset details could not be loaded before saving its requests.');
+    }
+    return this.saveOwnedAsset(userId, {
+      ...detail,
+      quantity: AssetCardBuilder.storedQuantityValue(detail),
+      requests: requests.map(request => LocalAssetsMapper.cloneRequest(request))
+    });
+  }
+
   applyScopedAssetMemberAction(
     assetId: string,
     eventIds: readonly string[],

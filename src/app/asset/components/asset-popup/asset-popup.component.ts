@@ -2375,15 +2375,7 @@ export class AssetPopupComponent {
   }
 
   private async persistAssetRequests(ownerUserId: string, card: AppDTOs.AssetDTO): Promise<void> {
-    const detail = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
-    if (!detail) {
-      throw new Error('The asset details could not be loaded before syncing its requests.');
-    }
-    const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, {
-      ...detail,
-      quantity: AssetCardBuilder.storedQuantityValue(detail),
-      requests: card.requests.map(request => this.cloneAssetRequest(request))
-    });
+    const savedCard = await this.assetsService.saveOwnedAssetRequests(ownerUserId, card.id, card.requests);
     if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
       this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
     }

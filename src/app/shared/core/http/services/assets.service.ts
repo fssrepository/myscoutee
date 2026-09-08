@@ -309,6 +309,34 @@ export class HttpAssetsService {
     return this.cloneCards([savedAsset])[0] ?? savedAsset;
   }
 
+  async saveOwnedAssetRequests(
+    userId: string,
+    assetId: string,
+    requests: readonly AppDTOs.AssetMemberRequestDTO[]
+  ): Promise<AppDTOs.AssetDTO> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      throw new Error('A valid asset and owner are required.');
+    }
+    const response = await this.http
+      .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/requests`, {
+        userId: normalizedUserId,
+        assetId: normalizedAssetId,
+        requests: this.normalizeRequests(requests)
+      })
+      .toPromise();
+    const savedAsset = this.normalizeCard(response);
+    if (!savedAsset) {
+      throw new Error('The asset requests were not accepted by the server.');
+    }
+    this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
+      this.peekOwnedAssetsByUser(normalizedUserId),
+      savedAsset
+    );
+    return this.cloneCards([savedAsset])[0] ?? savedAsset;
+  }
+
   async applyMemberStatusChange(
     request: AppDTOs.AssetMemberStatusChangeRequestDTO
   ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
