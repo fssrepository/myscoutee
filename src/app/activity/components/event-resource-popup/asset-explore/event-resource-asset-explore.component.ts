@@ -2123,15 +2123,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       if (!context) {
         throw new Error(this.i18n.translate('asset.borrow.error.checkout'));
       }
+      const eventId = ActivityResourceBuilder.runtimeResourceScopeIdentity({
+        ownerId: context.ownerId,
+        subEventId: context.subEvent.id,
+        groupId: context.groupId,
+        runtimeKind: context.subEvent.runtimeKind,
+        eventId: context.subEvent.eventId
+      }).eventId;
       const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id, {
-        eventId: context.ownerId,
+        eventId,
         subEventId: context.subEvent.id
       });
       if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
         return;
       }
       const loadedBorrowWindow = loadedCard?.borrowWindow;
-      const borrowWindow = loadedBorrowWindow?.eventId.trim() === context.ownerId.trim()
+      const borrowWindow = loadedBorrowWindow?.eventId.trim() === eventId
         && loadedBorrowWindow.subEventId.trim() === context.subEvent.id.trim()
         ? loadedBorrowWindow
         : null;
