@@ -1551,7 +1551,8 @@ export class EventResourcePopupComponent {
     return {
       routeEnabled: routeSettings?.routeEnabled ?? routes.length > 0,
       routes,
-      editable: this.canEditAssignedAssetRuntimeRoute(subEventId, sourceCard, assetId),
+      editable: !card.sourceRequestId
+        && this.canEditAssignedAssetRuntimeRoute(subEventId, sourceCard, assetId),
       title: this.i18n.translate('route'),
       subtitle: this.i18n.translate('asset.assignment.route.subtitle'),
       openLabel: this.i18n.translate('asset.assignment.route.open'),
@@ -1590,7 +1591,9 @@ export class EventResourcePopupComponent {
       bounds.quantityMax,
       bounds.reservedQuantity
     );
-    return {
+    const editable = !card.sourceRequestId
+      && this.canEditAssignedAssetRuntimeAssignment(subEventId, sourceCard, assetId);
+    const runtimeState: AssetEditorRuntimeAssignmentState = {
       quantity,
       quantityMax: bounds.quantityMax,
       quantityLabel: this.i18n.translate('asset.assignment.quantity'),
@@ -1600,8 +1603,10 @@ export class EventResourcePopupComponent {
         sourceCard,
         bounds.reservation
       ),
-      editable: this.canEditAssignedAssetRuntimeAssignment(subEventId, sourceCard, assetId),
-      onChange: nextQuantity => {
+      editable
+    };
+    if (editable) {
+      runtimeState.onChange = nextQuantity => {
         this.assetStore.setAssetEditorRuntimeAssignmentState({
           quantityDescription: this.assignedRuntimeQuantityDescription(
             bounds.quantityMax,
@@ -1610,16 +1615,15 @@ export class EventResourcePopupComponent {
             bounds.reservation
           )
         });
-      },
-      onSave: state => this.saveAssignedAssetRuntimeAssignment(
+      };
+      runtimeState.onSave = state => this.saveAssignedAssetRuntimeAssignment(
         subEventId,
         type,
         assetId,
-        state,
-        undefined,
-        card.sourceRequestId
-      )
-    };
+        state
+      );
+    }
+    return runtimeState;
   }
 
   private canEditAssignedAssetRuntimeRoute(
@@ -3086,72 +3090,12 @@ export class EventResourcePopupComponent {
   private assignedRuntimeQuantityDescription(
     quantityMax: number,
     quantity: number,
-    card?: ResourceAssetDTO | null,
-    reservation?: AppDTOs.AssetMemberRequestDTO | null
+    _card?: ResourceAssetDTO | null,
+    _reservation?: AppDTOs.AssetMemberRequestDTO | null
   ): string {
-    const availableLabel = this.i18n.translateParams('asset.assignment.available', {
+    return this.i18n.translateParams('asset.assignment.available', {
       count: Math.max(0, Math.trunc(quantityMax) - Math.max(1, Math.trunc(quantity)))
     });
-    const priceDelta = this.assignedRuntimeQuantityPriceDelta(card, reservation, quantity);
-    if (!priceDelta || Math.abs(priceDelta.amount) < 0.005) {
-      return availableLabel;
-    }
-    return this.i18n.translateParams('asset.assignment.available.price', {
-      available: availableLabel,
-      price: this.signedCurrencyAmount(priceDelta.amount, priceDelta.currency)
-    });
-  }
-
-  private assignedRuntimeQuantityPriceDelta(
-    card: ResourceAssetDTO | null | undefined,
-    reservation: AppDTOs.AssetMemberRequestDTO | null | undefined,
-    nextQuantity: number
-  ): { amount: number; currency: string } | null {
-    if (!card || !reservation?.booking?.paymentSessionId) {
-      return null;
-    }
-    const currentQuantity = this.assignedRuntimeQuantityValue(reservation.booking.quantity);
-    const normalizedNextQuantity = this.assignedRuntimeQuantityValue(nextQuantity);
-    if (currentQuantity === normalizedNextQuantity) {
-      return null;
-    }
-    const startAtIso = `${reservation.booking.startAtIso ?? ''}`.trim();
-    const endAtIso = `${reservation.booking.endAtIso ?? ''}`.trim();
-    const pricingOptions = {
-      pricing: card.pricing,
-      totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
-      startAtIso,
-      endAtIso,
-      requests: card.requests,
-      excludeRequestId: reservation.id
-    };
-    const currentPricing = PricingBuilder.resolveAssetBorrowPricing({
-      ...pricingOptions,
-      requestedQuantity: currentQuantity
-    });
-    const nextPricing = PricingBuilder.resolveAssetBorrowPricing({
-      ...pricingOptions,
-      requestedQuantity: normalizedNextQuantity
-    });
-    return {
-      amount: Math.round((nextPricing.amount - currentPricing.amount) * 100) / 100,
-      currency: nextPricing.currency || currentPricing.currency || 'USD'
-    };
-  }
-
-  private signedCurrencyAmount(amount: number, currency: string): string {
-    const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
-    const absoluteAmount = Math.abs(Number(amount) || 0);
-    try {
-      return `${sign}${new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: `${currency ?? 'USD'}`.trim() || 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(absoluteAmount)}`;
-    } catch {
-      return `${sign}${`${currency ?? 'USD'}`.trim() || 'USD'} ${absoluteAmount.toFixed(2)}`;
-    }
   }
 
   private assignedRuntimeQuantityValue(value: unknown, fallback = 1): number {
@@ -3187,8 +3131,7 @@ export class EventResourcePopupComponent {
     type: AppConstants.AssetType,
     assetId: string,
     state: { quantity: number; routeEnabled: boolean; routes: readonly string[] },
-    signal?: AbortSignal,
-    requestId?: string | null
+    signal?: AbortSignal
   ): Promise<{ quantity: number; routeEnabled: boolean; routes: string[] }> {
     const context = this.resourcePopupStore.popupContextRef();
     const normalizedSubEventId = subEventId.trim();
@@ -3209,7 +3152,7 @@ export class EventResourcePopupComponent {
       ?? null;
     const currentSettings = nextSettings[normalizedAssetId];
     const quantityBounds = source
-      ? this.assignedRuntimeQuantityBounds(source, normalizedSubEventId, currentSettings, requestId)
+      ? this.assignedRuntimeQuantityBounds(source, normalizedSubEventId, currentSettings)
       : { quantityMax: 1, reservedQuantity: 0, reservation: null };
     const quantityMax = quantityBounds.quantityMax;
     const quantity = this.normalizeAssignedRuntimeQuantity(
@@ -3217,21 +3160,6 @@ export class EventResourcePopupComponent {
       quantityMax,
       quantityBounds.reservedQuantity
     );
-    const persistedSource = source
-      ? await this.persistAssignedBorrowQuantity(
-          source,
-          normalizedSubEventId,
-          quantityBounds.reservation,
-          quantity
-        )
-      : null;
-    const previousRequestIds = new Set(source?.requests.map(request => request.id) ?? []);
-    const addedBorrowRequest = persistedSource?.requests.find(request =>
-      !previousRequestIds.has(request.id)
-      && request.requestKind === 'borrow'
-      && request.status === 'pending'
-      && this.isSubEventScopedAssetRequest(request, normalizedSubEventId)
-    ) ?? null;
     const current = nextSettings[normalizedAssetId] ?? {
       capacityMin: 0,
       capacityMax: Math.max(0, source?.capacityTotal ?? 0),
@@ -3240,16 +3168,9 @@ export class EventResourcePopupComponent {
       routeEnabled: false,
       routes: []
     };
-    const assignmentQuantity = requestId && persistedSource
-      ? this.assignedBorrowRequestQuantityTotal(
-          persistedSource,
-          normalizedSubEventId,
-          current.addedByUserId
-        )
-      : quantity;
     nextSettings[normalizedAssetId] = {
       ...current,
-      quantity: assignmentQuantity,
+      quantity,
       routeEnabled: type === AppConstants.ASSET_TYPE_TRANSPORT && state.routeEnabled === true,
       routes: type === AppConstants.ASSET_TYPE_TRANSPORT ? normalizedRoutes : []
     };
@@ -3258,7 +3179,7 @@ export class EventResourcePopupComponent {
       [type]: nextSettings
     };
     if (
-      persistedSource
+      source
       && !this.ownedAssetCards().some(item => item.id === normalizedAssetId && item.type === type)
     ) {
       nextState.fallbackAssetCardsByType = {
@@ -3266,7 +3187,7 @@ export class EventResourcePopupComponent {
         [type]: [
           ...(nextState.fallbackAssetCardsByType?.[type] ?? [])
             .filter(item => item.id !== normalizedAssetId),
-          this.toAssetDetailDto(this.assignedFallbackAssetSnapshot(normalizedSubEventId, persistedSource))
+          this.toAssetDetailDto(this.assignedFallbackAssetSnapshot(normalizedSubEventId, source))
         ]
       };
     }
@@ -3274,9 +3195,6 @@ export class EventResourcePopupComponent {
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState, signal);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
-    if (persistedSource && addedBorrowRequest) {
-      this.signalNewAssignedBorrowRequestDelta(context, persistedSource, addedBorrowRequest);
-    }
     this.syncSubEventManualAssetRequests(context.subEvent, true);
     this.syncPopupSubEventMetrics({
       persistedState: resolvedState,
@@ -3284,262 +3202,17 @@ export class EventResourcePopupComponent {
         assetId: normalizedAssetId,
         type,
         subEventId: normalizedSubEventId,
-        quantity: assignmentQuantity
+        quantity
       }]
     });
     const savedSettings = resolvedState.assetSettingsByType[type]?.[normalizedAssetId] ?? null;
     return {
-      quantity: addedBorrowRequest
-        ? quantityBounds.reservedQuantity
-        : requestId
-          ? quantity
-          : this.normalizeAssignedRuntimeQuantity(savedSettings?.quantity ?? quantity, quantityMax),
+      quantity: this.normalizeAssignedRuntimeQuantity(savedSettings?.quantity ?? quantity, quantityMax),
       routeEnabled: type === AppConstants.ASSET_TYPE_TRANSPORT && (savedSettings?.routeEnabled ?? state.routeEnabled === true),
       routes: type === AppConstants.ASSET_TYPE_TRANSPORT
         ? ActivityResourceBuilder.normalizeAssetRoutes(type, savedSettings?.routes ?? normalizedRoutes)
         : []
     };
-  }
-
-  private async persistAssignedBorrowQuantity(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    reservation: AppDTOs.AssetMemberRequestDTO | null,
-    quantity: number
-  ): Promise<ResourceAssetDTO> {
-    if (!reservation || reservation.requestKind !== 'borrow' || !reservation.booking) {
-      return card;
-    }
-    const previousQuantity = this.assignedRuntimeQuantityValue(reservation.booking.quantity);
-    if (quantity === previousQuantity) {
-      return card;
-    }
-    const quantityDelta = quantity - previousQuantity;
-    const remainingQuantity = Math.max(0, AssetCardBuilder.storedQuantityValue(card));
-    if (reservation.booking.inventoryApplied === true && quantityDelta > remainingQuantity) {
-      throw new Error('The requested quantity is no longer available.');
-    }
-    const startAtIso = `${reservation.booking.startAtIso ?? ''}`.trim();
-    const endAtIso = `${reservation.booking.endAtIso ?? ''}`.trim();
-    const pricing = PricingBuilder.resolveAssetBorrowPricing({
-      pricing: card.pricing,
-      totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
-      requestedQuantity: quantityDelta > 0 ? quantityDelta : quantity,
-      startAtIso,
-      endAtIso,
-      requests: card.requests,
-      ...(quantityDelta > 0 ? {} : { excludeRequestId: reservation.id })
-    });
-    const previousPricing = quantityDelta < 0
-      ? PricingBuilder.resolveAssetBorrowPricing({
-          pricing: card.pricing,
-          totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
-          requestedQuantity: previousQuantity,
-          startAtIso,
-          endAtIso,
-          requests: card.requests,
-          excludeRequestId: reservation.id
-        })
-      : null;
-    const clonedRequests = card.requests.map(request => ({
-      ...request,
-      booking: request.booking
-        ? {
-            ...request.booking,
-            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-          }
-        : null
-    }));
-    const nextRequests: AppDTOs.AssetMemberRequestDTO[] = quantityDelta > 0
-      ? [{
-          ...reservation,
-          id: this.newBorrowRequestId(
-            subEventId,
-            card.id,
-            AppUtils.resolveAssetRequestUserId(reservation, this.users) || `${reservation.userId ?? ''}`.trim()
-          ),
-          status: 'pending',
-          note: this.i18n.translate('asset.borrow.note.awaiting.owner'),
-          requestedAtIso: new Date().toISOString(),
-          booking: {
-            ...reservation.booking,
-            quantity: quantityDelta,
-            totalAmount: pricing.amount,
-            previousTotalAmount: null,
-            currency: pricing.currency,
-            acceptedPolicyIds: [...(reservation.booking.acceptedPolicyIds ?? [])],
-            paymentSessionId: null,
-            inventoryApplied: null
-          }
-        }, ...clonedRequests]
-      : clonedRequests.map(request => request.id === reservation.id
-          ? {
-              ...request,
-              booking: request.booking
-                ? {
-                    ...request.booking,
-                    quantity,
-                    totalAmount: pricing.amount,
-                    previousTotalAmount: previousPricing?.amount ?? null,
-                    currency: pricing.currency,
-                    acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-                  }
-                : null
-            }
-          : request);
-    const nextCard: ResourceAssetDTO = {
-      ...card,
-      quantity: quantityDelta < 0 && reservation.booking.inventoryApplied === true
-        ? Math.max(0, remainingQuantity - quantityDelta)
-        : remainingQuantity,
-      requests: nextRequests
-    };
-    if (quantityDelta < 0) {
-      await this.persistLocalAssignedBorrowPriceRevision(
-        card,
-        reservation,
-        quantity,
-        pricing
-      );
-    }
-    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
-    if (!ownerUserId) {
-      return nextCard;
-    }
-    const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, this.toAssetDetailDto(nextCard));
-    const persistedCard: ResourceAssetDTO = {
-      ...nextCard,
-      ...savedCard,
-      sourceLink: nextCard.sourceLink,
-      routes: [...(nextCard.routes ?? [])],
-      topics: [...(nextCard.topics ?? [])],
-      policiesEnabled: nextCard.policiesEnabled,
-      policies: (nextCard.policies ?? []).map(policy => ({ ...policy })),
-      pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : nextCard.pricing,
-      requests: savedCard.requests.map(request => ({
-        ...request,
-        booking: request.booking
-          ? {
-              ...request.booking,
-              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-            }
-          : null
-      }))
-    };
-    if (this.ownedAssetCards().some(item => item.id === card.id && item.type === card.type)) {
-      this.assetStore.replaceAssetCard(persistedCard, { mutation: true, reloadList: false });
-    }
-    return persistedCard;
-  }
-
-  private assignedBorrowRequestQuantityTotal(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    requesterUserId: string
-  ): number {
-    const normalizedRequesterUserId = requesterUserId.trim();
-    return this.subEventScopedAssetRequests(card, subEventId)
-      .filter(request => request.requestKind === 'borrow')
-      .filter(request => request.status === 'accepted' || request.status === 'pending')
-      .filter(request => !normalizedRequesterUserId
-        || AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedRequesterUserId)
-      .reduce((sum, request) => sum + this.assignedRuntimeQuantityValue(request.booking?.quantity), 0);
-  }
-
-  private signalNewAssignedBorrowRequestDelta(
-    context: ResourcePopupContext,
-    card: ResourceAssetDTO,
-    request: AppDTOs.AssetMemberRequestDTO
-  ): void {
-    const userId = AppUtils.resolveAssetRequestUserId(request, this.users)
-      || `${request.userId ?? ''}`.trim();
-    if (!userId) {
-      return;
-    }
-    const previousSync = this.activityStore.activityMembersSyncByOwnerId()[card.id];
-    const sameScope = previousSync?.eventId === context.ownerId
-      && previousSync.subEventId === context.subEvent.id;
-    this.activityStore.cacheActivityMemberStatusChange({
-      assetId: card.id,
-      requestId: request.id,
-      eventId: context.ownerId,
-      subEventId: context.subEvent.id,
-      userId,
-      previousStatus: null,
-      status: 'pending',
-      acceptedMemberDelta: 0,
-      pendingMemberDelta: 1
-    }, {
-      acceptedMembers: sameScope ? previousSync.acceptedMembers : 0,
-      pendingMembers: sameScope ? previousSync.pendingMembers : 0,
-      capacityTotal: Math.max(0, Math.trunc(Number(card.capacityTotal) || 0))
-    });
-    this.activityStore.emitActivityResourceMemberDeltaSync({
-      ownerId: context.ownerId,
-      subEventId: context.subEvent.id,
-      assetId: card.id,
-      resourceType: card.type,
-      acceptedMemberDelta: 0,
-      pendingMemberDelta: 1,
-      capacityMinDelta: 0,
-      capacityMaxDelta: 0
-    });
-  }
-
-  private async persistLocalAssignedBorrowPriceRevision(
-    card: ResourceAssetDTO,
-    reservation: AppDTOs.AssetMemberRequestDTO,
-    quantity: number,
-    pricing: ReturnType<typeof PricingBuilder.resolveAssetBorrowPricing>
-  ): Promise<void> {
-    const booking = reservation.booking;
-    const userId = AppUtils.resolveAssetRequestUserId(reservation, this.users)
-      || `${reservation.userId ?? ''}`.trim();
-    const paymentSessionId = `${booking?.paymentSessionId ?? ''}`.trim();
-    if (!this.eventsService.localModeEnabled || !booking || !userId || !paymentSessionId) {
-      return;
-    }
-    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(
-      `${booking.startAtIso ?? ''}`.trim(),
-      `${booking.endAtIso ?? ''}`.trim()
-    );
-    await this.eventsService.saveCheckoutBasket({
-      userId,
-      sourceId: card.id,
-      slotSourceId: null,
-      optionalSubEventIds: [],
-      assetSelections: booking.subEventId
-        ? [{ subEventId: booking.subEventId, resourceType: card.type }]
-        : [],
-      acceptedPolicyIds: [...(booking.acceptedPolicyIds ?? [])],
-      appliedPromoCodes: [],
-      basketItems: [],
-      pricingSummaryRows: pricing.rows.map(row => ({ ...row })),
-      checkoutState: 'pay',
-      lineItems: [{
-        id: `resource:${card.id}`,
-        kind: 'resource',
-        label: card.title,
-        detail: quantity > 1
-          ? this.i18n.translateParams('asset.borrow.quantity.detail', {
-              timeframe,
-              quantity
-            })
-          : timeframe,
-        amount: pricing.amount,
-        currency: pricing.currency
-      }],
-      totalAmount: pricing.amount,
-      currency: pricing.currency
-    });
-    await this.eventsService.updateCheckoutBasketState({
-      userId,
-      sourceId: card.id,
-      slotSourceId: null,
-      checkoutState: 'pay',
-      resultState: 'succeeded',
-      checkoutSessionId: paymentSessionId
-    });
   }
 
   private assignedBorrowTotalQuantity(
@@ -4270,12 +3943,6 @@ export class EventResourcePopupComponent {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     return `manual:${subEventId}:${assetId}:${generation}`;
-  }
-
-  private newBorrowRequestId(subEventId: string, assetId: string, requesterUserId: string): string {
-    const generation = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    return `borrow:${requesterUserId}:${assetId}:${subEventId}:${generation}`;
   }
 
   private assetMemberEntries(

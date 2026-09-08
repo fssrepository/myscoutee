@@ -948,6 +948,11 @@ export class LocalEventsRepository {
           membersTable,
           normalizedEventId,
           'accepted'
+        ).filter(userId => this.eventMemberParticipatesFromTable(membersTable, normalizedEventId, userId));
+        const capacityOccupyingAcceptedMemberUserIds = this.eventMemberUserIdsByPredicate(
+          membersTable,
+          normalizedEventId,
+          member => member.status === 'accepted' && member.organizerOnly !== true
         );
         const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(
           membersTable,
@@ -964,17 +969,18 @@ export class LocalEventsRepository {
           normalizedEventId,
           member => member.status === 'pending' && !this.isInvitationMember(member)
         );
-        const capacityTotal = Math.max(acceptedMemberUserIds.length, current.capacityTotal);
+        const acceptedMembers = capacityOccupyingAcceptedMemberUserIds.length;
+        const capacityTotal = Math.max(acceptedMembers, current.capacityTotal);
         nextById[recordKey] = {
           ...current,
-          acceptedMembers: acceptedMemberUserIds.length,
+          acceptedMembers,
           pendingMembers: pendingMemberUserIds.length,
           acceptedMemberUserIds,
           pendingMemberUserIds,
           invitedMemberUserIds,
           pendingRequestMemberUserIds,
           capacityTotal,
-          full: this.directRecordFull(acceptedMemberUserIds.length, capacityTotal)
+          full: this.directRecordFull(acceptedMembers, capacityTotal)
         };
         changed = true;
       }
@@ -2071,7 +2077,13 @@ export class LocalEventsRepository {
         if (!current || !idsToJoin.includes(current.id)) {
           continue;
         }
-        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, current.id, 'accepted');
+        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, current.id, 'accepted')
+          .filter(userId => this.eventMemberParticipatesFromTable(membersTable, current.id, userId));
+        const acceptedMembers = this.eventMemberUserIdsByPredicate(
+          membersTable,
+          current.id,
+          member => member.status === 'accepted' && member.organizerOnly !== true
+        ).length;
         const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, current.id, 'pending');
         const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, current.id, member =>
           member.status === 'pending' && this.isInvitationMember(member)
@@ -2081,14 +2093,14 @@ export class LocalEventsRepository {
         );
         nextById[recordKey] = {
           ...current,
-          acceptedMembers: acceptedMemberUserIds.length,
+          acceptedMembers,
           pendingMembers: pendingMemberUserIds.length,
           acceptedMemberUserIds,
           pendingMemberUserIds,
           invitedMemberUserIds,
           pendingRequestMemberUserIds,
-          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal),
-          full: this.directRecordFull(acceptedMemberUserIds.length, Math.max(acceptedMemberUserIds.length, current.capacityTotal))
+          capacityTotal: Math.max(acceptedMembers, current.capacityTotal),
+          full: this.directRecordFull(acceptedMembers, Math.max(acceptedMembers, current.capacityTotal))
         };
       }
 
@@ -2164,7 +2176,13 @@ export class LocalEventsRepository {
         if (!current || !idsToLeave.includes(current.id)) {
           continue;
         }
-        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'accepted');
+        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'accepted')
+          .filter(userId => this.eventMemberParticipatesFromTable(nextMembersTable, current.id, userId));
+        const acceptedMembers = this.eventMemberUserIdsByPredicate(
+          nextMembersTable,
+          current.id,
+          member => member.status === 'accepted' && member.organizerOnly !== true
+        ).length;
         const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'pending');
         const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(nextMembersTable, current.id, member =>
           member.status === 'pending' && this.isInvitationMember(member)
@@ -2174,14 +2192,14 @@ export class LocalEventsRepository {
         );
         nextById[recordKey] = {
           ...current,
-          acceptedMembers: acceptedMemberUserIds.length,
+          acceptedMembers,
           pendingMembers: pendingMemberUserIds.length,
           acceptedMemberUserIds,
           pendingMemberUserIds,
           invitedMemberUserIds,
           pendingRequestMemberUserIds,
-          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal),
-          full: this.directRecordFull(acceptedMemberUserIds.length, Math.max(acceptedMemberUserIds.length, current.capacityTotal))
+          capacityTotal: Math.max(acceptedMembers, current.capacityTotal),
+          full: this.directRecordFull(acceptedMembers, Math.max(acceptedMembers, current.capacityTotal))
         };
       }
 
@@ -3312,6 +3330,20 @@ export class LocalEventsRepository {
       eventId,
       status
     );
+  }
+
+  private eventMemberParticipatesFromTable(
+    table: ActivityMembersRecordCollection,
+    eventId: string,
+    userId: string
+  ): boolean {
+    const ownerKey = `event:${eventId.trim()}`;
+    const normalizedUserId = userId.trim();
+    return (table.idsByOwnerKey[ownerKey] ?? [])
+      .map(id => table.byId[id])
+      .some(member => member?.userId === normalizedUserId
+        && member.status === 'accepted'
+        && member.organizerOnly !== true);
   }
 
   private eventAcceptedMemberUserIds(record: ActivityEventRecord): string[] {

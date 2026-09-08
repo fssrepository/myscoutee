@@ -28,7 +28,9 @@ export class ActivityMemberImageCardConverter {
           .filter(Boolean)
           .join(' · ')
       : null;
-    const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
+    const pendingDetail = dto.organizerOnly === true
+      ? 'Organizer only'
+      : dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
     const statusChipLabel = checkedIn

@@ -98,6 +98,7 @@ type MemberMenuAction =
   | 'leaveScopedAsset'
   | 'takeOverAsset'
   | 'stepDownAdmin'
+  | 'toggleOrganizerParticipation'
   | 'report'
   | 'involvement';
 
@@ -107,7 +108,9 @@ type PersistedMemberAction =
   | 'disqualify'
   | 'reinstate'
   | 'promote-admin'
-  | 'step-down-admin';
+  | 'step-down-admin'
+  | 'set-organizer-only'
+  | 'set-participant';
 
 type MemberMenuContext = {
   menu: 'member-action';
@@ -493,11 +496,13 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.isAcceptedScopedAssetBorrower(entry)) {
       return this.canLeaveScopedAssetBorrower(entry)
         || this.canTakeOverAsset(entry)
+        || this.canToggleOrganizerParticipation(entry)
         || this.canDeleteMember(entry)
         || this.canShowMemberInvolvement(entry)
         || this.canReportMember(entry);
     }
     return this.canShowMemberInvolvement(entry)
+      || this.canToggleOrganizerParticipation(entry)
       || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
       || this.canLeaveEvent(entry)
@@ -570,6 +575,15 @@ export class EventMembersPopupComponent implements OnDestroy {
         icon: 'assignment_ind',
         palette: 'teal',
         context: { menu: 'member-action', member: entry, action: 'involvement' }
+      });
+    }
+    if (this.canToggleOrganizerParticipation(entry)) {
+      items.push({
+        id: `member-action-organizer-participation-${entry.id}`,
+        label: entry.organizerOnly === true ? 'Count as participant' : 'Organizer only',
+        icon: entry.organizerOnly === true ? 'person' : 'person_off',
+        palette: entry.organizerOnly === true ? 'success' : 'warning',
+        context: { menu: 'member-action', member: entry, action: 'toggleOrganizerParticipation' }
       });
     }
     if (this.canPromoteAdmin(entry)) {
@@ -716,6 +730,9 @@ export class EventMembersPopupComponent implements OnDestroy {
         break;
       case 'stepDownAdmin':
         this.requestStepDownAdmin(context.member, event.sourceEvent);
+        break;
+      case 'toggleOrganizerParticipation':
+        this.requestToggleOrganizerParticipation(context.member, event.sourceEvent);
         break;
       case 'report':
         this.reportMember(context.member, event.sourceEvent);
@@ -868,6 +885,33 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmTone: 'warning',
       failureMessage: `Unable to step down as ${managerRole}.`,
       onConfirm: () => this.confirmMemberAction(entry, 'step-down-admin')
+    });
+  }
+
+  protected requestToggleOrganizerParticipation(
+    entry: ActivityContracts.ActivityMemberDTO,
+    event: Event
+  ): void {
+    event.stopPropagation();
+    if (!this.canToggleOrganizerParticipation(entry)) {
+      return;
+    }
+    const setAsParticipant = entry.organizerOnly === true;
+    this.membersSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: setAsParticipant ? 'Count as participant?' : 'Organizer only?',
+      message: setAsParticipant
+        ? 'You will count toward the available participant places in this scope.'
+        : 'You will keep your organizer role but will not count toward the available participant places in this scope.',
+      cancelLabel: 'Cancel',
+      confirmLabel: setAsParticipant ? 'Count as participant' : 'Organizer only',
+      busyConfirmLabel: 'Saving...',
+      confirmTone: setAsParticipant ? 'accent' : 'warning',
+      failureMessage: 'Unable to update participant status.',
+      onConfirm: () => this.confirmMemberAction(
+        entry,
+        setAsParticipant ? 'set-participant' : 'set-organizer-only'
+      )
     });
   }
 
@@ -1793,7 +1837,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const normalizedMembers = [...members];
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     const capacityTotal = Math.max(
-      normalizedMembers.filter(member => member.status === 'accepted').length,
+      normalizedMembers.filter(member => this.countsAsParticipant(member)).length,
       this.capacityTotal
     );
     if (!this.isLocalMembersSource) {
@@ -1865,8 +1909,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     ) {
       return;
     }
-    const acceptedMemberDelta = nextMembers.filter(member => member.status === 'accepted').length
-      - previousMembers.filter(member => member.status === 'accepted').length;
+    const acceptedMemberDelta = nextMembers.filter(member => this.countsAsParticipant(member)).length
+      - previousMembers.filter(member => this.countsAsParticipant(member)).length;
     const pendingMemberDelta = nextMembers.filter(member => member.status === 'pending').length
       - previousMembers.filter(member => member.status === 'pending').length;
     const resourceAssignmentRemoved = statusChange?.resourceAssignmentRemoved === true;
@@ -1899,7 +1943,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     ) {
       return;
     }
-    const acceptedMembers = members.filter(member => member.status === 'accepted').length;
+    const acceptedMembers = members.filter(member => this.countsAsParticipant(member)).length;
     const pendingMembers = members.filter(member => member.status === 'pending').length;
     this.suppressedOwnerSyncId = change.assetId;
     this.activityStore.emitActivityMembersSync({
@@ -2116,6 +2160,15 @@ export class EventMembersPopupComponent implements OnDestroy {
       : this.canManageMembers;
   }
 
+  protected canToggleOrganizerParticipation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.lookupRef?.type !== 'chat'
+      && !this.viewOnlyMode
+      && this.ownerRef != null
+      && this.isCurrentUser(entry)
+      && this.canManageMembers
+      && (entry.status === 'accepted' || entry.status === 'pending');
+  }
+
   protected canRevokeAssetManager(entry: ActivityContracts.ActivityMemberDTO): boolean {
     const activeUserId = this.activeUserId();
     return !this.viewOnlyMode
@@ -2236,7 +2289,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
     const visibleMembers = [...members];
-    const acceptedCount = visibleMembers.filter(member => member.status === 'accepted').length;
+    const acceptedCount = visibleMembers.filter(member => this.countsAsParticipant(member)).length;
     const pendingCount = visibleMembers.filter(member => member.status === 'pending').length;
     this.applySummary(
       acceptedCount,
@@ -2366,6 +2419,10 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private isCurrentUser(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.userId === this.activeUserId();
+  }
+
+  private countsAsParticipant(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return entry.status === 'accepted' && entry.organizerOnly !== true;
   }
 
   private isSelfManagedAssetJoinRequestCancellation(entry: ActivityContracts.ActivityMemberDTO): boolean {

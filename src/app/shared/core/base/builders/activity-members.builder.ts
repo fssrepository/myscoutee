@@ -26,17 +26,20 @@ export class ActivityMembersBuilder {
     capacityTotal: number
   ): ActivityMembersSummaryDto {
     const acceptedMemberUserIds = members
-      .filter(member => member.status === 'accepted')
+      .filter(member => member.status === 'accepted' && member.organizerOnly !== true)
       .map(member => member.userId);
+    const capacityOccupyingAcceptedMembers = members
+      .filter(member => member.status === 'accepted' && member.organizerOnly !== true)
+      .length;
     const pendingMemberUserIds = members
       .filter(member => member.status === 'pending')
       .map(member => member.userId);
     return {
       ownerType: owner.ownerType,
       ownerId: owner.ownerId,
-      acceptedMembers: acceptedMemberUserIds.length,
+      acceptedMembers: capacityOccupyingAcceptedMembers,
       pendingMembers: pendingMemberUserIds.length,
-      capacityTotal: Math.max(acceptedMemberUserIds.length, capacityTotal),
+      capacityTotal: Math.max(capacityOccupyingAcceptedMembers, capacityTotal),
       acceptedMemberUserIds,
       pendingMemberUserIds
     };

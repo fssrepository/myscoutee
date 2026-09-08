@@ -10,7 +10,7 @@ export function canManageScopedAssetMembers(
   }
   return members.some(member => (
     member.userId === normalizedActiveUserId
-    && member.status === 'accepted'
     && member.role === 'Manager'
+    && (member.status === 'accepted' || member.status === 'pending')
   ));
 }

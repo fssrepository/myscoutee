@@ -254,6 +254,7 @@ interface AssetExploreBorrowDraftViewState {
 })
 export class EventResourceAssetExploreComponent implements DoCheck {
   private static readonly BORROW_BASKET_TTL_MS = 10 * 60 * 1000;
+  private static readonly BORROW_QUANTITY = 1;
 
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -383,10 +384,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return null;
     }
     const timeframe = this.timeframeLabel(dialog.startAtIso, dialog.endAtIso);
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
-    const detail = dialog.quantity > 1
-      ? this.i18n.translateParams('asset.borrow.quantity.detail', { timeframe, quantity: dialog.quantity })
-      : timeframe;
+    const pricing = this.resolveBorrowPricing(
+      card,
+      dialog.startAtIso,
+      dialog.endAtIso,
+      EventResourceAssetExploreComponent.BORROW_QUANTITY
+    );
     const cancellationPolicy = PricingBuilder.compactPricingConfig(card.pricing, {
       context: 'asset',
       allowSlotFeatures: false
@@ -395,7 +398,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       title: this.i18n.translateParams('asset.borrow.title', { asset: card.title }),
       subtitle: this.popupSubtitle(),
       timeframe,
-      quantity: dialog.quantity,
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
       availableQuantity: dialog.availableQuantity,
       dateRange: {
         startAt: dialog.startAtIso,
@@ -407,7 +410,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           id: `resource:${card.id}`,
           kind: 'resource',
           label: card.title,
-          detail: detail || this.i18n.translate('asset.borrow.request'),
+          detail: timeframe || this.i18n.translate('asset.borrow.request'),
           amount: pricing.amount,
           currency: pricing.currency
         }
@@ -1088,7 +1091,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const { startAtIso, endAtIso } = normalizedWindow;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity));
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...invalidated,
       startAtIso,
@@ -1121,7 +1124,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const { startAtIso, endAtIso } = normalizedWindow;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity));
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
       ...invalidated,
       startAtIso,
@@ -1139,41 +1142,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!dialog || dialog.busy) {
       return;
     }
-    const parsed = Number(value);
-    const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(
-      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-      1,
-      Math.max(1, dialog.availableQuantity)
-    );
+    void value;
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-      ...invalidated,
-      quantity,
-      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: this.borrowAvailabilityError(quantity, dialog.availableQuantity)
+      ...dialog,
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
+      error: this.borrowAvailabilityError(
+        EventResourceAssetExploreComponent.BORROW_QUANTITY,
+        dialog.availableQuantity
+      )
     });
-    this.persistChangedBorrowDraft();
   }
 
   protected normalizeBorrowQuantityOnBlur(value: number | string): void {
-    const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog || dialog.busy) {
-      return;
-    }
-    const parsed = Number(value);
-    const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = AppUtils.clampNumber(
-      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-      1,
-      Math.max(1, dialog.availableQuantity)
-    );
-    this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-      ...invalidated,
-      quantity,
-      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: this.borrowAvailabilityError(quantity, dialog.availableQuantity)
-    });
-    this.persistChangedBorrowDraft();
+    this.onBorrowQuantityChange(value);
   }
 
   protected toggleBorrowPolicy(policyId: string): void {
@@ -1221,7 +1202,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected canSubmitBorrow(): boolean {
     const dialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
-    if (!dialog || dialog.busy || dialog.availableQuantity <= 0 || dialog.quantity > dialog.availableQuantity) {
+    if (!dialog || dialog.busy || dialog.availableQuantity <= 0) {
       return false;
     }
     const card = this.resolveCard(dialog.cardId);
@@ -1233,7 +1214,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       .some(policy => policy.required !== false && !acceptedPolicyIds.has(`${policy.id ?? ''}`.trim()))) {
       return false;
     }
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const pricing = this.resolveBorrowPricing(
+      card,
+      dialog.startAtIso,
+      dialog.endAtIso,
+      EventResourceAssetExploreComponent.BORROW_QUANTITY
+    );
     if (
       dialog.paymentStep
       && !this.cashOnly()
@@ -1265,13 +1251,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     const availableQuantity = this.availableQuantityForWindow(card, dialog.startAtIso, dialog.endAtIso);
-    const availabilityError = this.borrowAvailabilityError(dialog.quantity, availableQuantity);
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
+    const availabilityError = this.borrowAvailabilityError(quantity, availableQuantity);
     if (availabilityError) {
       const invalidated = this.invalidateBorrowCheckout(dialog);
       this.resourcePopupStore.assetExploreBorrowDialogRef.set({
         ...invalidated,
         availableQuantity,
-        quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
+        quantity,
         acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
         error: availabilityError
       });
@@ -1283,7 +1270,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
     const activeUser = this.activeUser();
     const requestVersion = ++this.pendingBorrowRequestVersion;
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, quantity);
     const paymentRequired = pricing.amount > 0;
     const onlinePayment = paymentRequired && !this.cashOnly();
     const lineItems: ActivityContracts.EventCheckoutLineItem[] = [
@@ -1291,12 +1278,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         id: `resource:${card.id}`,
         kind: 'resource',
         label: card.title,
-        detail: dialog.quantity > 1
-          ? this.i18n.translateParams('asset.borrow.quantity.detail', {
-              timeframe: this.timeframeLabel(dialog.startAtIso, dialog.endAtIso),
-              quantity: dialog.quantity
-            })
-          : this.timeframeLabel(dialog.startAtIso, dialog.endAtIso) || this.i18n.translate('asset.borrow.request'),
+        detail: this.timeframeLabel(dialog.startAtIso, dialog.endAtIso)
+          || this.i18n.translate('asset.borrow.request'),
         amount: pricing.amount,
         currency: pricing.currency
       }
@@ -1332,9 +1315,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
               resourceType: card.type,
               label: card.title,
               detail: lineItems[0].detail,
-              amount: Math.round((pricing.amount / Math.max(1, dialog.quantity)) * 100) / 100,
+              amount: pricing.amount,
               currency: pricing.currency,
-              quantity: dialog.quantity,
+              quantity,
               status: 'confirmed',
               resultState: 'pending',
               pricingSummaryRows,
@@ -1466,7 +1449,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             context.parentTitle,
             dialog.startAtIso,
             dialog.endAtIso,
-            dialog.quantity,
+            quantity,
             {
               totalAmount: pricing.amount,
               currency: pricing.currency,
@@ -1502,7 +1485,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         if (!currentDialog || !currentPopup || requestVersion !== this.pendingBorrowRequestVersion) {
           return;
         }
-        const persistedState = await this.persistBorrowedAssetAssignment(context, savedCard, currentDialog.quantity);
+        const persistedState = await this.persistBorrowedAssetAssignment(
+          context,
+          savedCard
+        );
         const persistedDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
         const persistedPopup = this.resourcePopupStore.assetExplorePopupRef();
         if (!persistedDialog || !persistedPopup || requestVersion !== this.pendingBorrowRequestVersion) {
@@ -2054,7 +2040,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const startAtIso = `${draft?.startAtIso ?? popup.startAtIso}`.trim() || popup.startAtIso;
     const endAtIso = `${draft?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
-    const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity) || 1));
+    const requestedQuantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
     const activePolicies = AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [];
     const validPolicyIds = new Set(activePolicies.map(policy => `${policy.id ?? ''}`.trim()).filter(Boolean));
     const requiredPolicyIds = activePolicies
@@ -2070,7 +2056,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const nextDialog: AssetExploreBorrowDialogState = {
       cardId: card.id,
       ownerUserId,
-      quantity: AppUtils.clampNumber(requestedQuantity, 1, Math.max(1, availableQuantity)),
+      quantity: requestedQuantity,
       startAtIso,
       endAtIso,
       borrowWindow: null,
@@ -2173,11 +2159,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             normalizedSelection.startAtIso,
             normalizedSelection.endAtIso
           );
-          const quantity = AppUtils.clampNumber(
-            currentDialog.quantity,
-            1,
-            Math.max(1, availableQuantity)
-          );
+          const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
           this.resourcePopupStore.assetExploreBorrowDialogRef.set({
             ...currentDialog,
             startAtIso: normalizedSelection.startAtIso,
@@ -2247,8 +2229,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   ): AssetEditorRuntimeAssignmentState {
     const availableQuantity = Math.max(0, Math.trunc(Number(dialog.availableQuantity) || 0));
     return {
-      quantity: AppUtils.clampNumber(dialog.quantity, 1, Math.max(1, availableQuantity)),
-      quantityMax: Math.max(1, availableQuantity),
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
+      quantityMax: EventResourceAssetExploreComponent.BORROW_QUANTITY,
       quantityLabel: this.i18n.translate('quantity'),
       quantityDescription: this.i18n.translateParams(
         availableQuantity === 1
@@ -2256,8 +2238,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           : 'asset.borrow.available.many',
         { count: availableQuantity }
       ),
-      editable: dialog.paymentStep !== true && dialog.busy !== true && availableQuantity > 0,
-      onChange: quantity => this.onBorrowQuantityChange(quantity)
+      editable: false
     };
   }
 
@@ -2294,7 +2275,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         card,
         dialog.startAtIso,
         dialog.endAtIso,
-        dialog.quantity
+        EventResourceAssetExploreComponent.BORROW_QUANTITY
       ),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       paymentMethod: dialog.paymentMethod ? { ...dialog.paymentMethod } : null,
@@ -2323,7 +2304,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     card: ResourceAssetDTO,
     dialog: AssetExploreBorrowDialogState
   ): readonly AppMenuItem<string>[] {
-    const pricing = this.resolveBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
+    const pricing = this.resolveBorrowPricing(
+      card,
+      dialog.startAtIso,
+      dialog.endAtIso,
+      EventResourceAssetExploreComponent.BORROW_QUANTITY
+    );
     const submitLabel = dialog.busy
       ? (pricing.amount > 0 ? this.borrowBusyLabel(dialog) : this.i18n.translate('asset.borrow.sending.request'))
       : (pricing.amount > 0 ? this.borrowSubmitLabel(dialog) : this.i18n.translate('asset.borrow.send.request'));
@@ -2568,7 +2554,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       cardId: dialog.cardId,
       ownerUserId: dialog.ownerUserId,
       title: card?.title?.trim() || 'Borrow draft',
-      quantity: Math.max(1, Math.trunc(Number(dialog.quantity) || 1)),
+      quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
       startAtIso: dialog.startAtIso,
       endAtIso: dialog.endAtIso,
       acceptedPolicyIds: [...new Set(dialog.acceptedPolicyIds)].map(item => item.trim()).filter(Boolean),
@@ -2850,8 +2836,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private async persistBorrowedAssetAssignment(
     context: ResourcePopupContext,
-    card: ResourceAssetDTO,
-    quantity: number
+    card: ResourceAssetDTO
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO> {
     const currentState = this.buildResourceState(context);
     if (!currentState) {
@@ -2861,7 +2846,18 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const currentIds = currentState.assetAssignmentIds[type] ?? [];
     const currentSettings = currentState.assetSettingsByType[type] ?? {};
     const capacityLimit = Math.max(0, card.capacityTotal);
-    const quantityLimit = Math.max(1, AssetCardBuilder.storedQuantityValue(card));
+    const activeUserId = this.activeUser().id;
+    const assignedItemCount = card.requests.filter(request =>
+      request.requestKind === 'borrow'
+      && (request.status === 'pending' || request.status === 'accepted')
+      && ActivityResourceBuilder.isSubEventScopedAssetRequest(
+        request,
+        context.subEvent.id,
+        context.ownerId
+      )
+      && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
+    ).length;
+    const currentAssignment = currentSettings[card.id];
     const nextState: AppDTOs.ActivitySubEventResourceStateDTO = {
       ...currentState,
       assetAssignmentIds: {
@@ -2872,14 +2868,20 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         ...currentState.assetSettingsByType,
         [type]: {
           ...currentSettings,
-          [card.id]: currentSettings[card.id] ?? {
+          [card.id]: {
+            ...currentAssignment,
             capacityMin: 0,
-            capacityMax: capacityLimit,
-            quantity: Math.min(quantityLimit, Math.max(1, Math.trunc(Number(quantity) || 1))),
-            addedByUserId: this.activeUser().id,
-            routeEnabled: type === AppConstants.ASSET_TYPE_TRANSPORT
-              && this.normalizeRoutes(type, card.routes).length > 0,
-            routes: this.normalizeRoutes(type, card.routes)
+            capacityMax: currentAssignment?.capacityMax ?? capacityLimit,
+            quantity: Math.max(
+              EventResourceAssetExploreComponent.BORROW_QUANTITY,
+              assignedItemCount
+            ),
+            addedByUserId: currentAssignment?.addedByUserId ?? activeUserId,
+            routeEnabled: currentAssignment?.routeEnabled ?? (
+              type === AppConstants.ASSET_TYPE_TRANSPORT
+              && this.normalizeRoutes(type, card.routes).length > 0
+            ),
+            routes: currentAssignment?.routes ?? this.normalizeRoutes(type, card.routes)
           }
         }
       },
@@ -2889,8 +2891,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             [card.id]: [
               {
                 id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                userId: this.activeUser().id,
-                quantity: Math.max(1, Math.trunc(Number(quantity) || 1)),
+                userId: activeUserId,
+                quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
                 addedAtIso: AppUtils.toIsoDateTime(new Date())
               },
               ...(currentState.supplyContributionEntriesByAssetId[card.id] ?? [])

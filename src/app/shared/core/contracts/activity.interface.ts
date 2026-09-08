@@ -1318,6 +1318,7 @@ export interface ActivityMemberDTO {
   checkedInByUserId?: string | null;
   checkedInTicketId?: string | null;
   managerGrantedByUserId?: string | null;
+  organizerOnly?: boolean;
 }
 
 export interface ActivityMemberOwnerRef {
