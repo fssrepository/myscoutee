@@ -1,7 +1,8 @@
 {
   "lang": "en",
-  "version": "2026.09.14.en.89",
+  "version": "2026.09.14.en.90",
   "messages": {
+    "clipboard.paste.permission.help": "Clipboard access failed. Allow it in the browser site settings and press Paste link again, or paste the link manually.",
     "no.network": "No network",
     "saved.tickets.remain.available.profiles.need.a.connection": "Saved tickets remain available. Profiles need a connection.",
     "about": "About",

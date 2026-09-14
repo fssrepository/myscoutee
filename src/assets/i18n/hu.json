@@ -1,7 +1,8 @@
 {
   "lang": "hu",
-  "version": "2026.09.14.hu.89",
+  "version": "2026.09.14.hu.90",
   "messages": {
+    "clipboard.paste.permission.help": "A vágólap nem érhető el. Engedélyezd a böngésző webhelybeállításaiban, majd nyomd meg újra a hivatkozás beillesztését, vagy illeszd be kézzel.",
     "no.network": "Nincs hálózat",
     "saved.tickets.remain.available.profiles.need.a.connection": "A mentett jegyek elérhetők. A profilokhoz hálózati kapcsolat szükséges.",
     "about": "Rólam",
