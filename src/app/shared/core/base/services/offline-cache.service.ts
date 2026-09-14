@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import type * as AssetContracts from '../../contracts/asset.interface';
 import type { UserByIdQueryResponse } from '../../contracts/user.interface';
 import { offlineCacheTicketsStorageKey, offlineCacheUserStorageKey } from '../../common/storage-scope';
+import { isPublicMediaUrl } from '../../common/public-media';
 
 interface CachedTicketPagePayload {
   items: readonly AssetContracts.AssetTicketDTO[];
@@ -14,6 +15,34 @@ interface CachedTicketPagePayload {
   providedIn: 'root'
 })
 export class OfflineCacheService {
+  private readonly revokedUsers = new Set<string>();
+
+  activateUser(userId: string): void {
+    this.revokedUsers.delete(userId.trim());
+  }
+
+  async clearUser(userId: string): Promise<void> {
+    const id = userId.trim();
+    if (!id) return;
+    // Synchronous revocation also prevents a late poll from repopulating data.
+    this.revokedUsers.add(id);
+    if (typeof localStorage !== 'undefined') {
+      for (const key of [this.userStorageKey(id), this.ticketStorageKey(id, 'upcoming'), this.ticketStorageKey(id, 'past')]) {
+        localStorage.removeItem(key);
+      }
+    }
+    if (typeof caches === 'undefined') return;
+    for (const name of (await caches.keys()).filter(name => name.startsWith('myscoutee-runtime-'))) {
+      const cache = await caches.open(name);
+      const requests = await cache.keys();
+      await Promise.all(requests.filter(request => {
+        const path = new URL(request.url).pathname;
+        return path.startsWith('/api/auth/me')
+          || (name.includes('-media-') && !path.startsWith('/assets/') && !isPublicMediaUrl(new URL(request.url)));
+      }).map(request => cache.delete(request)));
+    }
+  }
+
   readUser(userId: string): UserByIdQueryResponse | null {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -25,7 +54,7 @@ export class OfflineCacheService {
 
   writeUser(userId: string, response: UserByIdQueryResponse): void {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !response.user) {
+    if (!normalizedUserId || this.revokedUsers.has(normalizedUserId) || !response.user) {
       return;
     }
     this.writeJson(this.userStorageKey(normalizedUserId), this.clone(response));
@@ -46,7 +75,7 @@ export class OfflineCacheService {
     payload: { items: readonly AssetContracts.AssetTicketDTO[]; total: number }
   ): void {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
+    if (!normalizedUserId || this.revokedUsers.has(normalizedUserId)) {
       return;
     }
     this.writeJson(this.ticketStorageKey(normalizedUserId, order), {

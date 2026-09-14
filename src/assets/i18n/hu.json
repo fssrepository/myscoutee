@@ -1,7 +1,9 @@
 {
   "lang": "hu",
-  "version": "2026.09.07.hu.88",
+  "version": "2026.09.14.hu.89",
   "messages": {
+    "no.network": "Nincs hálózat",
+    "saved.tickets.remain.available.profiles.need.a.connection": "A mentett jegyek elérhetők. A profilokhoz hálózati kapcsolat szükséges.",
     "about": "Rólam",
     "accommodation": "Szállás",
     "accept": "Elfogadás",

@@ -31,6 +31,15 @@ const PRECACHE_CORE_URLS = [
 const PRECACHE_BUILD_URLS = [];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
+function isPublicMediaUrl(url) {
+  if (!['/media/public', '/api/media/public'].includes(url.pathname)) return false;
+  const key = url.searchParams.get('key') || '';
+  return key.length <= 2048 && !key.includes('\\') && !/[\x00-\x1f\x7f]/.test(key)
+    && key.split('/').every(part => part !== '' && part !== '.' && part !== '..')
+    && ['public/demo/', 'public/branding/', 'images/demo-profiles/', 'images/demo-assets/',
+      'images/demo-events/', 'images/system/', 'payment-cards/'].some(prefix => key.startsWith(prefix));
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(APP_CACHE)
@@ -56,6 +65,15 @@ self.addEventListener('activate', event => {
         .filter(name => name.startsWith(CACHE_PREFIX) && !cachesToKeep.has(name))
         .map(name => caches.delete(name))
     );
+    for (const name of [API_CACHE, MEDIA_CACHE]) {
+      const cache = await caches.open(name);
+      const requests = await cache.keys();
+      await Promise.all(requests.filter(request => {
+        const path = new URL(request.url).pathname;
+        return path.startsWith('/api/auth/me')
+          || (name === MEDIA_CACHE && !path.startsWith('/assets/') && !isPublicMediaUrl(new URL(request.url)));
+      }).map(request => cache.delete(request)));
+    }
     await self.clients.claim();
   })());
 });
@@ -86,7 +104,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
-    if (url.origin !== self.location.origin) {
+    if (url.origin !== self.location.origin || !(url.pathname.startsWith('/assets/') || isPublicMediaUrl(url))) {
       return;
     }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
@@ -96,10 +114,6 @@ self.addEventListener('fetch', event => {
   if (url.origin === self.location.origin) {
     if (isLandingContentRequest(url)) {
       event.respondWith(staleWhileRevalidate(request, API_CACHE, matchAnyLandingContent, event));
-      return;
-    }
-    if (isApiCacheable(url)) {
-      event.respondWith(networkFirst(request, API_CACHE));
       return;
     }
     if (isStaticAsset(url, request)) {
@@ -136,10 +150,6 @@ self.addEventListener('notificationclick', event => {
     : '/game';
   event.waitUntil(openClient(targetUrl));
 });
-
-function isApiCacheable(url) {
-  return url.pathname.startsWith('/api/auth/me');
-}
 
 function isLandingContentRequest(url) {
   return url.pathname === '/api/landing/content';

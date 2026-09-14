@@ -313,7 +313,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly hasBindings = computed(() => this.profileStore.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
-    !this.runtimeStore.isOnline() && this.userProfileStore.activeUserProfile() !== null
+    this.connectionOffline() && this.userProfileStore.activeUserProfile() !== null
   );
   protected readonly canToggleAvatarMenu = computed(() =>
     this.avatarVisible()
@@ -434,6 +434,8 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly offlineAttentionDismissed = signal(false);
   protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
+  private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isOnline()
+    || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
     this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
       && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen())
@@ -736,7 +738,7 @@ export class SideMenuComponent implements OnDestroy {
               icon: 'chat',
               palette: 'blue',
               ariaLabel: 'Open chat',
-              disabled: !this.runtimeStore.isOnline()
+              disabled: this.serverActionsUnavailable()
             },
             {
               id: 'invitations',
@@ -817,7 +819,7 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
-    const disabled = !this.runtimeStore.isOnline();
+    const disabled = this.serverActionsUnavailable();
     const paymentSimulatorConfigUrl = `${environment.paymentSimulatorConfigUrl ?? ''}`.trim();
     const activeSession = this.sessionService.session();
     const activeUserId = activeSession?.kind === 'demo'
@@ -1499,7 +1501,7 @@ export class SideMenuComponent implements OnDestroy {
         ...ProfileHeaderCardConverter.convert(user, {
           admin: true,
           headline: this.i18n.translate('operator.workspace.title'),
-          showEdit: this.runtimeStore.isOnline(),
+          showEdit: !this.serverActionsUnavailable(),
           editDisabled: false,
           editAriaLabel: this.i18n.translate('operator.profile.open')
         }),
@@ -1510,8 +1512,8 @@ export class SideMenuComponent implements OnDestroy {
     }
     return ProfileHeaderCardConverter.convert(user, {
       admin,
-      showEdit: this.runtimeStore.isOnline(),
-      editDisabled: admin ? !this.runtimeStore.isOnline() : !this.runtimeStore.isOnline() || this.isBlockedUser(user),
+      showEdit: !this.serverActionsUnavailable(),
+      editDisabled: admin ? this.serverActionsUnavailable() : this.serverActionsUnavailable() || this.isBlockedUser(user),
       editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
       showRing: !admin && this.showProfileSaveRing(),
       ringState: this.hasProfileSaveError() ? 'error' : 'loading',
@@ -1522,7 +1524,7 @@ export class SideMenuComponent implements OnDestroy {
   protected openNavigatorHeaderProfile(event: Event): void {
     if (this.isOperatorMode()) {
       event.stopPropagation();
-      if (!this.runtimeStore.isOnline()) {
+      if (this.serverActionsUnavailable()) {
         return;
       }
       this.operatorMenuStore.closePopup();
@@ -1552,12 +1554,12 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected isPrimaryMenuDisabled(user: NavigatorMenuUser): boolean {
-    return !this.runtimeStore.isOnline() || this.isBlockedUser(user);
+    return this.serverActionsUnavailable() || this.isBlockedUser(user);
   }
 
   protected openProfileEditor(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     if (this.isAdminMode()) {
@@ -1573,7 +1575,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openImpressions(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.openImpressionsPopup();
@@ -1612,7 +1614,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetTransportPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_TRANSPORT);
@@ -1620,7 +1622,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_ACCOMMODATION);
@@ -1628,7 +1630,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_SUPPLIES);
@@ -1648,7 +1650,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorEventFeedbackRequest();
@@ -1668,7 +1670,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminReportsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openReports();
@@ -1676,7 +1678,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminFeedbackShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openFeedback();
@@ -1684,7 +1686,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminChatShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.memberMenuStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
@@ -1692,7 +1694,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminProfileShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.profileStore.openProfileEditor();
@@ -1700,7 +1702,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openHelpEditor();
@@ -1708,7 +1710,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openIdeaEditor();
@@ -1716,7 +1718,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminNotificationsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openNotifications();
@@ -1724,7 +1726,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminParamsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openParams();
@@ -1732,7 +1734,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminPaymentSimulatorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openPaymentSimulator();
@@ -1740,7 +1742,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminPaymentAuthorizationsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openPaymentAuthorizations();
@@ -1748,7 +1750,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminStatsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openStats();
@@ -1756,7 +1758,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openAffinityGraph();
@@ -1764,7 +1766,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminMonitoringShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openMonitoring();
@@ -2264,7 +2266,7 @@ export class SideMenuComponent implements OnDestroy {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash'
   ): void {
-    if (!this.runtimeStore.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
+    if (this.serverActionsUnavailable() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
@@ -2272,7 +2274,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private async openBlockedUserSupportChat(): Promise<void> {
     const user = this.menuUser();
-    if (!user || !this.runtimeStore.isOnline()) {
+    if (!user || this.serverActionsUnavailable()) {
       return;
     }
     const activeUserId = user.id.trim();

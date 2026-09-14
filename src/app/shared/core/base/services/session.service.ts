@@ -1,3 +1,4 @@
+import { OfflineCacheService } from './offline-cache.service';
 import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
@@ -40,6 +41,8 @@ export class SessionService {
     APP_STORAGE_KEYS.operatorBootstrapToken;
 
   private readonly injector = inject(Injector);
+  private readonly offlineCache = inject(OfflineCacheService);
+  private cacheClear: Promise<void> = Promise.resolve();
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
   private readonly authModeRef = signal<AuthMode>('selector');
   private readonly firebaseBusyRef = signal(false);
@@ -298,6 +301,7 @@ export class SessionService {
     }
     this.firebaseNoticeRef.set('');
     this.clearStoredSession();
+    await this.cacheClear;
     if (!adminSupportSession && typeof localStorage !== 'undefined') {
       localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
     }
@@ -484,6 +488,10 @@ export class SessionService {
   }
 
   private persistSession(session: AppSession): void {
+    const nextId = session.kind === 'demo' ? session.userId : session.kind === 'firebase' ? session.profile.id : '';
+    const previousId = this.activeUserId();
+    if (previousId && previousId !== nextId) this.cacheClear = this.offlineCache.clearUser(previousId);
+    if (nextId) this.offlineCache.activateUser(nextId);
     this.clearAdminSupportSessionStorage();
     this.clearOperatorBootstrapStorage();
     this.sessionRef.set(session);
@@ -535,6 +543,7 @@ export class SessionService {
 
   private clearStoredSession(): void {
     const adminSupportSession = this.isAdminSupportSession(this.sessionRef());
+    this.cacheClear = this.offlineCache.clearUser(this.activeUserId());
     this.sessionRef.set(null);
     this.clearAdminSupportSessionStorage();
     this.clearOperatorBootstrapStorage();

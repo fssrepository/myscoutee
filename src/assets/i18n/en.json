@@ -1,7 +1,9 @@
 {
   "lang": "en",
-  "version": "2026.09.07.en.88",
+  "version": "2026.09.14.en.89",
   "messages": {
+    "no.network": "No network",
+    "saved.tickets.remain.available.profiles.need.a.connection": "Saved tickets remain available. Profiles need a connection.",
     "about": "About",
     "accommodation": "Accommodation",
     "accept": "Accept",

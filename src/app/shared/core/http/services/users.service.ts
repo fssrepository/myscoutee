@@ -160,6 +160,11 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
       });
     } catch (error) {
+      const status = (error as { status?: number } | null)?.status;
+      if ([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User details request timeout.')) {
+        const cached = this.offlineCache.readUser(normalizedUserId || this.sessionService.activeUserId());
+        if (cached) return cached;
+      }
       if (this.isTimeoutError(error, 'User details request timeout.')) {
         throw error;
       }
@@ -201,6 +206,12 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
       };
     } catch (error) {
+      const status = (error as { status?: number } | null)?.status;
+      const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
+      if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))
+        && this.offlineCache.readUser(cacheUserId)?.user) {
+        return this.readProfileExtByIdFallback(cacheUserId)!;
+      }
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
         throw error;
       }

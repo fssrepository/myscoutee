@@ -1,3 +1,4 @@
+import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -624,6 +625,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get noCandidateTitle(): string {
+    if (!this.usersService.localModeEnabled && (!this.runtimeStore.isOnline() || backendUnavailable())) return 'No network';
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Loading more cards';
     }
@@ -637,6 +639,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get noCandidateDescription(): string {
+    if (!this.usersService.localModeEnabled && (!this.runtimeStore.isOnline() || backendUnavailable())) {
+      return 'Saved tickets remain available. Profiles need a connection.';
+    }
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Preloading the next stack in the background.';
     }
