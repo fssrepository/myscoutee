@@ -264,6 +264,7 @@ export class DeploymentConfigurationService
     const logoMediaType = logoUrl
       ? this.logoMediaType(branding.logoUrl) || 'image/png'
       : '';
+    const usesBundledLogo = logoUrl === this.absoluteLogoUrl(DEFAULT_DEPLOYMENT_BRANDING.logoUrl);
     const manifest = {
       name: branding.productName,
       short_name: Array.from(branding.productName).slice(0, 24).join(''),
@@ -274,21 +275,18 @@ export class DeploymentConfigurationService
       start_url: './',
       background_color: '#f5f6fb',
       theme_color: themeColor,
-      icons: logoUrl
-        ? [
-            {
-              src: logoUrl,
-              sizes: '192x192',
-              type: logoMediaType,
-              purpose: 'any maskable'
-            },
-            {
-              src: logoUrl,
-              sizes: '512x512',
-              type: logoMediaType,
-              purpose: 'any maskable'
-            }
-          ]
+      // The inline logo has no maskable safe area and is not a 192/512px icon.
+      // Keep the supplied app icons for the bundled brand; let Chrome frame
+      // custom logos without claiming dimensions or a maskable-safe layout.
+      icons: usesBundledLogo
+        ? [192, 512].map(size => ({
+            src: this.absoluteLogoUrl(`assets/icon/android-chrome-${size}x${size}.png`),
+            sizes: `${size}x${size}`,
+            type: 'image/png',
+            purpose: 'any maskable'
+          }))
+        : logoUrl
+          ? [{ src: logoUrl, type: logoMediaType, purpose: 'any' }]
         : []
     };
     const nextObjectUrl = windowRef.URL.createObjectURL(

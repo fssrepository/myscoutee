@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 
+import { DEFAULT_DEPLOYMENT_BRANDING } from '../../contracts/deployment-configuration.interface';
 import { HttpDeploymentConfigurationService } from '../../http/services/deployment-configuration.service';
 import { LocalDeploymentConfigurationService } from '../../local/source/services/deployment-configuration.service';
 import { DeploymentConfigurationService } from './deployment-configuration.service';
@@ -99,6 +100,20 @@ describe('DeploymentConfigurationService', () => {
     restoreUrlMethod('revokeObjectURL', originalRevokeObjectUrl);
   });
 
+  it('uses the sized app icons rather than the small inline logo for the bundled brand', async () => {
+    const service = TestBed.inject(DeploymentConfigurationService);
+
+    service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING });
+
+    const manifest = JSON.parse(await readBlob(createObjectUrl.mock.calls[0][0]));
+    expect(manifest.icons).toEqual([192, 512].map(size => ({
+      src: new URL(`assets/icon/android-chrome-${size}x${size}.png`, document.baseURI).toString(),
+      sizes: `${size}x${size}`,
+      type: 'image/png',
+      purpose: 'any maskable'
+    })));
+  });
+
   it('loads one central branding value and applies runtime document branding', async () => {
     loadLocalBranding.mockResolvedValue({
       productName: 'Community Hub',
@@ -185,17 +200,13 @@ describe('DeploymentConfigurationService', () => {
       icons: [
         {
           src: 'https://cdn.example.test/community-hub.webp',
-          sizes: '192x192',
-          type: 'image/webp'
-        },
-        {
-          src: 'https://cdn.example.test/community-hub.webp',
-          sizes: '512x512',
-          type: 'image/webp'
+          type: 'image/webp',
+          purpose: 'any'
         }
       ]
     });
     expect(loadLocalBranding).toHaveBeenCalledTimes(1);
+    expect((manifest['icons'] as Record<string, unknown>[])[0]).not.toHaveProperty('sizes');
 
     service.applyBranding({
       ...branding,
