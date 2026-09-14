@@ -100,6 +100,9 @@ export class FirebaseMessagingService {
       window.addEventListener('focus', refresh);
       this.destroyRef.onDestroy(() => window.removeEventListener('focus', refresh));
     }
+    if (this.deviceRegistrations.isLocal) {
+      this.initialize();
+    }
   }
 
   refreshNotificationPermission(): void {
@@ -119,7 +122,6 @@ export class FirebaseMessagingService {
 
     effect(
       () => {
-        const runtime = this.firebaseAppService.activeRuntime();
         const userId = this.userProfileStore.activeUserId().trim();
         if (this.deviceRegistrations.isLocal) {
           if (userId && this.notificationPermission() === 'granted') {
@@ -129,6 +131,7 @@ export class FirebaseMessagingService {
           }
           return;
         }
+        const runtime = this.firebaseAppService.activeRuntime();
         if (
           !runtime
           || !userId

@@ -16,6 +16,7 @@ export type BootstrapProcessStage =
   | 'activityMembers'
   | 'activityResources'
   | 'adminUsers'
+  | 'operatorUsers'
   | 'adminWorkspaceData'
   | 'adminHelpLinks'
   | 'indexedDb'
@@ -57,6 +58,7 @@ export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'helpCenter', percent: 95, label: 'Preparing help content' },
   { stage: 'ideaPosts', percent: 96, label: 'Preparing article content' },
   { stage: 'adminUsers', percent: 97, label: 'Preparing admin users' },
+  { stage: 'operatorUsers', percent: 97, label: 'Preparing demo users' },
   { stage: 'adminWorkspaceData', percent: 97, label: 'Preparing admin workspace data' },
   { stage: 'adminHelpLinks', percent: 97, label: 'Preparing admin help links' },
   { stage: 'affinityGraph', percent: 97, label: 'Preparing admin graph' },
