@@ -1045,19 +1045,6 @@
   line-height: 19px;
 }
 
-// Provider colors apply only to the glyph; the shared button surface stays neutral.
-.entry-footer-socials a[data-provider='instagram'] .mat-icon {
-  color: #e1306c;
-}
-
-.entry-footer-socials a[data-provider='youtube'] .mat-icon {
-  color: #ff0033;
-}
-
-.entry-footer-socials a[data-provider='facebook'] .mat-icon {
-  color: #1877f2;
-}
-
 .entry-footer-bottom {
   border-top: 1px solid var(--deployment-footer-line);
   padding: 0.62rem 0.94rem 0.72rem;
