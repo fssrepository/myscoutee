@@ -1942,6 +1942,10 @@
 }
 
 @media (max-width: 760px) {
+  .game-card-deck {
+    --rate-card-image-fit: contain;
+  }
+
   :host {
     height: 100%;
     min-height: 0;
