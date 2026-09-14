@@ -209,6 +209,22 @@
   --app-menu-shadow: rgba(4, 6, 10, 0.34);
 }
 
+.app-menu__palette--offline {
+  --app-menu-bg: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #718198 0%, #526175 100%);
+  --app-menu-bg-strong: var(--app-menu-bg);
+  --app-menu-action-bg: var(--app-menu-bg);
+  --app-menu-action-bg-hover: var(--app-menu-bg-hover);
+  --app-menu-action-fg: #fff;
+  --app-menu-action-border: #475569;
+  --app-menu-action-shadow: none;
+  --app-menu-border: #475569;
+  --app-menu-fg: #fff;
+  --app-menu-icon: #fff;
+  --app-menu-line: rgba(255, 255, 255, 0.3);
+  --app-menu-shadow: rgba(51, 65, 85, 0.24);
+}
+
 .app-menu__palette--slate,
 .app-menu__palette--muted {
   --app-menu-bg: linear-gradient(180deg, #f4f6f9 0%, #e7edf4 100%);

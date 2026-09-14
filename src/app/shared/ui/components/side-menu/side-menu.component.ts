@@ -1,3 +1,4 @@
+import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import {
   CommonModule
 } from '@angular/common';
@@ -431,16 +432,23 @@ export class SideMenuComponent implements OnDestroy {
       }]
     }]
   }));
+  private readonly offlineAttentionDismissed = signal(false);
+  protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
+  protected readonly notificationAttentionVisible = computed(() =>
+    this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
+      && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen())
+  );
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
     const unreadCount = this.notificationCenterStore.unreadCount();
+    const offline = this.connectionOffline();
     return {
       id: 'notification-attention',
-      icon: 'notifications_active',
-      palette: 'violet',
+      icon: offline ? 'cloud_off' : 'notifications_active',
+      palette: offline ? 'offline' : 'violet',
       action: 'custom',
       hideLabel: true,
       counter: unreadCount > 0 ? { value: unreadCount, max: 99 } : null,
-      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false)
+      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false) + (offline ? ' — Offline' : '')
     };
   });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
@@ -558,14 +566,14 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
-        icon: notificationsMuted ? 'notifications_off' : 'notifications',
-        palette: notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        icon: this.connectionOffline() ? 'cloud_off' : notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: this.connectionOffline() ? 'offline' : notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        )
+        ) + (this.connectionOffline() ? ' — Offline' : '')
       });
     }
     if (!this.isPrivilegedWorkspaceMode()) {
@@ -947,6 +955,7 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    effect(() => { if (!this.connectionOffline()) this.offlineAttentionDismissed.set(false); });
     this.profileStore.registerBindings(this.profileBindings);
 
     this.routerEventsSubscription = this.router.events.subscribe(event => {
@@ -1321,6 +1330,7 @@ export class SideMenuComponent implements OnDestroy {
         }
         this.notificationCenterStore.setDragPosition({ x: 0, y: 0 });
         this.notificationCenterStore.dismissAttention();
+        this.offlineAttentionDismissed.set(true);
       }
     }
   }

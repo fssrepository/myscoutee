@@ -26,6 +26,7 @@ export type AppMenuPalette =
   | 'ink'
   | 'neutral'
   | 'slate'
+  | 'offline'
   | 'blue'
   | 'sky'
   | 'cyan'

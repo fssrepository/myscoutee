@@ -33,7 +33,7 @@
   </div>
 }
 
-@if (avatarVisible() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
+@if (avatarVisible() && !isOperatorMode() && notificationAttentionVisible()) {
   <div
     class="notification-attention-launcher"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
