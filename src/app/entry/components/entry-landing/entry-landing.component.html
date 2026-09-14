@@ -12,9 +12,6 @@
             [branding]="deploymentBranding()"
           ></app-deployment-brand>
         </span>
-        <span class="entry-preview-badge" hidden>
-          <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
-        </span>
       </div>
       <div class="entry-header-actions">
         <button
@@ -23,7 +20,6 @@
           [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
           [class.entry-auth-btn-network]="networkUnavailable"
           [class.entry-auth-btn-unavailable]="authUnavailable"
-          [class.entry-auth-btn-location]="authLocationRequired"
           [disabled]="networkUnavailable || authUnavailable"
           [attr.aria-label]="entryAuthButtonLabel | i18n"
           matRipple
@@ -148,7 +144,7 @@
           <button
             type="button"
             class="entry-footer-text-action entry-footer-bug-report-action"
-            [attr.aria-label]="'landing.preview.open.guide' | i18n: 'Open preview guide'"
+            [attr.aria-label]="'bug.report' | i18n: 'Bug report'"
             (click)="openPreviewGuide($event)"
             >{{ 'bug.report' | i18n: 'Bug report' }}</button>
           <a
@@ -175,13 +171,14 @@
               ) {
                 <a
                   [href]="link.url"
+                  [attr.data-provider]="link.provider.toLowerCase()"
                   target="_blank"
                   rel="noopener noreferrer"
                   [attr.aria-label]="socialLinkAriaLabel(link)"
                   [attr.title]="socialLinkAriaLabel(link)"
                 >
                   <mat-icon aria-hidden="true">
-                    {{ link.icon || 'public' }}
+                    {{ link.provider.toLowerCase() === 'facebook' ? 'facebook' : (link.icon || 'public') }}
                   </mat-icon>
                 </a>
               }

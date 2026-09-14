@@ -89,8 +89,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input() ideaCount = 0;
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'Unavailable here';
-  @Input() authLocationRequired = false;
-  @Input() authLocationRequiredLabel = 'Allow location';
   @Input() networkUnavailable = false;
   @Input() networkUnavailableLabel = 'No network';
 
@@ -378,7 +376,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected get entryAuthButtonShowsAvatar(): boolean {
     return !this.networkUnavailable
       && !this.authUnavailable
-      && !this.authLocationRequired
       && this.isFirebaseAuthMode
       && !!this.firebaseAuthProfile;
   }
@@ -390,9 +387,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     if (this.authUnavailable) {
       return 'block';
     }
-    if (this.authLocationRequired) {
-      return 'location_on';
-    }
     return 'login';
   }
 
@@ -402,9 +396,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (this.authUnavailable) {
       return this.authUnavailableLabel;
-    }
-    if (this.authLocationRequired) {
-      return this.authLocationRequiredLabel;
     }
     if (this.entryAuthButtonShowsAvatar) {
       return this.firebaseAuthProfile?.name ?? 'Continue';
@@ -522,10 +513,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected previewGuidePopupModel(): PopupModel {
     return {
-      title: 'landing.preview.guide.title',
-      subtitle: 'landing.preview.guide.intro',
-      ariaLabel: 'Preview version guide',
-      closeAriaLabel: 'Close preview guide',
+      title: 'bug.report',
+      ariaLabel: 'Bug report',
+      closeAriaLabel: 'close',
       size: 'small',
       height: 'auto',
       headerLayout: 'document',

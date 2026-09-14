@@ -176,8 +176,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected landingIdeaCount = 0;
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable here';
-  protected entryAuthLocationRequired = false;
-  protected entryAuthLocationRequiredLabel = 'Allow location';
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
@@ -1425,8 +1423,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     const loginEnabled = this.authMode === 'firebase';
     this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable here';
-    this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
-    this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
     this.resolveBrowserLocationAccessIfNeeded();
     this.changeDetectorRef.markForCheck();
   }
@@ -1455,8 +1451,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
-  private resolveBrowserLocationAccessIfNeeded(force = false): void {
-    if ((!force && !this.entryAuthLocationRequired) || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
+  private resolveBrowserLocationAccessIfNeeded(): void {
+    if (this.authMode !== 'firebase' || !this.isLoginLocationRequiredByLandingBundle()
+      || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
       return;
     }
 
@@ -1471,20 +1468,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           });
         }
       });
-    this.deferEntryAuthLocationRequiredLabel('Checking location');
-  }
-
-  private deferEntryAuthLocationRequiredLabel(label: string): void {
-    const nextLabel = label.trim() || 'Allow location';
-    if (this.entryAuthLocationRequiredLabel === nextLabel) {
-      return;
-    }
-    setTimeout(() => {
-      this.ngZone.run(() => {
-        this.entryAuthLocationRequiredLabel = nextLabel;
-        this.changeDetectorRef.markForCheck();
-      });
-    }, 0);
   }
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
@@ -1520,7 +1503,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       });
     } catch {
-      // Keep the explicit "Allow location" action available if the silent refresh cannot complete.
+      // Login retries the permission and eligibility check if the silent refresh cannot complete.
     }
   }
 

@@ -40,34 +40,6 @@
   margin-left: auto;
 }
 
-.entry-preview-badge {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: min(32vw, 132px);
-  min-height: 30px;
-  border: 1px solid #fb923c;
-  border-radius: 999px;
-  padding: 0.08rem 0.62rem;
-  gap: 0.18rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #ffc46b 0%, #ff963f00 100%);
-  color: #4a1d08;
-  box-shadow: 0 5px 12px rgba(194, 65, 12, 0.2);
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1.2;
-  text-transform: uppercase;
-  white-space: nowrap;
-  font-family: inherit;
-  pointer-events: none;
-}
-
-.entry-preview-badge[hidden] {
-  display: none;
-}
-
 .entry-version-label {
   position: fixed;
   right: max(0.72rem, env(safe-area-inset-right));
@@ -177,11 +149,6 @@
 .entry-auth-btn-unavailable span,
 .entry-auth-btn-network span {
   line-height: 1.08;
-}
-
-.entry-auth-btn-location {
-  background: linear-gradient(135deg, #2f6fed 0%, #13a8a8 100%);
-  box-shadow: 0 8px 18px rgba(47, 111, 237, 0.24);
 }
 
 .entry-auth-btn .mat-icon {
@@ -1078,6 +1045,19 @@
   line-height: 19px;
 }
 
+// Provider colors apply only to the glyph; the shared button surface stays neutral.
+.entry-footer-socials a[data-provider='instagram'] .mat-icon {
+  color: #e1306c;
+}
+
+.entry-footer-socials a[data-provider='youtube'] .mat-icon {
+  color: #ff0033;
+}
+
+.entry-footer-socials a[data-provider='facebook'] .mat-icon {
+  color: #1877f2;
+}
+
 .entry-footer-bottom {
   border-top: 1px solid var(--deployment-footer-line);
   padding: 0.62rem 0.94rem 0.72rem;
@@ -1287,22 +1267,6 @@
 
   .entry-header-actions {
     gap: 0.38rem;
-  }
-
-  .entry-preview-badge {
-    max-width: min(48vw, 122px);
-    min-height: 28px;
-    padding: 0.06rem 0.52rem;
-    font-size: 0.7rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.2;
-  }
-
-  .entry-preview-badge span:first-child {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .entry-version-label {

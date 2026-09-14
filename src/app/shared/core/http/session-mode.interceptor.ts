@@ -1,4 +1,4 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 
 import { environment } from '../../../../environments/environment';
@@ -47,6 +47,22 @@ function isOperatorBootstrapLoginRequest(url: string): boolean {
   return url === `${absoluteApiBaseUrl}/auth/operator-bootstrap`;
 }
 
+function isDemoRegistrationRequest(req: HttpRequest<unknown>): boolean {
+  if (req.method !== 'POST') {
+    return false;
+  }
+  const route = req.url.split(/[?#]/, 1)[0];
+  let ownerId: unknown;
+  if (route.endsWith('/media/images') && req.body instanceof FormData) {
+    ownerId = req.body.get('ownerId');
+  } else if (route.endsWith('/auth/me/profile-ext')) {
+    ownerId = (req.body as { profile?: { id?: unknown } } | null)?.profile?.id;
+  }
+  // A draft has no session yet. Route its writes to the same demo store as
+  // the session created after onboarding; never turn it into a real identity.
+  return typeof ownerId === 'string' && ownerId.startsWith('demo-profile-');
+}
+
 export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
   if (
     !isApiRequest(req.url)
@@ -59,7 +75,8 @@ export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
   const sessionService = inject(SessionService);
   const session = sessionService.currentSession();
   const isDemoRequest = session?.kind === 'demo'
-    || isDemoSelectorRequest(req.url);
+    || isDemoSelectorRequest(req.url)
+    || (!session && sessionService.authMode === 'selector' && isDemoRegistrationRequest(req));
   if (!isDemoRequest) {
     return next(req);
   }

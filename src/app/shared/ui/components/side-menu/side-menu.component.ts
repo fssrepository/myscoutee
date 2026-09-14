@@ -1,4 +1,5 @@
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
+import { AppSetupStore } from '../../context/stores/app-setup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -187,6 +188,7 @@ type NavigatorAdminMenuShortcutId =
   | 'adminGraph';
 
 type NavigatorSettingsMenuItemId =
+  | 'permissions'
   | 'help'
   | 'feedback'
   | 'report-bugs'
@@ -245,6 +247,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
   protected readonly operatorLabel = computed(() => this.i18n.translate('operator'));
   protected readonly pwaService = inject(PwaService);
+  private readonly appSetupStore = inject(AppSetupStore);
   protected readonly installLabel = computed(() => {
     this.i18n.revision();
     return this.i18n.translate('install.app');
@@ -509,6 +512,14 @@ export class SideMenuComponent implements OnDestroy {
   });
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    if (!this.isPrivilegedWorkspaceMode()) {
+      items.push({
+        id: 'permissions',
+        label: 'app.setup.permissions',
+        icon: 'tune',
+        ariaLabel: 'app.setup.permissions'
+      });
+    }
     items.push({
       id: 'help',
       label: 'Help',
@@ -1395,6 +1406,10 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'settings':
         return;
+      case 'permissions':
+        this.onCloseMenu();
+        this.appSetupStore.open();
+        return;
       case 'help':
       case 'feedback':
       case 'privacy':
@@ -2257,7 +2272,7 @@ export class SideMenuComponent implements OnDestroy {
     if (popup === 'help' && !this.helpCenterService.hasActiveRevision()) {
       return;
     }
-    if (popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
+    if (popup === 'permissions' || popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
       return;
     }
     if (popup === 'privacy') {
