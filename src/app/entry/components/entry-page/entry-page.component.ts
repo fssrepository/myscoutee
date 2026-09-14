@@ -175,7 +175,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected landingIdeaCards: InfoCardData[] = [];
   protected landingIdeaCount = 0;
   protected entryAuthUnavailable = false;
-  protected entryAuthUnavailableLabel = 'Unavailable in your country';
+  protected entryAuthUnavailableLabel = 'Unavailable here';
   protected entryAuthLocationRequired = false;
   protected entryAuthLocationRequiredLabel = 'Allow location';
   protected entryNetworkUnavailable = false;
@@ -236,6 +236,24 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   protected onWindowResize(): void {
     this.syncMobileView();
+  }
+
+  @HostListener('window:offline')
+  protected onBrowserOffline(): void {
+    // A response started before disconnection must not reopen the entry gate.
+    this.landingContentRequestToken += 1;
+    this.entryContentLoadPromise = null;
+    this.grantedLocationEligibilityRequestToken += 1;
+    this.grantedLocationEligibilityPromise = null;
+    this.markEntryNetworkUnavailable();
+  }
+
+  @HostListener('window:online')
+  protected onBrowserOnline(): void {
+    this.entryNetworkUnavailable = false;
+    this.syncLandingLoginAvailability(null, 'reset');
+    void this.synchronizeDeploymentAuthMode();
+    void this.loadEntryContent();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -494,6 +512,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private initializeEntryFlow(): void {
+    this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
     this.entryConsentViewOnly = false;
     this.entryPrivacyLoading = this.privacyPolicy.state() === null;
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
@@ -1148,7 +1167,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
-          this.entryNetworkUnavailable = false;
+          this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
           this.landingIdeaCards = displayState.ideaCards;
           this.landingIdeaCount = displayState.state.ideasTotal;
           if (!this.locationEligibilityResolvedFromCoordinates
@@ -1177,7 +1196,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.endLandingArticlesLoadingWindow();
         this.changeDetectorRef.markForCheck();
       });
-      this.entryContentLoadPromise = null;
+      if (requestToken === this.landingContentRequestToken) {
+        this.entryContentLoadPromise = null;
+      }
     });
     return this.entryContentLoadPromise;
   }
@@ -1403,7 +1424,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private syncEntryAuthGateState(): void {
     const loginEnabled = this.authMode === 'firebase';
     this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
-    this.entryAuthUnavailableLabel = 'Unavailable in your country';
+    this.entryAuthUnavailableLabel = 'Unavailable here';
     this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
     this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
     this.resolveBrowserLocationAccessIfNeeded();

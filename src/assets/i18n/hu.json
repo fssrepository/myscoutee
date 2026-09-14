@@ -1,7 +1,10 @@
 {
   "lang": "hu",
-  "version": "2026.09.14.hu.101",
+  "version": "2026.09.14.hu.102",
   "messages": {
+    "unavailable.here": "Itt nem elérhető",
+    "allow.location": "Hely engedélyezése",
+    "checking.location": "Hely ellenőrzése",
     "clipboard.paste.permission.help": "Engedélyezd a vágólapot a webhelybeállításokban, majd próbáld újra.",
     "no.network": "Nincs hálózat",
     "saved.tickets.remain.available.profiles.need.a.connection": "A mentett jegyek elérhetők. A profilokhoz hálózati kapcsolat szükséges.",

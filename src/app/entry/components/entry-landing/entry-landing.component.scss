@@ -185,10 +185,15 @@
 }
 
 .entry-auth-btn .mat-icon {
+  flex: 0 0 16px;
   width: 16px;
   height: 16px;
   font-size: 16px;
   line-height: 16px;
+}
+
+.entry-auth-btn-unavailable {
+  gap: 0.25rem;
 }
 
 .entry-auth-btn.entry-auth-btn-avatar {

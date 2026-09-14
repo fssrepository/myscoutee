@@ -7,6 +7,7 @@
   >
     <div class="navigator-trigger-rail-inner">
       @if (isOperatorMode()) {
+        <span class="navigator-operator-heading">{{ operatorLabel() }}</span>
         <app-menu
           class="operator-community-menu"
           kind="inline"

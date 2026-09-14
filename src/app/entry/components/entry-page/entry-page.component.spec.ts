@@ -1,5 +1,61 @@
 import { EntryPageComponent } from './entry-page.component';
 
+describe('EntryPageComponent browser connection transitions', () => {
+  function entry() {
+    return Object.assign(Object.create(EntryPageComponent.prototype), {
+      landingContentRequestToken: 1,
+      grantedLocationEligibilityRequestToken: 1,
+      entryContentLoadPromise: null,
+      grantedLocationEligibilityPromise: null,
+      entryNetworkUnavailable: false,
+      landingLoginAvailability: { eligible: false, partitionKey: null },
+      locationEligibilityResolvedFromCoordinates: true,
+      browserLocationAutoRequestAttempted: true,
+      syncEntryAuthGateState: vi.fn(),
+      synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
+      loadEntryContent: vi.fn().mockResolvedValue(undefined)
+    });
+  }
+
+  it('recovers without reload and resets the country result on every online/offline cycle', () => {
+    const component = entry();
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      component.onBrowserOffline();
+      expect(component.entryNetworkUnavailable).toBe(true);
+      expect(component.locationEligibilityResolvedFromCoordinates).toBe(false);
+      component.onBrowserOnline();
+      expect(component.entryNetworkUnavailable).toBe(false);
+      expect(component.landingLoginAvailability).toBeNull();
+      expect(component.browserLocationAutoRequestAttempted).toBe(false);
+    }
+    expect(component.loadEntryContent).toHaveBeenCalledTimes(2);
+    expect(component.synchronizeDeploymentAuthMode).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores an eligibility answer arriving after disconnection', async () => {
+    const component = entry();
+    let resolveEligibility!: (value: { eligible: boolean }) => void;
+    const eligibility = new Promise<{ eligible: boolean }>(resolve => { resolveEligibility = resolve; });
+    const requestStarted = vi.fn();
+    Object.assign(component, {
+      ngZone: { run: (fn: () => void) => fn() },
+      queryGeolocationPermissionState: vi.fn().mockResolvedValue('granted'),
+      requestCurrentLocation: vi.fn().mockResolvedValue({ latitude: 47.4979, longitude: 19.0402 }),
+      usersService: { checkLocationEligibility: () => { requestStarted(); return eligibility; } }
+    });
+    const pending = component.resolveBrowserLocationAccess(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(requestStarted).toHaveBeenCalledOnce();
+    component.onBrowserOffline();
+    resolveEligibility({ eligible: true });
+    await pending;
+    expect(component.entryNetworkUnavailable).toBe(true);
+    expect(component.landingLoginAvailability).toBeNull();
+    expect(component.locationEligibilityResolvedFromCoordinates).toBe(false);
+  });
+});
+
 describe('EntryPageComponent operator authentication gate', () => {
   it('bypasses consumer region and coordinate checks but still requires privacy consent', async () => {
     const component = Object.create(EntryPageComponent.prototype) as {

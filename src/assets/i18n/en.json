@@ -1,7 +1,10 @@
 {
   "lang": "en",
-  "version": "2026.09.14.en.101",
+  "version": "2026.09.14.en.102",
   "messages": {
+    "unavailable.here": "Unavailable here",
+    "allow.location": "Allow location",
+    "checking.location": "Checking location",
     "clipboard.paste.permission.help": "Allow clipboard access in site settings, then retry.",
     "no.network": "No network",
     "saved.tickets.remain.available.profiles.need.a.connection": "Saved tickets remain available. Profiles need a connection.",

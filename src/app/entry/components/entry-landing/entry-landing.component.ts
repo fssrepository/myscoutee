@@ -88,7 +88,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input() ideaCards: InfoCardData[] = [];
   @Input() ideaCount = 0;
   @Input() authUnavailable = false;
-  @Input() authUnavailableLabel = 'Unavailable in your country';
+  @Input() authUnavailableLabel = 'Unavailable here';
   @Input() authLocationRequired = false;
   @Input() authLocationRequiredLabel = 'Allow location';
   @Input() networkUnavailable = false;
