@@ -397,7 +397,7 @@ export class EventChatPopupComponent implements OnDestroy {
     headerProgress: {
       enabled: true,
       tone: 'chat',
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     emptyLabel: () => this.chatInitialLoadPending ? '' : 'No messages yet',
     emptyDescription: () => this.chatInitialLoadPending ? '' : 'Start the conversation.',

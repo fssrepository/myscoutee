@@ -278,7 +278,7 @@ export class HomeComponent implements OnDestroy {
     showBackgroundLoadingProgress: true,
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     trackBy: (_index, row) => row.id,
     emptyLabel: () => this.noCandidateTitle,
@@ -451,8 +451,8 @@ export class HomeComponent implements OnDestroy {
     return this.avatarLoadedUser?.profileStatus === 'blocked' && this.isAvatarProfileSettled;
   }
 
-  protected get isOnline(): boolean {
-    return this.runtimeStore.isOnline();
+  protected get isDataSourceAvailable(): boolean {
+    return this.runtimeStore.isDataSourceAvailable();
   }
 
   protected get isGameVisibilityPaused(): boolean {
@@ -497,7 +497,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected gamePageStatusClass(): string {
-    if (!this.isOnline) {
+    if (!this.isDataSourceAvailable) {
       return 'game-page-status-offline';
     }
     const profileStatus = this.isBlockedUserStatusPending
@@ -690,7 +690,7 @@ export class HomeComponent implements OnDestroy {
         kind: 'select-trigger',
         layout: 'pill',
         palette: this.homeModePalette(this.selectedHomeMode),
-        disabled: !this.isOnline || this.isBlockedUser,
+        disabled: !this.isDataSourceAvailable || this.isBlockedUser,
         ariaLabel: 'Select game mode',
         items: this.homeModeOptions.map(option => ({
           id: `home-mode:${option.key}`,
@@ -709,7 +709,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'filter_alt',
         kind: 'action',
         palette: 'filter',
-        disabled: !this.isOnline || this.isBlockedUser,
+        disabled: !this.isDataSourceAvailable || this.isBlockedUser,
         counter: this.filterBadgeCount > 0 ? { value: this.filterBadgeCount, max: 99 } : null,
         ariaLabel: 'Open profile filters',
         context: { action: 'filter' }
@@ -719,7 +719,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'history',
         kind: 'action',
         palette: 'gold',
-        disabled: !this.isOnline || !this.canOpenHistory || this.isBlockedUser,
+        disabled: !this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser,
         counter: this.historyBadgeCount > 0 ? { value: this.historyBadgeCount, max: 99 } : null,
         ariaLabel: 'Open game history',
         context: { action: 'history' }
@@ -917,7 +917,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected selectHomeMode(mode: UserGameMode): void {
-    if (!this.isOnline || this.isBlockedUser) {
+    if (!this.isDataSourceAvailable || this.isBlockedUser) {
       return;
     }
     const normalizedMode = this.normalizeHomeMode(mode);
@@ -953,7 +953,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openHistory(): void {
-    if (!this.isOnline || !this.canOpenHistory || this.isBlockedUser) {
+    if (!this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser) {
       return;
     }
     const initialRateFilter = this.isPairMode ? 'pair-given' : 'individual-given';
@@ -971,7 +971,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openFilter(): void {
-    if (!this.isOnline || this.isBlockedUser) {
+    if (!this.isDataSourceAvailable || this.isBlockedUser) {
       return;
     }
     this.gameFilterPopupContext = this.createGameFilterPopupContext();

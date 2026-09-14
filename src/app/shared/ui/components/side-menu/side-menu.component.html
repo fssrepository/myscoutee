@@ -73,7 +73,6 @@
       class="user-menu-panel"
       [class.open]="ui.open"
       [class.is-covered]="isCoveredByAssetPopup()"
-      [class.is-offline]="!runtimeStore.isOnline()"
     >
       <div class="navigator-menu-header">
         @if (pwaService.installAvailable()) {

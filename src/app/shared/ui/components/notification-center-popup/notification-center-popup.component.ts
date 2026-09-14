@@ -1,3 +1,4 @@
+import { environment } from '../../../../../environments/environment';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
 import {
@@ -78,6 +79,8 @@ export class NotificationCenterPopupComponent {
   protected readonly store = inject(NotificationCenterStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly offline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
+  private readonly preferenceUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+    || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   private readonly dialogStore = inject(DialogStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
@@ -220,7 +223,7 @@ export class NotificationCenterPopupComponent {
               id: 'notification-attention-toggle',
               kind: 'toggle',
               icon: this.offline() ? 'cloud_off' : muted ? 'notifications_off' : 'notifications_active',
-              disabled: this.offline() || this.store.permissionActionPending(),
+              disabled: this.preferenceUnavailable() || this.store.permissionActionPending(),
               progress: { state: this.store.permissionBusy() ? 'loading' : null },
               layout: 'icon',
               palette: this.offline() ? 'offline' : muted ? 'slate' : 'violet',
@@ -371,7 +374,7 @@ export class NotificationCenterPopupComponent {
     }
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
-    if (this.offline()) return;
+    if (this.preferenceUnavailable()) return;
     if (this.store.permissionRequired()) {
       void this.store.setMuted(false).catch(error => this.dialogStore.openInfo(
         error instanceof Error ? error.message : 'Unable to complete this action.', { title: 'Notifications' }

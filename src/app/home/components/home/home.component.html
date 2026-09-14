@@ -33,7 +33,7 @@
           [attr.list]="'home-social-left-suggestions'"
           [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
           [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
-          [disabled]="!isOnline"
+          [disabled]="!isDataSourceAvailable"
           (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
           />
       </label>
@@ -44,7 +44,7 @@
           [attr.list]="'home-social-right-suggestions'"
           [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
           [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
-          [disabled]="!isOnline"
+          [disabled]="!isDataSourceAvailable"
           (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
           />
       </label>

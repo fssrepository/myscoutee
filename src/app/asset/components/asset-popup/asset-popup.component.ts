@@ -217,7 +217,7 @@ export class AssetPopupComponent {
       : this.ownedAssetEmptyDescriptionKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -250,7 +250,7 @@ export class AssetPopupComponent {
     emptyStickyLabel: 'No tickets',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',

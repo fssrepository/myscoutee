@@ -222,7 +222,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => EventFeedbackListPresentationConverter.convert({

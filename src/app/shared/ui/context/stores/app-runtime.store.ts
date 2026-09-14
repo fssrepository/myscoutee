@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { environment } from '../../../../../environments/environment';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ConnectivityState = 'online' | 'offline';
@@ -32,6 +33,9 @@ export class AppRuntimeStore {
   readonly loadingState = this._loadingState.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
   readonly isOnline = computed(() => this._connectivityState() === 'online');
+  readonly isDataSourceAvailable = computed(() =>
+    environment.activitiesDataSource === 'local' || this.isOnline()
+  );
 
   selectLoadingState(contextKey: string) {
     return computed(() => this._loadingState()[contextKey] ?? DEFAULT_LOAD_STATE);

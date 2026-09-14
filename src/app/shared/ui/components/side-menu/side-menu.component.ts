@@ -440,7 +440,7 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly offlineAttentionDismissed = signal(false);
   protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
-  private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isOnline()
+  private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
     this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
