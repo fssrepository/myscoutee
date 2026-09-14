@@ -929,6 +929,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const nextHasMore = typeof options.hasMore === 'boolean'
       ? options.hasMore && nextComputedHasMore
       : nextComputedHasMore;
+    const query = this.currentQuery();
+    const adapterEquals = this.cacheableConfig()?.equals;
+    const equals = options.equals ?? ((current: T, next: T, index: number) =>
+      adapterEquals ? adapterEquals(current, next, index, query) : current === next);
     const sameShape = this.total === nextTotal
       && this.hasMore === nextHasMore
       && this.items.length === nextItems.length
@@ -938,7 +942,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       );
 
     if (!sameShape) {
-      this.replaceVisibleItems(nextItems, {
+      const currentByKey = new Map(this.items.map((item, index) =>
+        [this.cacheTrackKey(item, index, options.trackBy), item] as const));
+      const reconciledItems = nextItems.map((item, index) => {
+        const current = currentByKey.get(this.cacheTrackKey(item, index, options.trackBy));
+        return current !== undefined && equals(current, item, index) ? current : item;
+      });
+      this.replaceVisibleItems(reconciledItems, {
         total: nextTotal,
         hasMore: nextHasMore,
         ...(Object.prototype.hasOwnProperty.call(options, 'nextCursor')
@@ -949,10 +959,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return true;
     }
 
-    const query = this.currentQuery();
-    const adapterEquals = this.cacheableConfig()?.equals;
-    const equals = options.equals ?? ((current: T, next: T, index: number) =>
-      adapterEquals ? adapterEquals(current, next, index, query) : current === next);
     let changed = false;
     if (Object.prototype.hasOwnProperty.call(options, 'nextCursor')) {
       const nextCursor = typeof options.nextCursor === 'string' && options.nextCursor.trim()
@@ -2536,8 +2542,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
 
-    this.listItemIndexByObject = new WeakMap<object, number>();
-    this.resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
+    // Angular still asks for the previous objects' keys while reconciling the
+    // new groups. WeakMaps preserve those keys without retaining retired rows.
 
     const rawKeys = this.items.map((item, index) => this.normalizedConfiguredTrackKey(index, item));
     const rawKeyCounts = new Map<string, number>();
