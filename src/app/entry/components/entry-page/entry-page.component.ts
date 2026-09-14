@@ -762,7 +762,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.pendingRedirectAfterOnboarding = '';
     this.pendingDemoSessionUserId = '';
     if (demoSessionUserId) {
-      const session = this.sessionService.startDemoSession(demoSessionUserId);
+      const session = this.usersService.localModeEnabled
+        ? this.sessionService.startDemoSession(demoSessionUserId)
+        : await this.sessionService.startTrackedDemoSession(demoSessionUserId);
       if (!session) {
         this.onboardingOpen = false;
         this.onboardingUser = null;
@@ -770,6 +772,17 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       }
     }
     try {
+      if (demoSessionUserId && !this.usersService.localModeEnabled) {
+        // Read under the registered session before displaying protected media,
+        // just as the ordinary demo selector does after sign-in.
+        const user = await this.usersService.loadUserById(demoSessionUserId, 8000);
+        if (!user) {
+          await this.sessionService.logout();
+          this.onboardingOpen = false;
+          this.onboardingUser = null;
+          return;
+        }
+      }
       const navigated = await this.router.navigateByUrl(redirect);
       if (!navigated) {
         this.onboardingOpen = false;

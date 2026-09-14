@@ -37,9 +37,9 @@ export class AppSetupPopupComponent {
       showToggleIndicator: true, disabled: this.store.actionPending() }
   ]);
   readonly installActions = computed<AppMenuItem[]>(() => [
-    ...((this.store.pwa.installAvailable() || this.store.pwa.installBusy()) ? [{ id: 'install', icon: 'install_desktop',
+    ...((this.store.pwa.installAvailable() || this.store.pwa.installActionPending()) ? [{ id: 'install', icon: 'install_desktop',
       layout: 'action' as const, label: 'install.app', palette: 'violet' as const,
-      disabled: this.store.actionPending() || this.store.pwa.installBusy(),
+      disabled: this.store.actionPending() || this.store.pwa.installActionPending(),
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
   readonly permissionActions = computed<AppMenuItem[]>(() => [

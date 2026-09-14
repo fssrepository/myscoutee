@@ -33,7 +33,9 @@ export class PwaService {
 
   private readonly injector = inject(Injector);
   private readonly installPromptRef = signal<BeforeInstallPromptEvent | null>(null);
+  private readonly installPromptPendingRef = signal(false);
   private readonly installBusyRef = signal(false);
+  private installCompleted = false;
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
   private readonly registrationRef = signal<ServiceWorkerRegistration | null>(null);
   private initialized = false;
@@ -43,12 +45,15 @@ export class PwaService {
     this.installPromptRef.set(promptEvent);
   };
   private onAppInstalled = () => {
+    this.installCompleted = true;
     this.installPromptRef.set(null);
+    this.installPromptPendingRef.set(false);
     this.installBusyRef.set(false);
     this.setInstallDismissed(true);
   };
 
   readonly installBusy = this.installBusyRef.asReadonly();
+  readonly installActionPending = computed(() => this.installPromptPendingRef() || this.installBusyRef());
   readonly installAvailable = computed(() => this.installPromptRef() !== null && !this.isStandalone());
   readonly installPromptVisible = computed(() =>
     this.installAvailable() && !this.installDismissedRef() && !this.isStandalone()
@@ -83,10 +88,11 @@ export class PwaService {
 
   async promptInstall(): Promise<boolean> {
     const promptEvent = this.installPromptRef();
-    if (!promptEvent || this.installBusyRef()) {
+    if (!promptEvent || this.installActionPending()) {
       return false;
     }
-    this.installBusyRef.set(true);
+    this.installCompleted = false;
+    this.installPromptPendingRef.set(true);
     // The native dialog owns the interaction now. A consumed one-shot event
     // must not leave an uncloseable "Opening" overlay over the application.
     this.installPromptRef.set(null);
@@ -94,13 +100,19 @@ export class PwaService {
       await promptEvent.prompt();
       const outcome = await promptEvent.userChoice;
       const accepted = outcome?.outcome === 'accepted';
+      // The native decision has finished. Only an accepted installation may
+      // show progress, until appinstalled confirms completion. Some browsers
+      // dispatch appinstalled before the userChoice continuation runs.
+      this.installPromptPendingRef.set(false);
+      this.installBusyRef.set(accepted && !this.installCompleted);
       this.installPromptRef.set(null);
-      this.setInstallDismissed(!accepted);
+      if (!this.installCompleted) this.setInstallDismissed(!accepted);
       return accepted;
     } catch {
+      this.installBusyRef.set(false);
       return false;
     } finally {
-      this.installBusyRef.set(false);
+      this.installPromptPendingRef.set(false);
     }
   }
 

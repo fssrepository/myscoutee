@@ -159,6 +159,52 @@ describe('EntryPageComponent browser location permission gate', () => {
 });
 
 describe('EntryPageComponent demo session routing', () => {
+  function completedOnboarding(localModeEnabled: boolean) {
+    return Object.assign(Object.create(EntryPageComponent.prototype), {
+      pendingRedirectAfterOnboarding: '/game',
+      pendingDemoSessionUserId: 'new-demo-user',
+      usersService: {
+        localModeEnabled,
+        loadUserById: vi.fn().mockResolvedValue({ id: 'new-demo-user' })
+      },
+      sessionService: {
+        startDemoSession: vi.fn().mockReturnValue({ kind: 'demo', userId: 'new-demo-user' }),
+        startTrackedDemoSession: vi.fn().mockResolvedValue({ kind: 'demo', userId: 'new-demo-user' }),
+        logout: vi.fn().mockResolvedValue(undefined)
+      },
+      router: { navigateByUrl: vi.fn().mockResolvedValue(true) }
+    });
+  }
+
+  it('registers the new HTTP profile session and reads it before opening game cards', async () => {
+    const component = completedOnboarding(false);
+    await component.onOnboardingCompleted({ id: 'new-demo-user' });
+    expect(component.sessionService.startDemoSession).not.toHaveBeenCalled();
+    expect(component.sessionService.startTrackedDemoSession).toHaveBeenCalledWith('new-demo-user');
+    expect(component.usersService.loadUserById).toHaveBeenCalledWith('new-demo-user', 8000);
+    expect(component.sessionService.startTrackedDemoSession.mock.invocationCallOrder[0])
+      .toBeLessThan(component.usersService.loadUserById.mock.invocationCallOrder[0]);
+    expect(component.usersService.loadUserById.mock.invocationCallOrder[0])
+      .toBeLessThan(component.router.navigateByUrl.mock.invocationCallOrder[0]);
+  });
+
+  it('keeps local onboarding independent of server session registration', async () => {
+    const component = completedOnboarding(true);
+    await component.onOnboardingCompleted({ id: 'new-demo-user' });
+    expect(component.sessionService.startDemoSession).toHaveBeenCalledWith('new-demo-user');
+    expect(component.sessionService.startTrackedDemoSession).not.toHaveBeenCalled();
+    expect(component.usersService.loadUserById).not.toHaveBeenCalled();
+    expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
+  });
+
+  it('does not open game cards when the server rejects the new session', async () => {
+    const component = completedOnboarding(false);
+    component.sessionService.startTrackedDemoSession.mockResolvedValue(null);
+    await component.onOnboardingCompleted({ id: 'new-demo-user' });
+    expect(component.usersService.loadUserById).not.toHaveBeenCalled();
+    expect(component.router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
   it('starts a local demo session without registering it through the backend', async () => {
     const startDemoSession = vi.fn().mockReturnValue({
       kind: 'demo',
