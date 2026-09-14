@@ -119,6 +119,7 @@ import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-pol
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
+import { PwaService } from '../../../core/base/services/pwa.service';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { environment } from '../../../../../environments/environment';
 import {
@@ -242,6 +243,11 @@ export class SideMenuComponent implements OnDestroy {
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly i18n = inject(I18nService);
+  protected readonly pwaService = inject(PwaService);
+  protected readonly installLabel = computed(() => {
+    this.i18n.revision();
+    return this.i18n.translate('install.app');
+  });
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
@@ -568,6 +574,8 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
+        disabled: this.notificationCenterStore.permissionActionPending(),
+        progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
         icon: this.connectionOffline() ? 'cloud_off' : notificationsMuted ? 'notifications_off' : 'notifications',
         palette: this.connectionOffline() ? 'offline' : notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
@@ -957,6 +965,11 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    effect(() => {
+      if (this.sessionService.session() && this.userProfileStore.activeUserId()) {
+        this.pwaService.offerInstallAfterLogin();
+      }
+    });
     effect(() => { if (!this.connectionOffline()) this.offlineAttentionDismissed.set(false); });
     this.profileStore.registerBindings(this.profileBindings);
 
@@ -1365,6 +1378,12 @@ export class SideMenuComponent implements OnDestroy {
   protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
     switch (event.id) {
       case 'notifications':
+        if (this.notificationCenterStore.permissionRequired() && !this.connectionOffline()) {
+          void this.notificationCenterStore.setMuted(false).catch(error => this.dialogStore.openInfo(
+            error instanceof Error ? error.message : 'Unable to complete this action.', { title: 'Notifications' }
+          ));
+          return;
+        }
         this.openNotificationCenter(event.sourceEvent);
         return;
       case 'explanations':
@@ -1537,16 +1556,6 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     this.openProfileEditor(event);
-  }
-
-  protected navigatorOfflineNote(): string {
-    if (this.isOperatorMode()) {
-      return this.i18n.translate('operator.workspace.offline');
-    }
-    if (this.isAdminMode()) {
-      return 'Offline mode is active. Admin actions wait for the connection to return.';
-    }
-    return 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
   }
 
   protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {

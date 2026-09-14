@@ -271,8 +271,9 @@ export class DeploymentConfigurationService
       description: branding.homeLabel,
       display: 'standalone',
       orientation: 'portrait',
-      scope: './',
-      start_url: './',
+      // Relative URLs cannot resolve against this manifest's blob: URL.
+      scope: new URL('.', this.documentRef.baseURI).href,
+      start_url: new URL('.', this.documentRef.baseURI).href,
       background_color: '#f5f6fb',
       theme_color: themeColor,
       // The inline logo has no maskable safe area and is not a 192/512px icon.

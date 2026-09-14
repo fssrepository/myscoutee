@@ -1001,7 +1001,8 @@
 
 .app-menu__button-row-item--labelled {
   flex: 1 1 auto;
-  width: auto;
+  width: var(--app-menu-row-item-width, auto);
+  justify-content: var(--app-menu-row-item-justify, center);
   min-width: 118px;
   height: 36px;
   min-height: 36px;
@@ -3209,24 +3210,24 @@ a.app-menu__item {
   max-width: min(8.4rem, 31vw);
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) {
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) {
   display: block;
   width: 100%;
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) .app-menu {
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu {
   display: block;
   width: 100%;
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) .app-menu__button-row {
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu__button-row {
   display: flex;
   width: 100%;
   justify-content: stretch;
   gap: 0.78rem;
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
   flex: 1 1 0;
   min-width: 0;
   padding-inline: 16px;
@@ -3390,4 +3391,17 @@ a.app-menu__item {
   .app-menu__tile-item {
     transition: none;
   }
+}
+
+// A switch may carry its own status color while its row keeps its category palette.
+.app-menu__button-row-item--labelled[data-toggle-palette],
+.app-menu__button-row-item--labelled[data-toggle-palette]:hover {
+  background: var(--app-menu-bg);
+  color: var(--app-menu-fg);
+  border-color: var(--app-menu-border);
+  box-shadow: none;
+}
+.app-menu__tabs-toggle[data-toggle-palette] {
+  background: var(--app-menu-bg-strong);
+  border-color: var(--app-menu-border);
 }

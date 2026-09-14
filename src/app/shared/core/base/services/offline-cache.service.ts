@@ -32,7 +32,11 @@ export class OfflineCacheService {
       }
     }
     if (typeof caches === 'undefined') return;
-    for (const name of (await caches.keys()).filter(name => name.startsWith('myscoutee-runtime-'))) {
+    // App-shell caches contain static build files, not user responses.
+    // Enumerate only the data caches when clearing a user's private data.
+    for (const name of (await caches.keys()).filter(name =>
+      name.startsWith('myscoutee-runtime-api-') || name.startsWith('myscoutee-runtime-media-')
+    )) {
       const cache = await caches.open(name);
       const requests = await cache.keys();
       await Promise.all(requests.filter(request => {

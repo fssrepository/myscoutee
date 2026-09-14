@@ -25,6 +25,7 @@ import {
 import {
   AppMenuComponent,
   type AppMenuItem,
+  type AppMenuModel,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui/components/core/menu';
 import { I18nPipe } from '../../../shared/ui';
@@ -382,13 +383,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       && !!this.firebaseAuthProfile;
   }
 
-  protected get entryAuthButtonCanCompactOnMobile(): boolean {
-    return !this.networkUnavailable
-      && !this.authUnavailable
-      && !this.authLocationRequired
-      && !this.entryAuthButtonShowsAvatar;
-  }
-
   protected get entryAuthButtonIcon(): string {
     if (this.networkUnavailable) {
       return 'wifi_off';
@@ -425,6 +419,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected get entryPrimaryCtaLabel(): string {
     return this.networkUnavailable ? this.networkUnavailableLabel : 'Start exploring';
   }
+
+  protected readonly entryHeroCtaModel: AppMenuModel<EntryHeroCtaId> = { actionSizing: 'content' };
 
   protected entryHeroCtaItems(): readonly AppMenuItem<EntryHeroCtaId>[] {
     return [

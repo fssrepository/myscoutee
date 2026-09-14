@@ -34,6 +34,7 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);
     component.openBundledLoginUnavailableInfo = vi.fn();
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
+    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false } });
 
     await component.openEntryAuthPopup({
       forceAuthPopup: true,
@@ -69,6 +70,7 @@ describe('EntryPageComponent operator authentication gate', () => {
       firebaseProfile: () => null
     };
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
+    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false } });
     component.isLoginBlockedByLandingBundle = vi.fn().mockReturnValue(false);
     component.isLoginLocationRequiredByLandingBundle = vi.fn().mockReturnValue(false);
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);

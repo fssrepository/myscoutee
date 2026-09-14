@@ -1,5 +1,6 @@
 import {
-  HttpClient
+  HttpClient,
+  HttpErrorResponse
 } from '@angular/common/http';
 import {
   Injectable,
@@ -444,6 +445,11 @@ export class HttpUsersService implements UserService {
       }
       if (this.isTimeoutError(error, 'Logout request timeout.')) {
         throw error;
+      }
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        // The session is already unauthorized. Let SessionService complete
+        // local sign-out and clear the current user's private cache.
+        return { submitted: true, message: null };
       }
       return {
         submitted: false,

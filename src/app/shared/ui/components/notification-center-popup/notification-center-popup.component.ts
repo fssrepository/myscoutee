@@ -220,7 +220,8 @@ export class NotificationCenterPopupComponent {
               id: 'notification-attention-toggle',
               kind: 'toggle',
               icon: this.offline() ? 'cloud_off' : muted ? 'notifications_off' : 'notifications_active',
-              disabled: this.offline(),
+              disabled: this.offline() || this.store.permissionActionPending(),
+              progress: { state: this.store.permissionBusy() ? 'loading' : null },
               layout: 'icon',
               palette: this.offline() ? 'offline' : muted ? 'slate' : 'violet',
               active: muted,
@@ -371,6 +372,12 @@ export class NotificationCenterPopupComponent {
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
     if (this.offline()) return;
+    if (this.store.permissionRequired()) {
+      void this.store.setMuted(false).catch(error => this.dialogStore.openInfo(
+        error instanceof Error ? error.message : 'Unable to complete this action.', { title: 'Notifications' }
+      ));
+      return;
+    }
     this.confirmMutedChange(!this.store.muted());
   }
 

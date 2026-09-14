@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.14.hu.90",
+  "version": "2026.09.14.hu.100",
   "messages": {
     "clipboard.paste.permission.help": "A vágólap nem érhető el. Engedélyezd a böngésző webhelybeállításaiban, majd nyomd meg újra a hivatkozás beillesztését, vagy illeszd be kézzel.",
     "no.network": "Nincs hálózat",
@@ -1282,7 +1282,7 @@
     "close.articles": "Cikkek bezárása",
     "footer.connect": "Kapcsolódjunk",
     "footer.tagline": "Ahol a gyors találatok valódi kapcsolódásokká válnak.",
-    "install.prompt.description": "{productName} telepítésével gyorsan elérheted az alkalmazást a kezdőképernyőről.",
+    "install.prompt.description": "Nyisd meg a(z) {productName} alkalmazást közvetlenül a kezdőképernyőről, saját ablakban, böngészőfülek nélkül. Külön engedélyezett értesítésekkel az új üzenetekről is értesülhetsz.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "A jegyek, gyorsítótárazott profilrészletek és csevegési értesítések maradjanak elérhetők a telepített appban.",
     "later": "Később",
     "loading.stats": "Statisztika betöltése",
@@ -3398,6 +3398,19 @@
     "notification.security.login.title": "Biztonsági figyelmeztetés",
     "notification.security.login.new.message": "Új bejelentkezés innen: {clientLabel}.",
     "notification.security.login.blocked.message": "Blokkolt bejelentkezési kísérlet innen: {clientLabel}. Már két aktív munkamenet van használatban.",
-    "operator.request.failed": "Az operátori kérés sikertelen."
+    "operator.request.failed": "Az operátori kérés sikertelen.",
+    "entry.permissions.title": "Engedélyek a belépéshez",
+    "entry.permissions.description": "A helyadat szükséges a régiós elérhetőség ellenőrzéséhez. Az értesítések az új üzenetekről és eseményekről jeleznek. Jóváhagyás után a böngésző először az értesítéseket, majd a helyadatot kéri, egymás után. A letiltott engedélyt a webhely beállításainál módosíthatod.",
+    "entry.permissions.checking": "Mentés…",
+    "install.app": "Telepítés",
+    "entry.permissions.notifications.blocked": "Engedélyezd az értesítéseket a böngésző webhelybeállításaiban, majd próbáld újra.",
+    "app.setup.title": "Engedélyek és telepítés",
+    "app.setup.description": "Gyors elérés, saját alkalmazásablak.",
+    "app.setup.location": "Helyadat",
+    "app.setup.notifications": "Értesítések",
+    "app.setup.permission.help": "A helyadat kötelező a belépéshez.",
+    "app.setup.allow": "Engedélyezés",
+    "app.setup.permissions": "Engedélyek",
+    "app.setup.update": "Frissítés"
   }
 }

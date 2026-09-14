@@ -87,7 +87,7 @@ export class LocalUsersRepository {
         [USERS_TABLE_NAME]: {
           byId: {
             ...usersTable.byId,
-            [user.id]: user
+            [user.id]: { ...user, devices: usersTable.byId[user.id]?.devices }
           },
           ids: exists ? [...usersTable.ids] : [...usersTable.ids, user.id]
         }

@@ -19,30 +19,10 @@ interface AppVersionPayload {
   buildId?: unknown;
 }
 
-export type PwaDevServiceWorkerOverride = 'enabled' | 'disabled' | null;
-
-export function resolvePwaDevServiceWorkerOverride(
-  search: string,
-  production: boolean
-): PwaDevServiceWorkerOverride {
-  if (production) {
-    return null;
-  }
-  const override = new URLSearchParams(search).get('pwa');
-  if (override === 'on') {
-    return 'enabled';
-  }
-  if (override === 'off') {
-    return 'disabled';
-  }
-  return null;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class PwaService {
-  private static readonly DEV_OVERRIDE_STORAGE_KEY = APP_STORAGE_KEYS.pwaDevServiceWorker;
   private static readonly INSTALL_DISMISSED_STORAGE_KEY = APP_STORAGE_KEYS.pwaInstallPromptDismissed;
   private static readonly UPDATE_RELOAD_ATTEMPT_STORAGE_KEY = APP_STORAGE_KEYS.pwaUpdateReloadAttempt;
   private static readonly BUILD_ID_META_NAME = 'myscoutee-build-id';
@@ -80,7 +60,6 @@ export class PwaService {
       return;
     }
     this.initialized = true;
-    this.applyDevOverrideFromQuery();
     window.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
     window.addEventListener('appinstalled', this.onAppInstalled);
 
@@ -108,6 +87,9 @@ export class PwaService {
       return false;
     }
     this.installBusyRef.set(true);
+    // The native dialog owns the interaction now. A consumed one-shot event
+    // must not leave an uncloseable "Opening" overlay over the application.
+    this.installPromptRef.set(null);
     try {
       await promptEvent.prompt();
       const outcome = await promptEvent.userChoice;
@@ -123,7 +105,8 @@ export class PwaService {
   }
 
   async requestNotificationRegistrationForActiveUser(): Promise<void> {
-    if (!this.shouldEnableNotificationRegistration()) {
+    if (!this.shouldEnableNotificationRegistration()
+      || typeof Notification === 'undefined' || Notification.permission !== 'granted') {
       return;
     }
     const { FirebaseMessagingService } = await import('./firebase-messaging.service');
@@ -133,8 +116,30 @@ export class PwaService {
   }
 
   dismissInstallPrompt(): void {
-    this.installPromptRef.set(null);
     this.setInstallDismissed(true);
+  }
+
+  showInstallPrompt(): void {
+    if (this.installAvailable()) {
+      this.setInstallDismissed(false);
+    }
+  }
+
+  offerInstallAfterLogin(): void {
+    if (!this.installAvailable()) {
+      return;
+    }
+    const key = APP_STORAGE_KEYS.pwaLoginInstallPromptOffered;
+    try {
+      if (localStorage.getItem(key) === '1') {
+        return;
+      }
+      localStorage.setItem(key, '1');
+    } catch {
+      // An unavailable preference store must not prevent use of the app.
+      return;
+    }
+    this.showInstallPrompt();
   }
 
   async waitForServiceWorkerReady(): Promise<ServiceWorkerRegistration | null> {
@@ -159,21 +164,14 @@ export class PwaService {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return false;
     }
-    if (environment.serviceWorkerEnabled) {
-      return true;
-    }
-    return localStorage.getItem(PwaService.DEV_OVERRIDE_STORAGE_KEY) === 'enabled';
+    return environment.serviceWorkerEnabled;
   }
 
   private shouldEnableNotificationRegistration(): boolean {
     return pwaNotificationRegistrationEnabled({
       activitiesDataSource: environment.activitiesDataSource,
       firebaseMessagingEnabled: environment.firebaseMessagingEnabled,
-      production: environment.production,
-      hostname: window.location.hostname,
-      standalone: this.isStandalone(),
-      devServiceWorkerOverrideEnabled:
-        localStorage.getItem(PwaService.DEV_OVERRIDE_STORAGE_KEY) === 'enabled'
+      serviceWorkerEnabled: environment.serviceWorkerEnabled
     });
   }
 
@@ -367,20 +365,6 @@ export class PwaService {
       );
     }
     this.registrationRef.set(null);
-  }
-
-  private applyDevOverrideFromQuery(): void {
-    const override = resolvePwaDevServiceWorkerOverride(
-      window.location.search,
-      environment.production
-    );
-    if (override === 'enabled') {
-      localStorage.setItem(PwaService.DEV_OVERRIDE_STORAGE_KEY, 'enabled');
-      return;
-    }
-    if (override === 'disabled') {
-      localStorage.removeItem(PwaService.DEV_OVERRIDE_STORAGE_KEY);
-    }
   }
 
   private loadInstallDismissed(): boolean {

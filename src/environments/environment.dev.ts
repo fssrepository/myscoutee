@@ -4,9 +4,8 @@ export const environment = {
   operatorRegistryDataSource: 'http' as 'local' | 'http' | 'session',
   bootstrapOffsetInDays: 0,
   apiBaseUrl: '/api',
-  serviceWorkerEnabled: false,
-  firebaseLoginEnabled: false,
-  firebaseLoginQaOverrideEnabled: true,
+  serviceWorkerEnabled: true,
+  firebaseLoginEnabled: true,
   firebaseMessagingEnabled: true,
   paymentIntegrationEnabled: true,
   paymentSimulatorConfigUrl: '/api/admin/payment-simulator/configuration-access' as string | null

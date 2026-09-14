@@ -54,6 +54,9 @@ import {
 import {
   FirebaseAppService
 } from '../../../shared/core/base/services/firebase-app.service';
+import { FirebaseMessagingService } from '../../../shared/core/base/services/firebase-messaging.service';
+import { AppLocationService } from '../../../shared/core/base/services/app-location.service';
+import { AppSetupStore } from '../../../shared/ui/context/stores/app-setup.store';
 import {
   I18nService
 } from '../../../shared/core/base/services/i18n.service';
@@ -137,8 +140,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
-  private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
-  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 0;
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -150,6 +151,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly firebaseAppService = inject(FirebaseAppService);
+  private readonly firebaseMessagingService = inject(FirebaseMessagingService);
+  private readonly appLocationService = inject(AppLocationService);
+  private readonly appSetupStore = inject(AppSetupStore);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
@@ -299,7 +303,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     if (
       !options.bypassConsumerEligibility
-      && this.isLoginLocationRequiredByLandingBundle()
+      && this.authMode === 'firebase'
+      && (this.isLoginLocationRequiredByLandingBundle()
+        || this.firebaseMessagingService.entryPermissionPending)
     ) {
       const allowed = await this.ensureHttpLoginAccessAllowed();
       if (!allowed) {
@@ -532,7 +538,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.loginEligibilityBusy = true;
     try {
       const gateState = this.landingLoginAvailability;
-      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
+      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true
+        && !this.firebaseMessagingService.entryPermissionPending) {
         return true;
       }
       if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
@@ -1039,112 +1046,24 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return initials || 'U';
   }
 
-  private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      return null;
-    }
-
-    return new Promise<LocationCoordinates | null>(resolve => {
-      let settled = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (coordinates: LocationCoordinates | null): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-        }
-        resolve(coordinates);
-      };
-
-      timeoutId = setTimeout(
-        () => finish(null),
-        EntryPageComponent.LOCATION_REQUEST_TIMEOUT_MS + 500
-      );
-
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const latitude = Number(position.coords.latitude);
-          const longitude = Number(position.coords.longitude);
-          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            finish(null);
-            return;
-          }
-          finish({ latitude, longitude });
-        },
-        () => finish(null),
-        {
-          enableHighAccuracy: false,
-          timeout: EntryPageComponent.LOCATION_REQUEST_TIMEOUT_MS,
-          maximumAge: EntryPageComponent.LOCATION_REQUEST_MAXIMUM_AGE_MS
-        }
-      );
-    });
+  private requestCurrentLocation(): Promise<LocationCoordinates | null> {
+    return this.appLocationService.requestCurrentCoordinates();
   }
 
   private requestLocationAccessFromDialog(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
-      let settled = false;
-      const settle = (allowed: boolean): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        setTimeout(() => resolve(allowed), 0);
-      };
-
-      this.dialogStore.open({
-        title: this.uiText('Location Required For Login'),
-        message: this.uiText('We need your location before login so we can apply the region-based security check.'),
-        cancelLabel: this.uiText('Not now'),
-        confirmLabel: this.uiText('Allow location'),
-        busyConfirmLabel: this.uiText('Checking location...'),
-        failureMessage: this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'),
-        allowBackdropClose: true,
-        allowEscapeClose: true,
-        onCancel: () => settle(false),
-        onConfirm: async () => {
-          const coordinates = await this.requestCurrentLocation();
-          if (!coordinates) {
-            throw new Error(this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
-          }
-
-          let result: UserLocationEligibilityResponseDto;
-          try {
-            result = await this.usersService.checkLocationEligibility(coordinates);
-          } catch {
-            this.markEntryNetworkUnavailable();
-            settle(false);
-            setTimeout(() => {
-              this.dialogStore.openInfo(
-                this.uiText('The server is not reachable right now. Please try again when the network is back.'),
-                {
-                  title: this.uiText('No network'),
-                  confirmLabel: this.uiText('OK')
-                }
-              );
-            }, 0);
-            return;
-          }
-          this.syncLandingLoginAvailability(result, 'coordinates');
-          if (result.eligible) {
-            settle(true);
-            return;
-          }
-
-          settle(false);
-          setTimeout(() => {
-            this.dialogStore.openInfo(
-              this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
-              {
-                title: this.uiText('please.register'),
-                confirmLabel: this.uiText('OK')
-              }
-            );
-          }, 0);
-        }
-      });
+    return this.appSetupStore.requestForLogin(async coordinates => {
+      let result: UserLocationEligibilityResponseDto;
+      try {
+        result = await this.usersService.checkLocationEligibility(coordinates);
+      } catch {
+        this.markEntryNetworkUnavailable();
+        throw new Error(this.uiText('The server is not reachable right now. Please try again when the network is back.'));
+      }
+      this.syncLandingLoginAvailability(result, 'coordinates');
+      if (!result.eligible) {
+        throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
+      }
+      return true;
     });
   }
 

@@ -33,7 +33,9 @@ export class AssetTicketBuilder {
       row.startAt,
       row.endAt,
       row.imageUrl,
-      row.visibility
+      row.visibility,
+      row.creatorName,
+      row.creatorAvatarUrl
     ].map(value => `${value ?? ''}`).join('\u001f');
   }
 

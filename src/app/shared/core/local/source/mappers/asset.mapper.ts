@@ -13,6 +13,7 @@ import type {
   AssetRequestRecord
 } from '../entity/asset.entity';
 import type { EventTicketRecord } from '../entity/event-ticket.entity';
+import type { UserRecord } from '../entity/user.entity';
 
 import type * as AppDTOs from '../../../contracts';
 import * as AppConstants from '../../../common/constants';
@@ -747,11 +748,14 @@ export class LocalAssetsMapper {
 
 export class LocalAssetTicketsMapper {
   static toTicketDTOs(
-    records: readonly { ticket: EventTicketRecord; event: ActivityContracts.ActivityEventRecord }[]
+    records: readonly { ticket: EventTicketRecord; event: ActivityContracts.ActivityEventRecord }[],
+    creatorsByUserId: Readonly<Record<string, UserRecord>> = {}
   ): AssetContracts.AssetTicketDTO[] {
     return this.cloneDTOs(records
       .filter(({ ticket }) => ticket.status === 'A')
-      .map(({ ticket, event }) => this.toTicketDTO(ticket, event, LocalActivityEventsMapper.toDto(event))));
+      .map(({ ticket, event }) => this.toTicketDTO(
+        ticket, LocalActivityEventsMapper.toDto(event), creatorsByUserId[event.creatorUserId ?? '']
+      )));
   }
 
   static pageRows(
@@ -778,9 +782,11 @@ export class LocalAssetTicketsMapper {
 
   private static toTicketDTO(
     ticket: EventTicketRecord,
-    record: ActivityContracts.ActivityEventRecord,
-    dto: ActivityContracts.ActivityEventDTO
+    dto: ActivityContracts.ActivityEventDTO,
+    creator?: UserRecord
   ): AssetContracts.AssetTicketDTO {
+    const creatorName = creator?.name?.trim() || dto.creatorName;
+    const creatorAvatarUrl = AppUtils.firstImageUrl(creator?.images);
     return {
       id: dto.id,
       revision: [
@@ -796,7 +802,9 @@ export class LocalAssetTicketsMapper {
         dto.startAtIso,
         dto.endAtIso,
         dto.imageUrl,
-        dto.visibility
+        dto.visibility,
+        creatorName,
+        creatorAvatarUrl
       ].map(value => `${value ?? ''}`).join('\u001f'),
       scanCode: ticket.code,
       holderUserId: ticket.holderUserId,
@@ -815,7 +823,9 @@ export class LocalAssetTicketsMapper {
       imageUrl: dto.imageUrl,
       visibility: dto.visibility,
       avatarInitials: dto.creatorInitials,
-      creatorInitials: dto.creatorInitials
+      creatorInitials: dto.creatorInitials,
+      creatorName,
+      creatorAvatarUrl
     };
   }
 

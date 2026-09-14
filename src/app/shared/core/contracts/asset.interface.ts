@@ -464,6 +464,8 @@ export interface AssetTicketDTO {
   visibility?: AppConstants.EventVisibility | null;
   avatarInitials?: string | null;
   creatorInitials?: string | null;
+  creatorName?: string | null;
+  creatorAvatarUrl?: string | null;
 }
 
 export interface AssetTicketPageResultDTO {

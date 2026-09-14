@@ -1,12 +1,12 @@
 import {
-  HttpClient
-} from '@angular/common/http';
-import {
   DestroyRef,
   Injectable,
   Injector,
   effect,
-  inject
+  inject,
+  signal,
+  computed,
+  untracked
 } from '@angular/core';
 import {
   deleteApp,
@@ -36,6 +36,7 @@ import {
   type FirebaseConfigFile
 } from './firebase-app.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { DeviceRegistrationsService } from './device-registrations.service';
 import { DeploymentConfigurationService } from './deployment-configuration.service';
 
 export interface FirebaseMessagingReadinessProof {
@@ -59,23 +60,59 @@ export class FirebaseMessagingService {
   private static readonly SERVICE_WORKER_READY_TIMEOUT_MS = 10_000;
   private static readinessAppSequence = 0;
 
-  private readonly http = inject(HttpClient);
+  private readonly deviceRegistrations = inject(DeviceRegistrationsService);
+  private localDeviceOperation: Promise<void> = Promise.resolve();
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
-  private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private initialized = false;
+  private readonly deviceEnabled = signal(typeof localStorage === 'undefined'
+    || localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled) !== 'false');
+  readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
+    && this.notificationPermission() === 'granted');
+  private deviceOperationRevision = 0;
+
+  async setDeviceNotificationsEnabled(enabled: boolean): Promise<void> {
+    this.deviceOperationRevision++;
+    this.deviceEnabled.set(enabled);
+    localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, String(enabled));
+    if (enabled) {
+      await this.requestAndRegisterForActiveUser();
+    } else {
+      this.unbindForegroundMessages();
+      await this.unregisterStoredDevice(true);
+    }
+  }
+
+  private readonly notificationPermissionRef = signal<NotificationPermission | null>(
+    typeof Notification === 'undefined' ? null : Notification.permission
+  );
+  readonly notificationPermission = this.notificationPermissionRef.asReadonly();
   private foregroundListenerApp: FirebaseApp | null = null;
   private foregroundListenerUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.destroyRef.onDestroy(() => this.unbindForegroundMessages());
+    if (typeof window !== 'undefined') {
+      const refresh = () => this.refreshNotificationPermission();
+      window.addEventListener('focus', refresh);
+      this.destroyRef.onDestroy(() => window.removeEventListener('focus', refresh));
+    }
+  }
+
+  refreshNotificationPermission(): void {
+    this.notificationPermissionRef.set(typeof Notification === 'undefined' ? null : Notification.permission);
+  }
+
+  get notificationsConfigured(): boolean {
+    return this.enabled && !!this.firebaseAppService.activeRuntime()?.config.vapidKey
+      && typeof Notification !== 'undefined';
   }
 
   initialize(): void {
-    if (this.initialized || !this.enabled) {
+    if (this.initialized || (!this.enabled && !this.deviceRegistrations.isLocal)) {
       return;
     }
     this.initialized = true;
@@ -84,6 +121,14 @@ export class FirebaseMessagingService {
       () => {
         const runtime = this.firebaseAppService.activeRuntime();
         const userId = this.userProfileStore.activeUserId().trim();
+        if (this.deviceRegistrations.isLocal) {
+          if (userId && this.notificationPermission() === 'granted') {
+            untracked(() => {
+              if (this.deviceEnabled()) void this.updateLocalDevice(true).catch(() => undefined);
+            });
+          }
+          return;
+        }
         if (
           !runtime
           || !userId
@@ -103,14 +148,14 @@ export class FirebaseMessagingService {
           }
           return;
         }
-        void this.registerActiveDevice(runtime);
+        untracked(() => { if (this.deviceEnabled()) void this.registerActiveDevice(runtime); });
       },
       { injector: this.injector }
     );
   }
 
   async requestAndRegisterForActiveUser(): Promise<void> {
-    if (!this.enabled || typeof Notification === 'undefined') {
+    if ((!this.enabled && !this.deviceRegistrations.isLocal) || !this.deviceEnabled() || typeof Notification === 'undefined') {
       return;
     }
     if (Notification.permission === 'default') {
@@ -124,7 +169,30 @@ export class FirebaseMessagingService {
       await this.unregisterStoredDevice();
       return;
     }
+    if (this.deviceRegistrations.isLocal) {
+      await this.updateLocalDevice(true);
+      return;
+    }
     await this.registerActiveDevice();
+  }
+
+  get entryPermissionPending(): boolean {
+    this.notificationPermissionRef();
+    return this.notificationsConfigured && Notification.permission !== 'granted';
+  }
+
+  requestEntryPermission(): Promise<NotificationPermission | null> {
+    // Call synchronously from the confirmation gesture, before location or
+    // network awaits consume the browser's transient user activation.
+    const decision = typeof Notification === 'undefined'
+      ? Promise.resolve(null)
+      : Notification.permission === 'default'
+        ? Notification.requestPermission().catch(() => 'denied' as const)
+        : Promise.resolve(Notification.permission);
+    return decision.then(permission => {
+      this.refreshNotificationPermission();
+      return permission;
+    });
   }
 
   async createBrowserReadinessLease(
@@ -213,9 +281,10 @@ export class FirebaseMessagingService {
   private async registerActiveDevice(
     expectedRuntime?: FirebaseAppRuntime
   ): Promise<void> {
-    if (!this.enabled) {
+    if (!this.enabled || !this.deviceEnabled()) {
       return;
     }
+    const revision = this.deviceOperationRevision;
     const userId = this.userProfileStore.activeUserId().trim();
     if (!userId) {
       return;
@@ -248,24 +317,23 @@ export class FirebaseMessagingService {
         return;
       }
       if (
-        this.firebaseAppService.activeRuntime()?.app
+        revision !== this.deviceOperationRevision || !this.deviceEnabled()
+        || this.firebaseAppService.activeRuntime()?.app
           !== firebaseRuntime.app
         || this.userProfileStore.activeUserId().trim() !== userId
       ) {
         return;
       }
-      await this.http.post(
-        `${this.apiBaseUrl}/activities/chats/devices`,
-        {
+      await this.deviceRegistrations.upsert({
           userId,
           deviceId: this.resolveDeviceId(),
           platform: this.isStandalone() ? 'web-pwa' : 'web-browser',
           firebaseToken,
           notificationsEnabled: true
-        }
-      ).toPromise();
+      });
       if (
-        this.firebaseAppService.activeRuntime()?.app
+        revision !== this.deviceOperationRevision || !this.deviceEnabled()
+        || this.firebaseAppService.activeRuntime()?.app
           !== firebaseRuntime.app
         || this.userProfileStore.activeUserId().trim() !== userId
       ) {
@@ -328,7 +396,11 @@ export class FirebaseMessagingService {
     }
   }
 
-  private async unregisterStoredDevice(): Promise<void> {
+  private async unregisterStoredDevice(strict = false): Promise<void> {
+    if (this.deviceRegistrations.isLocal) {
+      await this.updateLocalDevice(false);
+      return;
+    }
     if (!this.enabled) {
       return;
     }
@@ -351,18 +423,39 @@ export class FirebaseMessagingService {
     }
 
     try {
-      await this.http.request('delete', `${this.apiBaseUrl}/activities/chats/devices`, {
-        body: {
+      await this.deviceRegistrations.remove({
           userId,
           deviceId: this.resolveDeviceId(),
           firebaseToken
-        }
-      }).toPromise();
-    } catch {
-      // Ignore backend cleanup failures while clearing local state.
+      });
+    } catch (error) {
+      // Explicit device opt-out must report failure and retain the token for retry.
+      if (strict) throw error;
     }
     localStorage.removeItem(FirebaseMessagingService.TOKEN_STORAGE_KEY);
     localStorage.removeItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY);
+  }
+
+  private updateLocalDevice(enabled: boolean): Promise<void> {
+    const userId = this.userProfileStore.activeUserId().trim();
+    if (!userId) return Promise.resolve();
+    const revision = this.deviceOperationRevision;
+    const deviceId = this.resolveDeviceId();
+    const operation = this.localDeviceOperation.catch(() => undefined).then(async () => {
+      if (revision !== this.deviceOperationRevision || this.userProfileStore.activeUserId().trim() !== userId) return;
+      if (!enabled) {
+        await this.deviceRegistrations.remove({ userId, deviceId });
+        return;
+      }
+      await this.deviceRegistrations.upsert({ userId, deviceId,
+        platform: this.isStandalone() ? 'web-pwa' : 'web-browser', notificationsEnabled: true });
+      if (revision !== this.deviceOperationRevision || !this.deviceEnabled()
+        || this.userProfileStore.activeUserId().trim() !== userId) {
+        await this.deviceRegistrations.remove({ userId, deviceId });
+      }
+    });
+    this.localDeviceOperation = operation;
+    return operation;
   }
 
   private resolveDeviceId(): string {
@@ -437,13 +530,11 @@ export class FirebaseMessagingService {
       return;
     }
     try {
-      await this.http.request('delete', `${this.apiBaseUrl}/activities/chats/devices`, {
-        body: {
+      await this.deviceRegistrations.remove({
           userId,
           deviceId: this.resolveDeviceId(),
           firebaseToken
-        }
-      }).toPromise();
+      });
     } catch {
       // Ignore backend cleanup failures and keep the next registration attempt moving.
     }
@@ -456,11 +547,7 @@ export class FirebaseMessagingService {
     return pwaNotificationRegistrationEnabled({
       activitiesDataSource: environment.activitiesDataSource,
       firebaseMessagingEnabled: environment.firebaseMessagingEnabled,
-      production: environment.production,
-      hostname: window.location.hostname,
-      standalone: this.isStandalone(),
-      devServiceWorkerOverrideEnabled:
-        localStorage.getItem(APP_STORAGE_KEYS.pwaDevServiceWorker) === 'enabled'
+      serviceWorkerEnabled: environment.serviceWorkerEnabled
     });
   }
 }

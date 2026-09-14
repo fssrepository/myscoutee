@@ -443,10 +443,8 @@ export class SessionService {
   }
 
   private async initializeFirebaseMessagingForSession(session: AppSession): Promise<void> {
-    if (session.kind !== 'firebase'
-      || environment.activitiesDataSource !== 'http'
-      || !environment.firebaseMessagingEnabled
-      || this.isLoopbackBrowserHost()) {
+    if (environment.activitiesDataSource === 'http' && (session.kind !== 'firebase'
+      || !environment.firebaseMessagingEnabled || !environment.serviceWorkerEnabled)) {
       return;
     }
     const { FirebaseMessagingService } = await import('./firebase-messaging.service');

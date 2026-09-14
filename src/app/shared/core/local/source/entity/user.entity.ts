@@ -1,3 +1,4 @@
+import type { DeviceRegistrationRecord } from './device-registration.entity';
 import type {
   DetailPrivacy,
   ProfileStatus,
@@ -89,6 +90,7 @@ export interface UserEventFeedbackCountersRecord {
 }
 
 export interface UserRecord {
+  devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;
   age: number;

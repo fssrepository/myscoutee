@@ -9,6 +9,8 @@ import type {
   NotificationSyncResponseDto
 } from '../../../core/contracts/notification.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
+import { FirebaseMessagingService } from '../../../core/base/services/firebase-messaging.service';
+import { I18nService } from '../../../core/base/services/i18n.service';
 import { NotificationsService } from '../../../core/base/services/notifications.service';
 import type { AppMenuDragPosition } from '../../components/core/menu';
 import { ActivityStore } from './activity.store';
@@ -30,6 +32,12 @@ export interface NotificationUnreadSyncToken {
 })
 export class NotificationCenterStore {
   private readonly notificationsService = inject(NotificationsService);
+  private readonly messaging = inject(FirebaseMessagingService);
+  private readonly i18n = inject(I18nService);
+  readonly permissionPromptPending = signal(false);
+  readonly permissionBusy = signal(false);
+  readonly permissionActionPending = computed(() => this.permissionPromptPending() || this.permissionBusy());
+  readonly permissionRequired = computed(() => this.messaging.entryPermissionPending);
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
 
@@ -46,13 +54,13 @@ export class NotificationCenterStore {
   readonly isOpen = this.openRef.asReadonly();
   readonly visible = this.isOpen;
   readonly unreadCount = this.unreadCountRef.asReadonly();
-  readonly muted = this.mutedRef.asReadonly();
+  readonly muted = computed(() => this.mutedRef() || this.permissionRequired());
   readonly dragPosition = this.dragPositionRef.asReadonly();
   readonly bucket = this.bucketRef.asReadonly();
   readonly attentionVisible = computed(() =>
     this.attentionRequestedRef()
     && this.unreadCountRef() > 0
-    && !this.mutedRef()
+    && !this.muted()
     && !this.openRef()
   );
 
@@ -102,7 +110,7 @@ export class NotificationCenterStore {
   requestAttention(): void {
     if (
       this.unreadCountRef() > 0
-      && !this.mutedRef()
+      && !this.muted()
       && !this.openRef()
     ) {
       this.attentionRequestedRef.set(true);
@@ -141,7 +149,7 @@ export class NotificationCenterStore {
     if (
       options.announce === true
       && nextCount > previousCount
-      && !this.mutedRef()
+      && !this.muted()
       && !this.openRef()
     ) {
       this.attentionRequestedRef.set(true);
@@ -262,17 +270,31 @@ export class NotificationCenterStore {
 
   async setMuted(muted: boolean, signal?: AbortSignal): Promise<boolean> {
     const userId = this.activeUserIdRef();
-    if (!userId) {
-      throw new Error('Notification preferences could not be updated.');
-    }
-    this.pageContextRevision += 1;
+    if (!userId) throw new Error('Notification preferences could not be updated.');
+    if (this.permissionActionPending()) return this.muted();
     const generation = this.generation;
-    const result = await this.notificationsService.setMuted(userId, muted === true, signal);
-    if (generation === this.generation && userId === this.activeUserIdRef()) {
-      this.syncMuted(result.muted === true);
-      this.attentionRequestedRef.set(false);
+    try {
+      if (!muted && this.permissionRequired()) {
+        this.permissionPromptPending.set(true);
+        // Keep the button disabled, without a loading ring, during the native decision.
+        try { await this.messaging.requestEntryPermission(); }
+        finally { this.permissionPromptPending.set(false); }
+        if (this.permissionRequired()) throw new Error(this.i18n.translate('entry.permissions.notifications.blocked'));
+      }
+      if (generation !== this.generation || userId !== this.activeUserIdRef()) return this.muted();
+      this.permissionBusy.set(true);
+      if (!muted) await this.messaging.requestAndRegisterForActiveUser();
+      if (generation !== this.generation || userId !== this.activeUserIdRef()) return this.muted();
+      this.pageContextRevision += 1;
+      const result = await this.notificationsService.setMuted(userId, muted === true, signal);
+      if (generation === this.generation && userId === this.activeUserIdRef()) {
+        this.syncMuted(result.muted === true);
+        this.attentionRequestedRef.set(false);
+      }
+      return result.muted === true;
+    } finally {
+      this.permissionBusy.set(false);
     }
-    return result.muted === true;
   }
 
   pollIntervalMs(): number {

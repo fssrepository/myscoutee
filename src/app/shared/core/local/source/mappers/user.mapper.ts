@@ -5,7 +5,8 @@ import type { UserRecord } from '../entity/user.entity';
 
 export class LocalUsersMapper {
   static toDto(record: UserRecord): UserDto {
-    return this.cloneUser(record);
+    const { devices: _devices, ...profile } = record;
+    return this.cloneUser(profile);
   }
 
   static toDtoList(records: readonly UserRecord[]): UserDto[] {

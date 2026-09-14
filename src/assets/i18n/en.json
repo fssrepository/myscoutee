@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.14.en.90",
+  "version": "2026.09.14.en.100",
   "messages": {
     "clipboard.paste.permission.help": "Clipboard access failed. Allow it in the browser site settings and press Paste link again, or paste the link manually.",
     "no.network": "No network",
@@ -1282,7 +1282,7 @@
     "close.articles": "Close articles",
     "footer.connect": "Let's connect",
     "footer.tagline": "Where fast matches turn into real connections.",
-    "install.prompt.description": "Install {productName} for quick access from your home screen.",
+    "install.prompt.description": "Open {productName} quickly from your home screen, in its own window without browser tabs. Notifications can alert you to new messages when you grant permission separately.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "Keep tickets, cached profile details, and chat notifications available with the installed app.",
     "later": "Later",
     "loading.stats": "Loading stats",
@@ -3398,6 +3398,19 @@
     "notification.security.login.title": "Security alert",
     "notification.security.login.new.message": "New login from {clientLabel}.",
     "notification.security.login.blocked.message": "Blocked login attempt from {clientLabel}: two sessions are already active.",
-    "operator.request.failed": "The operator request failed."
+    "operator.request.failed": "The operator request failed.",
+    "entry.permissions.title": "Permissions before sign-in",
+    "entry.permissions.description": "Location is required to check availability in your region. Notifications alert you to new messages and events. After confirmation, the browser asks for notifications, then location, one at a time. A blocked permission can be changed in site settings.",
+    "entry.permissions.checking": "Saving…",
+    "install.app": "Install",
+    "entry.permissions.notifications.blocked": "Allow notifications in the browser site settings, then try again.",
+    "app.setup.title": "Permissions and installation",
+    "app.setup.description": "Quick access in its own app window.",
+    "app.setup.location": "Location",
+    "app.setup.notifications": "Notifications",
+    "app.setup.permission.help": "Location is required to sign in.",
+    "app.setup.allow": "Allow",
+    "app.setup.permissions": "Permissions",
+    "app.setup.update": "Update"
   }
 }

@@ -33,6 +33,7 @@ export class AssetTicketInfoCardConverter {
       },
       mediaStart: {
         variant: 'avatar',
+        imageUrl: row.creatorAvatarUrl?.trim() || null,
         tone: this.ticketSourceAvatarTone(row),
         label: this.ticketSourceAvatarLabel(row),
         interactive: false,
@@ -121,7 +122,7 @@ export class AssetTicketInfoCardConverter {
     if (explicit) {
       return explicit.slice(0, 2).toUpperCase();
     }
-    return AppUtils.initialsFromText(row.title);
+    return AppUtils.initialsFromText(row.creatorName?.trim() || row.title);
   }
 }
 

@@ -79,6 +79,7 @@
             [class.app-menu__button-row-item--active]="isItemActive(item)"
             [class.app-menu__button-row-item--open]="isActionRowItemOpen(item)"
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
+            [attr.data-toggle-palette]="item.togglePalette ?? null"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
             [class.app-menu__button-row-item--action]="isActionLayoutItem(item)"
             [class.app-menu__button-row-item--image]="isImageLayoutItem(item)"
@@ -186,6 +187,8 @@
               @if (isLabeledActionRowItem(item) && showActionRowToggleIndicator(item)) {
                 <span
                   class="app-menu__tabs-toggle app-menu__button-row-toggle"
+                  [ngClass]="togglePaletteClass(item)"
+                  [attr.data-toggle-palette]="item.togglePalette ?? null"
                   [class.app-menu__tabs-toggle--active]="isItemActive(item)"
                   aria-hidden="true"
                 >

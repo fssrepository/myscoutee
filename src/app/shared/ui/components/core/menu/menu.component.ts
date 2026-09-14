@@ -303,6 +303,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.panelVisible;
   }
 
+  @HostBinding('class.app-menu-host--content-actions')
+  protected get hostContentActionsClass(): boolean {
+    return this.model?.actionSizing === 'content';
+  }
+
   @HostBinding('class.app-menu-host--compact')
   protected get hostCompactClass(): boolean {
     return this.hasCompactDensity(this.model) || this.hasCompactDensity(this.currentMenuModel());
@@ -1509,6 +1514,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected itemPalette(item: AppMenuItem<TId, TContext>): AppMenuPalette {
     return item.palette ?? 'default';
+  }
+
+  protected togglePaletteClass(item: AppMenuItem<TId, TContext>): string {
+    return item.togglePalette ? this.paletteClass(item.togglePalette) : '';
   }
 
   protected itemPaletteClass(item: AppMenuItem<TId, TContext>): string {

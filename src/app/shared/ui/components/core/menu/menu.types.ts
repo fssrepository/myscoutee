@@ -195,6 +195,8 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   active?: AppMenuLiveValue<boolean | null | undefined>;
   checked?: AppMenuLiveValue<boolean | null | undefined>;
   showCheck?: AppMenuLiveValue<boolean | null | undefined>;
+  /** Optional switch color independent of the menu item palette. */
+  togglePalette?: AppMenuPalette;
   showToggleIndicator?: AppMenuLiveValue<boolean | null | undefined>;
   removable?: AppMenuLiveValue<boolean | null | undefined>;
   removeIcon?: AppMenuLiveValue<string | null | undefined>;
@@ -236,6 +238,8 @@ export interface AppMenuSummary {
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
   layout?: AppMenuLayout;
   density?: AppMenuDensity;
+  /** Content-sized action rows also stay compact on mobile. */
+  actionSizing?: 'fill' | 'content';
   summary?: AppMenuSummary | null;
   valueKey?: AppMenuValueKey | null;
   maxSelected?: number | null;

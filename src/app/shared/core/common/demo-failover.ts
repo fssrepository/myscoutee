@@ -1,14 +1,14 @@
 import { reportBackendStatus } from './backend-connectivity';
 import { environment } from '../../../../environments/environment';
 
-// Opt-in dev experiment. Resolve before importing App: storage keys and adapters
+// Resolve before importing App: storage keys and adapters
 // must see the same environment for the whole lifetime of one page.
-const TRIAL_KEY = 'myscoutee.qa.offline-demo';
+const FAILOVER_KEY = 'myscoutee.demo.failover';
 const HTTP_SESSION = 'myscoutee.http.session.v1';
 const LOCAL_SESSION = 'myscoutee.demo.session.v1';
 const LOCAL_ACTOR = 'myscoutee.demo.demo.active-user.v1';
-const LOCAL_SESSION_BEFORE = `${TRIAL_KEY}.local-session-before`;
-const PAIR_KEY = `${TRIAL_KEY}.pair`;
+const LOCAL_SESSION_BEFORE = `${FAILOVER_KEY}.local-session-before`;
+const PAIR_KEY = `${FAILOVER_KEY}.pair`;
 const API_BASE = environment.apiBaseUrl ?? '/api';
 let enabled = false;
 let local = false;
@@ -46,7 +46,6 @@ function eligibleSession(): DemoSession | null {
 async function backendReachable(): Promise<boolean> {
   try {
     const url = new URL(`${API_BASE.replace(/\/$/, '')}/deployment/configuration`, document.baseURI);
-    url.searchParams.set('qaConnectivity', String(Date.now()));
     const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(2500) });
     const reachable = ![502, 503, 504].includes(response.status);
     reportBackendStatus(response.status);
@@ -75,15 +74,8 @@ function restoreLocalSession(): void {
 }
 
 export async function prepareDemoFailover(): Promise<void> {
-  if (environment.production || environment.activitiesDataSource !== 'http'
-    || !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) return;
-  const option = new URLSearchParams(location.search).get('qaOfflineDemo');
-  if (option === '0') {
-    localStorage.removeItem(TRIAL_KEY);
-    restoreLocalSession();
-  } else if (option === '1') localStorage.setItem(TRIAL_KEY, 'enabled');
-  enabled = localStorage.getItem(TRIAL_KEY) === 'enabled';
-  if (!enabled) return;
+  if (environment.activitiesDataSource !== 'http') return;
+  enabled = true;
   const session = eligibleSession();
   const localId = session && (await demoSeedUserIds()).get(session.userId);
   if (!session || !localId) { restoreLocalSession(); return; }
@@ -98,7 +90,7 @@ export async function prepareDemoFailover(): Promise<void> {
   // An explicit logout in the local demo must not immediately log it back in.
   if (previousPair && readSession(LOCAL_SESSION)?.userId !== localId) {
     enabled = false;
-    localStorage.removeItem(TRIAL_KEY);
+    localStorage.removeItem(HTTP_SESSION);
     restoreLocalSession();
     return;
   }
@@ -115,7 +107,7 @@ export async function prepareDemoFailover(): Promise<void> {
   }
   local = true;
   Object.assign(environment, { activitiesDataSource: 'local', operatorRegistryDataSource: 'local',
-    firebaseLoginEnabled: false, firebaseLoginQaOverrideEnabled: false,
+    firebaseLoginEnabled: false,
     firebaseMessagingEnabled: false, paymentIntegrationEnabled: false, paymentSimulatorConfigUrl: null });
 }
 
