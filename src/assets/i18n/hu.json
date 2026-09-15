@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.15.hu.103",
+  "version": "2026.09.15.hu.104",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3414,6 +3414,10 @@
     "app.setup.permission.help": "A helyadat kötelező a belépéshez.",
     "app.setup.allow": "Engedélyezés",
     "app.setup.permissions": "Engedélyek",
-    "app.setup.update": "Frissítés"
+    "app.setup.update": "Frissítés",
+    "admin.jobs.task.results": "Feladatok legutóbbi eredményei",
+    "admin.jobs.task.next.due": "Feladat következő esedékessége",
+    "User active; rescheduled.": "Aktív felhasználó; ellenőrzés átütemezve.",
+    "Profile set to inactive.": "A profil inaktívra állítva."
   }
 }

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.15.en.103",
+  "version": "2026.09.15.en.104",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3414,6 +3414,10 @@
     "app.setup.permission.help": "Location is required to sign in.",
     "app.setup.allow": "Allow",
     "app.setup.permissions": "Permissions",
-    "app.setup.update": "Update"
+    "app.setup.update": "Update",
+    "admin.jobs.task.results": "Latest task results",
+    "admin.jobs.task.next.due": "Next task due",
+    "User active; rescheduled.": "User active; rescheduled.",
+    "Profile set to inactive.": "Profile set to inactive."
   }
 }

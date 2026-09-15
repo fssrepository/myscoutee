@@ -256,6 +256,33 @@
                     }
                   </div>
                   </section>
+                  @if (rule.ruleKey === 'scheduled-messages') {
+                    <section class="process-card process-task-results">
+                      <div class="process-card-head">
+                        <h3>{{ 'admin.jobs.task.results' | i18n }}</h3>
+                      </div>
+                      <div class="process-history-table">
+                        <div class="process-history-row process-history-head process-task-result-row">
+                          <span>{{ 'admin.jobs.history.when' | i18n }}</span>
+                          <span>{{ 'admin.jobs.task.next.due' | i18n }}</span>
+                          <span>{{ 'admin.jobs.table.affected' | i18n }}</span>
+                          <span>{{ 'admin.jobs.table.status' | i18n }}</span>
+                          <span>{{ 'admin.jobs.history.detail' | i18n }}</span>
+                        </div>
+                        @for (task of rule.taskResults ?? []; track task.taskKey) {
+                          <div class="process-history-row process-task-result-row">
+                            <span [title]="shortDate(task.lastRunAtIso)">{{ shortDate(task.lastRunAtIso) | i18n }}</span>
+                            <span [title]="task.nextDueAtIso ? shortDate(task.nextDueAtIso) : ''">{{ task.nextDueAtIso ? shortDate(task.nextDueAtIso) : '—' }}</span>
+                            <span>{{ task.affectedCount }}</span>
+                            <span>{{ task.status | i18n }}</span>
+                            <span [title]="task.detail | i18n">{{ task.detail | i18n }}</span>
+                          </div>
+                        } @empty {
+                          <div class="process-history-empty">{{ 'admin.jobs.no.runs' | i18n }}</div>
+                        }
+                      </div>
+                    </section>
+                  }
                 </div>
               </app-popup>
           }
