@@ -99,7 +99,9 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(serveAppShell(request));
+    const isAssetPage = url.origin === self.location.origin
+      && url.pathname.startsWith('/assets/') && url.pathname.endsWith('.html');
+    event.respondWith(isAssetPage ? networkFirstStaticAsset(request) : serveAppShell(request));
     return;
   }
 
