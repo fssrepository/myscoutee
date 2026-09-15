@@ -67,12 +67,6 @@
   font-size: 2rem;
 }
 
-.operator-home-heading {
-  color: var(--deployment-brand-text);
-  font-size: 0.96rem;
-  font-weight: 900;
-}
-
 .operator-home-loading {
   flex: 1 1 auto;
   min-height: 280px;
@@ -198,10 +192,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .operator-home-heading {
-    display: none;
   }
 
   .operator-actions app-menu {

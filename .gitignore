@@ -46,6 +46,7 @@ testem.log
 __screenshots__/
 /keys/*.json
 docs/keys/firebase.config.json
+*-firebase-adminsdk-*.json
 /.agent/logs/
 !/keys/*.example.json
 /src/app/shared/core/base/services/test/

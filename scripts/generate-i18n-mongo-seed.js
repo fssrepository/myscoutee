@@ -42,7 +42,11 @@ function readBundle(filePath) {
 }
 
 function writeJson(filePath, data) {
-  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+  const content = `${JSON.stringify(data, null, 2)}\n`;
+  // The dev seed watcher replaces changed collections. Do not trigger an
+  // unnecessary message import when only the published bundle version changed.
+  if (fs.existsSync(filePath) && fs.readFileSync(filePath, 'utf8') === content) return;
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
 function normalizeText(value) {

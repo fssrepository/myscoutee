@@ -1,5 +1,6 @@
 import {
-  HttpClient
+  HttpClient,
+  HttpErrorResponse
 } from '@angular/common/http';
 import {
   Injectable,
@@ -160,6 +161,11 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
       });
     } catch (error) {
+      const status = (error as { status?: number } | null)?.status;
+      if ([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User details request timeout.')) {
+        const cached = this.offlineCache.readUser(normalizedUserId || this.sessionService.activeUserId());
+        if (cached) return cached;
+      }
       if (this.isTimeoutError(error, 'User details request timeout.')) {
         throw error;
       }
@@ -201,6 +207,12 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
       };
     } catch (error) {
+      const status = (error as { status?: number } | null)?.status;
+      const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
+      if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))
+        && this.offlineCache.readUser(cacheUserId)?.user) {
+        return this.readProfileExtByIdFallback(cacheUserId)!;
+      }
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
         throw error;
       }
@@ -224,6 +236,7 @@ export class HttpUsersService implements UserService {
       type HttpLongPollResponse = {
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
+        notificationDevices?: UserRealtimeLongPollResponseDto['notificationDevices'];
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
         offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
@@ -248,6 +261,9 @@ export class HttpUsersService implements UserService {
       return {
         userId: response.userId ?? normalizedUserId,
         profileStatus: response.profileStatus ?? null,
+        notificationDevices: response.notificationDevices?.map(device => ({
+          deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
+        })),
         counters: response.counters,
         impressions: response.impressions,
         offlineTicketSnapshot: response.offlineTicketSnapshot
@@ -433,6 +449,11 @@ export class HttpUsersService implements UserService {
       }
       if (this.isTimeoutError(error, 'Logout request timeout.')) {
         throw error;
+      }
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        // The session is already unauthorized. Let SessionService complete
+        // local sign-out and clear the current user's private cache.
+        return { submitted: true, message: null };
       }
       return {
         submitted: false,

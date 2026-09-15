@@ -38,14 +38,18 @@ export class LocalAssetTicketsRepository {
 
   async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
     return LocalAssetTicketsMapper.pageRows(
-      LocalAssetTicketsMapper.toTicketDTOs(this.visibleTicketRecordsByUser(query.userId)),
+      LocalAssetTicketsMapper.toTicketDTOs(
+        this.visibleTicketRecordsByUser(query.userId), this.memoryDb.read()[USERS_TABLE_NAME].byId
+      ),
       query
     );
   }
 
   syncTickets(request: AssetContracts.AssetTicketSyncRequestDTO): AssetContracts.AssetTicketSyncResultDTO {
     const rows = LocalAssetTicketsMapper.pageRows(
-      LocalAssetTicketsMapper.toTicketDTOs(this.visibleTicketRecordsByUser(request.userId)),
+      LocalAssetTicketsMapper.toTicketDTOs(
+        this.visibleTicketRecordsByUser(request.userId), this.memoryDb.read()[USERS_TABLE_NAME].byId
+      ),
       {
         userId: request.userId,
         page: 0,
@@ -243,7 +247,9 @@ export class LocalAssetTicketsRepository {
 
     const usedAtIso = new Date().toISOString();
     const usedTicket = this.persistTicketCheckIn(ticket.id, actorUserId, usedAtIso);
-    const ticketRow = LocalAssetTicketsMapper.toTicketDTOs([{ ticket: usedTicket, event }])[0];
+    const ticketRow = LocalAssetTicketsMapper.toTicketDTOs(
+      [{ ticket: usedTicket, event }], this.memoryDb.read()[USERS_TABLE_NAME].byId
+    )[0];
     if (!ticketRow) {
       return this.invalid('revoked');
     }

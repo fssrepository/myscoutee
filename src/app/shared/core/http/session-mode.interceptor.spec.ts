@@ -58,6 +58,50 @@ describe('sessionModeInterceptor bootstrap isolation', () => {
   });
 });
 
+describe('sessionModeInterceptor anonymous demo registration', () => {
+  const session = { currentSession: () => null, authMode: 'selector' };
+
+  beforeEach(() => {
+    session.authMode = 'selector';
+    TestBed.configureTestingModule({
+      providers: [{ provide: SessionService, useValue: session }]
+    });
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('routes draft image uploads to demo storage without inventing a logged-in user', async () => {
+    const body = new FormData();
+    body.append('ownerId', 'demo-profile-new-member');
+    const request = new HttpRequest('POST', '/api/media/images', body);
+    expect((await interceptHeader(request)).body).toBe(DEMO_SESSION_VALUE);
+    expect((await interceptHeader(request, DEMO_USER_HEADER)).body).toBeNull();
+  });
+
+  it('saves the completed draft in the demo database', async () => {
+    const request = new HttpRequest('POST', '/api/auth/me/profile-ext', {
+      profile: { id: 'demo-profile-new-member' }
+    });
+    expect((await interceptHeader(request)).body).toBe(DEMO_SESSION_VALUE);
+  });
+
+  it('keeps real-owner uploads and unrelated writes outside demo registration', async () => {
+    const body = new FormData();
+    body.append('ownerId', 'real-member');
+    expect((await interceptHeader(new HttpRequest('POST', '/api/media/images', body))).body).toBeNull();
+    expect((await interceptHeader(new HttpRequest('POST', '/api/admin/users', {
+      profile: { id: 'demo-profile-new-member' }
+    }))).body).toBeNull();
+  });
+
+  it('does not mark unauthenticated Firebase-mode uploads as demo', async () => {
+    session.authMode = 'firebase';
+    const body = new FormData();
+    body.append('ownerId', 'demo-profile-new-member');
+    expect((await interceptHeader(new HttpRequest('POST', '/api/media/images', body))).body).toBeNull();
+  });
+});
+
 function interceptHeader(
   request: HttpRequest<unknown>,
   headerName = DEMO_SESSION_HEADER

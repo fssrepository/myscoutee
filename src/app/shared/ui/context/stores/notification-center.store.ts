@@ -30,6 +30,8 @@ export interface NotificationUnreadSyncToken {
 })
 export class NotificationCenterStore {
   private readonly notificationsService = inject(NotificationsService);
+  readonly permissionBusy = signal(false);
+  readonly permissionActionPending = this.permissionBusy.asReadonly();
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
 
@@ -52,7 +54,7 @@ export class NotificationCenterStore {
   readonly attentionVisible = computed(() =>
     this.attentionRequestedRef()
     && this.unreadCountRef() > 0
-    && !this.mutedRef()
+    && !this.muted()
     && !this.openRef()
   );
 
@@ -102,7 +104,7 @@ export class NotificationCenterStore {
   requestAttention(): void {
     if (
       this.unreadCountRef() > 0
-      && !this.mutedRef()
+      && !this.muted()
       && !this.openRef()
     ) {
       this.attentionRequestedRef.set(true);
@@ -141,7 +143,7 @@ export class NotificationCenterStore {
     if (
       options.announce === true
       && nextCount > previousCount
-      && !this.mutedRef()
+      && !this.muted()
       && !this.openRef()
     ) {
       this.attentionRequestedRef.set(true);
@@ -262,17 +264,21 @@ export class NotificationCenterStore {
 
   async setMuted(muted: boolean, signal?: AbortSignal): Promise<boolean> {
     const userId = this.activeUserIdRef();
-    if (!userId) {
-      throw new Error('Notification preferences could not be updated.');
-    }
-    this.pageContextRevision += 1;
+    if (!userId) throw new Error('Notification preferences could not be updated.');
+    if (this.permissionActionPending()) return this.muted();
     const generation = this.generation;
-    const result = await this.notificationsService.setMuted(userId, muted === true, signal);
-    if (generation === this.generation && userId === this.activeUserIdRef()) {
-      this.syncMuted(result.muted === true);
-      this.attentionRequestedRef.set(false);
+    try {
+      this.permissionBusy.set(true);
+      this.pageContextRevision += 1;
+      const result = await this.notificationsService.setMuted(userId, muted === true, signal);
+      if (generation === this.generation && userId === this.activeUserIdRef()) {
+        this.syncMuted(result.muted === true);
+        this.attentionRequestedRef.set(false);
+      }
+      return result.muted === true;
+    } finally {
+      this.permissionBusy.set(false);
     }
-    return result.muted === true;
   }
 
   pollIntervalMs(): number {

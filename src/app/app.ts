@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -9,7 +9,7 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { PromptComponent, type PromptModel } from './shared/ui/components/core/prompt';
+import { AppSetupPopupComponent } from './shared/ui/components/app-setup-popup/app-setup-popup.component';
 import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
@@ -21,7 +21,7 @@ import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payme
   imports: [
     RouterOutlet,
     NgComponentOutlet,
-    PromptComponent,
+    AppSetupPopupComponent,
     PaymentAuthorizationPopupComponent
   ],
   templateUrl: './app.html',
@@ -62,44 +62,7 @@ export class App implements OnDestroy {
   protected showSideMenu = false;
   protected readonly sideMenuComponent = this.sideMenuComponentRef.asReadonly();
   protected routeWarmupVisible = false;
-  protected readonly installPromptVisible = this.pwaService.installPromptVisible;
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
-  protected readonly installPromptBusy = this.pwaService.installBusy;
-  protected readonly installPromptModel = computed<PromptModel>(() => {
-    const visible = this.installPromptVisible();
-    const busy = this.installPromptBusy();
-    const branding = this.deploymentBranding();
-    this.i18nService.revision();
-    const title = this.i18nService.translateParams(
-      'add.myscoutee.to.your.home.screen',
-      { productName: branding.productName }
-    );
-    return {
-      visible,
-      busy,
-      tone: 'info',
-      icon: branding.logoUrl
-        ? {
-            kind: 'image',
-            src: branding.logoUrl,
-            alt: ''
-          }
-        : null,
-      title,
-      description: this.i18nService.translateParams(
-        'install.prompt.description',
-        { productName: branding.productName }
-      ),
-      ariaLabel: title,
-      closeAriaLabel: this.i18nService.translate('dismiss', 'Dismiss'),
-      action: {
-        icon: 'add_to_home_screen',
-        label: this.i18nService.translate('add.to.home.screen'),
-        busyLabel: this.i18nService.translate('opening'),
-        ariaLabel: this.i18nService.translate('add.to.home.screen')
-      }
-    };
-  });
 
   constructor() {
     const initialRouteUrl = this.resolveInitialRouteUrl();
@@ -333,14 +296,4 @@ export class App implements OnDestroy {
     return normalizedPathname;
   }
 
-  protected async onInstallRequested(): Promise<void> {
-    const accepted = await this.pwaService.promptInstall();
-    if (accepted) {
-      await this.pwaService.requestNotificationRegistrationForActiveUser();
-    }
-  }
-
-  protected onInstallDismissed(): void {
-    this.pwaService.dismissInstallPrompt();
-  }
 }

@@ -437,7 +437,7 @@ export class SeedDemoBootstrapService {
 
   private async seedDemoOperatorTransaction(): Promise<void> {
     const context = await this.operatorSeed.prepareBootstrap();
-    await this.runBootstrapStep('users', () => this.operatorSeed.seedUsers(context));
+    await this.runBootstrapStep('operatorUsers', () => this.operatorSeed.seedUsers(context));
     await this.runBootstrapStep('indexedDb', () => this.operatorSeed.seedRegistry(context));
   }
 

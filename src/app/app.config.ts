@@ -8,12 +8,14 @@ import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interc
 import { operatorBootstrapAuthInterceptor } from './shared/core/http/operator-bootstrap-auth.interceptor';
 import { paymentProviderSyncInterceptor } from './shared/core/http/payment-provider-sync.interceptor';
 import { sessionModeInterceptor } from './shared/core/http/session-mode.interceptor';
+import { connectivityInterceptor } from './shared/core/http/connectivity.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([
+      connectivityInterceptor,
       sessionModeInterceptor,
       operatorBootstrapAuthInterceptor,
       firebaseAuthInterceptor,

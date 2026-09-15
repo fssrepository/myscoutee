@@ -218,7 +218,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -249,7 +249,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,

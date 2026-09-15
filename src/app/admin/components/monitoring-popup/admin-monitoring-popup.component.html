@@ -49,6 +49,7 @@
                       @for (metric of node.metrics; track metric.key) {
                         <span
                           class="monitoring-badge"
+                          [attr.title]="(metric.labelKey | i18n) + ': ' + metric.valueLabel"
                           [ngClass]="['tone-' + metric.tone, healthClass(metric.status)]"
                           [ngStyle]="metricChipStyle(metric)"
                         >
@@ -60,7 +61,7 @@
                   </div>
                   @if (!last && edgeAfter(category, index); as edge) {
                     <div class="monitoring-edge" [ngClass]="'tone-' + edge.tone">
-                      <span>{{ edge.labelKey | i18n }}</span>
+                      <span [attr.title]="edge.labelKey | i18n">{{ edge.labelKey | i18n }}</span>
                       <strong>{{ edge.volume }}</strong>
                       <mat-icon>arrow_forward</mat-icon>
                     </div>

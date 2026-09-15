@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, forwardRef, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, forwardRef, inject, Input, signal } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { AppUtils } from '../../../../../../app-utils';
+import { I18nService } from '../../../../../../core/base/services/i18n.service';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -59,6 +60,8 @@ export class LinkInputComponent implements ControlValueAccessor {
   @Input() disabled = false;
 
   protected value = '';
+  protected readonly clipboardError = signal('');
+  private readonly i18n = inject(I18nService);
 
   private controlDisabled = false;
   private onValueChange: (value: string) => void = () => undefined;
@@ -210,13 +213,17 @@ export class LinkInputComponent implements ControlValueAccessor {
   }
 
   private async pasteFromClipboard(): Promise<void> {
-    if (this.inputDisabled() || this.readOnly || typeof navigator === 'undefined' || !navigator.clipboard?.readText) {
+    if (this.inputDisabled() || this.readOnly) {
       return;
     }
+    this.clipboardError.set('');
     try {
+      if (typeof navigator === 'undefined' || !navigator.clipboard?.readText) {
+        throw new Error('Clipboard unavailable');
+      }
       this.setValue(await navigator.clipboard.readText(), true);
     } catch {
-      // Clipboard permission can be denied by the browser.
+      this.clipboardError.set(this.i18n.translate('clipboard.paste.permission.help'));
     }
   }
 

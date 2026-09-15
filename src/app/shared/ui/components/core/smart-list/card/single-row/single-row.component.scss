@@ -402,6 +402,12 @@
 }
 
 @media (max-width: 760px) {
+  .ui-single-row.notification-row.ui-single-row--with-top-right .ui-single-row__headline {
+    // The floating timestamp extends beyond the shared text-column reserve.
+    // Only shorten the title row; keep subtitle/detail width and row height.
+    padding-inline-end: 4rem;
+  }
+
   .ui-single-row {
     grid-template-columns: auto minmax(0, 1fr);
   }

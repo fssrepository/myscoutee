@@ -228,7 +228,7 @@ export class EventExplorePopupComponent {
     emptyDescription: 'Try another filter or check back later.',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     presentation: 'list',
     listLayout: 'card-grid',

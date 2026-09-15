@@ -25,6 +25,7 @@ import {
 import {
   AppMenuComponent,
   type AppMenuItem,
+  type AppMenuModel,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui/components/core/menu';
 import { I18nPipe } from '../../../shared/ui';
@@ -87,9 +88,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input() ideaCards: InfoCardData[] = [];
   @Input() ideaCount = 0;
   @Input() authUnavailable = false;
-  @Input() authUnavailableLabel = 'Unavailable in your country';
-  @Input() authLocationRequired = false;
-  @Input() authLocationRequiredLabel = 'Allow location';
+  @Input() authUnavailableLabel = 'Unavailable here';
   @Input() networkUnavailable = false;
   @Input() networkUnavailableLabel = 'No network';
 
@@ -377,16 +376,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected get entryAuthButtonShowsAvatar(): boolean {
     return !this.networkUnavailable
       && !this.authUnavailable
-      && !this.authLocationRequired
       && this.isFirebaseAuthMode
       && !!this.firebaseAuthProfile;
-  }
-
-  protected get entryAuthButtonCanCompactOnMobile(): boolean {
-    return !this.networkUnavailable
-      && !this.authUnavailable
-      && !this.authLocationRequired
-      && !this.entryAuthButtonShowsAvatar;
   }
 
   protected get entryAuthButtonIcon(): string {
@@ -395,9 +386,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (this.authUnavailable) {
       return 'block';
-    }
-    if (this.authLocationRequired) {
-      return 'location_on';
     }
     return 'login';
   }
@@ -408,9 +396,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (this.authUnavailable) {
       return this.authUnavailableLabel;
-    }
-    if (this.authLocationRequired) {
-      return this.authLocationRequiredLabel;
     }
     if (this.entryAuthButtonShowsAvatar) {
       return this.firebaseAuthProfile?.name ?? 'Continue';
@@ -425,6 +410,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected get entryPrimaryCtaLabel(): string {
     return this.networkUnavailable ? this.networkUnavailableLabel : 'Start exploring';
   }
+
+  protected readonly entryHeroCtaModel: AppMenuModel<EntryHeroCtaId> = { actionSizing: 'content' };
 
   protected entryHeroCtaItems(): readonly AppMenuItem<EntryHeroCtaId>[] {
     return [
@@ -526,10 +513,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected previewGuidePopupModel(): PopupModel {
     return {
-      title: 'landing.preview.guide.title',
-      subtitle: 'landing.preview.guide.intro',
-      ariaLabel: 'Preview version guide',
-      closeAriaLabel: 'Close preview guide',
+      title: 'bug.report',
+      ariaLabel: 'Bug report',
+      closeAriaLabel: 'close',
       size: 'small',
       height: 'auto',
       headerLayout: 'document',

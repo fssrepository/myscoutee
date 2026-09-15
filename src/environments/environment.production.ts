@@ -6,7 +6,6 @@ export const environment = {
   apiBaseUrl: '/api',
   serviceWorkerEnabled: true,
   firebaseLoginEnabled: true,
-  firebaseLoginQaOverrideEnabled: false,
   firebaseMessagingEnabled: true,
   paymentIntegrationEnabled: true,
   paymentSimulatorConfigUrl: '/api/admin/payment-simulator/configuration-access' as string | null

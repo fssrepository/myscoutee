@@ -1,5 +1,61 @@
 import { EntryPageComponent } from './entry-page.component';
 
+describe('EntryPageComponent browser connection transitions', () => {
+  function entry() {
+    return Object.assign(Object.create(EntryPageComponent.prototype), {
+      landingContentRequestToken: 1,
+      grantedLocationEligibilityRequestToken: 1,
+      entryContentLoadPromise: null,
+      grantedLocationEligibilityPromise: null,
+      entryNetworkUnavailable: false,
+      landingLoginAvailability: { eligible: false, partitionKey: null },
+      locationEligibilityResolvedFromCoordinates: true,
+      browserLocationAutoRequestAttempted: true,
+      syncEntryAuthGateState: vi.fn(),
+      synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
+      loadEntryContent: vi.fn().mockResolvedValue(undefined)
+    });
+  }
+
+  it('recovers without reload and resets the country result on every online/offline cycle', () => {
+    const component = entry();
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      component.onBrowserOffline();
+      expect(component.entryNetworkUnavailable).toBe(true);
+      expect(component.locationEligibilityResolvedFromCoordinates).toBe(false);
+      component.onBrowserOnline();
+      expect(component.entryNetworkUnavailable).toBe(false);
+      expect(component.landingLoginAvailability).toBeNull();
+      expect(component.browserLocationAutoRequestAttempted).toBe(false);
+    }
+    expect(component.loadEntryContent).toHaveBeenCalledTimes(2);
+    expect(component.synchronizeDeploymentAuthMode).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores an eligibility answer arriving after disconnection', async () => {
+    const component = entry();
+    let resolveEligibility!: (value: { eligible: boolean }) => void;
+    const eligibility = new Promise<{ eligible: boolean }>(resolve => { resolveEligibility = resolve; });
+    const requestStarted = vi.fn();
+    Object.assign(component, {
+      ngZone: { run: (fn: () => void) => fn() },
+      queryGeolocationPermissionState: vi.fn().mockResolvedValue('granted'),
+      requestCurrentLocation: vi.fn().mockResolvedValue({ latitude: 47.4979, longitude: 19.0402 }),
+      usersService: { checkLocationEligibility: () => { requestStarted(); return eligibility; } }
+    });
+    const pending = component.resolveBrowserLocationAccess(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(requestStarted).toHaveBeenCalledOnce();
+    component.onBrowserOffline();
+    resolveEligibility({ eligible: true });
+    await pending;
+    expect(component.entryNetworkUnavailable).toBe(true);
+    expect(component.landingLoginAvailability).toBeNull();
+    expect(component.locationEligibilityResolvedFromCoordinates).toBe(false);
+  });
+});
+
 describe('EntryPageComponent operator authentication gate', () => {
   it('bypasses consumer region and coordinate checks but still requires privacy consent', async () => {
     const component = Object.create(EntryPageComponent.prototype) as {
@@ -34,6 +90,7 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);
     component.openBundledLoginUnavailableInfo = vi.fn();
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
+    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false } });
 
     await component.openEntryAuthPopup({
       forceAuthPopup: true,
@@ -69,6 +126,7 @@ describe('EntryPageComponent operator authentication gate', () => {
       firebaseProfile: () => null
     };
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
+    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false } });
     component.isLoginBlockedByLandingBundle = vi.fn().mockReturnValue(false);
     component.isLoginLocationRequiredByLandingBundle = vi.fn().mockReturnValue(false);
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);
@@ -101,6 +159,52 @@ describe('EntryPageComponent browser location permission gate', () => {
 });
 
 describe('EntryPageComponent demo session routing', () => {
+  function completedOnboarding(localModeEnabled: boolean) {
+    return Object.assign(Object.create(EntryPageComponent.prototype), {
+      pendingRedirectAfterOnboarding: '/game',
+      pendingDemoSessionUserId: 'new-demo-user',
+      usersService: {
+        localModeEnabled,
+        loadUserById: vi.fn().mockResolvedValue({ id: 'new-demo-user' })
+      },
+      sessionService: {
+        startDemoSession: vi.fn().mockReturnValue({ kind: 'demo', userId: 'new-demo-user' }),
+        startTrackedDemoSession: vi.fn().mockResolvedValue({ kind: 'demo', userId: 'new-demo-user' }),
+        logout: vi.fn().mockResolvedValue(undefined)
+      },
+      router: { navigateByUrl: vi.fn().mockResolvedValue(true) }
+    });
+  }
+
+  it('registers the new HTTP profile session and reads it before opening game cards', async () => {
+    const component = completedOnboarding(false);
+    await component.onOnboardingCompleted({ id: 'new-demo-user' });
+    expect(component.sessionService.startDemoSession).not.toHaveBeenCalled();
+    expect(component.sessionService.startTrackedDemoSession).toHaveBeenCalledWith('new-demo-user');
+    expect(component.usersService.loadUserById).toHaveBeenCalledWith('new-demo-user', 8000);
+    expect(component.sessionService.startTrackedDemoSession.mock.invocationCallOrder[0])
+      .toBeLessThan(component.usersService.loadUserById.mock.invocationCallOrder[0]);
+    expect(component.usersService.loadUserById.mock.invocationCallOrder[0])
+      .toBeLessThan(component.router.navigateByUrl.mock.invocationCallOrder[0]);
+  });
+
+  it('keeps local onboarding independent of server session registration', async () => {
+    const component = completedOnboarding(true);
+    await component.onOnboardingCompleted({ id: 'new-demo-user' });
+    expect(component.sessionService.startDemoSession).toHaveBeenCalledWith('new-demo-user');
+    expect(component.sessionService.startTrackedDemoSession).not.toHaveBeenCalled();
+    expect(component.usersService.loadUserById).not.toHaveBeenCalled();
+    expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
+  });
+
+  it('does not open game cards when the server rejects the new session', async () => {
+    const component = completedOnboarding(false);
+    component.sessionService.startTrackedDemoSession.mockResolvedValue(null);
+    await component.onOnboardingCompleted({ id: 'new-demo-user' });
+    expect(component.usersService.loadUserById).not.toHaveBeenCalled();
+    expect(component.router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
   it('starts a local demo session without registering it through the backend', async () => {
     const startDemoSession = vi.fn().mockReturnValue({
       kind: 'demo',

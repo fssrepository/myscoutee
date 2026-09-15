@@ -135,18 +135,16 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(component).ideasPopupModel().subtitle).toBe('4 articles');
   });
 
-  it('keeps Start exploring active while only login eligibility is unavailable or awaiting location', () => {
+  it('keeps Start exploring active while only login eligibility is unavailable', () => {
     const component = TestBed.createComponent(EntryLandingComponent).componentInstance;
     const demoRequested = vi.fn();
     component.demoRequested.subscribe(demoRequested);
     component.networkUnavailable = false;
 
     component.authUnavailable = true;
-    component.authLocationRequired = false;
     view(component).requestDemo();
 
     component.authUnavailable = false;
-    component.authLocationRequired = true;
     view(component).requestDemo();
 
     expect(demoRequested).toHaveBeenCalledTimes(2);
@@ -203,7 +201,7 @@ describe('EntryLandingComponent article lists', () => {
     expect(heroText).toContain('We’re making it social again.');
     expect(heroText).toContain('6 people · 6 priority lists → 1 shared group');
     expect(heroText.toLowerCase()).not.toContain('swip');
-    expect(previewBadge?.hidden).toBe(true);
+    expect(previewBadge).toBeNull();
     expect(partnerButton).not.toBeNull();
     expect(bugReportButton).not.toBeNull();
     expect(bugReportButton?.parentElement).toBe(partnerButton?.parentElement);
