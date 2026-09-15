@@ -111,6 +111,10 @@ export class AppSetupStore {
         const decision = await this.messaging.requestEntryPermission();
         if (generation !== this.generation) return;
         if (decision) this.notificationsSelected.set(decision === 'granted');
+        if (decision === 'denied' && this.loggedIn() && !this.checkLocation) {
+          this.error.set(this.i18n.translate('entry.permissions.notifications.blocked'));
+          return;
+        }
       }
       if (generation !== this.generation) return;
       if (this.loggedIn() && !this.checkLocation) {

@@ -6,7 +6,9 @@ import type { UserRecord } from '../entity/user.entity';
 export class LocalUsersMapper {
   static toDto(record: UserRecord): UserDto {
     const { devices: _devices, ...profile } = record;
-    return this.cloneUser(profile);
+    return this.cloneUser({ ...profile, notificationDevices: (_devices ?? []).map(device => ({
+      deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
+    })) });
   }
 
   static toDtoList(records: readonly UserRecord[]): UserDto[] {
@@ -36,7 +38,8 @@ export class LocalUsersMapper {
   }
 
   static toRecord(dto: UserDto): UserRecord {
-    const record = this.cloneUser(dto) as UserRecord;
+    const { notificationDevices: _notificationDevices, ...profile } = this.cloneUser(dto);
+    const record = profile as UserRecord;
     record.images = this.normalizeImages(record.images);
     record.affinity = this.resolveUserAffinity(record);
     return record;
@@ -94,9 +97,8 @@ export class LocalUsersMapper {
             : undefined
         }
         : undefined,
-      notificationDevices: (user.devices ?? []).map(device => ({
-        deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
-      })),
+      notificationDevices: 'notificationDevices' in user
+        ? user.notificationDevices?.map(device => ({ ...device })) : undefined,
       notificationPreferences: user.notificationPreferences
         ? {
           muted: user.notificationPreferences.muted === true
