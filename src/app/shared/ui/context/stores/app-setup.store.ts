@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AppLocationService } from '../../../core/base/services/app-location.service';
 import { FirebaseMessagingService } from '../../../core/base/services/firebase-messaging.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
@@ -17,6 +17,7 @@ export class AppSetupStore {
   readonly isOpen = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
+  private readonly notificationsEdited = signal(false);
   readonly locationGranted = signal(false);
   readonly locationPermission = signal<PermissionState | null>(null);
   readonly nativePending = signal(false);
@@ -29,6 +30,20 @@ export class AppSetupStore {
   private completeLogin: ((allowed: boolean) => void) | null = null;
   private checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null;
 
+  constructor() {
+    effect(() => {
+      const enabled = this.messaging.deviceNotificationsEnabled();
+      if (this.isOpen() && !this.notificationsEdited() && !this.actionPending()) {
+        this.notificationsSelected.set(enabled);
+      }
+    });
+  }
+
+  toggleNotifications(): void {
+    this.notificationsEdited.set(true);
+    this.notificationsSelected.update(value => !value);
+  }
+
   open(): void {
     if (this.isOpen()) return;
     this.generation++;
@@ -36,6 +51,8 @@ export class AppSetupStore {
     this.locationGranted.set(false);
     this.locationPermission.set(null);
     this.locationSelected.set(this.loggedIn());
+    this.messaging.refreshNotificationPermission();
+    this.notificationsEdited.set(false);
     this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
     this.isOpen.set(true);
     void this.refreshPermissions();

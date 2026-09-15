@@ -65,7 +65,7 @@ export class AppSetupPopupComponent {
     if (event.id === 'location' && !this.store.locationGranted() && !this.store.loggedIn()) {
       this.store.locationSelected.update(value => !value);
     } else if (event.id === 'notifications') {
-      this.store.notificationsSelected.update(value => !value);
+      this.store.toggleNotifications();
     }
   }
 

@@ -235,9 +235,15 @@ export interface UserPaymentTotalsDto {
   all: Record<string, number>;
 }
 
+export interface UserNotificationDeviceDto {
+  deviceId: string;
+  notificationsEnabled: boolean;
+}
+
 export interface UserRealtimeLongPollResponseDto {
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
+  notificationDevices?: UserNotificationDeviceDto[];
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;
   offlineTicketSnapshot?: AssetContracts.AssetTicketPageResultDTO | null;
@@ -301,6 +307,7 @@ export class UserDto {
   admin?: boolean;
   operator?: boolean;
   notificationPreferences?: UserNotificationPreferencesDto;
+  notificationDevices?: UserNotificationDeviceDto[];
   paymentTotals?: UserPaymentTotalsDto;
   activities: {
     game: number;

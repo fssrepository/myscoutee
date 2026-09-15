@@ -107,6 +107,17 @@ export class UserProfileStore {
     const user = this._userProfilesByUserId()[normalizedUserId];
     return user ? cloneUserProfile(user) : null;
   });
+  readonly activeNotificationDevices = computed(() => this.activeUserProfile()?.notificationDevices ?? []);
+
+  applyUserRealtimeNotificationDevices(userId: string, devices: UserDto['notificationDevices']): void {
+    if (!devices) return;
+    const current = this._userProfilesByUserId()[userId];
+    if (!current) return;
+    if (JSON.stringify(current.notificationDevices) === JSON.stringify(devices)) return;
+    this._userProfilesByUserId.update(state => ({ ...state, [userId]: {
+      ...current, notificationDevices: devices.map(device => ({ ...device }))
+    } }));
+  }
   readonly activeUserProfileExt = computed(() => {
     const normalizedUserId = this._activeUserId().trim();
     if (!normalizedUserId) {

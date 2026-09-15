@@ -71,7 +71,11 @@ export class FirebaseMessagingService {
   private readonly deviceEnabled = signal(typeof localStorage === 'undefined'
     || localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled) !== 'false');
   readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
-    && this.notificationPermission() === 'granted');
+    && this.notificationPermission() === 'granted'
+    && (!this.userProfileStore.activeUserId()
+      || this.userProfileStore.activeNotificationDevices().some(device =>
+        device.deviceId === localStorage.getItem(FirebaseMessagingService.DEVICE_ID_STORAGE_KEY)
+        && device.notificationsEnabled)));
   private deviceOperationRevision = 0;
 
   async setDeviceNotificationsEnabled(enabled: boolean): Promise<void> {
@@ -98,7 +102,19 @@ export class FirebaseMessagingService {
     if (typeof window !== 'undefined') {
       const refresh = () => this.refreshNotificationPermission();
       window.addEventListener('focus', refresh);
-      this.destroyRef.onDestroy(() => window.removeEventListener('focus', refresh));
+      document.addEventListener('visibilitychange', refresh);
+      let permissionStatus: PermissionStatus | null = null;
+      void navigator.permissions?.query({ name: 'notifications' }).then(status => {
+        if (this.destroyRef.destroyed) return;
+        permissionStatus = status;
+        status.addEventListener('change', refresh);
+        refresh();
+      }).catch(() => undefined);
+      this.destroyRef.onDestroy(() => {
+        window.removeEventListener('focus', refresh);
+        document.removeEventListener('visibilitychange', refresh);
+        permissionStatus?.removeEventListener('change', refresh);
+      });
     }
     if (this.deviceRegistrations.isLocal) {
       this.initialize();

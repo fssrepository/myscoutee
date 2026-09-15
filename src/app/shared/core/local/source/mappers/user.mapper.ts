@@ -94,6 +94,9 @@ export class LocalUsersMapper {
             : undefined
         }
         : undefined,
+      notificationDevices: (user.devices ?? []).map(device => ({
+        deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
+      })),
       notificationPreferences: user.notificationPreferences
         ? {
           muted: user.notificationPreferences.muted === true
