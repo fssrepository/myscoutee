@@ -274,6 +274,8 @@ export class SideMenuComponent implements OnDestroy {
     chatHeader: this.activitiesStore.stackedEventChatHeader(),
     closeHostedChat: () => this.activitiesStore.closeStackedEventChat()
   }));
+  private readonly notificationRouteUrl = signal(this.router.url);
+  private openingNotificationChat = '';
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly notificationDismissDraggingRef = signal(false);
@@ -991,6 +993,15 @@ export class SideMenuComponent implements OnDestroy {
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentRoutePathRef.set(AppUtils.normalizeRoutePath(event.urlAfterRedirects));
+        this.notificationRouteUrl.set(event.urlAfterRedirects);
+      }
+    });
+
+    effect(() => {
+      const userId = this.userProfileStore.activeUserId().trim();
+      const url = this.notificationRouteUrl();
+      if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
+        void this.openNotificationChatTarget(url, userId);
       }
     });
 
@@ -2298,6 +2309,34 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+  }
+
+  private async openNotificationChatTarget(url: string, userId: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game') return;
+    const tree = this.router.parseUrl(url);
+    const chatId = `${tree.queryParams['chatId'] ?? ''}`.trim();
+    const targetMessageId = `${tree.queryParams['messageId'] ?? ''}`.trim();
+    if (!chatId) return;
+    const key = `${userId}:${chatId}:${targetMessageId}`;
+    if (this.openingNotificationChat === key) return;
+    this.openingNotificationChat = key;
+    try {
+      const chat = await this.chatsService.queryChatById(chatId);
+      if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      if (!chat) return;
+      await this.activitiesStore.ensureEventChatPopupLoaded();
+      if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      delete tree.queryParams['chatId'];
+      delete tree.queryParams['messageId'];
+      await this.router.navigateByUrl(tree, { replaceUrl: true });
+      if (this.userProfileStore.activeUserId() !== userId) return;
+      this.activitiesStore.openEventChat(
+        { ...eventChatPopupRequestFromChat(chat), targetMessageId: targetMessageId || null },
+        eventChatHeaderStateFromChat(chat)
+      );
+    } finally {
+      if (this.openingNotificationChat === key) this.openingNotificationChat = '';
+    }
   }
 
   private async openBlockedUserSupportChat(): Promise<void> {

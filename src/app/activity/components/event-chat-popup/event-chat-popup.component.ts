@@ -117,6 +117,7 @@ import {
   UiTaskScheduler
 } from '../../../shared/ui/scheduler';
 interface ChatThreadFilters {
+  targetMessageId?: string | null;
   revision?: number;
   sessionKey?: string;
 }
@@ -3620,6 +3621,11 @@ export class EventChatPopupComponent implements OnDestroy {
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
       this.initialChatLoadedSessionKey = sessionKey;
+      const targetMessageId = session.request.targetMessageId;
+      if (targetMessageId) {
+        this.highlightedMessageId = targetMessageId;
+        this.scheduleChatThreadScrollToMessage(targetMessageId);
+      }
       this.applyLoadedChatReadReceipt(chat, messagesPage);
       await this.startLiveChatUpdates(chat, sessionKey);
       return result;
@@ -3688,7 +3694,8 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatThreadQuery = {
       filters: {
         revision: this.chatThreadRevision,
-        sessionKey: this.loadedSessionKey
+        sessionKey: this.loadedSessionKey,
+        targetMessageId: this.session()?.request.targetMessageId
       }
     };
   }
@@ -4178,7 +4185,8 @@ export class EventChatPopupComponent implements OnDestroy {
     try {
       const snapshot = await this.chatsService.loadChatMessagesResult(chat, {
         page: 0,
-        pageSize: this.chatInitialLoadMessageCount
+        pageSize: this.chatInitialLoadMessageCount,
+        filters: { targetMessageId: this.session()?.request.targetMessageId }
       });
       if (this.loadedSessionKey !== sessionKey) {
         return;

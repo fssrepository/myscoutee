@@ -416,6 +416,8 @@ export class HttpChatsService implements IChatsService {
     if (query.cursor) {
       params = params.set('cursor', query.cursor);
     }
+    const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
+    if (targetMessageId) params = params.set('targetMessageId', targetMessageId);
 
     try {
       const response = await this.http
