@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.14.en.102",
+  "version": "2026.09.15.en.103",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3406,7 +3406,7 @@
     "entry.permissions.description": "Location is required to check availability in your region. Notifications alert you to new messages and events. After confirmation, the browser asks for notifications, then location, one at a time. A blocked permission can be changed in site settings.",
     "entry.permissions.checking": "Saving…",
     "install.app": "Install",
-    "entry.permissions.notifications.blocked": "Allow notifications in the browser site settings, then try again.",
+    "entry.permissions.notifications.blocked": "Notifications are blocked. Enable them in notification settings, then try again.",
     "app.setup.title": "Permissions and installation",
     "app.setup.description": "Quick access in its own app window.",
     "app.setup.location": "Location",
