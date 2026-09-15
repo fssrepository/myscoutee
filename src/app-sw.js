@@ -129,6 +129,11 @@ self.addEventListener('push', event => {
     return;
   }
   event.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (clients.some(client => client.visibilityState === 'visible'
+      && client.url.startsWith(self.registration.scope))) {
+      return;
+    }
     const branding = await deploymentBranding();
     await self.registration.showNotification(
       payload.title || branding.productName,
@@ -136,6 +141,7 @@ self.addEventListener('push', event => {
       body: payload.body,
       icon: payload.icon || branding.logoUrl,
       badge: payload.badge || branding.logoUrl,
+      tag: payload.tag,
       data: {
         url: payload.url || '/game'
       }
@@ -334,6 +340,7 @@ function parsePushPayload(event) {
       body: notification.body || data.body || '',
       icon: notification.icon || data.icon || '',
       badge: notification.badge || data.badge || '',
+      tag: notification.tag || data.tag || '',
       url: data.url || data.click_action || '/game'
     };
   } catch {
