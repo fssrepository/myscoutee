@@ -375,12 +375,6 @@ export class NotificationCenterPopupComponent {
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
     if (this.preferenceUnavailable()) return;
-    if (this.store.permissionRequired()) {
-      void this.store.setMuted(false).catch(error => this.dialogStore.openInfo(
-        error instanceof Error ? error.message : 'Unable to complete this action.', { title: 'Notifications' }
-      ));
-      return;
-    }
     this.confirmMutedChange(!this.store.muted());
   }
 

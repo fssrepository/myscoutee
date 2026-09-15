@@ -1404,12 +1404,6 @@ export class SideMenuComponent implements OnDestroy {
   protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
     switch (event.id) {
       case 'notifications':
-        if (this.notificationCenterStore.permissionRequired() && !this.connectionOffline()) {
-          void this.notificationCenterStore.setMuted(false).catch(error => this.dialogStore.openInfo(
-            error instanceof Error ? error.message : 'Unable to complete this action.', { title: 'Notifications' }
-          ));
-          return;
-        }
         this.openNotificationCenter(event.sourceEvent);
         return;
       case 'explanations':

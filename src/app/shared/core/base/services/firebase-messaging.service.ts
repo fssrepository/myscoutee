@@ -68,6 +68,7 @@ export class FirebaseMessagingService {
   private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private initialized = false;
+  private nativeDenialOperation: Promise<void> | null = null;
   private readonly deviceEnabled = signal(typeof localStorage === 'undefined'
     || localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled) !== 'false');
   readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
@@ -123,6 +124,9 @@ export class FirebaseMessagingService {
 
   refreshNotificationPermission(): void {
     this.notificationPermissionRef.set(typeof Notification === 'undefined' ? null : Notification.permission);
+    if (this.notificationPermission() === 'denied') {
+      void this.persistNativeDenial().catch(() => undefined);
+    }
   }
 
   get notificationsConfigured(): boolean {
@@ -139,6 +143,11 @@ export class FirebaseMessagingService {
     effect(
       () => {
         const userId = this.userProfileStore.activeUserId().trim();
+        const permission = this.notificationPermission();
+        if (permission === 'denied' && this.userProfileStore.activeNotificationDevices().some(
+          device => device.notificationsEnabled)) {
+          untracked(() => { void this.persistNativeDenial().catch(() => undefined); });
+        }
         if (this.deviceRegistrations.isLocal) {
           if (userId && this.notificationPermission() === 'granted') {
             untracked(() => {
@@ -153,7 +162,7 @@ export class FirebaseMessagingService {
           || !userId
           || !this.enabled
           || typeof Notification === 'undefined'
-          || Notification.permission !== 'granted'
+          || permission !== 'granted'
         ) {
           this.unbindForegroundMessages();
           if (
@@ -300,7 +309,8 @@ export class FirebaseMessagingService {
   private async registerActiveDevice(
     expectedRuntime?: FirebaseAppRuntime
   ): Promise<void> {
-    if (!this.enabled || !this.deviceEnabled()) {
+    await this.nativeDenialOperation;
+    if (!this.enabled || !this.deviceEnabled() || this.notificationPermission() !== 'granted') {
       return;
     }
     const revision = this.deviceOperationRevision;
@@ -453,6 +463,23 @@ export class FirebaseMessagingService {
     }
     localStorage.removeItem(FirebaseMessagingService.TOKEN_STORAGE_KEY);
     localStorage.removeItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY);
+  }
+
+  private persistNativeDenial(): Promise<void> {
+    if (this.nativeDenialOperation) return this.nativeDenialOperation;
+    const userId = this.userProfileStore.activeUserId().trim();
+    const deviceId = localStorage.getItem(FirebaseMessagingService.DEVICE_ID_STORAGE_KEY)?.trim() ?? '';
+    if (!userId || !deviceId || this.notificationPermission() !== 'denied'
+      || !this.userProfileStore.activeNotificationDevices().some(device =>
+        device.deviceId === deviceId && device.notificationsEnabled)) return Promise.resolve();
+    const firebaseToken = localStorage.getItem(FirebaseMessagingService.TOKEN_STORAGE_KEY)?.trim() ?? '';
+    const tokenUserId = localStorage.getItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY)?.trim() ?? '';
+    if (!this.deviceRegistrations.isLocal && (!firebaseToken || tokenUserId !== userId)) return Promise.resolve();
+    this.nativeDenialOperation = this.deviceRegistrations.upsert({
+      userId, deviceId, platform: this.isStandalone() ? 'web-pwa' : 'web-browser',
+      ...(firebaseToken ? { firebaseToken } : {}), notificationsEnabled: false
+    }).finally(() => { this.nativeDenialOperation = null; });
+    return this.nativeDenialOperation;
   }
 
   private updateLocalDevice(enabled: boolean): Promise<void> {
