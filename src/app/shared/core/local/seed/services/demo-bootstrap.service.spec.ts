@@ -496,8 +496,13 @@ describe('Demo bootstrap seeding', () => {
     const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
 
+    const progress: number[] = [];
+    await bootstrap.ensureDemoSelectorReady('union', state => progress.push(state.percent));
     await bootstrap.ensureDemoSelectorReady('union');
-    await bootstrap.ensureDemoSelectorReady('union');
+
+    expect(progress[0]).toBe(0);
+    expect(progress.at(-1)).toBe(100);
+    expect(progress.every((percent, index) => index === 0 || percent >= progress[index - 1]!)).toBe(true);
 
     const state = memoryDb.read();
     const registryWriteIndex = tableWriteSpy.mock.calls.findIndex(

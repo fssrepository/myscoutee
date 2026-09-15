@@ -456,7 +456,14 @@ export class LocalChatsRepository {
     const chatKey = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
     const orderedIds = snapshot.idsByChatKey[chatKey] ?? [];
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
-    const startIndex = this.resolveMessagePageStartIndex(query, pageSize);
+    let startIndex = this.resolveMessagePageStartIndex(query, pageSize);
+    const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
+    if (targetMessageId && !query.cursor) {
+      const targetIndex = orderedIds.slice().reverse()
+        .findIndex(id => snapshot.byId[id]?.messageId === targetMessageId);
+      if (targetIndex < 0) return { items: [], total: 0, nextCursor: null };
+      startIndex = Math.floor(targetIndex / pageSize) * pageSize;
+    }
     const endIndex = Math.min(orderedIds.length, startIndex + pageSize);
     const pageRecords = orderedIds
       .slice()

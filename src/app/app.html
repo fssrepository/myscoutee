@@ -12,11 +12,7 @@
   }
 }
 
-<app-prompt
-  [model]="installPromptModel()"
-  (action)="onInstallRequested()"
-  (dismiss)="onInstallDismissed()"
-></app-prompt>
+<app-setup-popup></app-setup-popup>
 
 <app-payment-authorization-popup></app-payment-authorization-popup>
 

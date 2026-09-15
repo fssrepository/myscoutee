@@ -251,7 +251,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   protected graphProgressState(loading: boolean): 'loading' | 'scrolling' | 'inactive' {
-    if (!this.runtimeStore.isOnline()) {
+    if (!this.runtimeStore.isDataSourceAvailable()) {
       return 'inactive';
     }
     return loading ? 'loading' : 'scrolling';

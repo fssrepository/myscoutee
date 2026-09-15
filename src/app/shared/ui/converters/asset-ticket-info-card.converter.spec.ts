@@ -3,6 +3,25 @@ import { AssetTicketInfoCardConverter } from './asset-ticket-info-card.converter
 import type * as AssetContracts from '../../core/contracts/asset.interface';
 
 describe('AssetTicketInfoCardConverter', () => {
+  it('renders the organizer image with organizer initials as the fallback', () => {
+    const card = AssetTicketInfoCardConverter.convert(ticketRow({
+      creatorName: 'Casey Bridge',
+      creatorAvatarUrl: ' /media/organizer.webp '
+    }));
+
+    expect(card.mediaStart).toMatchObject({
+      variant: 'avatar',
+      imageUrl: '/media/organizer.webp',
+      label: 'CB'
+    });
+  });
+
+  it('uses the organizer monogram when no organizer image exists', () => {
+    const card = AssetTicketInfoCardConverter.convert(ticketRow({ creatorName: 'Casey Bridge' }));
+
+    expect(card.mediaStart).toMatchObject({ imageUrl: null, label: 'CB' });
+  });
+
   it('keeps the QR action on an unused ticket', () => {
     const card = AssetTicketInfoCardConverter.convert(ticketRow());
 

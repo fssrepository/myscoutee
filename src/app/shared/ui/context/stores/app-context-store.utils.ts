@@ -186,6 +186,7 @@ export function cloneProfileExt(profileExt: ProfileExtDto): ProfileExtDto {
 export function cloneUserProfile(user: UserDto): UserDto {
   return {
     ...user,
+    notificationDevices: user.notificationDevices?.map(device => ({ ...device })),
     languages: [...(user.languages ?? [])],
     images: [...(user.images ?? [])],
     profileDetails: cloneProfileDetails(user.profileDetails),

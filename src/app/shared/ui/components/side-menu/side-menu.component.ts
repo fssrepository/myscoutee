@@ -1,3 +1,5 @@
+import { backendUnavailable } from '../../../core/common/backend-connectivity';
+import { AppSetupStore } from '../../context/stores/app-setup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -118,6 +120,7 @@ import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-pol
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
+import { PwaService } from '../../../core/base/services/pwa.service';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { environment } from '../../../../../environments/environment';
 import {
@@ -185,6 +188,7 @@ type NavigatorAdminMenuShortcutId =
   | 'adminGraph';
 
 type NavigatorSettingsMenuItemId =
+  | 'permissions'
   | 'help'
   | 'feedback'
   | 'report-bugs'
@@ -241,6 +245,16 @@ export class SideMenuComponent implements OnDestroy {
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly i18n = inject(I18nService);
+  protected readonly operatorLabel = computed(() => this.i18n.translate('operator'));
+  protected readonly pwaService = inject(PwaService);
+  private readonly appSetupStore = inject(AppSetupStore);
+  protected readonly installLabel = computed(() => {
+    this.i18n.revision();
+    return this.i18n.translate(this.pwaService.installAvailable() ? 'install.app' : 'app.setup.permissions');
+  });
+  protected openAppSetup(): void {
+    this.appSetupStore.open();
+  }
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
@@ -260,6 +274,8 @@ export class SideMenuComponent implements OnDestroy {
     chatHeader: this.activitiesStore.stackedEventChatHeader(),
     closeHostedChat: () => this.activitiesStore.closeStackedEventChat()
   }));
+  private readonly notificationRouteUrl = signal(this.router.url);
+  private openingNotificationChat = '';
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly notificationDismissDraggingRef = signal(false);
@@ -312,7 +328,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly hasBindings = computed(() => this.profileStore.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
-    !this.runtimeStore.isOnline() && this.userProfileStore.activeUserProfile() !== null
+    this.connectionOffline() && this.userProfileStore.activeUserProfile() !== null
   );
   protected readonly canToggleAvatarMenu = computed(() =>
     this.avatarVisible()
@@ -431,16 +447,25 @@ export class SideMenuComponent implements OnDestroy {
       }]
     }]
   }));
+  private readonly offlineAttentionDismissed = signal(false);
+  protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
+  private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+    || (environment.activitiesDataSource === 'http' && backendUnavailable()));
+  protected readonly notificationAttentionVisible = computed(() =>
+    this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
+      && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen())
+  );
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
     const unreadCount = this.notificationCenterStore.unreadCount();
+    const offline = this.connectionOffline();
     return {
       id: 'notification-attention',
-      icon: 'notifications_active',
-      palette: 'violet',
+      icon: offline ? 'cloud_off' : 'notifications_active',
+      palette: offline ? 'offline' : 'violet',
       action: 'custom',
       hideLabel: true,
       counter: unreadCount > 0 ? { value: unreadCount, max: 99 } : null,
-      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false)
+      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false) + (offline ? ' — Offline' : '')
     };
   });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
@@ -492,6 +517,14 @@ export class SideMenuComponent implements OnDestroy {
   });
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    if (!this.isPrivilegedWorkspaceMode()) {
+      items.push({
+        id: 'permissions',
+        label: 'app.setup.permissions',
+        icon: 'tune',
+        ariaLabel: 'app.setup.permissions'
+      });
+    }
     items.push({
       id: 'help',
       label: 'Help',
@@ -558,14 +591,16 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
-        icon: notificationsMuted ? 'notifications_off' : 'notifications',
-        palette: notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        disabled: this.notificationCenterStore.permissionActionPending(),
+        progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
+        icon: this.connectionOffline() ? 'cloud_off' : notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: this.connectionOffline() ? 'offline' : notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        )
+        ) + (this.connectionOffline() ? ' — Offline' : '')
       });
     }
     if (!this.isPrivilegedWorkspaceMode()) {
@@ -728,7 +763,7 @@ export class SideMenuComponent implements OnDestroy {
               icon: 'chat',
               palette: 'blue',
               ariaLabel: 'Open chat',
-              disabled: !this.runtimeStore.isOnline()
+              disabled: this.serverActionsUnavailable()
             },
             {
               id: 'invitations',
@@ -809,7 +844,7 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
-    const disabled = !this.runtimeStore.isOnline();
+    const disabled = this.serverActionsUnavailable();
     const paymentSimulatorConfigUrl = `${environment.paymentSimulatorConfigUrl ?? ''}`.trim();
     const activeSession = this.sessionService.session();
     const activeUserId = activeSession?.kind === 'demo'
@@ -947,11 +982,26 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    effect(() => {
+      if (this.sessionService.session() && this.userProfileStore.activeUserId()) {
+        this.pwaService.offerInstallAfterLogin();
+      }
+    });
+    effect(() => { if (!this.connectionOffline()) this.offlineAttentionDismissed.set(false); });
     this.profileStore.registerBindings(this.profileBindings);
 
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentRoutePathRef.set(AppUtils.normalizeRoutePath(event.urlAfterRedirects));
+        this.notificationRouteUrl.set(event.urlAfterRedirects);
+      }
+    });
+
+    effect(() => {
+      const userId = this.userProfileStore.activeUserId().trim();
+      const url = this.notificationRouteUrl();
+      if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
+        void this.openNotificationChatTarget(url, userId);
       }
     });
 
@@ -1321,6 +1371,7 @@ export class SideMenuComponent implements OnDestroy {
         }
         this.notificationCenterStore.setDragPosition({ x: 0, y: 0 });
         this.notificationCenterStore.dismissAttention();
+        this.offlineAttentionDismissed.set(true);
       }
     }
   }
@@ -1362,6 +1413,9 @@ export class SideMenuComponent implements OnDestroy {
         this.onShareProfile(event.sourceEvent);
         return;
       case 'settings':
+        return;
+      case 'permissions':
+        this.openAppSetup();
         return;
       case 'help':
       case 'feedback':
@@ -1489,7 +1543,7 @@ export class SideMenuComponent implements OnDestroy {
         ...ProfileHeaderCardConverter.convert(user, {
           admin: true,
           headline: this.i18n.translate('operator.workspace.title'),
-          showEdit: this.runtimeStore.isOnline(),
+          showEdit: !this.serverActionsUnavailable(),
           editDisabled: false,
           editAriaLabel: this.i18n.translate('operator.profile.open')
         }),
@@ -1500,8 +1554,8 @@ export class SideMenuComponent implements OnDestroy {
     }
     return ProfileHeaderCardConverter.convert(user, {
       admin,
-      showEdit: this.runtimeStore.isOnline(),
-      editDisabled: admin ? !this.runtimeStore.isOnline() : !this.runtimeStore.isOnline() || this.isBlockedUser(user),
+      showEdit: !this.serverActionsUnavailable(),
+      editDisabled: admin ? this.serverActionsUnavailable() : this.serverActionsUnavailable() || this.isBlockedUser(user),
       editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
       showRing: !admin && this.showProfileSaveRing(),
       ringState: this.hasProfileSaveError() ? 'error' : 'loading',
@@ -1512,7 +1566,7 @@ export class SideMenuComponent implements OnDestroy {
   protected openNavigatorHeaderProfile(event: Event): void {
     if (this.isOperatorMode()) {
       event.stopPropagation();
-      if (!this.runtimeStore.isOnline()) {
+      if (this.serverActionsUnavailable()) {
         return;
       }
       this.operatorMenuStore.closePopup();
@@ -1527,27 +1581,17 @@ export class SideMenuComponent implements OnDestroy {
     this.openProfileEditor(event);
   }
 
-  protected navigatorOfflineNote(): string {
-    if (this.isOperatorMode()) {
-      return this.i18n.translate('operator.workspace.offline');
-    }
-    if (this.isAdminMode()) {
-      return 'Offline mode is active. Admin actions wait for the connection to return.';
-    }
-    return 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
-  }
-
   protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {
     return user?.profileStatus === 'blocked';
   }
 
   protected isPrimaryMenuDisabled(user: NavigatorMenuUser): boolean {
-    return !this.runtimeStore.isOnline() || this.isBlockedUser(user);
+    return this.serverActionsUnavailable() || this.isBlockedUser(user);
   }
 
   protected openProfileEditor(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     if (this.isAdminMode()) {
@@ -1563,7 +1607,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openImpressions(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.openImpressionsPopup();
@@ -1602,7 +1646,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetTransportPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_TRANSPORT);
@@ -1610,7 +1654,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_ACCOMMODATION);
@@ -1618,7 +1662,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_SUPPLIES);
@@ -1638,7 +1682,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
+    if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
     this.memberMenuStore.openNavigatorEventFeedbackRequest();
@@ -1658,7 +1702,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminReportsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openReports();
@@ -1666,7 +1710,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminFeedbackShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openFeedback();
@@ -1674,7 +1718,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminChatShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.memberMenuStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
@@ -1682,7 +1726,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminProfileShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.profileStore.openProfileEditor();
@@ -1690,7 +1734,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openHelpEditor();
@@ -1698,7 +1742,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openIdeaEditor();
@@ -1706,7 +1750,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminNotificationsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openNotifications();
@@ -1714,7 +1758,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminParamsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openParams();
@@ -1722,7 +1766,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminPaymentSimulatorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openPaymentSimulator();
@@ -1730,7 +1774,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminPaymentAuthorizationsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openPaymentAuthorizations();
@@ -1738,7 +1782,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminStatsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openStats();
@@ -1746,7 +1790,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openAffinityGraph();
@@ -1754,7 +1798,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminMonitoringShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.runtimeStore.isOnline()) {
+    if (this.serverActionsUnavailable()) {
       return;
     }
     this.adminMenuStore.openMonitoring();
@@ -2124,6 +2168,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
+      this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {
         notifications: _notificationCount,
@@ -2235,7 +2280,7 @@ export class SideMenuComponent implements OnDestroy {
     if (popup === 'help' && !this.helpCenterService.hasActiveRevision()) {
       return;
     }
-    if (popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
+    if (popup === 'permissions' || popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
       return;
     }
     if (popup === 'privacy') {
@@ -2254,15 +2299,43 @@ export class SideMenuComponent implements OnDestroy {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash'
   ): void {
-    if (!this.runtimeStore.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
+    if (this.serverActionsUnavailable() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
+  private async openNotificationChatTarget(url: string, userId: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game') return;
+    const tree = this.router.parseUrl(url);
+    const chatId = `${tree.queryParams['chatId'] ?? ''}`.trim();
+    const targetMessageId = `${tree.queryParams['messageId'] ?? ''}`.trim();
+    if (!chatId) return;
+    const key = `${userId}:${chatId}:${targetMessageId}`;
+    if (this.openingNotificationChat === key) return;
+    this.openingNotificationChat = key;
+    try {
+      const chat = await this.chatsService.queryChatById(chatId);
+      if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      if (!chat) return;
+      await this.activitiesStore.ensureEventChatPopupLoaded();
+      if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      delete tree.queryParams['chatId'];
+      delete tree.queryParams['messageId'];
+      await this.router.navigateByUrl(tree, { replaceUrl: true });
+      if (this.userProfileStore.activeUserId() !== userId) return;
+      this.activitiesStore.openEventChat(
+        { ...eventChatPopupRequestFromChat(chat), targetMessageId: targetMessageId || null },
+        eventChatHeaderStateFromChat(chat)
+      );
+    } finally {
+      if (this.openingNotificationChat === key) this.openingNotificationChat = '';
+    }
+  }
+
   private async openBlockedUserSupportChat(): Promise<void> {
     const user = this.menuUser();
-    if (!user || !this.runtimeStore.isOnline()) {
+    if (!user || this.serverActionsUnavailable()) {
       return;
     }
     const activeUserId = user.id.trim();

@@ -422,7 +422,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     pollIntervalMs: () => this.activitiesSmartListPollIntervalMs(),
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     pagination: {
       mode: () => {

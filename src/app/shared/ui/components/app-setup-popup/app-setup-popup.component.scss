@@ -1,0 +1,25 @@
+:host { --app-popup-small-width: 340px; }
+
+.app-setup-content, .app-setup-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 0.65rem;
+}
+.app-setup-content {
+  padding: 0.5rem;
+  color: #28415f;
+  line-height: 1.4;
+}
+h3, p { margin: 0; }
+h3 { font-size: 0.95rem; }
+p { font-size: 0.9rem; overflow-wrap: anywhere; }
+.app-setup-install { border-top: 1px solid #dce3ed; padding-top: 0.8rem; margin-top: 0.3rem; }
+.app-setup-error { color: #a32035; }
+app-menu { max-width: 100%; }
+
+.app-setup-action { justify-self: end; }
+.app-setup-toggle {
+  --app-menu-row-item-width: 14rem;
+  --app-menu-row-item-justify: space-between;
+}

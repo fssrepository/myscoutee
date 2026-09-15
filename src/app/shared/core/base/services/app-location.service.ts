@@ -174,11 +174,72 @@ export class AppLocationService {
     this.ensureCoordinateWatch(userId);
   }
 
+  async requestCurrentCoordinates(): Promise<LocationCoordinates | null> {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      return null;
+    }
+
+    return new Promise<LocationCoordinates | null>(resolve => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (coordinates: LocationCoordinates | null): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        resolve(coordinates);
+      };
+
+      timeoutId = setTimeout(
+        () => finish(null),
+        4500 + 500
+      );
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const latitude = Number(position.coords.latitude);
+          const longitude = Number(position.coords.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            finish(null);
+            return;
+          }
+          finish({ latitude, longitude });
+        },
+        () => finish(null),
+        {
+          enableHighAccuracy: false,
+          timeout: 4500,
+          maximumAge: 0
+        }
+      );
+    });
+  }
+
   private ensureCoordinateWatch(userId: string): void {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       return;
     }
 
+    if (this.geolocationWatchId !== null && this.geolocationWatchUserId === userId) {
+      return;
+    }
+
+    // Startup and background tracking must never open a native permission
+    // prompt. The explicit Firebase Login confirmation owns permission requests.
+    if (!navigator.permissions) {
+      return;
+    }
+    void navigator.permissions.query({ name: 'geolocation' }).then(permission => {
+      if (permission.state === 'granted' && this.userProfileStore.activeUserId().trim() === userId) {
+        this.startCoordinateWatch(userId);
+      }
+    }).catch(() => undefined);
+  }
+
+  private startCoordinateWatch(userId: string): void {
     if (this.geolocationWatchId !== null && this.geolocationWatchUserId === userId) {
       return;
     }

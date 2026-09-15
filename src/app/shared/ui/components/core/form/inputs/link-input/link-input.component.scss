@@ -77,3 +77,9 @@
 .link-input--disabled {
   opacity: 0.72;
 }
+
+.link-input__error {
+  color: #a12828;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}

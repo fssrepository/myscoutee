@@ -54,7 +54,7 @@ app-popup {
 }
 
 .ui-popup__panel--small {
-  width: min(380px, calc(100vw - 1.2rem));
+  width: min(var(--app-popup-small-width, 380px), calc(100vw - 1.2rem));
 }
 
 .ui-popup__panel--wide {

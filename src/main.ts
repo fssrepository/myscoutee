@@ -1,6 +1,6 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
+import { Injector, inject, provideAppInitializer } from '@angular/core';
+import { prepareDemoFailover, demoFailoverEnabled, demoFailoverLocalUser, startDemoFailover } from './app/shared/core/common/demo-failover';
 
 type MutableConsole = Console & Record<string, (...args: unknown[]) => void>;
 
@@ -90,6 +90,26 @@ function markBootstrapFailed(err: unknown): void {
 silenceBrowserConsoleLogs();
 bindBootstrapResumeRecovery();
 
-bootstrapApplication(App, appConfig)
-  .then(() => markBootstrapped())
+prepareDemoFailover()
+  .then(async () => {
+    const [{ App }, { appConfig }] = await Promise.all([import('./app/app'), import('./app/app.config')]);
+    const localUserId = demoFailoverLocalUser();
+    if (localUserId) {
+      appConfig.providers.push(provideAppInitializer(() => {
+        const injector = inject(Injector);
+        return import('./app/shared/core/local/seed/services/demo-bootstrap.service').then(async module => {
+          const seed = injector.get(module.SeedDemoBootstrapService);
+          await seed.ensureDemoSelectorReady('member');
+          await seed.ensureUserReady(localUserId, 'member');
+        });
+      }));
+    }
+    const app = await bootstrapApplication(App, appConfig);
+    // Warm seed code while online, without instantiating it in the HTTP data store.
+    if (demoFailoverEnabled()) {
+      void import('./app/shared/core/local/seed/services/demo-bootstrap.service').catch(() => undefined);
+    }
+    return app;
+  })
+  .then(() => { markBootstrapped(); startDemoFailover(); })
   .catch(err => markBootstrapFailed(err));

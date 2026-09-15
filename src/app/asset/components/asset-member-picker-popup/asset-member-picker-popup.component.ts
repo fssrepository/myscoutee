@@ -134,7 +134,7 @@ export class AssetMemberPickerPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,

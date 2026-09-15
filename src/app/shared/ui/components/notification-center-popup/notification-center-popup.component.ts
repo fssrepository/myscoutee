@@ -1,3 +1,6 @@
+import { environment } from '../../../../../environments/environment';
+import { backendUnavailable } from '../../../core/common/backend-connectivity';
+import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -74,6 +77,10 @@ export class NotificationCenterPopupComponent {
   private notificationsSmartList?: SmartListComponent<NotificationDto, NotificationListFilters>;
 
   protected readonly store = inject(NotificationCenterStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly offline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
+  private readonly preferenceUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+    || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   private readonly dialogStore = inject(DialogStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
@@ -215,13 +222,15 @@ export class NotificationCenterPopupComponent {
             {
               id: 'notification-attention-toggle',
               kind: 'toggle',
-              icon: muted ? 'notifications_off' : 'notifications_active',
+              icon: this.offline() ? 'cloud_off' : muted ? 'notifications_off' : 'notifications_active',
+              disabled: this.preferenceUnavailable() || this.store.permissionActionPending(),
+              progress: { state: this.store.permissionBusy() ? 'loading' : null },
               layout: 'icon',
-              palette: muted ? 'slate' : 'violet',
+              palette: this.offline() ? 'offline' : muted ? 'slate' : 'violet',
               active: muted,
               checked: muted,
               closeOnSelect: false,
-              ariaLabel: muted ? 'Unmute notification alerts' : 'Mute notification alerts',
+              ariaLabel: this.offline() ? 'Offline' : muted ? 'Unmute notification alerts' : 'Mute notification alerts',
               context: { action: 'toggle-muted' }
             }
           ]
@@ -365,6 +374,7 @@ export class NotificationCenterPopupComponent {
     }
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
+    if (this.preferenceUnavailable()) return;
     this.confirmMutedChange(!this.store.muted());
   }
 

@@ -241,7 +241,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -1993,7 +1993,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private shouldPollMembersList(): boolean {
     return this.isOpen
       && this.membersListReady
-      && this.runtimeStore.isOnline()
+      && this.runtimeStore.isDataSourceAvailable()
       && this.lookupRef?.type !== 'chat'
       && this.ownerRef?.ownerType === 'event'
       && this.ownerRef.ownerId === this.ownerId;

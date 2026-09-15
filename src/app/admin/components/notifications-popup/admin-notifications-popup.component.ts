@@ -1390,7 +1390,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.syncPrimaryTiming(rule);
     this.refreshTimingDirty(rule);
-    const saved = await this.save();
+    const saved = await this.save([rule]);
     if (saved) {
       this.scheduleEditorBaseline = null;
       this.closeScheduleEditor();
@@ -1475,6 +1475,21 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return `0 ${minute} ${hour} 1/${amount} * ?`;
     }
     return `@every ${amount} ${unit} @ ${this.startTime(rule)}`;
+  }
+
+  protected readonly expandedHistoryKey = signal<string | null>(null);
+
+  protected historyStatusIcon(status: string): string {
+    switch (status) {
+      case 'completed': return 'check_circle';
+      case 'scheduled': return 'schedule';
+      case 'running': return 'autorenew';
+      case 'failed':
+      case 'error': return 'error';
+      case 'skipped': return 'skip_next';
+      case 'suspended': return 'pause_circle';
+      default: return 'help_outline';
+    }
   }
 
   protected history(rule: AdminNotificationRule): AdminNotificationRunHistoryEntry[] {

@@ -81,7 +81,10 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   ): Promise<ChatMessagesPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const page = this.chatsRepository.queryChatMessagesPage(chat, query);
-    const readReceipt = await this.markLoadedChatMessagesRead(chat, page.items, !query.cursor && query.page === 0);
+    const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
+    const readReceipt = await this.markLoadedChatMessagesRead(
+      chat, targetMessageId ? page.items.filter(message => message.id === targetMessageId) : page.items,
+      !targetMessageId && !query.cursor && query.page === 0);
     return {
       ...page,
       readReceipt

@@ -1,7 +1,13 @@
 {
   "lang": "hu",
-  "version": "2026.09.07.hu.88",
+  "version": "2026.09.15.hu.104",
   "messages": {
+    "unavailable.here": "Itt nem elérhető",
+    "allow.location": "Hely engedélyezése",
+    "checking.location": "Hely ellenőrzése",
+    "clipboard.paste.permission.help": "Engedélyezd a vágólapot a webhelybeállításokban, majd próbáld újra.",
+    "no.network": "Nincs hálózat",
+    "saved.tickets.remain.available.profiles.need.a.connection": "A mentett jegyek elérhetők. A profilokhoz hálózati kapcsolat szükséges.",
     "about": "Rólam",
     "accommodation": "Szállás",
     "accept": "Elfogadás",
@@ -1279,7 +1285,7 @@
     "close.articles": "Cikkek bezárása",
     "footer.connect": "Kapcsolódjunk",
     "footer.tagline": "Ahol a gyors találatok valódi kapcsolódásokká válnak.",
-    "install.prompt.description": "{productName} telepítésével gyorsan elérheted az alkalmazást a kezdőképernyőről.",
+    "install.prompt.description": "Nyisd meg a(z) {productName} alkalmazást közvetlenül a kezdőképernyőről, saját ablakban, böngészőfülek nélkül. Külön engedélyezett értesítésekkel az új üzenetekről is értesülhetsz.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "A jegyek, gyorsítótárazott profilrészletek és csevegési értesítések maradjanak elérhetők a telepített appban.",
     "later": "Később",
     "loading.stats": "Statisztika betöltése",
@@ -3395,6 +3401,23 @@
     "notification.security.login.title": "Biztonsági figyelmeztetés",
     "notification.security.login.new.message": "Új bejelentkezés innen: {clientLabel}.",
     "notification.security.login.blocked.message": "Blokkolt bejelentkezési kísérlet innen: {clientLabel}. Már két aktív munkamenet van használatban.",
-    "operator.request.failed": "Az operátori kérés sikertelen."
+    "operator.request.failed": "Az operátori kérés sikertelen.",
+    "entry.permissions.title": "Engedélyek a belépéshez",
+    "entry.permissions.description": "A helyadat szükséges a régiós elérhetőség ellenőrzéséhez. Az értesítések az új üzenetekről és eseményekről jeleznek. Jóváhagyás után a böngésző először az értesítéseket, majd a helyadatot kéri, egymás után. A letiltott engedélyt a webhely beállításainál módosíthatod.",
+    "entry.permissions.checking": "Mentés…",
+    "install.app": "Telepítés",
+    "entry.permissions.notifications.blocked": "Az értesítések tiltva vannak. Engedélyezd őket az értesítési beállításokban, majd próbáld újra.",
+    "app.setup.title": "Engedélyek és telepítés",
+    "app.setup.description": "Gyors elérés, saját alkalmazásablak.",
+    "app.setup.location": "Helyadat",
+    "app.setup.notifications": "Értesítések",
+    "app.setup.permission.help": "A helyadat kötelező a belépéshez.",
+    "app.setup.allow": "Engedélyezés",
+    "app.setup.permissions": "Engedélyek",
+    "app.setup.update": "Frissítés",
+    "admin.jobs.task.results": "Feladatok legutóbbi eredményei",
+    "admin.jobs.task.next.due": "Feladat következő esedékessége",
+    "User active; rescheduled.": "Aktív felhasználó; ellenőrzés átütemezve.",
+    "Profile set to inactive.": "A profil inaktívra állítva."
   }
 }

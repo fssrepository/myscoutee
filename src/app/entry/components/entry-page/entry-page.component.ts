@@ -54,6 +54,9 @@ import {
 import {
   FirebaseAppService
 } from '../../../shared/core/base/services/firebase-app.service';
+import { FirebaseMessagingService } from '../../../shared/core/base/services/firebase-messaging.service';
+import { AppLocationService } from '../../../shared/core/base/services/app-location.service';
+import { AppSetupStore } from '../../../shared/ui/context/stores/app-setup.store';
 import {
   I18nService
 } from '../../../shared/core/base/services/i18n.service';
@@ -137,8 +140,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
-  private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
-  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 0;
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -150,6 +151,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly firebaseAppService = inject(FirebaseAppService);
+  private readonly firebaseMessagingService = inject(FirebaseMessagingService);
+  private readonly appLocationService = inject(AppLocationService);
+  private readonly appSetupStore = inject(AppSetupStore);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
@@ -171,9 +175,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected landingIdeaCards: InfoCardData[] = [];
   protected landingIdeaCount = 0;
   protected entryAuthUnavailable = false;
-  protected entryAuthUnavailableLabel = 'Unavailable in your country';
-  protected entryAuthLocationRequired = false;
-  protected entryAuthLocationRequiredLabel = 'Allow location';
+  protected entryAuthUnavailableLabel = 'Unavailable here';
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
@@ -232,6 +234,24 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   protected onWindowResize(): void {
     this.syncMobileView();
+  }
+
+  @HostListener('window:offline')
+  protected onBrowserOffline(): void {
+    // A response started before disconnection must not reopen the entry gate.
+    this.landingContentRequestToken += 1;
+    this.entryContentLoadPromise = null;
+    this.grantedLocationEligibilityRequestToken += 1;
+    this.grantedLocationEligibilityPromise = null;
+    this.markEntryNetworkUnavailable();
+  }
+
+  @HostListener('window:online')
+  protected onBrowserOnline(): void {
+    this.entryNetworkUnavailable = false;
+    this.syncLandingLoginAvailability(null, 'reset');
+    void this.synchronizeDeploymentAuthMode();
+    void this.loadEntryContent();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -299,7 +319,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     if (
       !options.bypassConsumerEligibility
-      && this.isLoginLocationRequiredByLandingBundle()
+      && this.authMode === 'firebase'
+      && (this.isLoginLocationRequiredByLandingBundle()
+        || this.firebaseMessagingService.entryPermissionPending)
     ) {
       const allowed = await this.ensureHttpLoginAccessAllowed();
       if (!allowed) {
@@ -488,6 +510,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private initializeEntryFlow(): void {
+    this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
     this.entryConsentViewOnly = false;
     this.entryPrivacyLoading = this.privacyPolicy.state() === null;
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
@@ -532,7 +555,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.loginEligibilityBusy = true;
     try {
       const gateState = this.landingLoginAvailability;
-      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
+      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true
+        && !this.firebaseMessagingService.entryPermissionPending) {
         return true;
       }
       if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
@@ -738,7 +762,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.pendingRedirectAfterOnboarding = '';
     this.pendingDemoSessionUserId = '';
     if (demoSessionUserId) {
-      const session = this.sessionService.startDemoSession(demoSessionUserId);
+      const session = this.usersService.localModeEnabled
+        ? this.sessionService.startDemoSession(demoSessionUserId)
+        : await this.sessionService.startTrackedDemoSession(demoSessionUserId);
       if (!session) {
         this.onboardingOpen = false;
         this.onboardingUser = null;
@@ -746,6 +772,17 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       }
     }
     try {
+      if (demoSessionUserId && !this.usersService.localModeEnabled) {
+        // Read under the registered session before displaying protected media,
+        // just as the ordinary demo selector does after sign-in.
+        const user = await this.usersService.loadUserById(demoSessionUserId, 8000);
+        if (!user) {
+          await this.sessionService.logout();
+          this.onboardingOpen = false;
+          this.onboardingUser = null;
+          return;
+        }
+      }
       const navigated = await this.router.navigateByUrl(redirect);
       if (!navigated) {
         this.onboardingOpen = false;
@@ -1039,112 +1076,24 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return initials || 'U';
   }
 
-  private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      return null;
-    }
-
-    return new Promise<LocationCoordinates | null>(resolve => {
-      let settled = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (coordinates: LocationCoordinates | null): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-        }
-        resolve(coordinates);
-      };
-
-      timeoutId = setTimeout(
-        () => finish(null),
-        EntryPageComponent.LOCATION_REQUEST_TIMEOUT_MS + 500
-      );
-
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const latitude = Number(position.coords.latitude);
-          const longitude = Number(position.coords.longitude);
-          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            finish(null);
-            return;
-          }
-          finish({ latitude, longitude });
-        },
-        () => finish(null),
-        {
-          enableHighAccuracy: false,
-          timeout: EntryPageComponent.LOCATION_REQUEST_TIMEOUT_MS,
-          maximumAge: EntryPageComponent.LOCATION_REQUEST_MAXIMUM_AGE_MS
-        }
-      );
-    });
+  private requestCurrentLocation(): Promise<LocationCoordinates | null> {
+    return this.appLocationService.requestCurrentCoordinates();
   }
 
   private requestLocationAccessFromDialog(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
-      let settled = false;
-      const settle = (allowed: boolean): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        setTimeout(() => resolve(allowed), 0);
-      };
-
-      this.dialogStore.open({
-        title: this.uiText('Location Required For Login'),
-        message: this.uiText('We need your location before login so we can apply the region-based security check.'),
-        cancelLabel: this.uiText('Not now'),
-        confirmLabel: this.uiText('Allow location'),
-        busyConfirmLabel: this.uiText('Checking location...'),
-        failureMessage: this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'),
-        allowBackdropClose: true,
-        allowEscapeClose: true,
-        onCancel: () => settle(false),
-        onConfirm: async () => {
-          const coordinates = await this.requestCurrentLocation();
-          if (!coordinates) {
-            throw new Error(this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
-          }
-
-          let result: UserLocationEligibilityResponseDto;
-          try {
-            result = await this.usersService.checkLocationEligibility(coordinates);
-          } catch {
-            this.markEntryNetworkUnavailable();
-            settle(false);
-            setTimeout(() => {
-              this.dialogStore.openInfo(
-                this.uiText('The server is not reachable right now. Please try again when the network is back.'),
-                {
-                  title: this.uiText('No network'),
-                  confirmLabel: this.uiText('OK')
-                }
-              );
-            }, 0);
-            return;
-          }
-          this.syncLandingLoginAvailability(result, 'coordinates');
-          if (result.eligible) {
-            settle(true);
-            return;
-          }
-
-          settle(false);
-          setTimeout(() => {
-            this.dialogStore.openInfo(
-              this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
-              {
-                title: this.uiText('please.register'),
-                confirmLabel: this.uiText('OK')
-              }
-            );
-          }, 0);
-        }
-      });
+    return this.appSetupStore.requestForLogin(async coordinates => {
+      let result: UserLocationEligibilityResponseDto;
+      try {
+        result = await this.usersService.checkLocationEligibility(coordinates);
+      } catch {
+        this.markEntryNetworkUnavailable();
+        throw new Error(this.uiText('The server is not reachable right now. Please try again when the network is back.'));
+      }
+      this.syncLandingLoginAvailability(result, 'coordinates');
+      if (!result.eligible) {
+        throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
+      }
+      return true;
     });
   }
 
@@ -1229,7 +1178,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
-          this.entryNetworkUnavailable = false;
+          this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
           this.landingIdeaCards = displayState.ideaCards;
           this.landingIdeaCount = displayState.state.ideasTotal;
           if (!this.locationEligibilityResolvedFromCoordinates
@@ -1258,7 +1207,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.endLandingArticlesLoadingWindow();
         this.changeDetectorRef.markForCheck();
       });
-      this.entryContentLoadPromise = null;
+      if (requestToken === this.landingContentRequestToken) {
+        this.entryContentLoadPromise = null;
+      }
     });
     return this.entryContentLoadPromise;
   }
@@ -1484,9 +1435,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private syncEntryAuthGateState(): void {
     const loginEnabled = this.authMode === 'firebase';
     this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
-    this.entryAuthUnavailableLabel = 'Unavailable in your country';
-    this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
-    this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
+    this.entryAuthUnavailableLabel = 'Unavailable here';
     this.resolveBrowserLocationAccessIfNeeded();
     this.changeDetectorRef.markForCheck();
   }
@@ -1515,8 +1464,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
-  private resolveBrowserLocationAccessIfNeeded(force = false): void {
-    if ((!force && !this.entryAuthLocationRequired) || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
+  private resolveBrowserLocationAccessIfNeeded(): void {
+    if (this.authMode !== 'firebase' || !this.isLoginLocationRequiredByLandingBundle()
+      || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
       return;
     }
 
@@ -1531,20 +1481,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           });
         }
       });
-    this.deferEntryAuthLocationRequiredLabel('Checking location');
-  }
-
-  private deferEntryAuthLocationRequiredLabel(label: string): void {
-    const nextLabel = label.trim() || 'Allow location';
-    if (this.entryAuthLocationRequiredLabel === nextLabel) {
-      return;
-    }
-    setTimeout(() => {
-      this.ngZone.run(() => {
-        this.entryAuthLocationRequiredLabel = nextLabel;
-        this.changeDetectorRef.markForCheck();
-      });
-    }, 0);
   }
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
@@ -1580,7 +1516,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       });
     } catch {
-      // Keep the explicit "Allow location" action available if the silent refresh cannot complete.
+      // Login retries the permission and eligibility check if the silent refresh cannot complete.
     }
   }
 

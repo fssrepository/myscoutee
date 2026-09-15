@@ -470,6 +470,15 @@ export interface AdminNotificationRunHistoryEntryDto {
 
 export type AdminNotificationRunHistoryEntry = AdminNotificationRunHistoryEntryDto;
 
+export interface AdminScheduledTaskResultDto {
+  taskKey: string;
+  lastRunAtIso: string;
+  status: string;
+  detail: string;
+  affectedCount: number;
+  nextDueAtIso: string;
+}
+
 export interface AdminNotificationRuleDto {
   id?: string | null;
   ruleKey: string;
@@ -489,6 +498,7 @@ export interface AdminNotificationRuleDto {
   message: AdminNotificationMessageDto;
   runState: AdminNotificationRunStateDto;
   runHistory: AdminNotificationRunHistoryEntryDto[];
+  taskResults?: AdminScheduledTaskResultDto[];
   updatedDate?: string | null;
   updatedUser?: string | null;
 }

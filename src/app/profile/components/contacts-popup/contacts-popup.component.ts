@@ -303,7 +303,7 @@ export class ContactsPopupComponent implements OnDestroy {
     emptyStickyLabel: 'No contacts',
     headerProgress: {
       enabled: true,
-      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',

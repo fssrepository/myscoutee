@@ -243,6 +243,14 @@ export class AdminNotificationsService extends BaseRouteModeService {
         status: `${entry?.status ?? ''}`.trim() || 'completed',
         detail: `${entry?.detail ?? ''}`.trim()
       })).sort((left, right) => Date.parse(right.finishedAtIso || right.startedAtIso) - Date.parse(left.finishedAtIso || left.startedAtIso)).slice(0, 12),
+      taskResults: (rule.taskResults ?? []).slice(0, 12).map(entry => ({
+        taskKey: `${entry.taskKey ?? ''}`.trim(),
+        lastRunAtIso: `${entry.lastRunAtIso ?? ''}`.trim(),
+        status: `${entry.status ?? ''}`.trim(),
+        detail: `${entry.detail ?? ''}`.trim(),
+        affectedCount: Math.max(0, Math.trunc(Number(entry.affectedCount) || 0)),
+        nextDueAtIso: `${entry.nextDueAtIso ?? ''}`.trim()
+      })),
       updatedDate: `${rule.updatedDate ?? ''}`.trim() || null,
       updatedUser: `${rule.updatedUser ?? ''}`.trim() || null
     };

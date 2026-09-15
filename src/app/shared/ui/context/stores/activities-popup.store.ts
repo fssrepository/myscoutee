@@ -9,6 +9,7 @@ import { UserProfileStore } from './user-profile.store';
 
 export interface EventChatPopupRequest {
   chatId: string;
+  targetMessageId?: string | null;
   ownerId?: string | null;
   channelType?: ContractTypes.ChatChannelType | null;
   parentZIndex?: number | null;
@@ -721,6 +722,7 @@ export class ActivitiesPopupStore {
     }
     return {
       chatId,
+      targetMessageId: `${request.targetMessageId ?? ''}`.trim() || null,
       ownerId: ownerId || null,
       channelType,
       parentZIndex: Number.isFinite(parentZIndex) ? Math.max(0, Math.trunc(parentZIndex)) : null

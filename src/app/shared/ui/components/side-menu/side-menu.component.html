@@ -7,6 +7,7 @@
   >
     <div class="navigator-trigger-rail-inner">
       @if (isOperatorMode()) {
+        <span class="navigator-operator-heading">{{ operatorLabel() }}</span>
         <app-menu
           class="operator-community-menu"
           kind="inline"
@@ -33,7 +34,7 @@
   </div>
 }
 
-@if (avatarVisible() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
+@if (avatarVisible() && !isOperatorMode() && notificationAttentionVisible()) {
   <div
     class="notification-attention-launcher"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
@@ -73,21 +74,20 @@
       class="user-menu-panel"
       [class.open]="ui.open"
       [class.is-covered]="isCoveredByAssetPopup()"
-      [class.is-offline]="!runtimeStore.isOnline()"
     >
       <div class="navigator-menu-header">
+        <div class="navigator-install-action">
+          <button type="button" (click)="openAppSetup()">
+            <mat-icon>{{ pwaService.installAvailable() ? 'install_desktop' : 'settings' }}</mat-icon>
+            <span>{{ installLabel() }}</span>
+          </button>
+        </div>
         <app-header-card
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
         ></app-header-card>
         <div class="navigator-header-actions">
-          @if (!runtimeStore.isOnline()) {
-            <div class="navigator-offline-badge" role="status">
-              <mat-icon>cloud_off</mat-icon>
-              <span>Offline</span>
-            </div>
-          }
           <app-menu
             class="navigator-header-actions-menu"
             kind="inline"
@@ -105,11 +105,6 @@
         </div>
       </div>
       <div class="user-menu-content">
-        @if (!runtimeStore.isOnline()) {
-          <div class="user-menu-offline-note">
-            {{ navigatorOfflineNote() }}
-          </div>
-        }
         @if (isAdminMode()) {
           <app-menu
             kind="inline"

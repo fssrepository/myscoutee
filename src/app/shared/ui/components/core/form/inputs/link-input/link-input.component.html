@@ -32,4 +32,7 @@
       (itemSelect)="onAction($event)"
     ></app-menu>
   </span>
+  @if (clipboardError()) {
+    <span class="link-input__error" role="alert">{{ clipboardError() }}</span>
+  }
 </label>

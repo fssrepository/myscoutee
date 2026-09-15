@@ -81,6 +81,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       snapshot: {
         ...state.snapshot,
         profileStatus: user.profileStatus,
+        notificationDevices: user.notificationDevices?.map(device => ({ ...device })),
         counters: this.rebaseCounters(state.snapshot.counters, previousBase, nextBase)
       }
     };
@@ -150,6 +151,7 @@ export class LocalUserRealtimeSnapshotBuilder {
     return {
       userId: user.id,
       profileStatus: user.profileStatus,
+      notificationDevices: user.notificationDevices?.map(device => ({ ...device })),
       counters: {
         game: activities.game,
         chats: activities.chats,
