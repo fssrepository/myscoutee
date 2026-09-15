@@ -1390,7 +1390,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.syncPrimaryTiming(rule);
     this.refreshTimingDirty(rule);
-    const saved = await this.save();
+    const saved = await this.save([rule]);
     if (saved) {
       this.scheduleEditorBaseline = null;
       this.closeScheduleEditor();

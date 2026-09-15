@@ -306,10 +306,40 @@
 
   .monitoring-flow {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  }
+
+  .monitoring-node {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .monitoring-node-badges {
+    min-width: 0;
+  }
+
+  .monitoring-badge {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .monitoring-badge span {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .monitoring-badge strong {
+    flex-shrink: 0;
   }
 
   .monitoring-edge {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .monitoring-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
