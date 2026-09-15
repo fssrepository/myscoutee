@@ -250,8 +250,11 @@ export class SideMenuComponent implements OnDestroy {
   private readonly appSetupStore = inject(AppSetupStore);
   protected readonly installLabel = computed(() => {
     this.i18n.revision();
-    return this.i18n.translate('install.app');
+    return this.i18n.translate(this.pwaService.installAvailable() ? 'install.app' : 'app.setup.permissions');
   });
+  protected openAppSetup(): void {
+    this.appSetupStore.open();
+  }
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
@@ -1407,8 +1410,7 @@ export class SideMenuComponent implements OnDestroy {
       case 'settings':
         return;
       case 'permissions':
-        this.onCloseMenu();
-        this.appSetupStore.open();
+        this.openAppSetup();
         return;
       case 'help':
       case 'feedback':

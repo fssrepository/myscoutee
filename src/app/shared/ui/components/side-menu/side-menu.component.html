@@ -76,14 +76,12 @@
       [class.is-covered]="isCoveredByAssetPopup()"
     >
       <div class="navigator-menu-header">
-        @if (pwaService.installAvailable()) {
-          <div class="navigator-install-action">
-            <button type="button" (click)="onCloseMenu(); pwaService.showInstallPrompt()">
-              <mat-icon>install_desktop</mat-icon>
-              <span>{{ installLabel() }}</span>
-            </button>
-          </div>
-        }
+        <div class="navigator-install-action">
+          <button type="button" (click)="openAppSetup()">
+            <mat-icon>{{ pwaService.installAvailable() ? 'install_desktop' : 'settings' }}</mat-icon>
+            <span>{{ installLabel() }}</span>
+          </button>
+        </div>
         <app-header-card
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"
