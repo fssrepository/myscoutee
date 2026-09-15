@@ -831,7 +831,7 @@
 
 .process-history-row {
   display: grid;
-  grid-template-columns: 1.1fr 0.58fr 0.52fr 0.58fr minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.58fr) minmax(0, 0.52fr) 24px 28px;
   gap: 0.46rem;
   align-items: center;
   min-height: 34px;
@@ -842,18 +842,26 @@
   font-weight: 800;
 }
 
-.process-task-results .process-history-table {
-  overflow-x: auto;
+.process-task-result-row {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 0.52fr) 24px 28px;
 }
 
-.process-task-results .process-task-result-row {
-  min-width: 650px;
-  grid-template-columns: 1.1fr 1.1fr 0.52fr 0.58fr minmax(0, 1.4fr);
+.process-history-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #52647f;
 }
 
-.process-task-results .process-task-result-row span:nth-child(n) {
-  display: block;
+.process-history-status mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
 }
+
+.process-history-status[data-status='completed'] { color: #22845d; }
+.process-history-status[data-status='failed'],
+.process-history-status[data-status='error'] { color: #b83232; }
 
 .process-history-row:not(.process-history-head) {
   background: #f8fbff;
@@ -1475,12 +1483,11 @@
   }
 
   .process-history-row {
-    grid-template-columns: 1fr 0.5fr 0.45fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.5fr) minmax(0, 0.45fr) 24px 28px;
   }
 
-  .process-history-row span:nth-child(4),
-  .process-history-row span:nth-child(5) {
-    display: none;
+  .process-task-result-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.35fr) 24px 28px;
   }
 
   .notification-run-card {
@@ -1492,4 +1499,32 @@
     grid-column: 1 / -1;
     width: 100%;
   }
+}
+
+.process-history-detail-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #365776;
+  cursor: pointer;
+}
+
+.process-history-detail-button mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.process-history-detail {
+  padding: 0.6rem;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #233a5b;
+  font-size: 0.74rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }

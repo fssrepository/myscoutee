@@ -1477,6 +1477,21 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return `@every ${amount} ${unit} @ ${this.startTime(rule)}`;
   }
 
+  protected readonly expandedHistoryKey = signal<string | null>(null);
+
+  protected historyStatusIcon(status: string): string {
+    switch (status) {
+      case 'completed': return 'check_circle';
+      case 'scheduled': return 'schedule';
+      case 'running': return 'autorenew';
+      case 'failed':
+      case 'error': return 'error';
+      case 'skipped': return 'skip_next';
+      case 'suspended': return 'pause_circle';
+      default: return 'help_outline';
+    }
+  }
+
   protected history(rule: AdminNotificationRule): AdminNotificationRunHistoryEntry[] {
     return [...(rule.runHistory ?? [])].sort((left, right) =>
       Date.parse(right.finishedAtIso || right.startedAtIso) - Date.parse(left.finishedAtIso || left.startedAtIso)
