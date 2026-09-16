@@ -287,6 +287,7 @@ interface RemoteOperatorCommunityProvider {
 }
 
 interface RemoteOperatorUpdateJob {
+  monitorToken?: string | null;
   schemaVersion: number;
   jobId: string;
   phase: string;
@@ -827,12 +828,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         this.requestOptions()
       ).toPromise()
     ).catch(() => { throw new Error('operator.update.error.start'); });
+    const monitorToken = job.monitorToken?.trim() || null;
+    if (monitorToken && !/^[0-9a-f]{64}$/.test(monitorToken)) {
+      throw new Error('operator.update.error.response');
+    }
     this.activeUpdateJob = job;
     this.currentDeploymentVersion = job.currentVersion?.trim()
       || this.currentDeploymentVersion;
     onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
 
-    job = await this.loadUpdateJob(job.jobId).catch((error: unknown) => {
+    job = monitorToken ? job : await this.loadUpdateJob(job.jobId).catch((error: unknown) => {
       if (this.transientUpdateReadError(error)) {
         return job;
       }
@@ -848,7 +853,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     let after = 0;
     const deadline = Date.now() + UPDATE_POLL_LIMIT * UPDATE_POLL_INTERVAL_MS;
     for (let poll = 0; poll < UPDATE_POLL_LIMIT && Date.now() < deadline; poll += 1) {
-      const page = await this.loadUpdateEvents(job.jobId, after).catch((error: unknown) => {
+      const read = monitorToken
+        ? this.loadMonitoredUpdate(job.jobId, monitorToken, after)
+        : this.loadUpdateEvents(job.jobId, after);
+      const page = await read.catch((error: unknown) => {
         // Installation restarts the API/proxy. Retry only reads of the same
         // accepted job, keeping its cursor and last confirmed progress.
         if (this.transientUpdateReadError(error)) {
@@ -882,6 +890,18 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   private transientUpdateReadError(error: unknown): boolean {
     return (error instanceof HttpErrorResponse && [0, 502, 503, 504].includes(error.status))
       || (error instanceof Error && error.message === 'operator.request.timeout');
+  }
+
+  private async loadMonitoredUpdate(jobId: string, token: string, after: number): Promise<RemoteOperatorUpdateEventPage> {
+    // Same-origin HTTPS; the independent host reader is behind the retained ingress.
+    // This job-scoped read capability stays in memory and never enters a URL/storage.
+    const route = `/operator-update-status/${encodeURIComponent(jobId)}`;
+    const status = await this.requireResponse(route, this.http.get<RemoteOperatorUpdateJob>(route, {
+      headers: new HttpHeaders({ Authorization: `UpdateMonitor ${token}` })
+    }).toPromise());
+    if (status.jobId !== jobId) throw new Error('operator.update.error.response');
+    return { items: [{ sequence: after + 1, status }], nextAfter: after + 1,
+      terminal: this.updateJobTerminal(status.phase) };
   }
 
   async loadConfiguration(): Promise<OperatorConfigurationDto> {

@@ -1466,6 +1466,34 @@ describe('HttpOperatorRegistryService', () => {
     ]);
   });
 
+  it('follows host progress through an API outage with one approval and no reload', async () => {
+    const token = 'b'.repeat(64);
+    const checking = { ...remoteUpdateJob('CHECKING', 5, '1.0.0'), monitorToken: token };
+    const statuses = [remoteUpdateJob('RESTARTING', 92, '1.2.3'), remoteUpdateJob('COMPLETED', 100, '1.2.3')];
+    const page = remoteAnnouncementPage();
+    post.mockReturnValue(of(checking));
+    get.mockImplementation((url: string, options: { headers?: HttpHeaders }) => {
+      if (url === '/api/operator/updates') return of({ enabled: true, currentVersion: '1.0.0', latestJob: null });
+      if (url === '/api/operator/updates/releases') return of({ checkedAt: page.snapshot.asOf, items: page.items });
+      if (url === '/operator-update-status/update_job_1') {
+        expect(options.headers?.get('Authorization')).toBe(`UpdateMonitor ${token}`);
+        return of(statuses.shift());
+      }
+      throw new Error(`Application API is offline: ${url}`);
+    });
+    const service = TestBed.inject(HttpOperatorRegistryService);
+    vi.spyOn(service as any, 'waitForUpdatePoll').mockResolvedValue(undefined);
+    await service.loadDeploymentUpdate();
+    const progress = vi.fn();
+    const result = await service.applyDeploymentUpdate(progress);
+    expect(result.progress.phase).toBe('COMPLETED');
+    expect(result.progress.percent).toBe(100);
+    expect(result.updateAvailable).toBe(false);
+    expect(progress.mock.calls.some(call => call[0].percent === 92)).toBe(true);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls.filter(call => String(call[0]).includes('/jobs/'))).toHaveLength(0);
+  });
+
   it('offers the newest release even when an older update job is already completed', async () => {
     get.mockImplementation((url: string) => {
       if (url === '/api/operator/updates') return of({ enabled: true, currentVersion: '1.0.0',

@@ -153,12 +153,7 @@ export class OperatorPageComponent implements OnInit {
       kind: 'action',
       layout: 'big',
       counter: this.workspace.deploymentUpdate()?.updateAvailable ? 1 : null,
-      counterTone: 'alert',
-      progress: this.workspace.busyAction() === 'load-update'
-        || this.workspace.busyAction() === 'apply-update'
-        || this.workspace.busyAction() === 'rollback-update'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      counterTone: 'alert'
     },
     {
       id: 'registration',
