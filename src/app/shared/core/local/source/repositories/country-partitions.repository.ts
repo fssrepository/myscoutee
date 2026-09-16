@@ -21,6 +21,10 @@ const DEMO_COUNTRY_PARTITIONS: readonly CountryPartition[] = [
   providedIn: 'root'
 })
 export class LocalCountryPartitionsRepository {
+  querySupportedCountries(): { countryCode: string; countryName: string }[] {
+    return DEMO_COUNTRY_PARTITIONS.map(({ countryCode, countryName }) => ({ countryCode, countryName }));
+  }
+
   queryPartitionByCountryCode(countryCode: string | null | undefined): CountryPartition | null {
     const normalizedCountryCode = this.normalizeCountryCode(countryCode);
     if (!normalizedCountryCode) {

@@ -246,6 +246,8 @@ export type ActivityCurrentUserMembershipStatus =
 
 export interface ActivityEventRecord {
   id: string;
+  /** Query-only Explore ordering; not a persisted Event field. */
+  exploreSortKey?: readonly number[];
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
@@ -1279,6 +1281,7 @@ export interface ActivityEventExploreQueryResult {
   records: ActivityEventRecord[];
   total: number;
   nextCursor: string | null;
+  sortKeys?: Record<string, number[]>;
 }
 
 export interface ActivityMemberInvolvementDTO {

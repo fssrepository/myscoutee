@@ -5,6 +5,7 @@ import type { LandingContentStateDto } from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
 import { LocalHelpCenterService } from './help-center.service';
 import { LocalIdeaPostsService } from './idea-posts.service';
+import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +23,7 @@ export class LocalLandingContentService {
   private readonly helpCenter = inject(LocalHelpCenterService);
   private readonly ideaPosts = inject(LocalIdeaPostsService);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly countryPartitions = inject(LocalCountryPartitionsRepository);
 
   async loadContent(): Promise<LandingContentStateDto> {
     const [privacy, terms, ideaPreview] = await Promise.all([
@@ -35,6 +37,7 @@ export class LocalLandingContentService {
       terms,
       ideas: ideaPreview.records,
       ideasTotal: ideaPreview.total,
+      supportedCountries: this.countryPartitions.querySupportedCountries(),
       loginAvailability: LocalLandingContentService.DEMO_LOGIN_AVAILABILITY
     };
   }
