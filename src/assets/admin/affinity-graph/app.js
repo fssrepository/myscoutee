@@ -2729,14 +2729,14 @@ function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, opti
     : DEFAULT_MIN_DISTANCE;
   controls.minDistance = Math.min(nextMinDistance, fittedOrbitDistance);
   const cappedMaxDistance = Math.max(controls.minDistance + 1, fittedOrbitDistance);
-  viewportPanOffset.x = 0;
-  viewportPanOffset.y = 0;
-  applyViewportOffset(viewport);
   if (animateTarget) {
     controls.maxDistance = Math.max(cappedMaxDistance, camera.position.distanceTo(controls.target));
     startCameraAnimation(targetPosition, target, cappedMaxDistance, durationMs);
     return;
   }
+  viewportPanOffset.x = 0;
+  viewportPanOffset.y = 0;
+  applyViewportOffset(viewport);
   cameraAnimation = null;
   controls.maxDistance = cappedMaxDistance;
   camera.position.copy(targetPosition);
@@ -3337,6 +3337,7 @@ function startCameraAnimation(targetPosition, targetLookAt, maxDistanceAfterAnim
     toPosition: targetPosition.clone(),
     fromTarget: controls.target.clone(),
     toTarget: targetLookAt.clone(),
+    fromPanOffset: { ...viewportPanOffset },
     maxDistanceAfterAnimation
   };
 }
@@ -3350,6 +3351,10 @@ function updateCameraAnimation() {
   const eased = easeOutCubic(progress);
   camera.position.copy(cameraAnimation.fromPosition).lerp(cameraAnimation.toPosition, eased);
   controls.target.copy(cameraAnimation.fromTarget).lerp(cameraAnimation.toTarget, eased);
+  // Recenter the projection with the camera, not abruptly before it starts moving.
+  viewportPanOffset.x = THREE.MathUtils.lerp(cameraAnimation.fromPanOffset.x, 0, eased);
+  viewportPanOffset.y = THREE.MathUtils.lerp(cameraAnimation.fromPanOffset.y, 0, eased);
+  applyViewportOffset();
   if (progress >= 1) {
     if (Number.isFinite(cameraAnimation.maxDistanceAfterAnimation)) {
       controls.maxDistance = Math.max(controls.minDistance + 1, cameraAnimation.maxDistanceAfterAnimation);
