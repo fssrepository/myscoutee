@@ -595,6 +595,14 @@
                         let linkIndex = $index
                       ) {
                         <article class="operator-action-popup__social-link">
+                          <app-menu
+                            class="operator-action-popup__single-action-menu"
+                            kind="inline"
+                            layout="row"
+                            panelMode="anchored"
+                            [items]="configurationSocialLinkRemoveItems(linkIndex)"
+                            (itemSelect)="onAction($event)"
+                          ></app-menu>
                           <div class="operator-action-popup__social-link-fields">
                             <label class="operator-action-popup__field">
                               <span>{{ 'operator.configuration.social.provider' | i18n }}</span>
@@ -669,14 +677,6 @@
                             [disabled]="configurationDisabled()"
                           ></app-link-input>
 
-                          <app-menu
-                            class="operator-action-popup__single-action-menu"
-                            kind="inline"
-                            layout="row"
-                            panelMode="anchored"
-                            [items]="configurationSocialLinkRemoveItems(linkIndex)"
-                            (itemSelect)="onAction($event)"
-                          ></app-menu>
                         </article>
                       } @empty {
                         <p class="operator-action-popup__empty">
@@ -727,7 +727,6 @@
                     </header>
 
                     <div class="operator-action-popup__select-field">
-                      <span>{{ 'operator.configuration.payment.provider' | i18n }}</span>
                       <app-menu
                         kind="select"
                         [trigger]="configurationPaymentProviderTrigger()"
@@ -774,18 +773,20 @@
                       </div>
                     }
 
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
-                      <input
-                        type="password"
-                        autocomplete="new-password"
-                        [placeholder]="configuration.payment.credentialMask
-                          || ('operator.configuration.credential.placeholder' | i18n)"
-                        [ngModel]="draft.payment.credential"
-                        (ngModelChange)="workspace.setConfigurationPayment({ credential: $event })"
-                        [disabled]="configurationDisabled() || !draft.payment.providerId"
-                      />
-                    </label>
+                    @if (draft.payment.providerId) {
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
+                        <input
+                          type="password"
+                          autocomplete="new-password"
+                          [placeholder]="configuration.payment.credentialMask
+                            || ('operator.configuration.credential.placeholder' | i18n)"
+                          [ngModel]="draft.payment.credential"
+                          (ngModelChange)="workspace.setConfigurationPayment({ credential: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+                    }
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"

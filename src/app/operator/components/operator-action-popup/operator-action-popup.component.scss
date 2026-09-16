@@ -446,8 +446,8 @@
   width: 100%;
 }
 
-.operator-action-popup__social-link app-menu {
-  justify-self: start;
+.operator-action-popup__social-link > app-menu {
+  justify-self: end;
 }
 
 .operator-action-popup__empty {

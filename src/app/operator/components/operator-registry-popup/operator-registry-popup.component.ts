@@ -284,7 +284,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
     ) {
       this.workspace.applyRegistryDeactivation();
     }
-    if (status) {
+    if (status?.enabled === true && status.lifecycle === 'REGISTERED') {
       this.registry.setNotice('operator.registration.completed');
     }
   }
