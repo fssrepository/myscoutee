@@ -261,6 +261,21 @@
   flex: 0 0 auto;
 }
 
+// Same background and icon colors as the corresponding AppMenu palettes.
+@each $palette, $start, $end, $icon in (
+  ('blue', #f2f7ff, #e3efff, #3f74b2),
+  ('purple', #f6efff, #ede2ff, #7358b0),
+  ('violet', #f3ecff, #e9ddff, #7a4cc4),
+  ('green', #edf9f4, #e1f3ea, #2f8a54),
+  ('gold', #fff7df, #ffedbb, #c8921e),
+  ('slate', #f4f6f9, #e7edf4, #64748a)
+) {
+  .process-list-icon[data-palette='#{$palette}'] {
+    background: linear-gradient(180deg, $start 0%, $end 100%);
+    color: $icon;
+  }
+}
+
 .process-list-icon.is-suspended {
   background: #fff1e9;
   color: #a13d18;
