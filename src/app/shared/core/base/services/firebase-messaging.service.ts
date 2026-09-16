@@ -38,6 +38,7 @@ import {
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { DeviceRegistrationsService } from './device-registrations.service';
 import { DeploymentConfigurationService } from './deployment-configuration.service';
+import { I18nService } from './i18n.service';
 
 export interface FirebaseMessagingReadinessProof {
   token: string;
@@ -57,10 +58,12 @@ export class FirebaseMessagingService {
   private static readonly DEVICE_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingDeviceId;
   private static readonly TOKEN_STORAGE_KEY = APP_STORAGE_KEYS.messagingToken;
   private static readonly TOKEN_USER_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingUserId;
-  private static readonly SERVICE_WORKER_READY_TIMEOUT_MS = 10_000;
+  private static readonly SERVICE_WORKER_READY_TIMEOUT_MS = 3_000;
+  private static readonly TOKEN_TIMEOUT_MS = 3_000;
   private static readinessAppSequence = 0;
 
   private readonly deviceRegistrations = inject(DeviceRegistrationsService);
+  private readonly i18n = inject(I18nService);
   private localDeviceOperation: Promise<void> = Promise.resolve();
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
@@ -71,23 +74,29 @@ export class FirebaseMessagingService {
   private nativeDenialOperation: Promise<void> | null = null;
   private readonly deviceEnabled = signal(typeof localStorage === 'undefined'
     || localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled) !== 'false');
+  // The switch reflects this browser's saved preference and native permission.
+  // FCM registration is delivery setup and may finish later in the background.
   readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
-    && this.notificationPermission() === 'granted'
-    && (!this.userProfileStore.activeUserId()
-      || this.userProfileStore.activeNotificationDevices().some(device =>
-        device.deviceId === localStorage.getItem(FirebaseMessagingService.DEVICE_ID_STORAGE_KEY)
-        && device.notificationsEnabled)));
+    && this.notificationPermission() === 'granted');
   private deviceOperationRevision = 0;
 
   async setDeviceNotificationsEnabled(enabled: boolean): Promise<void> {
     this.deviceOperationRevision++;
     this.deviceEnabled.set(enabled);
     localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, String(enabled));
-    if (enabled) {
-      await this.requestAndRegisterForActiveUser();
-    } else {
-      this.unbindForegroundMessages();
-      await this.unregisterStoredDevice(true);
+    try {
+      if (enabled) {
+        if (this.deviceRegistrations.isLocal) {
+          await this.requestAndRegisterForActiveUser();
+        } else {
+          void this.requestAndRegisterForActiveUser().catch(() => undefined);
+        }
+      } else {
+        this.unbindForegroundMessages();
+        await this.unregisterStoredDevice(true);
+      }
+    } catch {
+      throw new Error(this.i18n.translate('entry.permissions.notifications.failed'));
     }
   }
 
@@ -176,7 +185,7 @@ export class FirebaseMessagingService {
           }
           return;
         }
-        untracked(() => { if (this.deviceEnabled()) void this.registerActiveDevice(runtime); });
+        untracked(() => { if (this.deviceEnabled()) void this.registerActiveDevice(runtime).catch(() => undefined); });
       },
       { injector: this.injector }
     );
@@ -214,7 +223,7 @@ export class FirebaseMessagingService {
     // network awaits consume the browser's transient user activation.
     const decision = typeof Notification === 'undefined'
       ? Promise.resolve(null)
-      : Notification.permission !== 'granted'
+      : Notification.permission === 'default'
         ? Notification.requestPermission().catch(() => 'denied' as const)
         : Promise.resolve(Notification.permission);
     return decision.then(permission => {
@@ -318,6 +327,11 @@ export class FirebaseMessagingService {
     if (!userId) {
       return;
     }
+    const firebaseRuntime = expectedRuntime
+      ?? await this.firebaseAppService.ensureFirebaseRuntime();
+    if (!firebaseRuntime?.config.vapidKey) {
+      return;
+    }
     const previousUserId = localStorage.getItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY)?.trim() ?? '';
     const previousToken = localStorage.getItem(FirebaseMessagingService.TOKEN_STORAGE_KEY)?.trim() ?? '';
     if (previousUserId && previousUserId !== userId && previousToken) {
@@ -331,17 +345,12 @@ export class FirebaseMessagingService {
     if (!messagingSupported) {
       return;
     }
-    const firebaseRuntime = expectedRuntime
-      ?? await this.firebaseAppService.ensureFirebaseRuntime();
-    if (!firebaseRuntime?.config.vapidKey) {
-      return;
-    }
     try {
       const messaging = getMessaging(firebaseRuntime.app);
-      const firebaseToken = await getToken(messaging, {
+      const firebaseToken = await this.withTokenTimeout(getToken(messaging, {
         vapidKey: firebaseRuntime.config.vapidKey,
         serviceWorkerRegistration
-      });
+      }));
       if (!firebaseToken) {
         return;
       }
@@ -372,7 +381,22 @@ export class FirebaseMessagingService {
       this.storeToken(firebaseToken, userId);
       this.bindForegroundMessages(firebaseRuntime.app, messaging);
     } catch {
-      // Keep registration best-effort to avoid blocking app startup.
+      // Delivery setup must not block saving the browser notification preference.
+    }
+  }
+
+  private async withTokenTimeout<T>(operation: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Notification registration timed out')),
+            FirebaseMessagingService.TOKEN_TIMEOUT_MS);
+        })
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
   }
 
@@ -444,7 +468,7 @@ export class FirebaseMessagingService {
       const messagingSupported = await isSupported().catch(() => false);
       if (messagingSupported) {
         try {
-          await deleteToken(getMessaging(firebaseApp));
+          await this.withTokenTimeout(deleteToken(getMessaging(firebaseApp)));
         } catch {
           // Ignore token cleanup failures and still remove backend registration.
         }

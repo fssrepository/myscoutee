@@ -3438,6 +3438,7 @@
     "operator.update.phase.preparing_data": "Beépített adatok előkészítése",
     "operator.update.phase.starting_services": "Szolgáltatások indítása",
     "operator.update.phase.waiting_for_health": "Várakozás az alkalmazás indulására",
-    "operator.update.phase.switching_ingress": "Webszerver átváltása"
+    "operator.update.phase.switching_ingress": "Webszerver átváltása",
+    "entry.permissions.notifications.failed": "Nem sikerült menteni az értesítési beállításokat. Ellenőrizd a kapcsolatot, majd próbáld újra."
   }
 }

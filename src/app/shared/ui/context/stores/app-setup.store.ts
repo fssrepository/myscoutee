@@ -121,7 +121,7 @@ export class AppSetupStore {
         this.nativePending.set(false);
         this.busy.set(true);
         await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
-        if (generation === this.generation) this.finish(true);
+        if (generation === this.generation) this.notificationsEdited.set(false);
         return;
       }
       const coordinates = await this.location.requestCurrentCoordinates();
@@ -139,7 +139,10 @@ export class AppSetupStore {
       if (generation !== this.generation) return;
       // Registration follows native decisions, never a second permission prompt.
       await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
-      if (generation === this.generation) this.finish(true);
+      if (generation === this.generation) {
+        if (this.completeLogin) this.finish(true);
+        else this.notificationsEdited.set(false);
+      }
     } catch (error) {
       if (generation === this.generation) this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
     } finally {

@@ -3438,6 +3438,7 @@
     "operator.update.phase.preparing_data": "Preparing built-in data",
     "operator.update.phase.starting_services": "Starting services",
     "operator.update.phase.waiting_for_health": "Waiting for application readiness",
-    "operator.update.phase.switching_ingress": "Switching web server"
+    "operator.update.phase.switching_ingress": "Switching web server",
+    "entry.permissions.notifications.failed": "Could not save notification settings. Check your connection and try again."
   }
 }
