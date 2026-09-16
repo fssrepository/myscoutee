@@ -4,6 +4,7 @@
 
 .operator-registration {
   position: relative;
+  flex: 0 0 auto;
   min-height: 260px;
   display: grid;
   gap: 0.9rem;
@@ -95,6 +96,7 @@
 }
 
 .operator-registration__message .mat-icon {
+  flex: 0 0 18px;
   width: 18px;
   height: 18px;
   font-size: 18px;

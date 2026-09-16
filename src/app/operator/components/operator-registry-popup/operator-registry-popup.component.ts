@@ -221,10 +221,10 @@ export class OperatorRegistryPopupComponent implements OnInit {
       closeAriaLabel: 'operator.popup.close',
       size: 'small',
       height: 'auto',
-      mobilePresentation: 'compact',
+      mobilePresentation: 'fullscreen',
       headerTone: 'accent',
       headerPalette: 'violet',
-      bodyLayout: 'overflow',
+      bodyLayout: 'default',
       headerActions: [
         {
           id: 'refresh',
