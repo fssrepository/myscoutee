@@ -497,6 +497,20 @@ export class OperatorActionPopupComponent {
       }]
     };
   });
+  protected readonly createClientCodeItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => this.canIssueClientCode() ? [{
+    id: 'operator-create-client-code',
+    ariaLabel: 'operator.claim.client.code.create',
+    icon: 'link',
+    palette: 'teal',
+    layout: 'icon',
+    disabled: this.busy(),
+    progress: this.busyAction() === 'issue-grouping-token'
+      ? { state: 'loading', durationMs: 3000 }
+      : null,
+    context: { action: 'create-client-code' }
+  }] : []);
   protected readonly claimClientCodeValue = computed(() => ({
     clientToken: this.workspace.groupTokenInput()
   }));
@@ -2013,18 +2027,7 @@ export class OperatorActionPopupComponent {
             ? { state: 'loading', durationMs: 3000 }
             : null,
           context: { action: 'redeem-token' }
-        }, ...(this.canIssueClientCode() ? [{
-          id: 'operator-create-client-code',
-          ariaLabel: 'operator.claim.client.code.create',
-          icon: 'link',
-          palette: 'teal' as const,
-          layout: 'icon' as const,
-          disabled: this.busy(),
-          progress: this.busyAction() === 'issue-grouping-token'
-            ? { state: 'loading' as const, durationMs: 3000 }
-            : null,
-          context: { action: 'create-client-code' as const }
-        }] : [])];
+        }];
       }
       case 'revenue': {
         const sync = this.workspace.revenueSync();

@@ -563,6 +563,17 @@
   width: 100%;
 }
 
+.operator-action-popup__client-code {
+  position: relative;
+  min-width: 0;
+}
+
+.operator-action-popup__client-code-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
 .operator-action-popup__claim-review {
   min-width: 0;
   display: grid;
