@@ -32,7 +32,8 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuTrigger
+  type AppMenuTrigger,
+  type AppMenuPalette
 } from '../../../shared/ui/components/core/menu';
 import {
   IndicatorComponent
@@ -423,11 +424,23 @@ export class AdminParamsPopupComponent implements OnDestroy {
     return field.labelKey || field.label || 'Options';
   }
 
+  private textFieldOptionPalette(field: AdminParamFieldDto, value: string): AppMenuPalette {
+    if (field.key === 'distance.strategy') {
+      switch (value) {
+        case 'linear': return 'blue';
+        case 'exponential': return 'purple';
+        case 'bucketed': return 'amber';
+      }
+    }
+    return 'default';
+  }
+
   protected textFieldSelectTrigger(field: AdminParamFieldDto): AppMenuTrigger {
     return {
       label: this.textFieldOptionLabel(field),
       ariaLabel: this.textFieldSelectTitle(field),
-      layout: 'field',
+      layout: 'pill',
+      palette: this.textFieldOptionPalette(field, field.textValue ?? ''),
       disabled: this.saving() || field.readOnly === true
     };
   }
@@ -440,6 +453,8 @@ export class AdminParamsPopupComponent implements OnDestroy {
       return {
         id: `param-option:${field.key}:${option.value}` as AdminParamSelectMenuItemId,
         kind: 'radio',
+        layout: 'pill',
+        palette: this.textFieldOptionPalette(field, option.value),
         label: option.labelKey || option.label,
         active: selected,
         checked: selected,

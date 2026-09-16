@@ -217,6 +217,7 @@
 }
 
 .admin-params-edit-body {
+  flex: 1 1 auto;
   padding: 0.76rem;
 }
 
@@ -238,19 +239,6 @@
   font-size: 0.82rem;
   font-weight: 800;
   box-sizing: border-box;
-}
-
-.admin-params-select-wrap {
-  position: relative;
-  min-width: 0;
-  width: 100%;
-}
-
-.admin-params-edit-field:has(.admin-params-select-wrap)::after {
-  content: '';
-  width: 18px;
-  grid-column: 3;
-  grid-row: 1;
 }
 
 .admin-params-edit-field em {
@@ -515,10 +503,6 @@
 
   .admin-params-edit-field input {
     width: 100%;
-  }
-
-  .admin-params-edit-field:has(.admin-params-select-wrap)::after {
-    content: none;
   }
 
   .admin-params-edit-field:has(em) {
