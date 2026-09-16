@@ -34,7 +34,12 @@
                     {{ formatDate(update.lastUpdatedAt) }}
                   </p>
                 }
-                @if (update.progress.phase !== 'IDLE') {
+                @if (update.progress.phase === 'FAILED') {
+                  <p class="operator-action-popup__result is-error" role="alert">
+                    <mat-icon>error_outline</mat-icon>
+                    <span>{{ (update.progress.message || 'operator.update.error.failed') | i18n }}</span>
+                  </p>
+                } @else if (update.progress.phase !== 'IDLE') {
                   <div
                     class="operator-action-popup__update-progress"
                     [attr.data-phase]="update.progress.phase"
@@ -42,11 +47,7 @@
                   >
                     <span class="operator-action-popup__update-progress-header">
                       <mat-icon>
-                        {{ update.progress.phase === 'FAILED'
-                          ? 'error_outline'
-                          : update.progress.phase === 'COMPLETED'
-                            ? 'check_circle'
-                            : 'sync' }}
+                        {{ update.progress.phase === 'COMPLETED' ? 'check_circle' : 'sync' }}
                       </mat-icon>
                       <strong>{{ updatePhaseLabel(update.progress.phase) | i18n }}</strong>
                       <b>{{ update.progress.percent }}%</b>

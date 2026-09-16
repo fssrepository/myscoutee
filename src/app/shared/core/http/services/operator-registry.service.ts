@@ -287,6 +287,7 @@ interface RemoteOperatorCommunityProvider {
 }
 
 interface RemoteOperatorUpdateJob {
+  rollback?: OperatorRollbackDto | null;
   monitorToken?: string | null;
   schemaVersion: number;
   jobId: string;
@@ -900,6 +901,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       headers: new HttpHeaders({ Authorization: `UpdateMonitor ${token}` })
     }).toPromise());
     if (status.jobId !== jobId) throw new Error('operator.update.error.response');
+    if (status.rollback) this.rollbackPoint = status.rollback;
     return { items: [{ sequence: after + 1, status }], nextAfter: after + 1,
       terminal: this.updateJobTerminal(status.phase) };
   }
@@ -1335,7 +1337,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     if (job.phase?.trim().toUpperCase() === 'DOWNLOADING') {
       const downloadPercent = Math.max(0, Math.min(1, (percent - 10) / 50));
       bytesDownloaded = Math.round(bytesTotal * downloadPercent);
-    } else if (phase === 'VERIFYING' || phase === 'INSTALLING' || phase === 'COMPLETED') {
+    } else if (['VERIFYING', 'INSTALLING', 'COMPLETED', 'CONFIGURING_PACKAGE', 'LOADING_IMAGES', 'VERIFYING_IMAGES', 'PREPARING_DATA', 'STARTING_SERVICES', 'WAITING_FOR_HEALTH', 'SWITCHING_INGRESS'].includes(phase)) {
       bytesDownloaded = bytesTotal;
     }
     return {
@@ -1366,6 +1368,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       case 'INSTALLING':
       case 'RESTARTING':
         return 'INSTALLING';
+      case 'CONFIGURING_PACKAGE':
+        return 'CONFIGURING_PACKAGE';
+      case 'LOADING_IMAGES':
+        return 'LOADING_IMAGES';
+      case 'VERIFYING_IMAGES':
+        return 'VERIFYING_IMAGES';
+      case 'PREPARING_DATA':
+        return 'PREPARING_DATA';
+      case 'STARTING_SERVICES':
+        return 'STARTING_SERVICES';
+      case 'WAITING_FOR_HEALTH':
+        return 'WAITING_FOR_HEALTH';
+      case 'SWITCHING_INGRESS':
+        return 'SWITCHING_INGRESS';
       case 'COMPLETED':
         return 'COMPLETED';
       case 'FAILED':

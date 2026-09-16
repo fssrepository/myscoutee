@@ -7,6 +7,7 @@ import {
   type FirebaseMessagingReadinessLease
 } from '../../../core/base/services/firebase-messaging.service';
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
+import { PwaService } from '../../../core/base/services/pwa.service';
 import { OperatorConfigurationMapper } from '../../../core/base/mappers/operator-configuration.mapper';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 import {
@@ -93,6 +94,7 @@ const CONFIGURATION_BUSY_ACTIONS = new Set<
 })
 export class OperatorWorkspaceStore {
   private readonly service = inject(OperatorRegistryService);
+  private readonly pwaService = inject(PwaService);
   private readonly sessionService = inject(SessionService);
   private readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -504,28 +506,28 @@ export class OperatorWorkspaceStore {
   private async executeDeploymentUpdate(rollback: boolean): Promise<OperatorDeploymentUpdateDto | null> {
     const operation = rollback ? this.service.rollbackDeploymentUpdate.bind(this.service)
       : this.service.applyDeploymentUpdate.bind(this.service);
-    const result = await this.run(
+    return this.run(
       rollback ? 'rollback-update' : 'apply-update',
-      () => operation(progress => {
-        this.deploymentUpdateRef.update(current =>
-          current
-            ? {
-                ...current,
-                progress
-              }
-            : current
-        );
-      })
-    );
-    if (result) {
-      this.deploymentUpdateRef.set(result);
-      if (result.progress.phase === 'COMPLETED') {
-        this.noticeRef.set('operator.update.completed');
-      } else if (result.progress.phase === 'FAILED') {
-        this.errorRef.set(result.progress.message || 'operator.update.error.failed');
+      async () => {
+        const result = await operation(progress => {
+          this.deploymentUpdateRef.update(current =>
+            current
+              ? {
+                  ...current,
+                  progress,
+                  availableVersion: rollback && current.rollback
+                    ? current.rollback.targetVersion : current.availableVersion
+                }
+              : current
+          );
+        });
+        this.deploymentUpdateRef.set(result);
+        if (result.progress?.phase === 'COMPLETED' && result.progress.percent === 100) {
+          await this.pwaService.reloadAfterDeploymentChange();
+        }
+        return result;
       }
-    }
-    return result;
+    );
   }
 
   async loadConfiguration(): Promise<OperatorConfigurationDto | null> {

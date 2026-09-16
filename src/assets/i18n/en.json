@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.16.en.110",
+  "version": "2026.09.16.en.111",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3431,6 +3431,13 @@
     "landing.supported.countries.empty": "No countries are currently listed.",
     "operator.update.error.metadata": "This release has no signed update information yet.",
     "operator.update.error.key": "The trusted update signing key is not configured.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "operator.update.phase.configuring_package": "Configuring package",
+    "operator.update.phase.loading_images": "Loading application images",
+    "operator.update.phase.verifying_images": "Verifying application images",
+    "operator.update.phase.preparing_data": "Preparing built-in data",
+    "operator.update.phase.starting_services": "Starting services",
+    "operator.update.phase.waiting_for_health": "Waiting for application readiness",
+    "operator.update.phase.switching_ingress": "Switching web server"
   }
 }

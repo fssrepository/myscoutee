@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.110",
+  "version": "2026.09.16.hu.111",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3431,6 +3431,13 @@
     "landing.supported.countries.empty": "Jelenleg nincs felsorolt ország.",
     "operator.update.error.metadata": "Ehhez a kiadáshoz még nincs aláírt frissítési információ.",
     "operator.update.error.key": "A frissítések megbízható aláírókulcsa nincs beállítva.",
-    "loading": "Betöltés…"
+    "loading": "Betöltés…",
+    "operator.update.phase.configuring_package": "Csomag beállítása",
+    "operator.update.phase.loading_images": "Alkalmazásképek betöltése",
+    "operator.update.phase.verifying_images": "Alkalmazásképek ellenőrzése",
+    "operator.update.phase.preparing_data": "Beépített adatok előkészítése",
+    "operator.update.phase.starting_services": "Szolgáltatások indítása",
+    "operator.update.phase.waiting_for_health": "Várakozás az alkalmazás indulására",
+    "operator.update.phase.switching_ingress": "Webszerver átváltása"
   }
 }

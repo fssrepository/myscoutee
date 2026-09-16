@@ -1945,7 +1945,8 @@ export class OperatorActionPopupComponent {
       case 'updates': {
         const update = this.workspace.deploymentUpdate();
         const updateKnown = update !== null;
-        const updateRunning = !!update
+        const updateFailed = update?.progress.phase === 'FAILED' || !!this.workspace.error();
+        const updateRunning = !!update && !this.workspace.error()
           && !['IDLE', 'COMPLETED', 'FAILED'].includes(update.progress.phase);
         return [
           {
@@ -1960,18 +1961,16 @@ export class OperatorActionPopupComponent {
               : null,
             context: { action: 'refresh-update' }
           },
-          {
+          ...(!updateKnown || update?.updateAvailable || updateRunning || updateFailed ? [{
             id: 'operator-apply-update',
-            label: !updateKnown || update?.updateAvailable
-              ? 'operator.update.apply'
-              : 'operator.update.current',
-            icon: !updateKnown || update?.updateAvailable ? 'system_update_alt' : 'check_circle',
-            palette: 'teal',
-            layout: 'action',
-            disabled: this.busy() || updateRunning || !updateKnown || !update?.updateAvailable,
-            context: { action: 'apply-update' }
-          },
-          ...(update?.rollback ? [{
+            label: 'operator.update.apply',
+            icon: 'system_update_alt',
+            palette: 'teal' as const,
+            layout: 'action' as const,
+            disabled: this.busy() || updateRunning || (!updateKnown && !updateFailed),
+            context: { action: 'apply-update' as const }
+          }] : []),
+          ...(update?.rollback || updateFailed || this.busyAction() === 'rollback-update' ? [{
             id: 'operator-rollback-update',
             label: 'operator.update.rollback',
             icon: 'restore',

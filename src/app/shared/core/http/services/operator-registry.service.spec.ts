@@ -1469,7 +1469,7 @@ describe('HttpOperatorRegistryService', () => {
   it('follows host progress through an API outage with one approval and no reload', async () => {
     const token = 'b'.repeat(64);
     const checking = { ...remoteUpdateJob('CHECKING', 5, '1.0.0'), monitorToken: token };
-    const statuses = [remoteUpdateJob('RESTARTING', 92, '1.2.3'), remoteUpdateJob('COMPLETED', 100, '1.2.3')];
+    const statuses = [remoteUpdateJob('LOADING_IMAGES', 87, '1.0.0'), remoteUpdateJob('PREPARING_DATA', 93, '1.2.3'), remoteUpdateJob('WAITING_FOR_HEALTH', 96, '1.2.3'), remoteUpdateJob('COMPLETED', 100, '1.2.3')];
     const page = remoteAnnouncementPage();
     post.mockReturnValue(of(checking));
     get.mockImplementation((url: string, options: { headers?: HttpHeaders }) => {
@@ -1489,9 +1489,27 @@ describe('HttpOperatorRegistryService', () => {
     expect(result.progress.phase).toBe('COMPLETED');
     expect(result.progress.percent).toBe(100);
     expect(result.updateAvailable).toBe(false);
-    expect(progress.mock.calls.some(call => call[0].percent === 92)).toBe(true);
+    expect(progress.mock.calls.map(call => call[0].phase)).toEqual(expect.arrayContaining(['LOADING_IMAGES', 'PREPARING_DATA', 'WAITING_FOR_HEALTH', 'COMPLETED']));
     expect(post).toHaveBeenCalledTimes(1);
     expect(get.mock.calls.filter(call => String(call[0]).includes('/jobs/'))).toHaveLength(0);
+  });
+
+  it('keeps the retained rollback action after an installer failure received from the host reader', async () => {
+    const point = {jobId:'update_job_1', fromVersion:'1.2.3', targetVersion:'1.0.0', artifactSha256:'sha256:'+'a'.repeat(64)};
+    const page = remoteAnnouncementPage();
+    post.mockReturnValue(of({...remoteUpdateJob('CHECKING',5,'1.0.0'),monitorToken:'b'.repeat(64)}));
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/updates') return of({enabled:true,currentVersion:'1.0.0',latestJob:null});
+      if (url === '/api/operator/updates/releases') return of({checkedAt:page.snapshot.asOf,items:page.items});
+      if (url === '/operator-update-status/update_job_1') return of({...remoteUpdateJob('RECOVERY_REQUIRED',96,'1.2.3'),rollback:point});
+      throw new Error(`Application API is offline: ${url}`);
+    });
+    const service = TestBed.inject(HttpOperatorRegistryService);
+    await service.loadDeploymentUpdate();
+    const result = await service.applyDeploymentUpdate();
+    expect(result.progress.phase).toBe('FAILED');
+    expect(result.rollback).toEqual(point);
+    expect(post).toHaveBeenCalledTimes(1);
   });
 
   it('offers the newest release even when an older update job is already completed', async () => {

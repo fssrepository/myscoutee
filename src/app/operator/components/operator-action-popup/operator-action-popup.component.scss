@@ -537,11 +537,7 @@
   gap: 0.42rem;
 }
 
-.operator-action-popup__update-progress[data-phase='FAILED'] {
-  border-color: rgba(185, 49, 71, 0.22);
-  background: #fff0f3;
-  color: #9b3447;
-}
+
 
 .operator-action-popup__update-progress[data-phase='COMPLETED'] {
   background: #eaf8f2;

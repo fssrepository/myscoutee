@@ -227,6 +227,31 @@ export class PwaService {
 
     this.markReloadAttempted(attemptKey);
     await this.activateWaitingWorker(waitingWorker);
+    this.reloadPage();
+  }
+
+  /** Called only after an update or rollback has completed, never when loading job history. */
+  async reloadAfterDeploymentChange(): Promise<void> {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = this.registrationRef()
+          ?? await navigator.serviceWorker.getRegistration(document.baseURI);
+        if (registration) {
+          await registration.update();
+          const worker = await this.waitForWaitingWorker(registration);
+          if (worker) {
+            await this.activateWaitingWorker(worker);
+          }
+        }
+      }
+    } catch {
+      // A worker refresh failure must not turn a completed installation into a failed job.
+      // The normal page-load build check will also reconcile the installed bundle.
+    }
+    this.reloadPage();
+  }
+
+  private reloadPage(): void {
     window.location.reload();
   }
 

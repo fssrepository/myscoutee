@@ -180,14 +180,29 @@ describe('OperatorActionPopupComponent', () => {
     // A reopened durable job stays disabled even without a local pending promise.
     expect(view.actionItems().map(item => item.disabled)).toEqual([true, true]);
     expect(view.actionItems()[1].progress).toBeUndefined();
+    error.set('operator.update.error.status');
+    expect(view.actionItems().map(item => item.disabled)).toEqual([false, false, false]);
+    error.set('');
     deploymentUpdate.update(value => ({ ...value!, progress: {
       ...value!.progress, phase: 'FAILED', message: 'operator.update.error.failed'
     } }));
     error.set('operator.update.error.failed');
-    expect(view.actionItems().map(item => item.disabled)).toEqual([false, false]);
+    deploymentUpdate.update(value => ({...value!, updateAvailable: false}));
+    expect(view.actionItems().map(item => item.disabled)).toEqual([false, false, false]);
+    deploymentUpdate.update(value => ({ ...value!, rollback: {jobId:'previous',fromVersion:'1.0.0',targetVersion:'0.9.0',artifactSha256:'sha256:'+'a'.repeat(64)} }));
+    expect(view.actionItems().map(item => item.disabled)).toEqual([false, false, false]);
     busyAction.set('apply-update');
-    expect(view.actionItems().map(item => item.disabled)).toEqual([true, true]);
+    expect(view.actionItems().map(item => item.disabled)).toEqual([true, true, true]);
     expect(view.actionItems()[1].progress).toBeUndefined();
+    busyAction.set(null);
+    error.set('');
+    deploymentUpdate.update(value => ({...value!,updateAvailable:false,progress:{...value!.progress,phase:'COMPLETED'}}));
+    expect(view.actionItems().map(item => item.id)).toEqual(['operator-refresh-update','operator-rollback-update']);
+    expect(view.actionItems().every(item => !item.disabled)).toBe(true);
+    deploymentUpdate.update(value => ({...value!,rollback:null}));
+    expect(view.actionItems().map(item => item.id)).toEqual(['operator-refresh-update']);
+    deploymentUpdate.update(value => ({...value!,updateAvailable:true}));
+    expect(view.actionItems().map(item => item.id)).toEqual(['operator-refresh-update','operator-apply-update']);
   });
 
   it('passes seeded logos and palettes to both the selected trigger and dropdown rows', () => {
@@ -758,9 +773,8 @@ describe('OperatorActionPopupComponent', () => {
       ])
     }));
     expect(componentView.popupModel()).toEqual(expect.objectContaining({
-      headerLabel: 'operator.leaderboard.deployments.title',
       title: 'Campus Operator',
-      subtitle: 'operator.leaderboard.deployments.subtitle',
+      subtitle: 'operator.leaderboard.deployments.title',
       translateTitle: false,
       bodyLayout: 'fill',
       size: 'wide'
