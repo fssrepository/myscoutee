@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 
-import { DEFAULT_DEPLOYMENT_BRANDING } from '../../contracts/deployment-configuration.interface';
+import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_CONFIGURATION } from '../../contracts/deployment-configuration.interface';
 import { HttpDeploymentConfigurationService } from '../../http/services/deployment-configuration.service';
 import { LocalDeploymentConfigurationService } from '../../local/source/services/deployment-configuration.service';
 import { DeploymentConfigurationService } from './deployment-configuration.service';
@@ -98,6 +98,21 @@ describe('DeploymentConfigurationService', () => {
     }
     restoreUrlMethod('createObjectURL', originalCreateObjectUrl);
     restoreUrlMethod('revokeObjectURL', originalRevokeObjectUrl);
+  });
+
+  it('refreshes the server Messaging capability and clears it when configuration is unavailable', async () => {
+    loadLocalBranding.mockResolvedValue({ ...DEFAULT_DEPLOYMENT_CONFIGURATION, firebaseMessagingConfigured: true });
+    const service = TestBed.inject(DeploymentConfigurationService);
+    await service.initialize();
+    expect(service.firebaseMessagingConfigured()).toBe(true);
+    loadLocalBranding.mockResolvedValue({ ...DEFAULT_DEPLOYMENT_CONFIGURATION, firebaseMessagingConfigured: false });
+    await service.reload();
+    expect(service.firebaseMessagingConfigured()).toBe(false);
+    loadLocalBranding.mockResolvedValue({ ...DEFAULT_DEPLOYMENT_CONFIGURATION, firebaseMessagingConfigured: true });
+    await service.reload();
+    loadLocalBranding.mockRejectedValue(new Error('unavailable'));
+    await service.reload();
+    expect(service.firebaseMessagingConfigured()).toBe(false);
   });
 
   it('uses the sized app icons rather than the small inline logo for the bundled brand', async () => {

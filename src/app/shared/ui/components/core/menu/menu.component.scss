@@ -939,6 +939,7 @@
 
 .app-menu__button-row {
   display: inline-flex;
+  flex-wrap: var(--app-menu-row-wrap, nowrap);
   align-items: center;
   justify-content: flex-end;
   gap: 0.34rem;

@@ -1,11 +1,12 @@
 import { DOCUMENT } from '@angular/common';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
 
 import type { AuthMode } from '../../../shared/core/common/constants';
-import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
+import type { IdeaArticleDetailDto, SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
@@ -64,6 +65,7 @@ interface PartnerRoleOverview {
     WarpImageCardComponent,
     SmartListComponent,
     PopupComponent,
+    CdkTrapFocus,
     AppMenuComponent,
     MatRippleModule,
     MatIconModule,
@@ -87,6 +89,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input() articlesLoading = false;
   @Input() ideaCards: InfoCardData[] = [];
   @Input() ideaCount = 0;
+  @Input() supportedCountries: readonly SupportedCountryDto[] = [];
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'Unavailable here';
   @Input() networkUnavailable = false;
@@ -233,6 +236,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     });
   };
 
+  protected countriesPopupOpen = false;
   protected previewGuideOpen = false;
   protected partnersPopupOpen = false;
   protected ideasPopupOpen = false;
@@ -350,10 +354,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.previewGuideOpen && !this.partnersPopupOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
+    if (!this.countriesPopupOpen && !this.previewGuideOpen && !this.partnersPopupOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
       return;
     }
     event.preventDefault();
+    if (this.countriesPopupOpen) {
+      this.closeCountriesPopup();
+      return;
+    }
     if (this.ideaArticlePopupOpen) {
       this.closeIdeaArticlePopup();
       return;
@@ -497,6 +505,43 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.termsRequested.emit();
+  }
+
+  protected openCountriesPopup(): void {
+    this.countriesPopupOpen = true;
+    this.syncLandingPopupScrollLock();
+  }
+
+  protected closeCountriesPopup(): void {
+    this.countriesPopupOpen = false;
+    this.syncLandingPopupScrollLock();
+  }
+
+  protected countriesPopupModel(): PopupModel {
+    return {
+      title: this.i18n.translate('landing.supported.countries', 'Supported countries'),
+      ariaLabel: this.i18n.translate('landing.supported.countries', 'Supported countries'),
+      closeAriaLabel: 'close',
+      size: 'small',
+      height: 'auto',
+      mobilePresentation: 'compact',
+      headerLayout: 'document',
+      onClose: () => this.closeCountriesPopup()
+    };
+  }
+
+  protected countryFlag(country: SupportedCountryDto): string {
+    const code = country.countryCode?.toUpperCase();
+    return /^[A-Z]{2}$/.test(code)
+      ? String.fromCodePoint(...[...code].map(letter => 127397 + letter.charCodeAt(0)))
+      : '';
+  }
+
+  protected countryLabel(country: SupportedCountryDto): string {
+    const code = country.countryCode?.toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code)) return country.countryName;
+    return new Intl.DisplayNames([this.i18n.currentLanguage()], { type: 'region', fallback: 'none' })
+      .of(code) ?? country.countryName;
   }
 
   protected openPreviewGuide(event?: Event): void {
@@ -845,7 +890,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private syncLandingPopupScrollLock(): void {
-    const shouldLock = this.previewGuideOpen
+    const shouldLock = this.countriesPopupOpen
+      || this.previewGuideOpen
       || this.partnersPopupOpen
       || this.ideasPopupOpen
       || this.ideaArticlePopupOpen;

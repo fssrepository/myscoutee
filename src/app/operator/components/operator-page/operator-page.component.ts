@@ -153,11 +153,16 @@ export class OperatorPageComponent implements OnInit {
       kind: 'action',
       layout: 'big',
       counter: this.workspace.deploymentUpdate()?.updateAvailable ? 1 : null,
-      counterTone: 'alert',
-      progress: this.workspace.busyAction() === 'load-update'
-        || this.workspace.busyAction() === 'apply-update'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      counterTone: 'alert'
+    },
+    {
+      id: 'configuration',
+      label: 'operator.action.configuration',
+      detail: 'operator.action.configuration.detail',
+      icon: 'tune',
+      palette: 'blue',
+      kind: 'action',
+      layout: 'big'
     },
     {
       id: 'registration',
@@ -198,15 +203,6 @@ export class OperatorPageComponent implements OnInit {
         : claimPendingReview || claimInactive
           ? 'orange'
           : 'amber',
-      kind: 'action',
-      layout: 'big'
-    },
-    {
-      id: 'configuration',
-      label: 'operator.action.configuration',
-      detail: 'operator.action.configuration.detail',
-      icon: 'tune',
-      palette: 'blue',
       kind: 'action',
       layout: 'big'
     },

@@ -92,6 +92,7 @@ export class LandingContentService extends BaseRouteModeService {
 
   private cloneState(state: LandingContentStateDto): LandingContentStateDto {
     return {
+      supportedCountries: (state.supportedCountries ?? []).map(country => ({ ...country })),
       privacy: {
         activeRevision: state.privacy.activeRevision
           ? {

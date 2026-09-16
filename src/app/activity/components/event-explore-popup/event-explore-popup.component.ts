@@ -220,6 +220,8 @@ export class EventExplorePopupComponent {
     density: 'compact'
   };
 
+  private readonly eventExploreSortKeys = new Map<string, readonly number[]>();
+
   protected readonly eventExploreSmartListConfig: SmartListConfig<ActivityEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
     initialPageSize: 20,
@@ -1478,6 +1480,9 @@ export class EventExplorePopupComponent {
       }
     });
     this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
+    for (const record of page.items) {
+      if (record.exploreSortKey) this.eventExploreSortKeys.set(record.id, record.exploreSortKey);
+    }
     await this.restoreServerCheckoutDrafts(page.items);
     return page;
   }
@@ -2334,21 +2339,10 @@ export class EventExplorePopupComponent {
   }
 
   private eventExploreRecordLocalSortKey(record: ActivityEventRecord): SmartListLocalSortKey {
-    const startAt = AppUtils.toSortableDate(record.startAtIso);
-    const fallback = [record.title, record.id];
-    switch (this.eventExploreOrder) {
-      case 'nearby':
-        return [Number(record.distanceKm) || 0, startAt, ...fallback];
-      case 'top-rated':
-        return [-(Number(record.rating) || 0), startAt, ...fallback];
-      case 'most-relevant':
-        return [-(Number(record.affinity) || 0), startAt, ...fallback];
-      case 'past-events':
-        return [-startAt, ...fallback];
-      case 'upcoming':
-      default:
-        return [startAt, ...fallback];
-    }
+    // Retain the owning query's order, including grouping and tie breakers.
+    // The retained key also positions a checkout record reinserted into this list.
+    const key = this.eventExploreSortKeys.get(record.id) ?? record.exploreSortKey;
+    return [...(key ?? [Number.MAX_SAFE_INTEGER]), record.id];
   }
 
   private compareEventExploreRecords(left: ActivityEventRecord, right: ActivityEventRecord): number {
@@ -2707,6 +2701,7 @@ export class EventExplorePopupComponent {
   }
 
   private reloadEventExploreSmartList(): void {
+    this.eventExploreSortKeys.clear();
     this.resetHeaderState();
     this.eventExploreSmartList?.reload();
     this.cdr.markForCheck();

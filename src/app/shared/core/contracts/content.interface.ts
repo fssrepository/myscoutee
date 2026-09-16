@@ -191,10 +191,16 @@ export interface HelpCenterRevisionSaveRequestDto {
   sections: HelpCenterSectionDto[];
 }
 
+export interface SupportedCountryDto {
+  countryCode: string;
+  countryName: string;
+}
+
 export interface LandingContentStateDto {
   privacy: HelpCenterStateDto;
   terms: HelpCenterStateDto;
   ideas: IdeaPostDto[];
   ideasTotal: number;
+  supportedCountries?: SupportedCountryDto[];
   loginAvailability: UserContracts.UserLocationEligibilityResponseDto | null;
 }

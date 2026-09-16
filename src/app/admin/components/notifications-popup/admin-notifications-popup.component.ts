@@ -406,6 +406,20 @@ const PROCESS_RULE_ICONS: Record<string, string> = {
   'account-purge': 'delete_sweep'
 };
 
+const PROCESS_RULE_PALETTES: Record<string, string> = {
+  'event-random-groups': 'blue',
+  'event-auto-inviter': 'purple',
+  'event-tournament-review': 'gold',
+  'event-counter-expiry': 'blue',
+  'event-checkout-basket-purge': 'green',
+  'notification-outbox': 'violet',
+  'affinity-recompute': 'violet',
+  'affinity-graph-layout': 'violet',
+  'scheduled-messages': 'blue',
+  'payment-method-expiry': 'green',
+  'account-purge': 'slate'
+};
+
 const PROCESS_NEXT_RUN_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.active,
   PROCESS_LIST_FILTER.running
@@ -1042,6 +1056,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.processFilter.set(filter);
     this.latestProcessCenterState = null;
+  }
+
+  protected processPalette(rule: AdminNotificationRule): string {
+    return PROCESS_RULE_PALETTES[rule.ruleKey] ?? 'slate';
   }
 
   protected processIcon(rule: AdminNotificationRule): string {

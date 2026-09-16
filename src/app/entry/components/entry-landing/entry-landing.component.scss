@@ -1417,3 +1417,47 @@
   }
 
 }
+
+.entry-countries-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.32rem 0.7rem 0.8rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--deployment-card-blue) 8%, #ffffff);
+  }
+}
+
+.entry-country-flag {
+  flex: 0 0 auto;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.entry-country-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.entry-country-check {
+  flex: 0 0 auto;
+  color: #1f7a49;
+  font-size: 20px;
+  width: 34px;
+  height: 20px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .entry-countries-list li {
+    padding-right: 0.24rem;
+  }
+}

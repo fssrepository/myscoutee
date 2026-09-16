@@ -245,7 +245,6 @@ export class SideMenuComponent implements OnDestroy {
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly i18n = inject(I18nService);
-  protected readonly operatorLabel = computed(() => this.i18n.translate('operator'));
   protected readonly pwaService = inject(PwaService);
   private readonly appSetupStore = inject(AppSetupStore);
   protected readonly installLabel = computed(() => {

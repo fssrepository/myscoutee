@@ -84,7 +84,6 @@
                 @if (field.valueType === 'text') {
                   @if (textFieldOptions(field); as options) {
                     @if (options.length) {
-                      <div class="admin-params-select-wrap">
                         <app-menu
                           kind="select"
                           [title]="textFieldSelectTitle(field)"
@@ -92,7 +91,6 @@
                           [items]="textFieldSelectItems(field)"
                           (itemSelect)="onTextFieldSelect($event)"
                         ></app-menu>
-                      </div>
                     } @else {
                       <input type="text" [(ngModel)]="field.textValue" [disabled]="field.readOnly === true" />
                     }

@@ -641,7 +641,10 @@ export class HttpEventsService implements IEventsService {
           nextCursor: null
         };
       }
-      const records = this.cloneRecords(response?.records);
+      const records = this.cloneRecords(response?.records).map(record => ({
+        ...record,
+        exploreSortKey: response?.sortKeys?.[record.id]
+      }));
       return {
         records,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,

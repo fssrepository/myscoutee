@@ -35,7 +35,7 @@ import {
 import {
   hasOperatorRole
 } from '../../../shared/core/common/user-role';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts/content.interface';
+import type { HelpCenterRevisionDto, HelpCenterSectionDto, SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
@@ -174,6 +174,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected landingArticlesLoading = true;
   protected landingIdeaCards: InfoCardData[] = [];
   protected landingIdeaCount = 0;
+  protected landingSupportedCountries: SupportedCountryDto[] = [];
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable here';
   protected entryNetworkUnavailable = false;
@@ -1181,6 +1182,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
           this.landingIdeaCards = displayState.ideaCards;
           this.landingIdeaCount = displayState.state.ideasTotal;
+          this.landingSupportedCountries = displayState.state.supportedCountries ?? [];
           if (!this.locationEligibilityResolvedFromCoordinates
             && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
             this.syncLandingLoginAvailability(displayState.state.loginAvailability, 'bundle');
@@ -1195,6 +1197,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           }
           this.landingIdeaCards = [];
           this.landingIdeaCount = 0;
+          this.landingSupportedCountries = [];
           this.markEntryNetworkUnavailable();
           this.finishEntryPrivacyLoad(requestToken);
         });

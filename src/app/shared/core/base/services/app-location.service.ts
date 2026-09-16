@@ -50,6 +50,7 @@ export class AppLocationService {
   private readonly blockedUserIds = new Set<string>();
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
   private readonly lastPersistedCoordinatesByUserId = new Map<string, LocationCoordinates>();
+  private readonly primedLocationUserIds = new Set<string>();
   private geolocationWatchId: number | null = null;
   private geolocationWatchUserId = '';
   private initialized = false;
@@ -172,6 +173,28 @@ export class AppLocationService {
     }
 
     this.ensureCoordinateWatch(userId);
+  }
+
+  async syncGrantedLocationForActiveUser(): Promise<void> {
+    const userId = this.userProfileStore.activeUserId().trim();
+    const user = this.resolveTrackedUser(userId);
+    if (!userId || !user || user.admin === true || user.profileStatus === 'onboarding'
+      || !this.isActiveFirebaseMemberSession(userId) || typeof navigator === 'undefined' || !navigator.permissions) {
+      return;
+    }
+    try {
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      if (permission.state !== 'granted') return;
+      const coordinates = await this.requestCurrentCoordinates();
+      if (coordinates && this.userProfileStore.activeUserId().trim() === userId
+        && this.isActiveFirebaseMemberSession(userId)) {
+        this.primePersistedCoordinates(userId, user.locationCoordinates);
+        this.handleStreamedCoordinates(userId, coordinates);
+        this.ensureCoordinateWatch(userId);
+      }
+    } catch {
+      // Settings remain usable while background location synchronization retries.
+    }
   }
 
   async requestCurrentCoordinates(): Promise<LocationCoordinates | null> {
@@ -353,9 +376,12 @@ export class AppLocationService {
     userId: string,
     coordinates: LocationCoordinates | null | undefined
   ): void {
-    if (this.lastPersistedCoordinatesByUserId.has(userId)) {
+    if (this.primedLocationUserIds.has(userId)) {
       return;
     }
+    // An absent server coordinate is also a baseline. Never promote a later
+    // optimistic profile update to a successful server save after a failed request.
+    this.primedLocationUserIds.add(userId);
     const normalized = this.normalizeCoordinates(coordinates);
     if (!normalized) {
       return;

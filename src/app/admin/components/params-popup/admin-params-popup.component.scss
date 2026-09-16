@@ -217,13 +217,18 @@
 }
 
 .admin-params-edit-body {
+  flex: 1 1 auto;
   padding: 0.76rem;
 }
 
 .admin-params-edit-field {
   position: relative;
-  grid-template-columns: minmax(0, 1fr) minmax(96px, 140px) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 140px) 2rem;
   overflow: visible;
+}
+
+.admin-params-edit-field > app-menu {
+  justify-self: end;
 }
 
 .admin-params-edit-field input {
@@ -238,19 +243,6 @@
   font-size: 0.82rem;
   font-weight: 800;
   box-sizing: border-box;
-}
-
-.admin-params-select-wrap {
-  position: relative;
-  min-width: 0;
-  width: 100%;
-}
-
-.admin-params-edit-field:has(.admin-params-select-wrap)::after {
-  content: '';
-  width: 18px;
-  grid-column: 3;
-  grid-row: 1;
 }
 
 .admin-params-edit-field em {
@@ -517,15 +509,11 @@
     width: 100%;
   }
 
-  .admin-params-edit-field:has(.admin-params-select-wrap)::after {
-    content: none;
+  .admin-params-edit-field {
+    grid-template-columns: minmax(0, 1fr) 2rem;
   }
 
-  .admin-params-edit-field:has(em) {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .admin-params-edit-field:has(em) > span {
+  .admin-params-edit-field > span {
     grid-column: 1 / -1;
   }
 

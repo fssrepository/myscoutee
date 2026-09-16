@@ -8,7 +8,9 @@
           <app-menu class="app-setup-toggle" kind="inline" [items]="[item]" (itemSelect)="toggle($event)"></app-menu>
         }
         @if (store.error()) { <p class="app-setup-error" role="alert">{{ store.error() }}</p> }
-        <app-menu class="app-setup-action" kind="inline" [model]="actionModel" [items]="permissionActions()" (itemSelect)="action($event)"></app-menu>
+        @if (showPermissionAction()) {
+          <app-menu class="app-setup-action" kind="inline" [model]="actionModel" [items]="permissionActions()" (itemSelect)="action($event)"></app-menu>
+        }
       </section>
       @if (installActions().length) {
         <section class="app-setup-section app-setup-install" aria-labelledby="setup-install">

@@ -5,6 +5,7 @@ import { OperatorRegistryService } from '../../../core/base/services/operator-re
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { FirebaseAppService } from '../../../core/base/services/firebase-app.service';
 import { FirebaseMessagingService } from '../../../core/base/services/firebase-messaging.service';
+import { PwaService } from '../../../core/base/services/pwa.service';
 import { SessionService } from '../../../core/base/services/session.service';
 import type {
   OperatorClaimRequestDto,
@@ -24,6 +25,9 @@ describe('OperatorWorkspaceStore', () => {
   const linkOperatorGroup = vi.fn();
   const loadClaimStatus = vi.fn();
   const loadDeploymentUpdate = vi.fn();
+  const applyDeploymentUpdate = vi.fn();
+  const rollbackDeploymentUpdate = vi.fn();
+  const reloadAfterDeploymentChange = vi.fn();
   const loadRevenue = vi.fn();
   const loadConfiguration = vi.fn();
   const loadTlsConfiguration = vi.fn();
@@ -69,6 +73,9 @@ describe('OperatorWorkspaceStore', () => {
     linkOperatorGroup.mockReset();
     loadClaimStatus.mockReset();
     loadDeploymentUpdate.mockReset();
+    applyDeploymentUpdate.mockReset();
+    rollbackDeploymentUpdate.mockReset();
+    reloadAfterDeploymentChange.mockReset().mockResolvedValue(undefined);
     loadRevenue.mockReset();
     loadConfiguration.mockReset();
     loadTlsConfiguration.mockReset().mockResolvedValue({
@@ -123,6 +130,7 @@ describe('OperatorWorkspaceStore', () => {
     TestBed.configureTestingModule({
       providers: [
         OperatorWorkspaceStore,
+        { provide: PwaService, useValue: { reloadAfterDeploymentChange } },
         {
           provide: OperatorRegistryService,
           useValue: {
@@ -130,6 +138,8 @@ describe('OperatorWorkspaceStore', () => {
             linkOperatorGroup,
             loadClaimStatus,
             loadDeploymentUpdate,
+            applyDeploymentUpdate,
+            rollbackDeploymentUpdate,
             loadConfiguration,
             loadTlsConfiguration,
             saveTlsConfiguration,
@@ -178,6 +188,80 @@ describe('OperatorWorkspaceStore', () => {
         }
       ]
     });
+  });
+
+  it('reports completion once through progress without a duplicate success notice', async () => {
+    const completed: OperatorDeploymentUpdateDto = {
+      ...deploymentUpdate('1.0.0-qa.2'), currentVersion: '1.0.0-qa.2', updateAvailable: false,
+      progress: { phase: 'COMPLETED', percent: 100, bytesDownloaded: 100,
+        bytesTotal: 100, message: null, updatedAt: null }
+    };
+    applyDeploymentUpdate.mockResolvedValue(completed);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.applyDeploymentUpdate();
+    expect(store.deploymentUpdate()).toEqual(completed);
+    expect(store.notice()).toBe('');
+    expect(reloadAfterDeploymentChange).toHaveBeenCalledTimes(1);
+    expect(store.busyAction()).toBeNull();
+  });
+
+  it('keeps a failed update message only in the progress result and releases busy state', async () => {
+    const failed = { currentVersion: '1.0.0-qa.1', availableVersion: '1.0.0-qa.2',
+      updateAvailable: true, lastCheckedAt: null, lastUpdatedAt: null,
+      progress: { phase: 'FAILED' as const, percent: 20, bytesDownloaded: 10, bytesTotal: 100,
+        message: 'operator.update.error.failed', updatedAt: null } };
+    applyDeploymentUpdate.mockResolvedValue(failed);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.applyDeploymentUpdate();
+    expect(store.deploymentUpdate()).toEqual(failed);
+    expect(reloadAfterDeploymentChange).not.toHaveBeenCalled();
+    expect(store.error()).toBe('');
+    expect(store.busyAction()).toBeNull();
+  });
+
+  it('reloads after a successful rollback and keeps actions busy while refreshing the worker', async () => {
+    const completed: OperatorDeploymentUpdateDto = {
+      ...deploymentUpdate('1.0.0-qa.1'),
+      progress: { phase: 'COMPLETED', percent: 100, bytesDownloaded: 100,
+        bytesTotal: 100, message: null, updatedAt: null }
+    };
+    rollbackDeploymentUpdate.mockResolvedValue(completed);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    reloadAfterDeploymentChange.mockImplementation(async () => {
+      expect(store.deploymentUpdate()).toEqual(completed);
+      expect(store.busyAction()).toBe('rollback-update');
+    });
+    await store.rollbackDeploymentUpdate();
+    expect(reloadAfterDeploymentChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the actual rollback target during installation and does not reload before completion', async () => {
+    const baseline = { ...deploymentUpdate('1.0.0-qa.2'),
+      currentVersion: '1.0.0-qa.2', rollback: { jobId: 'completed-update',
+        fromVersion: '1.0.0-qa.2', targetVersion: '1.0.0-qa.1', artifactSha256: 'verified-digest' } };
+    loadDeploymentUpdate.mockResolvedValue(baseline);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadDeploymentUpdate();
+    rollbackDeploymentUpdate.mockImplementation(async onProgress => {
+      const progress = { phase: 'WAITING_FOR_HEALTH', percent: 96, bytesDownloaded: 100,
+        bytesTotal: 100, message: null, updatedAt: null };
+      onProgress(progress);
+      expect(store.deploymentUpdate()?.availableVersion).toBe('1.0.0-qa.1');
+      expect(reloadAfterDeploymentChange).not.toHaveBeenCalled();
+      return { ...baseline, progress };
+    });
+    await store.rollbackDeploymentUpdate();
+    expect(reloadAfterDeploymentChange).not.toHaveBeenCalled();
+  });
+
+  it('does not reload when a completed historical job is loaded again', async () => {
+    loadDeploymentUpdate.mockResolvedValue({ ...deploymentUpdate('1.0.0-qa.2'),
+      progress: { phase: 'COMPLETED', percent: 100, bytesDownloaded: 100,
+        bytesTotal: 100, message: null, updatedAt: null } });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadDeploymentUpdate();
+    await store.refreshDeploymentUpdate();
+    expect(reloadAfterDeploymentChange).not.toHaveBeenCalled();
   });
 
   it('keeps HTTPS toggles in the draft until the TLS block is saved', async () => {

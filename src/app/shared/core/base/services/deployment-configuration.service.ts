@@ -40,6 +40,7 @@ export class DeploymentConfigurationService
     structuredClone(DEFAULT_DEPLOYMENT_PRIVACY_CONTACT)
   );
   private readonly paymentProviderIdRef = signal<string | null>(null);
+  private readonly firebaseMessagingConfiguredRef = signal(false);
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
   private manifestObjectUrl: string | null = null;
@@ -48,6 +49,7 @@ export class DeploymentConfigurationService
   readonly socialLinks = this.socialLinksRef.asReadonly();
   readonly privacyContact = this.privacyContactRef.asReadonly();
   readonly paymentProviderId = this.paymentProviderIdRef.asReadonly();
+  readonly firebaseMessagingConfigured = this.firebaseMessagingConfiguredRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
 
   ngOnDestroy(): void {
@@ -130,6 +132,7 @@ export class DeploymentConfigurationService
     this.applySocialLinks(value.socialLinks);
     this.applyPrivacyContact(value.privacyContact);
     this.applyPaymentProviderId(value.paymentProviderId);
+    this.firebaseMessagingConfiguredRef.set(value.firebaseMessagingConfigured === true);
     return this.applyBranding(value);
   }
 

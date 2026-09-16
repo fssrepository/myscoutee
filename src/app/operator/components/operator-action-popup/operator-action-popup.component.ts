@@ -49,7 +49,6 @@ import {
 } from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
-  type PopupActionEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
 import {
@@ -77,7 +76,9 @@ import { OperatorRevenueViewComponent } from '../operator-revenue-view/operator-
 type OperatorPopupAction =
   | 'refresh-update'
   | 'apply-update'
+  | 'rollback-update'
   | 'claim-share'
+  | 'create-client-code'
   | 'redeem-token'
   | 'set-claim-path'
   | 'save-branding'
@@ -497,6 +498,20 @@ export class OperatorActionPopupComponent {
       }]
     };
   });
+  protected readonly createClientCodeItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => this.canIssueClientCode() ? [{
+    id: 'operator-create-client-code',
+    ariaLabel: 'operator.claim.client.code.create',
+    icon: 'link',
+    palette: 'teal',
+    layout: 'icon',
+    disabled: this.busy(),
+    progress: this.busyAction() === 'issue-grouping-token'
+      ? { state: 'loading', durationMs: 3000 }
+      : null,
+    context: { action: 'create-client-code' }
+  }] : []);
   protected readonly claimClientCodeValue = computed(() => ({
     clientToken: this.workspace.groupTokenInput()
   }));
@@ -1036,6 +1051,7 @@ export class OperatorActionPopupComponent {
 
   protected popupModel(): PopupModel {
     const kind = this.kind();
+    const claim = kind === 'claim' ? this.workspace.claimStatus() : null;
     const deploymentEntry = kind === 'deployments'
       ? this.menu.selectedLeaderboardEntry()
       : null;
@@ -1049,14 +1065,12 @@ export class OperatorActionPopupComponent {
       || kind === 'community'
       || kind === 'deployments';
     return {
-      headerLabel: kind === 'deployments'
-        ? 'operator.leaderboard.deployments.title'
-        : null,
-      headerLabelIcon: kind === 'deployments' ? 'hub' : null,
       title: kind === 'deployments'
         ? deploymentTitle
         : this.titleKey(kind),
-      subtitle: this.subtitleKey(kind),
+      subtitle: kind === 'deployments'
+        ? 'operator.leaderboard.deployments.title'
+        : this.subtitleKey(kind),
       ariaLabel: kind === 'deployments'
         ? [
             this.i18n.translate(
@@ -1071,20 +1085,11 @@ export class OperatorActionPopupComponent {
       height: wide ? 'full' : 'auto',
       mobilePresentation: wide ? 'fullscreen' : 'compact',
       headerTone: 'accent',
+      backdropTone: 'dim',
       headerPalette: this.headerPalette(kind),
+      headerBadge: claim ? `${this.formatShare(claim.sharePercent)}%` : null,
+      translateHeaderBadge: false,
       bodyLayout: kind === 'deployments' ? 'fill' : 'default',
-      headerActions: kind === 'claim' && this.canIssueClientCode()
-        ? [{
-            id: 'operator-claim-client-code',
-            icon: 'key',
-            label: 'operator.claim.client.code',
-            palette: 'teal',
-            disabled: this.busy()
-          }]
-        : [],
-      onAction: event => {
-        void this.onPopupHeaderAction(event);
-      },
       onClose: () => this.close()
     };
   }
@@ -1097,11 +1102,17 @@ export class OperatorActionPopupComponent {
       case 'refresh-update':
         await this.workspace.refreshDeploymentUpdate();
         return;
+      case 'rollback-update':
+        await this.workspace.rollbackDeploymentUpdate();
+        return;
       case 'apply-update':
         await this.workspace.applyDeploymentUpdate();
         return;
       case 'claim-share':
         await this.workspace.claimShare();
+        return;
+      case 'create-client-code':
+        await this.createClientCode();
         return;
       case 'redeem-token':
         await this.workspace.linkOperatorGroup();
@@ -1823,6 +1834,8 @@ export class OperatorActionPopupComponent {
         return 'operator.claim.applying';
       case 'link-operator-group':
         return 'operator.claim.client.code.redeeming';
+      case 'rollback-update':
+        return 'operator.update.rollingback';
       case 'apply-update':
         return 'operator.update.applying';
       case 'synchronize-revenue':
@@ -1866,8 +1879,8 @@ export class OperatorActionPopupComponent {
       );
   }
 
-  private async onPopupHeaderAction(event: PopupActionEvent): Promise<void> {
-    if (event.action.id !== 'operator-claim-client-code' || !this.canIssueClientCode()) {
+  private async createClientCode(): Promise<void> {
+    if (!this.canIssueClientCode()) {
       return;
     }
     const token = await this.workspace.issueGroupingToken();
@@ -1931,6 +1944,10 @@ export class OperatorActionPopupComponent {
     switch (kind) {
       case 'updates': {
         const update = this.workspace.deploymentUpdate();
+        const updateKnown = update !== null;
+        const updateFailed = update?.progress.phase === 'FAILED' || !!this.workspace.error();
+        const updateRunning = !!update && !this.workspace.error()
+          && !['IDLE', 'COMPLETED', 'FAILED'].includes(update.progress.phase);
         return [
           {
             id: 'operator-refresh-update',
@@ -1938,26 +1955,30 @@ export class OperatorActionPopupComponent {
             icon: 'refresh',
             palette: 'blue',
             layout: 'action',
-            disabled: this.busy(),
+            disabled: this.busy() || updateRunning,
             progress: this.busyAction() === 'load-update'
               ? { state: 'loading', durationMs: 3000 }
               : null,
             context: { action: 'refresh-update' }
           },
-          {
+          ...(!updateKnown || update?.updateAvailable || updateRunning || updateFailed ? [{
             id: 'operator-apply-update',
-            label: update?.updateAvailable
-              ? 'operator.update.apply'
-              : 'operator.update.current',
-            icon: update?.updateAvailable ? 'system_update_alt' : 'check_circle',
-            palette: 'teal',
-            layout: 'action',
-            disabled: this.busy() || !update?.updateAvailable,
-            progress: this.busyAction() === 'apply-update'
-              ? { state: 'loading', durationMs: 3000 }
-              : null,
-            context: { action: 'apply-update' }
-          }
+            label: 'operator.update.apply',
+            icon: 'system_update_alt',
+            palette: 'teal' as const,
+            layout: 'action' as const,
+            disabled: this.busy() || updateRunning || (!updateKnown && !updateFailed),
+            context: { action: 'apply-update' as const }
+          }] : []),
+          ...(update?.rollback || updateFailed || this.busyAction() === 'rollback-update' ? [{
+            id: 'operator-rollback-update',
+            label: 'operator.update.rollback',
+            icon: 'restore',
+            palette: 'amber' as const,
+            layout: 'action' as const,
+            disabled: this.busy() || updateRunning,
+            context: { action: 'rollback-update' as const }
+          }] : [])
         ];
       }
       case 'claim': {
