@@ -453,7 +453,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       return {
         id: `param-option:${field.key}:${option.value}` as AdminParamSelectMenuItemId,
         kind: 'radio',
-        layout: 'pill',
+        surface: 'tinted',
         palette: this.textFieldOptionPalette(field, option.value),
         label: option.labelKey || option.label,
         active: selected,
