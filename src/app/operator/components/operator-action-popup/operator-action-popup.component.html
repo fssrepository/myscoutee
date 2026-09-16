@@ -1689,7 +1689,7 @@
             <app-menu
               class="operator-action-popup__actions"
               kind="inline"
-              [layout]="activeKind === 'updates' ? 'list' : 'row'"
+              layout="row"
               [model]="activeKind === 'claim' ? { actionSizing: 'content' } : null"
               [items]="actionItems()"
               (itemSelect)="onAction($event)"
