@@ -516,6 +516,12 @@
   width: min(100%, 280px);
 }
 
+.operator-action-popup__firebase-test-actions {
+  width: fit-content;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .operator-action-popup__sr-only {
   position: absolute;
   width: 1px;
