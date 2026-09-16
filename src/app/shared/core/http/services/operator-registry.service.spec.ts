@@ -919,6 +919,23 @@ describe('HttpOperatorRegistryService', () => {
       .toBe('registry-cursor-2');
   });
 
+  it.each([
+    [409, false, 'UNCONFIGURED', 'operator.community.error.registration.required'],
+    [409, true, 'REGISTERED', 'operator.request.failed'],
+    [503, false, 'UNCONFIGURED', 'operator.request.failed']
+  ])('translates Community errors without exposing the URL (%s, %s)', async (status, enabled, lifecycle, key) => {
+    get.mockImplementation((url: string) => {
+      if (url.endsWith('/community/providers')) return of([]);
+      if (url.endsWith('/announcements')) {
+        return throwError(() => new HttpErrorResponse({ status: Number(status), url }));
+      }
+      return of({ ...registryStatus(), enabled, lifecycle });
+    });
+    await expect(TestBed.inject(HttpOperatorRegistryService).loadCommunityStatus())
+      .rejects.toThrow(String(key));
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('combines deployment community providers and signed announcements', async () => {
     get.mockImplementation((url: string) => {
       if (url === '/api/operator/community/providers') {

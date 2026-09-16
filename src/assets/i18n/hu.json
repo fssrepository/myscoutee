@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.111",
+  "version": "2026.09.16.hu.112",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3037,6 +3037,7 @@
     "operator.claim.applying": "Csomópont részesedésének igénylése…",
     "operator.claim.completed": "A csomópont részesedése igényelve.",
     "operator.claim.claimed": "Részesedés igényelve",
+    "operator.community.error.registration.required": "A közösségi közlemények megtekintéséhez regisztráld ezt a telepítést.",
     "operator.claim.error.registration.required": "A részesedés igénylése előtt regisztráld a csomópontot.",
     "operator.claim.error.profile.required": "A csomópont igénylése előtt add meg az operátori profil nevét.",
     "operator.claim.path.company": "Cégadatok",

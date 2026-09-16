@@ -1202,7 +1202,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         includeExpired: false,
         limit: 100
       })
-    ]);
+    ]).catch(async (error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        const registry = await this.loadStatus().catch(() => null);
+        if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+          throw new Error('operator.community.error.registration.required');
+        }
+      }
+      throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+        ? 'operator.request.timeout' : 'operator.request.failed');
+    });
     return {
       availability: 'INVISIBLE',
       updatedAt:
