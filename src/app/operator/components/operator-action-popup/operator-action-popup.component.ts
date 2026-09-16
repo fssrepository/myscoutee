@@ -1938,7 +1938,9 @@ export class OperatorActionPopupComponent {
     switch (kind) {
       case 'updates': {
         const update = this.workspace.deploymentUpdate();
-        const updateKnown = update !== null && !this.workspace.error();
+        const updateKnown = update !== null;
+        const updateRunning = !!update
+          && !['IDLE', 'COMPLETED', 'FAILED'].includes(update.progress.phase);
         return [
           {
             id: 'operator-refresh-update',
@@ -1946,7 +1948,7 @@ export class OperatorActionPopupComponent {
             icon: 'refresh',
             palette: 'blue',
             layout: 'action',
-            disabled: this.busy(),
+            disabled: this.busy() || updateRunning,
             progress: this.busyAction() === 'load-update'
               ? { state: 'loading', durationMs: 3000 }
               : null,
@@ -1960,10 +1962,7 @@ export class OperatorActionPopupComponent {
             icon: !updateKnown || update?.updateAvailable ? 'system_update_alt' : 'check_circle',
             palette: 'teal',
             layout: 'action',
-            disabled: this.busy() || !updateKnown || !update?.updateAvailable,
-            progress: this.busyAction() === 'apply-update'
-              ? { state: 'loading', durationMs: 3000 }
-              : null,
+            disabled: this.busy() || updateRunning || !updateKnown || !update?.updateAvailable,
             context: { action: 'apply-update' }
           }
         ];

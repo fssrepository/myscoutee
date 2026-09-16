@@ -1466,6 +1466,68 @@ describe('HttpOperatorRegistryService', () => {
     ]);
   });
 
+  it.each([0, 502, 503, 504])('keeps following the same accepted update across HTTP %s restart gaps', async status => {
+    const announcementPage = remoteAnnouncementPage();
+    const installing = remoteUpdateJob('INSTALLING', 85, '1.0.0');
+    const completed = remoteUpdateJob('COMPLETED', 100, '1.2.3');
+    let reads = 0;
+    post.mockReturnValue(of(installing));
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/updates') {
+        return of({ enabled: true, currentVersion: '1.0.0', latestJob: null });
+      }
+      if (url === '/api/operator/updates/releases') {
+        return of({ checkedAt: announcementPage.snapshot.asOf, items: announcementPage.items });
+      }
+      if (url === '/api/operator/updates/jobs/update_job_1') {
+        return of(installing);
+      }
+      if (url.endsWith('/events')) {
+        reads++;
+        return reads === 1
+          ? of({ items: [{ sequence: 1, status: installing }], nextAfter: 1, terminal: false })
+          : reads === 2
+            ? throwError(() => new HttpErrorResponse({ status, url, statusText: 'Restarting' }))
+            : of({ items: [{ sequence: 2, status: completed }], nextAfter: 2, terminal: true });
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    });
+    const service = TestBed.inject(HttpOperatorRegistryService);
+    const wait = vi.spyOn(service as unknown as { waitForUpdatePoll(): Promise<void> }, 'waitForUpdatePoll')
+      .mockResolvedValue(undefined);
+    try {
+      await service.loadDeploymentUpdate();
+      const progress = vi.fn();
+      const result = await service.applyDeploymentUpdate(progress);
+      expect(result.progress.phase).toBe('COMPLETED');
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(progress.mock.calls.some(call => call[0].phase === 'FAILED')).toBe(false);
+      expect(get.mock.calls.filter(call => call[0].endsWith('/events'))
+        .map(call => call[1].params.get('after'))).toEqual(['0', '1', '1']);
+    } finally {
+      wait.mockRestore();
+    }
+  });
+
+  it.each([401, 403, 404])('reports an i18n error without retrying permanent update-read HTTP %s', async status => {
+    const announcementPage = remoteAnnouncementPage();
+    post.mockReturnValue(of(remoteUpdateJob('INSTALLING', 85, '1.0.0')));
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/updates') {
+        return of({ enabled: true, currentVersion: '1.0.0', latestJob: null });
+      }
+      if (url === '/api/operator/updates/releases') {
+        return of({ checkedAt: announcementPage.snapshot.asOf, items: announcementPage.items });
+      }
+      return throwError(() => new HttpErrorResponse({ status, url, statusText: 'Internal diagnostic' }));
+    });
+    const service = TestBed.inject(HttpOperatorRegistryService);
+    await service.loadDeploymentUpdate();
+    await expect(service.applyDeploymentUpdate()).rejects.toThrow('operator.update.error.status');
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls.filter(call => call[0].includes('/jobs/'))).toHaveLength(1);
+  });
+
   it('reconnects to the durable latest update job and maps recovery-required as terminal failure', async () => {
     const recoveryRequired = remoteUpdateJob(
       'RECOVERY_REQUIRED',

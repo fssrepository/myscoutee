@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import type {
   OperatorCommunityStatusDto,
+  OperatorDeploymentUpdateDto,
   OperatorConfigurationDto,
   OperatorConfigurationSaveRequestDto,
   OperatorTlsConfigurationDto,
@@ -50,11 +51,13 @@ describe('OperatorActionPopupComponent', () => {
     privateKey: ''
   });
   const busyAction = signal<string | null>(null);
+  const deploymentUpdate = signal<OperatorDeploymentUpdateDto | null>(null);
+  const error = signal('');
   const tlsDomainFeedback = signal<'success' | 'error' | null>(null);
   const tlsCertificateFeedback = signal<'success' | 'error' | null>(null);
   const tlsSaveFeedback = signal<'success' | 'error' | null>(null);
   const activePopup =
-    signal<'configuration' | 'community' | null>('configuration');
+    signal<'configuration' | 'community' | 'updates' | null>('configuration');
   const closePopup = vi.fn();
   const clearFeedback = vi.fn();
   const clearConfigurationCredentialDrafts = vi.fn();
@@ -69,6 +72,8 @@ describe('OperatorActionPopupComponent', () => {
     configurationDraft.set(operatorConfigurationDraft('stripe'));
     activePopup.set('configuration');
     busyAction.set(null);
+    deploymentUpdate.set(null);
+    error.set('');
     tlsDomainFeedback.set(null);
     tlsCertificateFeedback.set(null);
     tlsSaveFeedback.set(null);
@@ -104,6 +109,7 @@ describe('OperatorActionPopupComponent', () => {
           provide: OperatorWorkspaceStore,
           useValue: {
             busyAction: busyAction.asReadonly(),
+            deploymentUpdate: deploymentUpdate.asReadonly(),
             configuration: configuration.asReadonly(),
             configurationDraft: configurationDraft.asReadonly(),
             tlsConfiguration: tlsConfiguration.asReadonly(),
@@ -128,7 +134,7 @@ describe('OperatorActionPopupComponent', () => {
             configurationMessagingFeedback: signal(null).asReadonly(),
             configurationMessagingDestinationToken: signal('').asReadonly(),
             setConfigurationMessagingDestinationToken: vi.fn(),
-            error: signal('').asReadonly(),
+            error: error.asReadonly(),
             notice: signal('').asReadonly(),
             community: community.asReadonly(),
             loadCommunityStatus: vi.fn().mockResolvedValue(null)
@@ -157,6 +163,31 @@ describe('OperatorActionPopupComponent', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
+  });
+
+  it('disables both update actions for a retained running job and releases both after failure', () => {
+    activePopup.set('updates');
+    deploymentUpdate.set({
+      currentVersion: '1.0.0-qa.1', availableVersion: '1.0.0-qa.2',
+      updateAvailable: true, lastCheckedAt: null, lastUpdatedAt: null,
+      progress: { phase: 'INSTALLING', percent: 85, bytesDownloaded: 100,
+        bytesTotal: 100, message: null, updatedAt: null }
+    });
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const view = fixture.componentInstance as unknown as {
+      actionItems: Signal<readonly AppMenuItem<string>[]>;
+    };
+    // A reopened durable job stays disabled even without a local pending promise.
+    expect(view.actionItems().map(item => item.disabled)).toEqual([true, true]);
+    expect(view.actionItems()[1].progress).toBeUndefined();
+    deploymentUpdate.update(value => ({ ...value!, progress: {
+      ...value!.progress, phase: 'FAILED', message: 'operator.update.error.failed'
+    } }));
+    error.set('operator.update.error.failed');
+    expect(view.actionItems().map(item => item.disabled)).toEqual([false, false]);
+    busyAction.set('apply-update');
+    expect(view.actionItems().map(item => item.disabled)).toEqual([true, true]);
+    expect(view.actionItems()[1].progress).toBeUndefined();
   });
 
   it('passes seeded logos and palettes to both the selected trigger and dropdown rows', () => {

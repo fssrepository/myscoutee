@@ -797,13 +797,18 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         { announcementId: announcement.announcementId.trim() },
         this.requestOptions()
       ).toPromise()
-    );
+    ).catch(() => { throw new Error('operator.update.error.start'); });
     this.activeUpdateJob = job;
     this.currentDeploymentVersion = job.currentVersion?.trim()
       || this.currentDeploymentVersion;
     onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
 
-    job = await this.loadUpdateJob(job.jobId);
+    job = await this.loadUpdateJob(job.jobId).catch((error: unknown) => {
+      if (this.transientUpdateReadError(error)) {
+        return job;
+      }
+      throw new Error('operator.update.error.status');
+    });
     this.activeUpdateJob = job;
     onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
     if (this.updateJobTerminal(job.phase)) {
@@ -811,8 +816,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     }
 
     let after = 0;
-    for (let poll = 0; poll < UPDATE_POLL_LIMIT; poll += 1) {
-      const page = await this.loadUpdateEvents(job.jobId, after);
+    const deadline = Date.now() + UPDATE_POLL_LIMIT * UPDATE_POLL_INTERVAL_MS;
+    for (let poll = 0; poll < UPDATE_POLL_LIMIT && Date.now() < deadline; poll += 1) {
+      const page = await this.loadUpdateEvents(job.jobId, after).catch((error: unknown) => {
+        // Installation restarts the API/proxy. Retry only reads of the same
+        // accepted job, keeping its cursor and last confirmed progress.
+        if (this.transientUpdateReadError(error)) {
+          return null;
+        }
+        throw new Error('operator.update.error.status');
+      });
+      if (!page) {
+        await this.waitForUpdatePoll();
+        continue;
+      }
       for (const event of page.items) {
         if (event.sequence <= after) {
           continue;
@@ -828,7 +845,12 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       }
       await this.waitForUpdatePoll();
     }
-    throw new Error('operator.request.timeout');
+    throw new Error('operator.update.error.status.timeout');
+  }
+
+  private transientUpdateReadError(error: unknown): boolean {
+    return (error instanceof HttpErrorResponse && [0, 502, 503, 504].includes(error.status))
+      || (error instanceof Error && error.message === 'operator.request.timeout');
   }
 
   async loadConfiguration(): Promise<OperatorConfigurationDto> {
