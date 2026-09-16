@@ -43,6 +43,8 @@ export class AppSetupPopupComponent {
       disabled: this.store.actionPending() || this.store.pwa.installActionPending(),
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
+  readonly showPermissionAction = computed(() => this.store.actionPending()
+    || this.toggles().some(item => !item.disabled));
   readonly permissionActions = computed<AppMenuItem[]>(() => [
     { id: 'allow', icon: this.store.saveSucceeded() ? 'check_circle' : 'check',
       label: this.store.busy() ? 'entry.permissions.checking' : 'app.setup.update',
