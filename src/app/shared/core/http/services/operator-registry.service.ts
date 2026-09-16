@@ -27,6 +27,7 @@ import type {
   OperatorTlsTestRequestDto,
   OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
+  OperatorRollbackDto,
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
@@ -312,6 +313,7 @@ interface RemoteOperatorUpdateEventPage {
 }
 
 interface RemoteOperatorUpdatesStatus {
+  rollback?: OperatorRollbackDto | null;
   enabled: boolean;
   currentVersion: string;
   latestJob: RemoteOperatorUpdateJob | null;
@@ -358,6 +360,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   private readonly operatorEndpoint = `${this.apiBaseUrl}${OPERATOR_NETWORK_ROUTE}`;
   private latestUpdateAnnouncement: RemoteOperatorAnnouncement | null = null;
   private latestAnnouncementsCheckedAt: string | null = null;
+  private rollbackPoint: OperatorRollbackDto | null = null;
   private activeUpdateJob: RemoteOperatorUpdateJob | null = null;
   private currentDeploymentVersion = '—';
   private updateExecutionEnabled = false;
@@ -760,6 +763,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     this.updateExecutionEnabled = status.enabled === true;
     this.currentDeploymentVersion = status.currentVersion?.trim() || '—';
     this.activeUpdateJob = status.latestJob ?? null;
+    this.rollbackPoint = status.rollback ?? null;
     const releases = await this.requireResponse(
       `${OPERATOR_UPDATES_ROUTE}/releases`,
       this.http.get<{ checkedAt: string; items: RemoteOperatorAnnouncement[] }>(
@@ -790,11 +794,36 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       throw new Error('operator.update.error.unavailable');
     }
 
+    return this.executeUpdate(announcement, `${this.operatorEndpoint}/updates`,
+      { announcementId: announcement.announcementId.trim() }, onProgress);
+  }
+
+  async rollbackDeploymentUpdate(onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto> {
+    const point = this.rollbackPoint;
+    if (!this.updateExecutionEnabled || !point) throw new Error('operator.update.error.rollback.unavailable');
+    const announcement = await this.requireResponse(OPERATOR_UPDATES_ROUTE,
+      this.http.get<RemoteOperatorAnnouncement>(
+        `${this.operatorEndpoint}/updates/releases/${encodeURIComponent(point.targetVersion)}`,
+        this.requestOptions()).toPromise()
+    ).catch(() => { throw new Error('operator.update.error.rollback.unavailable'); });
+    if (announcement.updateManifest?.artifactSha256 !== point.artifactSha256) {
+      throw new Error('operator.update.error.rollback.unavailable');
+    }
+    return this.executeUpdate(announcement,
+      `${this.operatorEndpoint}/updates/jobs/${encodeURIComponent(point.jobId)}/rollback`, {}, onProgress);
+  }
+
+  private async executeUpdate(
+    announcement: RemoteOperatorAnnouncement,
+    endpoint: string,
+    approval: object,
+    onProgress?: OperatorDeploymentUpdateProgressHandler
+  ): Promise<OperatorDeploymentUpdateDto> {
     let job = await this.requireResponse(
       OPERATOR_UPDATES_ROUTE,
       this.http.post<RemoteOperatorUpdateJob>(
-        `${this.operatorEndpoint}/updates`,
-        { announcementId: announcement.announcementId.trim() },
+        endpoint,
+        approval,
         this.requestOptions()
       ).toPromise()
     ).catch(() => { throw new Error('operator.update.error.start'); });
@@ -810,6 +839,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       throw new Error('operator.update.error.status');
     });
     this.activeUpdateJob = job;
+    this.currentDeploymentVersion = job.currentVersion?.trim() || this.currentDeploymentVersion;
     onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
     if (this.updateJobTerminal(job.phase)) {
       return this.toDeploymentUpdate(announcement, job);
@@ -837,6 +867,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         after = event.sequence;
         job = event.status;
         this.activeUpdateJob = job;
+        this.currentDeploymentVersion = job.currentVersion?.trim() || this.currentDeploymentVersion;
         onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
       }
       after = Math.max(after, Math.max(0, Math.trunc(Number(page.nextAfter) || 0)));
@@ -1240,23 +1271,19 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     job: RemoteOperatorUpdateJob | null
   ): OperatorDeploymentUpdateDto {
     const manifest = announcement?.updateManifest ?? null;
-    const targetVersion =
-      job?.targetVersion?.trim()
-      || manifest?.releaseVersion?.trim()
-      || '—';
-    const currentVersion =
-      job?.currentVersion?.trim()
-      || this.currentDeploymentVersion
-      || '—';
     const completed = job?.phase?.trim().toUpperCase() === 'COMPLETED';
+    const running = !!job && !this.updateJobTerminal(job.phase);
+    const targetVersion = (running ? job?.targetVersion?.trim() : manifest?.releaseVersion?.trim())
+      || job?.targetVersion?.trim() || '—';
+    const currentVersion = this.currentDeploymentVersion || job?.currentVersion?.trim() || '—';
     return {
       currentVersion,
+      rollback: this.rollbackPoint?.fromVersion === currentVersion ? this.rollbackPoint : null,
       availableVersion: targetVersion,
       updateAvailable: Boolean(
         manifest
         && this.updateExecutionEnabled
         && this.installableUpdate(manifest)
-        && !completed
         && currentVersion !== targetVersion
       ),
       lastCheckedAt:

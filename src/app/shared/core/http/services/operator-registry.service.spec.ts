@@ -1466,6 +1466,45 @@ describe('HttpOperatorRegistryService', () => {
     ]);
   });
 
+  it('offers the newest release even when an older update job is already completed', async () => {
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/updates') return of({ enabled: true, currentVersion: '1.0.0',
+        latestJob: { ...remoteUpdateJob('COMPLETED', 100, '1.0.0'), targetVersion: '1.0.0' } });
+      if (url === '/api/operator/updates/releases') return of({ checkedAt: '2026-09-16', items: remoteAnnouncementPage().items });
+      throw new Error(`Unexpected GET ${url}`);
+    });
+    const result = await TestBed.inject(HttpOperatorRegistryService).loadDeploymentUpdate();
+    expect(result.currentVersion).toBe('1.0.0');
+    expect(result.availableVersion).toBe('1.2.3');
+    expect(result.updateAvailable).toBe(true);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the retained package through one explicit approval and durable job', async () => {
+    const announcement = remoteAnnouncementPage().items[0]!;
+    const previousJob = 'upd_12345678901234567890123456789012';
+    const completed = remoteUpdateJob('COMPLETED', 100, '1.2.3');
+    post.mockReturnValue(of(completed));
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/updates') return of({
+        enabled: true, currentVersion: '1.3.0', latestJob: null,
+        rollback: { jobId: previousJob, fromVersion: '1.3.0', targetVersion: '1.2.3',
+          artifactSha256: announcement.updateManifest!.artifactSha256 }
+      });
+      if (url === '/api/operator/updates/releases') return of({ checkedAt: '2026-09-16', items: [announcement] });
+      if (url === '/api/operator/updates/releases/1.2.3') return of(announcement);
+      if (url === '/api/operator/updates/jobs/update_job_1') return of(completed);
+      throw new Error(`Unexpected GET ${url}`);
+    });
+    const service = TestBed.inject(HttpOperatorRegistryService);
+    expect((await service.loadDeploymentUpdate()).rollback?.jobId).toBe(previousJob);
+    const result = await service.rollbackDeploymentUpdate();
+    expect(result.progress.phase).toBe('COMPLETED');
+    expect(result.rollback).toBeNull();
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post.mock.calls[0]?.[0]).toBe(`/api/operator/updates/jobs/${previousJob}/rollback`);
+  });
+
   it.each([0, 502, 503, 504])('keeps following the same accepted update across HTTP %s restart gaps', async status => {
     const announcementPage = remoteAnnouncementPage();
     const installing = remoteUpdateJob('INSTALLING', 85, '1.0.0');

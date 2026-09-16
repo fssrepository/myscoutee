@@ -156,6 +156,7 @@ export class OperatorPageComponent implements OnInit {
       counterTone: 'alert',
       progress: this.workspace.busyAction() === 'load-update'
         || this.workspace.busyAction() === 'apply-update'
+        || this.workspace.busyAction() === 'rollback-update'
         ? { state: 'loading', durationMs: 3000 }
         : null
     },

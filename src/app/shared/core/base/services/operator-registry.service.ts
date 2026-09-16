@@ -177,6 +177,10 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.applyDeploymentUpdate(onProgress);
   }
 
+  rollbackDeploymentUpdate(onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto> {
+    return this.registryService.rollbackDeploymentUpdate(onProgress);
+  }
+
   loadConfiguration(): Promise<OperatorConfigurationDto> {
     return this.registryService.loadConfiguration();
   }

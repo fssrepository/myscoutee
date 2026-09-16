@@ -829,6 +829,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     }
   }
 
+  async rollbackDeploymentUpdate(_onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto> {
+    throw new Error('operator.update.error.rollback.unavailable');
+  }
+
   async loadConfiguration(): Promise<OperatorConfigurationDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
     return structuredClone((await this.readStored()).configuration);

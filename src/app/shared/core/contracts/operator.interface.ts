@@ -356,7 +356,15 @@ export type OperatorDeploymentUpdateProgressHandler = (
   progress: OperatorDeploymentUpdateProgressDto
 ) => void;
 
+export interface OperatorRollbackDto {
+  jobId: string;
+  fromVersion: string;
+  targetVersion: string;
+  artifactSha256: string;
+}
+
 export interface OperatorDeploymentUpdateDto {
+  rollback?: OperatorRollbackDto | null;
   currentVersion: string;
   availableVersion: string;
   updateAvailable: boolean;
@@ -826,6 +834,7 @@ export interface OperatorRegistryServiceContract {
   applyDeploymentUpdate(
     onProgress?: OperatorDeploymentUpdateProgressHandler
   ): Promise<OperatorDeploymentUpdateDto>;
+  rollbackDeploymentUpdate(onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto>;
   loadConfiguration(): Promise<OperatorConfigurationDto>;
   saveConfiguration(
     request: OperatorConfigurationSaveRequestDto

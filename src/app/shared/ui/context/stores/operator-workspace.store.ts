@@ -47,6 +47,7 @@ export type OperatorWorkspaceBusyAction =
   | 'link-operator-group'
   | 'load-update'
   | 'apply-update'
+  | 'rollback-update'
   | 'load-configuration'
   | 'load-revenue'
   | 'synchronize-revenue'
@@ -493,9 +494,19 @@ export class OperatorWorkspaceStore {
   }
 
   async applyDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
+    return this.executeDeploymentUpdate(false);
+  }
+
+  async rollbackDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
+    return this.executeDeploymentUpdate(true);
+  }
+
+  private async executeDeploymentUpdate(rollback: boolean): Promise<OperatorDeploymentUpdateDto | null> {
+    const operation = rollback ? this.service.rollbackDeploymentUpdate.bind(this.service)
+      : this.service.applyDeploymentUpdate.bind(this.service);
     const result = await this.run(
-      'apply-update',
-      () => this.service.applyDeploymentUpdate(progress => {
+      rollback ? 'rollback-update' : 'apply-update',
+      () => operation(progress => {
         this.deploymentUpdateRef.update(current =>
           current
             ? {

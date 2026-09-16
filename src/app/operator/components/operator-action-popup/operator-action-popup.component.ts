@@ -76,6 +76,7 @@ import { OperatorRevenueViewComponent } from '../operator-revenue-view/operator-
 type OperatorPopupAction =
   | 'refresh-update'
   | 'apply-update'
+  | 'rollback-update'
   | 'claim-share'
   | 'create-client-code'
   | 'redeem-token'
@@ -1101,6 +1102,9 @@ export class OperatorActionPopupComponent {
       case 'refresh-update':
         await this.workspace.refreshDeploymentUpdate();
         return;
+      case 'rollback-update':
+        await this.workspace.rollbackDeploymentUpdate();
+        return;
       case 'apply-update':
         await this.workspace.applyDeploymentUpdate();
         return;
@@ -1830,6 +1834,8 @@ export class OperatorActionPopupComponent {
         return 'operator.claim.applying';
       case 'link-operator-group':
         return 'operator.claim.client.code.redeeming';
+      case 'rollback-update':
+        return 'operator.update.rollingback';
       case 'apply-update':
         return 'operator.update.applying';
       case 'synchronize-revenue':
@@ -1964,7 +1970,16 @@ export class OperatorActionPopupComponent {
             layout: 'action',
             disabled: this.busy() || updateRunning || !updateKnown || !update?.updateAvailable,
             context: { action: 'apply-update' }
-          }
+          },
+          ...(update?.rollback ? [{
+            id: 'operator-rollback-update',
+            label: 'operator.update.rollback',
+            icon: 'restore',
+            palette: 'amber' as const,
+            layout: 'action' as const,
+            disabled: this.busy() || updateRunning,
+            context: { action: 'rollback-update' as const }
+          }] : [])
         ];
       }
       case 'claim': {
