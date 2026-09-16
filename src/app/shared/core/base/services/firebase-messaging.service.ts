@@ -78,7 +78,7 @@ export class FirebaseMessagingService {
   // The switch reflects this browser's saved preference and native permission.
   // FCM registration is delivery setup and may finish later in the background.
   readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
-    && this.notificationPermission() === 'granted');
+    && this.notificationsConfigured && this.notificationPermission() === 'granted');
   private deviceOperationRevision = 0;
 
   async setDeviceNotificationsEnabled(enabled: boolean): Promise<void> {

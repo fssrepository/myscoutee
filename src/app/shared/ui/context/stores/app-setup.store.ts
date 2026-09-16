@@ -35,13 +35,15 @@ export class AppSetupStore {
   constructor() {
     effect(() => {
       const enabled = this.messaging.deviceNotificationsEnabled();
-      if (this.isOpen() && !this.notificationsEdited() && !this.actionPending()) {
+      if (this.isOpen() && !this.actionPending()
+        && (!this.notificationsEdited() || !this.messaging.notificationsConfigured)) {
         this.notificationsSelected.set(enabled);
       }
     });
   }
 
   toggleNotifications(): void {
+    if (this.notificationConfigurationPending() || !this.messaging.notificationsConfigured) return;
     this.notificationsEdited.set(true);
     this.notificationsSelected.update(value => !value);
   }
@@ -62,7 +64,13 @@ export class AppSetupStore {
     const generation = this.generation;
     this.notificationConfigurationPending.set(true);
     void this.messaging.prepareNotificationConfiguration().catch(() => undefined).finally(() => {
-      if (generation === this.generation) this.notificationConfigurationPending.set(false);
+      if (generation === this.generation) {
+        this.notificationConfigurationPending.set(false);
+        if (!this.messaging.notificationsConfigured) {
+          this.notificationsSelected.set(false);
+          this.notificationsEdited.set(false);
+        }
+      }
     });
     void this.refreshPermissions();
   }

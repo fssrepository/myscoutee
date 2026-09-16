@@ -34,7 +34,8 @@ export class AppSetupPopupComponent {
       palette: 'violet',
       togglePalette: this.store.notificationsSelected() && this.store.messaging.notificationPermission() === 'granted' ? 'green' : this.store.messaging.notificationPermission() === 'denied' ? 'red' : this.store.notificationsSelected() ? 'blue' : 'slate',
       checked: this.store.notificationsSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() }
+      showToggleIndicator: true, disabled: this.store.actionPending()
+        || this.store.notificationConfigurationPending() || !this.store.messaging.notificationsConfigured }
   ]);
   readonly installActions = computed<AppMenuItem[]>(() => [
     ...((this.store.pwa.installAvailable() || this.store.pwa.installActionPending()) ? [{ id: 'install', icon: 'install_desktop',

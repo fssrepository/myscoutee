@@ -121,6 +121,8 @@ describe('Notification preference and background registration', () => {
     await setup.allow();
     await vi.advanceTimersByTimeAsync(1);
     expect(requestPermission).not.toHaveBeenCalled();
+    expect(setup.notificationsSelected()).toBe(false);
+    expect(TestBed.inject(FirebaseMessagingService).deviceNotificationsEnabled()).toBe(false);
     expect(ready).not.toHaveBeenCalled();
     expect(getToken).not.toHaveBeenCalled();
     expect(upsert).not.toHaveBeenCalled();
