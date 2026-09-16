@@ -57,6 +57,7 @@ Readonly<DeploymentPrivacyContactDto> = {
 
 export interface DeploymentConfigurationDto extends DeploymentBrandingDto {
   paymentProviderId: string | null;
+  firebaseMessagingConfigured: boolean;
   socialLinks: readonly DeploymentSocialLinkDto[];
   privacyContact: DeploymentPrivacyContactDto;
 }
@@ -65,6 +66,7 @@ export const DEFAULT_DEPLOYMENT_CONFIGURATION:
 Readonly<DeploymentConfigurationDto> = {
   ...DEFAULT_DEPLOYMENT_BRANDING,
   paymentProviderId: null,
+  firebaseMessagingConfigured: false,
   socialLinks: DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
   privacyContact: DEFAULT_DEPLOYMENT_PRIVACY_CONTACT
 };

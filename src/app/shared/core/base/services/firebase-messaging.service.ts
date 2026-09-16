@@ -140,15 +140,12 @@ export class FirebaseMessagingService {
   }
 
   get notificationsConfigured(): boolean {
-    return (this.deviceRegistrations.isLocal
-      || (this.enabled && !!this.firebaseAppService.activeRuntime()?.config.vapidKey))
+    return this.deploymentConfiguration.firebaseMessagingConfigured()
       && typeof Notification !== 'undefined';
   }
 
   async prepareNotificationConfiguration(): Promise<void> {
-    if (this.enabled && !this.deviceRegistrations.isLocal) {
-      await this.firebaseAppService.ensureFirebaseRuntime();
-    }
+    await this.deploymentConfiguration.reload();
   }
 
   initialize(): void {
@@ -161,6 +158,10 @@ export class FirebaseMessagingService {
       () => {
         const userId = this.userProfileStore.activeUserId().trim();
         const permission = this.notificationPermission();
+        if (!this.notificationsConfigured) {
+          this.unbindForegroundMessages();
+          return;
+        }
         if (permission === 'denied' && this.userProfileStore.activeNotificationDevices().some(
           device => device.notificationsEnabled)) {
           untracked(() => { void this.persistNativeDenial().catch(() => undefined); });
@@ -200,7 +201,7 @@ export class FirebaseMessagingService {
   }
 
   async requestAndRegisterForActiveUser(): Promise<void> {
-    if ((!this.enabled && !this.deviceRegistrations.isLocal) || !this.deviceEnabled() || typeof Notification === 'undefined') {
+    if (!this.notificationsConfigured || (!this.enabled && !this.deviceRegistrations.isLocal) || !this.deviceEnabled()) {
       return;
     }
     // Native permission belongs to the explicit settings/login click only.
@@ -323,7 +324,7 @@ export class FirebaseMessagingService {
     expectedRuntime?: FirebaseAppRuntime
   ): Promise<void> {
     await this.nativeDenialOperation;
-    if (!this.enabled || !this.deviceEnabled() || this.notificationPermission() !== 'granted') {
+    if (!this.notificationsConfigured || !this.enabled || !this.deviceEnabled() || this.notificationPermission() !== 'granted') {
       return;
     }
     const revision = this.deviceOperationRevision;
@@ -359,7 +360,7 @@ export class FirebaseMessagingService {
         return;
       }
       if (
-        revision !== this.deviceOperationRevision || !this.deviceEnabled()
+        !this.notificationsConfigured || revision !== this.deviceOperationRevision || !this.deviceEnabled()
         || this.firebaseAppService.activeRuntime()?.app
           !== firebaseRuntime.app
         || this.userProfileStore.activeUserId().trim() !== userId
@@ -374,7 +375,7 @@ export class FirebaseMessagingService {
           notificationsEnabled: true
       });
       if (
-        revision !== this.deviceOperationRevision || !this.deviceEnabled()
+        !this.notificationsConfigured || revision !== this.deviceOperationRevision || !this.deviceEnabled()
         || this.firebaseAppService.activeRuntime()?.app
           !== firebaseRuntime.app
         || this.userProfileStore.activeUserId().trim() !== userId

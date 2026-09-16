@@ -40,6 +40,7 @@ export class LocalDeploymentConfigurationService
       ? {
           ...normalizedRecord.configuration.branding,
           paymentProviderId: normalizedRecord.configuration.payment.providerId,
+          firebaseMessagingConfigured: normalizedRecord.configuration.firebase.messagingCredentialConfigured,
           socialLinks: normalizedRecord.configuration.socialLinks,
           privacyContact: normalizedRecord.configuration.privacyContact
         }

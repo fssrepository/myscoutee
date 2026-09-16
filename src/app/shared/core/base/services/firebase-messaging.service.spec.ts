@@ -1,5 +1,6 @@
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { getToken, getMessaging, isSupported, onMessage } from 'firebase/messaging';
 import { FirebaseMessagingService } from './firebase-messaging.service';
 import { FirebaseAppService } from './firebase-app.service';
@@ -24,11 +25,15 @@ describe('Notification preference and background registration', () => {
   const ready = vi.fn();
   const activeRuntime = vi.fn();
   const remove = vi.fn();
+  const messagingConfigured = signal(true);
+  const reloadDeployment = vi.fn();
   let setup: AppSetupStore;
 
   beforeEach(async () => {
     vi.useFakeTimers();
     vi.resetAllMocks();
+    messagingConfigured.set(true);
+    reloadDeployment.mockResolvedValue(undefined);
     localStorage.clear();
     localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, 'false');
     vi.stubGlobal('Notification', { permission: 'granted' });
@@ -51,7 +56,9 @@ describe('Notification preference and background registration', () => {
       FirebaseMessagingService, AppSetupStore,
       { provide: DeviceRegistrationsService, useValue: { isLocal: false, upsert, remove } },
       { provide: FirebaseAppService, useValue: { ensureFirebaseRuntime, activeRuntime } },
-      { provide: DeploymentConfigurationService, useValue: {} },
+      { provide: DeploymentConfigurationService, useValue: {
+        firebaseMessagingConfigured: messagingConfigured, reload: reloadDeployment
+      } },
       { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
@@ -99,6 +106,46 @@ describe('Notification preference and background registration', () => {
     expect(button.classList.contains('app-menu__palette--blue')).toBe(true);
     expect(button.classList.contains('app-menu__button-row-item--progress-success')).toBe(false);
     fixture.destroy();
+  });
+
+  it('disables and clears the notification toggle without a Messaging credential even when VAPID exists', async () => {
+    messagingConfigured.set(false);
+    setup.close();
+    setup.open();
+    await vi.advanceTimersByTimeAsync(0);
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    fixture.detectChanges();
+    const button = [...fixture.nativeElement.querySelectorAll('button')]
+      .find((b: any) => b.textContent.includes('app.setup.notifications')) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(activeRuntime()?.config.vapidKey).toBe('test-vapid');
+    button.click();
+    expect(setup.notificationsSelected()).toBe(false);
+    expect(getToken).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
+  it('does not start background Firebase or device registration when Messaging credentials are absent', async () => {
+    messagingConfigured.set(false);
+    const messaging = TestBed.inject(FirebaseMessagingService);
+    messaging.initialize();
+    await messaging.setDeviceNotificationsEnabled(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
+    expect(ready).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('uses the server Messaging capability independently of the VAPID runtime', async () => {
+    activeRuntime.mockReturnValue(null);
+    messagingConfigured.set(true);
+    const messaging = TestBed.inject(FirebaseMessagingService);
+    expect(messaging.notificationsConfigured).toBe(true);
+    await messaging.prepareNotificationConfiguration();
+    expect(reloadDeployment).toHaveBeenCalled();
+    expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
   });
 
   it('shows a one-second success indication even when Save finishes immediately', async () => {
@@ -174,6 +221,7 @@ describe('Notification preference and background registration', () => {
   it('stops before native permission, worker and token when Messaging is not configured', async () => {
     const requestPermission = vi.fn();
     vi.stubGlobal('Notification', { permission: 'default', requestPermission });
+    messagingConfigured.set(false);
     activeRuntime.mockReturnValue(null);
     ensureFirebaseRuntime.mockResolvedValue(null);
     setup.close();
