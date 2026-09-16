@@ -104,13 +104,6 @@
                         </small>
                       </span>
                     </p>
-                    <span
-                      class="operator-action-popup__claim-share"
-                      [attr.title]="'operator.leaderboard.share' | i18n"
-                    >
-                      <mat-icon>pie_chart</mat-icon>
-                      {{ formatShare(claim.sharePercent) }}%
-                    </span>
                   </div>
                 } @else if (claim.verificationStatus === 'REJECTED') {
                   <div class="operator-action-popup__claim-review">
@@ -123,13 +116,6 @@
                         </small>
                       </span>
                     </p>
-                    <span
-                      class="operator-action-popup__claim-share"
-                      [attr.title]="'operator.leaderboard.share' | i18n"
-                    >
-                      <mat-icon>pie_chart</mat-icon>
-                      {{ formatShare(claim.sharePercent) }}%
-                    </span>
                   </div>
                 } @else if (
                   claim.verificationStatus === 'APPROVED'

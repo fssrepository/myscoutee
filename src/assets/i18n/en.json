@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.16.en.105",
+  "version": "2026.09.16.en.106",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3034,7 +3034,7 @@
     "operator.claim.error.profile.required": "Complete the operator profile name before claiming this node.",
     "operator.claim.path.company": "Company details",
     "operator.claim.path.company.description": "Submit the full legal-company and authorized-contact form.",
-    "operator.claim.path.client.code": "Client code",
+    "operator.claim.path.client.code": "Use client code",
     "operator.claim.path.client.code.description": "Redeem a temporary code issued by an approved deployment.",
     "operator.claim.verification.instructions": "Submit the registered company details and an authorized contact for formal verification.",
     "operator.claim.verification.company": "Legal company",
@@ -3066,6 +3066,7 @@
     "operator.claim.eligibility.partially.suspended": "Partially suspended",
     "operator.claim.eligibility.inactive": "Not eligible",
     "operator.claim.client.code": "Client code",
+    "operator.claim.client.code.create": "Create client code",
     "operator.claim.client.code.dialog.title": "Client code for another deployment",
     "operator.claim.client.code.instructions": "Enter the temporary client code issued by an approved deployment. The copied claim joins its group provisionally and remains pending registry review.",
     "operator.claim.client.code.placeholder": "Paste the temporary client code",

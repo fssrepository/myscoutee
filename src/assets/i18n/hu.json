@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.105",
+  "version": "2026.09.16.hu.106",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3034,7 +3034,7 @@
     "operator.claim.error.profile.required": "A csomópont igénylése előtt add meg az operátori profil nevét.",
     "operator.claim.path.company": "Cégadatok",
     "operator.claim.path.company.description": "A teljes jogi cég- és jogosult kapcsolattartói űrlap beküldése.",
-    "operator.claim.path.client.code": "Klienskód",
+    "operator.claim.path.client.code": "Klienskód használata",
     "operator.claim.path.client.code.description": "Egy jóváhagyott telepítés ideiglenes kódjának beváltása.",
     "operator.claim.verification.instructions": "Add meg a bejegyzett vállalkozás adatait és egy jogosult kapcsolattartót a hivatalos ellenőrzéshez.",
     "operator.claim.verification.company": "Jogi vállalkozás",
@@ -3066,6 +3066,7 @@
     "operator.claim.eligibility.partially.suspended": "Részben felfüggesztve",
     "operator.claim.eligibility.inactive": "Nem jogosult",
     "operator.claim.client.code": "Klienskód",
+    "operator.claim.client.code.create": "Klienskód létrehozása",
     "operator.claim.client.code.dialog.title": "Klienskód egy másik telepítéshez",
     "operator.claim.client.code.instructions": "Add meg egy jóváhagyott telepítés ideiglenes klienskódját. A másolt igénylés ideiglenesen csatlakozik a csoporthoz, és a nyilvántartás felülvizsgálatára vár.",
     "operator.claim.client.code.placeholder": "Illeszd be az ideiglenes klienskódot",

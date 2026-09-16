@@ -49,7 +49,6 @@ import {
 } from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
-  type PopupActionEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
 import {
@@ -78,6 +77,7 @@ type OperatorPopupAction =
   | 'refresh-update'
   | 'apply-update'
   | 'claim-share'
+  | 'create-client-code'
   | 'redeem-token'
   | 'set-claim-path'
   | 'save-branding'
@@ -1036,6 +1036,7 @@ export class OperatorActionPopupComponent {
 
   protected popupModel(): PopupModel {
     const kind = this.kind();
+    const claim = kind === 'claim' ? this.workspace.claimStatus() : null;
     const deploymentEntry = kind === 'deployments'
       ? this.menu.selectedLeaderboardEntry()
       : null;
@@ -1072,19 +1073,9 @@ export class OperatorActionPopupComponent {
       mobilePresentation: wide ? 'fullscreen' : 'compact',
       headerTone: 'accent',
       headerPalette: this.headerPalette(kind),
+      headerBadge: claim ? `${this.formatShare(claim.sharePercent)}%` : null,
+      translateHeaderBadge: false,
       bodyLayout: kind === 'deployments' ? 'fill' : 'default',
-      headerActions: kind === 'claim' && this.canIssueClientCode()
-        ? [{
-            id: 'operator-claim-client-code',
-            icon: 'key',
-            label: 'operator.claim.client.code',
-            palette: 'teal',
-            disabled: this.busy()
-          }]
-        : [],
-      onAction: event => {
-        void this.onPopupHeaderAction(event);
-      },
       onClose: () => this.close()
     };
   }
@@ -1102,6 +1093,9 @@ export class OperatorActionPopupComponent {
         return;
       case 'claim-share':
         await this.workspace.claimShare();
+        return;
+      case 'create-client-code':
+        await this.createClientCode();
         return;
       case 'redeem-token':
         await this.workspace.linkOperatorGroup();
@@ -1866,8 +1860,8 @@ export class OperatorActionPopupComponent {
       );
   }
 
-  private async onPopupHeaderAction(event: PopupActionEvent): Promise<void> {
-    if (event.action.id !== 'operator-claim-client-code' || !this.canIssueClientCode()) {
+  private async createClientCode(): Promise<void> {
+    if (!this.canIssueClientCode()) {
       return;
     }
     const token = await this.workspace.issueGroupingToken();
@@ -2019,7 +2013,18 @@ export class OperatorActionPopupComponent {
             ? { state: 'loading', durationMs: 3000 }
             : null,
           context: { action: 'redeem-token' }
-        }];
+        }, ...(this.canIssueClientCode() ? [{
+          id: 'operator-create-client-code',
+          ariaLabel: 'operator.claim.client.code.create',
+          icon: 'link',
+          palette: 'teal' as const,
+          layout: 'icon' as const,
+          disabled: this.busy(),
+          progress: this.busyAction() === 'issue-grouping-token'
+            ? { state: 'loading' as const, durationMs: 3000 }
+            : null,
+          context: { action: 'create-client-code' as const }
+        }] : [])];
       }
       case 'revenue': {
         const sync = this.workspace.revenueSync();
