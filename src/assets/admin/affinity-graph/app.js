@@ -308,11 +308,6 @@ if (typeof mobilePanelQuery.addEventListener === 'function') {
   });
 }
 window.addEventListener('resize', resize);
-panelExpandedBody?.addEventListener('transitionend', event => {
-  if (event.target === panelExpandedBody && event.propertyName === 'max-height') {
-    requestAnimationFrame(resize);
-  }
-});
 window.addEventListener('keydown', handleKeyPan);
 canvas.addEventListener('contextmenu', event => event.preventDefault());
 canvas.addEventListener('wheel', () => {
@@ -1342,7 +1337,7 @@ function setPanelsExpanded(expanded) {
   panelsExpanded = Boolean(expanded);
   syncPanelChrome();
   requestAnimationFrame(() => {
-    resize();
+    if (!mobilePanelQuery.matches) resize();
     publishGraphState(true);
   });
 }
@@ -2809,7 +2804,6 @@ function graphViewportMetrics() {
   let safeLeft = rect.left;
   let safeRight = rect.right;
   let safeTop = rect.top;
-  let safeBottom = rect.bottom;
   const panelRect = controlPanel?.getBoundingClientRect();
   const isSidePanel = panelRect
     && panelRect.left > rect.left + rect.width * 0.45
@@ -2818,11 +2812,14 @@ function graphViewportMetrics() {
   if (isSidePanel) {
     safeRight = Math.max(rect.left + rect.width * 0.52, panelRect.left - 26);
   } else if (panelRect && panelRect.width >= rect.width * 0.5) {
-    safeTop = Math.min(rect.bottom - 100, panelRect.bottom + 16);
-    const helpRect = helpPanel?.getBoundingClientRect();
-    if (panelsExpanded && helpRect?.height > 0) {
-      safeBottom = Math.max(safeTop + 80, helpRect.top - 12);
-    }
+    // The expanded mobile panel overlays the graph; framing always reserves
+    // only the compact header so Expand/Collapse never moves the camera.
+    const panelStyle = getComputedStyle(controlPanel);
+    const headerBottom = controlPanel.querySelector('.control-header').getBoundingClientRect().bottom;
+    const compactBottom = headerBottom + panelCompactSummary.scrollHeight
+      + 2 * parseFloat(panelStyle.getPropertyValue('--panel-edge-gap'))
+      + parseFloat(panelStyle.paddingBottom);
+    safeTop = Math.min(rect.bottom - 100, compactBottom + 16);
   }
 
   const safeWidth = Math.max(1, safeRight - safeLeft);
@@ -2832,8 +2829,8 @@ function graphViewportMetrics() {
     fullWidth: Math.max(1, rect.width),
     fullHeight: Math.max(1, rect.height),
     safeWidth,
-    safeHeight: Math.max(1, safeBottom - safeTop),
-    centerOffsetYPx: rect.top + rect.height / 2 - (safeTop + safeBottom) / 2,
+    safeHeight: Math.max(1, rect.bottom - safeTop),
+    centerOffsetYPx: rect.top + rect.height / 2 - (safeTop + rect.bottom) / 2,
     centerOffsetPx: fullCenterX - safeCenterX
   };
 }
