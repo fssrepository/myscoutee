@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { AppLocationService } from '../../../core/base/services/app-location.service';
 import { FirebaseMessagingService } from '../../../core/base/services/firebase-messaging.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
@@ -7,7 +7,7 @@ import { UserProfileStore } from './user-profile.store';
 import type { LocationCoordinates } from '../../../core/contracts/user.interface';
 
 @Injectable({ providedIn: 'root' })
-export class AppSetupStore {
+export class AppSetupStore implements OnDestroy {
   readonly pwa = inject(PwaService);
   readonly messaging = inject(FirebaseMessagingService);
   private readonly location = inject(AppLocationService);
@@ -25,6 +25,8 @@ export class AppSetupStore {
   readonly notificationConfigurationPending = signal(false);
   readonly actionPending = computed(() => this.nativePending() || this.busy());
   readonly error = signal('');
+  readonly saveSucceeded = signal(false);
+  private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected())
     || this.actionPending() || this.notificationConfigurationPending());
   private generation = 0;
@@ -44,6 +46,7 @@ export class AppSetupStore {
 
   toggleNotifications(): void {
     if (this.notificationConfigurationPending() || !this.messaging.notificationsConfigured) return;
+    this.clearSaveFeedback();
     this.notificationsEdited.set(true);
     this.notificationsSelected.update(value => !value);
   }
@@ -51,6 +54,7 @@ export class AppSetupStore {
   open(): void {
     if (this.isOpen()) return;
     this.generation++;
+    this.clearSaveFeedback();
     this.error.set('');
     this.locationGranted.set(false);
     this.locationPermission.set(null);
@@ -118,6 +122,7 @@ export class AppSetupStore {
 
   async allow(): Promise<void> {
     if (!this.isOpen() || this.allowDisabled()) return;
+    this.clearSaveFeedback();
     this.nativePending.set(true);
     this.error.set('');
     const generation = this.generation;
@@ -139,7 +144,10 @@ export class AppSetupStore {
         this.nativePending.set(false);
         this.busy.set(true);
         await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
-        if (generation === this.generation) this.notificationsEdited.set(false);
+        if (generation === this.generation) {
+          this.notificationsEdited.set(false);
+          this.showSaveFeedback();
+        }
         return;
       }
       const coordinates = await this.location.requestCurrentCoordinates();
@@ -159,7 +167,10 @@ export class AppSetupStore {
       await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
       if (generation === this.generation) {
         if (this.completeLogin) this.finish(true);
-        else this.notificationsEdited.set(false);
+        else {
+          this.notificationsEdited.set(false);
+          this.showSaveFeedback();
+        }
       }
     } catch (error) {
       if (generation === this.generation) this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
@@ -171,7 +182,27 @@ export class AppSetupStore {
     }
   }
 
+  ngOnDestroy(): void {
+    this.clearSaveFeedback();
+  }
+
+  private showSaveFeedback(): void {
+    this.clearSaveFeedback();
+    this.saveSucceeded.set(true);
+    this.saveFeedbackTimer = setTimeout(() => {
+      this.saveFeedbackTimer = null;
+      this.saveSucceeded.set(false);
+    }, 1000);
+  }
+
+  private clearSaveFeedback(): void {
+    if (this.saveFeedbackTimer !== null) clearTimeout(this.saveFeedbackTimer);
+    this.saveFeedbackTimer = null;
+    this.saveSucceeded.set(false);
+  }
+
   private finish(allowed: boolean): void {
+    this.clearSaveFeedback();
     this.generation++;
     if (this.permission) this.permission.onchange = null;
     this.permission = null;

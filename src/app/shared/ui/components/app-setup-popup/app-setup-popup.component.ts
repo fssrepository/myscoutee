@@ -44,9 +44,12 @@ export class AppSetupPopupComponent {
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
   readonly permissionActions = computed<AppMenuItem[]>(() => [
-    { id: 'allow', icon: 'check', label: this.store.busy() ? 'entry.permissions.checking' : 'app.setup.update',
-      layout: 'action', palette: 'blue', disabled: this.store.allowDisabled(),
-      progress: { state: this.store.busy() ? 'loading' : null } }
+    { id: 'allow', icon: this.store.saveSucceeded() ? 'check_circle' : 'check',
+      label: this.store.busy() ? 'entry.permissions.checking' : 'app.setup.update',
+      layout: 'action', palette: this.store.saveSucceeded() ? 'green' : 'blue',
+      disabled: this.store.allowDisabled(),
+      progress: this.store.busy() ? { state: 'loading' }
+        : this.store.saveSucceeded() ? { state: 'success', durationMs: 1000 } : null }
   ]);
 
   constructor() {

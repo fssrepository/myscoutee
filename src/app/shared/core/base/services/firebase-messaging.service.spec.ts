@@ -10,6 +10,7 @@ import { AppLocationService } from './app-location.service';
 import { PwaService } from './pwa.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { AppSetupStore } from '../../../ui/context/stores/app-setup.store';
+import { AppSetupPopupComponent } from '../../../ui/components/app-setup-popup/app-setup-popup.component';
 
 vi.mock('firebase/messaging', () => ({
   getToken: vi.fn(), getMessaging: vi.fn(), isSupported: vi.fn(),
@@ -36,7 +37,10 @@ describe('Notification preference and background registration', () => {
       serviceWorker: { get ready() { return ready(); } },
       permissions: { query: vi.fn().mockResolvedValue({ state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }) }
     });
-    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false }));
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+      matches: false, addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn()
+    }));
     vi.mocked(isSupported).mockResolvedValue(true);
     vi.mocked(getMessaging).mockReturnValue({} as ReturnType<typeof getMessaging>);
     vi.mocked(onMessage).mockReturnValue(() => undefined);
@@ -48,12 +52,14 @@ describe('Notification preference and background registration', () => {
       { provide: DeviceRegistrationsService, useValue: { isLocal: false, upsert, remove } },
       { provide: FirebaseAppService, useValue: { ensureFirebaseRuntime, activeRuntime } },
       { provide: DeploymentConfigurationService, useValue: {} },
-      { provide: I18nService, useValue: { translate: (key: string) => key } },
+      { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
         syncGrantedLocationForActiveUser: vi.fn().mockResolvedValue(undefined)
       } },
-      { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn() } },
+      { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn(),
+        installAvailable: () => false, installActionPending: () => false,
+        installPromptVisible: () => false } },
       { provide: UserProfileStore, useValue: {
         activeUserId: () => 'user-1', activeNotificationDevices: () => []
       } }
@@ -72,6 +78,62 @@ describe('Notification preference and background registration', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     vi.useRealTimers();
+  });
+
+  it('renders success on the actual Update button after a click and keeps the popup open', async () => {
+    vi.mocked(getToken).mockResolvedValue('saved-token');
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('.app-setup-action button') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    button.click();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('true');
+    expect(button.classList.contains('app-menu__palette--green')).toBe(true);
+    expect(button.classList.contains('app-menu__button-row-item--progress-success')).toBe(true);
+    expect(button.textContent).toContain('check_circle');
+    expect(fixture.nativeElement.querySelector('app-popup')).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1000);
+    fixture.detectChanges();
+    expect(button.classList.contains('app-menu__palette--blue')).toBe(true);
+    expect(button.classList.contains('app-menu__button-row-item--progress-success')).toBe(false);
+    fixture.destroy();
+  });
+
+  it('shows a one-second success indication even when Save finishes immediately', async () => {
+    vi.mocked(getToken).mockResolvedValue('saved-token');
+    await setup.allow();
+    expect(setup.actionPending()).toBe(false);
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(setup.isOpen()).toBe(true);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(setup.saveSucceeded()).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(setup.saveSucceeded()).toBe(false);
+  });
+
+  it('clears success for edits and does not show it when a subsequent save fails', async () => {
+    vi.mocked(getToken).mockResolvedValue('saved-token');
+    await setup.allow();
+    expect(setup.saveSucceeded()).toBe(true);
+    setup.toggleNotifications();
+    expect(setup.saveSucceeded()).toBe(false);
+    vi.spyOn(TestBed.inject(FirebaseMessagingService), 'setDeviceNotificationsEnabled')
+      .mockRejectedValueOnce(new Error('save failed'));
+    await setup.allow();
+    expect(setup.error()).toBe('save failed');
+    expect(setup.saveSucceeded()).toBe(false);
+    expect(setup.actionPending()).toBe(false);
+  });
+
+  it('does not retain a previous save indication after closing and reopening settings', async () => {
+    vi.mocked(getToken).mockResolvedValue('saved-token');
+    await setup.allow();
+    expect(setup.saveSucceeded()).toBe(true);
+    setup.close();
+    setup.open();
+    expect(setup.saveSucceeded()).toBe(false);
   });
 
   it('saves an allowed preference immediately despite Firebase rejection', async () => {
