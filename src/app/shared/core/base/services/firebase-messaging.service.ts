@@ -76,27 +76,30 @@ export class FirebaseMessagingService {
   private readonly deviceEnabled = signal(typeof localStorage === 'undefined'
     || localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled) !== 'false');
   // The switch reflects this browser's saved preference and native permission.
-  // FCM registration is delivery setup and may finish later in the background.
   readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
     && this.notificationsConfigured && this.notificationPermission() === 'granted');
   private deviceOperationRevision = 0;
 
   async setDeviceNotificationsEnabled(enabled: boolean): Promise<void> {
-    this.deviceOperationRevision++;
+    if (!this.notificationsConfigured) return;
+    const revision = ++this.deviceOperationRevision;
+    const previousEnabled = this.deviceEnabled();
+    const previousStored = localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled);
     this.deviceEnabled.set(enabled);
     localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, String(enabled));
     try {
       if (enabled) {
-        if (this.deviceRegistrations.isLocal) {
-          await this.requestAndRegisterForActiveUser();
-        } else {
-          void this.requestAndRegisterForActiveUser().catch(() => undefined);
-        }
+        await this.requestAndRegisterForActiveUser(true);
       } else {
         this.unbindForegroundMessages();
         await this.unregisterStoredDevice(true);
       }
     } catch {
+      if (revision === this.deviceOperationRevision) {
+        this.deviceEnabled.set(previousEnabled);
+        if (previousStored === null) localStorage.removeItem(APP_STORAGE_KEYS.messagingDeviceEnabled);
+        else localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, previousStored);
+      }
       throw new Error(this.i18n.translate('entry.permissions.notifications.failed'));
     }
   }
@@ -200,7 +203,7 @@ export class FirebaseMessagingService {
     );
   }
 
-  async requestAndRegisterForActiveUser(): Promise<void> {
+  async requestAndRegisterForActiveUser(requireRegistration = false): Promise<void> {
     if (!this.notificationsConfigured || (!this.enabled && !this.deviceRegistrations.isLocal) || !this.deviceEnabled()) {
       return;
     }
@@ -214,7 +217,10 @@ export class FirebaseMessagingService {
       await this.updateLocalDevice(true);
       return;
     }
-    await this.registerActiveDevice();
+    const registered = await this.registerActiveDevice();
+    if (requireRegistration && this.userProfileStore.activeUserId().trim() && !registered) {
+      throw new Error(this.i18n.translate('entry.permissions.notifications.failed'));
+    }
   }
 
   get entryPermissionPending(): boolean {
@@ -322,20 +328,20 @@ export class FirebaseMessagingService {
 
   private async registerActiveDevice(
     expectedRuntime?: FirebaseAppRuntime
-  ): Promise<void> {
+  ): Promise<boolean> {
     await this.nativeDenialOperation;
     if (!this.notificationsConfigured || !this.enabled || !this.deviceEnabled() || this.notificationPermission() !== 'granted') {
-      return;
+      return false;
     }
     const revision = this.deviceOperationRevision;
     const userId = this.userProfileStore.activeUserId().trim();
     if (!userId) {
-      return;
+      return false;
     }
     const firebaseRuntime = expectedRuntime
       ?? await this.firebaseAppService.ensureFirebaseRuntime();
     if (!firebaseRuntime?.config.vapidKey) {
-      return;
+      return false;
     }
     const previousUserId = localStorage.getItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY)?.trim() ?? '';
     const previousToken = localStorage.getItem(FirebaseMessagingService.TOKEN_STORAGE_KEY)?.trim() ?? '';
@@ -344,11 +350,11 @@ export class FirebaseMessagingService {
     }
     const serviceWorkerRegistration = await this.waitForServiceWorkerReady();
     if (!serviceWorkerRegistration) {
-      return;
+      return false;
     }
     const messagingSupported = await isSupported().catch(() => false);
     if (!messagingSupported) {
-      return;
+      return false;
     }
     try {
       const messaging = getMessaging(firebaseRuntime.app);
@@ -357,7 +363,7 @@ export class FirebaseMessagingService {
         serviceWorkerRegistration
       }));
       if (!firebaseToken) {
-        return;
+        return false;
       }
       if (
         !this.notificationsConfigured || revision !== this.deviceOperationRevision || !this.deviceEnabled()
@@ -365,7 +371,7 @@ export class FirebaseMessagingService {
           !== firebaseRuntime.app
         || this.userProfileStore.activeUserId().trim() !== userId
       ) {
-        return;
+        return false;
       }
       await this.deviceRegistrations.upsert({
           userId,
@@ -381,12 +387,14 @@ export class FirebaseMessagingService {
         || this.userProfileStore.activeUserId().trim() !== userId
       ) {
         await this.deleteDeviceRegistration(userId, firebaseToken);
-        return;
+        return false;
       }
       this.storeToken(firebaseToken, userId);
       this.bindForegroundMessages(firebaseRuntime.app, messaging);
+      return true;
     } catch {
-      // Delivery setup must not block saving the browser notification preference.
+      // Explicit Save reports failure; startup registration stays best-effort.
+      return false;
     }
   }
 

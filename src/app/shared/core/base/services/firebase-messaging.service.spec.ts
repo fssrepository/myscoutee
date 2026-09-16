@@ -183,33 +183,40 @@ describe('Notification preference and background registration', () => {
     expect(setup.saveSucceeded()).toBe(false);
   });
 
-  it('saves an allowed preference immediately despite Firebase rejection', async () => {
-    vi.mocked(getToken).mockRejectedValue(new Error('Firebase internal URL/token error'));
+  it('restores OFF and reports Firebase rejection without displaying success', async () => {
+    vi.mocked(getToken).mockRejectedValue(new Error('Firebase error'));
     await setup.allow();
-    await vi.advanceTimersByTimeAsync(1);
     expect(setup.isOpen()).toBe(true);
-    expect(setup.error()).toBe('');
+    expect(setup.error()).toBe('entry.permissions.notifications.failed');
+    expect(setup.saveSucceeded()).toBe(false);
     expect(setup.actionPending()).toBe(false);
-    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('true');
+    expect(setup.notificationsSelected()).toBe(false);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
     setup.close();
     setup.open();
-    expect(setup.notificationsSelected()).toBe(true);
+    expect(setup.notificationsSelected()).toBe(false);
     expect(upsert).not.toHaveBeenCalled();
   });
 
-  it('never waits for a stalled token and does not persist a token arriving after timeout', async () => {
+  it('reports token timeout without success or accepting its late result', async () => {
     let resolveToken!: (token: string) => void;
     vi.mocked(getToken).mockReturnValue(new Promise(resolve => { resolveToken = resolve; }));
-    await setup.allow();
-    expect(setup.actionPending()).toBe(false);
-    expect(setup.isOpen()).toBe(true);
+    const saving = setup.allow();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(setup.actionPending()).toBe(true);
+    expect(setup.saveSucceeded()).toBe(false);
     await vi.advanceTimersByTimeAsync(30_001);
+    await saving;
+    expect(setup.error()).toBe('entry.permissions.notifications.failed');
+    expect(setup.notificationsSelected()).toBe(false);
+    expect(setup.saveSucceeded()).toBe(false);
     resolveToken('late-token');
     await vi.advanceTimersByTimeAsync(1);
     expect(upsert).not.toHaveBeenCalled();
   });
 
   it('starts location synchronization without waiting for it or closing settings', async () => {
+    vi.mocked(getToken).mockResolvedValue('new-token');
     const location = TestBed.inject(AppLocationService);
     vi.mocked(location.syncGrantedLocationForActiveUser).mockReturnValue(new Promise(() => {}));
     await setup.allow();
@@ -240,15 +247,18 @@ describe('Notification preference and background registration', () => {
     expect(setup.isOpen()).toBe(true);
   });
 
-  it('accepts a slower initial token in the background after settings have returned', async () => {
+  it('keeps Save pending until the token and server registration complete', async () => {
     let resolveToken!: (token: string) => void;
     vi.mocked(getToken).mockReturnValue(new Promise(resolve => { resolveToken = resolve; }));
-    await setup.allow();
+    const saving = setup.allow();
     await vi.advanceTimersByTimeAsync(5_000);
-    expect(setup.actionPending()).toBe(false);
-    resolveToken('slow-first-token');
-    await vi.advanceTimersByTimeAsync(1);
+    expect(setup.actionPending()).toBe(true);
+    expect(setup.saveSucceeded()).toBe(false);
+    resolveToken('new-token');
+    await saving;
     expect(upsert).toHaveBeenCalledOnce();
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(setup.actionPending()).toBe(false);
     expect(setup.isOpen()).toBe(true);
   });
 
@@ -266,21 +276,26 @@ describe('Notification preference and background registration', () => {
     ensureFirebaseRuntime.mockResolvedValue(null);
     await setup.allow();
     await vi.advanceTimersByTimeAsync(1);
-    expect(setup.error()).toBe('');
+    expect(setup.error()).toBe('entry.permissions.notifications.failed');
+    expect(setup.saveSucceeded()).toBe(false);
     expect(ready).not.toHaveBeenCalled();
     expect(getToken).not.toHaveBeenCalled();
   });
 
-  it('persists registration in the background after saving the preference', async () => {
-    let resolveToken!: (token: string) => void;
-    vi.mocked(getToken).mockReturnValue(new Promise(resolve => { resolveToken = resolve; }));
-    await setup.allow();
-    await vi.advanceTimersByTimeAsync(1);
-    expect(setup.isOpen()).toBe(true);
-    expect(upsert).not.toHaveBeenCalled();
-    resolveToken('new-token');
-    await vi.advanceTimersByTimeAsync(1);
+  it('does not display success before the server acknowledges the device write', async () => {
+    let finishWrite!: () => void;
+    vi.mocked(getToken).mockResolvedValue('new-token');
+    upsert.mockReturnValue(new Promise<void>(resolve => { finishWrite = resolve; }));
+    const saving = setup.allow();
+    await vi.advanceTimersByTimeAsync(0);
     expect(upsert).toHaveBeenCalledOnce();
+    expect(setup.actionPending()).toBe(true);
+    expect(setup.saveSucceeded()).toBe(false);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
+    finishWrite();
+    await saving;
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('new-token');
   });
 
   it('asks for native permission in the click gesture and waits before registering', async () => {
@@ -327,17 +342,16 @@ describe('Notification preference and background registration', () => {
     expect(setup.isOpen()).toBe(true);
   });
 
-  it('does not re-enable a device when background token acquisition finishes after opt-out', async () => {
+  it('does not overwrite a newer OFF when token acquisition finishes', async () => {
     let resolveToken!: (token: string) => void;
     vi.mocked(getToken).mockReturnValue(new Promise(resolve => { resolveToken = resolve; }));
-    await setup.allow();
+    const saving = setup.allow();
     await vi.advanceTimersByTimeAsync(1);
-    setup.open();
-    setup.toggleNotifications();
-    await setup.allow();
+    await TestBed.inject(FirebaseMessagingService).setDeviceNotificationsEnabled(false);
     resolveToken('stale-token');
-    await vi.advanceTimersByTimeAsync(1);
+    await saving;
     expect(upsert).not.toHaveBeenCalled();
+    expect(setup.saveSucceeded()).toBe(false);
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
   });
 
@@ -349,6 +363,37 @@ describe('Notification preference and background registration', () => {
     expect(setup.isOpen()).toBe(false);
     expect(setup.actionPending()).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
+  });
+
+  it('restores the preference on server failure and supports a subsequent retry', async () => {
+    vi.mocked(getToken).mockResolvedValue('new-token');
+    upsert.mockRejectedValueOnce(new Error('server unavailable'));
+    await setup.allow();
+    expect(setup.error()).toBe('entry.permissions.notifications.failed');
+    expect(setup.saveSucceeded()).toBe(false);
+    expect(setup.notificationsSelected()).toBe(false);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
+    setup.toggleNotifications();
+    await setup.allow();
+    expect(setup.error()).toBe('');
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('new-token');
+  });
+
+  it('does not write or remove devices when Messaging is not configured', async () => {
+    messagingConfigured.set(false);
+    localStorage.setItem(APP_STORAGE_KEYS.messagingUserId, 'user-1');
+    localStorage.setItem(APP_STORAGE_KEYS.messagingToken, 'retained-token');
+    const messaging = TestBed.inject(FirebaseMessagingService);
+    await messaging.setDeviceNotificationsEnabled(true);
+    await messaging.setDeviceNotificationsEnabled(false);
+    expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
+    expect(ready).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('retained-token');
   });
 
 });

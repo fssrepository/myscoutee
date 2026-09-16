@@ -173,7 +173,11 @@ export class AppSetupStore implements OnDestroy {
         }
       }
     } catch (error) {
-      if (generation === this.generation) this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
+      if (generation === this.generation) {
+        this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
+        this.notificationsEdited.set(false);
+        this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
+      }
     } finally {
       if (generation === this.generation || !this.isOpen()) {
         this.nativePending.set(false);
