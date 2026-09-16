@@ -1,4 +1,4 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
@@ -762,6 +762,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       kind: 'UPDATE',
       includeExpired: false,
       limit: 100
+    }).catch((error: unknown) => {
+      throw new Error(error instanceof HttpErrorResponse && error.status === 409
+        ? 'operator.update.error.registration.required'
+        : 'operator.update.error.check');
     });
     this.latestAnnouncementsCheckedAt =
       announcements.snapshot.asOf?.trim()

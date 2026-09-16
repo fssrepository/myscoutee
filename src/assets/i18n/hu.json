@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.106",
+  "version": "2026.09.16.hu.107",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3020,6 +3020,8 @@
     "operator.update.phase.installing": "Frissítés telepítése",
     "operator.update.phase.completed": "Frissítés befejezve",
     "operator.update.phase.failed": "A frissítés sikertelen",
+    "operator.update.error.registration.required": "A frissítések kereséséhez előbb csatlakozz egy Registryhez.",
+    "operator.update.error.check": "Nem sikerült ellenőrizni a frissítéseket. Próbáld újra.",
     "operator.update.error.failed": "A telepítés frissítése sikertelen.",
     "operator.update.error.recovery.required": "A frissítés bizonytalan állapotban állt le. Újrapróbálás előtt kövesd a helyreállítási eljárást.",
     "operator.update.error.unavailable": "Nem érhető el ellenőrzött telepítési frissítés.",

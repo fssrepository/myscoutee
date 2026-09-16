@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.16.en.106",
+  "version": "2026.09.16.en.107",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3020,6 +3020,8 @@
     "operator.update.phase.installing": "Installing update",
     "operator.update.phase.completed": "Update completed",
     "operator.update.phase.failed": "Update failed",
+    "operator.update.error.registration.required": "Connect to a Registry before checking for updates.",
+    "operator.update.error.check": "Could not check for updates. Please try again.",
     "operator.update.error.failed": "Deployment update failed.",
     "operator.update.error.recovery.required": "The update stopped in an uncertain state. Follow the recovery procedure before retrying.",
     "operator.update.error.unavailable": "No verified deployment update is available.",

@@ -1,6 +1,6 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { I18nService } from '../../base/services/i18n.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -1357,6 +1357,30 @@ describe('HttpOperatorRegistryService', () => {
       },
       expect.objectContaining({ headers: expect.any(HttpHeaders) })
     );
+  });
+
+  it.each([
+    [409, 'operator.update.error.registration.required'],
+    [502, 'operator.update.error.check']
+  ])('keeps update discovery HTTP %s diagnostics out of the UI', async (status, key) => {
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/updates') {
+        return of({ enabled: true, currentVersion: '1.0.0', latestJob: null });
+      }
+      if (url === '/api/operator/announcements') {
+        return throwError(() => new HttpErrorResponse({
+          status: Number(status),
+          statusText: 'OK',
+          url: 'https://localhost/api/operator/announcements',
+          error: { detail: 'Internal Registry diagnostic with sensitive configuration' }
+        }));
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    });
+
+    await expect(TestBed.inject(HttpOperatorRegistryService).loadDeploymentUpdate())
+      .rejects.toThrow(String(key));
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('approves a verified update and streams Java status/events into update progress', async () => {

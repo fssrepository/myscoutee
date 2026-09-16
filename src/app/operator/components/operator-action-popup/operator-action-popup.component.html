@@ -4,6 +4,7 @@
       <section
         class="operator-action-popup"
         [class.operator-action-popup--loading]="loading()"
+        [class.operator-action-popup--updates]="activeKind === 'updates'"
         [class.operator-action-popup--deployments]="activeKind === 'deployments'"
         [attr.aria-busy]="busy()"
       >
@@ -1688,7 +1689,7 @@
             <app-menu
               class="operator-action-popup__actions"
               kind="inline"
-              layout="row"
+              [layout]="activeKind === 'updates' ? 'list' : 'row'"
               [model]="activeKind === 'claim' ? { actionSizing: 'content' } : null"
               [items]="actionItems()"
               (itemSelect)="onAction($event)"

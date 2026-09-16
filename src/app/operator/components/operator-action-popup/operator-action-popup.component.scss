@@ -10,6 +10,10 @@
   color: #243853;
 }
 
+.operator-action-popup--updates {
+  min-height: 0;
+}
+
 .operator-action-popup--loading {
   min-height: 100%;
   flex: 1 1 auto;
@@ -1612,9 +1616,16 @@
 }
 
 .operator-action-popup__result .mat-icon {
+  flex: 0 0 18px;
+  align-self: flex-start;
   width: 18px;
   height: 18px;
   font-size: 18px;
+}
+
+.operator-action-popup__result > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .operator-action-popup__result-copy {
