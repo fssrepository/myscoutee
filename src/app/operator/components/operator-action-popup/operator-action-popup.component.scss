@@ -570,8 +570,16 @@
 
 .operator-action-popup__client-code-actions {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  // Align with the grouped form's title row, inside its padded border.
+  top: 21px;
+  right: 35px;
+}
+
+@media (max-width: 720px) {
+  .operator-action-popup__client-code-actions {
+    top: 19px;
+    right: 31px;
+  }
 }
 
 .operator-action-popup__claim-review {

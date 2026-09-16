@@ -169,12 +169,12 @@
                     {{ 'operator.claim.client.code.instructions' | i18n }}
                   </p>
                   <div class="operator-action-popup__client-code">
-                  <app-form-flow
-                    [model]="claimClientCodeFormModel()"
-                    [ngModel]="claimClientCodeValue()"
-                    (ngModelChange)="onClaimClientCodeChange($event)"
-                    [disabled]="busy() || !registeredForClaim()"
-                  ></app-form-flow>
+                    <app-form-flow
+                      [model]="claimClientCodeFormModel()"
+                      [ngModel]="claimClientCodeValue()"
+                      (ngModelChange)="onClaimClientCodeChange($event)"
+                      [disabled]="busy() || !registeredForClaim()"
+                    ></app-form-flow>
                     @if (createClientCodeItems().length) {
                       <app-menu
                         class="operator-action-popup__client-code-actions"
@@ -1689,6 +1689,7 @@
               class="operator-action-popup__actions"
               kind="inline"
               layout="row"
+              [model]="activeKind === 'claim' ? { actionSizing: 'content' } : null"
               [items]="actionItems()"
               (itemSelect)="onAction($event)"
             ></app-menu>

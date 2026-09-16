@@ -1064,14 +1064,12 @@ export class OperatorActionPopupComponent {
       || kind === 'community'
       || kind === 'deployments';
     return {
-      headerLabel: kind === 'deployments'
-        ? 'operator.leaderboard.deployments.title'
-        : null,
-      headerLabelIcon: kind === 'deployments' ? 'hub' : null,
       title: kind === 'deployments'
         ? deploymentTitle
         : this.titleKey(kind),
-      subtitle: this.subtitleKey(kind),
+      subtitle: kind === 'deployments'
+        ? 'operator.leaderboard.deployments.title'
+        : this.subtitleKey(kind),
       ariaLabel: kind === 'deployments'
         ? [
             this.i18n.translate(
