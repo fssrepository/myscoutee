@@ -12,6 +12,15 @@
 
 .operator-action-popup--updates {
   min-height: 0;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.operator-action-popup--updates .operator-action-popup__actions {
+  --app-menu-row-width: 100%;
+  --app-menu-row-wrap: wrap;
+  --app-menu-action-flex: 0 1 auto;
+  --app-menu-action-min-width: 0;
 }
 
 .operator-action-popup--loading {

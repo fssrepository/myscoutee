@@ -54,6 +54,17 @@ describe('HttpOperatorRegistryService', () => {
     TestBed.resetTestingModule();
   });
 
+  it.each([
+    [false, 'UNCONFIGURED', 'operator.claim.error.registration.required'],
+    [true, 'REGISTERED', 'operator.request.failed']
+  ])('translates Claim conflict without exposing transport details (enabled=%s)', async (enabled, lifecycle, key) => {
+    get.mockImplementation((url: string) => url.endsWith('/claim')
+      ? throwError(() => new HttpErrorResponse({ status: 409, statusText: 'OK', url: 'https://localhost/api/operator/claim' }))
+      : of({ ...registryStatus(), enabled, lifecycle }));
+    await expect(TestBed.inject(HttpOperatorRegistryService).loadClaimStatus()).rejects.toThrow(String(key));
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('sends the current demo operator identity through Java and centralizes the 30 second timeout', async () => {
     const status = registryStatus();
     get.mockReturnValue(of(status));

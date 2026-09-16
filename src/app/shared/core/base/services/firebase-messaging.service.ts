@@ -15,7 +15,6 @@ import {
   type FirebaseOptions
 } from 'firebase/app';
 import {
-  deleteToken,
   getMessaging,
   getToken,
   isSupported,
@@ -59,7 +58,9 @@ export class FirebaseMessagingService {
   private static readonly TOKEN_STORAGE_KEY = APP_STORAGE_KEYS.messagingToken;
   private static readonly TOKEN_USER_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingUserId;
   private static readonly SERVICE_WORKER_READY_TIMEOUT_MS = 3_000;
-  private static readonly TOKEN_TIMEOUT_MS = 3_000;
+  // Initial Push/FCM registration can include several network round trips.
+  // It runs in the background and must not share the short settings-write timeout.
+  private static readonly TOKEN_TIMEOUT_MS = 30_000;
   private static readinessAppSequence = 0;
 
   private readonly deviceRegistrations = inject(DeviceRegistrationsService);
@@ -139,8 +140,15 @@ export class FirebaseMessagingService {
   }
 
   get notificationsConfigured(): boolean {
-    return this.enabled && !!this.firebaseAppService.activeRuntime()?.config.vapidKey
+    return (this.deviceRegistrations.isLocal
+      || (this.enabled && !!this.firebaseAppService.activeRuntime()?.config.vapidKey))
       && typeof Notification !== 'undefined';
+  }
+
+  async prepareNotificationConfiguration(): Promise<void> {
+    if (this.enabled && !this.deviceRegistrations.isLocal) {
+      await this.firebaseAppService.ensureFirebaseRuntime();
+    }
   }
 
   initialize(): void {
@@ -195,15 +203,10 @@ export class FirebaseMessagingService {
     if ((!this.enabled && !this.deviceRegistrations.isLocal) || !this.deviceEnabled() || typeof Notification === 'undefined') {
       return;
     }
-    if (Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        await this.unregisterStoredDevice();
-        return;
-      }
-    }
+    // Native permission belongs to the explicit settings/login click only.
+    // A background retry must never prompt on its own.
     if (Notification.permission !== 'granted') {
-      await this.unregisterStoredDevice();
+      if (Notification.permission === 'denied') await this.unregisterStoredDevice();
       return;
     }
     if (this.deviceRegistrations.isLocal) {
@@ -219,6 +222,7 @@ export class FirebaseMessagingService {
   }
 
   requestEntryPermission(): Promise<NotificationPermission | null> {
+    if (!this.notificationsConfigured) return Promise.resolve(null);
     // Call synchronously from the confirmation gesture, before location or
     // network awaits consume the browser's transient user activation.
     const decision = typeof Notification === 'undefined'
@@ -463,18 +467,9 @@ export class FirebaseMessagingService {
       return;
     }
 
-    const firebaseApp = await this.firebaseAppService.ensureFirebaseApp();
-    if (firebaseApp) {
-      const messagingSupported = await isSupported().catch(() => false);
-      if (messagingSupported) {
-        try {
-          await this.withTokenTimeout(deleteToken(getMessaging(firebaseApp)));
-        } catch {
-          // Ignore token cleanup failures and still remove backend registration.
-        }
-      }
-    }
-
+    // Opt-out is a backend registration write. The browser permission and
+    // shared Push subscription remain browser-owned; Firebase availability
+    // must not delay disabling this member's notification delivery.
     try {
       await this.deviceRegistrations.remove({
           userId,

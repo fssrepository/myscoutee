@@ -21,10 +21,11 @@ describe('Notification preference and background registration', () => {
   const upsert = vi.fn();
   const ensureFirebaseRuntime = vi.fn();
   const ready = vi.fn();
+  const activeRuntime = vi.fn();
   const remove = vi.fn();
   let setup: AppSetupStore;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers();
     vi.resetAllMocks();
     localStorage.clear();
@@ -41,13 +42,17 @@ describe('Notification preference and background registration', () => {
     vi.mocked(onMessage).mockReturnValue(() => undefined);
     upsert.mockResolvedValue(undefined);
     ensureFirebaseRuntime.mockResolvedValue(runtime);
+    activeRuntime.mockReturnValue(runtime);
     TestBed.configureTestingModule({ providers: [
       FirebaseMessagingService, AppSetupStore,
       { provide: DeviceRegistrationsService, useValue: { isLocal: false, upsert, remove } },
-      { provide: FirebaseAppService, useValue: { ensureFirebaseRuntime, activeRuntime: () => runtime } },
+      { provide: FirebaseAppService, useValue: { ensureFirebaseRuntime, activeRuntime } },
       { provide: DeploymentConfigurationService, useValue: {} },
       { provide: I18nService, useValue: { translate: (key: string) => key } },
-      { provide: AppLocationService, useValue: { requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }) } },
+      { provide: AppLocationService, useValue: {
+        requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
+        syncGrantedLocationForActiveUser: vi.fn().mockResolvedValue(undefined)
+      } },
       { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn() } },
       { provide: UserProfileStore, useValue: {
         activeUserId: () => 'user-1', activeNotificationDevices: () => []
@@ -58,6 +63,7 @@ describe('Notification preference and background registration', () => {
     vi.spyOn(messaging as unknown as { enabled: boolean }, 'enabled', 'get').mockReturnValue(true);
     setup = TestBed.inject(AppSetupStore);
     setup.open();
+    await vi.advanceTimersByTimeAsync(0);
     setup.toggleNotifications();
   });
 
@@ -88,10 +94,60 @@ describe('Notification preference and background registration', () => {
     await setup.allow();
     expect(setup.actionPending()).toBe(false);
     expect(setup.isOpen()).toBe(true);
-    await vi.advanceTimersByTimeAsync(3_001);
+    await vi.advanceTimersByTimeAsync(30_001);
     resolveToken('late-token');
     await vi.advanceTimersByTimeAsync(1);
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('starts location synchronization without waiting for it or closing settings', async () => {
+    const location = TestBed.inject(AppLocationService);
+    vi.mocked(location.syncGrantedLocationForActiveUser).mockReturnValue(new Promise(() => {}));
+    await setup.allow();
+    expect(location.syncGrantedLocationForActiveUser).toHaveBeenCalledOnce();
+    expect(setup.actionPending()).toBe(false);
+    expect(setup.isOpen()).toBe(true);
+  });
+
+  it('stops before native permission, worker and token when Messaging is not configured', async () => {
+    const requestPermission = vi.fn();
+    vi.stubGlobal('Notification', { permission: 'default', requestPermission });
+    activeRuntime.mockReturnValue(null);
+    ensureFirebaseRuntime.mockResolvedValue(null);
+    setup.close();
+    setup.open();
+    await vi.advanceTimersByTimeAsync(0);
+    setup.toggleNotifications();
+    await setup.allow();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(requestPermission).not.toHaveBeenCalled();
+    expect(ready).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+    expect(setup.actionPending()).toBe(false);
+    expect(setup.isOpen()).toBe(true);
+  });
+
+  it('accepts a slower initial token in the background after settings have returned', async () => {
+    let resolveToken!: (token: string) => void;
+    vi.mocked(getToken).mockReturnValue(new Promise(resolve => { resolveToken = resolve; }));
+    await setup.allow();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(setup.actionPending()).toBe(false);
+    resolveToken('slow-first-token');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(upsert).toHaveBeenCalledOnce();
+    expect(setup.isOpen()).toBe(true);
+  });
+
+  it('does not open a native permission prompt from background registration', async () => {
+    const requestPermission = vi.fn();
+    vi.stubGlobal('Notification', { permission: 'default', requestPermission });
+    localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, 'true');
+    await TestBed.inject(FirebaseMessagingService).setDeviceNotificationsEnabled(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(requestPermission).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
   });
 
   it('checks configuration before waiting for a service worker', async () => {
@@ -143,6 +199,20 @@ describe('Notification preference and background registration', () => {
     expect(getToken).not.toHaveBeenCalled();
     expect(setup.error()).toBe('entry.permissions.notifications.blocked');
     expect(setup.actionPending()).toBe(false);
+  });
+
+  it('writes opt-out without waiting for Firebase and keeps the popup open', async () => {
+    const messaging = TestBed.inject(FirebaseMessagingService);
+    localStorage.setItem(APP_STORAGE_KEYS.messagingUserId, 'user-1');
+    localStorage.setItem(APP_STORAGE_KEYS.messagingToken, 'retained-token');
+    localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceId, 'device-1');
+    ensureFirebaseRuntime.mockClear();
+    ensureFirebaseRuntime.mockReturnValue(new Promise(() => {}));
+    await messaging.setDeviceNotificationsEnabled(false);
+    expect(remove).toHaveBeenCalledWith({ userId: 'user-1', deviceId: 'device-1', firebaseToken: 'retained-token' });
+    expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
+    expect(setup.isOpen()).toBe(true);
   });
 
   it('does not re-enable a device when background token acquisition finishes after opt-out', async () => {

@@ -1691,7 +1691,7 @@
               class="operator-action-popup__actions"
               kind="inline"
               layout="row"
-              [model]="activeKind === 'claim' ? { actionSizing: 'content' } : null"
+              [model]="activeKind === 'claim' || activeKind === 'updates' ? { actionSizing: 'content' } : null"
               [items]="actionItems()"
               (itemSelect)="onAction($event)"
             ></app-menu>

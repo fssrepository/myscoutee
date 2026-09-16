@@ -673,7 +673,18 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         `${this.operatorEndpoint}/claim`,
         this.requestOptions()
       ).toPromise()
-    );
+    ).catch(async (error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        // The older API sends no domain error code. Confirm the registration
+        // prerequisite rather than labelling every conflict as unregistered.
+        const registry = await this.loadStatus().catch(() => null);
+        if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+          throw new Error('operator.claim.error.registration.required');
+        }
+      }
+      throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+        ? 'operator.request.timeout' : 'operator.request.failed');
+    });
     const status = this.toClaimStatus(remote.status);
     this.claimVerificationAvailable =
       status.verificationCapability === 'AVAILABLE';

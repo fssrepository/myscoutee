@@ -156,6 +156,15 @@ export class OperatorPageComponent implements OnInit {
       counterTone: 'alert'
     },
     {
+      id: 'configuration',
+      label: 'operator.action.configuration',
+      detail: 'operator.action.configuration.detail',
+      icon: 'tune',
+      palette: 'blue',
+      kind: 'action',
+      layout: 'big'
+    },
+    {
       id: 'registration',
       label: 'operator.action.node.registration',
       detail: this.status()?.enabled && this.status()?.lifecycle === 'REGISTERED'
@@ -194,15 +203,6 @@ export class OperatorPageComponent implements OnInit {
         : claimPendingReview || claimInactive
           ? 'orange'
           : 'amber',
-      kind: 'action',
-      layout: 'big'
-    },
-    {
-      id: 'configuration',
-      label: 'operator.action.configuration',
-      detail: 'operator.action.configuration.detail',
-      icon: 'tune',
-      palette: 'blue',
       kind: 'action',
       layout: 'big'
     },

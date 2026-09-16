@@ -22,9 +22,11 @@ export class AppSetupStore {
   readonly locationPermission = signal<PermissionState | null>(null);
   readonly nativePending = signal(false);
   readonly busy = signal(false);
+  readonly notificationConfigurationPending = signal(false);
   readonly actionPending = computed(() => this.nativePending() || this.busy());
   readonly error = signal('');
-  readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected()) || this.actionPending());
+  readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected())
+    || this.actionPending() || this.notificationConfigurationPending());
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
@@ -55,6 +57,13 @@ export class AppSetupStore {
     this.notificationsEdited.set(false);
     this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
     this.isOpen.set(true);
+    // Resolve the deployment flag before the click, preserving the click's
+    // native permission gesture and avoiding token work for an inactive setup.
+    const generation = this.generation;
+    this.notificationConfigurationPending.set(true);
+    void this.messaging.prepareNotificationConfiguration().catch(() => undefined).finally(() => {
+      if (generation === this.generation) this.notificationConfigurationPending.set(false);
+    });
     void this.refreshPermissions();
   }
 
@@ -118,6 +127,7 @@ export class AppSetupStore {
       }
       if (generation !== this.generation) return;
       if (this.loggedIn() && !this.checkLocation) {
+        void this.location.syncGrantedLocationForActiveUser();
         this.nativePending.set(false);
         this.busy.set(true);
         await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
