@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 
 const GRAPH_DATA = normalizeGraphData(await loadInitialGraphData());
-const GRAPH_MEMBER_LABEL = GRAPH_DATA.source === 'http' ? 'Mongo members' : 'demo members';
+const GRAPH_MEMBER_LABEL = 'members';
 const GRAPH_LAZY_ENABLED = GRAPH_DATA.source === 'http' || (window.parent && window.parent !== window);
 const GRAPH_LAYOUT_VERSION = GRAPH_DATA.layoutVersion || null;
 const COMPONENT_CORE_NODE_BUDGET = 16;
@@ -14,7 +14,7 @@ const SEMANTIC_RENDER_NODE_LIMIT = 1200;
 const SEMANTIC_RENDER_EDGE_LIMIT = 5000;
 const FOREST_OVERVIEW_BASE_BUDGET = 12;
 const FOREST_OVERVIEW_MIN_BUDGET = 4;
-const FOREST_OVERVIEW_AREA_PX = 132000;
+const FOREST_OVERVIEW_AREA_PX = 66000;
 const FOREST_OVERVIEW_LOAD_BUFFER = 4;
 const BADGE_LOAD_PROGRESS_WINDOW_MS = 3000;
 const BADGE_LOAD_OVERDUE_DELAY_MS = 1500;
@@ -224,6 +224,7 @@ const loadedMemberImageUrls = new Set();
 const pendingMemberImageUrls = new Set();
 let memberPanelRenderSignature = '';
 let panelCompactSignature = '';
+let lastViewportMetrics = null;
 let panelsExpanded = !mobilePanelQuery.matches;
 let panelExpansionTouched = false;
 if (GRAPH_LAZY_ENABLED) {
@@ -307,6 +308,11 @@ if (typeof mobilePanelQuery.addEventListener === 'function') {
   });
 }
 window.addEventListener('resize', resize);
+panelExpandedBody?.addEventListener('transitionend', event => {
+  if (event.target === panelExpandedBody && event.propertyName === 'max-height') {
+    requestAnimationFrame(resize);
+  }
+});
 window.addEventListener('keydown', handleKeyPan);
 canvas.addEventListener('contextmenu', event => event.preventDefault());
 canvas.addEventListener('wheel', () => {
@@ -537,31 +543,31 @@ function updateForestBadges(options = {}) {
 }
 
 function forestOverviewPositions() {
-  const sortedComponents = sortedForestComponents();
+  const forestComponents = visibleForestComponents();
   const positions = new Map();
-  const scales = sortedComponents.map(component =>
-    forestBadgeScale(componentMemberCount(component))
-  );
-  const mainScale = scales[0] ?? forestBadgeScale(1);
-  const step = Math.max(20, mainScale * 0.78 + 10);
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-
-  sortedComponents.forEach((component, index) => {
-    if (index === 0) {
-      positions.set(component.id, new THREE.Vector3(0, 0, 0));
-      return;
+  const mainScale = forestBadgeScale(componentMemberCount(forestComponents[0]));
+  const step = Math.max(16, mainScale * 0.65 + 8);
+  const { right, up } = forestOverviewBasis();
+  if (forestComponents.length) {
+    positions.set(forestComponents[0].id, new THREE.Vector3());
+  }
+  let index = 1;
+  for (let ring = 1; index < forestComponents.length; ring += 1) {
+    const count = Math.min(ring * 6, forestComponents.length - index);
+    for (let slot = 0; slot < count; slot += 1) {
+      const angle = Math.PI / 2 + slot * Math.PI * 2 / count;
+      positions.set(forestComponents[index++].id, new THREE.Vector3()
+        .addScaledVector(right, Math.cos(angle) * ring * step)
+        .addScaledVector(up, Math.sin(angle) * ring * step));
     }
-
-    const angle = index * goldenAngle;
-    const radius = Math.sqrt(index) * step + (scales[index] ?? mainScale) * 0.32;
-    positions.set(component.id, new THREE.Vector3(
-      Math.cos(angle) * radius,
-      0,
-      Math.sin(angle) * radius
-    ));
-  });
-
+  }
   return positions;
+}
+
+function forestOverviewBasis() {
+  const normal = new THREE.Vector3(0.24, 0.34, 1).normalize();
+  const right = new THREE.Vector3().crossVectors(camera.up, normal).normalize();
+  return { normal, right, up: new THREE.Vector3().crossVectors(normal, right).normalize() };
 }
 
 function rebuildEdges() {
@@ -1134,9 +1140,9 @@ function nodeGraphScale(visualScore) {
   return 0.82;
 }
 
-function updateInteractionMode(showForestOverview = isForestOverview()) {
-  controls.enableRotate = !showForestOverview;
-  controls.mouseButtons.RIGHT = showForestOverview ? null : THREE.MOUSE.ROTATE;
+function updateInteractionMode() {
+  controls.enableRotate = true;
+  controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
 }
 
 function updateGraphTotals(data = {}) {
@@ -2234,7 +2240,8 @@ function refreshForestSemanticZoomFromCamera() {
   semanticZoomLevel = nextLevel;
   if (hasSemanticChange) {
     visibleForestComponentIds = nextIds;
-    syncForestBadgeVisibility();
+    updateForestBadges();
+    updateStatBadges();
     renderMemberPanel(null);
     clampViewportPanOffset();
     publishPreviewState();
@@ -2478,7 +2485,7 @@ function forestIdsForSemanticLevel(level = semanticZoomLevel) {
 
 function updateVisibleForestComponents(level = semanticZoomLevel) {
   visibleForestComponentIds = forestIdsForSemanticLevel(level);
-  syncForestBadgeVisibility();
+  updateForestBadges();
 }
 
 function visibleForestComponents(level = semanticZoomLevel) {
@@ -2552,9 +2559,14 @@ function forestOverviewBounds() {
   }
 
   const box = new THREE.Box3();
+  const planeBox = new THREE.Box2();
+  const basis = forestOverviewBasis();
   for (const component of forestComponents) {
     const position = component.forestPosition ?? new THREE.Vector3();
-    const badgeRadius = Math.max(5, (component.forestScale ?? 5) * 0.82);
+    const badgeRadius = Math.max(5, (component.forestScale ?? 5) * 0.6);
+    const x = position.dot(basis.right), y = position.dot(basis.up);
+    planeBox.expandByPoint(new THREE.Vector2(x - badgeRadius, y - badgeRadius));
+    planeBox.expandByPoint(new THREE.Vector2(x + badgeRadius, y + badgeRadius));
     box.expandByPoint(new THREE.Vector3(
       position.x - badgeRadius,
       position.y - badgeRadius,
@@ -2570,7 +2582,9 @@ function forestOverviewBounds() {
   const sphere = box.getBoundingSphere(new THREE.Sphere());
   return {
     center: sphere.center,
-    radius: Math.max(8, sphere.radius)
+    radius: Math.max(8, sphere.radius),
+    width: planeBox.max.x - planeBox.min.x,
+    height: planeBox.max.y - planeBox.min.y
   };
 }
 
@@ -2595,8 +2609,15 @@ function resize() {
   camera.updateProjectionMatrix();
   refreshGraphVisualSizing();
   reflowSemanticVisibilityForViewport(previousVisibleNodeIds, previousVisibleForestIds, previousSceneSignature);
-  clampViewportPanOffset();
-  applyViewportOffset();
+  const viewport = graphViewportMetrics();
+  const viewportChanged = lastViewportMetrics && ['fullWidth', 'fullHeight', 'safeWidth', 'safeHeight']
+    .some(key => lastViewportMetrics[key] !== viewport[key]);
+  lastViewportMetrics = viewport;
+  clampViewportPanOffset(viewport);
+  if (viewportChanged) {
+    if (isForestOverview()) fitCameraToForestOverview(true);
+    else fitCameraToVisibleTargets(true);
+  }
 }
 
 function reflowSemanticVisibilityForViewport(previousVisibleNodeIds, previousVisibleForestIds, previousSceneSignature) {
@@ -2664,8 +2685,10 @@ function fitCameraToForestOverview(animateTarget) {
   updateVisibleForestComponents();
   const bounds = forestOverviewBounds();
   fitCameraToCenterRadius(bounds.center, bounds.radius, animateTarget, undefined, {
-    lockZoomIfFitted: shouldLockForestOverviewZoom(),
-    fitPadding: 1.04
+    fitPadding: 1.04,
+    fitWidth: bounds.width,
+    fitHeight: bounds.height,
+    direction: forestOverviewBasis().normal
   });
 }
 
@@ -2673,6 +2696,21 @@ function fitCameraToPoints(points, animateTarget, durationMs, options = {}) {
   const box = new THREE.Box3().setFromPoints(points);
   const center = box.getCenter(new THREE.Vector3());
   const sphere = box.getBoundingSphere(new THREE.Sphere());
+  if (points.length > 1) {
+    const direction = cameraFitDirection(new THREE.Vector3(0.24, 0.34, 1));
+    const right = new THREE.Vector3().crossVectors(camera.up, direction).normalize();
+    const up = new THREE.Vector3().crossVectors(direction, right).normalize();
+    const visibleNodes = nodes.filter(node => visibleNodeIds.has(node.id));
+    const fitSamples = points.map((point, index) => {
+      const node = visibleNodes[index];
+      const relative = point.clone().sub(center);
+      return {
+        x: relative.dot(right), y: relative.dot(up), depth: relative.dot(direction),
+        radius: node === selectedNode ? node.badgeScale * 0.73 : (node?.badge?.scale.x ?? 2) / 2
+      };
+    });
+    options = { ...options, fitSamples, fitPadding: 1.04 };
+  }
   fitCameraToCenterRadius(center, sphere.radius, animateTarget, durationMs, options);
 }
 
@@ -2687,14 +2725,9 @@ function selectedNodeFitCameraOptions() {
 }
 
 function selectedNodeFitPadding() {
-  const width = Math.max(1, window.innerWidth || 1);
-  if (width >= 1280) {
-    return 0.82;
-  }
-  if (width >= 760) {
-    return 0.78;
-  }
-  return 0.74;
+  // Fit the whole neighborhood inside the space beside the controls.
+  // A factor below one crops even a two-member neighborhood.
+  return 1.12;
 }
 
 function selectedNodeMinimumFitDistance() {
@@ -2715,14 +2748,19 @@ function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, opti
   const tanHalfFov = Math.tan(verticalFov / 2);
   const aspect = Math.max(0.1, camera.aspect || (viewport.fullWidth / Math.max(1, viewport.fullHeight)));
   const fitPadding = options.fitPadding ?? 1.12;
-  const verticalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov);
-  const horizontalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov * aspect * safeWidthRatio);
+  const safeHeightRatio = viewport.safeHeight / viewport.fullHeight;
+  const verticalDistance = ((options.fitHeight ? options.fitHeight / 2 : radius) * fitPadding) / Math.max(0.001, tanHalfFov * safeHeightRatio);
+  const horizontalDistance = ((options.fitWidth ? options.fitWidth / 2 : radius) * fitPadding) / Math.max(0.001, tanHalfFov * aspect * safeWidthRatio);
   const minimumFitDistance = options.minFitDistance ?? graphMinimumFitDistance();
-  const distance = Math.max(minimumFitDistance, verticalDistance, horizontalDistance);
+  const projectedDistance = options.fitSamples?.reduce((required, sample) => Math.max(required,
+    (Math.abs(sample.x) + sample.radius) * fitPadding / (tanHalfFov * aspect * safeWidthRatio) + sample.depth,
+    (Math.abs(sample.y) + sample.radius) * fitPadding / (tanHalfFov * safeHeightRatio) + sample.depth
+  ), minimumFitDistance);
+  const distance = projectedDistance ?? Math.max(minimumFitDistance, verticalDistance, horizontalDistance);
   const target = center.clone();
   const defaultDirection = new THREE.Vector3(0.24, 0.34, 1);
-  const fittedOrbitDistance = distance * defaultDirection.length();
-  const targetPosition = target.clone().addScaledVector(cameraFitDirection(defaultDirection), fittedOrbitDistance);
+  const fittedOrbitDistance = options.fitSamples ? distance : distance * defaultDirection.length();
+  const targetPosition = target.clone().addScaledVector(options.direction ?? cameraFitDirection(defaultDirection), fittedOrbitDistance);
   zoomReferenceFitDistance = fittedOrbitDistance;
   const nextMinDistance = options.lockZoomIfFitted
     ? fittedOrbitDistance
@@ -2752,15 +2790,11 @@ function cameraFitDirection(defaultDirection) {
   return defaultDirection.clone().normalize();
 }
 
-function shouldLockForestOverviewZoom() {
-  return forestSemanticMaxZoomLevel() <= 0;
-}
-
 function applyViewportOffset(viewport = graphViewportMetrics()) {
   const width = Math.max(1, Math.round(viewport.fullWidth));
   const height = Math.max(1, Math.round(viewport.fullHeight));
   const offsetX = Math.round(viewport.centerOffsetPx + viewportPanOffset.x);
-  const offsetY = Math.round(viewportPanOffset.y);
+  const offsetY = Math.round(viewport.centerOffsetYPx + viewportPanOffset.y);
 
   if (Math.abs(offsetX) > 1 || Math.abs(offsetY) > 1) {
     camera.setViewOffset(width, height, offsetX, offsetY, width, height);
@@ -2774,6 +2808,8 @@ function graphViewportMetrics() {
   const rect = canvas.getBoundingClientRect();
   let safeLeft = rect.left;
   let safeRight = rect.right;
+  let safeTop = rect.top;
+  let safeBottom = rect.bottom;
   const panelRect = controlPanel?.getBoundingClientRect();
   const isSidePanel = panelRect
     && panelRect.left > rect.left + rect.width * 0.45
@@ -2781,6 +2817,12 @@ function graphViewportMetrics() {
 
   if (isSidePanel) {
     safeRight = Math.max(rect.left + rect.width * 0.52, panelRect.left - 26);
+  } else if (panelRect && panelRect.width >= rect.width * 0.5) {
+    safeTop = Math.min(rect.bottom - 100, panelRect.bottom + 16);
+    const helpRect = helpPanel?.getBoundingClientRect();
+    if (panelsExpanded && helpRect?.height > 0) {
+      safeBottom = Math.max(safeTop + 80, helpRect.top - 12);
+    }
   }
 
   const safeWidth = Math.max(1, safeRight - safeLeft);
@@ -2790,6 +2832,8 @@ function graphViewportMetrics() {
     fullWidth: Math.max(1, rect.width),
     fullHeight: Math.max(1, rect.height),
     safeWidth,
+    safeHeight: Math.max(1, safeBottom - safeTop),
+    centerOffsetYPx: rect.top + rect.height / 2 - (safeTop + safeBottom) / 2,
     centerOffsetPx: fullCenterX - safeCenterX
   };
 }
@@ -3603,6 +3647,9 @@ function layoutTargetsForCurrentView() {
 }
 
 function selectedNodeLayoutTargets() {
+  if (visibleNodeIds.size > 1 && visibleNodeIds.size <= 4) {
+    return activeComponentLayoutTargets();
+  }
   const targets = new Map(nodes.map(node => [node.id, node.position.clone()]));
   const basis = viewBasis();
   const center = safeLayoutCenterForCamera();
@@ -3672,7 +3719,7 @@ function selectedNodeLayoutTargets() {
 
       const otherTarget = targets.get(otherId);
       if (otherTarget) {
-        direction.add(otherTarget.clone().normalize().multiplyScalar(edge.weight));
+        direction.add(otherTarget.clone().sub(center).normalize().multiplyScalar(edge.weight));
       }
     }
 
