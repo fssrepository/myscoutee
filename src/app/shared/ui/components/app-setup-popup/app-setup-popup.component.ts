@@ -34,7 +34,8 @@ export class AppSetupPopupComponent {
       palette: 'violet',
       togglePalette: this.store.notificationsSelected() && this.store.messaging.notificationPermission() === 'granted' ? 'green' : this.store.messaging.notificationPermission() === 'denied' ? 'red' : this.store.notificationsSelected() ? 'blue' : 'slate',
       checked: this.store.notificationsSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() }
+      showToggleIndicator: true, disabled: this.store.actionPending()
+        || this.store.notificationConfigurationPending() || !this.store.messaging.notificationsConfigured }
   ]);
   readonly installActions = computed<AppMenuItem[]>(() => [
     ...((this.store.pwa.installAvailable() || this.store.pwa.installActionPending()) ? [{ id: 'install', icon: 'install_desktop',
@@ -42,10 +43,15 @@ export class AppSetupPopupComponent {
       disabled: this.store.actionPending() || this.store.pwa.installActionPending(),
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
+  readonly showPermissionAction = computed(() => this.store.actionPending()
+    || this.toggles().some(item => !item.disabled));
   readonly permissionActions = computed<AppMenuItem[]>(() => [
-    { id: 'allow', icon: 'check', label: this.store.busy() ? 'entry.permissions.checking' : 'app.setup.update',
-      layout: 'action', palette: 'blue', disabled: this.store.allowDisabled(),
-      progress: { state: this.store.busy() ? 'loading' : null } }
+    { id: 'allow', icon: this.store.saveSucceeded() ? 'check_circle' : 'check',
+      label: this.store.busy() ? 'entry.permissions.checking' : 'app.setup.update',
+      layout: 'action', palette: this.store.saveSucceeded() ? 'green' : 'blue',
+      disabled: this.store.allowDisabled(),
+      progress: this.store.busy() ? { state: 'loading' }
+        : this.store.saveSucceeded() ? { state: 'success', durationMs: 1000 } : null }
   ]);
 
   constructor() {

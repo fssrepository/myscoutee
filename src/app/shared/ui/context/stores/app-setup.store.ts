@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { AppLocationService } from '../../../core/base/services/app-location.service';
 import { FirebaseMessagingService } from '../../../core/base/services/firebase-messaging.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
@@ -7,7 +7,7 @@ import { UserProfileStore } from './user-profile.store';
 import type { LocationCoordinates } from '../../../core/contracts/user.interface';
 
 @Injectable({ providedIn: 'root' })
-export class AppSetupStore {
+export class AppSetupStore implements OnDestroy {
   readonly pwa = inject(PwaService);
   readonly messaging = inject(FirebaseMessagingService);
   private readonly location = inject(AppLocationService);
@@ -22,9 +22,13 @@ export class AppSetupStore {
   readonly locationPermission = signal<PermissionState | null>(null);
   readonly nativePending = signal(false);
   readonly busy = signal(false);
+  readonly notificationConfigurationPending = signal(false);
   readonly actionPending = computed(() => this.nativePending() || this.busy());
   readonly error = signal('');
-  readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected()) || this.actionPending());
+  readonly saveSucceeded = signal(false);
+  private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
+  readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected())
+    || this.actionPending() || this.notificationConfigurationPending());
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
@@ -33,13 +37,16 @@ export class AppSetupStore {
   constructor() {
     effect(() => {
       const enabled = this.messaging.deviceNotificationsEnabled();
-      if (this.isOpen() && !this.notificationsEdited() && !this.actionPending()) {
+      if (this.isOpen() && !this.actionPending()
+        && (!this.notificationsEdited() || !this.messaging.notificationsConfigured)) {
         this.notificationsSelected.set(enabled);
       }
     });
   }
 
   toggleNotifications(): void {
+    if (this.notificationConfigurationPending() || !this.messaging.notificationsConfigured) return;
+    this.clearSaveFeedback();
     this.notificationsEdited.set(true);
     this.notificationsSelected.update(value => !value);
   }
@@ -47,6 +54,7 @@ export class AppSetupStore {
   open(): void {
     if (this.isOpen()) return;
     this.generation++;
+    this.clearSaveFeedback();
     this.error.set('');
     this.locationGranted.set(false);
     this.locationPermission.set(null);
@@ -55,6 +63,19 @@ export class AppSetupStore {
     this.notificationsEdited.set(false);
     this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
     this.isOpen.set(true);
+    // Resolve the deployment flag before the click, preserving the click's
+    // native permission gesture and avoiding token work for an inactive setup.
+    const generation = this.generation;
+    this.notificationConfigurationPending.set(true);
+    void this.messaging.prepareNotificationConfiguration().catch(() => undefined).finally(() => {
+      if (generation === this.generation) {
+        this.notificationConfigurationPending.set(false);
+        if (!this.messaging.notificationsConfigured) {
+          this.notificationsSelected.set(false);
+          this.notificationsEdited.set(false);
+        }
+      }
+    });
     void this.refreshPermissions();
   }
 
@@ -101,6 +122,7 @@ export class AppSetupStore {
 
   async allow(): Promise<void> {
     if (!this.isOpen() || this.allowDisabled()) return;
+    this.clearSaveFeedback();
     this.nativePending.set(true);
     this.error.set('');
     const generation = this.generation;
@@ -118,10 +140,14 @@ export class AppSetupStore {
       }
       if (generation !== this.generation) return;
       if (this.loggedIn() && !this.checkLocation) {
+        void this.location.syncGrantedLocationForActiveUser();
         this.nativePending.set(false);
         this.busy.set(true);
         await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
-        if (generation === this.generation) this.finish(true);
+        if (generation === this.generation) {
+          this.notificationsEdited.set(false);
+          this.showSaveFeedback();
+        }
         return;
       }
       const coordinates = await this.location.requestCurrentCoordinates();
@@ -139,9 +165,19 @@ export class AppSetupStore {
       if (generation !== this.generation) return;
       // Registration follows native decisions, never a second permission prompt.
       await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
-      if (generation === this.generation) this.finish(true);
+      if (generation === this.generation) {
+        if (this.completeLogin) this.finish(true);
+        else {
+          this.notificationsEdited.set(false);
+          this.showSaveFeedback();
+        }
+      }
     } catch (error) {
-      if (generation === this.generation) this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
+      if (generation === this.generation) {
+        this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
+        this.notificationsEdited.set(false);
+        this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
+      }
     } finally {
       if (generation === this.generation || !this.isOpen()) {
         this.nativePending.set(false);
@@ -150,7 +186,27 @@ export class AppSetupStore {
     }
   }
 
+  ngOnDestroy(): void {
+    this.clearSaveFeedback();
+  }
+
+  private showSaveFeedback(): void {
+    this.clearSaveFeedback();
+    this.saveSucceeded.set(true);
+    this.saveFeedbackTimer = setTimeout(() => {
+      this.saveFeedbackTimer = null;
+      this.saveSucceeded.set(false);
+    }, 1000);
+  }
+
+  private clearSaveFeedback(): void {
+    if (this.saveFeedbackTimer !== null) clearTimeout(this.saveFeedbackTimer);
+    this.saveFeedbackTimer = null;
+    this.saveSucceeded.set(false);
+  }
+
   private finish(allowed: boolean): void {
+    this.clearSaveFeedback();
     this.generation++;
     if (this.permission) this.permission.onchange = null;
     this.permission = null;

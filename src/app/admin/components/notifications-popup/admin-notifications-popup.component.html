@@ -48,7 +48,7 @@
             <ng-template #processRowTemplate let-rule>
               <div class="process-list-row" [ngClass]="statusClass(rule)">
                 <span class="process-list-name">
-                  <span class="process-list-icon" [ngClass]="statusClass(rule)">
+                  <span class="process-list-icon" [ngClass]="statusClass(rule)" [attr.data-palette]="processPalette(rule)">
                     <mat-icon>{{ processIcon(rule) }}</mat-icon>
                   </span>
                   <span>

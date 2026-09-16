@@ -48,13 +48,6 @@
   --app-menu-image-counter-font-size: 11px;
 }
 
-.navigator-operator-heading {
-  flex: 0 0 auto;
-  color: var(--deployment-brand-text);
-  font-size: 0.96rem;
-  font-weight: 900;
-}
-
 .operator-community-menu {
   width: 66px;
   min-width: 66px;
@@ -310,12 +303,6 @@ app-event-members-popup,
 app-event-resource-popup,
 app-event-supply-contributions-popup {
   display: contents;
-}
-
-@media (max-width: 760px) {
-  .navigator-operator-heading {
-    display: none;
-  }
 }
 
 @media (max-width: 900px) {

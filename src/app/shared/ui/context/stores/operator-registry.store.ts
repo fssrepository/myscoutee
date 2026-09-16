@@ -392,7 +392,9 @@ export class OperatorRegistryStore {
       return result;
     } catch (error) {
       if (requestGeneration === this.requestGeneration) {
-        this.errorRef.set(messageFromError(error, defaultMessageForAction(action)));
+        this.errorRef.set(action === 'disconnect'
+          ? defaultMessageForAction(action)
+          : messageFromError(error, defaultMessageForAction(action)));
       }
       return null;
     } finally {

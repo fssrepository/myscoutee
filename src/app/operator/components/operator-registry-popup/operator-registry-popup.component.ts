@@ -221,10 +221,11 @@ export class OperatorRegistryPopupComponent implements OnInit {
       closeAriaLabel: 'operator.popup.close',
       size: 'small',
       height: 'auto',
-      mobilePresentation: 'compact',
+      mobilePresentation: 'fullscreen',
       headerTone: 'accent',
+      backdropTone: 'dim',
       headerPalette: 'violet',
-      bodyLayout: 'overflow',
+      bodyLayout: 'default',
       headerActions: [
         {
           id: 'refresh',
@@ -284,7 +285,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
     ) {
       this.workspace.applyRegistryDeactivation();
     }
-    if (status) {
+    if (status?.enabled === true && status.lifecycle === 'REGISTERED') {
       this.registry.setNotice('operator.registration.completed');
     }
   }

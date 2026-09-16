@@ -1,4 +1,4 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
@@ -27,6 +27,7 @@ import type {
   OperatorTlsTestRequestDto,
   OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
+  OperatorRollbackDto,
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
@@ -286,6 +287,8 @@ interface RemoteOperatorCommunityProvider {
 }
 
 interface RemoteOperatorUpdateJob {
+  rollback?: OperatorRollbackDto | null;
+  monitorToken?: string | null;
   schemaVersion: number;
   jobId: string;
   phase: string;
@@ -312,6 +315,7 @@ interface RemoteOperatorUpdateEventPage {
 }
 
 interface RemoteOperatorUpdatesStatus {
+  rollback?: OperatorRollbackDto | null;
   enabled: boolean;
   currentVersion: string;
   latestJob: RemoteOperatorUpdateJob | null;
@@ -358,8 +362,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   private readonly operatorEndpoint = `${this.apiBaseUrl}${OPERATOR_NETWORK_ROUTE}`;
   private latestUpdateAnnouncement: RemoteOperatorAnnouncement | null = null;
   private latestAnnouncementsCheckedAt: string | null = null;
+  private rollbackPoint: OperatorRollbackDto | null = null;
   private activeUpdateJob: RemoteOperatorUpdateJob | null = null;
   private currentDeploymentVersion = '—';
+  private updateExecutionEnabled = false;
   private claimVerificationAvailable: boolean | null = null;
 
   async loadStatus(): Promise<OperatorRegistryStatusDto> {
@@ -667,7 +673,18 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         `${this.operatorEndpoint}/claim`,
         this.requestOptions()
       ).toPromise()
-    );
+    ).catch(async (error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        // The older API sends no domain error code. Confirm the registration
+        // prerequisite rather than labelling every conflict as unregistered.
+        const registry = await this.loadStatus().catch(() => null);
+        if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+          throw new Error('operator.claim.error.registration.required');
+        }
+      }
+      throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+        ? 'operator.request.timeout' : 'operator.request.failed');
+    });
     const status = this.toClaimStatus(remote.status);
     this.claimVerificationAvailable =
       status.verificationCapability === 'AVAILABLE';
@@ -755,21 +772,23 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         `${this.operatorEndpoint}/updates`,
         this.requestOptions()
       ).toPromise()
-    );
+    ).catch(() => { throw new Error('operator.update.error.check'); });
+    this.updateExecutionEnabled = status.enabled === true;
     this.currentDeploymentVersion = status.currentVersion?.trim() || '—';
     this.activeUpdateJob = status.latestJob ?? null;
-    const announcements = await this.loadAnnouncements({
-      kind: 'UPDATE',
-      includeExpired: false,
-      limit: 100
+    this.rollbackPoint = status.rollback ?? null;
+    const releases = await this.requireResponse(
+      `${OPERATOR_UPDATES_ROUTE}/releases`,
+      this.http.get<{ checkedAt: string; items: RemoteOperatorAnnouncement[] }>(
+        `${this.operatorEndpoint}/updates/releases`, this.requestOptions()
+      ).toPromise()
+    ).catch((error: unknown) => {
+      const status = error instanceof HttpErrorResponse ? error.status : 0;
+      throw new Error(status === 412 ? 'operator.update.error.metadata'
+        : status === 428 ? 'operator.update.error.key' : 'operator.update.error.check');
     });
-    this.latestAnnouncementsCheckedAt =
-      announcements.snapshot.asOf?.trim()
-      || announcements.snapshot.createdAt?.trim()
-      || new Date().toISOString();
-    this.latestUpdateAnnouncement = [...announcements.items]
-      .filter(item => this.announcementKind(item.kind) === 'UPDATE' && item.updateManifest)
-      .sort((left, right) => Number(right.sequence) - Number(left.sequence))[0] ?? null;
+    this.latestAnnouncementsCheckedAt = releases.checkedAt;
+    this.latestUpdateAnnouncement = releases.items[0] ?? null;
 
     return this.toDeploymentUpdate(
       this.latestUpdateAnnouncement,
@@ -784,33 +803,83 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       await this.loadDeploymentUpdate();
     }
     const announcement = this.latestUpdateAnnouncement;
-    if (!announcement?.updateManifest || !this.installableUpdate(announcement.updateManifest)) {
+    if (!this.updateExecutionEnabled || !announcement?.updateManifest || !this.installableUpdate(announcement.updateManifest)) {
       throw new Error('operator.update.error.unavailable');
     }
 
+    return this.executeUpdate(announcement, `${this.operatorEndpoint}/updates`,
+      { announcementId: announcement.announcementId.trim() }, onProgress);
+  }
+
+  async rollbackDeploymentUpdate(onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto> {
+    const point = this.rollbackPoint;
+    if (!this.updateExecutionEnabled || !point) throw new Error('operator.update.error.rollback.unavailable');
+    const announcement = await this.requireResponse(OPERATOR_UPDATES_ROUTE,
+      this.http.get<RemoteOperatorAnnouncement>(
+        `${this.operatorEndpoint}/updates/releases/${encodeURIComponent(point.targetVersion)}`,
+        this.requestOptions()).toPromise()
+    ).catch(() => { throw new Error('operator.update.error.rollback.unavailable'); });
+    if (announcement.updateManifest?.artifactSha256 !== point.artifactSha256) {
+      throw new Error('operator.update.error.rollback.unavailable');
+    }
+    return this.executeUpdate(announcement,
+      `${this.operatorEndpoint}/updates/jobs/${encodeURIComponent(point.jobId)}/rollback`, {}, onProgress);
+  }
+
+  private async executeUpdate(
+    announcement: RemoteOperatorAnnouncement,
+    endpoint: string,
+    approval: object,
+    onProgress?: OperatorDeploymentUpdateProgressHandler
+  ): Promise<OperatorDeploymentUpdateDto> {
     let job = await this.requireResponse(
       OPERATOR_UPDATES_ROUTE,
       this.http.post<RemoteOperatorUpdateJob>(
-        `${this.operatorEndpoint}/updates`,
-        { announcementId: announcement.announcementId.trim() },
+        endpoint,
+        approval,
         this.requestOptions()
       ).toPromise()
-    );
+    ).catch(() => { throw new Error('operator.update.error.start'); });
+    const monitorToken = job.monitorToken?.trim() || null;
+    if (monitorToken && !/^[0-9a-f]{64}$/.test(monitorToken)) {
+      throw new Error('operator.update.error.response');
+    }
     this.activeUpdateJob = job;
     this.currentDeploymentVersion = job.currentVersion?.trim()
       || this.currentDeploymentVersion;
     onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
 
-    job = await this.loadUpdateJob(job.jobId);
+    job = monitorToken ? job : await this.loadUpdateJob(job.jobId).catch((error: unknown) => {
+      if (this.transientUpdateReadError(error)) {
+        return job;
+      }
+      throw new Error('operator.update.error.status');
+    });
     this.activeUpdateJob = job;
+    this.currentDeploymentVersion = job.currentVersion?.trim() || this.currentDeploymentVersion;
     onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
     if (this.updateJobTerminal(job.phase)) {
       return this.toDeploymentUpdate(announcement, job);
     }
 
     let after = 0;
-    for (let poll = 0; poll < UPDATE_POLL_LIMIT; poll += 1) {
-      const page = await this.loadUpdateEvents(job.jobId, after);
+    const deadline = Date.now() + UPDATE_POLL_LIMIT * UPDATE_POLL_INTERVAL_MS;
+    for (let poll = 0; poll < UPDATE_POLL_LIMIT && Date.now() < deadline; poll += 1) {
+      const read = monitorToken
+        ? this.loadMonitoredUpdate(job.jobId, monitorToken, after)
+        : this.loadUpdateEvents(job.jobId, after);
+      const page = await read.catch((error: unknown) => {
+        // Installation restarts the API/proxy. Retry only reads of the same
+        // accepted job, keeping its cursor and last confirmed progress.
+        if (this.transientUpdateReadError(error)) {
+          return null;
+        }
+        throw new Error('operator.update.error.status');
+      });
+      if (!page) {
+        await this.waitForUpdatePoll();
+        continue;
+      }
       for (const event of page.items) {
         if (event.sequence <= after) {
           continue;
@@ -818,6 +887,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         after = event.sequence;
         job = event.status;
         this.activeUpdateJob = job;
+        this.currentDeploymentVersion = job.currentVersion?.trim() || this.currentDeploymentVersion;
         onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
       }
       after = Math.max(after, Math.max(0, Math.trunc(Number(page.nextAfter) || 0)));
@@ -826,7 +896,25 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       }
       await this.waitForUpdatePoll();
     }
-    throw new Error('operator.request.timeout');
+    throw new Error('operator.update.error.status.timeout');
+  }
+
+  private transientUpdateReadError(error: unknown): boolean {
+    return (error instanceof HttpErrorResponse && [0, 502, 503, 504].includes(error.status))
+      || (error instanceof Error && error.message === 'operator.request.timeout');
+  }
+
+  private async loadMonitoredUpdate(jobId: string, token: string, after: number): Promise<RemoteOperatorUpdateEventPage> {
+    // Same-origin HTTPS; the independent host reader is behind the retained ingress.
+    // This job-scoped read capability stays in memory and never enters a URL/storage.
+    const route = `/operator-update-status/${encodeURIComponent(jobId)}`;
+    const status = await this.requireResponse(route, this.http.get<RemoteOperatorUpdateJob>(route, {
+      headers: new HttpHeaders({ Authorization: `UpdateMonitor ${token}` })
+    }).toPromise());
+    if (status.jobId !== jobId) throw new Error('operator.update.error.response');
+    if (status.rollback) this.rollbackPoint = status.rollback;
+    return { items: [{ sequence: after + 1, status }], nextAfter: after + 1,
+      terminal: this.updateJobTerminal(status.phase) };
   }
 
   async loadConfiguration(): Promise<OperatorConfigurationDto> {
@@ -1114,7 +1202,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         includeExpired: false,
         limit: 100
       })
-    ]);
+    ]).catch(async (error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        const registry = await this.loadStatus().catch(() => null);
+        if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+          throw new Error('operator.community.error.registration.required');
+        }
+      }
+      throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+        ? 'operator.request.timeout' : 'operator.request.failed');
+    });
     return {
       availability: 'INVISIBLE',
       updatedAt:
@@ -1216,22 +1313,19 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     job: RemoteOperatorUpdateJob | null
   ): OperatorDeploymentUpdateDto {
     const manifest = announcement?.updateManifest ?? null;
-    const targetVersion =
-      job?.targetVersion?.trim()
-      || manifest?.releaseVersion?.trim()
-      || '—';
-    const currentVersion =
-      job?.currentVersion?.trim()
-      || this.currentDeploymentVersion
-      || '—';
     const completed = job?.phase?.trim().toUpperCase() === 'COMPLETED';
+    const running = !!job && !this.updateJobTerminal(job.phase);
+    const targetVersion = (running ? job?.targetVersion?.trim() : manifest?.releaseVersion?.trim())
+      || job?.targetVersion?.trim() || '—';
+    const currentVersion = this.currentDeploymentVersion || job?.currentVersion?.trim() || '—';
     return {
       currentVersion,
+      rollback: this.rollbackPoint?.fromVersion === currentVersion ? this.rollbackPoint : null,
       availableVersion: targetVersion,
       updateAvailable: Boolean(
         manifest
+        && this.updateExecutionEnabled
         && this.installableUpdate(manifest)
-        && !completed
         && currentVersion !== targetVersion
       ),
       lastCheckedAt:
@@ -1263,7 +1357,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     if (job.phase?.trim().toUpperCase() === 'DOWNLOADING') {
       const downloadPercent = Math.max(0, Math.min(1, (percent - 10) / 50));
       bytesDownloaded = Math.round(bytesTotal * downloadPercent);
-    } else if (phase === 'VERIFYING' || phase === 'INSTALLING' || phase === 'COMPLETED') {
+    } else if (['VERIFYING', 'INSTALLING', 'COMPLETED', 'CONFIGURING_PACKAGE', 'LOADING_IMAGES', 'VERIFYING_IMAGES', 'PREPARING_DATA', 'STARTING_SERVICES', 'WAITING_FOR_HEALTH', 'SWITCHING_INGRESS'].includes(phase)) {
       bytesDownloaded = bytesTotal;
     }
     return {
@@ -1294,6 +1388,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       case 'INSTALLING':
       case 'RESTARTING':
         return 'INSTALLING';
+      case 'CONFIGURING_PACKAGE':
+        return 'CONFIGURING_PACKAGE';
+      case 'LOADING_IMAGES':
+        return 'LOADING_IMAGES';
+      case 'VERIFYING_IMAGES':
+        return 'VERIFYING_IMAGES';
+      case 'PREPARING_DATA':
+        return 'PREPARING_DATA';
+      case 'STARTING_SERVICES':
+        return 'STARTING_SERVICES';
+      case 'WAITING_FOR_HEALTH':
+        return 'WAITING_FOR_HEALTH';
+      case 'SWITCHING_INGRESS':
+        return 'SWITCHING_INGRESS';
       case 'COMPLETED':
         return 'COMPLETED';
       case 'FAILED':

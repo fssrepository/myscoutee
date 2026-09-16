@@ -1033,7 +1033,10 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records,
+      records: records.map(record => ({
+        ...record,
+        exploreSortKey: this.buildEventExploreSortTuple(record, query, viewerAffinity)
+      })),
       total,
       nextCursor
     };

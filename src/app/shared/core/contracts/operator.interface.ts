@@ -340,6 +340,13 @@ export type OperatorDeploymentUpdatePhase =
   | 'DOWNLOADING'
   | 'VERIFYING'
   | 'INSTALLING'
+  | 'CONFIGURING_PACKAGE'
+  | 'LOADING_IMAGES'
+  | 'VERIFYING_IMAGES'
+  | 'PREPARING_DATA'
+  | 'STARTING_SERVICES'
+  | 'WAITING_FOR_HEALTH'
+  | 'SWITCHING_INGRESS'
   | 'COMPLETED'
   | 'FAILED';
 
@@ -356,7 +363,15 @@ export type OperatorDeploymentUpdateProgressHandler = (
   progress: OperatorDeploymentUpdateProgressDto
 ) => void;
 
+export interface OperatorRollbackDto {
+  jobId: string;
+  fromVersion: string;
+  targetVersion: string;
+  artifactSha256: string;
+}
+
 export interface OperatorDeploymentUpdateDto {
+  rollback?: OperatorRollbackDto | null;
   currentVersion: string;
   availableVersion: string;
   updateAvailable: boolean;
@@ -826,6 +841,7 @@ export interface OperatorRegistryServiceContract {
   applyDeploymentUpdate(
     onProgress?: OperatorDeploymentUpdateProgressHandler
   ): Promise<OperatorDeploymentUpdateDto>;
+  rollbackDeploymentUpdate(onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto>;
   loadConfiguration(): Promise<OperatorConfigurationDto>;
   saveConfiguration(
     request: OperatorConfigurationSaveRequestDto

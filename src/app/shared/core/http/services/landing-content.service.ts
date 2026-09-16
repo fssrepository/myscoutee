@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type { HelpCenterStateDto, LandingContentStateDto } from '../../contracts';
 import type { UserLocationEligibilityResponseDto } from '../../contracts/user.interface';
+import type { SupportedCountryDto } from '../../contracts/content.interface';
 import { HttpHelpCenterService } from './help-center.service';
 import { HttpIdeaPostsService } from './idea-posts.service';
 
@@ -22,6 +23,7 @@ export class HttpLandingContentService {
       terms?: Partial<HelpCenterStateDto> | null;
       ideas?: unknown;
       ideasTotal?: unknown;
+      supportedCountries?: SupportedCountryDto[];
       loginAvailability?: Partial<UserLocationEligibilityResponseDto> | null;
     };
     const lang = this.browserLanguage();
@@ -36,6 +38,7 @@ export class HttpLandingContentService {
       terms: this.helpCenter.normalizeExternalState(response?.terms, 'terms'),
       ideas,
       ideasTotal: this.normalizeIdeasTotal(response?.ideasTotal, ideas.length),
+      supportedCountries: (response?.supportedCountries ?? []).map(country => ({ ...country })),
       loginAvailability: this.normalizeLoginAvailability(response?.loginAvailability)
     };
   }

@@ -12,7 +12,7 @@ const versionPath = path.join(outputDir, 'app-version.json');
 
 const explicitBuildId = (process.env.MYSCOUTEE_UI_BUILD_ID || process.env.BUILD_ID || '').trim();
 const appVersion = sanitizeVersion((process.env.MYSCOUTEE_VERSION || packageVersion() || '1.0.0').trim());
-const gitSha = runOptional('git', ['rev-parse', '--short=12', 'HEAD']);
+const gitSha = explicitBuildId ? '' : runOptional('git', ['rev-parse', '--short=12', 'HEAD']);
 const builtAt = new Date().toISOString();
 const timestamp = builtAt.replace(/[-:.TZ]/g, '').slice(0, 14);
 const buildId = sanitizeBuildId(explicitBuildId || `${gitSha || 'local'}-${timestamp}`);

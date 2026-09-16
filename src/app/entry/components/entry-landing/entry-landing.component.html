@@ -1,8 +1,8 @@
 <section
   class="entry-shell"
   [attr.data-deployment-theme]="deploymentBranding().themePreset.toLowerCase()"
-  [attr.inert]="partnersPopupOpen ? '' : null"
-  [attr.aria-hidden]="partnersPopupOpen ? 'true' : null"
+  [attr.inert]="(partnersPopupOpen || countriesPopupOpen) ? '' : null"
+  [attr.aria-hidden]="(partnersPopupOpen || countriesPopupOpen) ? 'true' : null"
 >
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
@@ -141,6 +141,11 @@
             [attr.aria-label]="'landing.partners.open.aria' | i18n: 'Open partner overview'"
             (click)="openPartnersPopup($event)"
             >{{ 'landing.partners.title' | i18n: 'For Partners' }}</button>
+          <button
+            type="button"
+            class="entry-footer-text-action entry-footer-countries-action"
+            (click)="openCountriesPopup()"
+            >{{ 'landing.supported.countries' | i18n: 'Supported countries' }}</button>
           <button
             type="button"
             class="entry-footer-text-action entry-footer-bug-report-action"
@@ -368,5 +373,28 @@
         <div class="entry-ideas-article-html" [innerHTML]="articleContentHtml(post)"></div>
       </div>
     </article>
+  </app-popup>
+}
+
+@if (countriesPopupOpen) {
+  <app-popup [model]="countriesPopupModel()" [zIndex]="2425"
+    cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+    @if (articlesLoading) {
+      <p role="status">{{ 'loading' | i18n: 'Loading…' }}</p>
+    } @else if (networkUnavailable) {
+      <p role="status">{{ networkUnavailableLabel }}</p>
+    } @else {
+      <ul class="entry-countries-list">
+        @for (country of supportedCountries; track country.countryCode) {
+          <li>
+            <span class="entry-country-flag" aria-hidden="true">{{ countryFlag(country) }}</span>
+            <span class="entry-country-name">{{ countryLabel(country) }}</span>
+            <mat-icon class="entry-country-check" aria-hidden="true">check_circle</mat-icon>
+          </li>
+        } @empty {
+          <li>{{ 'landing.supported.countries.empty' | i18n: 'No countries are currently listed.' }}</li>
+        }
+      </ul>
+    }
   </app-popup>
 }

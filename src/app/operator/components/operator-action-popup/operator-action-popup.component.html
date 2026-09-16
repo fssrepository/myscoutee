@@ -4,6 +4,7 @@
       <section
         class="operator-action-popup"
         [class.operator-action-popup--loading]="loading()"
+        [class.operator-action-popup--updates]="activeKind === 'updates'"
         [class.operator-action-popup--deployments]="activeKind === 'deployments'"
         [attr.aria-busy]="busy()"
       >
@@ -17,14 +18,14 @@
             @case ('updates') {
               @if (workspace.deploymentUpdate(); as update) {
                 <div class="operator-action-popup__summary">
-                  <mat-icon>deployed_code</mat-icon>
                   <span>
                     <small>{{ 'operator.update.current.version' | i18n }}</small>
-                    <strong>{{ update.currentVersion }}</strong>
+                    <strong class="operator-action-popup__version operator-action-popup__version--current">{{ update.currentVersion }}</strong>
                   </span>
+                  <mat-icon aria-hidden="true">arrow_forward</mat-icon>
                   <span>
                     <small>{{ 'operator.update.available.version' | i18n }}</small>
-                    <strong>{{ update.availableVersion }}</strong>
+                    <strong class="operator-action-popup__version operator-action-popup__version--available">{{ update.availableVersion }}</strong>
                   </span>
                 </div>
                 @if (update.lastUpdatedAt) {
@@ -33,7 +34,12 @@
                     {{ formatDate(update.lastUpdatedAt) }}
                   </p>
                 }
-                @if (update.progress.phase !== 'IDLE') {
+                @if (update.progress.phase === 'FAILED') {
+                  <p class="operator-action-popup__result is-error" role="alert">
+                    <mat-icon>error_outline</mat-icon>
+                    <span>{{ (update.progress.message || 'operator.update.error.failed') | i18n }}</span>
+                  </p>
+                } @else if (update.progress.phase !== 'IDLE') {
                   <div
                     class="operator-action-popup__update-progress"
                     [attr.data-phase]="update.progress.phase"
@@ -41,11 +47,7 @@
                   >
                     <span class="operator-action-popup__update-progress-header">
                       <mat-icon>
-                        {{ update.progress.phase === 'FAILED'
-                          ? 'error_outline'
-                          : update.progress.phase === 'COMPLETED'
-                            ? 'check_circle'
-                            : 'sync' }}
+                        {{ update.progress.phase === 'COMPLETED' ? 'check_circle' : 'sync' }}
                       </mat-icon>
                       <strong>{{ updatePhaseLabel(update.progress.phase) | i18n }}</strong>
                       <b>{{ update.progress.percent }}%</b>
@@ -104,13 +106,6 @@
                         </small>
                       </span>
                     </p>
-                    <span
-                      class="operator-action-popup__claim-share"
-                      [attr.title]="'operator.leaderboard.share' | i18n"
-                    >
-                      <mat-icon>pie_chart</mat-icon>
-                      {{ formatShare(claim.sharePercent) }}%
-                    </span>
                   </div>
                 } @else if (claim.verificationStatus === 'REJECTED') {
                   <div class="operator-action-popup__claim-review">
@@ -123,13 +118,6 @@
                         </small>
                       </span>
                     </p>
-                    <span
-                      class="operator-action-popup__claim-share"
-                      [attr.title]="'operator.leaderboard.share' | i18n"
-                    >
-                      <mat-icon>pie_chart</mat-icon>
-                      {{ formatShare(claim.sharePercent) }}%
-                    </span>
                   </div>
                 } @else if (
                   claim.verificationStatus === 'APPROVED'
@@ -182,12 +170,23 @@
                   <p class="operator-action-popup__hint">
                     {{ 'operator.claim.client.code.instructions' | i18n }}
                   </p>
-                  <app-form-flow
-                    [model]="claimClientCodeFormModel()"
-                    [ngModel]="claimClientCodeValue()"
-                    (ngModelChange)="onClaimClientCodeChange($event)"
-                    [disabled]="busy() || !registeredForClaim()"
-                  ></app-form-flow>
+                  <div class="operator-action-popup__client-code">
+                    <app-form-flow
+                      [model]="claimClientCodeFormModel()"
+                      [ngModel]="claimClientCodeValue()"
+                      (ngModelChange)="onClaimClientCodeChange($event)"
+                      [disabled]="busy() || !registeredForClaim()"
+                    ></app-form-flow>
+                    @if (createClientCodeItems().length) {
+                      <app-menu
+                        class="operator-action-popup__client-code-actions"
+                        kind="inline"
+                        layout="row"
+                        [items]="createClientCodeItems()"
+                        (itemSelect)="onAction($event)"
+                      ></app-menu>
+                    }
+                  </div>
                 }
               }
             }
@@ -595,6 +594,14 @@
                         let linkIndex = $index
                       ) {
                         <article class="operator-action-popup__social-link">
+                          <app-menu
+                            class="operator-action-popup__single-action-menu"
+                            kind="inline"
+                            layout="row"
+                            panelMode="anchored"
+                            [items]="configurationSocialLinkRemoveItems(linkIndex)"
+                            (itemSelect)="onAction($event)"
+                          ></app-menu>
                           <div class="operator-action-popup__social-link-fields">
                             <label class="operator-action-popup__field">
                               <span>{{ 'operator.configuration.social.provider' | i18n }}</span>
@@ -669,14 +676,6 @@
                             [disabled]="configurationDisabled()"
                           ></app-link-input>
 
-                          <app-menu
-                            class="operator-action-popup__single-action-menu"
-                            kind="inline"
-                            layout="row"
-                            panelMode="anchored"
-                            [items]="configurationSocialLinkRemoveItems(linkIndex)"
-                            (itemSelect)="onAction($event)"
-                          ></app-menu>
                         </article>
                       } @empty {
                         <p class="operator-action-popup__empty">
@@ -727,7 +726,6 @@
                     </header>
 
                     <div class="operator-action-popup__select-field">
-                      <span>{{ 'operator.configuration.payment.provider' | i18n }}</span>
                       <app-menu
                         kind="select"
                         [trigger]="configurationPaymentProviderTrigger()"
@@ -774,18 +772,20 @@
                       </div>
                     }
 
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
-                      <input
-                        type="password"
-                        autocomplete="new-password"
-                        [placeholder]="configuration.payment.credentialMask
-                          || ('operator.configuration.credential.placeholder' | i18n)"
-                        [ngModel]="draft.payment.credential"
-                        (ngModelChange)="workspace.setConfigurationPayment({ credential: $event })"
-                        [disabled]="configurationDisabled() || !draft.payment.providerId"
-                      />
-                    </label>
+                    @if (draft.payment.providerId) {
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
+                        <input
+                          type="password"
+                          autocomplete="new-password"
+                          [placeholder]="configuration.payment.credentialMask
+                            || ('operator.configuration.credential.placeholder' | i18n)"
+                          [ngModel]="draft.payment.credential"
+                          (ngModelChange)="workspace.setConfigurationPayment({ credential: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
+                    }
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
@@ -820,7 +820,7 @@
                           <strong>Firebase</strong>
                         </span>
                         <app-menu
-                          class="operator-action-popup__header-actions"
+                          class="operator-action-popup__header-actions operator-action-popup__firebase-test-actions"
                           kind="inline"
                           layout="row"
                           [items]="configurationFirebaseTestActionItems()"
@@ -1691,6 +1691,7 @@
               class="operator-action-popup__actions"
               kind="inline"
               layout="row"
+              [model]="activeKind === 'claim' || activeKind === 'updates' ? { actionSizing: 'content' } : null"
               [items]="actionItems()"
               (itemSelect)="onAction($event)"
             ></app-menu>

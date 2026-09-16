@@ -66,3 +66,51 @@ describe('PWA native install decision and completion', () => {
     expect(f.prompt).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('PWA refresh after a completed deployment', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function fixture() {
+    const service = runInInjectionContext(Injector.create({ providers: [] }), () => new PwaService());
+    const reload = vi.spyOn(service as any, 'reloadPage').mockImplementation(() => {});
+    return { service, reload };
+  }
+
+  it('activates the installed worker before reload, including a rollback to an older bundle', async () => {
+    const events: string[] = [];
+    const workers = new EventTarget();
+    const worker = { postMessage: vi.fn(() => {
+      events.push('activate');
+      workers.dispatchEvent(new Event('controllerchange'));
+    }) };
+    const registration = {
+      update: vi.fn(async () => { events.push('update'); }),
+      waiting: worker
+    };
+    vi.stubGlobal('navigator', { serviceWorker: Object.assign(workers, {
+      getRegistration: vi.fn(async () => registration)
+    }) });
+    const { service, reload } = fixture();
+    reload.mockImplementation(() => { events.push('reload'); });
+    await service.reloadAfterDeploymentChange();
+    expect(events).toEqual(['update', 'activate', 'reload']);
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads once when no service worker is configured', async () => {
+    vi.stubGlobal('navigator', {});
+    const { service, reload } = fixture();
+    await service.reloadAfterDeploymentChange();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not report an installation failure if the worker refresh fails', async () => {
+    vi.stubGlobal('navigator', { serviceWorker: {
+      getRegistration: vi.fn(async () => ({ update: vi.fn().mockRejectedValue(new Error('offline')) }))
+    } });
+    const { service, reload } = fixture();
+    await expect(service.reloadAfterDeploymentChange()).resolves.toBeUndefined();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+});
