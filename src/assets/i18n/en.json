@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.16.en.108",
+  "version": "2026.09.16.en.109",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3424,6 +3424,7 @@
     "landing.supported.countries": "Supported countries",
     "landing.supported.countries.empty": "No countries are currently listed.",
     "operator.update.error.metadata": "This release has no signed update information yet.",
-    "operator.update.error.key": "The trusted update signing key is not configured."
+    "operator.update.error.key": "The trusted update signing key is not configured.",
+    "loading": "Loading…"
   }
 }

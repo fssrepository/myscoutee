@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.108",
+  "version": "2026.09.16.hu.109",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3424,6 +3424,7 @@
     "landing.supported.countries": "Támogatott országok",
     "landing.supported.countries.empty": "Jelenleg nincs felsorolt ország.",
     "operator.update.error.metadata": "Ehhez a kiadáshoz még nincs aláírt frissítési információ.",
-    "operator.update.error.key": "A frissítések megbízható aláírókulcsa nincs beállítva."
+    "operator.update.error.key": "A frissítések megbízható aláírókulcsa nincs beállítva.",
+    "loading": "Betöltés…"
   }
 }

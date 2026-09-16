@@ -1459,7 +1459,7 @@ describe('HttpOperatorRegistryService', () => {
     expect(eventCall[1].params.get('limit')).toBe('100');
     expect(withRequestTimeout.mock.calls.map(call => call[0])).toEqual([
       '/operator/updates',
-      '/operator/announcements',
+      '/operator/updates/releases',
       '/operator/updates',
       '/operator/updates/jobs/update_job_1',
       '/operator/updates/jobs/update_job_1/events'

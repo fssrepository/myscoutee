@@ -360,6 +360,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   private latestAnnouncementsCheckedAt: string | null = null;
   private activeUpdateJob: RemoteOperatorUpdateJob | null = null;
   private currentDeploymentVersion = '—';
+  private updateExecutionEnabled = false;
   private claimVerificationAvailable: boolean | null = null;
 
   async loadStatus(): Promise<OperatorRegistryStatusDto> {
@@ -755,7 +756,8 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         `${this.operatorEndpoint}/updates`,
         this.requestOptions()
       ).toPromise()
-    );
+    ).catch(() => { throw new Error('operator.update.error.check'); });
+    this.updateExecutionEnabled = status.enabled === true;
     this.currentDeploymentVersion = status.currentVersion?.trim() || '—';
     this.activeUpdateJob = status.latestJob ?? null;
     const releases = await this.requireResponse(
@@ -784,7 +786,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       await this.loadDeploymentUpdate();
     }
     const announcement = this.latestUpdateAnnouncement;
-    if (!announcement?.updateManifest || !this.installableUpdate(announcement.updateManifest)) {
+    if (!this.updateExecutionEnabled || !announcement?.updateManifest || !this.installableUpdate(announcement.updateManifest)) {
       throw new Error('operator.update.error.unavailable');
     }
 
@@ -1230,6 +1232,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       availableVersion: targetVersion,
       updateAvailable: Boolean(
         manifest
+        && this.updateExecutionEnabled
         && this.installableUpdate(manifest)
         && !completed
         && currentVersion !== targetVersion
