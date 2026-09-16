@@ -18,14 +18,14 @@
             @case ('updates') {
               @if (workspace.deploymentUpdate(); as update) {
                 <div class="operator-action-popup__summary">
-                  <mat-icon>deployed_code</mat-icon>
                   <span>
                     <small>{{ 'operator.update.current.version' | i18n }}</small>
-                    <strong>{{ update.currentVersion }}</strong>
+                    <strong class="operator-action-popup__version operator-action-popup__version--current">{{ update.currentVersion }}</strong>
                   </span>
+                  <mat-icon aria-hidden="true">arrow_forward</mat-icon>
                   <span>
                     <small>{{ 'operator.update.available.version' | i18n }}</small>
-                    <strong>{{ update.availableVersion }}</strong>
+                    <strong class="operator-action-popup__version operator-action-popup__version--available">{{ update.availableVersion }}</strong>
                   </span>
                 </div>
                 @if (update.lastUpdatedAt) {

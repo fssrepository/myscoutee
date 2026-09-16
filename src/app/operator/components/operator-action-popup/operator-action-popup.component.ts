@@ -1084,6 +1084,7 @@ export class OperatorActionPopupComponent {
       height: wide ? 'full' : 'auto',
       mobilePresentation: wide ? 'fullscreen' : 'compact',
       headerTone: 'accent',
+      backdropTone: 'dim',
       headerPalette: this.headerPalette(kind),
       headerBadge: claim ? `${this.formatShare(claim.sharePercent)}%` : null,
       translateHeaderBadge: false,

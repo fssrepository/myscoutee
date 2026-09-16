@@ -223,6 +223,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
       height: 'auto',
       mobilePresentation: 'fullscreen',
       headerTone: 'accent',
+      backdropTone: 'dim',
       headerPalette: 'violet',
       bodyLayout: 'default',
       headerActions: [

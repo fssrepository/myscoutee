@@ -42,13 +42,12 @@
 }
 
 .operator-action-popup__summary {
-  padding: 0.75rem;
-  border-radius: 14px;
-  background: #f1f8f7;
+  padding: 0.4rem;
   display: grid;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.4rem;
+  text-align: center;
 }
 
 .operator-action-popup__summary > .mat-icon {
@@ -58,7 +57,8 @@
 .operator-action-popup__summary span {
   min-width: 0;
   display: grid;
-  gap: 0.08rem;
+  justify-items: center;
+  gap: 0.3rem;
 }
 
 .operator-action-popup__summary small {
@@ -69,6 +69,23 @@
 
 .operator-action-popup__summary strong {
   font-size: 0.86rem;
+}
+
+.operator-action-popup__version {
+  max-width: 100%;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  overflow-wrap: anywhere;
+}
+
+.operator-action-popup__version--current {
+  background: #e8f0fb;
+  color: #396da9;
+}
+
+.operator-action-popup__version--available {
+  background: #e5f4ef;
+  color: #168071;
 }
 
 .operator-action-popup__hint {
@@ -1665,10 +1682,6 @@
 }
 
 @media (max-width: 560px) {
-  .operator-action-popup__summary {
-    grid-template-columns: auto 1fr;
-  }
-
   .operator-action-popup__branding-editor {
     grid-template-columns: minmax(0, 1fr);
   }
