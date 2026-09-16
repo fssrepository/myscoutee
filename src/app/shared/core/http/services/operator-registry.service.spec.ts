@@ -1360,18 +1360,20 @@ describe('HttpOperatorRegistryService', () => {
   });
 
   it.each([
-    [409, 'operator.update.error.registration.required'],
+    [409, 'operator.update.error.check'],
+    [412, 'operator.update.error.metadata'],
+    [428, 'operator.update.error.key'],
     [502, 'operator.update.error.check']
   ])('keeps update discovery HTTP %s diagnostics out of the UI', async (status, key) => {
     get.mockImplementation((url: string) => {
       if (url === '/api/operator/updates') {
         return of({ enabled: true, currentVersion: '1.0.0', latestJob: null });
       }
-      if (url === '/api/operator/announcements') {
+      if (url === '/api/operator/updates/releases') {
         return throwError(() => new HttpErrorResponse({
           status: Number(status),
           statusText: 'OK',
-          url: 'https://localhost/api/operator/announcements',
+          url: 'https://localhost/api/operator/updates/releases',
           error: { detail: 'Internal Registry diagnostic with sensitive configuration' }
         }));
       }
@@ -1397,8 +1399,8 @@ describe('HttpOperatorRegistryService', () => {
           latestJob: null
         });
       }
-      if (url === '/api/operator/announcements') {
-        return of(announcementPage);
+      if (url === '/api/operator/updates/releases') {
+        return of({ checkedAt: announcementPage.snapshot.asOf, items: announcementPage.items });
       }
       if (url === '/api/operator/updates/jobs/update_job_1') {
         return of(downloading);
@@ -1478,7 +1480,7 @@ describe('HttpOperatorRegistryService', () => {
           latestJob: recoveryRequired
         });
       }
-      if (url === '/api/operator/announcements') {
+      if (url === '/api/operator/updates/releases') {
         return of(remoteAnnouncementPage());
       }
       throw new Error(`Unexpected GET ${url}`);
@@ -1495,7 +1497,7 @@ describe('HttpOperatorRegistryService', () => {
     }));
     expect(get.mock.calls.map((call: unknown[]) => call[0])).toEqual([
       '/api/operator/updates',
-      '/api/operator/announcements'
+      '/api/operator/updates/releases'
     ]);
   });
 });

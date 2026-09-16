@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.16.en.107",
+  "version": "2026.09.16.en.108",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3020,7 +3020,6 @@
     "operator.update.phase.installing": "Installing update",
     "operator.update.phase.completed": "Update completed",
     "operator.update.phase.failed": "Update failed",
-    "operator.update.error.registration.required": "Connect to a Registry before checking for updates.",
     "operator.update.error.check": "Could not check for updates. Please try again.",
     "operator.update.error.failed": "Deployment update failed.",
     "operator.update.error.recovery.required": "The update stopped in an uncertain state. Follow the recovery procedure before retrying.",
@@ -3423,6 +3422,8 @@
     "User active; rescheduled.": "User active; rescheduled.",
     "Profile set to inactive.": "Profile set to inactive.",
     "landing.supported.countries": "Supported countries",
-    "landing.supported.countries.empty": "No countries are currently listed."
+    "landing.supported.countries.empty": "No countries are currently listed.",
+    "operator.update.error.metadata": "This release has no signed update information yet.",
+    "operator.update.error.key": "The trusted update signing key is not configured."
   }
 }

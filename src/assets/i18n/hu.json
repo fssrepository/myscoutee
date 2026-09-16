@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.107",
+  "version": "2026.09.16.hu.108",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3020,7 +3020,6 @@
     "operator.update.phase.installing": "Frissítés telepítése",
     "operator.update.phase.completed": "Frissítés befejezve",
     "operator.update.phase.failed": "A frissítés sikertelen",
-    "operator.update.error.registration.required": "A frissítések kereséséhez előbb csatlakozz egy Registryhez.",
     "operator.update.error.check": "Nem sikerült ellenőrizni a frissítéseket. Próbáld újra.",
     "operator.update.error.failed": "A telepítés frissítése sikertelen.",
     "operator.update.error.recovery.required": "A frissítés bizonytalan állapotban állt le. Újrapróbálás előtt kövesd a helyreállítási eljárást.",
@@ -3423,6 +3422,8 @@
     "User active; rescheduled.": "Aktív felhasználó; ellenőrzés átütemezve.",
     "Profile set to inactive.": "A profil inaktívra állítva.",
     "landing.supported.countries": "Támogatott országok",
-    "landing.supported.countries.empty": "Jelenleg nincs felsorolt ország."
+    "landing.supported.countries.empty": "Jelenleg nincs felsorolt ország.",
+    "operator.update.error.metadata": "Ehhez a kiadáshoz még nincs aláírt frissítési információ.",
+    "operator.update.error.key": "A frissítések megbízható aláírókulcsa nincs beállítva."
   }
 }

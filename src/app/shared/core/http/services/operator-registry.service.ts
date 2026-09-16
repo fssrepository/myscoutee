@@ -758,22 +758,18 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
     this.currentDeploymentVersion = status.currentVersion?.trim() || '—';
     this.activeUpdateJob = status.latestJob ?? null;
-    const announcements = await this.loadAnnouncements({
-      kind: 'UPDATE',
-      includeExpired: false,
-      limit: 100
-    }).catch((error: unknown) => {
-      throw new Error(error instanceof HttpErrorResponse && error.status === 409
-        ? 'operator.update.error.registration.required'
-        : 'operator.update.error.check');
+    const releases = await this.requireResponse(
+      `${OPERATOR_UPDATES_ROUTE}/releases`,
+      this.http.get<{ checkedAt: string; items: RemoteOperatorAnnouncement[] }>(
+        `${this.operatorEndpoint}/updates/releases`, this.requestOptions()
+      ).toPromise()
+    ).catch((error: unknown) => {
+      const status = error instanceof HttpErrorResponse ? error.status : 0;
+      throw new Error(status === 412 ? 'operator.update.error.metadata'
+        : status === 428 ? 'operator.update.error.key' : 'operator.update.error.check');
     });
-    this.latestAnnouncementsCheckedAt =
-      announcements.snapshot.asOf?.trim()
-      || announcements.snapshot.createdAt?.trim()
-      || new Date().toISOString();
-    this.latestUpdateAnnouncement = [...announcements.items]
-      .filter(item => this.announcementKind(item.kind) === 'UPDATE' && item.updateManifest)
-      .sort((left, right) => Number(right.sequence) - Number(left.sequence))[0] ?? null;
+    this.latestAnnouncementsCheckedAt = releases.checkedAt;
+    this.latestUpdateAnnouncement = releases.items[0] ?? null;
 
     return this.toDeploymentUpdate(
       this.latestUpdateAnnouncement,
