@@ -299,6 +299,7 @@ export class HttpEventsService implements IEventsService {
           record?: ActivityEventRecord | null;
           members?: ActivityMemberDTO[] | null;
           checkoutBasket?: EventCheckoutBasket | null;
+          vipPricingOffer?: EventInvitationContextDTO['vipPricingOffer'];
         } | null>(`${this.apiBaseUrl}/activities/events/invitation-context`, {
           params: new HttpParams()
             .set('userId', normalizedUserId)
@@ -312,7 +313,8 @@ export class HttpEventsService implements IEventsService {
           profile: member.profile ? { ...member.profile } : member.profile,
           involvements: (member.involvements ?? []).map(item => ({ ...item }))
         })),
-        checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(response.checkoutBasket)
+        checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(response.checkoutBasket),
+        vipPricingOffer: response.vipPricingOffer ? structuredClone(response.vipPricingOffer) : null
       } : null;
     } catch {
       return null;
@@ -1604,6 +1606,10 @@ export class HttpEventsService implements IEventsService {
     }
     const currency = `${value.currency ?? 'USD'}`.trim() || 'USD';
     return {
+      bookingStartAtIso: value.bookingStartAtIso ?? null,
+      bookingEndAtIso: value.bookingEndAtIso ?? null,
+      cancellationPolicy: value.cancellationPolicy ? structuredClone(value.cancellationPolicy) : null,
+      refundPreview: value.refundPreview ? { ...value.refundPreview } : null,
       id: `${value.id ?? ''}`.trim(),
       userId: `${value.userId ?? ''}`.trim(),
       sourceId: `${value.sourceId ?? ''}`.trim(),

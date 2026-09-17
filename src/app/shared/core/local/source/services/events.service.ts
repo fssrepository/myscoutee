@@ -55,6 +55,7 @@ import {
 } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
+import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
@@ -117,6 +118,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
+  private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
@@ -265,9 +267,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.activityMembersService.loadMembersByOwner({ ownerType: 'event', ownerId: normalizedEventId }),
       this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedEventId)
     ]);
+    const membership = this.activityMembersRepository.peekRecordsByOwner({
+      ownerType: 'event', ownerId: normalizedEventId
+    }).find(member => member.userId === normalizedUserId);
+    const offered = membership?.eventVipOfferedPricing;
+    const vipEligible = membership?.eventVipInvitation === true
+      && (membership.status === 'pending' || membership.status === 'accepted')
+      && (Boolean(membership.eventVipAcceptedAtIso)
+        || (membership.status === 'pending' && membership.requestKind === 'invite'))
+      && offered?.enabled !== false && offered?.audience.enabled === true
+      && offered.audience.vipPrice !== null;
     return {
       record,
       members,
+      vipPricingOffer: vipEligible ? structuredClone(offered ?? null) : null,
       checkoutBasket: LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord)
     };
   }

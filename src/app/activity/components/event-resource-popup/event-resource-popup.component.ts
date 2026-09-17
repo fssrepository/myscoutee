@@ -1432,11 +1432,14 @@ export class EventResourcePopupComponent {
       sourceId: sourceCard.id,
       mode: 'payment-summary',
       phase: 'payment',
+      cancellationPolicy: paymentAudit?.cancellationPolicy ?? null,
+      refundPreview: paymentAudit?.refundPreview ?? null,
+      refundPolicyUnavailable: !paymentAudit,
       title: this.i18n.translate('event.checkout.payment.summary'),
       subtitle: sourceCard.title,
       dateRange: {
-        startAt: startAtIso,
-        endAt: endAtIso,
+        startAt: paymentAudit?.bookingStartAtIso ?? startAtIso,
+        endAt: paymentAudit?.bookingEndAtIso ?? endAtIso,
         precision: 'minute'
       },
       dateRangeModel: {
@@ -2412,6 +2415,7 @@ export class EventResourcePopupComponent {
       sourceId: sourceCard.id,
       mode: takeOver ? 'takeover' : 'join',
       phase: takeOver && dialog.paymentStep ? 'payment' : 'review',
+      cancellationPolicy: sourceCard.pricing?.cancellationPolicy ?? null,
       title: takeOver ? `Take over ${sourceCard.title}` : `Join ${sourceCard.title}`,
       subtitle: this.popupSubtitle(),
       dateRange: {

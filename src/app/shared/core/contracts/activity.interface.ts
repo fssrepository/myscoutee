@@ -321,6 +321,7 @@ export interface ActivityEventRecord {
 }
 
 export interface EventInvitationContextDTO {
+  vipPricingOffer?: PricingContracts.PricingConfig | null;
   record: ActivityEventRecord | null;
   members: ActivityMemberDTO[];
   checkoutBasket: EventCheckoutBasket | null;
@@ -1651,6 +1652,10 @@ export interface EventCheckoutBasket {
 }
 
 export interface EventCheckoutPaymentAudit {
+  bookingStartAtIso?: string | null;
+  bookingEndAtIso?: string | null;
+  cancellationPolicy?: PricingContracts.PricingCancellationPolicy | null;
+  refundPreview?: import('./payment-method.interface').PaymentRefundPreviewDto | null;
   id: string;
   userId: string;
   sourceId: string;

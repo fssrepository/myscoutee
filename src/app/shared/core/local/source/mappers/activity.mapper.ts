@@ -143,7 +143,12 @@ export class LocalActivityMembersBuilder {
         : null;
     return {
       ...persistedMember,
-      invitedByUserId,
+      invitedByUserId: existingRecord?.eventVipInvitation ? existingRecord.invitedByUserId : invitedByUserId,
+      eventVipInvitation: existingRecord?.eventVipInvitation === true,
+      eventVipAcceptedAtIso: existingRecord?.eventVipAcceptedAtIso ?? null,
+      eventVipOfferedAtIso: existingRecord?.eventVipOfferedAtIso ?? null,
+      eventVipOfferedPricing: existingRecord?.eventVipOfferedPricing ?? null,
+      eventVipPriceAudit: existingRecord?.eventVipPriceAudit ?? [],
       invitedByActiveUser: invitedByUserId ? member.invitedByActiveUser === true : false,
       ownerType: normalizedOwner.ownerType,
       ownerId: normalizedOwner.ownerId,

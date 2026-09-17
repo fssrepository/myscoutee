@@ -1,0 +1,15 @@
+<section class="refund-policy">
+  <header><mat-icon>currency_exchange</mat-icon><h3>{{ 'asset.borrow.cancellation.title' | i18n }}</h3></header>
+  @if (unavailable) {
+    <p>{{ 'payment.summary.error.open' | i18n }}</p>
+  } @else {
+    @let current = summary();
+    <div class="refund-policy__row">
+      <div><strong>{{ 'asset.borrow.current.reimbursement' | i18n }}</strong><p>{{ current.note }}</p></div>
+      <strong>{{ money(current.amount) }}</strong>
+    </div>
+    @for (rule of rules(); track rule.id) {
+      <div class="refund-policy__row"><span>{{ ruleWindow(rule) }}</span><strong>{{ ruleRefund(rule) }}</strong></div>
+    }
+  }
+</section>

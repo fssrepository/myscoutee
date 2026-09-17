@@ -119,15 +119,38 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       return;
     }
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    void actorUserId;
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
     const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
     const existingRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
-    const records = members.map(member => LocalActivityMembersBuilder.toRecord(
-      normalizedOwner,
-      member,
-      existingRecordsById.get(member.id) ?? null
-    ));
+    const organizerInvitation = normalizedOwner.ownerType === 'event'
+      && this.canManageOwnerMembers(normalizedOwner, previousMembers, actorUserId, options);
+    const invitationEvent = normalizedOwner.ownerType === 'event'
+      ? this.eventsRepository.peekKnownItemById(actorUserId, normalizedOwner.ownerId) : null;
+    const records = members.map(member => {
+      const previous = existingRecordsById.get(member.id) ?? null;
+      const next = LocalActivityMembersBuilder.toRecord(normalizedOwner, member, previous);
+      // These audit fields are owned by the command, not by the submitted member DTO.
+      next.eventVipInvitation = previous?.eventVipInvitation === true;
+      next.eventVipAcceptedAtIso = previous?.eventVipAcceptedAtIso ?? null;
+      next.eventVipOfferedAtIso = previous?.eventVipOfferedAtIso ?? null;
+      next.eventVipOfferedPricing = previous?.eventVipOfferedPricing ?? null;
+      next.eventVipPriceAudit = previous?.eventVipPriceAudit ?? [];
+      if (normalizedOwner.ownerType === 'event' && member.status === 'pending'
+          && member.requestKind === 'invite'
+          && !(previous?.status === 'pending' && previous.requestKind === 'invite')) {
+        next.eventVipInvitation = organizerInvitation;
+        next.eventVipAcceptedAtIso = null;
+        next.eventVipOfferedAtIso = organizerInvitation ? next.updatedAtIso : null;
+        next.eventVipOfferedPricing = organizerInvitation ? structuredClone(invitationEvent?.pricing ?? null) : null;
+        if (organizerInvitation) {
+          next.eventVipPriceAudit = [...next.eventVipPriceAudit, {
+            invitationId: `${normalizedOwner.ownerId}:${member.userId}:${next.eventVipOfferedAtIso}`,
+            action: 'offered', actorUserId, atIso: next.updatedAtIso, pricing: next.eventVipOfferedPricing
+          }];
+        }
+      }
+      return next;
+    });
     const ownerSnapshot = this.ownerSnapshotFromOwner(normalizedOwner);
     this.activityMembersRepository.replaceRecordsByOwner(
       normalizedOwner,

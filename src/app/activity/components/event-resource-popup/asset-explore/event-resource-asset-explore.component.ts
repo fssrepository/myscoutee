@@ -2262,6 +2262,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       sourceId: card.id,
       mode: 'borrow',
       phase: dialog.paymentStep ? 'payment' : 'review',
+      cancellationPolicy: PricingBuilder.compactPricingConfig(card.pricing, {
+        context: 'asset', allowSlotFeatures: false
+      }).cancellationPolicy,
       title: this.i18n.translateParams('asset.borrow.title', { asset: card.title }),
       subtitle: this.popupSubtitle(),
       dateRange: {

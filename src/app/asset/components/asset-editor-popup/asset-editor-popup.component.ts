@@ -1,3 +1,4 @@
+import { PaymentRefundPolicyComponent } from '../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import {
   CommonModule
 } from '@angular/common';
@@ -90,6 +91,7 @@ type AssetEditorFlowValue = AssetFormState & {
     AppMenuComponent,
     EventBasketInputComponent,
     EventPaymentInputComponent,
+    PaymentRefundPolicyComponent,
     IndicatorComponent,
     FormFlowComponent,
     PopupComponent

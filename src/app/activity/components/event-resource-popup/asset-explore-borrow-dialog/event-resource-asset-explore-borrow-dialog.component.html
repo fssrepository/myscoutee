@@ -51,35 +51,13 @@
             </div>
           </section>
 
-          @if (showCancellationPolicyCard(dialog)) {
-            <section class="asset-explore-borrow-review-card">
-              <div class="asset-explore-borrow-review-card__head">
-                <div>
-                  <h4>{{ 'asset.borrow.cancellation.title' | i18n }}</h4>
-                  <span>{{ 'asset.borrow.cancellation.subtitle' | i18n }}</span>
-                </div>
-              </div>
-              @if (cancellationPreview(dialog); as preview) {
-                <div class="asset-explore-borrow-review-card__list">
-                  <article class="asset-explore-borrow-review-card__item">
-                    <div>
-                      <strong>{{ 'asset.borrow.current.reimbursement' | i18n }}</strong>
-                      <span>{{ preview.note }}</span>
-                    </div>
-                    <strong>{{ preview.refundLabel }}</strong>
-                  </article>
-                  @for (rule of cancellationRules(dialog); track rule.id) {
-                    <article class="asset-explore-borrow-review-card__item">
-                      <div>
-                        <strong>{{ cancellationRuleWindowLabel(rule) }}</strong>
-                        <span>{{ cancellationRuleRefundLabel(rule, dialog.currency) }}</span>
-                      </div>
-                      <strong>{{ cancellationRuleRefundLabel(rule, dialog.currency) }}</strong>
-                    </article>
-                  }
-                </div>
-              }
-            </section>
+          @if (dialog.totalAmount > 0) {
+            <app-payment-refund-policy
+              [policy]="dialog.cancellationPolicy"
+              [bookingStartAtIso]="dialog.bookingStartAtIso"
+              [totalAmount]="dialog.totalAmount"
+              [currency]="dialog.currency"
+            ></app-payment-refund-policy>
           }
 
           @if (!dialog.paymentStep && dialog.policies.length > 0) {
