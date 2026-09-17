@@ -307,7 +307,9 @@ export class EventResourcePopupComponent {
       filterCounts: this.resourceFilterCounts(),
       canAssign: context?.viewOnly !== true,
       items: cards.map(card => {
-        const memberSync = this.assignedAssetMembersSync(card.sourceAssetId ?? '', context);
+        const memberSync = card.sourceRequestId
+          ? null
+          : this.assignedAssetMembersSync(card.sourceAssetId ?? '', context);
         const displayCard = memberSync
           ? {
               ...card,
@@ -1685,7 +1687,9 @@ export class EventResourcePopupComponent {
       card.assetOwnerUserId
     );
     const managerUserId = assignmentSettings?.addedByUserId?.trim() || null;
-    const fallbackMembers = this.assetMemberEntries(sourceCard, managerUserId, context.subEvent.id, context.ownerId);
+    const fallbackMembers = this.assetMemberEntries(
+      sourceCard, managerUserId, context.subEvent.id, context.ownerId, card.sourceRequestId ?? undefined
+    );
     const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = this.assignedAssetOccupancyCapacityTotal(sourceCard, assignmentSettings);
@@ -1710,6 +1714,7 @@ export class EventResourcePopupComponent {
       type: 'members',
       ownerId: sourceCard.id,
       ownerType: 'asset',
+      assetRequestId: card.sourceRequestId ?? undefined,
       parentOwnerId: parentOwner.ownerId,
       parentOwnerType: parentOwner.ownerType,
       eventId: context.ownerId,
@@ -1729,7 +1734,7 @@ export class EventResourcePopupComponent {
       onMembersChanged: (members, statusChange) => {
         const acceptedMemberCount = members.filter(member => member.status === 'accepted').length;
         const pendingMemberCount = members.filter(member => member.status === 'pending').length;
-        if (!statusChange) {
+        if (!statusChange && !card.sourceRequestId) {
           this.activityStore.emitActivityMembersSync({
             id: sourceCard.id,
             eventId: context.ownerId,
@@ -3953,12 +3958,16 @@ export class EventResourcePopupComponent {
     card: ResourceAssetDTO,
     ownerUserId: string | null,
     subEventId?: string,
-    eventId?: string
+    eventId?: string,
+    assetRequestId?: string
   ): ActivityContracts.ActivityMemberDTO[] {
     const seedBaseDate = new Date('2026-02-24T12:00:00');
-    const requests = subEventId
+    const scopedRequests = subEventId
       ? this.assetRequestsForView(card, subEventId, ownerUserId, eventId)
       : [...card.requests];
+    const requests = assetRequestId
+      ? scopedRequests.filter(request => request.id === assetRequestId)
+      : scopedRequests;
     void this.usersService.warmCachedUsers(requests
       .map(request => AppUtils.resolveAssetRequestUserId(request, this.users))
       .filter(userId => `${userId}`.trim().length > 0));

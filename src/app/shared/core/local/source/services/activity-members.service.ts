@@ -1038,8 +1038,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   ): ActivityMemberDTO[] | null {
     const eventId = `${options?.eventId ?? ''}`.trim();
     const subEventId = `${options?.subEventId ?? ''}`.trim();
+    const assetRequestId = `${options?.assetRequestId ?? ''}`.trim();
     if (owner.ownerType !== 'asset' || !eventId || !subEventId) {
-      return null;
+      return assetRequestId ? [] : null;
     }
     const asset = this.assetsRepository.peekAssetForMembershipById(owner.ownerId);
     if (!asset) {
@@ -1058,7 +1059,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         .map(record => [record.userId, record] as const)
     );
     const members: ActivityMemberDTO[] = [];
-    if (options?.pendingOnly !== true
+    if (!assetRequestId && options?.pendingOnly !== true
         && ownerUserId
         && !asset.ownerReleasedAtIso
         && scopedManagerUserId === ownerUserId) {
@@ -1095,7 +1096,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     for (const request of asset.requests ?? []) {
       const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
       const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
-      if (!acceptedEventIds.has(bookingEventId) || bookingSubEventId !== subEventId) {
+      if (!acceptedEventIds.has(bookingEventId) || bookingSubEventId !== subEventId
+          || (assetRequestId && request.id !== assetRequestId)) {
         continue;
       }
       if (options?.pendingOnly === true && request.status !== 'pending') {

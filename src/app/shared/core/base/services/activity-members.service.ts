@@ -224,6 +224,10 @@ export class ActivityMembersService extends BaseRouteModeService {
     owner: ActivityMemberOwnerRef,
     options?: ActivityMembersQueryOptions
   ): void {
+    // One rental's members are not the whole Asset's summary.
+    if (options?.assetRequestId) {
+      return;
+    }
     const summary = this.activityMembersService.peekSummaryByOwner(owner);
     if (!summary) {
       return;

@@ -194,6 +194,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private parentOwnerRef: ActivityMemberOwnerRef | null = null;
   private memberEventId = '';
   private memberSubEventId = '';
+  private memberAssetRequestId = '';
   private memberResourceType: AssetType | null = null;
   private memberResourceCapacityMin = 0;
   private memberAssetOwnerUserId = '';
@@ -283,6 +284,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           parentOwnerType: request.parentOwnerType,
           eventId: request.eventId,
           subEventId: request.subEventId,
+          assetRequestId: request.assetRequestId,
           resourceType: request.resourceType,
           assetOwnerUserId: request.assetOwnerUserId,
           scopedBorrowAsset: request.scopedBorrowAsset,
@@ -446,6 +448,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.parentOwnerRef = null;
     this.memberEventId = '';
     this.memberSubEventId = '';
+    this.memberAssetRequestId = '';
     this.memberResourceType = null;
     this.memberResourceCapacityMin = 0;
     this.memberAssetOwnerUserId = '';
@@ -1272,7 +1275,8 @@ export class EventMembersPopupComponent implements OnDestroy {
 
     const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
       eventId: this.memberEventId,
-      subEventId: this.memberSubEventId
+      subEventId: this.memberSubEventId,
+      assetRequestId: this.memberAssetRequestId
     });
     const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === 'Manager')
       ? persistedMembers
@@ -1305,7 +1309,8 @@ export class EventMembersPopupComponent implements OnDestroy {
 
     const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
       eventId: this.memberEventId,
-      subEventId: this.memberSubEventId
+      subEventId: this.memberSubEventId,
+      assetRequestId: this.memberAssetRequestId
     });
     const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === 'Member')
       ? persistedMembers
@@ -1368,7 +1373,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.canManageMembers = false;
     const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
       eventId: this.memberEventId,
-      subEventId: this.memberSubEventId
+      subEventId: this.memberSubEventId,
+      assetRequestId: this.memberAssetRequestId
     });
     this.applyCommittedMembers(persistedMembers, previousMembers);
   }
@@ -1390,7 +1396,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.canTakeOverAssetResponsibility = false;
     const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
       eventId: this.memberEventId,
-      subEventId: this.memberSubEventId
+      subEventId: this.memberSubEventId,
+      assetRequestId: this.memberAssetRequestId
     });
     this.applyCommittedMembers(persistedMembers, previousMembers);
   }
@@ -1544,7 +1551,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         owner.ownerType,
         {
           eventId: this.memberEventId,
-          subEventId: this.memberSubEventId
+          subEventId: this.memberSubEventId,
+          assetRequestId: this.memberAssetRequestId
         }
       );
     } catch (error) {
@@ -1568,6 +1576,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       parentOwnerType?: ActivityMemberOwnerType;
       eventId?: string;
       subEventId?: string;
+      assetRequestId?: string;
       resourceType?: AssetType;
       assetOwnerUserId?: string;
       scopedBorrowAsset?: boolean;
@@ -1617,6 +1626,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         };
     this.memberEventId = `${options?.eventId ?? ''}`.trim();
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
+    this.memberAssetRequestId = `${options?.assetRequestId ?? ''}`.trim();
     this.memberResourceType = options?.resourceType ?? null;
     this.memberResourceCapacityMin = Math.max(0, Math.trunc(Number(options?.capacityMin) || 0));
     this.memberAssetOwnerUserId = `${options?.assetOwnerUserId ?? ''}`.trim();
@@ -1724,7 +1734,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private membersCacheKey(ownerId: string, pendingOnly = false): string {
-    return `${ownerId.trim()}::pending:${pendingOnly ? '1' : '0'}`;
+    return JSON.stringify([ownerId.trim(), this.memberEventId, this.memberSubEventId, this.memberAssetRequestId, pendingOnly]);
   }
 
   private async resolveOwnerPresentation(
@@ -1799,17 +1809,19 @@ export class EventMembersPopupComponent implements OnDestroy {
         ? await this.activityMembersService.queryMembersByOwner(owner, {
             pendingOnly,
             eventId: this.memberEventId,
-            subEventId: this.memberSubEventId
+            subEventId: this.memberSubEventId,
+            assetRequestId: this.memberAssetRequestId
           })
         : await this.activityMembersService.queryMembersByOwnerId(ownerId, {
             pendingOnly,
             eventId: this.memberEventId,
-            subEventId: this.memberSubEventId
+            subEventId: this.memberSubEventId,
+            assetRequestId: this.memberAssetRequestId
           });
       members = [...loadedMembers];
       void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(cacheKey, members);
-      if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
+      if (!pendingOnly && this.isOpen && this.membersCacheKey(this.ownerId, pendingOnly) === cacheKey) {
         this.syncCanManageMembers(members);
         this.applySummaryFromMembers(members);
         this.membersChangeHandler?.(members);
@@ -1846,7 +1858,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         try {
           await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal, {
             eventId: this.memberEventId,
-            subEventId: this.memberSubEventId
+            subEventId: this.memberSubEventId,
+            assetRequestId: this.memberAssetRequestId
           });
         } catch (error) {
           if (this.suppressedOwnerSyncId === this.ownerId) {
@@ -1858,7 +1871,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         try {
           await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal, {
             eventId: this.memberEventId,
-            subEventId: this.memberSubEventId
+            subEventId: this.memberSubEventId,
+            assetRequestId: this.memberAssetRequestId
           });
         } catch (error) {
           if (this.suppressedOwnerSyncId === this.ownerId) {
@@ -1936,6 +1950,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   ): void {
     if (
       this.ownerRef?.ownerType !== 'asset'
+      || this.memberAssetRequestId.length > 0
       || change.assetId !== this.ownerId
       || change.eventId !== this.memberEventId
       || change.subEventId !== this.memberSubEventId
@@ -2337,13 +2352,15 @@ export class EventMembersPopupComponent implements OnDestroy {
       this.cdr.markForCheck();
       return;
     }
+    const scopeKey = this.membersCacheKey(this.ownerId);
     const previousMembers = this.currentOwnerMembers();
     void this.activityMembersService.queryMembersByOwner(owner, {
       eventId: this.memberEventId,
-      subEventId: this.memberSubEventId
+      subEventId: this.memberSubEventId,
+      assetRequestId: this.memberAssetRequestId
     })
       .then(members => {
-        if (!this.isOpen || this.ownerId !== sync.id || !this.ownerRef || this.ownerRef.ownerId !== sync.id) {
+        if (!this.isOpen || this.membersCacheKey(this.ownerId) !== scopeKey || this.ownerId !== sync.id || !this.ownerRef || this.ownerRef.ownerId !== sync.id) {
           return;
         }
         const normalizedMembers = [...members];
@@ -2355,10 +2372,10 @@ export class EventMembersPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
       })
       .catch(() => {
-        if (!this.isOpen || this.ownerId !== sync.id) {
+        if (!this.isOpen || this.membersCacheKey(this.ownerId) !== scopeKey || this.ownerId !== sync.id) {
           return;
         }
-        this.applySummary(sync.acceptedMembers, 0, sync.capacityTotal);
+        if (!this.memberAssetRequestId) this.applySummary(sync.acceptedMembers, 0, sync.capacityTotal);
         this.cdr.markForCheck();
       });
   }
@@ -2405,12 +2422,13 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (!this.ownerId) {
       return;
     }
-    this.suppressedOwnerSyncId = this.ownerId;
+    this.suppressedOwnerSyncId = this.memberAssetRequestId ? null : this.ownerId;
     let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
     try {
       normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action, null, {
         eventId: this.memberEventId,
         subEventId: this.memberSubEventId,
+        assetRequestId: this.memberAssetRequestId,
         targetMemberId: `${targetMemberId ?? ''}`.trim() || undefined
       })];
     } catch (error) {

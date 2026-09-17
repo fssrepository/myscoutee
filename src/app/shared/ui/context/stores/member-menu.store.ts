@@ -75,6 +75,7 @@ export type ActivitiesNavigationRequest =
       parentOwnerType?: ActivityMemberOwnerType;
       eventId?: string;
       subEventId?: string;
+      assetRequestId?: string;
       resourceType?: AssetType;
       assetOwnerUserId?: string;
       scopedBorrowAsset?: boolean;

@@ -1335,6 +1335,8 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
   eventId?: string;
   subEventId?: string;
+  /** Limits the list to one persisted Borrow request within the Asset's stage. */
+  assetRequestId?: string;
   /** Targets one independently submitted scoped Asset Borrow request. */
   targetMemberId?: string;
 }
