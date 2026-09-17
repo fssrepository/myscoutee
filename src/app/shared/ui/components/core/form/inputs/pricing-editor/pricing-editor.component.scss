@@ -431,6 +431,11 @@
   text-transform: uppercase;
 }
 
+.pricing-editor__field > .pricing-editor__field-error {
+  color: #9b3447;
+  text-transform: none;
+}
+
 .pricing-editor__field input,
 .pricing-editor__select-shell,
 .pricing-editor__money-field,

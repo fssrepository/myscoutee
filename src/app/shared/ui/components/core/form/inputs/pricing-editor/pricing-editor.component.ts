@@ -4,12 +4,14 @@ import {
   ChangeDetectorRef,
   Component,
   DoCheck,
+  ElementRef,
   HostListener,
   Input,
   OnChanges,
   OnDestroy,
   SimpleChanges,
   Type,
+  ViewChild,
   computed,
   effect,
   forwardRef,
@@ -163,6 +165,8 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   @Input() disabled = false;
 
   protected workingPricing: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
+  protected priceBoundsInvalid = false;
+  @ViewChild('pricingMaximumInput') private pricingMaximumInput?: ElementRef<HTMLInputElement>;
 
   protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
   protected readonly taxModeOptions: readonly AppConstants.PricingTaxMode[] = ['excluded', 'included'];
@@ -546,6 +550,9 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     event?.preventDefault();
     event?.stopPropagation();
     this.pricingPopupDraft = this.normalizePricingWithCapabilities(value as ContractTypes.PricingConfig);
+    if (this.hasInvalidPriceBounds(this.pricingPopupDraft)) {
+      return;
+    }
     if (!this.canSavePricingPopupDraft()) {
       return;
     }
@@ -612,8 +619,29 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   protected onNullableMoneyFieldChange(field: 'minPrice' | 'maxPrice', value: number | string): void {
     this.workingPricing[field] = this.parseMoney(value);
-    this.normalizePriceBounds();
+    this.priceBoundsInvalid = false;
     this.emitPricing();
+  }
+
+  protected validatePriceBounds(revealError = false): boolean {
+    this.priceBoundsInvalid = this.hasInvalidPriceBounds(this.workingPricing);
+    if (this.priceBoundsInvalid && revealError) {
+      this.pricingMaximumInput?.nativeElement.scrollIntoView({ block: 'center' });
+    }
+    this.cdr.markForCheck();
+    return !this.priceBoundsInvalid;
+  }
+
+  protected onPriceBoundsBlur(): void {
+    if (this.hasInvalidPriceBounds(this.workingPricing)) {
+      this.workingPricing.maxPrice = this.workingPricing.minPrice;
+      this.priceBoundsInvalid = false;
+      this.emitPricing();
+    }
+  }
+
+  private hasInvalidPriceBounds(pricing: ContractTypes.PricingConfig): boolean {
+    return pricing.minPrice !== null && pricing.maxPrice !== null && pricing.maxPrice < pricing.minPrice;
   }
 
   protected onAudienceMoneyFieldChange(field: 'memberPrice' | 'vipPrice', value: number | string): void {
@@ -1518,7 +1546,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   private syncWorkingPricing(): void {
+    this.priceBoundsInvalid = false;
     this.workingPricing = this.normalizePricingWithCapabilities(this.pricingValue);
+    if (!this.editorLocked() && !this.currencyOptions.includes(this.workingPricing.currency)) {
+      this.workingPricing.currency = PricingBuilder.createDefaultPricingConfig(this.resolvedConfig.context).currency;
+    }
     this.currentPreview = this.calculatePreviewState();
     // Cache the lines here
     this.currentExplanationLines = this.previewExplanationLines();
@@ -1526,7 +1558,6 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected emitPricing(): void {
-    this.normalizePriceBounds();
     this.syncMode();
     this.workingPricing = this.normalizePricingWithCapabilities(this.workingPricing);
     this.currentPreview = this.calculatePreviewState();
@@ -1636,24 +1667,9 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       slotCatalog: this.resolvedConfig.allowSlotFeatures ? this.resolvedConfig.slotCatalog : [],
       allowSlotFeatures: this.resolvedConfig.allowSlotFeatures,
       allowedChargeTypes: this.resolvedConfig.chargeTypeOptions,
-      preserveEmptyPromoCodes: true
+      preserveEmptyPromoCodes: true,
+      preservePriceBounds: true
     });
-  }
-
-  private normalizePriceBounds(): void {
-    if (this.workingPricing.minPrice !== null && this.workingPricing.minPrice < 0) {
-      this.workingPricing.minPrice = 0;
-    }
-    if (this.workingPricing.maxPrice !== null && this.workingPricing.maxPrice < 0) {
-      this.workingPricing.maxPrice = 0;
-    }
-    if (
-      this.workingPricing.minPrice !== null
-      && this.workingPricing.maxPrice !== null
-      && this.workingPricing.maxPrice < this.workingPricing.minPrice
-    ) {
-      this.workingPricing.maxPrice = this.workingPricing.minPrice;
-    }
   }
 
   private createDefaultDemandRule(): ContractTypes.PricingDemandRule {

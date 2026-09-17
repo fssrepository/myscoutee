@@ -110,6 +110,7 @@ export class PricingBuilder {
       allowSlotFeatures?: boolean;
       allowedChargeTypes?: readonly AppConstants.PricingChargeType[];
       preserveEmptyPromoCodes?: boolean;
+      preservePriceBounds?: boolean;
     } = {}
   ): ContractTypes.PricingConfig {
     const context = options.context ?? 'event';
@@ -199,7 +200,8 @@ export class PricingBuilder {
       normalized.slotOverrides = [];
     }
 
-    if (normalized.maxPrice !== null && normalized.minPrice !== null && normalized.maxPrice < normalized.minPrice) {
+    if (!options.preservePriceBounds
+        && normalized.maxPrice !== null && normalized.minPrice !== null && normalized.maxPrice < normalized.minPrice) {
       normalized.maxPrice = normalized.minPrice;
     }
 

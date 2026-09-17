@@ -179,6 +179,7 @@
             step="0.01"
             [ngModel]="workingPricing.minPrice ?? ''"
             (ngModelChange)="onNullableMoneyFieldChange('minPrice', $event)"
+            (blur)="onPriceBoundsBlur()"
             [disabled]="readOnly"
             [placeholder]="'pricing.no.minimum' | i18n"
             />
@@ -197,11 +198,17 @@
             step="0.01"
             [ngModel]="workingPricing.maxPrice ?? ''"
             (ngModelChange)="onNullableMoneyFieldChange('maxPrice', $event)"
+            (blur)="onPriceBoundsBlur()"
+            #pricingMaximumInput
+            [attr.aria-invalid]="priceBoundsInvalid ? true : null"
             [disabled]="readOnly"
             [placeholder]="'pricing.no.maximum' | i18n"
             />
           <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
         </div>
+      @if (priceBoundsInvalid) {
+        <span class="pricing-editor__field-error" role="alert">{{ 'pricing.maximum.below.minimum' | i18n }}</span>
+      }
       </label>
 
       <label class="pricing-editor__field">
