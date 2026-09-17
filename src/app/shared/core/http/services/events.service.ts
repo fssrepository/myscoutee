@@ -336,6 +336,7 @@ export class HttpEventsService implements IEventsService {
         .post<{
           mode?: string | null;
           slots?: SubEventsSlotDTO[] | null;
+          canAccessResources?: boolean;
           total?: number | null;
           nextCursor?: string | null;
         } | null>(
@@ -354,6 +355,7 @@ export class HttpEventsService implements IEventsService {
       return {
         mode,
         slots: response?.slots ?? [],
+        canAccessResources: response?.canAccessResources === true,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : null,
         nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
       };

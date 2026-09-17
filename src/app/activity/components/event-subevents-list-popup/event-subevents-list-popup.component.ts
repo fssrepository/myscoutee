@@ -99,6 +99,7 @@ interface EventSubeventsListFilters {
 
 interface EventSubeventsParentContext {
   id: string;
+  canAccessResources?: boolean;
   title: string | null;
   timeframe?: string | null;
   startAtIso?: string | null;
@@ -750,7 +751,8 @@ export class EventSubeventsListPopupComponent {
       groupLabel,
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
-      hasMenuOptions: true,
+      hasMenuOptions: this.event?.canAccessResources === true,
+      menuBadgeCount: this.event?.canAccessResources === true ? this.runtimeBadgeCount(item) : 0,
       menuTitle: item.name,
       translateParams: (key, values, fallback) => this.i18n.translateParams(key, values, fallback)
     });
@@ -763,6 +765,9 @@ export class EventSubeventsListPopupComponent {
   protected subEventMenuItems(
     item: SubEventDTO
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
+    if (this.event?.canAccessResources !== true) {
+      return [];
+    }
     const section = this.slotSectionForItem(item);
     const sequence = this.subEventSequence(item);
     return EventSubeventRuntimeMenuConverter.convert(item, {
@@ -782,7 +787,7 @@ export class EventSubeventsListPopupComponent {
   protected onSubEventMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const menuEvent = event as AppMenuItemSelectEvent<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>;
     const context = menuEvent.context;
-    if (!context) {
+    if (!context || this.event?.canAccessResources !== true) {
       return;
     }
     menuEvent.sourceEvent.stopPropagation();
@@ -1605,6 +1610,7 @@ export class EventSubeventsListPopupComponent {
     const requestEvent = this.parentContextFromRequest(eventId);
     const event = {
       ...requestEvent,
+      canAccessResources: result?.canAccessResources === true,
       mode: result?.mode ?? null
     };
     const slots = result?.slots ?? [];

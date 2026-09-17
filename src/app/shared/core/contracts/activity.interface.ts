@@ -602,6 +602,7 @@ export interface SubEventsSlotDTO {
 
 export interface ActivityEventSubEventsResultDTO {
   mode: EventContracts.EventMode;
+  canAccessResources?: boolean;
   slots: SubEventsSlotDTO[];
   total?: number | null;
   nextCursor?: string | null;

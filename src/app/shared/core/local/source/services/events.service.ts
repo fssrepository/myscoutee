@@ -336,7 +336,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         resourceStatesByKey,
         stageRuntimeByKey,
         normalizedUserId
-      )
+      ),
+      canAccessResources: this.eventsRepository.queryAcceptedEventOwnerIdsByUser(
+        [result.parentEventId], normalizedUserId
+      ).has(result.parentEventId)
     };
   }
 
