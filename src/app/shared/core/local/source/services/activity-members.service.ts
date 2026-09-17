@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
+import { tournamentParticipationLocked } from '../../../common/tournament-group-count';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
@@ -236,6 +237,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const targetIsApprovalRequest = targetMember?.status === 'pending'
       && !targetIsInvitation;
     const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
+    if (organizerParticipationAction
+        && (normalizedOwner.ownerType === 'group' || normalizedOwner.ownerType === 'subEvent')) {
+      const event = this.eventsRepository.peekKnownItemById(normalizedActorUserId, `${options?.eventId ?? ''}`.trim());
+      const stage = event?.subEvents?.find(item => item.id === options?.subEventId);
+      if (!stage || tournamentParticipationLocked(stage)) {
+        return previousMembers;
+      }
+    }
     const organizerParticipationAllowed = organizerParticipationAction
       && normalizedActorUserId === normalizedTargetUserId
       && (actorCanManage || scopedAssetMembers != null)

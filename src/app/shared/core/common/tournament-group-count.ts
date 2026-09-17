@@ -68,6 +68,10 @@ export function tournamentCurrentStageFromSubEvents(
   };
 }
 
+export function tournamentParticipationLocked(stage: TournamentStageSummaryInput | null | undefined): boolean {
+  return isTournamentStage(stage) && ['A', 'SR', 'F', 'S'].includes(normalizeStageStatus(stage?.stageStatus));
+}
+
 function isTournamentStage(stage: TournamentStageSummaryInput | null | undefined): boolean {
   if (!stage || stage.optional === true) {
     return false;

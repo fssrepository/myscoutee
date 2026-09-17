@@ -35,6 +35,7 @@ import {
   UsersService
 } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import { tournamentParticipationLocked } from '../../../shared/core/common/tournament-group-count';
 import {
   ImageCardComponent,
   PopupComponent,
@@ -2176,6 +2177,13 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canToggleOrganizerParticipation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.ownerRef?.ownerType === 'group' || this.ownerRef?.ownerType === 'subEvent') {
+      const event = this.eventsService.peekKnownRecordById(this.activeUserId(), this.memberEventId);
+      const stage = event?.subEvents?.find(item => item.id === this.memberSubEventId);
+      if (!stage || tournamentParticipationLocked(stage)) {
+        return false;
+      }
+    }
     const ownsScopedBorrowRequest = this.scopedBorrowAsset
       && this.isCurrentUser(entry)
       && (entry.status === 'accepted' || entry.status === 'pending');
