@@ -16,15 +16,6 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.operator-action-popup--updates .operator-action-popup__actions {
-  width: 100%;
-  max-width: 100%;
-  --app-menu-row-width: 100%;
-  --app-menu-row-wrap: nowrap;
-  --app-menu-action-flex: 1 1 0;
-  --app-menu-action-min-width: 0;
-}
-
 .operator-action-popup--loading {
   min-height: 100%;
   flex: 1 1 auto;
