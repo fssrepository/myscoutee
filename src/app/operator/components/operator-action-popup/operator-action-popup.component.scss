@@ -20,8 +20,8 @@
   width: 100%;
   max-width: 100%;
   --app-menu-row-width: 100%;
-  --app-menu-row-wrap: wrap;
-  --app-menu-action-flex: 0 1 auto;
+  --app-menu-row-wrap: nowrap;
+  --app-menu-action-flex: 1 1 0;
   --app-menu-action-min-width: 0;
 }
 
