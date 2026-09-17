@@ -99,6 +99,8 @@ export class EventCheckoutPopupComponent {
   protected acceptedPolicyIds = new Set<string>();
   protected appliedPromoCodes: string[] = [];
   protected paymentStep = false;
+  private readonly pricingContextFailed = signal(false);
+  private readonly vipPricingOffer = signal<ContractTypes.PricingConfig | null>(null);
   private readonly selectedPaymentMethodRef = signal<ContractTypes.SavedPaymentMethodDto | null>(null);
   protected busy = false;
   protected errorMessage = '';
@@ -134,6 +136,8 @@ export class EventCheckoutPopupComponent {
         return;
       }
       if (dialogChanged) {
+        this.vipPricingOffer.set(null);
+        this.pricingContextFailed.set(false);
         this.validatedPromoCodeDefinitions.clear();
       }
       this.renderedDialogId = dialog.id;
@@ -184,6 +188,26 @@ export class EventCheckoutPopupComponent {
     this.openCheckoutReviewEditorShell(dialog);
     if (dialog.loading) {
       return;
+    }
+    if (!dialog.readOnlySummary) {
+      try {
+        const context = await this.eventsService.loadInvitationContext(dialog.userId, dialog.record.id);
+        if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
+          return;
+        }
+        if (!context) {
+          throw new Error('Unable to load event pricing.');
+        }
+        this.vipPricingOffer.set(context.vipPricingOffer ?? null);
+      } catch {
+        if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
+          return;
+        }
+        this.pricingContextFailed.set(true);
+        this.checkoutReviewBodyLoading.set(false);
+        this.setCheckoutErrorMessage(dialog, null, 'Unable to load event pricing. Close and reopen checkout.');
+        return;
+      }
     }
     await this.loadRuntimeCheckoutBasket(dialog);
     if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
@@ -549,7 +573,8 @@ export class EventCheckoutPopupComponent {
       || this.paymentStep
       || this.busy
       || this.dialog()?.loading === true
-      || this.checkoutReviewBodyLoading();
+      || this.checkoutReviewBodyLoading()
+      || this.pricingContextFailed();
   }
 
   protected showPromoCodePopup(): boolean {
@@ -688,7 +713,8 @@ export class EventCheckoutPopupComponent {
             dialog.record,
             slotTemplateId,
             slot,
-            this.appliedPromoCodes
+            this.appliedPromoCodes,
+            true
           )
         : item.kind === 'sub_event'
           ? this.resolvePricing(
@@ -746,7 +772,8 @@ export class EventCheckoutPopupComponent {
       dialog.record,
       slotId,
       slot,
-      this.appliedPromoCodes
+      this.appliedPromoCodes,
+      true
     );
     const items: ActivityContracts.EventCheckoutLineItem[] = [
       {
@@ -895,7 +922,8 @@ export class EventCheckoutPopupComponent {
       dialog.record,
       slotId,
       slot,
-      this.appliedPromoCodes
+      this.appliedPromoCodes,
+      true
     );
     const selectedOptionalSubEvents = this.optionalSubEvents()
       .filter(subEvent => this.selectedOptionalSubEventIds.has(subEvent.id))
@@ -1147,7 +1175,8 @@ export class EventCheckoutPopupComponent {
 
   private checkoutBasketAddDisabled(): boolean {
     return this.busy
-      || this.checkoutReviewBodyLoading();
+      || this.checkoutReviewBodyLoading()
+      || this.pricingContextFailed();
   }
 
   private async addCheckoutBasketSlot(event?: Event): Promise<void> {
@@ -1775,7 +1804,8 @@ export class EventCheckoutPopupComponent {
     return this.isReadOnlyCheckoutSummary()
       || this.busy
       || this.dialog()?.loading === true
-      || this.checkoutReviewBodyLoading();
+      || this.checkoutReviewBodyLoading()
+      || this.pricingContextFailed();
   }
 
   private checkoutActionProgressState(actionId: string): 'loading' | null {
@@ -2291,7 +2321,7 @@ export class EventCheckoutPopupComponent {
     if (this.isReadOnlyCheckoutSummary()) {
       return false;
     }
-    if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading()) {
+    if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading() || this.pricingContextFailed()) {
       return false;
     }
     const footerState = state ?? this.checkoutFooterDecisionState();
@@ -3001,7 +3031,7 @@ export class EventCheckoutPopupComponent {
         .map(item => item.subEventId?.trim() ?? '')
         .filter(id => Boolean(id) && validOptionalIds.has(id))
     );
-    this.checkoutBasket = this.repriceCheckoutBasketItems(basket.items) ?? basket;
+    this.checkoutBasket = dialog.readOnlySummary ? basket : this.repriceCheckoutBasketItems(basket.items) ?? basket;
     const selectedDateKey = basket.selectedDateKey
       ?? basket.items.find(item => item.selectedDateKey?.trim())?.selectedDateKey
       ?? null;
@@ -3229,10 +3259,12 @@ export class EventCheckoutPopupComponent {
     record: ActivityEventRecord,
     slotId: string | null,
     slot: ContractTypes.EventSlotOccurrenceDTO | null,
-    appliedPromoCodes: readonly string[] = []
+    appliedPromoCodes: readonly string[] = [],
+    useVipOffer = false
   ): PricingSnapshot {
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
-    const normalized = PricingBuilder.compactPricingConfig(pricing, {
+    const vipOffer = useVipOffer ? this.vipPricingOffer() : null;
+    const normalized = PricingBuilder.compactPricingConfig(vipOffer ?? pricing, {
       context: 'event',
       slotCatalog,
       allowSlotFeatures: slotCatalog.length > 0
@@ -3246,12 +3278,14 @@ export class EventCheckoutPopupComponent {
     }
 
     const currency = normalized.currency || 'USD';
-    const previewBase = normalized.slotPricingEnabled && slotId
+    const vipAudience = normalized.audience.enabled && vipOffer !== null;
+    const vipPrice = vipAudience ? normalized.audience.vipPrice : null;
+    const previewBase = vipPrice ?? (normalized.slotPricingEnabled && slotId
       ? normalized.slotOverrides.find(item => item.slotId === slotId)?.price ?? normalized.basePrice
-      : normalized.basePrice;
+      : normalized.basePrice);
     const rows: ActivityContracts.EventCheckoutPricingSummaryRow[] = [{
       key: normalized.slotPricingEnabled && slotId ? `base:${slotId}` : 'base',
-      label: normalized.slotPricingEnabled && slotId ? 'Slot base price' : 'Base price',
+      label: vipPrice !== null ? 'VIP price' : normalized.slotPricingEnabled && slotId ? 'Slot base price' : 'Base price',
       detail: null,
       amount: previewBase,
       currency,
@@ -3263,7 +3297,7 @@ export class EventCheckoutPopupComponent {
     const hoursUntilStart = this.resolveHoursUntilStart(slot?.startAtIso ?? record.startAtIso);
 
     let nextPrice = previewBase;
-    if ((normalized.mode === 'demand-based' || normalized.mode === 'hybrid') && normalized.demandRulesEnabled) {
+    if (!vipAudience && (normalized.mode === 'demand-based' || normalized.mode === 'hybrid') && normalized.demandRulesEnabled) {
       for (const rule of normalized.demandRules) {
         if (!this.matchesDemandRule(rule, capacityFilledPercent, slotId)) {
           continue;
@@ -3280,7 +3314,7 @@ export class EventCheckoutPopupComponent {
         });
       }
     }
-    if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
+    if (!vipAudience && (normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
       for (const rule of normalized.timeRules) {
         if (!this.matchesTimeRule(rule, hoursUntilStart, slotId, slot?.startAtIso ?? record.startAtIso)) {
           continue;
@@ -3298,6 +3332,15 @@ export class EventCheckoutPopupComponent {
       }
     }
 
+    if (vipAudience && normalized.audience.inviteOnlyDiscountPercent !== null) {
+      const percent = normalized.audience.inviteOnlyDiscountPercent;
+      const previousPrice = nextPrice;
+      nextPrice *= 1 - percent / 100;
+      if (percent > 0) {
+        rows.push({ key: 'invitation', label: 'Invitation discount', detail: `-${percent}%`,
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100, currency, multiplier: 1 });
+      }
+    }
     if (normalized.minPrice !== null) {
       const previousPrice = nextPrice;
       nextPrice = Math.max(normalized.minPrice, nextPrice);
@@ -3327,9 +3370,10 @@ export class EventCheckoutPopupComponent {
       }
     }
 
-    if (normalized.audience.enabled && appliedPromoCodes.length > 0) {
+    const promoPricing = PricingBuilder.compactPricingConfig(pricing, { context: 'event' });
+    if (promoPricing.audience.enabled && (appliedPromoCodes?.length ?? 0) > 0) {
       const configuredPromoCodes = new Map(
-        (normalized.audience.promoCodes ?? [])
+        (promoPricing.audience.promoCodes ?? [])
           .map(item => [this.normalizePromoCode(item.code), item] as const)
           .filter(([code]) => Boolean(code))
       );

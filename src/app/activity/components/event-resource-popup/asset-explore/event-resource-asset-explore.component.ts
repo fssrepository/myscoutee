@@ -1032,6 +1032,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!popup) {
       return;
     }
+    const dateUnchanged = (current: string, selected: Date | null): boolean => {
+      if (!selected) {
+        return true;
+      }
+      const previous = AppUtils.isoLocalDateTimeToDate(current);
+      return previous !== null
+        && previous.getFullYear() === selected.getFullYear()
+        && previous.getMonth() === selected.getMonth()
+        && previous.getDate() === selected.getDate();
+    };
+    if (dateUnchanged(popup.startAtIso, start) && dateUnchanged(popup.endAtIso, end)) {
+      return;
+    }
     this.resourcePopupStore.assetExplorePopupRef.set(this.resolvePopupState({
       ...popup,
       startAtIso: AppUtils.applyDatePartToIsoLocal(popup.startAtIso, start),
@@ -2262,6 +2275,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       sourceId: card.id,
       mode: 'borrow',
       phase: dialog.paymentStep ? 'payment' : 'review',
+      cancellationPolicy: PricingBuilder.compactPricingConfig(card.pricing, {
+        context: 'asset', allowSlotFeatures: false
+      }).cancellationPolicy,
       title: this.i18n.translateParams('asset.borrow.title', { asset: card.title }),
       subtitle: this.popupSubtitle(),
       dateRange: {
@@ -3156,7 +3172,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const absoluteStartAtIso = AppUtils.isoLocalDateTimeToDate(startAtIso)?.toISOString();
     const absoluteEndAtIso = AppUtils.isoLocalDateTimeToDate(endAtIso)?.toISOString();
     return {
-      eventId: ActivityResourceBuilder.authorizationEventId(ownerId, subEvent.id),
+      eventId: ownerId,
       eventTitle: parentTitle,
       subEventId: subEvent.id,
       subEventTitle: subEvent.name,

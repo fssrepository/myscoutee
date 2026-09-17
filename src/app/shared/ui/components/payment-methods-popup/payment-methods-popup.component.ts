@@ -1067,9 +1067,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       const audit = item.checkoutSessionId
         ? await this.events.loadCheckoutPaymentAudit(userId, card.id, item.checkoutSessionId)
         : null;
-      const startAtIso = `${request?.booking?.startAtIso ?? item.createdAtIso}`.trim();
-      const endAtIso = `${request?.booking?.endAtIso ?? startAtIso}`.trim();
-      const quantity = Math.max(1, Math.trunc(Number(request?.booking?.quantity) || 1));
+      const startAtIso = `${audit?.bookingStartAtIso ?? request?.booking?.startAtIso ?? item.createdAtIso}`.trim();
+      const endAtIso = `${audit?.bookingEndAtIso ?? request?.booking?.endAtIso ?? startAtIso}`.trim();
+      const quantity = Math.max(1, Math.trunc(Number(audit?.bookingQuantity ?? request?.booking?.quantity) || 1));
       const currency = `${audit?.currency ?? item.currency ?? 'USD'}`.trim() || 'USD';
       const rows = audit?.pricingSummaryRows?.length
         ? audit.pricingSummaryRows.map(row => ({ ...row }))
@@ -1108,6 +1108,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
           sourceId: card.id,
           mode: 'payment-summary',
           phase: 'payment',
+          cancellationPolicy: audit?.cancellationPolicy ?? null,
+          refundPreview: audit?.refundPreview ?? item.refundPreview ?? null,
+          refundPolicyUnavailable: !audit,
           title: this.i18n.translate('event.checkout.payment.summary'),
           subtitle: card.title,
           dateRange: { startAt: startAtIso, endAt: endAtIso, precision: 'minute' },

@@ -95,6 +95,8 @@ export interface DateInputTimeModel {
 
 export interface DateInputModel {
   mode?: DateInputMode;
+  /** Commit single-date edits on blur instead of while typing. */
+  updateOn?: 'change' | 'blur';
   precision?: DateInputPrecision;
   valueFormat?: DateInputValueFormat;
   time?: boolean | DateInputTimeModel | null;
@@ -340,7 +342,18 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   protected onSingleDateChange(value: Date | null): void {
-    this.singleDateValue = value;
+    let date = value;
+    if (date && this.model?.updateOn === 'blur') {
+      const min = this.resolvedSingleMin();
+      const max = this.resolvedSingleMax();
+      if (min && date < min) {
+        date = new Date(min);
+      }
+      if (max && date > max) {
+        date = new Date(max);
+      }
+    }
+    this.singleDateValue = date;
     this.emitSingleValue();
   }
 

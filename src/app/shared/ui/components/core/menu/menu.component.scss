@@ -3211,24 +3211,24 @@ a.app-menu__item {
   max-width: min(8.4rem, 31vw);
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) {
+:host(.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) {
   display: block;
   width: 100%;
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu {
+:host(.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu {
   display: block;
   width: 100%;
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu__button-row {
+:host(.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu__button-row {
   display: flex;
   width: 100%;
   justify-content: stretch;
   gap: 0.78rem;
 }
 
-:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
+:host(.app-menu-host--inline-row-labelled-action:not(.app-menu-host--content-actions)) .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
   flex: 1 1 0;
   min-width: 0;
   padding-inline: 16px;

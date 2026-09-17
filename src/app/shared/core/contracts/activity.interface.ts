@@ -321,6 +321,7 @@ export interface ActivityEventRecord {
 }
 
 export interface EventInvitationContextDTO {
+  vipPricingOffer?: PricingContracts.PricingConfig | null;
   record: ActivityEventRecord | null;
   members: ActivityMemberDTO[];
   checkoutBasket: EventCheckoutBasket | null;
@@ -601,6 +602,7 @@ export interface SubEventsSlotDTO {
 
 export interface ActivityEventSubEventsResultDTO {
   mode: EventContracts.EventMode;
+  canAccessResources?: boolean;
   slots: SubEventsSlotDTO[];
   total?: number | null;
   nextCursor?: string | null;
@@ -1333,6 +1335,8 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
   eventId?: string;
   subEventId?: string;
+  /** Limits the list to one persisted Borrow request within the Asset's stage. */
+  assetRequestId?: string;
   /** Targets one independently submitted scoped Asset Borrow request. */
   targetMemberId?: string;
 }
@@ -1651,6 +1655,10 @@ export interface EventCheckoutBasket {
 }
 
 export interface EventCheckoutPaymentAudit {
+  bookingStartAtIso?: string | null;
+  bookingEndAtIso?: string | null;
+  cancellationPolicy?: PricingContracts.PricingCancellationPolicy | null;
+  refundPreview?: import('./payment-method.interface').PaymentRefundPreviewDto | null;
   id: string;
   userId: string;
   sourceId: string;

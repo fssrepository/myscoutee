@@ -52,6 +52,7 @@ export interface AssetEditorRuntimeAssignmentState {
   quantityMax: number;
   quantityLabel?: string;
   quantityDescription?: string;
+  quantityReadOnly?: boolean;
   editable: boolean;
   onChange?: (quantity: number) => void;
   onSave?: (state: { quantity: number; routeEnabled: boolean; routes: readonly string[] }) =>
@@ -73,6 +74,9 @@ export interface AssetEditorCheckoutState {
   dateRangeModel: DateInputModel;
   availableQuantity: number;
   pricingPreview: PricingEditorRuntimePreview;
+  cancellationPolicy?: AppDTOs.PricingCancellationPolicy | null;
+  refundPreview?: import('../../../core/contracts/payment-method.interface').PaymentRefundPreviewDto | null;
+  refundPolicyUnavailable?: boolean;
   acceptedPolicyIds: string[];
   footerItems: readonly AppMenuItem<string>[];
   pendingFooterItemId?: string | null;
@@ -637,6 +641,8 @@ export class AssetStore {
       title: state.title.trim(),
       subtitle: `${state.subtitle ?? ''}`.trim() || null,
       dateRange: { ...state.dateRange },
+      cancellationPolicy: state.cancellationPolicy ? structuredClone(state.cancellationPolicy) : null,
+      refundPreview: state.refundPreview ? { ...state.refundPreview } : null,
       dateRangeModel: {
         ...state.dateRangeModel,
         field: state.dateRangeModel.field ? { ...state.dateRangeModel.field } : undefined,

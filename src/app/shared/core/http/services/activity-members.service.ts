@@ -51,6 +51,9 @@ export class HttpActivityMembersService {
     if (subEventId) {
       params = params.set('subEventId', subEventId);
     }
+    if (options?.assetRequestId) {
+      params = params.set('assetRequestId', options.assetRequestId);
+    }
     try {
       const response = await this.http
         .get<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
@@ -58,11 +61,14 @@ export class HttpActivityMembersService {
         })
         .toPromise();
       const members = this.cloneEntries(Array.isArray(response) ? response : []);
-      if (!pendingOnly) {
+      if (!pendingOnly && !options?.assetRequestId) {
         this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
       }
       return this.cloneEntries(members);
-    } catch {
+    } catch (error) {
+      if (options?.assetRequestId) {
+        throw error;
+      }
       if (pendingOnly) {
         return [];
       }
@@ -90,6 +96,7 @@ export class HttpActivityMembersService {
             revision: `${item.revision ?? ''}`
           })).filter(item => item.id.length > 0),
           eventId: `${options?.eventId ?? ''}`.trim() || null,
+          assetRequestId: `${options?.assetRequestId ?? ''}`.trim() || null,
           subEventId: `${options?.subEventId ?? ''}`.trim() || null
         }
       ),
@@ -102,7 +109,7 @@ export class HttpActivityMembersService {
         : [],
       total: Math.max(0, Math.trunc(Number(response?.total) || 0))
     };
-    this.applySyncToCache(normalizedOwner, result);
+    if (!options?.assetRequestId) this.applySyncToCache(normalizedOwner, result);
     return {
       upserts: this.cloneEntries(result.upserts),
       removedIds: [...result.removedIds],
@@ -251,6 +258,7 @@ export class HttpActivityMembersService {
           action,
           reason: reason?.trim() || null,
           eventId: `${options?.eventId ?? ''}`.trim() || null,
+          assetRequestId: `${options?.assetRequestId ?? ''}`.trim() || null,
           subEventId: `${options?.subEventId ?? ''}`.trim() || null,
           targetMemberId: `${options?.targetMemberId ?? ''}`.trim() || null
         })
@@ -276,7 +284,9 @@ export class HttpActivityMembersService {
     const members = this.cloneEntries(Array.isArray(response)
       ? response
       : (Array.isArray(response?.members) ? response.members : []));
-    this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
+    if (!options?.assetRequestId) {
+      this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
+    }
     return {
       members: this.cloneEntries(members),
       counterOverrides: !Array.isArray(response) && response?.counterOverrides

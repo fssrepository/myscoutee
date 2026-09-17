@@ -3191,6 +3191,14 @@ export class LocalEventsRepository {
       ? 'accepted'
       : status;
     const pending = nextStatus === 'pending';
+    const vipInvitation = existing?.eventVipInvitation === true
+      && (existing.status === 'pending' || existing.status === 'accepted');
+    const vipAudit = [...(existing?.eventVipPriceAudit ?? [])];
+    if (vipInvitation && !existing.eventVipAcceptedAtIso) {
+      vipAudit.push({ invitationId: `${normalizedEventId}:${normalizedUserId}:${existing.eventVipOfferedAtIso}`,
+        action: 'accepted', actorUserId: normalizedUserId, atIso: nowIso,
+        pricing: structuredClone(event.pricing ?? null) });
+    }
     const record: ActivityMemberRecord = {
       id,
       userId: normalizedUserId,
@@ -3206,7 +3214,15 @@ export class LocalEventsRepository {
       pendingSource: pending ? 'member' : null,
       requestKind: pending ? (waitingList ? 'waitlist' : approvalRequested ? 'approval' : 'join') : null,
       invitedByActiveUser: false,
-      invitedByUserId: null,
+      invitedByUserId: existing?.eventVipInvitation ? existing.invitedByUserId : null,
+      eventVipInvitation: existing?.eventVipInvitation === true
+        && (existing.status === 'pending' || existing.status === 'accepted'),
+      eventVipAcceptedAtIso: existing?.eventVipInvitation === true
+        && (existing.status === 'pending' || existing.status === 'accepted')
+          ? existing.eventVipAcceptedAtIso || nowIso : null,
+      eventVipOfferedAtIso: existing?.eventVipOfferedAtIso ?? null,
+      eventVipOfferedPricing: existing?.eventVipOfferedPricing ?? null,
+      eventVipPriceAudit: vipAudit,
       metAtIso: existing?.metAtIso?.trim() || nowIso,
       actionAtIso: nowIso,
       metWhere: existing?.metWhere?.trim() || event.title,
