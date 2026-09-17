@@ -103,6 +103,7 @@
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
           <input
             type="number"
+            (input)="normalizeNumberInput($event)"
             min="0"
             step="0.01"
             [ngModel]="workingPricing.basePrice"
@@ -173,6 +174,7 @@
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
           <input
             type="number"
+            (input)="normalizeNumberInput($event)"
             min="0"
             step="0.01"
             [ngModel]="workingPricing.minPrice ?? ''"
@@ -190,6 +192,7 @@
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
           <input
             type="number"
+            (input)="normalizeNumberInput($event)"
             min="0"
             step="0.01"
             [ngModel]="workingPricing.maxPrice ?? ''"
@@ -253,6 +256,7 @@
                   <span>{{ 'quantity' | i18n }}</span>
                   <input
                     type="number"
+                    (input)="normalizeNumberInput($event)"
                     min="1"
                     step="1"
                     [ngModel]="rule.minQuantity"
@@ -281,6 +285,7 @@
                   <span>{{ 'value' | i18n }}</span>
                   <input
                     type="number"
+                    (input)="normalizeNumberInput($event)"
                     min="0"
                     step="0.01"
                     [ngModel]="rule.action.value"
@@ -357,6 +362,7 @@
                   <span>{{ 'pricing.capacity.percent' | i18n }}</span>
                   <input
                     type="number"
+                    (input)="normalizeNumberInput($event)"
                     min="0"
                     max="100"
                     step="1"
@@ -386,6 +392,7 @@
                   <span>{{ 'value' | i18n }}</span>
                   <input
                     type="number"
+                    (input)="normalizeNumberInput($event)"
                     min="0"
                     step="0.01"
                     [ngModel]="rule.action.value"
@@ -502,6 +509,7 @@
                     <span>{{ 'offset' | i18n }}</span>
                     <input
                       type="number"
+                      (input)="normalizeNumberInput($event)"
                       min="0"
                       step="1"
                       [ngModel]="rule.offsetValue ?? ''"
@@ -531,6 +539,7 @@
                   <span>{{ 'value' | i18n }}</span>
                   <input
                     type="number"
+                    (input)="normalizeNumberInput($event)"
                     min="0"
                     step="0.01"
                     [ngModel]="rule.action.value"
@@ -617,6 +626,7 @@
                   <span>{{ 'value' | i18n }}</span>
                   <input
                     type="number"
+                    (input)="normalizeNumberInput($event)"
                     min="0"
                     step="1"
                     [ngModel]="rule.offsetValue ?? ''"
@@ -646,6 +656,7 @@
                   @if (cancellationRuleNeedsValue(rule)) {
                     <input
                       type="number"
+                      (input)="normalizeNumberInput($event)"
                       min="0"
                       [step]="rule.refundKind === 'percent' ? '1' : '0.01'"
                       [ngModel]="rule.refundValue ?? ''"
@@ -720,6 +731,7 @@
               <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
               <input
                 type="number"
+                (input)="normalizeNumberInput($event)"
                 min="0"
                 step="0.01"
                 [ngModel]="workingPricing.audience.memberPrice ?? ''"
@@ -736,6 +748,7 @@
               <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
               <input
                 type="number"
+                (input)="normalizeNumberInput($event)"
                 min="0"
                 step="0.01"
                 [ngModel]="workingPricing.audience.vipPrice ?? ''"
@@ -750,6 +763,7 @@
             <span>{{ 'pricing.invite.discount.percent' | i18n }}</span>
             <input
               type="number"
+              (input)="normalizeNumberInput($event)"
               min="0"
               max="100"
               step="1"
@@ -812,6 +826,7 @@
                 <span>{{ 'value' | i18n }}</span>
                 <input
                   type="number"
+                  (input)="normalizeNumberInput($event)"
                   min="0"
                   step="0.01"
                   [ngModel]="promo.action.value"

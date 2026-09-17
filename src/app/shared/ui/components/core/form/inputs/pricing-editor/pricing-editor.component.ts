@@ -592,6 +592,19 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
+  protected normalizeNumberInput(event: Event): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== 'number') {
+      return;
+    }
+    // Angular parses the number for ngModel but can leave "01" in the input.
+    // Keep decimal input such as "0.05" and "1.20" intact while typing.
+    const normalized = input.value.replace(/^(-?)0+(?=\d)/, '$1');
+    if (normalized !== input.value) {
+      input.value = normalized;
+    }
+  }
+
   protected onBasePriceChange(value: number | string): void {
     this.workingPricing.basePrice = this.parseMoney(value) ?? 0;
     this.emitPricing();
