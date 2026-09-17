@@ -891,6 +891,8 @@
 }
 
 .pricing-editor__wizard-body {
+  // The popup host uses display: contents, so its body owns the size query.
+  container-type: inline-size;
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
@@ -942,7 +944,7 @@
   .pricing-editor__grid,
   .pricing-editor__grid--compact,
   .pricing-editor__rule-grid,
-  .pricing-editor__rule-grid--time,
+  .pricing-editor__rule-grid--time:not(.pricing-editor__rule-grid--slots),
   .pricing-editor__rule-grid--time.pricing-editor__rule-grid--slots,
   .pricing-editor__promo-card,
   .pricing-editor__preview {
