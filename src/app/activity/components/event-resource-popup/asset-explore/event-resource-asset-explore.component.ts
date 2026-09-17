@@ -3172,7 +3172,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const absoluteStartAtIso = AppUtils.isoLocalDateTimeToDate(startAtIso)?.toISOString();
     const absoluteEndAtIso = AppUtils.isoLocalDateTimeToDate(endAtIso)?.toISOString();
     return {
-      eventId: ActivityResourceBuilder.authorizationEventId(ownerId, subEvent.id),
+      eventId: ownerId,
       eventTitle: parentTitle,
       subEventId: subEvent.id,
       subEventTitle: subEvent.name,
