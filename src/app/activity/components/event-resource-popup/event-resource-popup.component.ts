@@ -1602,12 +1602,7 @@ export class EventResourcePopupComponent {
       quantity,
       quantityMax: bounds.quantityMax,
       quantityLabel: this.i18n.translate('asset.assignment.quantity'),
-      quantityDescription: this.assignedRuntimeQuantityDescription(
-        bounds.quantityMax,
-        quantity,
-        sourceCard,
-        bounds.reservation
-      ),
+      quantityReadOnly: true,
       editable
     };
     if (editable) {

@@ -1032,6 +1032,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!popup) {
       return;
     }
+    const dateUnchanged = (current: string, selected: Date | null): boolean => {
+      if (!selected) {
+        return true;
+      }
+      const previous = AppUtils.isoLocalDateTimeToDate(current);
+      return previous !== null
+        && previous.getFullYear() === selected.getFullYear()
+        && previous.getMonth() === selected.getMonth()
+        && previous.getDate() === selected.getDate();
+    };
+    if (dateUnchanged(popup.startAtIso, start) && dateUnchanged(popup.endAtIso, end)) {
+      return;
+    }
     this.resourcePopupStore.assetExplorePopupRef.set(this.resolvePopupState({
       ...popup,
       startAtIso: AppUtils.applyDatePartToIsoLocal(popup.startAtIso, start),

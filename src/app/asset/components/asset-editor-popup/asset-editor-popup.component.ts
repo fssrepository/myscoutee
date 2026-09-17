@@ -227,6 +227,7 @@ export class AssetEditorPopupComponent {
       runtimeAssignment
         ? [
             runtimeAssignment.editable,
+            runtimeAssignment.quantityReadOnly === true,
             runtimeAssignment.quantity,
             runtimeAssignment.quantityMax,
             runtimeAssignment.quantityLabel ?? '',
@@ -501,7 +502,8 @@ export class AssetEditorPopupComponent {
 
   private assetRuntimeAssignmentControlDisabled(): boolean {
     const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
-    return this.isLoading || this.isSavePending || runtimeAssignment?.editable !== true;
+    return this.isLoading || this.isSavePending || runtimeAssignment?.editable !== true
+      || runtimeAssignment.quantityReadOnly === true;
   }
 
   protected assetEditorFlowValue(): AssetEditorFlowValue {
@@ -1128,7 +1130,7 @@ export class AssetEditorPopupComponent {
 
   private applyRuntimeAssignmentValueFromFlow(value: unknown): void {
     const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
-    if (!runtimeAssignment || !this.isRecord(value)) {
+    if (!runtimeAssignment || runtimeAssignment.quantityReadOnly === true || !this.isRecord(value)) {
       return;
     }
     const sourceQuantity = (value as Partial<AssetEditorFlowValue>).quantity;

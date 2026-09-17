@@ -52,6 +52,7 @@ export interface AssetEditorRuntimeAssignmentState {
   quantityMax: number;
   quantityLabel?: string;
   quantityDescription?: string;
+  quantityReadOnly?: boolean;
   editable: boolean;
   onChange?: (quantity: number) => void;
   onSave?: (state: { quantity: number; routeEnabled: boolean; routes: readonly string[] }) =>
