@@ -7,6 +7,7 @@ import { firstValueFrom, of } from 'rxjs';
 
 import { SessionService } from '../base/services/session.service';
 import {
+  APP_SESSION_ID_HEADER,
   DEMO_SESSION_HEADER,
   DEMO_SESSION_VALUE,
   DEMO_USER_HEADER,
@@ -94,11 +95,26 @@ describe('sessionModeInterceptor anonymous demo registration', () => {
     }))).body).toBeNull();
   });
 
-  it('does not mark unauthenticated Firebase-mode uploads as demo', async () => {
+  it('routes new Explore profile uploads to demo storage on Firebase deployments without logging in', async () => {
     session.authMode = 'firebase';
     const body = new FormData();
     body.append('ownerId', 'demo-profile-new-member');
-    expect((await interceptHeader(new HttpRequest('POST', '/api/media/images', body))).body).toBeNull();
+    const request = new HttpRequest('POST', '/api/media/images', body);
+    expect((await interceptHeader(request)).body).toBe(DEMO_SESSION_VALUE);
+    expect((await interceptHeader(request, DEMO_USER_HEADER)).body).toBeNull();
+    expect((await interceptHeader(request, APP_SESSION_ID_HEADER)).body).toBeNull();
+  });
+
+  it('keeps completed Explore registration in demo storage on Firebase deployments', async () => {
+    session.authMode = 'firebase';
+    const request = new HttpRequest('POST', '/api/auth/me/profile-ext', {
+      profile: { id: 'demo-profile-new-member' }
+    });
+    expect((await interceptHeader(request)).body).toBe(DEMO_SESSION_VALUE);
+
+    const realUpload = new FormData();
+    realUpload.append('ownerId', 'real-member');
+    expect((await interceptHeader(new HttpRequest('POST', '/api/media/images', realUpload))).body).toBeNull();
   });
 });
 
