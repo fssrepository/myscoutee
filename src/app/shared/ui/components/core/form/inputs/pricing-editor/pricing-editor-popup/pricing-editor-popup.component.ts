@@ -125,6 +125,9 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
     if (event.action.id !== 'pricing-save') {
       return;
     }
+    if (!this.validatePriceBounds(true)) {
+      return;
+    }
     this.popupStore.requestPricingEditorPopupSave(popup.ownerId, this.draftValue, event.sourceEvent);
   }
 

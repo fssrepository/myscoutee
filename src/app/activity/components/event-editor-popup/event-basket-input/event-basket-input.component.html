@@ -100,7 +100,13 @@
         @for (row of visiblePricingSummaryRows(); track row.key || row.label) {
           <div class="event-basket-pricing-row">
             <span class="event-basket-pricing-label">
-              <span>{{ row.label | i18n }}</span>
+              <span>
+                @if (row.label === 'pricing.asset.billed.duration' && row.multiplier) {
+                  {{ row.multiplier }} {{ (row.multiplier === 1 ? 'asset.borrow.unit.day' : 'asset.borrow.unit.days') | i18n }}
+                } @else {
+                  {{ row.label | i18n }}
+                }
+              </span>
               @if (row.detail) {
                 <small>{{ row.detail | i18n }}</small>
               }

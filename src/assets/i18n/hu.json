@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.16.hu.112",
+  "version": "2026.09.17.hu.113",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -2375,6 +2375,7 @@
     "pricing.maximum": "Maximum ár",
     "pricing.no.minimum": "Nincs minimum",
     "pricing.no.maximum": "Nincs maximum",
+    "pricing.maximum.below.minimum": "A maximális ár nem lehet kisebb a minimális árnál.",
     "pricing.rounding": "Kerekítés",
     "pricing.quantity.rules": "Mennyiségi szabályok",
     "pricing.quantity.adjustment": "Mennyiségi módosítás",

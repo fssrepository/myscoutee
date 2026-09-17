@@ -261,12 +261,13 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     const right = Math.max(left + 1, width - inset);
     const top = inset;
     const bottom = Math.max(top + 1, height - inset);
+    const maxRadius = Math.max(0, Math.min(right - left, bottom - top) / 2);
     const radius = this.isActionSurfaceShape
       ? Math.min(
           Math.max(0, Number(this.surfaceRadiusPx) || 0),
-          Math.max(0, (bottom - top) / 2)
+          maxRadius
         )
-      : Math.max(0, (bottom - top) / 2);
+      : maxRadius;
     const startX = width / 2;
     const rightArcX = Math.max(left, right - radius);
     const leftArcX = Math.min(right, left + radius);
@@ -345,17 +346,23 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.actionButtonResizeObserver || typeof ResizeObserver !== 'function') {
       return;
     }
-    this.actionButtonResizeObserver = new ResizeObserver(() => this.measureActionButtonSize());
+    this.actionButtonResizeObserver = new ResizeObserver(entries =>
+      this.measureActionButtonSize(entries[0]?.contentRect));
     this.actionButtonResizeObserver.observe(this.host.nativeElement);
   }
 
-  private measureActionButtonSize(): void {
+  private measureActionButtonSize(size?: Pick<DOMRectReadOnly, 'width' | 'height'>): void {
     this.clearActionButtonMeasureFrame();
     const measure = (): void => {
       this.actionButtonMeasureFrameId = null;
-      const rect = this.host.nativeElement.getBoundingClientRect();
-      const width = Math.max(24, Math.round(rect.width));
-      const height = Math.max(24, Math.round(rect.height));
+      // SVG coordinates must use layout pixels, not a transformed screen rect.
+      // Keep fractional sizes so flex sizing and zoom do not stretch the arcs.
+      const style = size ? null : getComputedStyle(this.host.nativeElement);
+      const width = size?.width ?? Number.parseFloat(style?.width ?? '0');
+      const height = size?.height ?? Number.parseFloat(style?.height ?? '0');
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+        return;
+      }
       const current = this.actionButtonSize();
       if (current.width === width && current.height === height) {
         return;

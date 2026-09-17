@@ -464,6 +464,10 @@ export class ProfileFormFlowConverter {
     options: ProfileFormFlowConverterOptions,
     profileSize: 'small' | 'big'
   ): readonly FormFlowControlModel[] {
+    const today = new Date();
+    const adultYear = today.getFullYear() - 18;
+    const lastDayOfMonth = new Date(adultYear, today.getMonth() + 1, 0).getDate();
+    const latestBirthday = new Date(adultYear, today.getMonth(), Math.min(today.getDate(), lastDayOfMonth));
     const baseControls: FormFlowControlModel[] = [
       {
         id: 'about',
@@ -505,6 +509,10 @@ export class ProfileFormFlowConverter {
         required: true,
         placeholder: 'dd/mm/yyyy',
         config: {
+          model: {
+            updateOn: 'blur',
+            field: { max: latestBirthday }
+          },
           meta: {
             kind: 'horoscope',
             label: 'profile.horoscope',

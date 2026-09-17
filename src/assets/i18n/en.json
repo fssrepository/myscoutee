@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.16.en.112",
+  "version": "2026.09.17.en.113",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -2375,6 +2375,7 @@
     "pricing.maximum": "Max Price",
     "pricing.no.minimum": "No minimum",
     "pricing.no.maximum": "No maximum",
+    "pricing.maximum.below.minimum": "Maximum price must be greater than or equal to minimum price.",
     "pricing.rounding": "Rounding",
     "pricing.quantity.rules": "Quantity Rules",
     "pricing.quantity.adjustment": "Quantity adjustment",

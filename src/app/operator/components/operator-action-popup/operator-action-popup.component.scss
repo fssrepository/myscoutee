@@ -16,13 +16,6 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.operator-action-popup--updates .operator-action-popup__actions {
-  --app-menu-row-width: 100%;
-  --app-menu-row-wrap: wrap;
-  --app-menu-action-flex: 0 1 auto;
-  --app-menu-action-min-width: 0;
-}
-
 .operator-action-popup--loading {
   min-height: 100%;
   flex: 1 1 auto;

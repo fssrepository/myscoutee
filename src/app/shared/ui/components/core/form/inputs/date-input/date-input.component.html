@@ -242,6 +242,7 @@
             matInput
             [matDatepicker]="singlePicker"
             [ngModel]="singleDateValue"
+            [ngModelOptions]="{ updateOn: model?.updateOn ?? 'change' }"
             (ngModelChange)="onSingleDateChange($event)"
             (blur)="markTouched()"
             [min]="resolvedSingleMin()"

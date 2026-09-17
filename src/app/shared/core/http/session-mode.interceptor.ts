@@ -76,7 +76,8 @@ export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
   const session = sessionService.currentSession();
   const isDemoRequest = session?.kind === 'demo'
     || isDemoSelectorRequest(req.url)
-    || (!session && sessionService.authMode === 'selector' && isDemoRegistrationRequest(req));
+    // Explore registration is also available on Firebase-enabled deployments.
+    || (!session && isDemoRegistrationRequest(req));
   if (!isDemoRequest) {
     return next(req);
   }

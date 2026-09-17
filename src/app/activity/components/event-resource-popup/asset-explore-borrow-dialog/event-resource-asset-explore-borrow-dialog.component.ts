@@ -1,3 +1,5 @@
+import { AppUtils } from '../../../../shared/app-utils';
+import { PaymentRefundPolicyComponent } from '../../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -8,7 +10,6 @@ import {
   type DateInputRangeValue,
   type DateInputValue
 } from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
-import { AppUtils } from '../../../../shared/app-utils';
 import { I18nService } from '../../../../shared/core/base/services/i18n.service';
 import { I18nPipe } from '../../../../shared/ui/pipes/i18n.pipe';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
@@ -57,7 +58,8 @@ export interface AssetExploreBorrowDialogViewState {
     DateInputComponent,
     PopupComponent,
     AppMenuComponent,
-    I18nPipe
+    I18nPipe,
+    PaymentRefundPolicyComponent
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
   styleUrl: './event-resource-asset-explore-borrow-dialog.component.scss',
@@ -166,138 +168,6 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     );
   }
 
-  protected showCancellationPolicyCard(dialog: AssetExploreBorrowDialogViewState): boolean {
-    return dialog.totalAmount > 0
-      && dialog.cancellationPolicy?.enabled === true
-      && (dialog.cancellationPolicy.rules?.length ?? 0) > 0;
-  }
-
-  protected cancellationPreview(dialog: AssetExploreBorrowDialogViewState): { refundLabel: string; note: string } | null {
-    if (!this.showCancellationPolicyCard(dialog)) {
-      return null;
-    }
-    const applicableRule = this.applicableCancellationRule(dialog);
-    if (!applicableRule) {
-      return {
-        refundLabel: this.i18n.translate('asset.borrow.no.reimbursement'),
-        note: this.i18n.translate('asset.borrow.cancellation.windows.passed')
-      };
-    }
-    const refundAmount = this.cancellationRefundAmount(applicableRule, dialog.totalAmount);
-    return {
-      refundLabel: refundAmount > 0
-        ? this.i18n.translateParams('asset.borrow.refundable.now', {
-            amount: this.formatMoney(refundAmount, dialog.currency)
-          })
-        : this.i18n.translate('asset.borrow.no.reimbursement'),
-      note: this.describeCancellationRule(applicableRule, dialog.currency)
-    };
-  }
-
-  protected cancellationRules(dialog: AssetExploreBorrowDialogViewState): ContractTypes.PricingCancellationRule[] {
-    return dialog.cancellationPolicy?.rules ?? [];
-  }
-
-  protected cancellationRuleWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
-    const value = Math.max(0, Number(rule.offsetValue) || 0);
-    const unitKey = rule.offsetUnit === 'hours'
-      ? (value === 1 ? 'asset.borrow.unit.hour' : 'asset.borrow.unit.hours')
-      : rule.offsetUnit === 'weeks'
-        ? (value === 1 ? 'asset.borrow.unit.week' : 'asset.borrow.unit.weeks')
-        : rule.offsetUnit === 'months'
-          ? (value === 1 ? 'asset.borrow.unit.month' : 'asset.borrow.unit.months')
-          : (value === 1 ? 'asset.borrow.unit.day' : 'asset.borrow.unit.days');
-    return this.i18n.translateParams('asset.borrow.cancellation.window', {
-      value,
-      unit: this.i18n.translate(unitKey)
-    });
-  }
-
-  protected cancellationRuleRefundLabel(
-    rule: ContractTypes.PricingCancellationRule,
-    currency: string
-  ): string {
-    if (rule.refundKind === 'full') {
-      return this.i18n.translate('full.refund');
-    }
-    if (rule.refundKind === 'none') {
-      return this.i18n.translate('no.refund');
-    }
-    if (rule.refundKind === 'fixed_amount') {
-      return this.formatMoney(Number(rule.refundValue) || 0, currency);
-    }
-    return this.i18n.translateParams('asset.borrow.refund.percent', {
-      percent: Math.max(0, Number(rule.refundValue) || 0)
-    });
-  }
-
-  private applicableCancellationRule(
-    dialog: AssetExploreBorrowDialogViewState
-  ): ContractTypes.PricingCancellationRule | null {
-    const bookingStart = AppUtils.isoLocalDateTimeToDate(dialog.bookingStartAtIso);
-    if (!bookingStart) {
-      return null;
-    }
-    let bestRule: ContractTypes.PricingCancellationRule | null = null;
-    let bestDeadlineMs = Number.NEGATIVE_INFINITY;
-    for (const rule of this.cancellationRules(dialog)) {
-      const deadlineMs = this.cancellationRuleDeadlineMs(rule, bookingStart);
-      if (!Number.isFinite(deadlineMs) || Date.now() > deadlineMs) {
-        continue;
-      }
-      if (deadlineMs > bestDeadlineMs) {
-        bestDeadlineMs = deadlineMs;
-        bestRule = rule;
-      }
-    }
-    return bestRule;
-  }
-
-  private cancellationRuleDeadlineMs(
-    rule: ContractTypes.PricingCancellationRule,
-    bookingStart: Date
-  ): number {
-    const deadline = new Date(bookingStart.getTime());
-    const offsetValue = Math.max(0, Number(rule.offsetValue) || 0);
-    switch (rule.offsetUnit) {
-      case 'hours':
-        deadline.setHours(deadline.getHours() - offsetValue);
-        break;
-      case 'weeks':
-        deadline.setDate(deadline.getDate() - (offsetValue * 7));
-        break;
-      case 'months':
-        deadline.setMonth(deadline.getMonth() - offsetValue);
-        break;
-      default:
-        deadline.setDate(deadline.getDate() - offsetValue);
-        break;
-    }
-    return deadline.getTime();
-  }
-
-  private cancellationRefundAmount(
-    rule: ContractTypes.PricingCancellationRule,
-    totalAmount: number
-  ): number {
-    if (rule.refundKind === 'full') {
-      return Math.round(totalAmount * 100) / 100;
-    }
-    if (rule.refundKind === 'none') {
-      return 0;
-    }
-    if (rule.refundKind === 'fixed_amount') {
-      return Math.min(totalAmount, Math.round((Number(rule.refundValue) || 0) * 100) / 100);
-    }
-    return Math.round(totalAmount * ((Math.max(0, Math.min(100, Number(rule.refundValue) || 0))) / 100) * 100) / 100;
-  }
-
-  private describeCancellationRule(rule: ContractTypes.PricingCancellationRule, currency: string): string {
-    return this.i18n.translateParams('asset.borrow.cancellation.rule.description', {
-      refund: this.cancellationRuleRefundLabel(rule, currency),
-      window: this.cancellationRuleWindowLabel(rule)
-    });
-  }
 
   protected close(event?: Event): void {
     event?.stopPropagation();

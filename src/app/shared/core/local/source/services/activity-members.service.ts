@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
+import { tournamentParticipationLocked } from '../../../common/tournament-group-count';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
@@ -119,15 +120,38 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       return;
     }
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    void actorUserId;
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
     const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
     const existingRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
-    const records = members.map(member => LocalActivityMembersBuilder.toRecord(
-      normalizedOwner,
-      member,
-      existingRecordsById.get(member.id) ?? null
-    ));
+    const organizerInvitation = normalizedOwner.ownerType === 'event'
+      && this.canManageOwnerMembers(normalizedOwner, previousMembers, actorUserId, options);
+    const invitationEvent = normalizedOwner.ownerType === 'event'
+      ? this.eventsRepository.peekKnownItemById(actorUserId, normalizedOwner.ownerId) : null;
+    const records = members.map(member => {
+      const previous = existingRecordsById.get(member.id) ?? null;
+      const next = LocalActivityMembersBuilder.toRecord(normalizedOwner, member, previous);
+      // These audit fields are owned by the command, not by the submitted member DTO.
+      next.eventVipInvitation = previous?.eventVipInvitation === true;
+      next.eventVipAcceptedAtIso = previous?.eventVipAcceptedAtIso ?? null;
+      next.eventVipOfferedAtIso = previous?.eventVipOfferedAtIso ?? null;
+      next.eventVipOfferedPricing = previous?.eventVipOfferedPricing ?? null;
+      next.eventVipPriceAudit = previous?.eventVipPriceAudit ?? [];
+      if (normalizedOwner.ownerType === 'event' && member.status === 'pending'
+          && member.requestKind === 'invite'
+          && !(previous?.status === 'pending' && previous.requestKind === 'invite')) {
+        next.eventVipInvitation = organizerInvitation;
+        next.eventVipAcceptedAtIso = null;
+        next.eventVipOfferedAtIso = organizerInvitation ? next.updatedAtIso : null;
+        next.eventVipOfferedPricing = organizerInvitation ? structuredClone(invitationEvent?.pricing ?? null) : null;
+        if (organizerInvitation) {
+          next.eventVipPriceAudit = [...next.eventVipPriceAudit, {
+            invitationId: `${normalizedOwner.ownerId}:${member.userId}:${next.eventVipOfferedAtIso}`,
+            action: 'offered', actorUserId, atIso: next.updatedAtIso, pricing: next.eventVipOfferedPricing
+          }];
+        }
+      }
+      return next;
+    });
     const ownerSnapshot = this.ownerSnapshotFromOwner(normalizedOwner);
     this.activityMembersRepository.replaceRecordsByOwner(
       normalizedOwner,
@@ -213,6 +237,14 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const targetIsApprovalRequest = targetMember?.status === 'pending'
       && !targetIsInvitation;
     const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
+    if (organizerParticipationAction
+        && (normalizedOwner.ownerType === 'group' || normalizedOwner.ownerType === 'subEvent')) {
+      const event = this.eventsRepository.peekKnownItemById(normalizedActorUserId, `${options?.eventId ?? ''}`.trim());
+      const stage = event?.subEvents?.find(item => item.id === options?.subEventId);
+      if (!stage || tournamentParticipationLocked(stage)) {
+        return previousMembers;
+      }
+    }
     const organizerParticipationAllowed = organizerParticipationAction
       && normalizedActorUserId === normalizedTargetUserId
       && (actorCanManage || scopedAssetMembers != null)
@@ -1015,8 +1047,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   ): ActivityMemberDTO[] | null {
     const eventId = `${options?.eventId ?? ''}`.trim();
     const subEventId = `${options?.subEventId ?? ''}`.trim();
+    const assetRequestId = `${options?.assetRequestId ?? ''}`.trim();
     if (owner.ownerType !== 'asset' || !eventId || !subEventId) {
-      return null;
+      return assetRequestId ? [] : null;
     }
     const asset = this.assetsRepository.peekAssetForMembershipById(owner.ownerId);
     if (!asset) {
@@ -1035,7 +1068,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         .map(record => [record.userId, record] as const)
     );
     const members: ActivityMemberDTO[] = [];
-    if (options?.pendingOnly !== true
+    if (!assetRequestId && options?.pendingOnly !== true
         && ownerUserId
         && !asset.ownerReleasedAtIso
         && scopedManagerUserId === ownerUserId) {
@@ -1072,7 +1105,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     for (const request of asset.requests ?? []) {
       const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
       const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
-      if (!acceptedEventIds.has(bookingEventId) || bookingSubEventId !== subEventId) {
+      if (!acceptedEventIds.has(bookingEventId) || bookingSubEventId !== subEventId
+          || (assetRequestId && request.id !== assetRequestId)) {
         continue;
       }
       if (options?.pendingOnly === true && request.status !== 'pending') {

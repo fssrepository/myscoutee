@@ -1,3 +1,4 @@
+import type { PricingConfig } from "../../../contracts/pricing.interface";
 import type {
   ActivityMemberOwnerType,
   ActivityMemberRequestKind,
@@ -30,6 +31,12 @@ export interface ActivityMemberRecord {
   requestKind: ActivityMemberRequestKind;
   invitedByActiveUser: boolean;
   invitedByUserId?: string | null;
+  eventVipInvitation?: boolean;
+  eventVipAcceptedAtIso?: string | null;
+  eventVipOfferedAtIso?: string | null;
+  eventVipOfferedPricing?: PricingConfig | null;
+  eventVipPriceAudit?: Array<{ invitationId: string; action: 'offered' | 'accepted'; actorUserId: string;
+    atIso: string; pricing: PricingConfig | null }>;
   metAtIso: string;
   actionAtIso: string;
   metWhere: string;

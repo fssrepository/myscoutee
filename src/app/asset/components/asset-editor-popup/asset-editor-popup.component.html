@@ -49,6 +49,19 @@
           ></app-form-flow>
         }
 
+        @if (assetCheckout(); as checkout) {
+          @if (checkoutPaymentTotal() > 0) {
+            <app-payment-refund-policy
+              [policy]="checkout.cancellationPolicy ?? null"
+              [bookingStartAtIso]="checkout.dateRange.startAt"
+              [totalAmount]="checkoutPaymentTotal()"
+              [currency]="checkoutPaymentCurrency()"
+              [preview]="checkout.refundPreview ?? null"
+              [unavailable]="checkout.refundPolicyUnavailable === true"
+            ></app-payment-refund-policy>
+          }
+        }
+
         @if (assetCheckout()?.error; as checkoutError) {
           <p class="asset-editor-checkout-error">{{ checkoutError }}</p>
         }
