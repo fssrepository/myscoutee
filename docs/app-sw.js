@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-36963b82b82c-20260906104107";
-const BUILD_ID = "36963b82b82c-20260906104107";
+const CACHE_VERSION = "build-eb0b65fe2585-20260917141140";
+const BUILD_ID = "eb0b65fe2585-20260917141140";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -30,134 +30,143 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-25M243O5.js",
-  "./chunk-2IMPDPM2.js",
-  "./chunk-2IVLHJR4.js",
-  "./chunk-2VWQBG22.js",
-  "./chunk-2YYGLJOM.js",
-  "./chunk-3ATDS44L.js",
-  "./chunk-3DH4AX5M.js",
-  "./chunk-3MO2L3C5.js",
-  "./chunk-3W3ZWATO.js",
-  "./chunk-3XT2AOVY.js",
-  "./chunk-3ZLWAQ3J.js",
-  "./chunk-437UMXZN.js",
-  "./chunk-4FVBXBHV.js",
-  "./chunk-4L3KPKWT.js",
-  "./chunk-5MIWYEFT.js",
-  "./chunk-5RF6KZXD.js",
-  "./chunk-5VJ3QTSM.js",
-  "./chunk-5VJ6TFDR.js",
-  "./chunk-63EDZGYJ.js",
-  "./chunk-67LEVAOV.js",
-  "./chunk-6JOX4GZD.js",
-  "./chunk-6TUWGP7D.js",
-  "./chunk-72UKG5BT.js",
-  "./chunk-7RERTQMP.js",
-  "./chunk-A6GAQULJ.js",
-  "./chunk-ABJ7DE24.js",
-  "./chunk-ACOFNCDC.js",
-  "./chunk-AEN4WKHL.js",
-  "./chunk-AN7UUNIS.js",
-  "./chunk-ANGIVEM2.js",
-  "./chunk-B3JJSNPM.js",
+  "./chunk-25AYYZST.js",
+  "./chunk-2KWFPSNY.js",
+  "./chunk-2TTBGXEA.js",
+  "./chunk-2XRTSBBD.js",
+  "./chunk-35LHDH6V.js",
+  "./chunk-37YERUXF.js",
+  "./chunk-3EGRFSGN.js",
+  "./chunk-3F72AVWM.js",
+  "./chunk-3MVOPWA3.js",
+  "./chunk-3QVMIMSY.js",
+  "./chunk-3XLZDGBO.js",
+  "./chunk-4MPEVC4Q.js",
+  "./chunk-4NVYFCXB.js",
+  "./chunk-53DHOJPH.js",
+  "./chunk-545VWOW7.js",
+  "./chunk-54GXXXZ5.js",
+  "./chunk-5MXIESPD.js",
+  "./chunk-5PTZ5RRA.js",
+  "./chunk-5XJ4VCGT.js",
+  "./chunk-63JXBWZ5.js",
+  "./chunk-6ANHBDWO.js",
+  "./chunk-7W3M4WER.js",
+  "./chunk-7WTDQMTU.js",
+  "./chunk-7XJKEGLP.js",
+  "./chunk-A442VKOQ.js",
+  "./chunk-ABJEAPXV.js",
+  "./chunk-ACC32FZ7.js",
+  "./chunk-ACL7UF6X.js",
+  "./chunk-AG2BCNDW.js",
+  "./chunk-ALCEA24I.js",
+  "./chunk-AX23QHOO.js",
+  "./chunk-AZ3TAFFF.js",
+  "./chunk-AZTIUBWU.js",
+  "./chunk-B4QDGBZR.js",
   "./chunk-BA3DHQPG.js",
-  "./chunk-BAG6GY2R.js",
-  "./chunk-BAY4VUGZ.js",
-  "./chunk-BWIXVDWF.js",
-  "./chunk-BZVUP2JR.js",
-  "./chunk-C5TO5KV3.js",
-  "./chunk-CGWXYHZR.js",
-  "./chunk-CLFKEJMG.js",
-  "./chunk-CQB5BGHI.js",
-  "./chunk-D6WOBLWF.js",
-  "./chunk-DBMRBKXU.js",
-  "./chunk-DFNFYK7J.js",
-  "./chunk-DKOUTDX4.js",
-  "./chunk-DYHB2LQA.js",
-  "./chunk-E5JSUULW.js",
-  "./chunk-EBMX5DOB.js",
-  "./chunk-F6SLU3VQ.js",
-  "./chunk-FA6SRADK.js",
-  "./chunk-FD3Z2NSU.js",
-  "./chunk-FP7CAOWJ.js",
-  "./chunk-FPVMIUWG.js",
-  "./chunk-G4SU5XGU.js",
-  "./chunk-GNFSPP7F.js",
-  "./chunk-GOF7F3TG.js",
-  "./chunk-GR5TQN7Q.js",
-  "./chunk-H54PGE2G.js",
-  "./chunk-HE4K4HMH.js",
-  "./chunk-HEJIQCNL.js",
-  "./chunk-HP2VZ2ZY.js",
-  "./chunk-I4GOTSUL.js",
-  "./chunk-IHX4CIKE.js",
+  "./chunk-BIPPBA2O.js",
+  "./chunk-BPBWOMJN.js",
+  "./chunk-BUGYNVQX.js",
+  "./chunk-C5RUOC4A.js",
+  "./chunk-CEIHMH5F.js",
+  "./chunk-CF6OAGFC.js",
+  "./chunk-CMXMC4Q6.js",
+  "./chunk-CRF55CRI.js",
+  "./chunk-CU2JF5UR.js",
+  "./chunk-DPSJSGBQ.js",
+  "./chunk-EHIIA4J6.js",
+  "./chunk-EPCMXAIO.js",
+  "./chunk-EU3INP2M.js",
+  "./chunk-FDXELSNT.js",
+  "./chunk-FG5B2P33.js",
+  "./chunk-FJUYZRTR.js",
+  "./chunk-FMQK3LG3.js",
+  "./chunk-FPKZ7KQM.js",
+  "./chunk-GC42O23E.js",
+  "./chunk-GER4QCOV.js",
+  "./chunk-GHKPBJMP.js",
+  "./chunk-GV46HPLD.js",
+  "./chunk-H5CE2GEL.js",
+  "./chunk-HF6MJOZF.js",
+  "./chunk-HGQZBYMF.js",
+  "./chunk-HLWUY5L5.js",
+  "./chunk-HNU5Z2ZN.js",
+  "./chunk-HNYEAK24.js",
+  "./chunk-HQT5SKMU.js",
+  "./chunk-HSGFNKEX.js",
+  "./chunk-HT365Y55.js",
+  "./chunk-ICK6H67E.js",
   "./chunk-ILYEL5SY.js",
-  "./chunk-IQVXETQP.js",
-  "./chunk-IYUJ6KYW.js",
-  "./chunk-J6MR7NXA.js",
-  "./chunk-JHEWKTRG.js",
-  "./chunk-JPXG4SFR.js",
-  "./chunk-JWNC747J.js",
-  "./chunk-KB33S2EZ.js",
-  "./chunk-KFYILAV3.js",
-  "./chunk-KSHQH56S.js",
-  "./chunk-KT5Y2SXS.js",
-  "./chunk-LC5GU43D.js",
-  "./chunk-LP5RUUUL.js",
-  "./chunk-LUHQA3OV.js",
-  "./chunk-MBI5MVII.js",
-  "./chunk-MPOD3X55.js",
-  "./chunk-MQEVJFGP.js",
-  "./chunk-MQUOU7C6.js",
-  "./chunk-N6EB6EGV.js",
-  "./chunk-NGZTHXMF.js",
-  "./chunk-NHKAXC26.js",
-  "./chunk-NJJDIYPP.js",
-  "./chunk-NMGPNRXJ.js",
-  "./chunk-NSFAFBEM.js",
-  "./chunk-O56YWOSE.js",
-  "./chunk-O6EIOFZ2.js",
-  "./chunk-OK2C2OBT.js",
-  "./chunk-OO5XFZM4.js",
-  "./chunk-OUGH53XI.js",
-  "./chunk-OUPBHBGF.js",
-  "./chunk-P2Y34Q2D.js",
-  "./chunk-PH3EGTXR.js",
-  "./chunk-QDRW463X.js",
-  "./chunk-QOXA5CBV.js",
-  "./chunk-QUYD7L2J.js",
-  "./chunk-R2GSG7D4.js",
-  "./chunk-RKJI3PTR.js",
-  "./chunk-ROZNL432.js",
+  "./chunk-J6T4D45C.js",
+  "./chunk-JEYORX5Y.js",
+  "./chunk-JJ4K7YYN.js",
+  "./chunk-JKQGCZYR.js",
+  "./chunk-JR5N2UKL.js",
+  "./chunk-JWTYB7GF.js",
+  "./chunk-JYAJ4NFJ.js",
+  "./chunk-K4GHUNDI.js",
+  "./chunk-KN4LDBRY.js",
+  "./chunk-KONZZAQ5.js",
+  "./chunk-KQJ2XMDA.js",
+  "./chunk-L3DE4C5F.js",
+  "./chunk-L46NBPVP.js",
+  "./chunk-LLG7UABS.js",
+  "./chunk-ME5WBHOZ.js",
+  "./chunk-MI3QUBGT.js",
+  "./chunk-MTKWC3NG.js",
+  "./chunk-MTNVDVIH.js",
+  "./chunk-NLNFARP5.js",
+  "./chunk-NMKFQJNP.js",
+  "./chunk-NOZLKPZR.js",
+  "./chunk-O4CGBNCG.js",
+  "./chunk-OGLOPTHJ.js",
+  "./chunk-OHGMJV7V.js",
+  "./chunk-OW4WL4DO.js",
+  "./chunk-PGZ2NAJS.js",
+  "./chunk-PXIQ5AFJ.js",
+  "./chunk-Q5NX7TEE.js",
+  "./chunk-QB73SUAU.js",
+  "./chunk-QCHZVATD.js",
+  "./chunk-QKWC5YPG.js",
+  "./chunk-QVTMACIJ.js",
+  "./chunk-QY3QY7FR.js",
+  "./chunk-REK633X4.js",
+  "./chunk-RICL5L6V.js",
+  "./chunk-RJ3VHQFS.js",
+  "./chunk-RVB442Q6.js",
   "./chunk-S24YZLS5.js",
-  "./chunk-SJLNESLI.js",
-  "./chunk-SJMXHUH6.js",
-  "./chunk-SNQSFTSF.js",
-  "./chunk-SOVTP5PB.js",
-  "./chunk-TCDGA4ZC.js",
-  "./chunk-TTNOTY3Q.js",
-  "./chunk-TUWMZWWP.js",
-  "./chunk-U42P3GT4.js",
-  "./chunk-UBCDDJJL.js",
-  "./chunk-VM2RVXHG.js",
-  "./chunk-VMKERHG2.js",
-  "./chunk-W4STZV7O.js",
-  "./chunk-WPLMY6XE.js",
-  "./chunk-WRNYG7WJ.js",
-  "./chunk-WTD7SNV2.js",
-  "./chunk-XMKUVBKA.js",
-  "./chunk-XO6U64SL.js",
-  "./chunk-XUG3QUPL.js",
-  "./chunk-XVD5FZZV.js",
-  "./chunk-XYSLNAAK.js",
-  "./chunk-YI2FEFWP.js",
-  "./chunk-YILZQNRW.js",
-  "./chunk-YNREPKDK.js",
-  "./chunk-ZSDAMCBP.js",
-  "./chunk-ZSNMSU7H.js",
-  "./chunk-ZSYGX7B7.js",
-  "./main-GZQANKPE.js",
+  "./chunk-SRTXNXBS.js",
+  "./chunk-T4UIVGV2.js",
+  "./chunk-T5KQ47R2.js",
+  "./chunk-T5RPBXAE.js",
+  "./chunk-TIVUY352.js",
+  "./chunk-TJLAATPL.js",
+  "./chunk-TP2IFVP2.js",
+  "./chunk-TUQ5HD36.js",
+  "./chunk-U724VRY6.js",
+  "./chunk-ULENIBPL.js",
+  "./chunk-UTELAVFV.js",
+  "./chunk-V3H2CHV4.js",
+  "./chunk-V5MVI7GX.js",
+  "./chunk-VC3DOVMD.js",
+  "./chunk-VCMNOZZY.js",
+  "./chunk-VII6LXGM.js",
+  "./chunk-VNCO6FBM.js",
+  "./chunk-VQ6JLJCF.js",
+  "./chunk-VU4CNKZM.js",
+  "./chunk-W7P3337H.js",
+  "./chunk-WCIBITV5.js",
+  "./chunk-WDZURZ3H.js",
+  "./chunk-X43E3DWY.js",
+  "./chunk-X5MKRIUH.js",
+  "./chunk-XBAT65IN.js",
+  "./chunk-XKIY55XD.js",
+  "./chunk-Y5QNHAO6.js",
+  "./chunk-Z4JHFTXB.js",
+  "./chunk-ZFOL52MY.js",
+  "./chunk-ZHPE63CW.js",
+  "./main-XK6AIUHM.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -226,6 +235,15 @@ const PRECACHE_BUILD_URLS = [
 ];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
+function isPublicMediaUrl(url) {
+  if (!['/media/public', '/api/media/public'].includes(url.pathname)) return false;
+  const key = url.searchParams.get('key') || '';
+  return key.length <= 2048 && !key.includes('\\') && !/[\x00-\x1f\x7f]/.test(key)
+    && key.split('/').every(part => part !== '' && part !== '.' && part !== '..')
+    && ['public/demo/', 'public/branding/', 'images/demo-profiles/', 'images/demo-assets/',
+      'images/demo-events/', 'images/system/', 'payment-cards/'].some(prefix => key.startsWith(prefix));
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(APP_CACHE)
@@ -251,6 +269,15 @@ self.addEventListener('activate', event => {
         .filter(name => name.startsWith(CACHE_PREFIX) && !cachesToKeep.has(name))
         .map(name => caches.delete(name))
     );
+    for (const name of [API_CACHE, MEDIA_CACHE]) {
+      const cache = await caches.open(name);
+      const requests = await cache.keys();
+      await Promise.all(requests.filter(request => {
+        const path = new URL(request.url).pathname;
+        return path.startsWith('/api/auth/me')
+          || (name === MEDIA_CACHE && !path.startsWith('/assets/') && !isPublicMediaUrl(new URL(request.url)));
+      }).map(request => cache.delete(request)));
+    }
     await self.clients.claim();
   })());
 });
@@ -276,12 +303,14 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(serveAppShell(request));
+    const isAssetPage = url.origin === self.location.origin
+      && url.pathname.startsWith('/assets/') && url.pathname.endsWith('.html');
+    event.respondWith(isAssetPage ? networkFirstStaticAsset(request) : serveAppShell(request));
     return;
   }
 
   if (isImageRequest(request)) {
-    if (url.origin !== self.location.origin) {
+    if (url.origin !== self.location.origin || !(url.pathname.startsWith('/assets/') || isPublicMediaUrl(url))) {
       return;
     }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
@@ -291,10 +320,6 @@ self.addEventListener('fetch', event => {
   if (url.origin === self.location.origin) {
     if (isLandingContentRequest(url)) {
       event.respondWith(staleWhileRevalidate(request, API_CACHE, matchAnyLandingContent, event));
-      return;
-    }
-    if (isApiCacheable(url)) {
-      event.respondWith(networkFirst(request, API_CACHE));
       return;
     }
     if (isStaticAsset(url, request)) {
@@ -310,6 +335,11 @@ self.addEventListener('push', event => {
     return;
   }
   event.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (clients.some(client => client.visibilityState === 'visible'
+      && client.url.startsWith(self.registration.scope))) {
+      return;
+    }
     const branding = await deploymentBranding();
     await self.registration.showNotification(
       payload.title || branding.productName,
@@ -317,6 +347,7 @@ self.addEventListener('push', event => {
       body: payload.body,
       icon: payload.icon || branding.logoUrl,
       badge: payload.badge || branding.logoUrl,
+      tag: payload.tag,
       data: {
         url: payload.url || '/game'
       }
@@ -331,10 +362,6 @@ self.addEventListener('notificationclick', event => {
     : '/game';
   event.waitUntil(openClient(targetUrl));
 });
-
-function isApiCacheable(url) {
-  return url.pathname.startsWith('/api/auth/me');
-}
 
 function isLandingContentRequest(url) {
   return url.pathname === '/api/landing/content';
@@ -519,6 +546,7 @@ function parsePushPayload(event) {
       body: notification.body || data.body || '',
       icon: notification.icon || data.icon || '',
       badge: notification.badge || data.badge || '',
+      tag: notification.tag || data.tag || '',
       url: data.url || data.click_action || '/game'
     };
   } catch {

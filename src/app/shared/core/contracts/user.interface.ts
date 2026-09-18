@@ -36,6 +36,7 @@ export interface UserSessionLoginResponseDto {
   existingSession: boolean;
   outcome: 'ACCEPTED' | 'BLOCKED_LIMIT' | string;
   activeSessionCount: number;
+  /** -1 means the concurrent-session limit is disabled. */
   maxActiveSessions: number;
   message?: string | null;
 }

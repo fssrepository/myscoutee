@@ -218,6 +218,14 @@ async function serveAppShell(request) {
 }
 
 async function networkFirstStaticAsset(request) {
+  // Angular content-hashed bundles are immutable, including lazy chunks.
+  // Reuse the current/retained build cache before contacting the network.
+  if (/\/[\w.-]+-[A-Z0-9]{8}\.(?:js|css)$/.test(new URL(request.url).pathname)) {
+    const cached = await matchAppBundleCache(request);
+    if (cached) {
+      return cached;
+    }
+  }
   const cache = await caches.open(APP_CACHE);
   try {
     const response = await fetch(request, { cache: 'no-store' });

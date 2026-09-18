@@ -22,10 +22,6 @@
   min-height: 0;
 }
 
-.demo-user-grid-submitting {
-  pointer-events: none;
-}
-
 .demo-user-grid-loading {
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
@@ -215,16 +211,6 @@
   grid-row: 2;
   align-self: start;
   min-width: 0;
-}
-
-.demo-user-submit-overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.76);
-  backdrop-filter: blur(2px);
 }
 
 .user-avatar {
