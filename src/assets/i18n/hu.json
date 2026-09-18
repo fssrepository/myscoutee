@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.17.hu.113",
+  "version": "2026.09.18.hu.114",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3441,6 +3441,11 @@
     "operator.update.phase.starting_services": "Szolgáltatások indítása",
     "operator.update.phase.waiting_for_health": "Várakozás az alkalmazás indulására",
     "operator.update.phase.switching_ingress": "Webszerver átváltása",
-    "entry.permissions.notifications.failed": "Nem sikerült menteni az értesítési beállításokat. Ellenőrizd a kapcsolatot, majd próbáld újra."
+    "entry.permissions.notifications.failed": "Nem sikerült menteni az értesítési beállításokat. Ellenőrizd a kapcsolatot, majd próbáld újra.",
+    "firebase.auth.link.required": "Ehhez az e-mail-címhez már tartozik fiók. A választott belépési mód összekapcsolásához lépj be egyszer a korábban használt Google-, Facebook- vagy e-mail/jelszavas móddal. Ezután mindkét mód ugyanazt a profilt nyitja meg.",
+    "firebase.auth.link.email.mismatch": "Az összekapcsoláshoz ugyanazt az e-mail-címet válaszd, mint az első belépési kísérletnél.",
+    "firebase.auth.link.expired": "A fiókok összekapcsolási kérése lejárt. Kezdd újra a hozzáadni kívánt belépési móddal.",
+    "firebase.auth.link.failed": "A belépési módokat nem sikerült összekapcsolni. Kérjük, kezdd újra. Meglévő profilodat nem vontuk össze másik fiókkal.",
+    "firebase.auth.provider.disabled": "Ez a belépési mód nincs engedélyezve a Firebase-ben."
   }
 }

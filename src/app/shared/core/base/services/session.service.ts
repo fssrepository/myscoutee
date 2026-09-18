@@ -187,6 +187,13 @@ export class SessionService {
     return null;
   }
 
+  async cancelFirebaseAccountLink(): Promise<void> {
+    if (this.firebaseAuthServicePromise && !this.firebaseBusyRef()) {
+      (await this.firebaseAuthServicePromise).cancelAccountLink();
+      this.firebaseNoticeRef.set('');
+    }
+  }
+
   async startFirebaseSession(request: FirebaseAuthRequestDto = { provider: 'google' }): Promise<AppSession | null> {
     if (this.firebaseBusyRef()) {
       return null;

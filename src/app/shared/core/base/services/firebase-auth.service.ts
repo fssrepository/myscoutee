@@ -5,6 +5,7 @@ import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
   getAuth,
+  linkWithCredential,
   onAuthStateChanged,
   sendEmailVerification,
   setPersistence,
@@ -13,9 +14,11 @@ import {
   signOut as firebaseSignOut,
   type ActionCodeSettings,
   type Auth,
+  type OAuthCredential,
   type User
 } from 'firebase/auth';
 import type { FirebaseApp } from 'firebase/app';
+import type { FirebaseError } from 'firebase/app';
 
 import type {
   FirebaseAuthProfileDto,
@@ -42,6 +45,12 @@ export class FirebaseAuthService {
   private readonly firebaseAppService = inject(FirebaseAppService);
   private firebaseAuthPromise: Promise<Auth | null> | null = null;
   private firebaseAuthApp: FirebaseApp | null = null;
+  // OAuth credentials live only in memory, scoped to this Firebase Auth instance.
+  private pendingLink: { auth: Auth; email: string; credential: OAuthCredential; expiresAt: number } | null = null;
+
+  cancelAccountLink(): void {
+    this.pendingLink = null;
+  }
 
   get enabled(): boolean {
     return isFirebaseLoginEnabled();
@@ -82,7 +91,21 @@ export class FirebaseAuthService {
       return { profile: null };
     }
     try {
+      const pending = this.pendingLink;
+      if (pending && (pending.auth !== auth || pending.expiresAt <= Date.now())) {
+        this.cancelAccountLink();
+        return { profile: null, errorMessage: 'firebase.auth.link.expired' };
+      }
+      if (pending && ((request.provider === 'email' && request.emailMode !== 'sign-in')
+        || `${request.provider}.com` === pending.credential.providerId)) {
+        return { profile: null, errorMessage: 'firebase.auth.link.required' };
+      }
       const result = await this.runAuthRequest(auth, request);
+      if (pending && this.normalizeEmail(result.user.email) !== pending.email) {
+        await firebaseSignOut(auth);
+        this.clearStoredProfile();
+        return { profile: null, errorMessage: 'firebase.auth.link.email.mismatch' };
+      }
       if (result.emailVerificationSent) {
         this.clearStoredProfile();
         return {
@@ -91,8 +114,37 @@ export class FirebaseAuthService {
           email: result.user.email?.trim() || request.email?.trim()
         };
       }
+      if (pending) {
+        try {
+          await linkWithCredential(result.user, pending.credential);
+          // The backend must receive the newly linked provider claims.
+          await result.user.getIdToken(true);
+          this.cancelAccountLink();
+        } catch (error) {
+          this.cancelAccountLink();
+          this.clearStoredProfile();
+          await firebaseSignOut(auth);
+          return { profile: null, errorMessage: 'firebase.auth.link.failed' };
+        }
+      }
       return { profile: this.persistProfile(result.user) };
     } catch (error) {
+      if (this.firebaseErrorCode(error) === 'auth/account-exists-with-different-credential') {
+        // Keep the original provider proof if the user selects another conflicting provider.
+        if (!this.pendingLink) {
+          const credential = request.provider === 'facebook'
+            ? FacebookAuthProvider.credentialFromError(error as FirebaseError)
+            : request.provider === 'google'
+              ? GoogleAuthProvider.credentialFromError(error as FirebaseError) : null;
+          const email = this.normalizeEmail((error as FirebaseError & { customData?: { email?: string } }).customData?.email);
+          if (credential && email) {
+            this.pendingLink = { auth, email, credential, expiresAt: Date.now() + 5 * 60_000 };
+          }
+        }
+        this.clearStoredProfile();
+        return { profile: null, errorMessage: this.pendingLink
+          ? 'firebase.auth.link.required' : 'firebase.auth.link.failed' };
+      }
       return {
         profile: null,
         errorMessage: this.firebaseAuthErrorMessage(error)
@@ -114,6 +166,9 @@ export class FirebaseAuthService {
       this.clearStoredProfile();
       return null;
     }
+    if (this.pendingLink) {
+      return null;
+    }
     const currentUser = auth.currentUser ?? await this.waitForAuthState(auth);
     if (!currentUser) {
       this.clearStoredProfile();
@@ -132,6 +187,9 @@ export class FirebaseAuthService {
     if (!auth) {
       return null;
     }
+    if (this.pendingLink) {
+      return null;
+    }
     const currentUser = auth.currentUser ?? await this.waitForAuthState(auth);
     if (!currentUser) {
       return null;
@@ -144,6 +202,7 @@ export class FirebaseAuthService {
   }
 
   async signOut(): Promise<void> {
+    this.cancelAccountLink();
     this.clearStoredProfile();
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
@@ -162,11 +221,13 @@ export class FirebaseAuthService {
     }
     const app = await this.firebaseAppService.ensureFirebaseApp();
     if (!app) {
+      this.cancelAccountLink();
       this.firebaseAuthApp = null;
       this.firebaseAuthPromise = null;
       return null;
     }
     if (!this.firebaseAuthPromise || this.firebaseAuthApp !== app) {
+      this.cancelAccountLink();
       this.firebaseAuthApp = app;
       this.firebaseAuthPromise = this.initializeFirebaseAuth(app);
     }
@@ -317,6 +378,10 @@ export class FirebaseAuthService {
     ]).has(this.firebaseErrorCode(error));
   }
 
+  private normalizeEmail(email: string | null | undefined): string {
+    return `${email ?? ''}`.trim().toLowerCase();
+  }
+
   private firebaseErrorCode(error: unknown): string {
     if (typeof error !== 'object' || error === null || !('code' in error)) {
       return '';
@@ -334,7 +399,7 @@ export class FirebaseAuthService {
       case 'auth/wrong-password':
         return 'Email or password is incorrect.';
       case 'auth/operation-not-allowed':
-        return 'Email login is not enabled in Firebase.';
+        return 'firebase.auth.provider.disabled';
       case 'auth/too-many-requests':
         return 'Too many login attempts. Try again later.';
       case 'auth/unauthorized-continue-uri':

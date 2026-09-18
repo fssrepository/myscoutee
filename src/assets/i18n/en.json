@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.17.en.113",
+  "version": "2026.09.18.en.114",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3441,6 +3441,11 @@
     "operator.update.phase.starting_services": "Starting services",
     "operator.update.phase.waiting_for_health": "Waiting for application readiness",
     "operator.update.phase.switching_ingress": "Switching web server",
-    "entry.permissions.notifications.failed": "Could not save notification settings. Check your connection and try again."
+    "entry.permissions.notifications.failed": "Could not save notification settings. Check your connection and try again.",
+    "firebase.auth.link.required": "This email already has an account. To link the selected login method, sign in once with the Google, Facebook or email/password method you used before. Then both methods will open the same profile.",
+    "firebase.auth.link.email.mismatch": "Choose the same email address as in your first login attempt to link the accounts.",
+    "firebase.auth.link.expired": "The account-linking request expired. Start again with the login method you want to add.",
+    "firebase.auth.link.failed": "The login methods could not be linked. Please start again. Your existing profile has not been merged with another account.",
+    "firebase.auth.provider.disabled": "This login method is not enabled in Firebase."
   }
 }
