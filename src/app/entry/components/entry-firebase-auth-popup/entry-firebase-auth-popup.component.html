@@ -35,14 +35,14 @@
           </button>
           <button
             type="button"
-            class="firebase-auth-provider-btn facebook"
-            [disabled]="busy"
-            matRipple
-            [matRippleColor]="'rgba(24, 119, 242, 0.12)'"
-            (click)="requestProvider('facebook')"
+            class="firebase-auth-provider-btn facebook coming-soon"
+            disabled
+            aria-disabled="true"
+            [attr.title]="'facebook.login.coming.soon' | i18n"
             >
             <span class="firebase-auth-brand-mark facebook-mark" aria-hidden="true">f</span>
             <span>{{ 'continue.with.facebook' | i18n }}</span>
+            <span class="firebase-auth-provider-badge">{{ 'coming.soon' | i18n }}</span>
           </button>
           <button
             type="button"

@@ -40,19 +40,25 @@ describe('EntryFirebaseAuthPopupComponent login feedback', () => {
     expect(fixture.nativeElement.querySelector('[role="status"]')).toBeNull();
   });
 
-  it('offers Facebook and emits its login request', () => {
+  it('keeps Facebook unavailable with its coming-soon notice', () => {
     const fixture = TestBed.createComponent(EntryFirebaseAuthPopupComponent);
     fixture.componentRef.setInput('open', true);
     fixture.detectChanges();
     const requested = vi.fn();
     fixture.componentInstance.authRequested.subscribe(requested);
     const button = fixture.nativeElement.querySelector('.firebase-auth-provider-btn.facebook');
-    expect(button.disabled).toBe(false);
+    expect(button.disabled).toBe(true);
+    expect(button.querySelector('.firebase-auth-provider-badge')?.textContent).toBe('coming.soon');
     button.click();
-    expect(requested).toHaveBeenCalledWith({ provider: 'facebook' });
+    expect(requested).not.toHaveBeenCalled();
     fixture.componentRef.setInput('busy', true);
     fixture.detectChanges();
     expect(button.disabled).toBe(true);
+    fixture.componentRef.setInput('busy', false);
+    fixture.detectChanges();
+    expect(button.disabled).toBe(true);
+    button.click();
+    expect(requested).not.toHaveBeenCalled();
   });
 
   it('keeps the same notice visible once when switching to email sign-in', () => {
