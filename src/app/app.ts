@@ -2,6 +2,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
+  NavigationCancellationCode,
   NavigationEnd,
   NavigationError,
   NavigationStart,
@@ -28,7 +29,7 @@ import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payme
   styleUrl: './app.scss'
 })
 export class App implements OnDestroy {
-  private static readonly ROUTE_WARMUP_MAX_VISIBLE_MS = 6000;
+  private static readonly ROUTE_WARMUP_WATCHDOG_DELAY_MS = 6000;
   private static readonly MOBILE_RESUME_RECOVERY_DELAY_MS = 280;
   private static readonly ACTION_WAVE_TARGET_SELECTOR = [
     'button[class*="close" i]',
@@ -71,7 +72,7 @@ export class App implements OnDestroy {
     void this.deploymentConfiguration.initialize();
     void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
-    this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
+    this.initialLandingWarmupPending = true;
     this.routeWarmupVisible = this.initialLandingWarmupPending;
     if (this.routeWarmupVisible) {
       this.scheduleRouteWarmupWatchdog();
@@ -79,7 +80,7 @@ export class App implements OnDestroy {
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         this.syncSideMenuVisibility(event.url);
-        if (this.initialLandingWarmupPending && this.shouldShowLandingWarmup(event.url)) {
+        if (this.initialLandingWarmupPending) {
           this.showRouteWarmup();
         } else {
           this.hideRouteWarmup(0);
@@ -94,6 +95,14 @@ export class App implements OnDestroy {
       }
 
       if (event instanceof NavigationCancel || event instanceof NavigationError) {
+        // Redirects continue startup; the destination's guards and lazy page
+        // have not finished yet, so there is still no page to uncover.
+        if (event instanceof NavigationCancel && (
+          event.code === NavigationCancellationCode.Redirect
+          || event.code === NavigationCancellationCode.SupersededByNewNavigation
+        )) {
+          return;
+        }
         this.completeInitialLandingWarmup(0);
       }
     });
@@ -128,6 +137,7 @@ export class App implements OnDestroy {
 
   private syncSideMenuVisibility(url: string): void {
     this.showSideMenu = this.shouldShowSideMenu(url);
+    this.changeDetectorRef.markForCheck();
     if (this.showSideMenu) {
       void this.ensureSideMenuComponentLoaded();
     }
@@ -184,12 +194,13 @@ export class App implements OnDestroy {
   }
 
   protected onRouteActivated(): void {
-    setTimeout(() => this.completeInitialLandingWarmup(), 0);
+    this.completeWarmupIfNavigationSettled();
   }
 
-  private shouldShowLandingWarmup(url: string): boolean {
-    const normalizedPath = (url || '/').split('?')[0].split('#')[0].trim() || '/';
-    return normalizedPath === '/' || normalizedPath.startsWith('/entry');
+  private completeWarmupIfNavigationSettled(): void {
+    if (this.routeWarmupVisible && this.router.navigated && !this.router.getCurrentNavigation()) {
+      this.completeInitialLandingWarmup();
+    }
   }
 
   private showRouteWarmup(): void {
@@ -230,11 +241,8 @@ export class App implements OnDestroy {
     this.clearRouteWarmupWatchdogTimer();
     this.routeWarmupWatchdogTimer = setTimeout(() => {
       this.routeWarmupWatchdogTimer = null;
-      if (!this.routeWarmupVisible) {
-        return;
-      }
-      this.completeInitialLandingWarmup(0);
-    }, App.ROUTE_WARMUP_MAX_VISIBLE_MS);
+      this.completeWarmupIfNavigationSettled();
+    }, App.ROUTE_WARMUP_WATCHDOG_DELAY_MS);
   }
 
   private clearRouteWarmupWatchdogTimer(): void {
@@ -261,9 +269,7 @@ export class App implements OnDestroy {
       return;
     }
     this.syncSideMenuVisibility(this.resolveInitialRouteUrl());
-    if (this.routeWarmupVisible) {
-      this.completeInitialLandingWarmup(0);
-    }
+    this.completeWarmupIfNavigationSettled();
   }
 
   private clearMobileResumeRecoveryTimer(): void {
