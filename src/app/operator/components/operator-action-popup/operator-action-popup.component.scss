@@ -520,7 +520,8 @@
 
 .operator-action-popup__firebase-test-actions {
   width: fit-content;
-  flex: 0 0 auto;
+  max-width: 100%;
+  flex: 0 1 auto;
   margin-left: auto;
 }
 
