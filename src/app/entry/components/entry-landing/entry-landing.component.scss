@@ -1321,6 +1321,15 @@
     padding: 0.34rem;
   }
 
+  .entry-partner-operator-access {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .entry-partner-operator-access-button {
+    grid-column: 2;
+    justify-self: start;
+  }
+
   .entry-partner-role-grid,
   .entry-partner-status-grid {
     grid-template-columns: 1fr;

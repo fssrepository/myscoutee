@@ -364,6 +364,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected closeFirebaseAuthPopup(): void {
+    if (this.firebaseAuthIsBusy) {
+      return;
+    }
+    void this.sessionService.cancelFirebaseAccountLink();
     this.showFirebaseAuthPopup = false;
   }
 

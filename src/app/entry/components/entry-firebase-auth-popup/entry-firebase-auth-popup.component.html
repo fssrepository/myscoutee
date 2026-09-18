@@ -15,6 +15,9 @@
           <span class="popup-close-glyph" aria-hidden="true">×</span>
         </button>
       </div>
+      @if (statusMessage) {
+        <p class="firebase-auth-status" role="status">{{ statusMessage | i18n }}</p>
+      }
       @if (authStep === 'providers') {
         <div class="firebase-auth-provider-list">
           <button
@@ -74,9 +77,6 @@
           <span>{{ 'all.login.methods' | i18n }}</span>
         </button>
         <form class="firebase-auth-email-form" (submit)="$event.preventDefault(); requestEmail()">
-          @if (statusMessage) {
-            <p class="firebase-auth-status">{{ statusMessage | i18n }}</p>
-          }
           <div class="firebase-auth-email-tabs" role="tablist" [attr.aria-label]="'email.login.mode' | i18n">
             <button
               type="button"

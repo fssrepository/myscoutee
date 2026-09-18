@@ -230,6 +230,7 @@
                           @if (tlsDraft.enabled) {
                             <app-menu
                               class="operator-action-popup__header-actions operator-action-popup__tls-test-actions"
+                              [model]="{ actionSizing: 'content' }"
                               kind="inline"
                               layout="row"
                               [items]="configurationTlsTestActionItems()"
@@ -350,6 +351,7 @@
                         @if (showTlsSaveAction()) {
                           <app-menu
                             class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                            [model]="{ actionSizing: 'content' }"
                             kind="inline"
                             layout="row"
                             panelMode="anchored"
@@ -457,6 +459,7 @@
 
                       <app-menu
                         class="operator-action-popup__section-actions operator-action-popup__branding-actions operator-action-popup__single-action-menu"
+                        [model]="{ actionSizing: 'content' }"
                         kind="inline"
                         layout="row"
                         panelMode="anchored"
@@ -508,6 +511,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       panelMode="anchored"
@@ -550,6 +554,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       panelMode="anchored"
@@ -693,6 +698,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__section-actions--social"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       [items]="configurationSocialLinkActionItems()"
@@ -789,6 +795,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       panelMode="anchored"
@@ -821,6 +828,7 @@
                         </span>
                         <app-menu
                           class="operator-action-popup__header-actions operator-action-popup__firebase-test-actions"
+                          [model]="{ actionSizing: 'content' }"
                           kind="inline"
                           layout="row"
                           [items]="configurationFirebaseTestActionItems()"
@@ -1015,6 +1023,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       [items]="configurationFirebaseSaveActionItems()"
