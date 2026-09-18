@@ -1,7 +1,7 @@
 @if (open) {
   <app-popup [model]="popupModel()" [zIndex]="2800">
     <div class="demo-user-stage">
-        @if (loading) {
+        @if (loading || submitting) {
           <div class="demo-user-grid demo-user-grid-loading">
             <div class="demo-user-loading-shell">
               <div class="demo-user-loading-copy-group">
@@ -33,14 +33,14 @@
                     </span>
                   </div>
                 }
-                <p class="demo-user-loading-copy">{{ loadingLabel | i18n }}</p>
+                <p class="demo-user-loading-copy">{{ (submitting && !loading ? 'Opening demo session...' : loadingLabel) | i18n }}</p>
                 <div
                   class="demo-user-progress-shell"
                   role="progressbar"
                   [attr.aria-label]="'Demo data loading progress' | i18n"
                   [attr.aria-valuemin]="0"
                   [attr.aria-valuemax]="100"
-                  [attr.aria-valuenow]="loadingUserList ? null : loadingProgress"
+                  [attr.aria-valuenow]="loadingUserList || !loading ? null : loadingProgress"
                   >
                   @if (loadingUserList) {
                     <app-indicator
@@ -51,11 +51,11 @@
                   } @else {
                     <app-indicator
                       kind="pill-bar"
-                      [position]="loadingPosition()"
+                      [position]="loading ? loadingPosition() : 0"
                     ></app-indicator>
                   }
                 </div>
-                @if (!loadingUserList) {
+                @if (loading && !loadingUserList) {
                   <p class="demo-user-progress-value">{{ loadingProgress }}%</p>
                 }
               </div>
@@ -81,7 +81,7 @@
               </div>
             </div>
           } @else if (visibleUsers().length > 0) {
-            <div class="demo-user-grid" [class.demo-user-grid-submitting]="submitting">
+            <div class="demo-user-grid">
               @for (user of visibleUsers(); track user.id) {
                 <button
                   type="button"
@@ -137,11 +137,6 @@
               <p class="demo-user-loading-copy">{{ 'No demo users available.' | i18n }}</p>
             </div>
           }
-        }
-        @if (submitting && !loading) {
-          <div class="demo-user-submit-overlay">
-            <p class="demo-user-loading-copy">{{ 'Opening demo session...' | i18n }}</p>
-          </div>
         }
     </div>
   </app-popup>
