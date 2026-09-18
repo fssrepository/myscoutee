@@ -350,6 +350,7 @@
                         @if (showTlsSaveAction()) {
                           <app-menu
                             class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                            [model]="{ actionSizing: 'content' }"
                             kind="inline"
                             layout="row"
                             panelMode="anchored"
@@ -457,6 +458,7 @@
 
                       <app-menu
                         class="operator-action-popup__section-actions operator-action-popup__branding-actions operator-action-popup__single-action-menu"
+                        [model]="{ actionSizing: 'content' }"
                         kind="inline"
                         layout="row"
                         panelMode="anchored"
@@ -508,6 +510,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       panelMode="anchored"
@@ -550,6 +553,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       panelMode="anchored"
@@ -693,6 +697,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__section-actions--social"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       [items]="configurationSocialLinkActionItems()"
@@ -789,6 +794,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       panelMode="anchored"
@@ -1015,6 +1021,7 @@
 
                     <app-menu
                       class="operator-action-popup__section-actions"
+                      [model]="{ actionSizing: 'content' }"
                       kind="inline"
                       layout="row"
                       [items]="configurationFirebaseSaveActionItems()"
