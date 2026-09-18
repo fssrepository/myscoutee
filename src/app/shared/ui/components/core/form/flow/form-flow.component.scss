@@ -1194,6 +1194,10 @@
   width: calc(100% - var(--form-flow-mobile-slide-edge-reserve));
 }
 
+.form-flow.is-loading {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .form-flow__loading,
 .form-flow__empty {
   min-height: 240px;

@@ -1,5 +1,7 @@
 <div
   class="ui-popup"
+  [class.ui-popup]="active"
+  [style.display]="active ? null : 'none'"
   [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
   [class.ui-popup--auto-height]="popupModel.height !== 'full' && popupModel.size !== 'fullscreen'"
   [class.ui-popup--mobile-compact]="popupModel.mobilePresentation === 'compact'"

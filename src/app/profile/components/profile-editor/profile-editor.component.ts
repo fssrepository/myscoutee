@@ -3,12 +3,14 @@ import {
 } from '@angular/common';
 import {
   Component,
+  ChangeDetectionStrategy,
   HostListener,
   OnDestroy,
   ViewChild,
   computed,
   effect,
-  inject
+  inject,
+  untracked
 } from '@angular/core';
 import {
   FormsModule
@@ -99,7 +101,8 @@ type ProfileEditorMenuContext =
     AppMenuDispatcher
   ],
   templateUrl: './profile-editor.component.html',
-  styleUrl: './profile-editor.component.scss'
+  styleUrl: './profile-editor.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileEditorComponent implements OnDestroy {
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
@@ -113,6 +116,8 @@ export class ProfileEditorComponent implements OnDestroy {
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
+  private preparedProfile: ProfileExtDto | null = null;
+  private draftChanged = false;
   private unregisterExplanationContext: (() => void) | null = null;
   private explanationContextActive = false;
 
@@ -140,21 +145,30 @@ export class ProfileEditorComponent implements OnDestroy {
       const isOpen = this.profileStore.profileEditorOpen();
       this.setExplanationContext(isOpen);
       const activeProfileExt = this.userProfileStore.activeUserProfileExt();
-      const activeUser = activeProfileExt?.profile ?? this.userProfileStore.activeUserProfile();
-      const activeUserId = activeUser?.id.trim() ?? '';
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+
+      if (!activeProfileExt || this.lastLoadedUserId && this.lastLoadedUserId !== activeUserId) {
+        untracked(() => this.clearPreparedProfile());
+      }
 
       if (!isOpen) {
-        this.lastLoadedUserId = '';
-        this.resetTransientUiState();
+        untracked(() => {
+          this.resetTransientUiState();
+          // Closing without saving still discards edits. An untouched form keeps
+          // its DOM/model until authoritative data changes or the user leaves.
+          if (this.draftChanged || this.preparedProfile !== activeProfileExt) {
+            this.clearPreparedProfile();
+          }
+        });
         return;
       }
 
-      if (!activeUser || this.lastLoadedUserId === activeUserId) {
+      if (!activeProfileExt || this.lastLoadedUserId === activeUserId) {
         return;
       }
 
       this.lastLoadedUserId = activeUserId;
-      this.loadProfileEditorState(activeUserId, activeProfileExt);
+      untracked(() => this.loadProfileEditorState(activeUserId, activeProfileExt));
     });
   }
 
@@ -184,7 +198,21 @@ export class ProfileEditorComponent implements OnDestroy {
   }
 
   protected get activeUser(): UserDto | null {
-    return this.profileEditorData.profile.id ? this.profileEditorData.profile : null;
+    return this.profileEditorData.profile.id && this.profileEditorData.profile.id === this.userProfileStore.activeUserId()
+      ? this.profileEditorData.profile : null;
+  }
+
+  protected onProfileDraftChange(data: ProfileExtDto): void {
+    this.profileEditorData = data;
+    this.draftChanged = true;
+  }
+
+  private clearPreparedProfile(): void {
+    this.lastLoadedUserId = '';
+    this.preparedProfile = null;
+    this.draftChanged = false;
+    this.profileEditorData = new ProfileExtDto();
+    this.profileEditorFlowModel = null;
   }
 
   private setExplanationContext(isOpen: boolean): void {
@@ -473,6 +501,8 @@ export class ProfileEditorComponent implements OnDestroy {
       this.profileEditorDraft(activeProfileExt)
     ).data;
     this.refreshProfileEditorFlowModel();
+    this.preparedProfile = activeProfileExt;
+    this.draftChanged = false;
     this.panel = 'profile';
   }
 
@@ -499,6 +529,7 @@ export class ProfileEditorComponent implements OnDestroy {
   }
 
   private refreshProfileEditorFlowModel(): void {
+    this.draftChanged = true;
     this.profileEditorFlowModel = ProfileFormFlowConverter.convert(
       this.profileEditorDraft(this.profileEditorData),
       {
@@ -558,7 +589,10 @@ export class ProfileEditorComponent implements OnDestroy {
     if (!this.profileEditorData.profile.id) {
       return;
     }
-    await this.usersService.saveUserProfileExt(this.profileEditorData);
+    const saved = await this.usersService.saveUserProfileExt(this.profileEditorData);
+    if (saved && saved.id === this.userProfileStore.activeUserId()) {
+      this.loadProfileEditorState(saved.id, this.userProfileStore.activeUserProfileExt());
+    }
     if (showAlert) {
       this.dialogStore.openInfo('Profile saved', {
         title: 'Profile updated',

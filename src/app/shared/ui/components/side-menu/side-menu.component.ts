@@ -121,6 +121,9 @@ import { NotificationCenterStore } from '../../context/stores/notification-cente
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { PwaService } from '../../../core/base/services/pwa.service';
+import { PopupComponent, type PopupModel } from '../core/popup';
+import { IndicatorComponent } from '../core/indicator';
+import { I18nPipe } from '../../pipes';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { environment } from '../../../../../environments/environment';
 import {
@@ -214,7 +217,10 @@ type NavigatorHeaderActionMenuItemId =
     HeaderCardComponent,
     ProfileSettingsPopupsComponent,
     DialogComponent,
-    NotificationCenterPopupComponent
+    NotificationCenterPopupComponent,
+    PopupComponent,
+    IndicatorComponent,
+    I18nPipe
   ],
   templateUrl: './side-menu.component.html',
   styleUrl: './side-menu.component.scss'
@@ -263,6 +269,10 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
+  protected readonly profileEditorLoadingModel: PopupModel = {
+    title: 'Profile', ariaLabel: 'Profile', size: 'wide', height: 'full', bodyLayout: 'fill',
+    onClose: () => this.profileStore.closeProfileEditor()
+  };
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
@@ -1306,6 +1316,14 @@ export class SideMenuComponent implements OnDestroy {
         void this.profileStore.ensureExplanationPopupLoaded();
       }
     });
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  protected closeLoadingProfile(event: Event): void {
+    if (this.profileStore.profileEditorOpen() && !this.profileStore.profileEditorComponent()) {
+      event.stopPropagation();
+      this.profileStore.closeProfileEditor();
+    }
   }
 
   @HostListener('window:online')

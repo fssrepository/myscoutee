@@ -12,8 +12,10 @@ import {
   Output,
   SimpleChanges,
   ViewChild,
+  afterNextRender,
   forwardRef,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -33,6 +35,7 @@ import { ImageCarouselComponent } from '../../image-carousel';
 import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { UiTaskScheduler } from '../../../../scheduler';
+import { scheduleAfterPaint } from '../../../../scheduler/after-paint';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
 import { LinkInputComponent, type LinkInputConfig } from '../inputs/link-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
@@ -109,6 +112,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private flowViewportRef?: ElementRef<HTMLDivElement>;
 
   private readonly cdr = inject(ChangeDetectorRef);
+  protected readonly preparing = signal(true);
+  private cancelPreparation: (() => void) | null = null;
 
   @Input() model: FormFlowModel | null = null;
   @Input() loading = false;
@@ -143,6 +148,16 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     task: ({ state, signal }) => this.runPushTask(state, signal)
   });
 
+  constructor() {
+    afterNextRender(() => {
+      this.cancelPreparation = scheduleAfterPaint(() => {
+        this.cancelPreparation = null;
+        this.preparing.set(false);
+        this.queueViewportSync('auto');
+      });
+    });
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
       this.pageIndex = this.clampPageIndex(this.pageIndex);
@@ -154,6 +169,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   ngOnDestroy(): void {
+    this.cancelPreparation?.();
     this.pushScheduler.destroy();
     this.clearViewportScrollLock();
   }

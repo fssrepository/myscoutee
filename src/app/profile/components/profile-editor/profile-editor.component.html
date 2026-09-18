@@ -1,6 +1,6 @@
-@if (isOpen()) {
-  @if (activeUser; as user) {
-    <app-popup [model]="profileEditorPopupModel()">
+@if (isOpen() || activeUser) {
+    <app-popup [model]="profileEditorPopupModel()" [active]="isOpen()">
+      @if (activeUser; as user) {
       <div
         class="profile-editor-popup-content"
         [class.profile-editor-popup-content--profile]="panel === 'profile'"
@@ -21,7 +21,8 @@
                   <app-form-flow
                     class="profile-editor-flow"
                     [model]="profileEditorFlowModel"
-                    [(ngModel)]="profileEditorData"
+                    [ngModel]="profileEditorData"
+                    (ngModelChange)="onProfileDraftChange($event)"
                     [saving]="isProfileSaving()"
                     [disabled]="isProfileSaving()"
                     (action)="onProfileEditorFlowAction($event)"
@@ -51,6 +52,8 @@
             ></app-profile-experience-manager>
           }
       </div>
+      } @else {
+        <app-form-flow [loading]="true"></app-form-flow>
+      }
     </app-popup>
-  }
 }

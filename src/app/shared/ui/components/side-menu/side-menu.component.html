@@ -129,6 +129,19 @@
 @if (profileStore.impressionsPopupComponent(); as impressionsComponent) {
   <ng-container *ngComponentOutlet="impressionsComponent"></ng-container>
 }
+@if (profileStore.profileEditorOpen() && !profileStore.profileEditorComponent()) {
+  <app-popup [model]="profileEditorLoadingModel">
+    <div class="profile-editor-loading" role="status" [attr.aria-busy]="!profileStore.profileEditorLoadFailed()">
+      @if (profileStore.profileEditorLoadFailed()) {
+        <mat-icon>error_outline</mat-icon>
+        <button type="button" (click)="profileStore.ensureProfileEditorLoaded()">{{ 'try.again' | i18n }}</button>
+      } @else {
+        <app-indicator kind="spinner-ring" state="loading"></app-indicator>
+        <span>{{ 'loading.profile' | i18n: 'Loading profile' }}</span>
+      }
+    </div>
+  </app-popup>
+}
 @if (profileStore.profileEditorComponent(); as profileComponent) {
   <ng-container *ngComponentOutlet="profileComponent"></ng-container>
 }
