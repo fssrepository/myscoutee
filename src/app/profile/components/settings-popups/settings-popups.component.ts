@@ -12,25 +12,14 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import {
-  HelpCenterService,
-  PrivacyPolicyService
-} from '../../../shared/core';
+import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
+import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
-import {
-  DocumentViewerComponent,
-  type DocumentViewerAction,
-  type DocumentViewerActionEvent,
-  type DocumentViewerActionVisibility,
-  type DocumentViewerConfig
-} from '../../../shared/ui/components/document-viewer';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
-  HelpCenterRevisionDocumentViewerConfigConverter
-} from '../../../shared/ui/converters';
+import { DocumentViewerComponent } from '../../../shared/ui/components/document-viewer/document-viewer.component';
+import { type DocumentViewerAction, type DocumentViewerActionEvent, type DocumentViewerActionVisibility, type DocumentViewerConfig } from '../../../shared/ui/components/document-viewer';
+import { PopupComponent } from '../../../shared/ui/components/core/popup/popup.component';
+import { type PopupModel } from '../../../shared/ui/components/core/popup';
+import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
 import {
   ProfileStore,
   type ProfileSettingsPopup

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { FacebookAuthProvider, GoogleAuthProvider, linkWithCredential, signInWithPopup,
+import { FacebookAuthProvider, GoogleAuthProvider, browserLocalPersistence, browserPopupRedirectResolver, initializeAuth, linkWithCredential, signInWithPopup,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
   type Auth, type User, type UserCredential } from 'firebase/auth';
 import { FirebaseAppService } from './firebase-app.service';
@@ -7,7 +7,7 @@ import { FirebaseAuthService } from './firebase-auth.service';
 
 vi.mock('firebase/auth', async importOriginal => Object.assign(
   {}, await importOriginal<typeof import('firebase/auth')>(), {
-  linkWithCredential: vi.fn(), signInWithPopup: vi.fn(),
+  initializeAuth: vi.fn(), linkWithCredential: vi.fn(), signInWithPopup: vi.fn(),
   signInWithEmailAndPassword: vi.fn(), createUserWithEmailAndPassword: vi.fn(),
   signOut: vi.fn(), sendEmailVerification: vi.fn()
 }));
@@ -53,6 +53,7 @@ describe('FirebaseAuthService provider linking', () => {
     vi.mocked(signInWithPopup).mockResolvedValueOnce({ user } as UserCredential);
     expect((await service.signIn({ provider: 'google' })).profile?.id).toBe('existing-user');
     expect(linkWithCredential).not.toHaveBeenCalled();
+    expect(signInWithPopup).toHaveBeenCalledWith(auth, expect.any(GoogleAuthProvider), browserPopupRedirectResolver);
   });
 
   it('links Facebook after a fresh Google sign-in and refreshes backend claims', async () => {
@@ -160,5 +161,80 @@ describe('FirebaseAuthService provider linking', () => {
     await conflict();
     expect((await service.signIn({ provider: 'facebook' })).errorMessage).toBe('firebase.auth.link.required');
     expect(signInWithPopup).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('FirebaseAuthService startup', () => {
+  let service: FirebaseAuthService;
+  let auth: Auth;
+  let user: User;
+  const app = {};
+  const ensureFirebaseApp = vi.fn();
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    localStorage.clear();
+    user = { uid: 'restored-user', email: 'person@example.test', emailVerified: true,
+      displayName: 'Test User', providerData: [], reload: vi.fn().mockResolvedValue(undefined),
+      getIdToken: vi.fn().mockResolvedValue('session-token') } as unknown as User;
+    auth = { currentUser: user, authStateReady: vi.fn().mockResolvedValue(undefined) } as unknown as Auth;
+    vi.mocked(initializeAuth).mockReturnValue(auth);
+    ensureFirebaseApp.mockResolvedValue(app);
+    TestBed.configureTestingModule({ providers: [FirebaseAuthService,
+      { provide: FirebaseAppService, useValue: { ensureFirebaseApp } }
+    ] });
+    service = TestBed.inject(FirebaseAuthService);
+    vi.spyOn(service, 'enabled', 'get').mockReturnValue(true);
+  });
+
+  afterEach(() => { vi.restoreAllMocks(); TestBed.resetTestingModule(); localStorage.clear(); });
+
+  it('initializes directly with local persistence and no proactive popup resolver', async () => {
+    expect((await service.restoreSessionProfile())?.id).toBe('restored-user');
+    expect(initializeAuth).toHaveBeenCalledWith(app, { persistence: browserLocalPersistence });
+    expect(auth.authStateReady).toHaveBeenCalledOnce();
+    // Keep explicit validation: Firebase itself tolerates a network error during startup.
+    expect(user.reload).toHaveBeenCalledOnce();
+  });
+
+  it('shares initialization and waits for persisted auth before serving tokens', async () => {
+    let ready!: () => void;
+    vi.mocked(auth.authStateReady).mockImplementation(() => new Promise<void>(resolve => { ready = resolve; }));
+    const first = service.getIdToken();
+    const second = service.getIdToken();
+    await vi.waitFor(() => expect(auth.authStateReady).toHaveBeenCalledOnce());
+    expect(user.getIdToken).not.toHaveBeenCalled();
+    ready();
+    expect(await Promise.all([first, second])).toEqual(['session-token', 'session-token']);
+    expect(initializeAuth).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed when initialization fails, then allows another attempt', async () => {
+    vi.mocked(auth.authStateReady).mockRejectedValueOnce(new Error('unavailable'));
+    expect(await service.restoreSessionProfile()).toBeNull();
+    expect(localStorage.length).toBe(0);
+    expect((await service.restoreSessionProfile())?.id).toBe('restored-user');
+    expect(initializeAuth).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not revive a profile without the configured Firebase app', async () => {
+    ensureFirebaseApp.mockResolvedValue(null);
+    expect(await service.restoreSessionProfile()).toBeNull();
+    expect(initializeAuth).not.toHaveBeenCalled();
+  });
+
+  it('keeps verification and explicit refresh on subsequent restorations', async () => {
+    await service.restoreSessionProfile();
+    Object.assign(user, { emailVerified: false, providerData: [{ providerId: 'password' }] });
+    expect(await service.restoreSessionProfile()).toBeNull();
+    expect(user.reload).toHaveBeenCalledTimes(2);
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('does not accept a cached profile when explicit server validation fails', async () => {
+    vi.mocked(user.reload).mockRejectedValue(new Error('network unavailable'));
+    await expect(service.restoreSessionProfile()).rejects.toThrow('network unavailable');
+    expect(localStorage.length).toBe(0);
   });
 });

@@ -14,6 +14,7 @@ export class AppSetupStore implements OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly profile = inject(UserProfileStore);
   readonly loggedIn = computed(() => !!this.profile.activeUserId());
+  readonly locationMissing = this.profile.activeUserLocationMissing;
   readonly isOpen = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
@@ -27,8 +28,9 @@ export class AppSetupStore implements OnDestroy {
   readonly error = signal('');
   readonly saveSucceeded = signal(false);
   private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected())
-    || this.actionPending() || this.notificationConfigurationPending());
+  readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending());
+  private locationRequestPending = false;
+  private opening = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
@@ -38,7 +40,7 @@ export class AppSetupStore implements OnDestroy {
     effect(() => {
       const enabled = this.messaging.deviceNotificationsEnabled();
       if (this.isOpen() && !this.actionPending()
-        && (!this.notificationsEdited() || !this.messaging.notificationsConfigured)) {
+        && !this.notificationsEdited()) {
         this.notificationsSelected.set(enabled);
       }
     });
@@ -52,34 +54,34 @@ export class AppSetupStore implements OnDestroy {
   }
 
   open(): void {
-    if (this.isOpen()) return;
+    if (this.isOpen() || this.opening) return;
+    this.opening = true;
     this.generation++;
     this.clearSaveFeedback();
     this.error.set('');
     this.locationGranted.set(false);
     this.locationPermission.set(null);
-    this.locationSelected.set(this.loggedIn());
+    this.locationSelected.set(false);
     this.messaging.refreshNotificationPermission();
     this.notificationsEdited.set(false);
     this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
-    this.isOpen.set(true);
     // Resolve the deployment flag before the click, preserving the click's
     // native permission gesture and avoiding token work for an inactive setup.
     const generation = this.generation;
     this.notificationConfigurationPending.set(true);
-    void this.messaging.prepareNotificationConfiguration().catch(() => undefined).finally(() => {
-      if (generation === this.generation) {
-        this.notificationConfigurationPending.set(false);
-        if (!this.messaging.notificationsConfigured) {
-          this.notificationsSelected.set(false);
-          this.notificationsEdited.set(false);
-        }
-      }
+    void Promise.all([
+      this.messaging.prepareNotificationConfiguration().catch(() => undefined),
+      this.refreshPermissions()
+    ]).then(() => {
+      if (generation !== this.generation) return;
+      this.notificationConfigurationPending.set(false);
+      this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
+      this.opening = false;
+      this.isOpen.set(true);
     });
-    void this.refreshPermissions();
   }
 
-  requestForLogin(checkLocation: (coordinates: LocationCoordinates) => Promise<boolean>): Promise<boolean> {
+  requestForLogin(checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null): Promise<boolean> {
     // Repeated Login clicks share one open workflow instead of stacking dialogs.
     if (this.completeLogin) return Promise.resolve(false);
     this.open();
@@ -93,13 +95,14 @@ export class AppSetupStore implements OnDestroy {
     const generation = this.generation;
     try {
       const permission = await navigator.permissions.query({ name: 'geolocation' });
-      if (!this.isOpen() || generation !== this.generation) return;
+      if ((!this.isOpen() && !this.opening) || generation !== this.generation) return;
       if (this.permission) this.permission.onchange = null;
       this.permission = permission;
       const update = () => {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
-        if (permission.state === 'granted' || this.loggedIn()) this.locationSelected.set(true);
+        if (this.locationRequestPending && permission.state === 'granted') this.busy.set(true);
+        if (permission.state === 'granted') this.locationSelected.set(true);
       };
       permission.onchange = update;
       update();
@@ -109,6 +112,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   close(): void {
+    this.locationRequestPending = false;
     this.nativePending.set(false);
     this.busy.set(false);
     this.finish(false);
@@ -121,40 +125,54 @@ export class AppSetupStore implements OnDestroy {
   }
 
   async allow(): Promise<void> {
-    if (!this.isOpen() || this.allowDisabled()) return;
+    if (!this.isOpen() || this.nativePending() || this.allowDisabled()) return;
     this.clearSaveFeedback();
+    if (!this.loggedIn() && !this.locationSelected()) {
+      this.error.set(this.i18n.translate('entry.permissions.location.required'));
+      return;
+    }
     this.nativePending.set(true);
     this.error.set('');
     const generation = this.generation;
     try {
       // Notifications need the original button gesture. Geolocation follows
-      // only after that native decision settles. Notification denial is optional.
+      // only after that native decision settles. An enabled choice must succeed.
       if (this.notificationsSelected()) {
         const decision = await this.messaging.requestEntryPermission();
         if (generation !== this.generation) return;
-        if (decision) this.notificationsSelected.set(decision === 'granted');
-        if (decision === 'denied' && this.loggedIn() && !this.checkLocation) {
+        if (decision !== 'granted') {
           this.error.set(this.i18n.translate('entry.permissions.notifications.blocked'));
           return;
         }
       }
       if (generation !== this.generation) return;
-      if (this.loggedIn() && !this.checkLocation) {
-        void this.location.syncGrantedLocationForActiveUser();
+      const needsLocation = !!this.checkLocation || (this.loggedIn()
+        ? this.locationSelected() && (!this.locationGranted() || this.locationMissing())
+        : !this.locationGranted());
+      if (!needsLocation) {
         this.nativePending.set(false);
         this.busy.set(true);
-        await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+        if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
+          await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+        }
         if (generation === this.generation) {
-          this.notificationsEdited.set(false);
-          this.showSaveFeedback();
+          if (this.completeLogin) this.finish(true);
+          else {
+            this.showSaveFeedback();
+          }
         }
         return;
       }
+      this.locationRequestPending = true;
+      this.busy.set(this.locationPermission() === 'granted');
       const coordinates = await this.location.requestCurrentCoordinates();
       if (generation !== this.generation) return;
       if (!coordinates) {
         await this.refreshPermissions();
-        throw new Error(this.i18n.translate('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
+        if (generation !== this.generation) return;
+        throw new Error(this.i18n.translate(this.locationPermission() === 'denied'
+          ? 'entry.permissions.location.blocked'
+          : 'entry.permissions.location.unavailable'));
       }
       this.locationGranted.set(true);
       this.locationPermission.set('granted');
@@ -162,24 +180,30 @@ export class AppSetupStore implements OnDestroy {
       this.nativePending.set(false);
       if (this.checkLocation || this.notificationsSelected()) this.busy.set(true);
       if (this.checkLocation && !await this.checkLocation(coordinates)) return;
+      if (this.loggedIn()) {
+        this.busy.set(true);
+        if (!await this.location.saveCurrentCoordinates(coordinates)) {
+          throw new Error(this.i18n.translate('entry.permissions.location.unavailable'));
+        }
+      }
       if (generation !== this.generation) return;
       // Registration follows native decisions, never a second permission prompt.
-      await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+      if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
+        await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+      }
       if (generation === this.generation) {
         if (this.completeLogin) this.finish(true);
         else {
-          this.notificationsEdited.set(false);
           this.showSaveFeedback();
         }
       }
     } catch (error) {
       if (generation === this.generation) {
-        this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
-        this.notificationsEdited.set(false);
         this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
       }
     } finally {
       if (generation === this.generation || !this.isOpen()) {
+        this.locationRequestPending = false;
         this.nativePending.set(false);
         this.busy.set(false);
       }
@@ -208,6 +232,7 @@ export class AppSetupStore implements OnDestroy {
   private finish(allowed: boolean): void {
     this.clearSaveFeedback();
     this.generation++;
+    this.opening = false;
     if (this.permission) this.permission.onchange = null;
     this.permission = null;
     this.isOpen.set(false);

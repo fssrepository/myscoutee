@@ -25,42 +25,37 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type CardProfileViewData,
-  PairCardComponent,
-  SingleCardComponent,
-  SmartListComponent,
-  type ListQuery,
-  type PageResult,
-  type PairCardData,
-  type AppMenuRateConfig,
-  type SingleCardData,
-  type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListStateChange
+import { HomeHeaderComponent } from '../home-header/home-header.component';
+import type {
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuPalette,
+  CardProfileViewData,
+  ListQuery,
+  PageResult,
+  PairCardData,
+  AppMenuRateConfig,
+  SingleCardData,
+  SmartListConfig,
+  SmartListLoadPage,
+  SmartListStateChange
 } from '../../../shared/ui';
+import { PairCardComponent } from '../../../shared/ui/components/core/smart-list/card/pair-card/pair-card.component';
+import {
+  SingleCardComponent
+} from '../../../shared/ui/components/core/smart-list/card/single-card/single-card.component';
+import { SmartListComponent } from '../../../shared/ui/components/core/smart-list/smart-list.component';
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import {
-  ExplanationGuideService,
-  GameService,
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  UsersService,
-  type UserDto,
-  type UserGameMode,
-  type UserGameSocialCard
-} from '../../../shared/core';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { GameService } from '../../../shared/core/base/services/game.service';
+import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
+import type { UserDto, UserGameMode, UserGameSocialCard } from '../../../shared/core';
 import {
   HomeGameFilterPopupComponent
 } from '../home-game-filter-popup/home-game-filter-popup.component';
-import {
-  I18nPipe
-} from '../../../shared/ui';
+import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -79,7 +74,6 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 
 type LocalPopup = 'filter' | null;
 
@@ -167,9 +161,9 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    DeploymentBrandComponent,
+
     MatIconModule,
-    AppMenuComponent,
+    HomeHeaderComponent,
     SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
@@ -455,6 +449,10 @@ export class HomeComponent implements OnDestroy {
     return this.runtimeStore.isDataSourceAvailable();
   }
 
+  protected get memberActionsAvailable(): boolean {
+    return this.isDataSourceAvailable && !this.userProfileStore.activeUserLocationMissing();
+  }
+
   protected get isGameVisibilityPaused(): boolean {
     if (!this.isAvatarProfileSettled || this.isBlockedUser) {
       return false;
@@ -665,6 +663,7 @@ export class HomeComponent implements OnDestroy {
       actionLabel: 'Go',
       presentation: 'fullscreen',
       blinkOnSelect: false,
+      readonly: !this.memberActionsAvailable || this.isBlockedUser,
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
     };
   }
@@ -690,7 +689,7 @@ export class HomeComponent implements OnDestroy {
         kind: 'select-trigger',
         layout: 'pill',
         palette: this.homeModePalette(this.selectedHomeMode),
-        disabled: !this.isDataSourceAvailable || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || this.isBlockedUser,
         ariaLabel: 'Select game mode',
         items: this.homeModeOptions.map(option => ({
           id: `home-mode:${option.key}`,
@@ -709,7 +708,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'filter_alt',
         kind: 'action',
         palette: 'filter',
-        disabled: !this.isDataSourceAvailable || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || this.isBlockedUser,
         counter: this.filterBadgeCount > 0 ? { value: this.filterBadgeCount, max: 99 } : null,
         ariaLabel: 'Open profile filters',
         context: { action: 'filter' }
@@ -719,7 +718,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'history',
         kind: 'action',
         palette: 'gold',
-        disabled: !this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || !this.canOpenHistory || this.isBlockedUser,
         counter: this.historyBadgeCount > 0 ? { value: this.historyBadgeCount, max: 99 } : null,
         ariaLabel: 'Open game history',
         context: { action: 'history' }
@@ -849,10 +848,12 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
+    if (!this.memberActionsAvailable) return;
     this.profileStore.openProfileView(profileView);
   }
 
   protected setRating(value: number): void {
+    if (!this.memberActionsAvailable || this.isBlockedUser) return;
     this.stopPairModeSplitDrag();
     if (this.ratingAdvanceTimer) {
       return;
@@ -917,7 +918,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected selectHomeMode(mode: UserGameMode): void {
-    if (!this.isDataSourceAvailable || this.isBlockedUser) {
+    if (!this.memberActionsAvailable || this.isBlockedUser) {
       return;
     }
     const normalizedMode = this.normalizeHomeMode(mode);
@@ -953,7 +954,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openHistory(): void {
-    if (!this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser) {
+    if (!this.memberActionsAvailable || !this.canOpenHistory || this.isBlockedUser) {
       return;
     }
     const initialRateFilter = this.isPairMode ? 'pair-given' : 'individual-given';
@@ -971,7 +972,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openFilter(): void {
-    if (!this.isDataSourceAvailable || this.isBlockedUser) {
+    if (!this.memberActionsAvailable || this.isBlockedUser) {
       return;
     }
     this.gameFilterPopupContext = this.createGameFilterPopupContext();
@@ -1805,6 +1806,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number): Promise<void> {
+    if (!this.memberActionsAvailable || this.isBlockedUser) return;
     if (!row || this.ratingAdvanceTimer) {
       return;
     }

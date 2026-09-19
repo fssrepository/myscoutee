@@ -1,11 +1,11 @@
 <section
   class="form-flow"
-  [class.is-loading]="loading"
+  [class.is-loading]="loading || preparing()"
   [class.form-flow--carousel]="isCarouselLayout()"
   [class.form-flow--grouped]="isGroupedLayout()"
   [class.form-flow--menu-overflow]="model?.allowMenuOverflow === true"
   [ngClass]="toneClass()"
-  [attr.aria-busy]="loading"
+  [attr.aria-busy]="loading || preparing()"
 >
   <ng-template #progressControls>
     <div class="form-flow__progress" [attr.aria-label]="pageCounterLabel()">
@@ -70,7 +70,7 @@
     </div>
   </ng-template>
 
-  @if (!isCarouselLayout() && model?.header !== false) {
+  @if (!loading && !preparing() && !isCarouselLayout() && model?.header !== false) {
     <header class="form-flow__header">
       <div class="form-flow__title-block">
         <span class="form-flow__kicker">{{ model?.title }}</span>
@@ -86,10 +86,10 @@
     </header>
   }
 
-  @if (loading) {
-    <article class="form-flow__loading">
-      <app-indicator kind="load-ring" state="loading"></app-indicator>
-      <span>{{ model?.loadingLabel || 'Loading form' }}</span>
+  @if (loading || preparing()) {
+    <article class="form-flow__loading" role="status">
+      <app-indicator kind="spinner-ring" state="loading"></app-indicator>
+      <span>{{ (model?.loadingLabel || 'Loading form') | i18n }}</span>
     </article>
   } @else if (model && totalPageCount() > 0) {
     <div

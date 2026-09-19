@@ -1,0 +1,94 @@
+@if (open()) {
+  <app-popup [model]="popupModel()" [zIndex]="2500">
+    <div class="integration-settings-body">
+      @if (loading()) {
+        <div class="integration-settings-state">{{ 'integration.loading' | i18n }}</div>
+      } @else if (errorMessage()) {
+        <div class="integration-settings-state integration-settings-state--error">{{ errorMessage() | i18n }}</div>
+      } @else if (settings(); as config) {
+        <section class="integration-settings-section integration-endpoint">
+          <div class="integration-endpoint-copy">
+            <span class="integration-endpoint-label">{{ 'integration.base.url' | i18n }}</span>
+            <code>{{ baseUrl() }}</code>
+          </div>
+          <app-menu
+            kind="inline"
+            layout="row"
+            [model]="actionMenuModel"
+            [items]="copyBaseUrlActions()"
+            (itemSelect)="onTokenAction($event)"
+          ></app-menu>
+          <small>{{ 'integration.batch.maximum' | i18n }} {{ config.maxBatchSize }}</small>
+        </section>
+
+        <section class="integration-settings-section">
+          <div class="integration-section-heading">
+            <div>
+              <h3>{{ 'integration.client.keys' | i18n }}</h3>
+              <small>{{ config.tokens.length }} / {{ config.maxActiveTokens }} {{ 'integration.token.active' | i18n }}</small>
+            </div>
+            <app-menu
+              class="integration-generate-action"
+              kind="inline"
+              layout="row"
+              [model]="actionMenuModel"
+              [items]="generateTokenActions()"
+              (itemSelect)="onGenerateTokenAction($event)"
+            ></app-menu>
+          </div>
+
+          @if (config.tokens.length > 0) {
+            <div class="integration-token-list">
+              @for (token of config.tokens; track token.id) {
+                <article class="integration-token-row">
+                  <div class="integration-token-main">
+                    <div class="integration-token-title">
+                      <strong>{{ token.name }}</strong>
+                      <mat-icon
+                        class="integration-token-status"
+                        [class.integration-token-status--occupied]="token.claimedAt"
+                        [class.integration-token-status--available]="!token.claimedAt"
+                        [attr.title]="(token.claimedAt ? 'connected' : 'unconnected') | i18n"
+                        [attr.aria-label]="(token.claimedAt ? 'connected' : 'unconnected') | i18n"
+                      >{{ token.claimedAt ? 'lock' : 'content_copy' }}</mat-icon>
+                    </div>
+                    <span>{{ token.prefix }}…</span>
+                    @if (revealedTokenId() === token.id && revealedToken()) {
+                      <div class="integration-token-secret">
+                        <code>{{ revealedToken() }}</code>
+                        <app-menu
+                          kind="inline"
+                          layout="row"
+                          [model]="actionMenuModel"
+                          [items]="copyTokenActions(revealedToken())"
+                          (itemSelect)="onTokenAction($event)"
+                        ></app-menu>
+                      </div>
+                      <small>{{ 'integration.token.copy.now' | i18n }}</small>
+                    }
+                    <small class="integration-token-meta">
+                      <span>{{ 'integration.token.expires' | i18n }} {{ formatDate(token.expiresAt) }}</span>
+                      @if (token.claimedAddress) {
+                        <span>IP {{ token.claimedAddress }}</span>
+                      }
+                    </small>
+                  </div>
+                  <app-menu
+                    class="integration-token-action"
+                    kind="inline"
+                    layout="row"
+                    [model]="actionMenuModel"
+                    [items]="revokeTokenActions(token)"
+                    (itemSelect)="onTokenAction($event)"
+                  ></app-menu>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="integration-empty-state">{{ 'integration.token.empty' | i18n }}</p>
+          }
+        </section>
+      }
+    </div>
+  </app-popup>
+}

@@ -559,10 +559,24 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private async ensureHttpLoginAccessAllowed(): Promise<boolean> {
     this.loginEligibilityBusy = true;
     try {
+      if (!this.locationEligibilityResolvedFromCoordinates
+        && !this.firebaseMessagingService.entryPermissionPending
+        && await this.queryGeolocationPermissionState() === 'granted') {
+        await (this.grantedLocationEligibilityPromise
+          ?? this.resolveBrowserLocationAccess(this.grantedLocationEligibilityRequestToken));
+        if (!this.locationEligibilityResolvedFromCoordinates) {
+          this.dialogStore.openInfo(this.uiText('entry.permissions.location.unavailable'), {
+            title: 'Check Unavailable',
+            confirmLabel: 'OK'
+          });
+          return false;
+        }
+      }
       const gateState = this.landingLoginAvailability;
-      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true
-        && !this.firebaseMessagingService.entryPermissionPending) {
-        return true;
+      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
+        return this.firebaseMessagingService.entryPermissionPending
+          ? await this.appSetupStore.requestForLogin()
+          : true;
       }
       if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
         this.dialogStore.openInfo(

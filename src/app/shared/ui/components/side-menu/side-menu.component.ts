@@ -22,26 +22,24 @@ import {
   Router
 } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import {
-  type ActivityCounters,
-  AppMenuComponent,
-  type ActivityCounterKey,
-  type AppMenuDragEvent,
-  type AppMenuDragPosition,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuTrigger,
-  type AppMenuValueMap,
-  HeaderCardComponent,
-  type HeaderCardModel,
-  UiPollCoordinator,
-  UiTaskScheduler,
-  type UserImpressionChangeFlags
+import type {
+  ActivityCounters,
+  ActivityCounterKey,
+  AppMenuDragEvent,
+  AppMenuDragPosition,
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuModel,
+  AppMenuTrigger,
+  AppMenuValueMap,
+  HeaderCardModel,
+  UserImpressionChangeFlags
 } from '../..';
-import {
-  ProfileHeaderCardConverter
-} from '../../converters';
+import { AppMenuComponent } from '../core/menu/menu.component';
+import { HeaderCardComponent } from '../core/smart-list/card/header-card/header-card.component';
+import { UiPollCoordinator } from '../../scheduler/ui-poll-coordinator';
+import { UiTaskScheduler } from '../../scheduler/ui-task-scheduler';
+import { ProfileHeaderCardConverter } from '../../converters/profile-header-card.converter';
 import {
   cloneEventCounters,
   cloneSupportCaseCounters
@@ -66,22 +64,20 @@ import {
 import {
   SubEventResourcePopupStore
 } from '../../context/stores/sub-event-resource-popup.store';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
+import { HelpCenterService } from '../../../core/base/services/help-center.service';
+import { I18nService } from '../../../core/base/services/i18n.service';
+import { PrivacyPolicyService } from '../../../core/base/services/privacy-policy.service';
+import { SessionService } from '../../../core/base/services/session.service';
+import { ChatsService } from '../../../core/base/services/chats.service';
+import { TermsPolicyService } from '../../../core/base/services/terms-policy.service';
 import {
-  ExplanationGuideService,
-  DeploymentConfigurationService,
-  HelpCenterService,
-  I18nService,
-  PrivacyPolicyService,
-  SessionService,
-  ChatsService,
-  TermsPolicyService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
-  USER_PROFILE_SAVE_CONTEXT_KEY,
-  type HelpCenterRevisionDto,
-  type PrivacyConsentDto,
-  type UserDto
-} from '../../../core';
+  USER_PROFILE_SAVE_CONTEXT_KEY
+} from '../../../core/base/services/users.service';
+import type { HelpCenterRevisionDto, PrivacyConsentDto, UserDto } from '../../../core';
 import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
@@ -121,6 +117,10 @@ import { NotificationCenterStore } from '../../context/stores/notification-cente
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { PwaService } from '../../../core/base/services/pwa.service';
+import { PopupComponent } from '../core/popup/popup.component';
+import type { PopupModel } from '../core/popup';
+import { IndicatorComponent } from '../core/indicator/indicator.component';
+import { I18nPipe } from '../../pipes/i18n.pipe';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { environment } from '../../../../../environments/environment';
 import {
@@ -214,7 +214,10 @@ type NavigatorHeaderActionMenuItemId =
     HeaderCardComponent,
     ProfileSettingsPopupsComponent,
     DialogComponent,
-    NotificationCenterPopupComponent
+    NotificationCenterPopupComponent,
+    PopupComponent,
+    IndicatorComponent,
+    I18nPipe
   ],
   templateUrl: './side-menu.component.html',
   styleUrl: './side-menu.component.scss'
@@ -263,6 +266,10 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
+  protected readonly profileEditorLoadingModel: PopupModel = {
+    title: 'Profile', ariaLabel: 'Profile', size: 'wide', height: 'full', bodyLayout: 'fill',
+    onClose: () => this.profileStore.closeProfileEditor()
+  };
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
@@ -303,9 +310,16 @@ export class SideMenuComponent implements OnDestroy {
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
     const user = this.userProfileStore.activeUserProfile();
+    const session = this.sessionService.currentSession();
+    const profileImage = AppUtils.firstImageUrl(user?.images);
+    const previewMatches = session?.kind === 'firebase'
+      && (!this.canToggleAvatarMenu() || session.avatarImageUrl === profileImage);
+    const previewImage = previewMatches
+      ? session.avatarImageDataUrl ?? session.avatarImageUrl
+      : undefined;
     return {
       badgeCount: user ? this.resolveUserBadgeCount(user) : 0,
-      imageUrl: AppUtils.firstImageUrl(user?.images) || null
+      imageUrl: AppUtils.mediaImageVariantUrl(previewImage ?? profileImage, 'small') || null
     };
   });
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
@@ -403,7 +417,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly avatarMenuItems = computed<readonly AppMenuItem<NavigatorAvatarMenuItemId, NavigatorAvatarMenuContext>[]>(() => {
     const user = this.userProfileStore.activeUserProfile();
     const canToggle = this.canToggleAvatarMenu();
-    const imageUrl = canToggle ? this.avatarState().imageUrl ?? '' : '';
+    const imageUrl = this.avatarState().imageUrl ?? '';
     const icon = this.avatarLoading() ? 'schedule' : this.avatarLoadError() ? 'person_off' : '';
     const badgeCount = this.avatarBadgeCount();
     return [{
@@ -449,6 +463,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly offlineAttentionDismissed = signal(false);
   protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
   private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+    || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
     this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
@@ -1306,6 +1321,14 @@ export class SideMenuComponent implements OnDestroy {
         void this.profileStore.ensureExplanationPopupLoaded();
       }
     });
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  protected closeLoadingProfile(event: Event): void {
+    if (this.profileStore.profileEditorOpen() && !this.profileStore.profileEditorComponent()) {
+      event.stopPropagation();
+      this.profileStore.closeProfileEditor();
+    }
   }
 
   @HostListener('window:online')
@@ -2167,6 +2190,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
+      this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {

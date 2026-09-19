@@ -1,6 +1,6 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { Injector, inject, provideAppInitializer } from '@angular/core';
-import { prepareDemoFailover, demoFailoverEnabled, demoFailoverLocalUser, startDemoFailover } from './app/shared/core/common/demo-failover';
+import { prepareDemoFailover, demoFailoverSeedWarmupNeeded, demoFailoverLocalUser, startDemoFailover } from './app/shared/core/common/demo-failover';
 
 type MutableConsole = Console & Record<string, (...args: unknown[]) => void>;
 
@@ -105,8 +105,9 @@ prepareDemoFailover()
       }));
     }
     const app = await bootstrapApplication(App, appConfig);
-    // Warm seed code while online, without instantiating it in the HTTP data store.
-    if (demoFailoverEnabled()) {
+    // Only demo sessions can use these seeds. Real sessions must not download
+    // and evaluate the demo builders while authentication is still starting.
+    if (demoFailoverSeedWarmupNeeded()) {
       void import('./app/shared/core/local/seed/services/demo-bootstrap.service').catch(() => undefined);
     }
     return app;

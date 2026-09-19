@@ -1,4 +1,5 @@
 export { ActivitiesService } from './base/services/activities.service';
+export { IntegrationService } from './base/services/integration.service';
 export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY

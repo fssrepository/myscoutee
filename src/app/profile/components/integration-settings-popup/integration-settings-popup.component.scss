@@ -1,0 +1,181 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+
+:host {
+  display: contents;
+  --app-popup-small-width: 560px;
+}
+
+.integration-settings-body {
+  width: 100%;
+  display: grid;
+  gap: 0.82rem;
+  padding: 0.2rem;
+}
+
+.integration-settings-section {
+  display: grid;
+  gap: 0.44rem;
+  padding: 0.74rem;
+  border: 1px solid rgba(26, 48, 78, 0.14);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.integration-section-heading h3 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.integration-settings-section small,
+.integration-token-main span,
+.integration-token-main small,
+.integration-empty-state {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.integration-endpoint {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.42rem;
+}
+
+.integration-endpoint-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.52rem;
+}
+
+.integration-endpoint-label {
+  flex: 0 0 auto;
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.integration-endpoint code {
+  min-width: 0;
+  color: #315d91;
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.integration-endpoint > small {
+  grid-column: 1 / -1;
+}
+
+.integration-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.integration-token-list {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.integration-token-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.62rem;
+  border: 1px solid rgba(30, 55, 88, 0.12);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.integration-token-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.integration-token-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.integration-token-title strong {
+  min-width: 0;
+}
+
+.integration-token-status {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.integration-token-status--available {
+  color: #2f8f66;
+}
+
+.integration-token-status--occupied {
+  color: #c33b3b;
+}
+
+.integration-token-meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.5rem;
+  row-gap: 0.08rem;
+}
+
+.integration-token-main strong,
+.integration-token-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.integration-token-secret {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.42rem;
+  margin-top: 0.28rem;
+}
+
+.integration-token-secret code {
+  min-width: 0;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(47, 126, 82, 0.25);
+  border-radius: 8px;
+  background: #eef8f3;
+  color: #245f40;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.integration-settings-state,
+.integration-empty-state {
+  padding: 1rem;
+  text-align: center;
+}
+
+.integration-settings-state--error {
+  color: #a82e2e;
+}
+
+@media (max-width: 520px) {
+  .integration-endpoint-copy {
+    display: grid;
+    gap: 0.16rem;
+  }
+}

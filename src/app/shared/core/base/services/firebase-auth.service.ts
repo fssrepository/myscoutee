@@ -3,12 +3,12 @@ import {
   FacebookAuthProvider,
   GoogleAuthProvider,
   browserLocalPersistence,
+  browserPopupRedirectResolver,
   createUserWithEmailAndPassword,
-  getAuth,
+  initializeAuth,
   linkWithCredential,
   onAuthStateChanged,
   sendEmailVerification,
-  setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -244,8 +244,11 @@ export class FirebaseAuthService {
   }
 
   private async initializeFirebaseAuth(app: FirebaseApp): Promise<Auth> {
-    const auth = getAuth(app);
-    await setPersistence(auth, browserLocalPersistence);
+    // This application uses popup sign-in, not redirect sign-in. Installing the
+    // default resolver here makes mobile Firebase load GAPI and its hidden iframe
+    // before restoring an existing session. Load it only for an explicit login.
+    const auth = initializeAuth(app, { persistence: browserLocalPersistence });
+    await auth.authStateReady();
     return auth;
   }
 
@@ -299,7 +302,7 @@ export class FirebaseAuthService {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');
       provider.setCustomParameters({ display: 'popup' });
-      return signInWithPopup(auth, provider);
+      return signInWithPopup(auth, provider, browserPopupRedirectResolver);
     }
     if (request.provider === 'email') {
       const email = `${request.email ?? ''}`.trim();
@@ -317,7 +320,7 @@ export class FirebaseAuthService {
     }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    return signInWithPopup(auth, provider);
+    return signInWithPopup(auth, provider, browserPopupRedirectResolver);
   }
 
   private async runEmailAuthRequest(

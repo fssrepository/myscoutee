@@ -5,6 +5,7 @@ import type {
   UserGender
 } from '../../../common/constants';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
+import type { LocalIntegrationTokenRecord } from './integration.entity';
 
 export const USERS_TABLE_NAME = APP_INDEXED_DB_KEYS.users;
 
@@ -90,6 +91,7 @@ export interface UserEventFeedbackCountersRecord {
 }
 
 export interface UserRecord {
+  integrationTokens?: LocalIntegrationTokenRecord[];
   devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;

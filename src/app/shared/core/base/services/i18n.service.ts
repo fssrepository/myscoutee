@@ -1194,8 +1194,10 @@ export class I18nService {
 
   private sourceLookupCandidates(value: string): string[] {
     const normalized = this.normalizeSourceKey(value);
-    const lower = normalized.toLocaleLowerCase('en-US');
-    const upper = normalized.toLocaleUpperCase('en-US');
+    // English uses Unicode's default case mapping. Avoid resolving a locale
+    // for every entry in the source index and every translated DOM text.
+    const lower = normalized.toLowerCase();
+    const upper = normalized.toUpperCase();
     return [normalized, lower, upper]
       .filter((candidate, index, values) => candidate && values.indexOf(candidate) === index);
   }
@@ -1221,7 +1223,7 @@ export class I18nService {
   }
 
   private hasLetters(value: string): boolean {
-    return Array.from(value).some(char => char.toLocaleLowerCase('en-US') !== char.toLocaleUpperCase('en-US'));
+    return value.toLowerCase() !== value.toUpperCase();
   }
 
   private shouldSkipAttributeElement(element: Element): boolean {

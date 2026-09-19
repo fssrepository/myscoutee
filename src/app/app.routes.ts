@@ -13,7 +13,10 @@ const entryAreaGuard: CanActivateFn = async () => {
   const injector = inject(Injector);
   const sessionService = inject(SessionService);
   const router = inject(Router);
-  const session = await sessionService.ensureSession();
+  // This public route only chooses a destination. Its protected guard verifies
+  // the session and server-side role before activation; verifying here as well
+  // would reload Firebase twice during the same startup redirect.
+  const session = sessionService.currentSession();
   if (!session) {
     return true;
   }

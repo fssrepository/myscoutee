@@ -8,6 +8,10 @@ export interface RouteConfigEntry {
   http?: boolean;
 }
 
+export const APP_SETUP_CONFIG = {
+  locationRequestTimeoutMs: 10_000
+} as const;
+
 export type RouteMode = 'local' | 'http';
 
 export interface RouteConfig {

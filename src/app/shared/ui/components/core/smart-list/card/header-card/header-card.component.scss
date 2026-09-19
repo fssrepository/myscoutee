@@ -215,6 +215,18 @@
   }
 }
 
+.header-card__edit:not(:disabled):active {
+  // Match the side-menu header's icon-button press on touch and mouse.
+  transform: scale(0.92);
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-card__edit {
+    transition: none;
+  }
+}
+
 @media (max-width: 640px) {
   .header-card__avatar {
     width: 74px;

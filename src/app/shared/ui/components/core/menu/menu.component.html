@@ -34,6 +34,7 @@
               [src]="imageUrl"
               [alt]="triggerImageAlt()"
               (error)="revealImageFallback($event)"
+              (load)="hideImageFallback($event)"
             />
             @if (triggerImageFallback(); as imageFallback) {
               <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
@@ -128,6 +129,7 @@
                     [src]="imageUrl"
                     [alt]="actionRowItemImageAlt(item)"
                     (error)="revealImageFallback($event)"
+                    (load)="hideImageFallback($event)"
                   />
                   @if (actionRowItemImageFallback(item); as imageFallback) {
                     <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
@@ -578,6 +580,7 @@
                         [src]="imageUrl"
                         [alt]="itemImageAlt(item)"
                         (error)="revealImageFallback($event)"
+                        (load)="hideImageFallback($event)"
                       />
                       @if (itemImageFallback(item); as imageFallback) {
                         <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
@@ -660,6 +663,7 @@
                             [src]="imageUrl"
                             [alt]="itemImageAlt(item)"
                             (error)="revealImageFallback($event)"
+                            (load)="hideImageFallback($event)"
                           />
                           @if (itemImageFallback(item); as imageFallback) {
                             <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
@@ -747,6 +751,7 @@
                           [src]="imageUrl"
                           [alt]="itemImageAlt(item)"
                           (error)="revealImageFallback($event)"
+                          (load)="hideImageFallback($event)"
                         />
                         @if (itemImageFallback(item); as imageFallback) {
                           <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>

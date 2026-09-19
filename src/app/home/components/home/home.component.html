@@ -2,27 +2,12 @@
   <div class="game-page game-page-reactivation-pending" aria-hidden="true"></div>
 } @else {
 <div class="game-page" [ngClass]="gamePageStatusClass()">
-  <header class="game-header">
-    <a
-      class="game-brand"
-      [attr.aria-label]="deploymentBranding().productName + ' home'"
-    >
-      <app-deployment-brand
-        [branding]="deploymentBranding()"
-      ></app-deployment-brand>
-    </a>
-    @if (homeHeaderControlsReady) {
-    <div class="game-actions">
-      <app-menu
-        class="game-header-menu"
-        kind="inline"
-        layout="row"
-        [items]="homeHeaderMenuItems()"
-        (itemSelect)="onHomeHeaderMenuSelect($event)"
-      ></app-menu>
-    </div>
-    }
-  </header>
+  <app-home-header
+    [branding]="deploymentBranding()"
+    [items]="homeHeaderMenuItems()"
+    [showControls]="!isAvatarProfileSettled || homeHeaderControlsReady"
+    (itemSelect)="onHomeHeaderMenuSelect($event)"
+  ></app-home-header>
 
   @if (showSocialQueryInputs()) {
     <section class="game-social-query-bar">
@@ -33,7 +18,7 @@
           [attr.list]="'home-social-left-suggestions'"
           [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
           [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
-          [disabled]="!isDataSourceAvailable"
+          [disabled]="!memberActionsAvailable"
           (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
           />
       </label>
@@ -44,7 +29,7 @@
           [attr.list]="'home-social-right-suggestions'"
           [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
           [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
-          [disabled]="!isDataSourceAvailable"
+          [disabled]="!memberActionsAvailable"
           (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
           />
       </label>
@@ -114,9 +99,11 @@
 }
 
 @if (!isAccountReactivationPending && localPopup === 'filter' && gameFilterPopupContext) {
-  <app-home-game-filter-popup
-    [context]="gameFilterPopupContext"
-    [saving]="isGameFilterSaving"
-    (closed)="onGameFilterPopupClosed($event)"
-  ></app-home-game-filter-popup>
+  @defer (on immediate) {
+    <app-home-game-filter-popup
+      [context]="gameFilterPopupContext"
+      [saving]="isGameFilterSaving"
+      (closed)="onGameFilterPopupClosed($event)"
+    ></app-home-game-filter-popup>
+  }
 }

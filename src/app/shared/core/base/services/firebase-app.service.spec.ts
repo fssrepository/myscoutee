@@ -111,6 +111,78 @@ describe('FirebaseAppService reconciliation', () => {
       'myscoutee-deployment-runtime'
     );
   });
+
+  it('keeps requests moving while one heartbeat read is pending, then sends the prepared header once', async () => {
+    const storedHeader = deferred<string>();
+    const readHeader = vi.fn().mockReturnValue(storedHeader.promise);
+    const heartbeat = { getHeartbeatsHeader: readHeader };
+    vi.mocked(initializeApp).mockReturnValue({
+      container: { getProvider: () => ({ getImmediate: () => heartbeat }) }
+    } as unknown as FirebaseApp);
+    fetchMock.mockResolvedValueOnce(jsonResponse(firebaseConfiguration(5)));
+    await TestBed.inject(FirebaseAppService).ensureFirebaseRuntime();
+
+    expect(await heartbeat.getHeartbeatsHeader()).toBe('');
+    expect(await heartbeat.getHeartbeatsHeader()).toBe('');
+    expect(readHeader).toHaveBeenCalledTimes(1);
+
+    readHeader.mockResolvedValue('');
+    storedHeader.resolve('prepared-sdk-telemetry');
+    await storedHeader.promise;
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(await heartbeat.getHeartbeatsHeader()).toBe('prepared-sdk-telemetry');
+    expect(await heartbeat.getHeartbeatsHeader()).toBe('');
+    expect(readHeader).toHaveBeenCalledTimes(2);
+  });
+
+  it('allows another heartbeat read after telemetry storage fails', async () => {
+    const readHeader = vi.fn().mockRejectedValueOnce(new Error('IndexedDB unavailable')).mockResolvedValue('');
+    const heartbeat = { getHeartbeatsHeader: readHeader };
+    vi.mocked(initializeApp).mockReturnValue({
+      container: { getProvider: () => ({ getImmediate: () => heartbeat }) }
+    } as unknown as FirebaseApp);
+    fetchMock.mockResolvedValueOnce(jsonResponse(firebaseConfiguration(6)));
+    await TestBed.inject(FirebaseAppService).ensureFirebaseRuntime();
+
+    expect(await heartbeat.getHeartbeatsHeader()).toBe('');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(await heartbeat.getHeartbeatsHeader()).toBe('');
+    expect(readHeader).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets the real Firebase Auth SDK issue HTTP before heartbeat storage finishes and preserves auth rejection', async () => {
+    const sdk = await vi.importActual<typeof import('firebase/app')>('firebase/app');
+    const authSdk = await vi.importActual<typeof import('firebase/auth')>('firebase/auth');
+    const realApp = sdk.initializeApp({
+      apiKey: 'test-api-key', appId: 'test-app-id', projectId: 'test-project'
+    }, 'heartbeat-auth-regression');
+    const heartbeat = (realApp as unknown as {
+      container: { getProvider(name: string): { getImmediate(): { getHeartbeatsHeader(): Promise<string> } } };
+    }).container.getProvider('heartbeat').getImmediate();
+    const storedHeader = deferred<string>();
+    const readHeader = vi.spyOn(heartbeat, 'getHeartbeatsHeader').mockReturnValue(storedHeader.promise);
+    vi.mocked(initializeApp).mockReturnValue(realApp);
+    fetchMock.mockResolvedValueOnce(jsonResponse(firebaseConfiguration(7)));
+    await TestBed.inject(FirebaseAppService).ensureFirebaseRuntime();
+    const auth = authSdk.initializeAuth(realApp, { persistence: authSdk.inMemoryPersistence });
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      error: { message: 'INVALID_PASSWORD' }
+    }), { status: 400, headers: { 'Content-Type': 'application/json' } }));
+
+    try {
+      const result = authSdk.signInWithEmailAndPassword(auth, 'member@example.test', 'invalid-password')
+        .then(() => null, error => error);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      expect(fetchMock.mock.calls[1][0]).toContain('identitytoolkit.googleapis.com/v1/accounts:signInWithPassword');
+      expect(readHeader).toHaveBeenCalledTimes(1);
+      expect((await result).code).toBe('auth/wrong-password');
+      expect(auth.currentUser).toBeNull();
+    } finally {
+      storedHeader.resolve('');
+      await sdk.deleteApp(realApp);
+    }
+  });
 });
 
 function firebaseConfiguration(revision: number): FirebaseConfigFile {

@@ -109,6 +109,16 @@ export class UserProfileStore {
   });
   readonly activeNotificationDevices = computed(() => this.activeUserProfile()?.notificationDevices ?? []);
 
+  applyUserRealtimeLocation(userId: string, coordinates: UserRealtimeLongPollResponseDto['locationCoordinates']): void {
+    if (coordinates === undefined) return;
+    const current = this._userProfilesByUserId()[userId];
+    if (!current || (current.locationCoordinates?.latitude === coordinates?.latitude
+      && current.locationCoordinates?.longitude === coordinates?.longitude)) return;
+    this._userProfilesByUserId.update(state => ({ ...state, [userId]: {
+      ...current, locationCoordinates: coordinates ? { ...coordinates } : undefined
+    } }));
+  }
+
   applyUserRealtimeNotificationDevices(userId: string, devices: UserDto['notificationDevices']): void {
     if (!devices) return;
     const current = this._userProfilesByUserId()[userId];
@@ -131,6 +141,12 @@ export class UserProfileStore {
   readonly activeUserIsOperator = computed(() =>
     hasOperatorRole(this.activeUserProfile())
   );
+  readonly activeUserLocationMissing = computed(() => {
+    const user = this.activeUserProfile();
+    if (!user || this.activeUserIsAdmin() || this.activeUserIsOperator()) return false;
+    return !Number.isFinite(user.locationCoordinates?.latitude)
+      || !Number.isFinite(user.locationCoordinates?.longitude);
+  });
   readonly activeAdminUser = computed(() =>
     this.activeUserIsAdmin() ? adminUserFromProfile(this.activeUserProfile()) : null
   );

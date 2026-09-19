@@ -5,6 +5,7 @@ import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PopupComponent, type PopupModel } from '../core/popup';
 import { AppMenuComponent, type AppMenuItem, type AppMenuModel, type AppMenuItemSelectEvent } from '../core/menu';
 import { I18nPipe } from '../../pipes';
+import { APP_SETUP_CONFIG } from '../../../core/base/config';
 
 @Component({
   selector: 'app-setup-popup',
@@ -28,7 +29,7 @@ export class AppSetupPopupComponent {
       palette: 'blue',
       togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() || (this.store.locationGranted() || this.store.loggedIn()) },
+      showToggleIndicator: true, disabled: this.store.actionPending() || this.store.locationGranted() },
     { id: 'notifications', kind: 'toggle', layout: 'pill', icon: 'notifications',
       label: 'app.setup.notifications',
       palette: 'violet',
@@ -45,12 +46,15 @@ export class AppSetupPopupComponent {
   ]);
   readonly showPermissionAction = computed(() => this.store.actionPending()
     || this.toggles().some(item => !item.disabled));
+  readonly permissionActionPending = computed(() => this.store.busy() || this.store.notificationConfigurationPending());
   readonly permissionActions = computed<AppMenuItem[]>(() => [
-    { id: 'allow', icon: this.store.saveSucceeded() ? 'check_circle' : 'check',
-      label: this.store.busy() ? 'entry.permissions.checking' : 'app.setup.update',
-      layout: 'action', palette: this.store.saveSucceeded() ? 'green' : 'blue',
+    { id: 'allow', icon: this.permissionActionPending() ? 'hourglass_empty' : this.store.saveSucceeded() ? 'check_circle' : 'check',
+      label: this.permissionActionPending() ? 'entry.permissions.checking' : 'app.setup.update',
+      layout: 'action', palette: this.store.error() ? 'danger' : this.store.saveSucceeded() ? 'green' : 'blue',
       disabled: this.store.allowDisabled(),
-      progress: this.store.busy() ? { state: 'loading' }
+      progress: this.permissionActionPending() || this.store.error()
+        ? { state: this.permissionActionPending() ? 'loading' : 'error', shape: 'button', perimeter: 100,
+            durationMs: APP_SETUP_CONFIG.locationRequestTimeoutMs }
         : this.store.saveSucceeded() ? { state: 'success', durationMs: 1000 } : null }
   ]);
 
@@ -68,7 +72,7 @@ export class AppSetupPopupComponent {
 
   toggle(event: AppMenuItemSelectEvent): void {
     if (this.store.actionPending()) return;
-    if (event.id === 'location' && !this.store.locationGranted() && !this.store.loggedIn()) {
+    if (event.id === 'location' && !this.store.locationGranted()) {
       this.store.locationSelected.update(value => !value);
     } else if (event.id === 'notifications') {
       this.store.toggleNotifications();

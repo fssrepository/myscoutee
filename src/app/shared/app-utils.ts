@@ -370,7 +370,7 @@ export class AppUtils {
     objectKey: string,
     variant: 'small' | 'medium' | 'large'
   ): string | null {
-    if (!objectKey.startsWith('images/')) {
+    if (!/^(?:images\/|private\/images\/|public\/(?:demo|branding)\/images\/)/.test(objectKey)) {
       return null;
     }
     const slashIndex = objectKey.lastIndexOf('/');

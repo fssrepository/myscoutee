@@ -43,8 +43,11 @@ import {
   RouteDelayService
 } from '../../base/services/route-delay.service';
 import {
+  AVATAR_PREVIEW_MAX_BYTES,
   SessionService
 } from '../../base/services/session.service';
+import { firstValueFrom, timeout } from 'rxjs';
+import { AppUtils } from '../../../app-utils';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
@@ -66,6 +69,7 @@ export class HttpUsersService implements UserService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private avatarPreviewRequestKey = '';
 
   async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     type HttpDemoUserListEntry = Partial<UserDto> & Partial<UserSelectorListItemDto> & {
@@ -132,6 +136,7 @@ export class HttpUsersService implements UserService {
 
   async queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const previewSession = normalizedUserId ? null : this.sessionService.currentSession();
     try {
       type HttpUserByIdResponse = UserDto & {
         filterCount?: number;
@@ -154,12 +159,21 @@ export class HttpUsersService implements UserService {
         }
         return this.readUserByIdFallback(normalizedUserId) ?? { user: null };
       }
-      return this.cacheUserResponse({
+      const result = this.cacheUserResponse({
         user: me,
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
       });
+      if (previewSession?.kind === 'firebase') {
+        const imageUrl = me.images?.find(image => image.trim().length > 0)?.trim() ?? '';
+        this.sessionService.setFirebaseAvatarPreview(
+          previewSession.sessionId,
+          imageUrl
+        );
+        void this.cacheAvatarPreview(previewSession.sessionId, imageUrl);
+      }
+      return result;
     } catch (error) {
       const status = (error as { status?: number } | null)?.status;
       if ([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User details request timeout.')) {
@@ -236,6 +250,7 @@ export class HttpUsersService implements UserService {
       type HttpLongPollResponse = {
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
+        locationCoordinates?: UserRealtimeLongPollResponseDto['locationCoordinates'];
         notificationDevices?: UserRealtimeLongPollResponseDto['notificationDevices'];
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
@@ -261,6 +276,7 @@ export class HttpUsersService implements UserService {
       return {
         userId: response.userId ?? normalizedUserId,
         profileStatus: response.profileStatus ?? null,
+        locationCoordinates: response.locationCoordinates,
         notificationDevices: response.notificationDevices?.map(device => ({
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),
@@ -496,6 +512,47 @@ export class HttpUsersService implements UserService {
         submitted: false,
         message: 'Unable to delete account.'
       };
+    }
+  }
+
+  private async cacheAvatarPreview(sessionId: string, imageUrl: string): Promise<void> {
+    const session = this.sessionService.currentSession();
+    if (!imageUrl || session?.kind !== 'firebase' || session.sessionId !== sessionId
+      || session.avatarImageUrl !== imageUrl || session.avatarImageDataUrl) {
+      return;
+    }
+    const requestKey = `${sessionId}:${imageUrl}`;
+    if (this.avatarPreviewRequestKey === requestKey) {
+      return;
+    }
+    this.avatarPreviewRequestKey = requestKey;
+    try {
+      const url = new URL(AppUtils.mediaImageVariantUrl(imageUrl, 'small'), document.baseURI);
+      if (url.origin !== new URL(document.baseURI).origin
+        || !['/api/media/private', '/api/media/public', '/media/public'].includes(url.pathname)
+        || !url.searchParams.get('key')?.endsWith('/small.webp')) {
+        return;
+      }
+      // The authenticated /auth/me request has completed. Store only this tiny
+      // image for the same session, so next startup needs no media cookie yet.
+      const blob = await firstValueFrom(this.http.get(url.href, { responseType: 'blob' }).pipe(timeout(8000)));
+      if (!blob || blob.size === 0 || blob.size > AVATAR_PREVIEW_MAX_BYTES
+        || !['image/webp', 'image/png', 'image/jpeg'].includes(blob.type)) {
+        return;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      this.sessionService.setFirebaseAvatarPreviewData(sessionId, imageUrl, dataUrl);
+    } catch {
+      // An optional local preview must not change the authenticated profile result.
+    } finally {
+      if (this.avatarPreviewRequestKey === requestKey) {
+        this.avatarPreviewRequestKey = '';
+      }
     }
   }
 

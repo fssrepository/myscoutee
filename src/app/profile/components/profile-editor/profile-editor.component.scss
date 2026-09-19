@@ -328,10 +328,22 @@
   overflow: hidden;
 }
 
-.profile-editor-wrap > app-header-card {
+.profile-editor-header-card {
   flex: 0 0 auto;
   position: relative;
   z-index: 1;
+}
+
+.profile-editor-header-card > app-header-card {
+  display: block;
+}
+
+.profile-api-integration-action {
+  position: absolute;
+  right: 0.72rem;
+  bottom: 0.72rem;
+  z-index: 2;
+  max-width: calc(100% - 1.44rem);
 }
 
 .profile-editor-scroll-area {

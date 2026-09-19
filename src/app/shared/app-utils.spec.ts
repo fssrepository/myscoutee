@@ -1,6 +1,12 @@
 import { AppUtils } from './app-utils';
 
 describe('AppUtils media image variants', () => {
+  it.each(['private', 'public/demo', 'public/branding'])('uses the small variant within the %s namespace', namespace => {
+    const path = namespace === 'private' ? '/api/media/private' : '/media/public';
+    const source = `${path}?key=${encodeURIComponent(`${namespace}/images/owner/profile/upload/large.webp`)}`;
+    expect(AppUtils.mediaImageVariantUrl(source, 'small'))
+      .toBe(`${path}?key=${encodeURIComponent(`${namespace}/images/owner/profile/upload/small.webp`)}`);
+  });
   it('rewrites only the managed image object name', () => {
     const source = managedImageUrl('large');
 

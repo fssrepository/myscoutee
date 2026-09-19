@@ -151,6 +151,9 @@ export class SeedOperatorRegistryBuilder {
             themePreset: 'VIOLET',
             revision: 0
           },
+          integration: {
+            publicBaseUrl: 'http://localhost/api/integrations/v1'
+          },
           payment: {
             availableProviders: [
               {
