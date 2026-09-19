@@ -1,4 +1,6 @@
 import { AppLocationService } from './app-location.service';
+import { DialogStore } from '../../../ui/context/stores/dialog.store';
+import { signal } from '@angular/core';
 
 describe('Explicit location request', () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -86,27 +88,32 @@ describe('Granted location background synchronization', () => {
       lastPersistedCoordinatesByUserId: new Map(),
       primedLocationUserIds: new Set(),
       syncingUserIds: new Set(),
-      blockedUserIds: new Set()
+      blockedUserIds: new Set(),
+      offeredCoordinatesByUserId: new Map(),
+      observedCoordinatesByUserId: signal({}),
+      dialogStore: new DialogStore(),
+      stopCoordinateWatch: vi.fn()
     });
     vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockResolvedValue({ state: 'granted' }) } });
     return { service, save, profile: () => profile };
   }
 
-  it('sends coordinates when native permission is granted but the server has none', async () => {
+  it('does not acquire or save a first location automatically even with native permission', async () => {
     const { service, save } = fixture();
     await service.syncGrantedLocationForActiveUser();
-    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-    expect(save.mock.calls[0][0].locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
+    service.handleStreamedCoordinates('member', { latitude: 47, longitude: 19 });
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
   });
 
-  it('retries the same coordinates after a failed save instead of treating optimistic state as persisted', async () => {
+  it('allows an explicit save to retry the same coordinates after a network failure', async () => {
     const { service, save, profile } = fixture();
     save.mockRejectedValueOnce(new Error('network unavailable'));
-    await service.syncGrantedLocationForActiveUser();
-    await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
-    service.primePersistedCoordinates('member', profile().locationCoordinates);
-    await service.syncGrantedLocationForActiveUser();
-    await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    const coordinates = { latitude: 47, longitude: 19 };
+    await expect(service.saveCurrentCoordinates(coordinates)).rejects.toThrow('network unavailable');
+    expect(profile().locationCoordinates).toBeUndefined();
+    expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
+    expect(save).toHaveBeenCalledTimes(2);
   });
 
   it('does not request coordinates or prompt when native permission is not granted', async () => {
@@ -115,5 +122,96 @@ describe('Granted location background synchronization', () => {
     await service.syncGrantedLocationForActiveUser();
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it('saves the active server profile when its ID differs from the Firebase identity', async () => {
+    const { service, save, profile } = fixture();
+    service.sessionService.currentSession = () => ({ kind: 'firebase', profile: { id: 'firebase-provider-uid' } });
+    const coordinates = { latitude: 47, longitude: 19 };
+    expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'member', locationCoordinates: coordinates }));
+    expect(profile().locationCoordinates).toEqual(coordinates);
+    expect(service.isActiveFirebaseMemberSession('another-profile')).toBe(false);
+    service.sessionService.currentSession = () => ({ kind: 'demo', userId: 'member' });
+    expect(await service.saveCurrentCoordinates(coordinates)).toBe(false);
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it('keeps first coordinates absent until their server save succeeds without another native request', async () => {
+    const { service, save, profile } = fixture();
+    let complete!: (user: unknown) => void;
+    save.mockReturnValue(new Promise(resolve => complete = resolve));
+    const coordinates = { latitude: 47, longitude: 19 };
+    const saving = service.saveCurrentCoordinates(coordinates);
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(profile().locationCoordinates).toBeUndefined();
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(navigator.permissions.query).not.toHaveBeenCalled();
+    complete({ ...profile(), locationCoordinates: coordinates });
+    expect(await saving).toBe(true);
+    expect(profile().locationCoordinates).toEqual(coordinates);
+  });
+
+  it('does not unlock missing location after a failed explicit save', async () => {
+    const { service, save, profile } = fixture();
+    save.mockRejectedValue(new Error('network unavailable'));
+    await expect(service.saveCurrentCoordinates({ latitude: 47, longitude: 19 })).rejects.toThrow();
+    expect(profile().locationCoordinates).toBeUndefined();
+  });
+
+  it('keeps missing server coordinates gated at startup even if the device has cached coordinates', () => {
+    const { service, save, profile } = fixture();
+    service.runLocationSyncFlow('member', profile());
+    expect(service.stopCoordinateWatch).toHaveBeenCalledOnce();
+    expect(service.ensureCoordinateWatch).not.toHaveBeenCalled();
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('keeps the saved location when a member declines a significant background change', () => {
+    const { service, save, profile } = fixture();
+    const original = { latitude: 47, longitude: 19 };
+    service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: original });
+    const candidate = { latitude: 48, longitude: 20 };
+    service.handleStreamedCoordinates('member', candidate);
+    expect(service.dialogStore.dialog()?.title).toBe('location.change.title');
+    expect(profile().locationCoordinates).toEqual(original);
+    expect(save).not.toHaveBeenCalled();
+    expect(service.storeCoordinates).not.toHaveBeenCalled();
+    service.dialogStore.cancel();
+    service.handleStreamedCoordinates('member', candidate);
+    expect(service.dialogStore.dialog()).toBeNull();
+    expect(profile().locationCoordinates).toEqual(original);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('offers changes at fifty kilometres and keeps smaller observations available for manual refresh', () => {
+    const { service, save, profile } = fixture();
+    service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
+    const near = { latitude: 47.44, longitude: 19 }; // 48.9 km
+    service.handleStreamedCoordinates('member', near);
+    expect(service.dialogStore.dialog()).toBeNull();
+    expect(service.pendingCoordinatesForActiveUser()).toEqual(near);
+    service.handleStreamedCoordinates('member', { latitude: 47.46, longitude: 19 }); // 51.2 km
+    const dialog = service.dialogStore.dialog();
+    expect(dialog?.showClose).toBe(true);
+    expect(dialog?.allowEscapeClose).toBe(true);
+    expect(dialog?.allowBackdropClose).toBe(true);
+    service.dialogStore.close();
+    expect(service.dialogStore.dialog()).toBeNull();
+    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('saves the observed background position only after confirmation, without another location request', async () => {
+    const { service, save, profile } = fixture();
+    service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
+    const candidate = { latitude: 48, longitude: 20 };
+    service.handleStreamedCoordinates('member', candidate);
+    await service.dialogStore.confirm();
+    expect(save).toHaveBeenCalledOnce();
+    expect(profile().locationCoordinates).toEqual(candidate);
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(service.dialogStore.dialog()).toBeNull();
   });
 });

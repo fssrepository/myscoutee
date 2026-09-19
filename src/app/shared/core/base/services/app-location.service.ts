@@ -1,8 +1,10 @@
 import {
   Injectable,
   Injector,
+  computed,
   effect,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import {
   HttpErrorResponse
@@ -39,7 +41,7 @@ type HttpUsersServiceInstance = import('../../http/services/users.service').Http
 export class AppLocationService {
   private static readonly ACCESS_RESTRICTED_TITLE = 'Please register';
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
-  private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
+  private static readonly LOCATION_SYNC_DISTANCE_METERS = 50_000;
 
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly injector = inject(Injector);
@@ -52,6 +54,15 @@ export class AppLocationService {
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
   private readonly lastPersistedCoordinatesByUserId = new Map<string, LocationCoordinates>();
   private readonly primedLocationUserIds = new Set<string>();
+  private readonly offeredCoordinatesByUserId = new Map<string, LocationCoordinates>();
+  private readonly observedCoordinatesByUserId = signal<Record<string, LocationCoordinates>>({});
+  readonly locationChangeDetected = computed(() => {
+    const userId = this.userProfileStore.activeUserId().trim();
+    const saved = this.normalizeCoordinates(this.userProfileStore.activeUserProfile()?.locationCoordinates);
+    const observed = this.observedCoordinatesByUserId()[userId];
+    return !!saved && !!observed
+      && this.distanceMeters(saved, observed) >= AppLocationService.LOCATION_SYNC_DISTANCE_METERS;
+  });
   private geolocationWatchId: number | null = null;
   private geolocationWatchUserId = '';
   private initialized = false;
@@ -153,26 +164,12 @@ export class AppLocationService {
     if (!activeUser?.id?.trim() || activeUser.admin === true) {
       return;
     }
-    if (activeUser.profileStatus === 'onboarding') {
+    if (activeUser.profileStatus === 'onboarding' || !this.normalizeCoordinates(activeUser.locationCoordinates)) {
       this.stopCoordinateWatch();
       return;
     }
 
     this.primePersistedCoordinates(userId, activeUser.locationCoordinates);
-
-    const stored = this.readStoredCoordinates(userId);
-    if (stored && !this.sameCoordinates(activeUser.locationCoordinates, stored)) {
-      this.userProfileStore.setUserProfile({
-        ...activeUser,
-        locationCoordinates: stored
-      });
-    }
-
-    const effectiveCoordinates = stored ?? activeUser.locationCoordinates;
-    if (effectiveCoordinates) {
-      this.queueLocationSyncForActiveUser(userId, activeUser, effectiveCoordinates);
-    }
-
     this.ensureCoordinateWatch(userId);
   }
 
@@ -180,6 +177,7 @@ export class AppLocationService {
     const userId = this.userProfileStore.activeUserId().trim();
     const user = this.resolveTrackedUser(userId);
     if (!userId || !user || user.admin === true || user.profileStatus === 'onboarding'
+      || !this.normalizeCoordinates(user.locationCoordinates)
       || !this.isActiveFirebaseMemberSession(userId) || typeof navigator === 'undefined' || !navigator.permissions) {
       return;
     }
@@ -225,6 +223,26 @@ export class AppLocationService {
     });
   }
 
+  async saveCurrentCoordinates(coordinates: LocationCoordinates): Promise<boolean> {
+    const userId = this.userProfileStore.activeUserId().trim();
+    const user = this.resolveTrackedUser(userId);
+    const normalized = this.normalizeCoordinates(coordinates);
+    if (!user || !normalized || !this.isActiveFirebaseMemberSession(userId)) return false;
+    this.primePersistedCoordinates(userId, user.locationCoordinates);
+    await this.persistCoordinates(userId, user, normalized);
+    if (this.userProfileStore.activeUserId().trim() !== userId) return false;
+    this.storeCoordinates(userId, normalized);
+    this.ensureCoordinateWatch(userId);
+    return true;
+  }
+
+  pendingCoordinatesForActiveUser(): LocationCoordinates | null {
+    const userId = this.userProfileStore.activeUserId().trim();
+    const observed = this.observedCoordinatesByUserId()[userId];
+    const user = this.resolveTrackedUser(userId);
+    return observed && !this.sameCoordinates(user?.locationCoordinates, observed) ? { ...observed } : null;
+  }
+
   private ensureCoordinateWatch(userId: string): void {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       return;
@@ -240,7 +258,8 @@ export class AppLocationService {
       return;
     }
     void navigator.permissions.query({ name: 'geolocation' }).then(permission => {
-      if (permission.state === 'granted' && this.userProfileStore.activeUserId().trim() === userId) {
+      if (permission.state === 'granted' && this.userProfileStore.activeUserId().trim() === userId
+        && this.normalizeCoordinates(this.resolveTrackedUser(userId)?.locationCoordinates)) {
         this.startCoordinateWatch(userId);
       }
     }).catch(() => undefined);
@@ -282,18 +301,32 @@ export class AppLocationService {
   }
 
   private handleStreamedCoordinates(userId: string, coordinates: LocationCoordinates): void {
-    this.storeCoordinates(userId, coordinates);
-
+    if (this.userProfileStore.activeUserId().trim() !== userId) return;
+    this.observedCoordinatesByUserId.update(current => ({ ...current, [userId]: coordinates }));
     const activeUser = this.resolveTrackedUser(userId);
     if (!activeUser?.id?.trim()) {
       return;
     }
 
-    this.userProfileStore.setUserProfile({
-      ...activeUser,
-      locationCoordinates: coordinates
+    const saved = this.normalizeCoordinates(activeUser.locationCoordinates);
+    if (!saved) return;
+    if (this.distanceMeters(saved, coordinates) < AppLocationService.LOCATION_SYNC_DISTANCE_METERS
+      || this.dialogStore.dialog()) return;
+    const offered = this.offeredCoordinatesByUserId.get(userId);
+    if (offered && this.distanceMeters(offered, coordinates) < AppLocationService.LOCATION_SYNC_DISTANCE_METERS) return;
+    this.offeredCoordinatesByUserId.set(userId, coordinates);
+    this.dialogStore.open({
+      title: 'location.change.title',
+      message: 'location.change.confirm',
+      showClose: true,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'app.setup.update',
+      busyConfirmLabel: 'entry.permissions.checking',
+      onConfirm: async () => {
+        if (this.userProfileStore.activeUserId().trim() !== userId) return;
+        await this.saveCurrentCoordinates(coordinates);
+      }
     });
-    this.queueLocationSyncForActiveUser(userId, activeUser, coordinates);
   }
 
   private readStoredCoordinates(userId: string): LocationCoordinates | null {
@@ -427,7 +460,7 @@ export class AppLocationService {
     return Boolean(
       normalizedUserId
       && session?.kind === 'firebase'
-      && session.profile.id.trim() === normalizedUserId
+      && this.userProfileStore.activeUserId().trim() === normalizedUserId
     );
   }
 
@@ -456,19 +489,7 @@ export class AppLocationService {
       if (currentUser.admin === true) {
         return;
       }
-      const savedUser = await (await this.httpUsersService()).saveUserProfile({
-        ...currentUser,
-        locationCoordinates: normalizedCoordinates
-      });
-      if (savedUser?.id?.trim()) {
-        this.userProfileStore.setUserProfile(savedUser);
-        this.lastPersistedCoordinatesByUserId.set(
-          userId,
-          this.normalizeCoordinates(savedUser.locationCoordinates) ?? normalizedCoordinates
-        );
-      } else {
-        this.lastPersistedCoordinatesByUserId.set(userId, normalizedCoordinates);
-      }
+      await this.persistCoordinates(userId, currentUser, normalizedCoordinates);
     } catch (error) {
       if (this.isIneligibleRegionError(error)) {
         if (!this.blockedUserIds.has(userId)) {
@@ -490,6 +511,20 @@ export class AppLocationService {
       if (this.pendingCoordinatesByUserId.has(userId)) {
         void this.flushPendingLocationSync(userId, this.resolveTrackedUser(userId) ?? fallbackUser);
       }
+    }
+  }
+
+  private async persistCoordinates(userId: string, user: UserDto, coordinates: LocationCoordinates): Promise<void> {
+    const savedUser = await (await this.httpUsersService()).saveUserProfile({
+      ...user, locationCoordinates: coordinates
+    });
+    if (savedUser?.id?.trim()) {
+      this.lastPersistedCoordinatesByUserId.set(
+        userId, this.normalizeCoordinates(savedUser.locationCoordinates) ?? coordinates
+      );
+      this.userProfileStore.setUserProfile(savedUser);
+    } else {
+      this.lastPersistedCoordinatesByUserId.set(userId, coordinates);
     }
   }
 

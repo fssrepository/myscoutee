@@ -29,7 +29,8 @@ export class AppSetupPopupComponent {
       palette: 'blue',
       togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() || (this.store.locationGranted() || this.store.loggedIn()) },
+      progress: this.store.locationChangeDetected() ? { state: 'error', shape: 'button', perimeter: 100 } : null,
+      showToggleIndicator: true, disabled: this.store.actionPending() || this.store.locationGranted() },
     { id: 'notifications', kind: 'toggle', layout: 'pill', icon: 'notifications',
       label: 'app.setup.notifications',
       palette: 'violet',
@@ -72,7 +73,7 @@ export class AppSetupPopupComponent {
 
   toggle(event: AppMenuItemSelectEvent): void {
     if (this.store.actionPending()) return;
-    if (event.id === 'location' && !this.store.locationGranted() && !this.store.loggedIn()) {
+    if (event.id === 'location' && !this.store.locationGranted()) {
       this.store.locationSelected.update(value => !value);
     } else if (event.id === 'notifications') {
       this.store.toggleNotifications();

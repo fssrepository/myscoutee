@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.19.en.115",
+  "version": "2026.09.19.en.116",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3449,6 +3449,9 @@
     "firebase.auth.link.email.mismatch": "Choose the same email address as in your first login attempt to link the accounts.",
     "firebase.auth.link.expired": "The account-linking request expired. Start again with the login method you want to add.",
     "firebase.auth.link.failed": "The login methods could not be linked. Please start again. Your existing profile has not been merged with another account.",
-    "firebase.auth.provider.disabled": "This login method is not enabled in Firebase."
+    "firebase.auth.provider.disabled": "This login method is not enabled in Firebase.",
+    "location.change.title": "Your location has changed",
+    "location.change.confirm": "Your current location is significantly different from your saved location. Update it? Choose Cancel to keep your saved location.",
+    "location.change.warning": "Your current location is significantly different from your saved location. Use Update to switch to this new location."
   }
 }

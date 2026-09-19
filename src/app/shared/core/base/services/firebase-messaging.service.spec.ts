@@ -27,6 +27,8 @@ describe('Notification preference and background registration', () => {
   const remove = vi.fn();
   const messagingConfigured = signal(true);
   const activeUserId = signal('user-1');
+  const locationMissing = signal(false);
+  const locationChanged = signal(false);
   const reloadDeployment = vi.fn();
   let setup: AppSetupStore;
 
@@ -35,6 +37,8 @@ describe('Notification preference and background registration', () => {
     vi.resetAllMocks();
     messagingConfigured.set(true);
     activeUserId.set('user-1');
+    locationMissing.set(false);
+    locationChanged.set(false);
     reloadDeployment.mockResolvedValue(undefined);
     localStorage.clear();
     localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, 'false');
@@ -63,14 +67,17 @@ describe('Notification preference and background registration', () => {
       } },
       { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
+        locationChangeDetected: locationChanged,
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
+        saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
+        pendingCoordinatesForActiveUser: vi.fn().mockReturnValue(null),
         syncGrantedLocationForActiveUser: vi.fn().mockResolvedValue(undefined)
       } },
       { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn(),
         installAvailable: () => false, installActionPending: () => false,
         installPromptVisible: () => false } },
       { provide: UserProfileStore, useValue: {
-        activeUserId, activeNotificationDevices: () => []
+        activeUserId, activeUserLocationMissing: locationMissing, activeNotificationDevices: () => []
       } }
     ] });
     const messaging = TestBed.inject(FirebaseMessagingService);
@@ -87,6 +94,34 @@ describe('Notification preference and background registration', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     vi.useRealTimers();
+  });
+
+  it.each(['granted', 'prompt'] as const)('renders the initial %s location state without first rendering OFF', async state => {
+    setup.close();
+    let resolvePermission!: (permission: PermissionStatus) => void;
+    vi.mocked(navigator.permissions.query).mockReturnValue(new Promise(resolve => resolvePermission = resolve));
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    setup.open();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-popup')).toBeNull();
+    resolvePermission({ state } as PermissionStatus);
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]');
+    expect(button.getAttribute('aria-pressed')).toBe(String(state === 'granted'));
+    expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
+  it('does not reopen a popup that was closed while its initial permissions were being read', async () => {
+    setup.close();
+    let resolvePermission!: (permission: PermissionStatus) => void;
+    vi.mocked(navigator.permissions.query).mockReturnValue(new Promise(resolve => resolvePermission = resolve));
+    setup.open();
+    setup.close();
+    resolvePermission({ state: 'granted' } as PermissionStatus);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setup.isOpen()).toBe(false);
   });
 
   it('renders success on the actual Update button after a click and keeps the popup open', async () => {
@@ -224,8 +259,74 @@ describe('Notification preference and background registration', () => {
     await setup.allow();
     expect(location.syncGrantedLocationForActiveUser).not.toHaveBeenCalled();
     expect(location.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(location.saveCurrentCoordinates).not.toHaveBeenCalled();
     expect(setup.actionPending()).toBe(false);
     expect(setup.isOpen()).toBe(true);
+  });
+
+  it('requests missing member location from the avatar permission popup and waits for its save', async () => {
+    locationMissing.set(true);
+    setup.notificationsSelected.set(false);
+    const permission = { state: 'prompt', onchange: null as (() => void) | null };
+    vi.mocked(navigator.permissions.query).mockResolvedValue(permission as PermissionStatus);
+    await setup.refreshPermissions();
+    setup.locationSelected.set(false);
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.toggles().find(item => item.id === 'location')?.disabled).toBe(false);
+    fixture.componentInstance.toggle({ id: 'location' } as any);
+    const location = TestBed.inject(AppLocationService);
+    let resolveCoordinates!: (value: { latitude: number; longitude: number }) => void;
+    let resolveSave!: (value: boolean) => void;
+    vi.mocked(location.requestCurrentCoordinates).mockReturnValue(new Promise(resolve => resolveCoordinates = resolve));
+    vi.mocked(location.saveCurrentCoordinates).mockReturnValue(new Promise(resolve => resolveSave = resolve));
+    const saving = setup.allow();
+    expect(location.requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(setup.busy()).toBe(false);
+    permission.state = 'granted';
+    permission.onchange?.();
+    expect(setup.busy()).toBe(true);
+    resolveCoordinates({ latitude: 47, longitude: 19 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(location.saveCurrentCoordinates).toHaveBeenCalledWith({ latitude: 47, longitude: 19 });
+    expect(setup.saveSucceeded()).toBe(false);
+    resolveSave(true);
+    await saving;
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(location.requestCurrentCoordinates).toHaveBeenCalledOnce();
+    fixture.destroy();
+  });
+
+  it('does not report success if the first member location cannot be saved', async () => {
+    locationMissing.set(true);
+    setup.notificationsSelected.set(false);
+    vi.mocked(TestBed.inject(AppLocationService).saveCurrentCoordinates).mockRejectedValue(new Error('Save failed'));
+    await setup.allow();
+    expect(setup.error()).toBe('Save failed');
+    expect(setup.saveSucceeded()).toBe(false);
+    expect(setup.isOpen()).toBe(true);
+  });
+
+  it('saves the already observed location from Permissions without starting geolocation again', async () => {
+    setup.notificationsSelected.set(false);
+    const location = TestBed.inject(AppLocationService);
+    const observed = { latitude: 48, longitude: 20 };
+    vi.mocked(location.pendingCoordinatesForActiveUser).mockReturnValue(observed);
+    await setup.allow();
+    expect(location.saveCurrentCoordinates).toHaveBeenCalledWith(observed);
+    expect(location.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(setup.saveSucceeded()).toBe(true);
+  });
+
+  it('marks a significant observed change with the shared menu full error ring', () => {
+    locationChanged.set(true);
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    fixture.detectChanges();
+    const toggle = fixture.nativeElement.querySelector('.app-setup-toggle button');
+    expect(toggle.classList.contains('app-menu__button-row-item--progress-error')).toBe(true);
+    expect(toggle.querySelector('app-indicator')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('location.change.warning');
+    fixture.destroy();
   });
 
   it('stops before native permission, worker and token when Messaging is not configured', async () => {

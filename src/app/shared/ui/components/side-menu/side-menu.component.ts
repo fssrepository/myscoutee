@@ -463,6 +463,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly offlineAttentionDismissed = signal(false);
   protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
   private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+    || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
     this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
@@ -2189,6 +2190,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
+      this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {

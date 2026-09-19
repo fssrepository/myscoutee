@@ -449,6 +449,10 @@ export class HomeComponent implements OnDestroy {
     return this.runtimeStore.isDataSourceAvailable();
   }
 
+  protected get memberActionsAvailable(): boolean {
+    return this.isDataSourceAvailable && !this.userProfileStore.activeUserLocationMissing();
+  }
+
   protected get isGameVisibilityPaused(): boolean {
     if (!this.isAvatarProfileSettled || this.isBlockedUser) {
       return false;
@@ -659,6 +663,7 @@ export class HomeComponent implements OnDestroy {
       actionLabel: 'Go',
       presentation: 'fullscreen',
       blinkOnSelect: false,
+      readonly: !this.memberActionsAvailable || this.isBlockedUser,
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
     };
   }
@@ -684,7 +689,7 @@ export class HomeComponent implements OnDestroy {
         kind: 'select-trigger',
         layout: 'pill',
         palette: this.homeModePalette(this.selectedHomeMode),
-        disabled: !this.homeHeaderControlsReady || !this.isDataSourceAvailable || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || this.isBlockedUser,
         ariaLabel: 'Select game mode',
         items: this.homeModeOptions.map(option => ({
           id: `home-mode:${option.key}`,
@@ -703,7 +708,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'filter_alt',
         kind: 'action',
         palette: 'filter',
-        disabled: !this.homeHeaderControlsReady || !this.isDataSourceAvailable || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || this.isBlockedUser,
         counter: this.filterBadgeCount > 0 ? { value: this.filterBadgeCount, max: 99 } : null,
         ariaLabel: 'Open profile filters',
         context: { action: 'filter' }
@@ -713,7 +718,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'history',
         kind: 'action',
         palette: 'gold',
-        disabled: !this.homeHeaderControlsReady || !this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || !this.canOpenHistory || this.isBlockedUser,
         counter: this.historyBadgeCount > 0 ? { value: this.historyBadgeCount, max: 99 } : null,
         ariaLabel: 'Open game history',
         context: { action: 'history' }
@@ -843,10 +848,12 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
+    if (!this.memberActionsAvailable) return;
     this.profileStore.openProfileView(profileView);
   }
 
   protected setRating(value: number): void {
+    if (!this.memberActionsAvailable || this.isBlockedUser) return;
     this.stopPairModeSplitDrag();
     if (this.ratingAdvanceTimer) {
       return;
@@ -911,7 +918,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected selectHomeMode(mode: UserGameMode): void {
-    if (!this.isDataSourceAvailable || this.isBlockedUser) {
+    if (!this.memberActionsAvailable || this.isBlockedUser) {
       return;
     }
     const normalizedMode = this.normalizeHomeMode(mode);
@@ -947,7 +954,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openHistory(): void {
-    if (!this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser) {
+    if (!this.memberActionsAvailable || !this.canOpenHistory || this.isBlockedUser) {
       return;
     }
     const initialRateFilter = this.isPairMode ? 'pair-given' : 'individual-given';
@@ -965,7 +972,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openFilter(): void {
-    if (!this.isDataSourceAvailable || this.isBlockedUser) {
+    if (!this.memberActionsAvailable || this.isBlockedUser) {
       return;
     }
     this.gameFilterPopupContext = this.createGameFilterPopupContext();
@@ -1799,6 +1806,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number): Promise<void> {
+    if (!this.memberActionsAvailable || this.isBlockedUser) return;
     if (!row || this.ratingAdvanceTimer) {
       return;
     }

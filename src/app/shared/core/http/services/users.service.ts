@@ -250,6 +250,7 @@ export class HttpUsersService implements UserService {
       type HttpLongPollResponse = {
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
+        locationCoordinates?: UserRealtimeLongPollResponseDto['locationCoordinates'];
         notificationDevices?: UserRealtimeLongPollResponseDto['notificationDevices'];
         counters?: UserRealtimeCountersDto;
         impressions?: UserImpressionsDto;
@@ -275,6 +276,7 @@ export class HttpUsersService implements UserService {
       return {
         userId: response.userId ?? normalizedUserId,
         profileStatus: response.profileStatus ?? null,
+        locationCoordinates: response.locationCoordinates,
         notificationDevices: response.notificationDevices?.map(device => ({
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),

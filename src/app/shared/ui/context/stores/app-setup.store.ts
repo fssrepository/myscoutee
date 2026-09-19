@@ -14,6 +14,8 @@ export class AppSetupStore implements OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly profile = inject(UserProfileStore);
   readonly loggedIn = computed(() => !!this.profile.activeUserId());
+  readonly locationMissing = this.profile.activeUserLocationMissing;
+  readonly locationChangeDetected = this.location.locationChangeDetected;
   readonly isOpen = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
@@ -29,6 +31,7 @@ export class AppSetupStore implements OnDestroy {
   private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending());
   private locationRequestPending = false;
+  private opening = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
@@ -52,31 +55,31 @@ export class AppSetupStore implements OnDestroy {
   }
 
   open(): void {
-    if (this.isOpen()) return;
+    if (this.isOpen() || this.opening) return;
+    this.opening = true;
     this.generation++;
     this.clearSaveFeedback();
     this.error.set('');
     this.locationGranted.set(false);
     this.locationPermission.set(null);
-    this.locationSelected.set(this.loggedIn());
+    this.locationSelected.set(false);
     this.messaging.refreshNotificationPermission();
     this.notificationsEdited.set(false);
     this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
-    this.isOpen.set(true);
     // Resolve the deployment flag before the click, preserving the click's
     // native permission gesture and avoiding token work for an inactive setup.
     const generation = this.generation;
     this.notificationConfigurationPending.set(true);
-    void this.messaging.prepareNotificationConfiguration().catch(() => undefined).finally(() => {
-      if (generation === this.generation) {
-        this.notificationConfigurationPending.set(false);
-        if (!this.messaging.notificationsConfigured) {
-          this.notificationsSelected.set(false);
-          this.notificationsEdited.set(false);
-        }
-      }
+    void Promise.all([
+      this.messaging.prepareNotificationConfiguration().catch(() => undefined),
+      this.refreshPermissions()
+    ]).then(() => {
+      if (generation !== this.generation) return;
+      this.notificationConfigurationPending.set(false);
+      this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
+      this.opening = false;
+      this.isOpen.set(true);
     });
-    void this.refreshPermissions();
   }
 
   requestForLogin(checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null): Promise<boolean> {
@@ -93,14 +96,14 @@ export class AppSetupStore implements OnDestroy {
     const generation = this.generation;
     try {
       const permission = await navigator.permissions.query({ name: 'geolocation' });
-      if (!this.isOpen() || generation !== this.generation) return;
+      if ((!this.isOpen() && !this.opening) || generation !== this.generation) return;
       if (this.permission) this.permission.onchange = null;
       this.permission = permission;
       const update = () => {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
         if (this.locationRequestPending && permission.state === 'granted') this.busy.set(true);
-        if (permission.state === 'granted' || this.loggedIn()) this.locationSelected.set(true);
+        if (permission.state === 'granted') this.locationSelected.set(true);
       };
       permission.onchange = update;
       update();
@@ -145,7 +148,11 @@ export class AppSetupStore implements OnDestroy {
         }
       }
       if (generation !== this.generation) return;
-      if (!this.checkLocation && (this.loggedIn() || this.locationGranted())) {
+      const observedCoordinates = this.loggedIn() ? this.location.pendingCoordinatesForActiveUser() : null;
+      const needsLocation = !!this.checkLocation || (this.loggedIn()
+        ? this.locationSelected() && (!this.locationGranted() || this.locationMissing() || !!observedCoordinates)
+        : !this.locationGranted());
+      if (!needsLocation) {
         this.nativePending.set(false);
         this.busy.set(true);
         if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
@@ -162,7 +169,9 @@ export class AppSetupStore implements OnDestroy {
       }
       this.locationRequestPending = true;
       this.busy.set(this.locationPermission() === 'granted');
-      const coordinates = await this.location.requestCurrentCoordinates();
+      const coordinates = this.locationGranted() && observedCoordinates
+        ? observedCoordinates
+        : await this.location.requestCurrentCoordinates();
       if (generation !== this.generation) return;
       if (!coordinates) {
         await this.refreshPermissions();
@@ -177,6 +186,12 @@ export class AppSetupStore implements OnDestroy {
       this.nativePending.set(false);
       if (this.checkLocation || this.notificationsSelected()) this.busy.set(true);
       if (this.checkLocation && !await this.checkLocation(coordinates)) return;
+      if (this.loggedIn()) {
+        this.busy.set(true);
+        if (!await this.location.saveCurrentCoordinates(coordinates)) {
+          throw new Error(this.i18n.translate('entry.permissions.location.unavailable'));
+        }
+      }
       if (generation !== this.generation) return;
       // Registration follows native decisions, never a second permission prompt.
       if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
@@ -226,6 +241,7 @@ export class AppSetupStore implements OnDestroy {
   private finish(allowed: boolean): void {
     this.clearSaveFeedback();
     this.generation++;
+    this.opening = false;
     if (this.permission) this.permission.onchange = null;
     this.permission = null;
     this.isOpen.set(false);

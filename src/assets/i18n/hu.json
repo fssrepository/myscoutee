@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.19.hu.115",
+  "version": "2026.09.19.hu.116",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3449,6 +3449,9 @@
     "firebase.auth.link.email.mismatch": "Az összekapcsoláshoz ugyanazt az e-mail-címet válaszd, mint az első belépési kísérletnél.",
     "firebase.auth.link.expired": "A fiókok összekapcsolási kérése lejárt. Kezdd újra a hozzáadni kívánt belépési móddal.",
     "firebase.auth.link.failed": "A belépési módokat nem sikerült összekapcsolni. Kérjük, kezdd újra. Meglévő profilodat nem vontuk össze másik fiókkal.",
-    "firebase.auth.provider.disabled": "Ez a belépési mód nincs engedélyezve a Firebase-ben."
+    "firebase.auth.provider.disabled": "Ez a belépési mód nincs engedélyezve a Firebase-ben.",
+    "location.change.title": "Megváltozott a helyzeted",
+    "location.change.confirm": "Az új helyzeted jelentősen eltér a mentett helyedtől. Frissíted? Ha a Mégsem gombot választod, a korábbi helyed marad meg.",
+    "location.change.warning": "A jelenlegi helyzeted jelentősen eltér a mentett helyedtől. A Frissítés gombbal erre az új helyre válthatsz."
   }
 }
