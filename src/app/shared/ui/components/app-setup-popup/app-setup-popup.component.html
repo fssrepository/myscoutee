@@ -6,9 +6,6 @@
         <p>{{ 'app.setup.permission.help' | i18n }}</p>
         @for (item of toggles(); track item.id) {
           <app-menu class="app-setup-toggle" kind="inline" [items]="[item]" (itemSelect)="toggle($event)"></app-menu>
-          @if (item.id === 'location' && store.locationChangeDetected()) {
-            <p>{{ 'location.change.warning' | i18n }}</p>
-          }
         }
         @if (store.error()) { <p class="app-setup-error" role="alert">{{ store.error() }}</p> }
         @if (showPermissionAction()) {

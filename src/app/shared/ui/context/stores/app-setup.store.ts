@@ -15,7 +15,6 @@ export class AppSetupStore implements OnDestroy {
   private readonly profile = inject(UserProfileStore);
   readonly loggedIn = computed(() => !!this.profile.activeUserId());
   readonly locationMissing = this.profile.activeUserLocationMissing;
-  readonly locationChangeDetected = this.location.locationChangeDetected;
   readonly isOpen = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
@@ -147,9 +146,8 @@ export class AppSetupStore implements OnDestroy {
         }
       }
       if (generation !== this.generation) return;
-      const observedCoordinates = this.loggedIn() ? this.location.pendingCoordinatesForActiveUser() : null;
       const needsLocation = !!this.checkLocation || (this.loggedIn()
-        ? this.locationSelected() && (!this.locationGranted() || this.locationMissing() || !!observedCoordinates)
+        ? this.locationSelected() && (!this.locationGranted() || this.locationMissing())
         : !this.locationGranted());
       if (!needsLocation) {
         this.nativePending.set(false);
@@ -167,9 +165,7 @@ export class AppSetupStore implements OnDestroy {
       }
       this.locationRequestPending = true;
       this.busy.set(this.locationPermission() === 'granted');
-      const coordinates = this.locationGranted() && observedCoordinates
-        ? observedCoordinates
-        : await this.location.requestCurrentCoordinates();
+      const coordinates = await this.location.requestCurrentCoordinates();
       if (generation !== this.generation) return;
       if (!coordinates) {
         await this.refreshPermissions();

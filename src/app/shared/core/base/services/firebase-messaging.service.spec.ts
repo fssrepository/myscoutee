@@ -28,7 +28,6 @@ describe('Notification preference and background registration', () => {
   const messagingConfigured = signal(true);
   const activeUserId = signal('user-1');
   const locationMissing = signal(false);
-  const locationChanged = signal(false);
   const reloadDeployment = vi.fn();
   let setup: AppSetupStore;
 
@@ -38,7 +37,6 @@ describe('Notification preference and background registration', () => {
     messagingConfigured.set(true);
     activeUserId.set('user-1');
     locationMissing.set(false);
-    locationChanged.set(false);
     reloadDeployment.mockResolvedValue(undefined);
     localStorage.clear();
     localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, 'false');
@@ -67,10 +65,8 @@ describe('Notification preference and background registration', () => {
       } },
       { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
-        locationChangeDetected: locationChanged,
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
         saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
-        pendingCoordinatesForActiveUser: vi.fn().mockReturnValue(null),
         syncGrantedLocationForActiveUser: vi.fn().mockResolvedValue(undefined)
       } },
       { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn(),
@@ -307,26 +303,13 @@ describe('Notification preference and background registration', () => {
     expect(setup.isOpen()).toBe(true);
   });
 
-  it('saves the already observed location from Permissions without starting geolocation again', async () => {
+  it('leaves an already granted and saved location to background synchronization', async () => {
     setup.notificationsSelected.set(false);
     const location = TestBed.inject(AppLocationService);
-    const observed = { latitude: 48, longitude: 20 };
-    vi.mocked(location.pendingCoordinatesForActiveUser).mockReturnValue(observed);
     await setup.allow();
-    expect(location.saveCurrentCoordinates).toHaveBeenCalledWith(observed);
+    expect(location.saveCurrentCoordinates).not.toHaveBeenCalled();
     expect(location.requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(setup.saveSucceeded()).toBe(true);
-  });
-
-  it('marks a significant observed change with the shared menu full error ring', () => {
-    locationChanged.set(true);
-    const fixture = TestBed.createComponent(AppSetupPopupComponent);
-    fixture.detectChanges();
-    const toggle = fixture.nativeElement.querySelector('.app-setup-toggle button');
-    expect(toggle.classList.contains('app-menu__button-row-item--progress-error')).toBe(true);
-    expect(toggle.querySelector('app-indicator')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('location.change.warning');
-    fixture.destroy();
   });
 
   it('stops before native permission, worker and token when Messaging is not configured', async () => {

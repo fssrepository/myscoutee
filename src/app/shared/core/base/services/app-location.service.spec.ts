@@ -1,6 +1,5 @@
 import { AppLocationService } from './app-location.service';
 import { DialogStore } from '../../../ui/context/stores/dialog.store';
-import { signal } from '@angular/core';
 
 describe('Explicit location request', () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -75,7 +74,7 @@ describe('Granted location background synchronization', () => {
     const service = Object.assign(Object.create(AppLocationService.prototype), {
       userProfileStore: {
         activeUserId: () => 'member',
-        setUserProfile: (user: typeof profile) => { profile = user; }
+        setUserProfile: vi.fn((user: typeof profile) => { profile = user; })
       },
       sessionService: { currentSession: () => ({ kind: 'firebase', profile: { id: 'member' } }) },
       resolveTrackedUser: () => profile,
@@ -89,8 +88,8 @@ describe('Granted location background synchronization', () => {
       primedLocationUserIds: new Set(),
       syncingUserIds: new Set(),
       blockedUserIds: new Set(),
-      offeredCoordinatesByUserId: new Map(),
-      observedCoordinatesByUserId: signal({}),
+      geolocationWatchId: null,
+      geolocationWatchUserId: '',
       dialogStore: new DialogStore(),
       stopCoordinateWatch: vi.fn()
     });
@@ -98,12 +97,13 @@ describe('Granted location background synchronization', () => {
     return { service, save, profile: () => profile };
   }
 
-  it('does not acquire or save a first location automatically even with native permission', async () => {
-    const { service, save } = fixture();
-    await service.syncGrantedLocationForActiveUser();
+  it('automatically saves a first location delivered by the permitted background watch', async () => {
+    const { service, save, profile } = fixture();
     service.handleStreamedCoordinates('member', { latitude: 47, longitude: 19 });
+    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
-    expect(save).not.toHaveBeenCalled();
+    expect(service.dialogStore.dialog()).toBeNull();
   });
 
   it('allows an explicit save to retry the same coordinates after a network failure', async () => {
@@ -159,59 +159,111 @@ describe('Granted location background synchronization', () => {
     expect(profile().locationCoordinates).toBeUndefined();
   });
 
-  it('keeps missing server coordinates gated at startup even if the device has cached coordinates', () => {
+  it('leaves missing server coordinates absent while the background watch is pending', async () => {
     const { service, save, profile } = fixture();
+    const watchPosition = vi.fn().mockReturnValue(42);
+    const getCurrentPosition = vi.fn();
+    Object.assign(navigator, { geolocation: { watchPosition, getCurrentPosition } });
+    delete service.ensureCoordinateWatch;
+
     service.runLocationSyncFlow('member', profile());
-    expect(service.stopCoordinateWatch).toHaveBeenCalledOnce();
-    expect(service.ensureCoordinateWatch).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(watchPosition).toHaveBeenCalledOnce();
+    expect(profile().locationCoordinates).toBeUndefined();
+    expect(service.userProfileStore.setUserProfile).not.toHaveBeenCalled();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('keeps the saved location when a member declines a significant background change', () => {
+  it('keeps the server location at startup without an extra acquisition and updates it from the existing watch', async () => {
     const { service, save, profile } = fixture();
     const original = { latitude: 47, longitude: 19 };
     service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: original });
-    const candidate = { latitude: 48, longitude: 20 };
-    service.handleStreamedCoordinates('member', candidate);
-    expect(service.dialogStore.dialog()?.title).toBe('location.change.title');
+    service.userProfileStore.setUserProfile.mockClear();
+    const watchPosition = vi.fn().mockReturnValue(42);
+    const getCurrentPosition = vi.fn();
+    Object.assign(navigator, { geolocation: { watchPosition, getCurrentPosition } });
+    delete service.ensureCoordinateWatch;
+
+    service.runLocationSyncFlow('member', profile());
+    await Promise.resolve();
     expect(profile().locationCoordinates).toEqual(original);
+    expect(service.userProfileStore.setUserProfile).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
-    expect(service.storeCoordinates).not.toHaveBeenCalled();
-    service.dialogStore.cancel();
-    service.handleStreamedCoordinates('member', candidate);
-    expect(service.dialogStore.dialog()).toBeNull();
-    expect(profile().locationCoordinates).toEqual(original);
+    expect(watchPosition).toHaveBeenCalledOnce();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+
+    const next = { latitude: 47.001, longitude: 19 };
+    watchPosition.mock.calls[0][0]({ coords: next });
+    expect(profile().locationCoordinates).toEqual(next);
     expect(save).not.toHaveBeenCalled();
+    service.runLocationSyncFlow('member', profile());
+    await Promise.resolve();
+    expect(watchPosition).toHaveBeenCalledOnce();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
   });
 
-  it('offers changes at fifty kilometres and keeps smaller observations available for manual refresh', () => {
+  it.each(['prompt', 'denied'])('does not start acquisition at startup when permission is %s', async state => {
+    const { service, profile } = fixture();
+    vi.mocked(navigator.permissions.query).mockResolvedValue({ state } as PermissionStatus);
+    const watchPosition = vi.fn();
+    const getCurrentPosition = vi.fn();
+    Object.assign(navigator, { geolocation: { watchPosition, getCurrentPosition } });
+    delete service.ensureCoordinateWatch;
+    service.runLocationSyncFlow('member', profile());
+    await Promise.resolve();
+    expect(watchPosition).not.toHaveBeenCalled();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+  });
+
+  it('updates the store immediately and saves automatically at five kilometres from the last server save', async () => {
     const { service, save, profile } = fixture();
     service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
-    const near = { latitude: 47.44, longitude: 19 }; // 48.9 km
+    const near = { latitude: 47.044, longitude: 19 }; // 4.89 km
     service.handleStreamedCoordinates('member', near);
-    expect(service.dialogStore.dialog()).toBeNull();
-    expect(service.pendingCoordinatesForActiveUser()).toEqual(near);
-    service.handleStreamedCoordinates('member', { latitude: 47.46, longitude: 19 }); // 51.2 km
-    const dialog = service.dialogStore.dialog();
-    expect(dialog?.showClose).toBe(true);
-    expect(dialog?.allowEscapeClose).toBe(true);
-    expect(dialog?.allowBackdropClose).toBe(true);
-    service.dialogStore.close();
-    expect(service.dialogStore.dialog()).toBeNull();
-    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
+    expect(profile().locationCoordinates).toEqual(near);
     expect(save).not.toHaveBeenCalled();
+
+    const far = { latitude: 47.046, longitude: 19 }; // 5.11 km from server location
+    service.handleStreamedCoordinates('member', far);
+    expect(profile().locationCoordinates).toEqual(far);
+    await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
+    expect(save).toHaveBeenCalledOnce();
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'member', locationCoordinates: far }));
+    expect(service.dialogStore.dialog()).toBeNull();
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+
+    service.handleStreamedCoordinates('member', far);
+    service.handleStreamedCoordinates('member', { latitude: 47.048, longitude: 19 });
+    expect(save).toHaveBeenCalledOnce();
   });
 
-  it('saves the observed background position only after confirmation, without another location request', async () => {
+  it('retries a failed automatic save using the last successful server location as the distance baseline', async () => {
     const { service, save, profile } = fixture();
     service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
+    save.mockRejectedValueOnce(new Error('network unavailable'));
     const candidate = { latitude: 48, longitude: 20 };
     service.handleStreamedCoordinates('member', candidate);
-    await service.dialogStore.confirm();
+    await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
     expect(save).toHaveBeenCalledOnce();
     expect(profile().locationCoordinates).toEqual(candidate);
+
+    service.runLocationSyncFlow('member', profile());
+    service.handleStreamedCoordinates('member', candidate);
+    await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
+    expect(save).toHaveBeenCalledTimes(2);
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(service.dialogStore.dialog()).toBeNull();
+  });
+
+  it('ignores a late watch result for a user who is no longer active', () => {
+    const { service, save, profile } = fixture();
+    service.handleStreamedCoordinates('previous-member', { latitude: 48, longitude: 20 });
+    expect(profile().locationCoordinates).toBeUndefined();
+    expect(service.storeCoordinates).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
   });
 });
