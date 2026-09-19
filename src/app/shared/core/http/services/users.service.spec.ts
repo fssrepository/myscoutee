@@ -14,6 +14,7 @@ describe('HttpUsersService demo authority boundary', () => {
   const readUser = vi.fn();
   const writeUser = vi.fn();
   const setFirebaseAvatarPreview = vi.fn();
+  const setFirebaseAvatarPreviewData = vi.fn();
   const withRequestTimeout = vi.fn();
   let currentSession: AppSession | null;
 
@@ -23,6 +24,7 @@ describe('HttpUsersService demo authority boundary', () => {
     readUser.mockReset();
     writeUser.mockReset();
     setFirebaseAvatarPreview.mockReset();
+    setFirebaseAvatarPreviewData.mockReset();
     withRequestTimeout
       .mockReset()
       .mockImplementation((_route: string, task: Promise<unknown>) => task);
@@ -34,7 +36,7 @@ describe('HttpUsersService demo authority boundary', () => {
         { provide: RouteDelayService, useValue: { withRequestTimeout } },
         {
           provide: SessionService,
-          useValue: { currentSession: () => currentSession, setFirebaseAvatarPreview }
+          useValue: { currentSession: () => currentSession, setFirebaseAvatarPreview, setFirebaseAvatarPreviewData }
         },
         {
           provide: UserProfileStore,
@@ -124,6 +126,48 @@ describe('HttpUsersService demo authority boundary', () => {
     await TestBed.inject(HttpUsersService).queryUserById();
     expect(setFirebaseAvatarPreview).toHaveBeenCalledExactlyOnceWith('current-session', user.images[0]);
   });
+
+  function previewSession(imageUrl: string, dataUrl?: string) {
+    currentSession = { kind: 'firebase', sessionId: 'current-session',
+      profile: { id: 'firebase-uid', name: 'User', email: 'user@example.test', initials: 'U' },
+      avatarImageUrl: imageUrl, avatarImageDataUrl: dataUrl };
+    return { ...cachedUserResponse('profile-id').user!, images: [imageUrl] };
+  }
+
+  it('stores only the small authenticated image once, without delaying the profile response', async () => {
+    const url = '/api/media/private?key=private/images/owner/profile/upload/large.webp';
+    const user = previewSession(url);
+    get.mockReturnValueOnce(of(user)).mockReturnValueOnce(of(new Blob(['RIFF'], { type: 'image/webp' })));
+    expect((await TestBed.inject(HttpUsersService).queryUserById()).user).toBe(user);
+    await vi.waitFor(() => expect(setFirebaseAvatarPreviewData).toHaveBeenCalledExactlyOnceWith(
+      'current-session', url, 'data:image/webp;base64,UklGRg=='
+    ));
+    expect(get.mock.calls[1][0]).toContain('small.webp');
+    expect(get.mock.calls[1][1]).toEqual({ responseType: 'blob' });
+  });
+
+  it('does not download image bytes again when the matching session already has them', async () => {
+    const user = previewSession('/api/media/private?key=private/images/owner/profile/upload/large.webp', 'data:image/webp;base64,UklGRg==');
+    get.mockReturnValue(of(user));
+    await TestBed.inject(HttpUsersService).queryUserById();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send a preview request to an external origin', async () => {
+    const user = previewSession('https://other.example/api/media/private?key=private/images/owner/profile/upload/large.webp');
+    get.mockReturnValue(of(user));
+    await TestBed.inject(HttpUsersService).queryUserById();
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(setFirebaseAvatarPreviewData).not.toHaveBeenCalled();
+  });
+
+  it.each([new Blob(['<svg/>'], { type: 'image/svg+xml' }), new Blob(['x'.repeat(65537)], { type: 'image/webp' })])(
+    'keeps the authenticated profile but rejects an invalid preview blob', async blob => {
+      const user = previewSession('/api/media/private?key=private/images/owner/profile/upload/large.webp');
+      get.mockReturnValueOnce(of(user)).mockReturnValueOnce(of(blob));
+      expect((await TestBed.inject(HttpUsersService).queryUserById()).user).toBe(user);
+      expect(setFirebaseAvatarPreviewData).not.toHaveBeenCalled();
+    });
 });
 
 function cachedUserResponse(userId = 'demo-user'): UserByIdQueryResponse {

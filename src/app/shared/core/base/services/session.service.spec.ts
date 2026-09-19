@@ -104,6 +104,32 @@ describe('SessionService operator bootstrap session', () => {
     expect(firebaseRestore).not.toHaveBeenCalled();
   });
 
+  it('keeps image bytes across restoration but rejects stale session/source results and clears changed photos', () => {
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({ kind: 'firebase', sessionId: 'current',
+      profile: { id: 'firebase-user', name: 'User', email: 'user@example.test', initials: 'U' }, avatarImageUrl: '/photo.webp' }));
+    const service = TestBed.inject(SessionService);
+    const preview = 'data:image/webp;base64,UklGRg==';
+    service.setFirebaseAvatarPreviewData('old', '/photo.webp', preview);
+    service.setFirebaseAvatarPreviewData('current', '/old.webp', preview);
+    expect(service.currentSession()).not.toHaveProperty('avatarImageDataUrl', preview);
+    service.setFirebaseAvatarPreviewData('current', '/photo.webp', preview);
+    service.setFirebaseAvatarPreview('current', '/photo.webp');
+    expect((service as unknown as { loadStoredSession(): unknown }).loadStoredSession())
+      .toMatchObject({ avatarImageDataUrl: preview });
+    service.setFirebaseAvatarPreview('current', '');
+    expect(service.currentSession()).toHaveProperty('avatarImageDataUrl', undefined);
+    service.setFirebaseAvatarPreviewData('current', '/photo.webp', preview);
+    expect(service.currentSession()).toHaveProperty('avatarImageDataUrl', undefined);
+  });
+
+  it.each(['data:image/svg+xml;base64,PHN2Zz4=', 'data:image/webp;base64,' + 'A'.repeat(90000)])(
+    'rejects unsafe or oversized stored avatar data', data => {
+      localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({ kind: 'firebase', sessionId: 'current',
+        profile: { id: 'firebase-user', name: 'User', email: 'user@example.test', initials: 'U' },
+        avatarImageUrl: '/photo.webp', avatarImageDataUrl: data }));
+      expect(TestBed.inject(SessionService).currentSession()).toHaveProperty('avatarImageDataUrl', undefined);
+    });
+
   it('stores only the short-lived bootstrap token in session storage', async () => {
     bootstrapSignIn.mockResolvedValue(validBootstrapResponse());
     const service = TestBed.inject(SessionService);

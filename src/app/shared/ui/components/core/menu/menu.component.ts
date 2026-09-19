@@ -1570,6 +1570,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       ?.removeAttribute('hidden');
   }
 
+  protected hideImageFallback(event: Event): void {
+    const image = event.currentTarget;
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+    image.hidden = false;
+    image.parentElement
+      ?.querySelector<HTMLElement>('[data-app-menu-image-fallback]')
+      ?.setAttribute('hidden', '');
+  }
+
   private imageLabelFallback(label: string): string {
     return Array.from(label.trim())[0]?.toLocaleUpperCase() ?? '';
   }

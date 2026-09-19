@@ -78,9 +78,11 @@ export class App implements OnDestroy {
     const session = this.sessionService.currentSession();
     const userId = session?.kind === 'firebase' ? session.profile.id : session?.kind === 'demo' ? session.userId : '';
     const cached = userId ? this.offlineCache.readUser(userId)?.user : null;
-    const imageUrl = cached?.id === userId
-      ? AppUtils.firstImageUrl(cached.images)
-      : session?.kind === 'firebase' ? session.avatarImageUrl : '';
+    // A saved login is not a restored media cookie. Before the guard completes,
+    // use image bytes from this session instead of requesting a private URL.
+    const imageUrl = session?.kind === 'firebase'
+      ? session.avatarImageDataUrl
+      : cached?.id === userId ? AppUtils.firstImageUrl(cached.images) : '';
     // Display-only preview; cached identity never enables actions or skips guards.
     return [{
       id: 'navigator-avatar', kind: 'action', layout: 'image', palette: 'neutral',

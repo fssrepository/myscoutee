@@ -150,7 +150,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('renders the cached small photo under the loading ring before guards finish', () => {
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'member' } });
+    currentSession.mockReturnValue({ kind: 'demo', userId: 'member' });
     readUser.mockReturnValue({ user: { id: 'member', images: ['/api/media/public?key=images%2Fowner%2Fprofile%2Fupload%2Flarge.webp'] } });
     const fixture = create('/game');
     const avatar = fixture.nativeElement.querySelector('.game-startup-avatar');
@@ -168,12 +168,22 @@ describe('application startup loading handoff', () => {
   });
 
   it('uses the session-bound app photo when Firebase and profile IDs differ', () => {
+    const preview = 'data:image/webp;base64,UklGRg==';
     currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'firebase-uid', imageUrl: '/google-monogram.png' },
-      avatarImageUrl: '/api/media/private?key=private%2Fimages%2Fowner%2Fprofile%2Fupload%2Flarge.webp' });
+      avatarImageUrl: '/api/media/private?key=private%2Fimages%2Fowner%2Fprofile%2Fupload%2Flarge.webp', avatarImageDataUrl: preview });
     const fixture = create('/game');
     const image = fixture.nativeElement.querySelector('.game-startup-avatar img');
-    expect(image.getAttribute('src')).toContain('small.webp');
+    expect(image.getAttribute('src')).toBe(preview);
     expect(image.getAttribute('src')).not.toContain('google-monogram');
+  });
+
+  it('does not request a private preview URL before media authentication is restored', () => {
+    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'member' },
+      avatarImageUrl: '/api/media/private?key=private/images/owner/profile/upload/large.webp' });
+    readUser.mockReturnValue({ user: { id: 'member', images: ['/api/media/private?key=private/images/owner/profile/upload/large.webp'] } });
+    const fixture = create('/game');
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar img')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar button').disabled).toBe(true);
   });
 
   it('does not render member startup controls for an operator session', () => {

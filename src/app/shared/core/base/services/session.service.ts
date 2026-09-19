@@ -21,9 +21,18 @@ export interface SupportSessionContext {
   targetUrl?: string;
 }
 
+export const AVATAR_PREVIEW_MAX_BYTES = 64 * 1024;
+
+function avatarPreviewDataUrl(value: unknown): string | undefined {
+  return typeof value === 'string'
+    && value.length <= Math.ceil(AVATAR_PREVIEW_MAX_BYTES / 3) * 4 + 32
+    && /^data:image\/(?:webp|png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)
+    ? value : undefined;
+}
+
 export type AppSession =
   | { kind: 'demo'; userId: string; sessionId?: string; supportContext?: SupportSessionContext }
-  | { kind: 'firebase'; profile: FirebaseAuthProfileDto; sessionId: string; avatarImageUrl?: string }
+  | { kind: 'firebase'; profile: FirebaseAuthProfileDto; sessionId: string; avatarImageUrl?: string; avatarImageDataUrl?: string }
   | { kind: 'operator-bootstrap'; email: string; expiresAt: string };
 
 @Injectable({
@@ -90,7 +99,21 @@ export class SessionService {
     if (session?.kind !== 'firebase' || session.sessionId !== sessionId) {
       return;
     }
-    this.persistSession({ ...session, avatarImageUrl: imageUrl.trim() });
+    const source = imageUrl.trim();
+    if (session.avatarImageUrl === source) {
+      return;
+    }
+    this.persistSession({ ...session, avatarImageUrl: source, avatarImageDataUrl: undefined });
+  }
+
+  setFirebaseAvatarPreviewData(sessionId: string, imageUrl: string, dataUrl: string): void {
+    const session = this.sessionRef();
+    const imageData = avatarPreviewDataUrl(dataUrl);
+    if (session?.kind !== 'firebase' || session.sessionId !== sessionId
+      || session.avatarImageUrl !== imageUrl || !imageData) {
+      return;
+    }
+    this.persistSession({ ...session, avatarImageDataUrl: imageData });
   }
 
   async ensureSession(): Promise<AppSession | null> {
@@ -116,6 +139,7 @@ export class SessionService {
         kind: 'firebase',
         profile: restoredProfile,
         avatarImageUrl: restoredProfile.id === current.profile.id ? current.avatarImageUrl : undefined,
+        avatarImageDataUrl: restoredProfile.id === current.profile.id ? current.avatarImageDataUrl : undefined,
         sessionId: current.sessionId
       };
       this.persistSession(nextSession);
@@ -626,6 +650,7 @@ export class SessionService {
           kind: 'firebase',
           sessionId: parsed.sessionId.trim(),
           avatarImageUrl: typeof parsed.avatarImageUrl === 'string' ? parsed.avatarImageUrl : undefined,
+          avatarImageDataUrl: avatarPreviewDataUrl(parsed.avatarImageDataUrl),
           profile: {
             id: parsed.profile.id,
             name: parsed.profile.name,
