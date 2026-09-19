@@ -25,42 +25,37 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type CardProfileViewData,
-  PairCardComponent,
-  SingleCardComponent,
-  SmartListComponent,
-  type ListQuery,
-  type PageResult,
-  type PairCardData,
-  type AppMenuRateConfig,
-  type SingleCardData,
-  type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListStateChange
+import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
+import type {
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuPalette,
+  CardProfileViewData,
+  ListQuery,
+  PageResult,
+  PairCardData,
+  AppMenuRateConfig,
+  SingleCardData,
+  SmartListConfig,
+  SmartListLoadPage,
+  SmartListStateChange
 } from '../../../shared/ui';
+import { PairCardComponent } from '../../../shared/ui/components/core/smart-list/card/pair-card/pair-card.component';
+import {
+  SingleCardComponent
+} from '../../../shared/ui/components/core/smart-list/card/single-card/single-card.component';
+import { SmartListComponent } from '../../../shared/ui/components/core/smart-list/smart-list.component';
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import {
-  ExplanationGuideService,
-  GameService,
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  UsersService,
-  type UserDto,
-  type UserGameMode,
-  type UserGameSocialCard
-} from '../../../shared/core';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { GameService } from '../../../shared/core/base/services/game.service';
+import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
+import type { UserDto, UserGameMode, UserGameSocialCard } from '../../../shared/core';
 import {
   HomeGameFilterPopupComponent
 } from '../home-game-filter-popup/home-game-filter-popup.component';
-import {
-  I18nPipe
-} from '../../../shared/ui';
+import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -79,7 +74,9 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
+import {
+  DeploymentBrandComponent
+} from '../../../shared/ui/components/core/deployment-brand/deployment-brand.component';
 
 type LocalPopup = 'filter' | null;
 

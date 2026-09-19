@@ -7,12 +7,8 @@ import {
   type ActivityCounters,
   type LoadStatus
 } from '../../../ui/context';
-import {
-  LocalUsersService
-} from '../../local';
-import {
-  HttpUsersService
-} from '../../http';
+import { LocalUsersService } from '../../local/source/services/users.service';
+import { HttpUsersService } from '../../http/services/users.service';
 import type { BootstrapProcessState } from './bootstrap.service';
 import type {
   ProfileExtDto,

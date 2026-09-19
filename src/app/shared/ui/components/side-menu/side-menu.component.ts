@@ -22,26 +22,24 @@ import {
   Router
 } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import {
-  type ActivityCounters,
-  AppMenuComponent,
-  type ActivityCounterKey,
-  type AppMenuDragEvent,
-  type AppMenuDragPosition,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuTrigger,
-  type AppMenuValueMap,
-  HeaderCardComponent,
-  type HeaderCardModel,
-  UiPollCoordinator,
-  UiTaskScheduler,
-  type UserImpressionChangeFlags
+import type {
+  ActivityCounters,
+  ActivityCounterKey,
+  AppMenuDragEvent,
+  AppMenuDragPosition,
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuModel,
+  AppMenuTrigger,
+  AppMenuValueMap,
+  HeaderCardModel,
+  UserImpressionChangeFlags
 } from '../..';
-import {
-  ProfileHeaderCardConverter
-} from '../../converters';
+import { AppMenuComponent } from '../core/menu/menu.component';
+import { HeaderCardComponent } from '../core/smart-list/card/header-card/header-card.component';
+import { UiPollCoordinator } from '../../scheduler/ui-poll-coordinator';
+import { UiTaskScheduler } from '../../scheduler/ui-task-scheduler';
+import { ProfileHeaderCardConverter } from '../../converters/profile-header-card.converter';
 import {
   cloneEventCounters,
   cloneSupportCaseCounters
@@ -66,22 +64,20 @@ import {
 import {
   SubEventResourcePopupStore
 } from '../../context/stores/sub-event-resource-popup.store';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
+import { HelpCenterService } from '../../../core/base/services/help-center.service';
+import { I18nService } from '../../../core/base/services/i18n.service';
+import { PrivacyPolicyService } from '../../../core/base/services/privacy-policy.service';
+import { SessionService } from '../../../core/base/services/session.service';
+import { ChatsService } from '../../../core/base/services/chats.service';
+import { TermsPolicyService } from '../../../core/base/services/terms-policy.service';
 import {
-  ExplanationGuideService,
-  DeploymentConfigurationService,
-  HelpCenterService,
-  I18nService,
-  PrivacyPolicyService,
-  SessionService,
-  ChatsService,
-  TermsPolicyService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
-  USER_PROFILE_SAVE_CONTEXT_KEY,
-  type HelpCenterRevisionDto,
-  type PrivacyConsentDto,
-  type UserDto
-} from '../../../core';
+  USER_PROFILE_SAVE_CONTEXT_KEY
+} from '../../../core/base/services/users.service';
+import type { HelpCenterRevisionDto, PrivacyConsentDto, UserDto } from '../../../core';
 import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
@@ -121,9 +117,10 @@ import { NotificationCenterStore } from '../../context/stores/notification-cente
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { PwaService } from '../../../core/base/services/pwa.service';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { IndicatorComponent } from '../core/indicator';
-import { I18nPipe } from '../../pipes';
+import { PopupComponent } from '../core/popup/popup.component';
+import type { PopupModel } from '../core/popup';
+import { IndicatorComponent } from '../core/indicator/indicator.component';
+import { I18nPipe } from '../../pipes/i18n.pipe';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { environment } from '../../../../../environments/environment';
 import {

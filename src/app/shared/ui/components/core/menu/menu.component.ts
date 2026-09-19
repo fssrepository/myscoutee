@@ -20,15 +20,11 @@ import {
 } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nPipe } from '../../../pipes';
-import { I18nService } from '../../../../core';
+import { I18nPipe } from '../../../pipes/i18n.pipe';
+import { I18nService } from '../../../../core/base/services/i18n.service';
 import { RateComponent } from './items/rate/rate.component';
-import {
-  IndicatorComponent,
-  type IndicatorShape,
-  type IndicatorState,
-  type IndicatorTone
-} from '../indicator';
+import { IndicatorComponent } from '../indicator/indicator.component';
+import type { IndicatorShape, IndicatorState, IndicatorTone } from '../indicator';
 import type {
   AppMenuCounter,
   AppMenuCounterValue,

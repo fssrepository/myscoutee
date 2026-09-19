@@ -125,7 +125,9 @@
     </aside>
   }
 }
-<app-profile-settings-popups></app-profile-settings-popups>
+@defer (when profileStore.settingsPopup()) {
+  <app-profile-settings-popups></app-profile-settings-popups>
+}
 @if (profileStore.impressionsPopupComponent(); as impressionsComponent) {
   <ng-container *ngComponentOutlet="impressionsComponent"></ng-container>
 }
@@ -151,7 +153,9 @@
 
 <app-dialog [zIndex]="notificationCenterStore.isOpen() || paymentMethodsPopupStore.isOpen() ? 24000 : null"></app-dialog>
 
-<app-notification-center-popup></app-notification-center-popup>
+@defer (when notificationCenterStore.isOpen()) {
+  <app-notification-center-popup></app-notification-center-popup>
+}
 
 @if (paymentMethodsPopupStore.component(); as paymentMethodsComponent) {
   <ng-container *ngComponentOutlet="paymentMethodsComponent"></ng-container>

@@ -114,9 +114,11 @@
 }
 
 @if (!isAccountReactivationPending && localPopup === 'filter' && gameFilterPopupContext) {
-  <app-home-game-filter-popup
-    [context]="gameFilterPopupContext"
-    [saving]="isGameFilterSaving"
-    (closed)="onGameFilterPopupClosed($event)"
-  ></app-home-game-filter-popup>
+  @defer (on immediate) {
+    <app-home-game-filter-popup
+      [context]="gameFilterPopupContext"
+      [saving]="isGameFilterSaving"
+      (closed)="onGameFilterPopupClosed($event)"
+    ></app-home-game-filter-popup>
+  }
 }

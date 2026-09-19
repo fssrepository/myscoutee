@@ -112,6 +112,9 @@ export async function prepareDemoFailover(): Promise<void> {
 }
 
 export function demoFailoverEnabled(): boolean { return enabled; }
+export function demoFailoverSeedWarmupNeeded(): boolean {
+  return enabled && !local && eligibleSession() !== null;
+}
 
 export function demoFailoverLocalUser(): string | null {
   return enabled && local ? readSession(LOCAL_SESSION)?.userId ?? null : null;

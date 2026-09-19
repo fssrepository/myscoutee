@@ -76,12 +76,14 @@
                   (itemSelect)="selectMenuItem(control, $event)"
                 ></app-menu>
               } @else if (isDateInputControl(control)) {
-                <app-date-input
-                  class="ui-popup__date-input"
-                  [model]="control.model"
-                  [ngModel]="control.value"
-                  (ngModelChange)="changeDateInput(control, $event)"
-                ></app-date-input>
+                @defer (on immediate) {
+                  <app-date-input
+                    class="ui-popup__date-input"
+                    [model]="control.model"
+                    [ngModel]="control.value"
+                    (ngModelChange)="changeDateInput(control, $event)"
+                  ></app-date-input>
+                }
               } @else {
                 <button
                   type="button"
@@ -174,12 +176,14 @@
                   (itemSelect)="selectMenuItem(control, $event)"
                 ></app-menu>
               } @else if (isDateInputControl(control)) {
-                <app-date-input
-                  class="ui-popup__date-input"
-                  [model]="control.model"
-                  [ngModel]="control.value"
-                  (ngModelChange)="changeDateInput(control, $event)"
-                ></app-date-input>
+                @defer (on immediate) {
+                  <app-date-input
+                    class="ui-popup__date-input"
+                    [model]="control.model"
+                    [ngModel]="control.value"
+                    (ngModelChange)="changeDateInput(control, $event)"
+                  ></app-date-input>
+                }
               } @else {
                 <button
                   type="button"
@@ -223,12 +227,14 @@
                   (itemSelect)="selectMenuItem(control, $event)"
                 ></app-menu>
               } @else if (isDateInputControl(control)) {
-                <app-date-input
-                  class="ui-popup__date-input"
-                  [model]="control.model"
-                  [ngModel]="control.value"
-                  (ngModelChange)="changeDateInput(control, $event)"
-                ></app-date-input>
+                @defer (on immediate) {
+                  <app-date-input
+                    class="ui-popup__date-input"
+                    [model]="control.model"
+                    [ngModel]="control.value"
+                    (ngModelChange)="changeDateInput(control, $event)"
+                  ></app-date-input>
+                }
               } @else {
                 <button
                   type="button"
