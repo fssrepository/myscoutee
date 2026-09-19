@@ -100,7 +100,9 @@ export class App implements OnDestroy {
     void this.deploymentConfiguration.initialize();
     void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
-    this.initialLandingWarmupPending = this.sessionService.currentSession() !== null;
+    // Bootstrap can finish before the initial page is ready. Keep the loading
+    // surface until the outlet activates, including a fresh unsigned visit.
+    this.initialLandingWarmupPending = true;
     this.routeWarmupVisible = this.initialLandingWarmupPending;
     this.syncGameStartup(initialRouteUrl);
     if (this.routeWarmupVisible) {

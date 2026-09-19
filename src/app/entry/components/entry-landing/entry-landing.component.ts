@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
@@ -83,6 +83,12 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   protected readonly deploymentSocialLinks =
     this.deploymentConfiguration.socialLinks;
+  protected readonly heroGraphText = computed(() => {
+    this.i18n.revision();
+    const text = this.i18n.translate('landing.hero.graph', '6 people · 6 priority lists → 1 shared group');
+    const splitAt = text.lastIndexOf('→') + 1;
+    return { prefix: text.slice(0, splitAt), result: text.slice(splitAt).trim() };
+  });
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;

@@ -65,10 +65,18 @@ describe('application startup loading handoff', () => {
     return fixture;
   }
 
-  it.each(['/', '/entry', '/game'])('does not show the application startup loader without a saved session on %s', url => {
+  it.each(['/', '/entry', '/game'])('covers the empty initial route until activation without a saved session on %s', url => {
     const fixture = create(url);
-    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
+    events.next(new NavigationStart(1, url));
+    window.dispatchEvent(new Event('focus'));
+    vi.advanceTimersByTime(8000);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).not.toBeNull();
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
   });
 
   it('does not start the application logo loader when Firebase login completes on the landing page', () => {

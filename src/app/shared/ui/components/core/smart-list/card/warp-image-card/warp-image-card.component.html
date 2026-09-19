@@ -7,6 +7,12 @@
         <p>{{ card.messageKey | i18n: card.message }}</p>
       </div>
     </div>
-    <div class="ui-warp-image-card__visual" [ngStyle]="visualStyle()" aria-hidden="true"></div>
+    <div class="ui-warp-image-card__visual" [ngStyle]="visualStyle()" aria-hidden="true">
+      <div class="ui-warp-image-card__visual-image" appLazyBgImage="assets/logo/cards_no_edges.png">
+        <span class="ui-warp-image-card__image-loader">
+          <app-indicator kind="spinner-ring" size="sm"></app-indicator>
+        </span>
+      </div>
+    </div>
   </article>
 }
