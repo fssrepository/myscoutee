@@ -100,7 +100,7 @@ export class App implements OnDestroy {
     void this.deploymentConfiguration.initialize();
     void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
-    this.initialLandingWarmupPending = true;
+    this.initialLandingWarmupPending = this.sessionService.currentSession() !== null;
     this.routeWarmupVisible = this.initialLandingWarmupPending;
     this.syncGameStartup(initialRouteUrl);
     if (this.routeWarmupVisible) {

@@ -65,12 +65,26 @@ describe('application startup loading handoff', () => {
     return fixture;
   }
 
-  it.each(['/', '/game'])('shows the shell loader on initial %s navigation', url => {
+  it.each(['/', '/entry', '/game'])('does not show the application startup loader without a saved session on %s', url => {
     const fixture = create(url);
-    expect(fixture.nativeElement.querySelector('.app-route-warmup')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
+  });
+
+  it('does not start the application logo loader when Firebase login completes on the landing page', () => {
+    const fixture = create();
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'new-session-user' } });
+    window.dispatchEvent(new Event('focus'));
+    events.next(new NavigationStart(2, '/game'));
+    vi.advanceTimersByTime(300);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
   });
 
   it('keeps the loader across the root redirect while the destination is still loading', () => {
+    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
     events.next(new NavigationStart(1, '/'));
     events.next(new NavigationCancel(1, '/', 'Redirect', NavigationCancellationCode.Redirect));
@@ -82,6 +96,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('does not uncover the empty shell on focus during initial navigation', () => {
+    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
     window.dispatchEvent(new Event('focus'));
     vi.advanceTimersByTime(300);
@@ -90,6 +105,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('hands off immediately when the protected outlet activates', () => {
+    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
     fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
     fixture.detectChanges();
@@ -104,6 +120,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('keeps loading when a pending navigation is superseded', () => {
+    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
     events.next(new NavigationCancel(1, '/', 'Superseded', NavigationCancellationCode.SupersededByNewNavigation));
     events.next(new NavigationStart(2, '/entry'));
@@ -112,6 +129,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('releases the overlay on navigation failure instead of leaving it stuck', () => {
+    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
     events.next(new NavigationError(1, '/', new Error('Chunk failed')));
     fixture.detectChanges();
@@ -193,6 +211,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('cleans up pending startup timers when destroyed', () => {
+    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
     window.dispatchEvent(new Event('focus'));
     fixture.destroy();

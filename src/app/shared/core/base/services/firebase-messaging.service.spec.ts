@@ -220,14 +220,14 @@ describe('Notification preference and background registration', () => {
     expect(setup.saveSucceeded()).toBe(false);
   });
 
-  it('restores OFF and reports Firebase rejection without displaying success', async () => {
+  it('preserves the ON draft and reports Firebase rejection without displaying success', async () => {
     vi.mocked(getToken).mockRejectedValue(new Error('Firebase error'));
     await setup.allow();
     expect(setup.isOpen()).toBe(true);
     expect(setup.error()).toBe('entry.permissions.notifications.failed');
     expect(setup.saveSucceeded()).toBe(false);
     expect(setup.actionPending()).toBe(false);
-    expect(setup.notificationsSelected()).toBe(false);
+    expect(setup.notificationsSelected()).toBe(true);
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
     setup.close();
     setup.open();
@@ -245,7 +245,7 @@ describe('Notification preference and background registration', () => {
     await vi.advanceTimersByTimeAsync(30_001);
     await saving;
     expect(setup.error()).toBe('entry.permissions.notifications.failed');
-    expect(setup.notificationsSelected()).toBe(false);
+    expect(setup.notificationsSelected()).toBe(true);
     expect(setup.saveSucceeded()).toBe(false);
     resolveToken('late-token');
     await vi.advanceTimersByTimeAsync(1);
@@ -565,14 +565,96 @@ describe('Notification preference and background registration', () => {
     setup.close();
   });
 
-  it('reports a previously denied native permission without starting Firebase', async () => {
-    const requestPermission = vi.fn();
+  it('requests native permission again after denial without starting Firebase if it remains denied', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('denied');
     vi.stubGlobal('Notification', { permission: 'denied', requestPermission });
     await setup.allow();
-    expect(requestPermission).not.toHaveBeenCalled();
+    expect(requestPermission).toHaveBeenCalledOnce();
     expect(getToken).not.toHaveBeenCalled();
     expect(setup.error()).toBe('entry.permissions.notifications.blocked');
     expect(setup.actionPending()).toBe(false);
+  });
+
+  it.each(['denied', 'default'] as const)('keeps the user ON draft after a %s decision, focus refresh and another Update', async decision => {
+    const notification = { permission: 'default', requestPermission: vi.fn().mockImplementation(async () => {
+      notification.permission = decision;
+      return decision;
+    }) };
+    vi.stubGlobal('Notification', notification);
+    setup.close();
+    setup.open();
+    await vi.advanceTimersByTimeAsync(0);
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    fixture.detectChanges();
+    const toggle = () => fixture.nativeElement.querySelector('button[aria-label="app.setup.notifications"]') as HTMLButtonElement;
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    toggle().click();
+    fixture.detectChanges();
+    const request = vi.spyOn(TestBed.inject(FirebaseMessagingService), 'requestEntryPermission');
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await setup.allow();
+      await setup.refreshPermissions();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+      expect(request).toHaveBeenCalledTimes(attempt);
+      expect(notification.requestPermission).toHaveBeenCalledTimes(attempt);
+      expect(setup.isOpen()).toBe(true);
+    }
+    expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
+    expect(upsert).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
+  it('preserves a user OFF draft on save failure and a user ON draft after a successful save and device changes', async () => {
+    vi.mocked(getToken).mockResolvedValue('saved-token');
+    await setup.allow();
+    await vi.advanceTimersByTimeAsync(0);
+    setup.toggleNotifications();
+    vi.spyOn(TestBed.inject(FirebaseMessagingService), 'setDeviceNotificationsEnabled')
+      .mockRejectedValueOnce(new Error('save failed'));
+    await setup.allow();
+    await setup.refreshPermissions();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setup.notificationsSelected()).toBe(false);
+    setup.toggleNotifications();
+    await setup.allow();
+    vi.stubGlobal('Notification', { permission: 'denied' });
+    await setup.refreshPermissions();
+    messagingConfigured.set(false);
+    await vi.advanceTimersByTimeAsync(0);
+    TestBed.tick();
+    expect(setup.notificationsSelected()).toBe(true);
+  });
+
+  it.each(['denied', 'default'] as const)('stops login after a %s notification result until the user turns notifications OFF', async decision => {
+    activeUserId.set('');
+    const notification = { permission: 'default', requestPermission: vi.fn().mockResolvedValue(decision) };
+    vi.stubGlobal('Notification', notification);
+    setup.close();
+    const checkLocation = vi.fn().mockResolvedValue(true);
+    const completed = vi.fn();
+    const login = setup.requestForLogin(checkLocation).then(completed);
+    await vi.advanceTimersByTimeAsync(0);
+    setup.toggleNotifications();
+    await setup.allow();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setup.isOpen()).toBe(true);
+    expect(setup.notificationsSelected()).toBe(true);
+    expect(setup.saveSucceeded()).toBe(false);
+    expect(setup.error()).toBe('entry.permissions.notifications.blocked');
+    expect(completed).not.toHaveBeenCalled();
+    expect(checkLocation).not.toHaveBeenCalled();
+    expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+    setup.toggleNotifications();
+    await setup.allow();
+    await login;
+    expect(notification.requestPermission).toHaveBeenCalledOnce();
+    expect(completed).toHaveBeenCalledWith(true);
+    expect(checkLocation).toHaveBeenCalledOnce();
+    expect(setup.notificationsSelected()).toBe(false);
+    expect(setup.error()).toBe('');
   });
 
   it('writes opt-out without waiting for Firebase and keeps the popup open', async () => {
@@ -612,16 +694,15 @@ describe('Notification preference and background registration', () => {
     await vi.advanceTimersByTimeAsync(1);
   });
 
-  it('restores the preference on server failure and supports a subsequent retry', async () => {
+  it('preserves the ON draft on server failure and retries without toggling again', async () => {
     vi.mocked(getToken).mockResolvedValue('new-token');
     upsert.mockRejectedValueOnce(new Error('server unavailable'));
     await setup.allow();
     expect(setup.error()).toBe('entry.permissions.notifications.failed');
     expect(setup.saveSucceeded()).toBe(false);
-    expect(setup.notificationsSelected()).toBe(false);
+    expect(setup.notificationsSelected()).toBe(true);
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
-    setup.toggleNotifications();
     await setup.allow();
     expect(setup.error()).toBe('');
     expect(setup.saveSucceeded()).toBe(true);

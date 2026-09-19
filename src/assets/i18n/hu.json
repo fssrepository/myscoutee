@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.19.hu.116",
+  "version": "2026.09.19.hu.117",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3416,7 +3416,7 @@
     "entry.permissions.description": "A helyadat szükséges a régiós elérhetőség ellenőrzéséhez. Az értesítések az új üzenetekről és eseményekről jeleznek. Jóváhagyás után a böngésző először az értesítéseket, majd a helyadatot kéri, egymás után. A letiltott engedélyt a webhely beállításainál módosíthatod.",
     "entry.permissions.checking": "Mentés…",
     "install.app": "Telepítés",
-    "entry.permissions.notifications.blocked": "Az értesítések tiltva vannak. Engedélyezd őket az értesítési beállításokban, majd próbáld újra.",
+    "entry.permissions.notifications.blocked": "A rendszer nem adta meg az értesítési engedélyt. Ha nem jelent meg az engedélykérő ablak, a MyScoutee értesítési beállításaiban tudod engedélyezni. Ezután próbáld újra, vagy kapcsold ki az értesítéseket a folytatáshoz.",
     "entry.permissions.location.blocked": "A helyhozzáférés tiltva van. Engedélyezd, majd próbáld újra.",
     "entry.permissions.location.required": "A folytatáshoz kapcsold be a helyhozzáférést.",
     "entry.permissions.location.unavailable": "Nem sikerült meghatározni a helyzetedet. Próbáld újra.",

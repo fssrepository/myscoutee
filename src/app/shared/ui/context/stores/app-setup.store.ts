@@ -41,7 +41,7 @@ export class AppSetupStore implements OnDestroy {
     effect(() => {
       const enabled = this.messaging.deviceNotificationsEnabled();
       if (this.isOpen() && !this.actionPending()
-        && (!this.notificationsEdited() || !this.messaging.notificationsConfigured)) {
+        && !this.notificationsEdited()) {
         this.notificationsSelected.set(enabled);
       }
     });
@@ -137,12 +137,11 @@ export class AppSetupStore implements OnDestroy {
     const generation = this.generation;
     try {
       // Notifications need the original button gesture. Geolocation follows
-      // only after that native decision settles. Notification denial is optional.
+      // only after that native decision settles. An enabled choice must succeed.
       if (this.notificationsSelected()) {
         const decision = await this.messaging.requestEntryPermission();
         if (generation !== this.generation) return;
-        if (decision) this.notificationsSelected.set(decision === 'granted');
-        if (decision === 'denied' && this.loggedIn() && !this.checkLocation) {
+        if (decision !== 'granted') {
           this.error.set(this.i18n.translate('entry.permissions.notifications.blocked'));
           return;
         }
@@ -161,7 +160,6 @@ export class AppSetupStore implements OnDestroy {
         if (generation === this.generation) {
           if (this.completeLogin) this.finish(true);
           else {
-            this.notificationsEdited.set(false);
             this.showSaveFeedback();
           }
         }
@@ -200,14 +198,11 @@ export class AppSetupStore implements OnDestroy {
       if (generation === this.generation) {
         if (this.completeLogin) this.finish(true);
         else {
-          this.notificationsEdited.set(false);
           this.showSaveFeedback();
         }
       }
     } catch (error) {
       if (generation === this.generation) {
-        this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
-        this.notificationsEdited.set(false);
         this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
       }
     } finally {

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.19.en.116",
+  "version": "2026.09.19.en.117",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3416,7 +3416,7 @@
     "entry.permissions.description": "Location is required to check availability in your region. Notifications alert you to new messages and events. After confirmation, the browser asks for notifications, then location, one at a time. A blocked permission can be changed in site settings.",
     "entry.permissions.checking": "Saving…",
     "install.app": "Install",
-    "entry.permissions.notifications.blocked": "Notifications are blocked. Enable them in notification settings, then try again.",
+    "entry.permissions.notifications.blocked": "The system did not grant notification permission. If no permission prompt appeared, you can enable notifications in the notification settings for MyScoutee. Then try again, or turn notifications off to continue.",
     "entry.permissions.location.blocked": "Location access is blocked. Enable location access, then try again.",
     "entry.permissions.location.required": "Select location access to continue.",
     "entry.permissions.location.unavailable": "Your location could not be determined. Please try again.",
