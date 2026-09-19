@@ -80,7 +80,7 @@ export class App implements OnDestroy {
     const cached = userId ? this.offlineCache.readUser(userId)?.user : null;
     const imageUrl = cached?.id === userId
       ? AppUtils.firstImageUrl(cached.images)
-      : session?.kind === 'firebase' ? session.profile.imageUrl : '';
+      : session?.kind === 'firebase' ? session.avatarImageUrl : '';
     // Display-only preview; cached identity never enables actions or skips guards.
     return [{
       id: 'navigator-avatar', kind: 'action', layout: 'image', palette: 'neutral',

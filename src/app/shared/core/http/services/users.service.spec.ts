@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { throwError } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -13,6 +13,7 @@ describe('HttpUsersService demo authority boundary', () => {
   const get = vi.fn();
   const readUser = vi.fn();
   const writeUser = vi.fn();
+  const setFirebaseAvatarPreview = vi.fn();
   const withRequestTimeout = vi.fn();
   let currentSession: AppSession | null;
 
@@ -21,6 +22,7 @@ describe('HttpUsersService demo authority boundary', () => {
     get.mockReset();
     readUser.mockReset();
     writeUser.mockReset();
+    setFirebaseAvatarPreview.mockReset();
     withRequestTimeout
       .mockReset()
       .mockImplementation((_route: string, task: Promise<unknown>) => task);
@@ -32,7 +34,7 @@ describe('HttpUsersService demo authority boundary', () => {
         { provide: RouteDelayService, useValue: { withRequestTimeout } },
         {
           provide: SessionService,
-          useValue: { currentSession: () => currentSession }
+          useValue: { currentSession: () => currentSession, setFirebaseAvatarPreview }
         },
         {
           provide: UserProfileStore,
@@ -82,6 +84,7 @@ describe('HttpUsersService demo authority boundary', () => {
   it('retains read-through offline resilience for a Firebase user without making it a demo authority', async () => {
     currentSession = {
       kind: 'firebase',
+      sessionId: 'test-session',
       profile: {
         id: 'firebase-user',
         name: 'Firebase User',
@@ -110,6 +113,16 @@ describe('HttpUsersService demo authority boundary', () => {
     await expect(TestBed.inject(HttpUsersService).queryUserById())
       .rejects.toThrow('network unavailable');
     expect(readUser).not.toHaveBeenCalled();
+  });
+
+  it('binds the server profile photo to the requesting Firebase session despite different user IDs', async () => {
+    currentSession = { kind: 'firebase', sessionId: 'current-session', profile: {
+      id: 'firebase-uid', name: 'User', email: 'user@example.test', initials: 'U'
+    } };
+    const user = { ...cachedUserResponse('server-profile-id').user!, images: ['/api/media/private?key=private/images/owner/profile/upload/large.webp'] };
+    get.mockReturnValue(of(user));
+    await TestBed.inject(HttpUsersService).queryUserById();
+    expect(setFirebaseAvatarPreview).toHaveBeenCalledExactlyOnceWith('current-session', user.images[0]);
   });
 });
 

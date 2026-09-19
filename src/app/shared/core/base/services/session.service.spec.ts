@@ -23,6 +23,10 @@ describe('SessionService operator bootstrap session', () => {
   const revokeFirebaseSession = vi.fn();
 
   beforeEach(() => {
+    // Session tests do not start the unrelated asynchronous messaging tree.
+    vi.spyOn(SessionService.prototype as unknown as {
+      initializeFirebaseMessagingForSession(session: unknown): Promise<void>;
+    }, 'initializeFirebaseMessagingForSession').mockResolvedValue(undefined);
     environment.activitiesDataSource = originalActivitiesDataSource;
     localStorage.clear();
     sessionStorage.clear();
@@ -81,6 +85,23 @@ describe('SessionService operator bootstrap session', () => {
     TestBed.resetTestingModule();
     localStorage.clear();
     sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('persists only the current Firebase session avatar preview and restores it', () => {
+    const session = { kind: 'firebase', sessionId: 'current-session', profile: {
+      id: 'firebase-user', name: 'User', email: 'user@example.test', initials: 'U'
+    } };
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify(session));
+    const service = TestBed.inject(SessionService);
+    service.setFirebaseAvatarPreview('old-session', '/wrong.webp');
+    expect(service.currentSession()).not.toHaveProperty('avatarImageUrl', '/wrong.webp');
+    service.setFirebaseAvatarPreview('current-session', '/correct.webp');
+    expect(service.currentSession()).toMatchObject({ avatarImageUrl: '/correct.webp' });
+    expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEYS.session)!)).toMatchObject({ avatarImageUrl: '/correct.webp' });
+    expect((service as unknown as { loadStoredSession(): unknown }).loadStoredSession())
+      .toMatchObject({ avatarImageUrl: '/correct.webp' });
+    expect(firebaseRestore).not.toHaveBeenCalled();
   });
 
   it('stores only the short-lived bootstrap token in session storage', async () => {

@@ -23,7 +23,7 @@ export interface SupportSessionContext {
 
 export type AppSession =
   | { kind: 'demo'; userId: string; sessionId?: string; supportContext?: SupportSessionContext }
-  | { kind: 'firebase'; profile: FirebaseAuthProfileDto; sessionId: string }
+  | { kind: 'firebase'; profile: FirebaseAuthProfileDto; sessionId: string; avatarImageUrl?: string }
   | { kind: 'operator-bootstrap'; email: string; expiresAt: string };
 
 @Injectable({
@@ -85,6 +85,14 @@ export class SessionService {
     return this.sessionRef();
   }
 
+  setFirebaseAvatarPreview(sessionId: string, imageUrl: string): void {
+    const session = this.sessionRef();
+    if (session?.kind !== 'firebase' || session.sessionId !== sessionId) {
+      return;
+    }
+    this.persistSession({ ...session, avatarImageUrl: imageUrl.trim() });
+  }
+
   async ensureSession(): Promise<AppSession | null> {
     const current = this.sessionRef();
     if (!current) {
@@ -107,6 +115,7 @@ export class SessionService {
       const nextSession: AppSession = {
         kind: 'firebase',
         profile: restoredProfile,
+        avatarImageUrl: restoredProfile.id === current.profile.id ? current.avatarImageUrl : undefined,
         sessionId: current.sessionId
       };
       this.persistSession(nextSession);
@@ -616,6 +625,7 @@ export class SessionService {
         return {
           kind: 'firebase',
           sessionId: parsed.sessionId.trim(),
+          avatarImageUrl: typeof parsed.avatarImageUrl === 'string' ? parsed.avatarImageUrl : undefined,
           profile: {
             id: parsed.profile.id,
             name: parsed.profile.name,

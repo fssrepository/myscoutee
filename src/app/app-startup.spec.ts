@@ -167,6 +167,15 @@ describe('application startup loading handoff', () => {
     expect(fixture.nativeElement.querySelector('.game-startup-avatar img')).toBeNull();
   });
 
+  it('uses the session-bound app photo when Firebase and profile IDs differ', () => {
+    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'firebase-uid', imageUrl: '/google-monogram.png' },
+      avatarImageUrl: '/api/media/private?key=private%2Fimages%2Fowner%2Fprofile%2Fupload%2Flarge.webp' });
+    const fixture = create('/game');
+    const image = fixture.nativeElement.querySelector('.game-startup-avatar img');
+    expect(image.getAttribute('src')).toContain('small.webp');
+    expect(image.getAttribute('src')).not.toContain('google-monogram');
+  });
+
   it('does not render member startup controls for an operator session', () => {
     currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();

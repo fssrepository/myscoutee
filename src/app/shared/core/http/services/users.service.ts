@@ -132,6 +132,7 @@ export class HttpUsersService implements UserService {
 
   async queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const previewSession = normalizedUserId ? null : this.sessionService.currentSession();
     try {
       type HttpUserByIdResponse = UserDto & {
         filterCount?: number;
@@ -154,12 +155,19 @@ export class HttpUsersService implements UserService {
         }
         return this.readUserByIdFallback(normalizedUserId) ?? { user: null };
       }
-      return this.cacheUserResponse({
+      const result = this.cacheUserResponse({
         user: me,
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
       });
+      if (previewSession?.kind === 'firebase') {
+        this.sessionService.setFirebaseAvatarPreview(
+          previewSession.sessionId,
+          me.images?.find(image => image.trim().length > 0) ?? ''
+        );
+      }
+      return result;
     } catch (error) {
       const status = (error as { status?: number } | null)?.status;
       if ([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User details request timeout.')) {

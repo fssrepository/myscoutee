@@ -310,9 +310,13 @@ export class SideMenuComponent implements OnDestroy {
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
     const user = this.userProfileStore.activeUserProfile();
+    const session = this.sessionService.currentSession();
+    const loadingImage = session?.kind === 'firebase' && !this.canToggleAvatarMenu()
+      ? session.avatarImageUrl
+      : undefined;
     return {
       badgeCount: user ? this.resolveUserBadgeCount(user) : 0,
-      imageUrl: AppUtils.mediaImageVariantUrl(AppUtils.firstImageUrl(user?.images), 'small') || null
+      imageUrl: AppUtils.mediaImageVariantUrl(loadingImage ?? AppUtils.firstImageUrl(user?.images), 'small') || null
     };
   });
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
