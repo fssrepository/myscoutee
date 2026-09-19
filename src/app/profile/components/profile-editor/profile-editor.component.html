@@ -12,10 +12,20 @@
               class="profile-editor-wrap"
               [class.profile-editor-wrap-admin]="activeUserUsesCompactProfile()"
             >
-              <app-header-card
-                [model]="profileHeaderCardModel()"
-                (edit)="openImageEditor()"
-              ></app-header-card>
+              <div class="profile-editor-header-card">
+                <app-header-card
+                  [model]="profileHeaderCardModel()"
+                  (edit)="openImageEditor()"
+                ></app-header-card>
+                <app-menu
+                  class="profile-api-integration-action"
+                  kind="inline"
+                  layout="row"
+                  [model]="profileHeaderActionMenuModel"
+                  [items]="profileApiIntegrationActions"
+                  (itemSelect)="onProfileApiIntegrationAction($event)"
+                ></app-menu>
+              </div>
               <div class="profile-editor-scroll-area">
                 <div class="profile-editor-flow-area">
                   <app-form-flow
@@ -30,6 +40,7 @@
                   ></app-form-flow>
                 </div>
               </div>
+              <app-integration-settings-popup></app-integration-settings-popup>
             </div>
           }
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>

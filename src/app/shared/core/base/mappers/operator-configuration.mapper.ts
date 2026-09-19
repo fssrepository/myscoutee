@@ -9,7 +9,7 @@ export class OperatorConfigurationMapper {
   static readonly SOCIAL_LINK_MAX_COUNT = 12;
   static readonly DATA_CONTROLLER_NAME_MAX_LENGTH = 160;
   static readonly PRIVACY_CONTACT_EMAIL_MAX_LENGTH = 254;
-  static readonly PAYMENT_PUBLIC_BASE_URL_MAX_LENGTH = 2048;
+  static readonly PUBLIC_BASE_URL_MAX_LENGTH = 2048;
   static readonly PAYMENT_MERCHANT_ACCOUNT_MAX_LENGTH = 254;
 
   static privacyContact(value: unknown): DeploymentPrivacyContactDto {
@@ -192,11 +192,11 @@ export class OperatorConfigurationMapper {
       === JSON.stringify(this.socialLinks(right));
   }
 
-  static paymentPublicBaseUrl(value: unknown): string {
+  static publicBaseUrl(value: unknown): string {
     const normalized = `${value ?? ''}`.trim();
     if (
       !normalized
-      || normalized.length > this.PAYMENT_PUBLIC_BASE_URL_MAX_LENGTH
+      || normalized.length > this.PUBLIC_BASE_URL_MAX_LENGTH
     ) {
       return '';
     }
@@ -223,6 +223,22 @@ export class OperatorConfigurationMapper {
     } catch {
       return '';
     }
+  }
+
+  static paymentPublicBaseUrl(value: unknown): string {
+    return this.publicBaseUrl(value);
+  }
+
+  static integrationValidationKey(value: unknown): string | null {
+    const publicBaseUrl = value && typeof value === 'object'
+      ? `${(value as { publicBaseUrl?: unknown }).publicBaseUrl ?? ''}`.trim()
+      : '';
+    if (!publicBaseUrl) {
+      return 'operator.configuration.integration.public.url.required';
+    }
+    return this.publicBaseUrl(publicBaseUrl)
+      ? null
+      : 'operator.configuration.integration.public.url.invalid';
   }
 
   static paymentMerchantAccount(value: unknown): string {

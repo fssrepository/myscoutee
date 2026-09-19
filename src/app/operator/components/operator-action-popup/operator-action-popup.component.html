@@ -488,6 +488,51 @@
                   >
                     <header>
                       <span>
+                        <small>{{ 'operator.configuration.integration.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.integration' | i18n }}</strong>
+                      </span>
+                      <mat-icon>api</mat-icon>
+                    </header>
+
+                    <app-link-input
+                      [config]="configurationIntegrationPublicBaseUrlConfig()"
+                      [ngModel]="draft.integration?.publicBaseUrl ?? ''"
+                      (ngModelChange)="workspace.setConfigurationIntegration({
+                        publicBaseUrl: $event
+                      })"
+                      [disabled]="configurationDisabled()"
+                    ></app-link-input>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }"
+                      kind="inline"
+                      layout="row"
+                      panelMode="anchored"
+                      [items]="configurationIntegrationActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-integration') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="blue"
+                  >
+                    <header>
+                      <span>
                         <small>
                           {{ 'operator.configuration.privacy.contact.eyebrow' | i18n }}
                         </small>
@@ -604,6 +649,7 @@
                             kind="inline"
                             layout="row"
                             panelMode="anchored"
+                            [model]="{ actionSizing: 'content' }"
                             [items]="configurationSocialLinkRemoveItems(linkIndex)"
                             (itemSelect)="onAction($event)"
                           ></app-menu>

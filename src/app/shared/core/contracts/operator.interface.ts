@@ -419,6 +419,10 @@ export interface OperatorPaymentConfigurationDto {
   credentialMask: string | null;
 }
 
+export interface OperatorIntegrationConfigurationDto {
+  publicBaseUrl: string | null;
+}
+
 export interface OperatorFirebaseConfigurationDto {
   projectId: string;
   authenticationCredentialConfigured: boolean;
@@ -450,6 +454,7 @@ export interface OperatorConfigurationDto {
   privacyContact: DeploymentPrivacyContactDto;
   socialLinks: readonly DeploymentSocialLinkDto[];
   branding: DeploymentBrandingDto;
+  integration?: OperatorIntegrationConfigurationDto;
   payment: OperatorPaymentConfigurationDto;
   firebase: OperatorFirebaseConfigurationDto;
   updatedAt: string | null;
@@ -467,6 +472,9 @@ export interface OperatorConfigurationSaveRequestDto {
     logoUrl: string;
     logoCharacterIndex: number | null;
     themePreset: DeploymentThemePreset;
+  };
+  integration?: {
+    publicBaseUrl: string;
   };
   payment: {
     providerId: string | null;

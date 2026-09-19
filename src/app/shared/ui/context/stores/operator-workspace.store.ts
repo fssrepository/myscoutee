@@ -57,6 +57,7 @@ export type OperatorWorkspaceBusyAction =
   | 'save-admin-emails'
   | 'save-privacy-contact'
   | 'save-social-links'
+  | 'save-integration'
   | 'register-payment'
   | 'register-firebase'
   | 'activate-firebase'
@@ -79,6 +80,7 @@ const CONFIGURATION_BUSY_ACTIONS = new Set<
   'save-admin-emails',
   'save-privacy-contact',
   'save-social-links',
+  'save-integration',
   'register-payment',
   'register-firebase',
   'activate-firebase',
@@ -273,6 +275,8 @@ export class OperatorWorkspaceStore {
         draft.socialLinks,
         configuration.socialLinks
       )
+      || (draft.integration?.publicBaseUrl ?? '').trim()
+        !== (configuration.integration?.publicBaseUrl ?? '')
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
       || draft.payment.publicBaseUrl.trim()
         !== (configuration.payment.publicBaseUrl ?? '')
@@ -318,6 +322,14 @@ export class OperatorWorkspaceStore {
   );
   readonly configurationSocialLinksReady = computed(
     () => this.configurationSocialLinksValidationKey() === null
+  );
+  readonly configurationIntegrationValidationKey = computed(() =>
+    OperatorConfigurationMapper.integrationValidationKey(
+      this.configurationDraftRef()?.integration
+    )
+  );
+  readonly configurationIntegrationReady = computed(
+    () => this.configurationIntegrationValidationKey() === null
   );
   readonly configurationPaymentValidationKey = computed(() =>
     OperatorConfigurationMapper.paymentValidationKey(
@@ -771,6 +783,7 @@ export class OperatorWorkspaceStore {
       | 'save-admin-emails'
       | 'save-privacy-contact'
       | 'save-social-links'
+      | 'save-integration'
       | 'register-payment'
       | 'register-firebase',
     noticeKey = 'operator.configuration.saved'
@@ -818,12 +831,27 @@ export class OperatorWorkspaceStore {
         return null;
       }
     }
+    if (action === 'save-integration') {
+      const integrationValidationKey =
+        this.configurationIntegrationValidationKey();
+      if (integrationValidationKey) {
+        this.feedbackActionRef.set(action);
+        this.errorRef.set(integrationValidationKey);
+        return null;
+      }
+    }
     const result = await this.run(
       action,
       async () => {
         try {
           return await this.service.saveConfiguration({
             ...structuredClone(draft),
+            integration: {
+              publicBaseUrl:
+                OperatorConfigurationMapper.publicBaseUrl(
+                  draft.integration?.publicBaseUrl
+                ) || `${draft.integration?.publicBaseUrl ?? ''}`.trim()
+            },
             payment: {
               ...structuredClone(draft.payment),
               publicBaseUrl:
@@ -1278,6 +1306,21 @@ export class OperatorWorkspaceStore {
     });
   }
 
+  setConfigurationIntegration(
+    patch: Partial<NonNullable<OperatorConfigurationSaveRequestDto['integration']>>
+  ): void {
+    this.configurationDraftRef.update(current => current
+      ? {
+          ...current,
+          integration: {
+            publicBaseUrl: current.integration?.publicBaseUrl ?? '',
+            ...patch
+          }
+        }
+      : current
+    );
+  }
+
   setConfigurationFirebase(
     patch: Partial<OperatorConfigurationSaveRequestDto['firebase']>
   ): void {
@@ -1392,6 +1435,9 @@ export class OperatorWorkspaceStore {
         logoUrl: configuration.branding.logoUrl,
         logoCharacterIndex: configuration.branding.logoCharacterIndex,
         themePreset: configuration.branding.themePreset
+      },
+      integration: {
+        publicBaseUrl: configuration.integration?.publicBaseUrl ?? ''
       },
       payment: {
         providerId: configuration.payment.providerId,
