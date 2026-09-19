@@ -25,7 +25,7 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
-import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
+import { HomeHeaderComponent } from '../home-header/home-header.component';
 import type {
   AppMenuItem,
   AppMenuItemSelectEvent,
@@ -74,9 +74,6 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import {
-  DeploymentBrandComponent
-} from '../../../shared/ui/components/core/deployment-brand/deployment-brand.component';
 
 type LocalPopup = 'filter' | null;
 
@@ -164,9 +161,9 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    DeploymentBrandComponent,
+
     MatIconModule,
-    AppMenuComponent,
+    HomeHeaderComponent,
     SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
@@ -687,7 +684,7 @@ export class HomeComponent implements OnDestroy {
         kind: 'select-trigger',
         layout: 'pill',
         palette: this.homeModePalette(this.selectedHomeMode),
-        disabled: !this.isDataSourceAvailable || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.isDataSourceAvailable || this.isBlockedUser,
         ariaLabel: 'Select game mode',
         items: this.homeModeOptions.map(option => ({
           id: `home-mode:${option.key}`,
@@ -706,7 +703,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'filter_alt',
         kind: 'action',
         palette: 'filter',
-        disabled: !this.isDataSourceAvailable || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.isDataSourceAvailable || this.isBlockedUser,
         counter: this.filterBadgeCount > 0 ? { value: this.filterBadgeCount, max: 99 } : null,
         ariaLabel: 'Open profile filters',
         context: { action: 'filter' }
@@ -716,7 +713,7 @@ export class HomeComponent implements OnDestroy {
         icon: 'history',
         kind: 'action',
         palette: 'gold',
-        disabled: !this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser,
+        disabled: !this.homeHeaderControlsReady || !this.isDataSourceAvailable || !this.canOpenHistory || this.isBlockedUser,
         counter: this.historyBadgeCount > 0 ? { value: this.historyBadgeCount, max: 99 } : null,
         ariaLabel: 'Open game history',
         context: { action: 'history' }

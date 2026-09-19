@@ -1,22 +1,9 @@
+@use '../../shared/home-page-frame';
+
 :host {
   display: block;
 }
 
-.game-page {
-  width: min(1160px, calc(100vw - 2rem));
-  margin: 0 auto;
-  min-height: calc(100vh - 2rem);
-  display: flex;
-  flex-direction: column;
-  border: 1px solid rgba(21, 38, 62, 0.14);
-  border-radius: 18px;
-  padding: 0.9rem;
-  box-sizing: border-box;
-  background:
-    radial-gradient(circle at 20% -10%, var(--deployment-brand-shadow), transparent 36%),
-    radial-gradient(circle at 95% 0%, color-mix(in srgb, var(--deployment-brand-secondary) 14%, transparent), transparent 34%),
-    #f8faff;
-}
 
 .game-page.game-page-status-public {
   background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
@@ -50,56 +37,6 @@
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-}
-
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.72rem;
-}
-
-
-
-.game-brand {
-  display: inline-flex;
-  align-items: flex-end;
-  text-decoration: none;
-  font-weight: 700;
-  color: var(--deployment-brand-text);
-
-  background-image: linear-gradient(
-    90deg,
-    var(--deployment-brand-primary),
-    var(--deployment-brand-secondary),
-    var(--deployment-brand-accent)
-  );
-
-  background-repeat: no-repeat;
-  background-size: 100% 3px;   /* thickness */
-  background-position: 0 100%; /* bottom */
-  --deployment-brand-logo-size: 30px;
-  font-size: 1.32rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 0.8;
-}
-
-.game-header p {
-  margin: 0.22rem 0 0;
-  color: rgba(20, 33, 53, 0.72);
-  font-size: 0.84rem;
-}
-
-.game-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.38rem;
-}
-
-.game-header-menu {
-  display: inline-flex;
-  align-items: center;
 }
 
 .game-layout-single {
@@ -1957,24 +1894,7 @@
     justify-content: stretch;
   }
 
-  .game-page {
-    width: 100%;
-    min-height: 100%;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 18px;
-    padding: 0.9rem;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
 
-  .game-header {
-    flex-direction: column;
-  }
-
-  .game-actions {
-    justify-content: flex-end;
-  }
 
   .game-social-query-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));

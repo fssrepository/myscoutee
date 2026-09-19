@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
   NavigationCancellationCode,
@@ -16,6 +16,12 @@ import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
 import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
+import { SessionService } from './shared/core/base/services/session.service';
+import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
+import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
+import type { AppMenuItem } from './shared/ui/components/core/menu/menu.types';
+import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
+import { AppUtils } from './shared/app-utils';
 
 @Component({
   selector: 'app-root',
@@ -23,7 +29,9 @@ import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payme
     RouterOutlet,
     NgComponentOutlet,
     AppSetupPopupComponent,
-    PaymentAuthorizationPopupComponent
+    PaymentAuthorizationPopupComponent,
+    HomeHeaderComponent,
+    AppMenuComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
@@ -48,6 +56,8 @@ export class App implements OnDestroy {
   ].join(',');
   private static readonly ACTION_WAVE_DURATION_MS = 520;
   private readonly router = inject(Router);
+  private readonly sessionService = inject(SessionService);
+  private readonly offlineCache = inject(OfflineCacheService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly pwaService = inject(PwaService);
   private readonly i18nService = inject(I18nService);
@@ -63,6 +73,22 @@ export class App implements OnDestroy {
   protected showSideMenu = false;
   protected readonly sideMenuComponent = this.sideMenuComponentRef.asReadonly();
   protected routeWarmupVisible = false;
+  protected gameStartupVisible = false;
+  protected readonly loadingAvatarItems = computed<readonly AppMenuItem[]>(() => {
+    const session = this.sessionService.currentSession();
+    const userId = session?.kind === 'firebase' ? session.profile.id : session?.kind === 'demo' ? session.userId : '';
+    const cached = userId ? this.offlineCache.readUser(userId)?.user : null;
+    const imageUrl = cached?.id === userId
+      ? AppUtils.firstImageUrl(cached.images)
+      : session?.kind === 'firebase' ? session.profile.imageUrl : '';
+    // Display-only preview; cached identity never enables actions or skips guards.
+    return [{
+      id: 'navigator-avatar', kind: 'action', layout: 'image', palette: 'neutral',
+      imageUrl: AppUtils.mediaImageVariantUrl(imageUrl, 'small'),
+      icon: 'schedule', disabled: true, ariaLabel: 'Loading profile', imageAlt: 'Loading profile',
+      progress: { state: 'loading', shape: 'circle', durationMs: 3000 }
+    }];
+  });
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
 
   constructor() {
@@ -74,12 +100,14 @@ export class App implements OnDestroy {
     this.syncSideMenuVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = true;
     this.routeWarmupVisible = this.initialLandingWarmupPending;
+    this.syncGameStartup(initialRouteUrl);
     if (this.routeWarmupVisible) {
       this.scheduleRouteWarmupWatchdog();
     }
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         this.syncSideMenuVisibility(event.url);
+        this.syncGameStartup(event.url);
         if (this.initialLandingWarmupPending) {
           this.showRouteWarmup();
         } else {
@@ -194,7 +222,17 @@ export class App implements OnDestroy {
   }
 
   protected onRouteActivated(): void {
-    this.completeWarmupIfNavigationSettled();
+    // The protected outlet has activated. The real header now takes over from
+    // the public loading shell; profile/card loaders belong to the page.
+    this.completeInitialLandingWarmup(0);
+  }
+
+  private syncGameStartup(url: string): void {
+    const path = url.split(/[?#]/)[0].replace(/\/$/, '') || '/';
+    const session = this.sessionService.currentSession();
+    this.gameStartupVisible = this.initialLandingWarmupPending
+      && Boolean(session && session.kind !== 'operator-bootstrap')
+      && (path === '/' || path === '/game' || path === '/home');
   }
 
   private completeWarmupIfNavigationSettled(): void {
@@ -211,6 +249,7 @@ export class App implements OnDestroy {
 
   private completeInitialLandingWarmup(delayMs = 120): void {
     this.initialLandingWarmupPending = false;
+    this.gameStartupVisible = false;
     this.hideRouteWarmup(delayMs);
   }
 

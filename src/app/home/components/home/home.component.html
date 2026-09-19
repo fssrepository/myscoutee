@@ -2,27 +2,12 @@
   <div class="game-page game-page-reactivation-pending" aria-hidden="true"></div>
 } @else {
 <div class="game-page" [ngClass]="gamePageStatusClass()">
-  <header class="game-header">
-    <a
-      class="game-brand"
-      [attr.aria-label]="deploymentBranding().productName + ' home'"
-    >
-      <app-deployment-brand
-        [branding]="deploymentBranding()"
-      ></app-deployment-brand>
-    </a>
-    @if (homeHeaderControlsReady) {
-    <div class="game-actions">
-      <app-menu
-        class="game-header-menu"
-        kind="inline"
-        layout="row"
-        [items]="homeHeaderMenuItems()"
-        (itemSelect)="onHomeHeaderMenuSelect($event)"
-      ></app-menu>
-    </div>
-    }
-  </header>
+  <app-home-header
+    [branding]="deploymentBranding()"
+    [items]="homeHeaderMenuItems()"
+    [showControls]="!isAvatarProfileSettled || homeHeaderControlsReady"
+    (itemSelect)="onHomeHeaderMenuSelect($event)"
+  ></app-home-header>
 
   @if (showSocialQueryInputs()) {
     <section class="game-social-query-bar">

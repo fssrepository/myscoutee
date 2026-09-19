@@ -1,12 +1,11 @@
+@use './navigator-avatar';
+
 :host {
   display: block;
 }
 
 .navigator-trigger-rail {
-  position: fixed;
-  top: 0.95rem;
-  right: 1rem;
-  z-index: 1480;
+  @include navigator-avatar.position;
   pointer-events: none;
   transition: transform 0.16s ease, opacity 0.16s ease;
 }
@@ -40,8 +39,7 @@
 
 .user-selector-menu {
   pointer-events: auto;
-  --app-menu-image-button-size: 48px;
-  --app-menu-image-ring-inset: -5px;
+  @include navigator-avatar.size;
   --app-menu-image-counter-size: 22px;
   --app-menu-image-counter-top: -4px;
   --app-menu-image-counter-right: -2px;
@@ -306,11 +304,6 @@ app-event-supply-contributions-popup {
 }
 
 @media (max-width: 900px) {
-  .navigator-trigger-rail {
-    top: 0.7rem;
-    right: 0.7rem;
-  }
-
   .navigator-trigger-rail-inner {
     flex-wrap: nowrap;
   }

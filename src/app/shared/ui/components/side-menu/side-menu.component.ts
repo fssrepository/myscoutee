@@ -312,7 +312,7 @@ export class SideMenuComponent implements OnDestroy {
     const user = this.userProfileStore.activeUserProfile();
     return {
       badgeCount: user ? this.resolveUserBadgeCount(user) : 0,
-      imageUrl: AppUtils.firstImageUrl(user?.images) || null
+      imageUrl: AppUtils.mediaImageVariantUrl(AppUtils.firstImageUrl(user?.images), 'small') || null
     };
   });
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
@@ -410,7 +410,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly avatarMenuItems = computed<readonly AppMenuItem<NavigatorAvatarMenuItemId, NavigatorAvatarMenuContext>[]>(() => {
     const user = this.userProfileStore.activeUserProfile();
     const canToggle = this.canToggleAvatarMenu();
-    const imageUrl = canToggle ? this.avatarState().imageUrl ?? '' : '';
+    const imageUrl = this.avatarState().imageUrl ?? '';
     const icon = this.avatarLoading() ? 'schedule' : this.avatarLoadError() ? 'person_off' : '';
     const badgeCount = this.avatarBadgeCount();
     return [{

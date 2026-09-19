@@ -1,3 +1,6 @@
+@use './home/shared/home-page-frame';
+@use './shared/ui/components/side-menu/navigator-avatar';
+
 :host {
   display: block;
   --bg-soft: #f3f6ff;
@@ -165,4 +168,9 @@
   .content-area.content-area-full {
     padding: 0.7rem 0 0.85rem;
   }
+}
+
+.game-startup-avatar {
+  @include navigator-avatar.position;
+  @include navigator-avatar.size;
 }
