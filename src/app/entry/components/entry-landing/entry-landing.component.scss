@@ -251,7 +251,6 @@
   font-weight: 600;
   line-height: 1.42;
   letter-spacing: 0.005em;
-  white-space: nowrap;
 }
 
 .entry-hero-thesis-result {
@@ -1289,8 +1288,7 @@
   }
 
   .entry-hero-thesis {
-    margin-inline: -0.74rem;
-    font-size: clamp(0.88rem, 4.53vw, 1.02rem);
+    font-size: 1.02rem;
   }
 
   .entry-footer-grid {

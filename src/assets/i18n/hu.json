@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.19.hu.117",
+  "version": "2026.09.19.hu.118",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -1231,7 +1231,7 @@
     "landing.preview.badge": "Tesztverzió",
     "landing.hero.history": "Az emberek régen társas közegben ismerkedtek.",
     "landing.hero.return": "Mi ezt újra közösségivé tesszük.",
-    "landing.hero.graph": "6 ember · 6 prioritáslista → 1 közös csoport",
+    "landing.hero.graph": "6 ember · 6 prioritáslista → 1 csapat",
     "landing.preview.open.guide": "Tesztverzió útmutató megnyitása",
     "landing.preview.close.guide": "Tesztverzió útmutató bezárása",
     "landing.preview.guide.title": "Tesztverzió",

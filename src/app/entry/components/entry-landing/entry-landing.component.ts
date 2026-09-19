@@ -85,7 +85,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.deploymentConfiguration.socialLinks;
   protected readonly heroGraphText = computed(() => {
     this.i18n.revision();
-    const text = this.i18n.translate('landing.hero.graph', '6 people · 6 priority lists → 1 shared group');
+    const text = this.i18n.translate('landing.hero.graph', '6 people · 6 priority lists → 1 team');
     const splitAt = text.lastIndexOf('→') + 1;
     return { prefix: text.slice(0, splitAt), result: text.slice(splitAt).trim() };
   });
