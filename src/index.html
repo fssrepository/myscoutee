@@ -234,7 +234,8 @@
           return false;
         }
         var tagName = target.tagName.toLowerCase();
-        return tagName === 'script' || tagName === 'link';
+        return tagName === 'script' || (tagName === 'link'
+          && /(?:^|\s)(?:stylesheet|modulepreload)(?:\s|$)/i.test(target.rel || ''));
       }
 
       function currentBuildId() {
@@ -246,15 +247,17 @@
         try {
           return sessionStorage.getItem(DEPLOYMENT_RECOVERY_KEY) === buildId;
         } catch (error) {
-          return false;
+          return true;
         }
       }
 
       function markRecoveryAttempted(buildId) {
         try {
           sessionStorage.setItem(DEPLOYMENT_RECOVERY_KEY, buildId);
+          return true;
         } catch (error) {
-          // A blocked sessionStorage should not prevent startup recovery.
+          // Automatic reload needs a durable loop guard; manual retry still works.
+          return false;
         }
       }
 
@@ -315,18 +318,33 @@
       }
 
       function recoverDeployment(force) {
+        // Resource errors can arrive after login or while a lazy feature loads.
+        // Bootstrap recovery must never restart an already running application.
+        if (isBootstrapped()) {
+          return Promise.resolve();
+        }
         if (deploymentRecoveryPromise) {
           return deploymentRecoveryPromise;
         }
-        if (isBootstrapped() || navigator.onLine === false || !('serviceWorker' in navigator)) {
-          window.location.reload();
+        if (navigator.onLine === false) {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+          if (force) {
+            window.location.reload();
+          }
           return Promise.resolve();
         }
         var buildId = currentBuildId() || window.location.pathname;
-        if (!force && recoveryWasAttempted(buildId)) {
+        if (!force && (recoveryWasAttempted(buildId) || !markRecoveryAttempted(buildId))) {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
           return Promise.resolve();
         }
-        markRecoveryAttempted(buildId);
+        if (force) {
+          markRecoveryAttempted(buildId);
+        }
+        if (!('serviceWorker' in navigator)) {
+          window.location.reload();
+          return Promise.resolve();
+        }
         showWarmupFailure(
           'Updating MyScoutee',
           'A new app version is being prepared. This page will retry automatically.'
@@ -341,10 +359,12 @@
               .then(function() { return waitForWaitingWorker(registration); });
           })
           .then(function(waitingWorker) {
-            return waitingWorker ? activateWaitingWorker(waitingWorker) : undefined;
+            return !isBootstrapped() && waitingWorker ? activateWaitingWorker(waitingWorker) : undefined;
           })
           .then(function() {
-            window.location.reload();
+            if (!isBootstrapped()) {
+              window.location.reload();
+            }
           })
           .catch(function() {
             deploymentRecoveryPromise = null;

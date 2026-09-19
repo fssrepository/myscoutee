@@ -87,6 +87,7 @@ type OperatorPopupAction =
   | 'add-social-link'
   | 'remove-social-link'
   | 'save-social-links'
+  | 'save-integration'
   | 'register-payment'
   | 'register-firebase'
   | 'activate-firebase'
@@ -860,6 +861,21 @@ export class OperatorActionPopupComponent {
       }
     ];
   });
+  protected readonly configurationIntegrationActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => [{
+    id: 'operator-save-integration',
+    label: 'operator.configuration.integration.save',
+    icon: 'save',
+    palette: 'blue',
+    layout: 'action',
+    disabled: this.configurationDisabled()
+      || !this.workspace.configurationIntegrationReady(),
+    progress: this.busyAction() === 'save-integration'
+      ? { state: 'loading', durationMs: 3000 }
+      : null,
+    context: { action: 'save-integration' }
+  }]);
   protected readonly configurationPaymentActionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -1155,6 +1171,12 @@ export class OperatorActionPopupComponent {
         await this.workspace.saveConfiguration(
           'save-social-links',
           'operator.configuration.social.saved'
+        );
+        return;
+      case 'save-integration':
+        await this.workspace.saveConfiguration(
+          'save-integration',
+          'operator.configuration.integration.saved'
         );
         return;
       case 'register-payment':
@@ -1741,6 +1763,29 @@ export class OperatorActionPopupComponent {
     };
   }
 
+  protected configurationIntegrationPublicBaseUrlConfig(): LinkInputConfig {
+    return {
+      label: this.i18n.translate(
+        'operator.configuration.integration.public.url'
+      ),
+      placeholder: this.i18n.translate(
+        'operator.configuration.integration.public.url.placeholder'
+      ),
+      required: true,
+      maxLength: 2048,
+      panelMode: 'anchored',
+      pasteAriaLabel: this.i18n.translate(
+        'operator.configuration.integration.public.url.paste.aria'
+      ),
+      openAriaLabel: this.i18n.translate(
+        'operator.configuration.integration.public.url.open.aria'
+      ),
+      deleteAriaLabel: this.i18n.translate(
+        'operator.configuration.integration.public.url.clear.aria'
+      )
+    };
+  }
+
   protected configurationPaymentIsBarion(): boolean {
     return (
       this.workspace.configurationDraft()?.payment.providerId
@@ -1851,6 +1896,7 @@ export class OperatorActionPopupComponent {
       case 'save-admin-emails':
       case 'save-privacy-contact':
       case 'save-social-links':
+      case 'save-integration':
       case 'register-payment':
       case 'register-firebase':
       case 'activate-firebase':

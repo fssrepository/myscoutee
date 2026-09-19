@@ -272,6 +272,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     });
     return {
       ...snapshot,
+      locationCoordinates: currentUser ? LocalUsersMapper.toDto(currentUser).locationCoordinates ?? null : undefined,
       offlineTicketSnapshot
     };
   }

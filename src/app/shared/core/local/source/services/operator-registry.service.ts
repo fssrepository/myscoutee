@@ -934,6 +934,18 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const socialLinks = OperatorConfigurationMapper.socialLinks(
       request.socialLinks
     );
+    const integrationValidationKey =
+      OperatorConfigurationMapper.integrationValidationKey(
+        request.integration
+      );
+    if (request.integration && integrationValidationKey) {
+      throw new Error(integrationValidationKey);
+    }
+    const integrationPublicBaseUrl = request.integration
+      ? OperatorConfigurationMapper.publicBaseUrl(
+          request.integration.publicBaseUrl
+        )
+      : current.configuration.integration?.publicBaseUrl ?? null;
     const previousPaymentProvider = current.configuration.payment.providerId;
     const themePreset = this.deploymentThemePreset(request.branding.themePreset);
     const productName = `${request.branding.productName ?? ''}`.trim().slice(0, 80);
@@ -1050,6 +1062,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         logoCharacterIndex,
         themePreset,
         revision: current.configuration.branding.revision + 1
+      },
+      integration: {
+        publicBaseUrl: integrationPublicBaseUrl
       },
       payment: {
         availableProviders: structuredClone(

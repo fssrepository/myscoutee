@@ -234,7 +234,7 @@ export class FirebaseMessagingService {
     // network awaits consume the browser's transient user activation.
     const decision = typeof Notification === 'undefined'
       ? Promise.resolve(null)
-      : Notification.permission === 'default'
+      : Notification.permission !== 'granted'
         ? Notification.requestPermission().catch(() => 'denied' as const)
         : Promise.resolve(Notification.permission);
     return decision.then(permission => {

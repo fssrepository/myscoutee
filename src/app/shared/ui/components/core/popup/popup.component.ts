@@ -5,6 +5,7 @@ import {
   EventEmitter,
   Input,
   OnDestroy,
+  OnChanges,
   OnInit,
   Output,
   ViewEncapsulation,
@@ -36,13 +37,15 @@ import type {
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
+export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, OnDestroy {
   private readonly popupPresenceStore = inject(PopupPresenceStore);
   private presenceToken: symbol | null = null;
   private registeredZIndex = 2300;
 
   @Input() model: PopupModel<TContext> | null = null;
   @Input() zIndex: number | null = null;
+  /** Keep expensive content mounted without retaining an invisible modal layer. */
+  @Input() active = true;
 
   @Output() readonly close = new EventEmitter<Event>();
   @Output() readonly menuSelect = new EventEmitter<PopupMenuSelectEvent<TContext>>();
@@ -50,11 +53,27 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
   @Output() readonly dateInputChange = new EventEmitter<PopupDateInputChangeEvent<TContext>>();
 
   ngOnInit(): void {
-    this.presenceToken = this.popupPresenceStore.register(this.zIndex);
-    this.registeredZIndex = this.popupPresenceStore.layer(this.presenceToken) ?? this.registeredZIndex;
+    this.syncPresence();
+  }
+
+  ngOnChanges(): void {
+    this.syncPresence();
+  }
+
+  private syncPresence(): void {
+    if (this.active && !this.presenceToken) {
+      this.presenceToken = this.popupPresenceStore.register(this.zIndex);
+      this.registeredZIndex = this.popupPresenceStore.layer(this.presenceToken) ?? this.registeredZIndex;
+    } else if (!this.active) {
+      this.clearPresence();
+    }
   }
 
   ngOnDestroy(): void {
+    this.clearPresence();
+  }
+
+  private clearPresence(): void {
     if (this.presenceToken) {
       this.popupPresenceStore.unregister(this.presenceToken);
       this.presenceToken = null;

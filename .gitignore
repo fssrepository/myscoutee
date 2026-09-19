@@ -1,6 +1,8 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-/.agent/logs
+# Local agent builds, measurements and temporary test configurations.
+# Previously tracked test helpers remain versioned.
+/.agent/
 
 # Compiled output
 /dist
@@ -47,7 +49,6 @@ __screenshots__/
 /keys/*.json
 docs/keys/firebase.config.json
 *-firebase-adminsdk-*.json
-/.agent/logs/
 !/keys/*.example.json
 /src/app/shared/core/base/services/test/
 

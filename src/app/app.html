@@ -1,22 +1,32 @@
-<main class="main" [class.main-public]="!showSideMenu">
-  <div class="content" [class.content-single]="showSideMenu" [class.content-public]="!showSideMenu">
-    <section class="content-area" [class.content-area-full]="showSideMenu" [class.content-area-public]="!showSideMenu">
+<main class="main" [class.main-public]="!showSideMenu && !gameStartupVisible">
+  <div class="content" [class.content-single]="showSideMenu || gameStartupVisible" [class.content-public]="!showSideMenu && !gameStartupVisible">
+    <section class="content-area" [class.content-area-full]="showSideMenu || gameStartupVisible" [class.content-area-public]="!showSideMenu && !gameStartupVisible">
+      @if (gameStartupVisible) {
+        <div class="game-page game-startup" aria-busy="true">
+          <app-home-header [branding]="deploymentBranding()"></app-home-header>
+        </div>
+      }
       <router-outlet (activate)="onRouteActivated()"></router-outlet>
     </section>
   </div>
 </main>
 
-@if (showSideMenu) {
+@if (showSideMenu && !gameStartupVisible) {
   @if (sideMenuComponent(); as component) {
     <ng-container *ngComponentOutlet="component"></ng-container>
   }
+}
+
+@if (gameStartupVisible || (showSideMenu && !sideMenuComponent())) {
+  <app-menu class="game-startup-avatar user-selector-menu" kind="inline" layout="row"
+    [items]="loadingAvatarItems()"></app-menu>
 }
 
 <app-setup-popup></app-setup-popup>
 
 <app-payment-authorization-popup></app-payment-authorization-popup>
 
-@if (routeWarmupVisible) {
+@if (routeWarmupVisible && !gameStartupVisible) {
   <section
     class="app-route-warmup"
     role="status"

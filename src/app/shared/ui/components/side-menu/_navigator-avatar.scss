@@ -1,0 +1,16 @@
+@mixin position {
+  position: fixed;
+  top: 0.95rem;
+  right: 1rem;
+  z-index: 1480;
+
+  @media (max-width: 900px) {
+    top: 0.7rem;
+    right: 0.7rem;
+  }
+}
+
+@mixin size {
+  --app-menu-image-button-size: 48px;
+  --app-menu-image-ring-inset: -5px;
+}

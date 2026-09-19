@@ -1,7 +1,8 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
+  NavigationCancellationCode,
   NavigationEnd,
   NavigationError,
   NavigationStart,
@@ -15,6 +16,12 @@ import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
 import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
+import { SessionService } from './shared/core/base/services/session.service';
+import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
+import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
+import type { AppMenuItem } from './shared/ui/components/core/menu/menu.types';
+import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
+import { AppUtils } from './shared/app-utils';
 
 @Component({
   selector: 'app-root',
@@ -22,13 +29,15 @@ import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payme
     RouterOutlet,
     NgComponentOutlet,
     AppSetupPopupComponent,
-    PaymentAuthorizationPopupComponent
+    PaymentAuthorizationPopupComponent,
+    HomeHeaderComponent,
+    AppMenuComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App implements OnDestroy {
-  private static readonly ROUTE_WARMUP_MAX_VISIBLE_MS = 6000;
+  private static readonly ROUTE_WARMUP_WATCHDOG_DELAY_MS = 6000;
   private static readonly MOBILE_RESUME_RECOVERY_DELAY_MS = 280;
   private static readonly ACTION_WAVE_TARGET_SELECTOR = [
     'button[class*="close" i]',
@@ -47,6 +56,8 @@ export class App implements OnDestroy {
   ].join(',');
   private static readonly ACTION_WAVE_DURATION_MS = 520;
   private readonly router = inject(Router);
+  private readonly sessionService = inject(SessionService);
+  private readonly offlineCache = inject(OfflineCacheService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly pwaService = inject(PwaService);
   private readonly i18nService = inject(I18nService);
@@ -62,6 +73,24 @@ export class App implements OnDestroy {
   protected showSideMenu = false;
   protected readonly sideMenuComponent = this.sideMenuComponentRef.asReadonly();
   protected routeWarmupVisible = false;
+  protected gameStartupVisible = false;
+  protected readonly loadingAvatarItems = computed<readonly AppMenuItem[]>(() => {
+    const session = this.sessionService.currentSession();
+    const userId = session?.kind === 'firebase' ? session.profile.id : session?.kind === 'demo' ? session.userId : '';
+    const cached = userId ? this.offlineCache.readUser(userId)?.user : null;
+    // A saved login is not a restored media cookie. Before the guard completes,
+    // use image bytes from this session instead of requesting a private URL.
+    const imageUrl = session?.kind === 'firebase'
+      ? session.avatarImageDataUrl
+      : cached?.id === userId ? AppUtils.firstImageUrl(cached.images) : '';
+    // Display-only preview; cached identity never enables actions or skips guards.
+    return [{
+      id: 'navigator-avatar', kind: 'action', layout: 'image', palette: 'neutral',
+      imageUrl: AppUtils.mediaImageVariantUrl(imageUrl, 'small'),
+      icon: 'schedule', disabled: true, ariaLabel: 'Loading profile', imageAlt: 'Loading profile',
+      progress: { state: 'loading', shape: 'circle', durationMs: 3000 }
+    }];
+  });
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
 
   constructor() {
@@ -71,15 +100,19 @@ export class App implements OnDestroy {
     void this.deploymentConfiguration.initialize();
     void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
-    this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
+    // Bootstrap can finish before the initial page is ready. Keep the loading
+    // surface until the outlet activates, including a fresh unsigned visit.
+    this.initialLandingWarmupPending = true;
     this.routeWarmupVisible = this.initialLandingWarmupPending;
+    this.syncGameStartup(initialRouteUrl);
     if (this.routeWarmupVisible) {
       this.scheduleRouteWarmupWatchdog();
     }
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         this.syncSideMenuVisibility(event.url);
-        if (this.initialLandingWarmupPending && this.shouldShowLandingWarmup(event.url)) {
+        this.syncGameStartup(event.url);
+        if (this.initialLandingWarmupPending) {
           this.showRouteWarmup();
         } else {
           this.hideRouteWarmup(0);
@@ -94,6 +127,14 @@ export class App implements OnDestroy {
       }
 
       if (event instanceof NavigationCancel || event instanceof NavigationError) {
+        // Redirects continue startup; the destination's guards and lazy page
+        // have not finished yet, so there is still no page to uncover.
+        if (event instanceof NavigationCancel && (
+          event.code === NavigationCancellationCode.Redirect
+          || event.code === NavigationCancellationCode.SupersededByNewNavigation
+        )) {
+          return;
+        }
         this.completeInitialLandingWarmup(0);
       }
     });
@@ -128,6 +169,7 @@ export class App implements OnDestroy {
 
   private syncSideMenuVisibility(url: string): void {
     this.showSideMenu = this.shouldShowSideMenu(url);
+    this.changeDetectorRef.markForCheck();
     if (this.showSideMenu) {
       void this.ensureSideMenuComponentLoaded();
     }
@@ -184,12 +226,23 @@ export class App implements OnDestroy {
   }
 
   protected onRouteActivated(): void {
-    setTimeout(() => this.completeInitialLandingWarmup(), 0);
+    // The protected outlet has activated. The real header now takes over from
+    // the public loading shell; profile/card loaders belong to the page.
+    this.completeInitialLandingWarmup(0);
   }
 
-  private shouldShowLandingWarmup(url: string): boolean {
-    const normalizedPath = (url || '/').split('?')[0].split('#')[0].trim() || '/';
-    return normalizedPath === '/' || normalizedPath.startsWith('/entry');
+  private syncGameStartup(url: string): void {
+    const path = url.split(/[?#]/)[0].replace(/\/$/, '') || '/';
+    const session = this.sessionService.currentSession();
+    this.gameStartupVisible = this.initialLandingWarmupPending
+      && Boolean(session && session.kind !== 'operator-bootstrap')
+      && (path === '/' || path === '/game' || path === '/home');
+  }
+
+  private completeWarmupIfNavigationSettled(): void {
+    if (this.routeWarmupVisible && this.router.navigated && !this.router.getCurrentNavigation()) {
+      this.completeInitialLandingWarmup();
+    }
   }
 
   private showRouteWarmup(): void {
@@ -200,6 +253,7 @@ export class App implements OnDestroy {
 
   private completeInitialLandingWarmup(delayMs = 120): void {
     this.initialLandingWarmupPending = false;
+    this.gameStartupVisible = false;
     this.hideRouteWarmup(delayMs);
   }
 
@@ -230,11 +284,8 @@ export class App implements OnDestroy {
     this.clearRouteWarmupWatchdogTimer();
     this.routeWarmupWatchdogTimer = setTimeout(() => {
       this.routeWarmupWatchdogTimer = null;
-      if (!this.routeWarmupVisible) {
-        return;
-      }
-      this.completeInitialLandingWarmup(0);
-    }, App.ROUTE_WARMUP_MAX_VISIBLE_MS);
+      this.completeWarmupIfNavigationSettled();
+    }, App.ROUTE_WARMUP_WATCHDOG_DELAY_MS);
   }
 
   private clearRouteWarmupWatchdogTimer(): void {
@@ -261,9 +312,7 @@ export class App implements OnDestroy {
       return;
     }
     this.syncSideMenuVisibility(this.resolveInitialRouteUrl());
-    if (this.routeWarmupVisible) {
-      this.completeInitialLandingWarmup(0);
-    }
+    this.completeWarmupIfNavigationSettled();
   }
 
   private clearMobileResumeRecoveryTimer(): void {

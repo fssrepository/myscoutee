@@ -1,0 +1,57 @@
+:host { display: block; }
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.72rem;
+}
+
+
+
+.game-brand {
+  display: inline-flex;
+  align-items: flex-end;
+  text-decoration: none;
+  font-weight: 700;
+  color: var(--deployment-brand-text);
+
+  background-image: linear-gradient(
+    90deg,
+    var(--deployment-brand-primary),
+    var(--deployment-brand-secondary),
+    var(--deployment-brand-accent)
+  );
+
+  background-repeat: no-repeat;
+  background-size: 100% 3px;   /* thickness */
+  background-position: 0 100%; /* bottom */
+  --deployment-brand-logo-size: 30px;
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 0.8;
+}
+
+.game-header p {
+  margin: 0.22rem 0 0;
+  color: rgba(20, 33, 53, 0.72);
+  font-size: 0.84rem;
+}
+
+.game-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.game-header-menu {
+  display: inline-flex;
+  align-items: center;
+}
+
+
+@media (max-width: 760px) {
+  .game-header { flex-direction: column; }
+  .game-actions { justify-content: flex-end; }
+}

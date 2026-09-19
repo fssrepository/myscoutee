@@ -2,6 +2,7 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
+import { scheduleAfterPaint } from '../../scheduler/after-paint';
 
 export type ProfileSettingsPopup =
   | 'help'
@@ -64,6 +65,8 @@ export class ProfileStore {
   private readonly impressionsPopupContextRef = signal<ProfileImpressionsPopupContext | null>(null);
   private readonly impressionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
+  private profileEditorLoad: Promise<void> | null = null;
+  readonly profileEditorLoadFailed = signal(false);
   private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly explanationPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -222,8 +225,14 @@ export class ProfileStore {
     if (this.profileEditorComponentRef()) {
       return;
     }
-    const module = await import('../../../../profile/components/profile-editor/profile-editor.component');
-    this.profileEditorComponentRef.set(module.ProfileEditorComponent);
+    if (this.profileEditorLoad) return this.profileEditorLoad;
+    this.profileEditorLoadFailed.set(false);
+    this.profileEditorLoad = new Promise<void>(resolve => scheduleAfterPaint(resolve))
+      .then(() => import('../../../../profile/components/profile-editor/profile-editor.component'))
+      .then(module => { this.profileEditorComponentRef.set(module.ProfileEditorComponent); })
+      .catch(() => { this.profileEditorLoadFailed.set(true); })
+      .finally(() => { this.profileEditorLoad = null; });
+    return this.profileEditorLoad;
   }
 
   async ensureProfileViewPopupLoaded(): Promise<void> {

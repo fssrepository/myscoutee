@@ -86,14 +86,24 @@
   background: #f4f7ff;
 }
 
-.ui-warp-image-card__visual::before {
-  content: '';
+.ui-warp-image-card__visual-image {
   position: absolute;
   inset: 0;
-  background-image: url('../../../../../../../../assets/logo/cards_no_edges.png');
   background-repeat: no-repeat;
   background-size: 200% 200%;
   background-position: var(--warp-image-slice-x, 0%) var(--warp-image-slice-y, 0%);
+}
+
+.ui-warp-image-card__image-loader {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  pointer-events: none;
+}
+
+.lazy-bg-loading > .ui-warp-image-card__image-loader {
+  display: grid;
 }
 
 .ui-warp-image-card__visual::after {

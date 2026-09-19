@@ -12,20 +12,11 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import {
-  USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
-  UsersService
-} from '../../../shared/core';
-import {
-  AppMenuComponent,
-  I18nPipe,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  FormFlowComponent,
-  type FormFlowControlModel,
-  type FormFlowModel
-} from '../../../shared/ui';
+import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
+import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
+import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import { type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type FormFlowControlModel, type FormFlowModel } from '../../../shared/ui';
+import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';

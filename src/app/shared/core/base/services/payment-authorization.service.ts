@@ -1,10 +1,9 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, Injector, inject, signal } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   EventCheckoutPaymentAudit,
   EventCheckoutSession
 } from '../../contracts/activity.interface';
-import { EventsService } from './events.service';
 import { I18nService } from './i18n.service';
 
 export interface PaymentAuthorizationContinuation {
@@ -31,7 +30,7 @@ export class PaymentAuthorizationService {
   // before the MyScoutee safety poll gives up.
   private static readonly POLL_TIMEOUT_MS = (3 * 60 * 1000) + 5000;
 
-  private readonly events = inject(EventsService);
+  private readonly injector = inject(Injector);
   private readonly i18n = inject(I18nService);
   private readonly waitingSurfaceRef = signal<PaymentAuthorizationWaitingSurface | null>(null);
   private activeAttempt: PaymentAuthorizationAttempt | null = null;
@@ -135,12 +134,16 @@ export class PaymentAuthorizationService {
     sourceId: string,
     attempt: PaymentAuthorizationAttempt
   ): Promise<EventCheckoutPaymentAudit> {
+    // Mounting the global payment popup must not initialize event adapters
+    // and their local repositories before the startup shell can be painted.
+    const { EventsService } = await import('./events.service');
+    const events = this.injector.get(EventsService);
     const deadline = Date.now() + PaymentAuthorizationService.POLL_TIMEOUT_MS;
     while (Date.now() < deadline) {
       if (attempt.cancelled) {
         throw new Error(this.i18n.translate('payment.authorization.error.cancelled'));
       }
-      const audit = await this.events.loadCheckoutPaymentAudit(userId, sourceId, attempt.id);
+      const audit = await events.loadCheckoutPaymentAudit(userId, sourceId, attempt.id);
       const status = this.normalizedStatus(audit?.status);
       if (audit && this.isSuccessfulStatus(status)) {
         await this.waitForSimulatorResult(attempt);

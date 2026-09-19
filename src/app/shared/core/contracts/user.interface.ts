@@ -244,6 +244,7 @@ export interface UserNotificationDeviceDto {
 export interface UserRealtimeLongPollResponseDto {
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
+  locationCoordinates?: LocationCoordinates | null;
   notificationDevices?: UserNotificationDeviceDto[];
   counters: UserRealtimeCountersDto;
   impressions: UserImpressionsDto;

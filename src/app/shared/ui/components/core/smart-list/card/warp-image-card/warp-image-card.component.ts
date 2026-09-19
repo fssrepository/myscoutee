@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 import { I18nPipe } from '../../../../../pipes';
+import { LazyBgImageDirective } from '../../../../../directives/lazy-bg-image.directive';
+import { IndicatorComponent } from '../../../indicator';
 
 export type WarpImageCardTone = 'blue' | 'purple' | 'pink' | 'orange';
 
@@ -22,7 +24,9 @@ export interface WarpImageCardData {
   standalone: true,
   imports: [
     CommonModule,
-    I18nPipe
+    I18nPipe,
+    LazyBgImageDirective,
+    IndicatorComponent
   ],
   templateUrl: './warp-image-card.component.html',
   styleUrl: './warp-image-card.component.scss',

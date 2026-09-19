@@ -20,15 +20,11 @@ import {
 } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nPipe } from '../../../pipes';
-import { I18nService } from '../../../../core';
+import { I18nPipe } from '../../../pipes/i18n.pipe';
+import { I18nService } from '../../../../core/base/services/i18n.service';
 import { RateComponent } from './items/rate/rate.component';
-import {
-  IndicatorComponent,
-  type IndicatorShape,
-  type IndicatorState,
-  type IndicatorTone
-} from '../indicator';
+import { IndicatorComponent } from '../indicator/indicator.component';
+import type { IndicatorShape, IndicatorState, IndicatorTone } from '../indicator';
 import type {
   AppMenuCounter,
   AppMenuCounterValue,
@@ -1572,6 +1568,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     image.parentElement
       ?.querySelector<HTMLElement>('[data-app-menu-image-fallback]')
       ?.removeAttribute('hidden');
+  }
+
+  protected hideImageFallback(event: Event): void {
+    const image = event.currentTarget;
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+    image.hidden = false;
+    image.parentElement
+      ?.querySelector<HTMLElement>('[data-app-menu-image-fallback]')
+      ?.setAttribute('hidden', '');
   }
 
   private imageLabelFallback(label: string): string {

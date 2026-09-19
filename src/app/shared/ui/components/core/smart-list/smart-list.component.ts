@@ -22,22 +22,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
 
 import { AppUtils } from '../../../../app-utils';
-import {
-  IndicatorComponent,
-  type IndicatorBarConfig,
-  type IndicatorPlacement
-} from '../indicator';
-import {
-  CalendarCardComponent as SmartListPageCardComponent
-} from './card/calendar-card';
+import { IndicatorComponent } from '../indicator/indicator.component';
+import type { IndicatorBarConfig, IndicatorPlacement } from '../indicator';
+import { CalendarCardComponent as SmartListPageCardComponent } from './card/calendar-card/calendar-card.component';
 import { ROUTE_CONFIG } from '../../../../core/base/config';
-import {
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  type AppMenuDispatchState,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuRateConfig
+import { AppMenuDispatcher } from '../menu/menu-dispatcher.service';
+import { AppMenuOutletComponent } from '../menu/outlet/menu-outlet.component';
+import type {
+  AppMenuDispatchState,
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuRateConfig
 } from '../menu';
 import {
   type AnySmartListPageAdapter,
@@ -62,8 +57,9 @@ import {
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
 import { FiniteStepper } from './finite-stepper';
-import { UiPollCoordinator, UiTaskScheduler } from '../../../scheduler';
-import { I18nPipe } from '../../../pipes';
+import { UiPollCoordinator } from '../../../scheduler/ui-poll-coordinator';
+import { UiTaskScheduler } from '../../../scheduler/ui-task-scheduler';
+import { I18nPipe } from '../../../pipes/i18n.pipe';
 import type {
   ListDirection,
   ListQuery,

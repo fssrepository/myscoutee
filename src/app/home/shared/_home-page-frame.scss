@@ -1,0 +1,28 @@
+.game-page {
+  width: min(1160px, calc(100vw - 2rem));
+  margin: 0 auto;
+  min-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(21, 38, 62, 0.14);
+  border-radius: 18px;
+  padding: 0.9rem;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 20% -10%, var(--deployment-brand-shadow), transparent 36%),
+    radial-gradient(circle at 95% 0%, color-mix(in srgb, var(--deployment-brand-secondary) 14%, transparent), transparent 34%),
+    #f8faff;
+}
+
+@media (max-width: 760px) {
+  .game-page {
+    width: 100%;
+    min-height: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 18px;
+    padding: 0.9rem;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+}

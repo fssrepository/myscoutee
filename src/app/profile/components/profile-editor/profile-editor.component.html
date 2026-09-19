@@ -1,6 +1,6 @@
-@if (isOpen()) {
-  @if (activeUser; as user) {
-    <app-popup [model]="profileEditorPopupModel()">
+@if (isOpen() || activeUser) {
+    <app-popup [model]="profileEditorPopupModel()" [active]="isOpen()">
+      @if (activeUser; as user) {
       <div
         class="profile-editor-popup-content"
         [class.profile-editor-popup-content--profile]="panel === 'profile'"
@@ -12,16 +12,27 @@
               class="profile-editor-wrap"
               [class.profile-editor-wrap-admin]="activeUserUsesCompactProfile()"
             >
-              <app-header-card
-                [model]="profileHeaderCardModel()"
-                (edit)="openImageEditor()"
-              ></app-header-card>
+              <div class="profile-editor-header-card">
+                <app-header-card
+                  [model]="profileHeaderCardModel()"
+                  (edit)="openImageEditor()"
+                ></app-header-card>
+                <app-menu
+                  class="profile-api-integration-action"
+                  kind="inline"
+                  layout="row"
+                  [model]="profileHeaderActionMenuModel"
+                  [items]="profileApiIntegrationActions"
+                  (itemSelect)="onProfileApiIntegrationAction($event)"
+                ></app-menu>
+              </div>
               <div class="profile-editor-scroll-area">
                 <div class="profile-editor-flow-area">
                   <app-form-flow
                     class="profile-editor-flow"
                     [model]="profileEditorFlowModel"
-                    [(ngModel)]="profileEditorData"
+                    [ngModel]="profileEditorData"
+                    (ngModelChange)="onProfileDraftChange($event)"
                     [saving]="isProfileSaving()"
                     [disabled]="isProfileSaving()"
                     (action)="onProfileEditorFlowAction($event)"
@@ -29,6 +40,7 @@
                   ></app-form-flow>
                 </div>
               </div>
+              <app-integration-settings-popup></app-integration-settings-popup>
             </div>
           }
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
@@ -51,6 +63,8 @@
             ></app-profile-experience-manager>
           }
       </div>
+      } @else {
+        <app-form-flow [loading]="true"></app-form-flow>
+      }
     </app-popup>
-  }
 }

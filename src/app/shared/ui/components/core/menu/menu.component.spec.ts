@@ -27,6 +27,25 @@ describe('AppMenuComponent delayed drag', () => {
     TestBed.resetTestingModule();
   });
 
+  it('reveals a successfully replaced image after an earlier request failed', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'inline');
+    fixture.componentRef.setInput('layout', 'row');
+    fixture.componentRef.setInput('items', [{ id: 'avatar', kind: 'action', layout: 'image',
+      imageUrl: '/private-photo.webp', imageFallback: 'U', disabled: true,
+      progress: { state: 'loading', shape: 'circle' } }]);
+    fixture.detectChanges();
+    const image = fixture.nativeElement.querySelector('img') as HTMLImageElement;
+    image.dispatchEvent(new Event('error'));
+    expect(image.hidden).toBe(true);
+    image.src = 'data:image/webp;base64,UklGRg==';
+    image.dispatchEvent(new Event('load'));
+    expect(image.hidden).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-app-menu-image-fallback]').hidden).toBe(true);
+    expect(fixture.nativeElement.querySelector('button').disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('.app-menu__button-row-ring')).not.toBeNull();
+  });
+
   it('keeps a short press as a custom trigger action without starting a drag', () => {
     const { dragEvents, itemSelections, trigger } = createMenu();
 

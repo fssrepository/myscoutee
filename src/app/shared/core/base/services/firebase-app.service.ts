@@ -28,6 +28,18 @@ export interface FirebaseAppRuntime {
   config: FirebaseConfigFile;
 }
 
+// Firebase exposes no public heartbeat policy. Keep this SDK-internal boundary
+// local to the owned app; it must never change Auth persistence or validation.
+interface FirebaseHeartbeatApp extends FirebaseApp {
+  container?: {
+    getProvider(name: 'heartbeat'): {
+      getImmediate(options: { optional: true }): {
+        getHeartbeatsHeader(): Promise<string>;
+      } | null;
+    };
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -209,6 +221,7 @@ export class FirebaseAppService {
       firebaseOptions,
       FirebaseAppService.FIREBASE_APP_NAME
     );
+    this.prepareHeartbeatInBackground(app);
     this.runtime = {
       app,
       config,
@@ -218,6 +231,36 @@ export class FirebaseAppService {
     this.activeRuntimeRef.set(this.runtime);
     this.sessionService.setFirebaseRuntimeAvailable(true);
     return this.runtime;
+  }
+
+  private prepareHeartbeatInBackground(app: FirebaseApp): void {
+    const heartbeat = (app as FirebaseHeartbeatApp).container
+      ?.getProvider('heartbeat').getImmediate({ optional: true });
+    if (!heartbeat) {
+      return;
+    }
+
+    const readHeader = heartbeat.getHeartbeatsHeader.bind(heartbeat);
+    let preparedHeader = '';
+    let reading = false;
+    heartbeat.getHeartbeatsHeader = async () => {
+      const header = preparedHeader;
+      preparedHeader = '';
+      if (!reading) {
+        reading = true;
+        // Auth awaits this optional telemetry header before issuing HTTP. Never
+        // make authentication wait for heartbeat IndexedDB: send a prepared
+        // header on the next SDK request, with at most one read in flight.
+        void Promise.resolve().then(readHeader).then(value => {
+          preparedHeader = value;
+        }).catch(() => {
+          // Telemetry storage failure must not become an authentication failure.
+        }).finally(() => {
+          reading = false;
+        });
+      }
+      return header;
+    };
   }
 
   private async clearOwnedFirebaseApp(): Promise<void> {

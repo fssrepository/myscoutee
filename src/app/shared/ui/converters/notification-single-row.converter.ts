@@ -30,11 +30,13 @@ export class NotificationSingleRowConverter implements UiConverter<
   ): SingleRowData<NotificationDto> {
     const options = optionsArg[0] ?? {};
     const read = Boolean(`${notification.readAtIso ?? ''}`.trim());
-    const senderName = `${notification.senderName ?? ''}`.trim();
+    const securityAlert = notification.kind === 'security-login';
+    const senderName = securityAlert ? '' : `${notification.senderName ?? ''}`.trim();
     const systemRandomRoom = this.isSystemGeneratedRoom(notification);
+    const systemAvatar = securityAlert || systemRandomRoom;
     const stageAvatar = this.hasStageAvatar(notification);
     const tournamentRoom = `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'tournament-room';
-    const sourceLabel = this.sourceLabel(notification.category, options);
+    const sourceLabel = securityAlert ? 'MyScoutee' : this.sourceLabel(notification.category, options);
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
     const statusBadgeKey = `${notification.payload?.['notification_status_badge_key'] ?? ''}`.trim();
@@ -49,14 +51,14 @@ export class NotificationSingleRowConverter implements UiConverter<
       subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
       detail: this.message(notification, options),
       dateIso: notification.createdAtIso,
-      avatarUrl: systemRandomRoom || stageAvatar ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
-      avatarInitials: !systemRandomRoom && !stageAvatar && senderName ? this.initials(senderName) : null,
+      avatarUrl: systemAvatar || stageAvatar ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,
+      avatarInitials: !systemAvatar && !stageAvatar && senderName ? this.initials(senderName) : null,
       avatarAriaLabel: senderName || sourceLabel,
       avatarToneClass: stageAvatar
         ? this.stageAvatarToneClass(notification)
-        : systemRandomRoom ? 'notification-system-avatar' : null,
+        : systemAvatar ? 'notification-system-avatar' : null,
       accentHue: stageAvatar ? this.stageAccentHue(notification) : null,
-      icon: stageAvatar
+      icon: securityAlert ? 'warning_amber' : stageAvatar
         ? `${notification.payload?.['notification_avatar_icon'] ?? ''}`.trim() || 'emoji_events'
         : systemRandomRoom
         ? tournamentRoom ? 'emoji_events' : 'auto_awesome'
