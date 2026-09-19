@@ -27,8 +27,8 @@ export class AppSetupStore implements OnDestroy {
   readonly error = signal('');
   readonly saveSucceeded = signal(false);
   private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly allowDisabled = computed(() => (!this.loggedIn() && !this.locationSelected())
-    || this.actionPending() || this.notificationConfigurationPending());
+  readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending());
+  private locationRequestPending = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
@@ -79,7 +79,7 @@ export class AppSetupStore implements OnDestroy {
     void this.refreshPermissions();
   }
 
-  requestForLogin(checkLocation: (coordinates: LocationCoordinates) => Promise<boolean>): Promise<boolean> {
+  requestForLogin(checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null): Promise<boolean> {
     // Repeated Login clicks share one open workflow instead of stacking dialogs.
     if (this.completeLogin) return Promise.resolve(false);
     this.open();
@@ -99,6 +99,7 @@ export class AppSetupStore implements OnDestroy {
       const update = () => {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
+        if (this.locationRequestPending && permission.state === 'granted') this.busy.set(true);
         if (permission.state === 'granted' || this.loggedIn()) this.locationSelected.set(true);
       };
       permission.onchange = update;
@@ -109,6 +110,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   close(): void {
+    this.locationRequestPending = false;
     this.nativePending.set(false);
     this.busy.set(false);
     this.finish(false);
@@ -121,8 +123,12 @@ export class AppSetupStore implements OnDestroy {
   }
 
   async allow(): Promise<void> {
-    if (!this.isOpen() || this.allowDisabled()) return;
+    if (!this.isOpen() || this.nativePending() || this.allowDisabled()) return;
     this.clearSaveFeedback();
+    if (!this.loggedIn() && !this.locationSelected()) {
+      this.error.set(this.i18n.translate('entry.permissions.location.required'));
+      return;
+    }
     this.nativePending.set(true);
     this.error.set('');
     const generation = this.generation;
@@ -139,22 +145,31 @@ export class AppSetupStore implements OnDestroy {
         }
       }
       if (generation !== this.generation) return;
-      if (this.loggedIn() && !this.checkLocation) {
-        void this.location.syncGrantedLocationForActiveUser();
+      if (!this.checkLocation && (this.loggedIn() || this.locationGranted())) {
         this.nativePending.set(false);
         this.busy.set(true);
-        await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+        if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
+          await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+        }
         if (generation === this.generation) {
-          this.notificationsEdited.set(false);
-          this.showSaveFeedback();
+          if (this.completeLogin) this.finish(true);
+          else {
+            this.notificationsEdited.set(false);
+            this.showSaveFeedback();
+          }
         }
         return;
       }
+      this.locationRequestPending = true;
+      this.busy.set(this.locationPermission() === 'granted');
       const coordinates = await this.location.requestCurrentCoordinates();
       if (generation !== this.generation) return;
       if (!coordinates) {
         await this.refreshPermissions();
-        throw new Error(this.i18n.translate('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
+        if (generation !== this.generation) return;
+        throw new Error(this.i18n.translate(this.locationPermission() === 'denied'
+          ? 'entry.permissions.location.blocked'
+          : 'entry.permissions.location.unavailable'));
       }
       this.locationGranted.set(true);
       this.locationPermission.set('granted');
@@ -164,7 +179,9 @@ export class AppSetupStore implements OnDestroy {
       if (this.checkLocation && !await this.checkLocation(coordinates)) return;
       if (generation !== this.generation) return;
       // Registration follows native decisions, never a second permission prompt.
-      await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+      if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
+        await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
+      }
       if (generation === this.generation) {
         if (this.completeLogin) this.finish(true);
         else {
@@ -180,6 +197,7 @@ export class AppSetupStore implements OnDestroy {
       }
     } finally {
       if (generation === this.generation || !this.isOpen()) {
+        this.locationRequestPending = false;
         this.nativePending.set(false);
         this.busy.set(false);
       }

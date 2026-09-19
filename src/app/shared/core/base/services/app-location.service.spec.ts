@@ -1,5 +1,34 @@
 import { AppLocationService } from './app-location.service';
 
+describe('Explicit location request', () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('leaves permission decision time to the native API and limits acquisition to ten seconds', async () => {
+    vi.useFakeTimers();
+    const getCurrentPosition = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
+    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const settled = vi.fn();
+    const request = service.requestCurrentCoordinates().then(settled);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(settled).not.toHaveBeenCalled();
+    expect(getCurrentPosition).toHaveBeenCalledOnce();
+    expect(getCurrentPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: false, timeout: 10_000, maximumAge: 0 });
+    getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 47, longitude: 19 } });
+    await request;
+    expect(settled).toHaveBeenCalledWith({ latitude: 47, longitude: 19 });
+  });
+
+  it('finishes without coordinates when the native acquisition times out', async () => {
+    const getCurrentPosition = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
+    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const request = service.requestCurrentCoordinates();
+    getCurrentPosition.mock.calls[0][1]({ code: 3 });
+    expect(await request).toBeNull();
+  });
+});
+
 describe('AppLocationService session-owned persistence', () => {
   it('does not persist streamed coordinates for a demo session', () => {
     const service = Object.create(AppLocationService.prototype) as {

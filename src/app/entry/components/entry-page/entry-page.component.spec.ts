@@ -140,6 +140,22 @@ describe('EntryPageComponent operator authentication gate', () => {
 });
 
 describe('EntryPageComponent browser location permission gate', () => {
+  it('reuses a successful location check when reopening setup for notifications', async () => {
+    const requestForLogin = vi.fn().mockResolvedValue(true);
+    const requestLocationAccessFromDialog = vi.fn();
+    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+      locationEligibilityResolvedFromCoordinates: true,
+      landingLoginAvailability: { eligible: true },
+      firebaseMessagingService: { entryPermissionPending: true },
+      appSetupStore: { requestForLogin },
+      requestLocationAccessFromDialog
+    });
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
+    expect(requestForLogin).toHaveBeenCalledWith();
+    expect(requestLocationAccessFromDialog).not.toHaveBeenCalled();
+    expect(component.loginEligibilityBusy).toBe(false);
+  });
+
   it('waits for an explicit user action while browser permission is prompt', async () => {
     const component = Object.create(EntryPageComponent.prototype) as {
       grantedLocationEligibilityRequestToken: number;

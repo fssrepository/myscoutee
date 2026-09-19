@@ -560,9 +560,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.loginEligibilityBusy = true;
     try {
       const gateState = this.landingLoginAvailability;
-      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true
-        && !this.firebaseMessagingService.entryPermissionPending) {
-        return true;
+      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
+        return this.firebaseMessagingService.entryPermissionPending
+          ? await this.appSetupStore.requestForLogin()
+          : true;
       }
       if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
         this.dialogStore.openInfo(

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.18.hu.114",
+  "version": "2026.09.19.hu.115",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3417,6 +3417,9 @@
     "entry.permissions.checking": "Mentés…",
     "install.app": "Telepítés",
     "entry.permissions.notifications.blocked": "Az értesítések tiltva vannak. Engedélyezd őket az értesítési beállításokban, majd próbáld újra.",
+    "entry.permissions.location.blocked": "A helyhozzáférés tiltva van. Engedélyezd, majd próbáld újra.",
+    "entry.permissions.location.required": "A folytatáshoz kapcsold be a helyhozzáférést.",
+    "entry.permissions.location.unavailable": "Nem sikerült meghatározni a helyzetedet. Próbáld újra.",
     "app.setup.title": "Engedélyek és telepítés",
     "app.setup.description": "Gyors elérés, saját alkalmazásablak.",
     "app.setup.location": "Helyadat",

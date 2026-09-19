@@ -17,6 +17,7 @@ import {
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import {
+  APP_SETUP_CONFIG,
   resolveRouteConfig
 } from '../config';
 import {
@@ -203,38 +204,21 @@ export class AppLocationService {
     }
 
     return new Promise<LocationCoordinates | null>(resolve => {
-      let settled = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (coordinates: LocationCoordinates | null): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-        }
-        resolve(coordinates);
-      };
-
-      timeoutId = setTimeout(
-        () => finish(null),
-        4500 + 500
-      );
-
+      // The native timeout excludes time spent waiting for permission.
       navigator.geolocation.getCurrentPosition(
         position => {
           const latitude = Number(position.coords.latitude);
           const longitude = Number(position.coords.longitude);
           if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            finish(null);
+            resolve(null);
             return;
           }
-          finish({ latitude, longitude });
+          resolve({ latitude, longitude });
         },
-        () => finish(null),
+        () => resolve(null),
         {
           enableHighAccuracy: false,
-          timeout: 4500,
+          timeout: APP_SETUP_CONFIG.locationRequestTimeoutMs,
           maximumAge: 0
         }
       );
