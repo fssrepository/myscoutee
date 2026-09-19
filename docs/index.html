@@ -19,7 +19,7 @@
   <base href="/myscoutee/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2d5f94">
-  <meta name="myscoutee-build-id" content="eb0b65fe2585-20260917141140">
+  <meta name="myscoutee-build-id" content="38cd448359ee-20260919231618">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/x-icon" href="assets/icon/favicon.ico">
@@ -235,7 +235,8 @@
           return false;
         }
         var tagName = target.tagName.toLowerCase();
-        return tagName === 'script' || tagName === 'link';
+        return tagName === 'script' || (tagName === 'link'
+          && /(?:^|\s)(?:stylesheet|modulepreload)(?:\s|$)/i.test(target.rel || ''));
       }
 
       function currentBuildId() {
@@ -247,15 +248,17 @@
         try {
           return sessionStorage.getItem(DEPLOYMENT_RECOVERY_KEY) === buildId;
         } catch (error) {
-          return false;
+          return true;
         }
       }
 
       function markRecoveryAttempted(buildId) {
         try {
           sessionStorage.setItem(DEPLOYMENT_RECOVERY_KEY, buildId);
+          return true;
         } catch (error) {
-          // A blocked sessionStorage should not prevent startup recovery.
+          // Automatic reload needs a durable loop guard; manual retry still works.
+          return false;
         }
       }
 
@@ -316,18 +319,33 @@
       }
 
       function recoverDeployment(force) {
+        // Resource errors can arrive after login or while a lazy feature loads.
+        // Bootstrap recovery must never restart an already running application.
+        if (isBootstrapped()) {
+          return Promise.resolve();
+        }
         if (deploymentRecoveryPromise) {
           return deploymentRecoveryPromise;
         }
-        if (isBootstrapped() || navigator.onLine === false || !('serviceWorker' in navigator)) {
-          window.location.reload();
+        if (navigator.onLine === false) {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+          if (force) {
+            window.location.reload();
+          }
           return Promise.resolve();
         }
         var buildId = currentBuildId() || window.location.pathname;
-        if (!force && recoveryWasAttempted(buildId)) {
+        if (!force && (recoveryWasAttempted(buildId) || !markRecoveryAttempted(buildId))) {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
           return Promise.resolve();
         }
-        markRecoveryAttempted(buildId);
+        if (force) {
+          markRecoveryAttempted(buildId);
+        }
+        if (!('serviceWorker' in navigator)) {
+          window.location.reload();
+          return Promise.resolve();
+        }
         showWarmupFailure(
           'Updating MyScoutee',
           'A new app version is being prepared. This page will retry automatically.'
@@ -342,10 +360,12 @@
               .then(function() { return waitForWaitingWorker(registration); });
           })
           .then(function(waitingWorker) {
-            return waitingWorker ? activateWaitingWorker(waitingWorker) : undefined;
+            return !isBootstrapped() && waitingWorker ? activateWaitingWorker(waitingWorker) : undefined;
           })
           .then(function() {
-            window.location.reload();
+            if (!isBootstrapped()) {
+              window.location.reload();
+            }
           })
           .catch(function() {
             deploymentRecoveryPromise = null;
@@ -414,5 +434,5 @@
       <button class="app-warmup-fallback-retry" type="button" data-warmup-retry hidden>Retry</button>
     </section>
   </app-root>
-<link rel="modulepreload" href="chunk-QB73SUAU.js"><link rel="modulepreload" href="chunk-TJLAATPL.js"><link rel="modulepreload" href="chunk-4NVYFCXB.js"><link rel="modulepreload" href="chunk-CRF55CRI.js"><link rel="modulepreload" href="chunk-QY3QY7FR.js"><link rel="modulepreload" href="chunk-25AYYZST.js"><link rel="modulepreload" href="chunk-A442VKOQ.js"><script src="main-XK6AIUHM.js" type="module"></script></body>
+<link rel="modulepreload" href="chunk-XG7YS5YE.js"><link rel="modulepreload" href="chunk-CWT2XNUW.js"><link rel="modulepreload" href="chunk-ADLL3NAR.js"><link rel="modulepreload" href="chunk-YG4CVVRX.js"><link rel="modulepreload" href="chunk-JCOND7OE.js"><link rel="modulepreload" href="chunk-PEOHYTNA.js"><link rel="modulepreload" href="chunk-WW7BTZ4V.js"><script src="main-62E2KMLR.js" type="module"></script></body>
 </html>
