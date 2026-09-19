@@ -140,6 +140,85 @@ describe('EntryPageComponent operator authentication gate', () => {
 });
 
 describe('EntryPageComponent browser location permission gate', () => {
+  function grantedPermissionsEntry() {
+    return Object.assign(Object.create(EntryPageComponent.prototype), {
+      locationEligibilityResolvedFromCoordinates: false,
+      landingLoginAvailability: null,
+      grantedLocationEligibilityRequestToken: 1,
+      grantedLocationEligibilityPromise: null,
+      firebaseMessagingService: { entryPermissionPending: false },
+      queryGeolocationPermissionState: vi.fn().mockResolvedValue('granted'),
+      requestCurrentLocation: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
+      usersService: { checkLocationEligibility: vi.fn().mockResolvedValue({ eligible: true }) },
+      appSetupStore: { requestForLogin: vi.fn() },
+      requestLocationAccessFromDialog: vi.fn().mockResolvedValue(true),
+      dialogStore: { openInfo: vi.fn() },
+      ngZone: { run: (fn: () => void) => fn() },
+      changeDetectorRef: { markForCheck: vi.fn() },
+      syncEntryAuthGateState: vi.fn(),
+      uiText: (key: string) => key
+    });
+  }
+
+  it('waits for the running country check without reopening setup or requesting a second position', async () => {
+    const component = grantedPermissionsEntry();
+    let finish!: (result: { eligible: boolean }) => void;
+    component.usersService.checkLocationEligibility.mockReturnValue(new Promise(resolve => finish = resolve));
+    component.grantedLocationEligibilityPromise = component.resolveBrowserLocationAccess(1);
+    const complete = vi.fn();
+    const login = component.ensureHttpLoginAccessAllowed().then(complete);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(component.requestCurrentLocation).toHaveBeenCalledOnce();
+    expect(complete).not.toHaveBeenCalled();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
+
+    finish({ eligible: true });
+    await login;
+    expect(complete).toHaveBeenCalledWith(true);
+    expect(component.requestCurrentLocation).toHaveBeenCalledOnce();
+    expect(component.loginEligibilityBusy).toBe(false);
+  });
+
+  it.each([true, false])('checks country eligibility silently when both permissions are granted (eligible: %s)', async eligible => {
+    const component = grantedPermissionsEntry();
+    component.usersService.checkLocationEligibility.mockResolvedValue({ eligible });
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(eligible);
+    expect(component.requestCurrentLocation).toHaveBeenCalledOnce();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
+    expect(component.dialogStore.openInfo).toHaveBeenCalledTimes(eligible ? 0 : 1);
+  });
+
+  it('does not reopen setup or allow login if a granted location cannot be acquired', async () => {
+    const component = grantedPermissionsEntry();
+    component.requestCurrentLocation.mockResolvedValue(null);
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(false);
+    expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    expect(component.usersService.checkLocationEligibility).not.toHaveBeenCalled();
+    expect(component.dialogStore.openInfo).toHaveBeenCalledWith('entry.permissions.location.unavailable', expect.any(Object));
+  });
+
+  it('reuses completed eligibility with granted permissions without opening setup or acquiring location', async () => {
+    const component = grantedPermissionsEntry();
+    component.locationEligibilityResolvedFromCoordinates = true;
+    component.landingLoginAvailability = { eligible: true };
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
+    expect(component.requestCurrentLocation).not.toHaveBeenCalled();
+    expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+  });
+
+  it.each(['prompt', 'denied'])('keeps the explicit setup flow when location permission is %s', async state => {
+    const component = grantedPermissionsEntry();
+    component.queryGeolocationPermissionState.mockResolvedValue(state);
+    await component.ensureHttpLoginAccessAllowed();
+    expect(component.requestLocationAccessFromDialog).toHaveBeenCalledOnce();
+    expect(component.requestCurrentLocation).not.toHaveBeenCalled();
+  });
+
   it('reuses a successful location check when reopening setup for notifications', async () => {
     const requestForLogin = vi.fn().mockResolvedValue(true);
     const requestLocationAccessFromDialog = vi.fn();
