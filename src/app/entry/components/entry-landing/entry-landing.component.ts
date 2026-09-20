@@ -243,6 +243,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   };
 
   protected countriesPopupOpen = false;
+  protected aboutPopupOpen = false;
   protected previewGuideOpen = false;
   protected partnersPopupOpen = false;
   protected ideasPopupOpen = false;
@@ -360,12 +361,16 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.countriesPopupOpen && !this.previewGuideOpen && !this.partnersPopupOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
+    if (!this.countriesPopupOpen && !this.aboutPopupOpen && !this.previewGuideOpen && !this.partnersPopupOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
       return;
     }
     event.preventDefault();
     if (this.countriesPopupOpen) {
       this.closeCountriesPopup();
+      return;
+    }
+    if (this.aboutPopupOpen) {
+      this.closeAboutPopup();
       return;
     }
     if (this.ideaArticlePopupOpen) {
@@ -511,6 +516,35 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.termsRequested.emit();
+  }
+
+  protected openAboutPopup(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.aboutPopupOpen = true;
+    this.syncLandingPopupScrollLock();
+  }
+
+  protected closeAboutPopup(): void {
+    this.aboutPopupOpen = false;
+    this.syncLandingPopupScrollLock();
+  }
+
+  protected aboutPopupModel(): PopupModel {
+    return {
+      headerBadge: 'landing.about.header.badge',
+      title: 'landing.about.title',
+      subtitle: 'landing.about.subtitle',
+      ariaLabel: 'landing.about.aria',
+      closeAriaLabel: 'landing.about.close.aria',
+      size: 'default',
+      height: 'auto',
+      headerLayout: 'document',
+      headerTone: 'accent',
+      headerPalette: 'violet',
+      backdropTone: 'dim',
+      onClose: () => this.closeAboutPopup()
+    };
   }
 
   protected openCountriesPopup(): void {
@@ -897,6 +931,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   private syncLandingPopupScrollLock(): void {
     const shouldLock = this.countriesPopupOpen
+      || this.aboutPopupOpen
       || this.previewGuideOpen
       || this.partnersPopupOpen
       || this.ideasPopupOpen

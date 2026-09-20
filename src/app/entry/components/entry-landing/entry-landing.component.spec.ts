@@ -19,6 +19,12 @@ describe('EntryLandingComponent article lists', () => {
     'landing.articles.title': '{productName} articles',
     'landing.articles.count.one': '{count} article',
     'landing.articles.count.many': '{count} articles',
+    'landing.about.title': 'About MyScoutee',
+    'landing.about.open.aria': 'Open the MyScoutee overview',
+    'landing.about.header.badge': 'Independent project',
+    'landing.about.subtitle': 'Who built it, what it does, and why it is free to join.',
+    'landing.about.aria': 'About MyScoutee',
+    'landing.about.close.aria': 'Close the MyScoutee overview',
     'landing.partners.title': 'For Partners',
     'landing.partners.open.aria': 'Open partner overview',
     'landing.preview.open.guide': 'Open preview guide',
@@ -172,7 +178,7 @@ describe('EntryLandingComponent article lists', () => {
     });
   });
 
-  it('keeps the hero focused and opens the partner overview from the footer', () => {
+  it('keeps the hero focused and opens the about and partner overviews from the footer', () => {
     const fixture = TestBed.createComponent(EntryLandingComponent);
     fixture.detectChanges();
 
@@ -184,6 +190,9 @@ describe('EntryLandingComponent article lists', () => {
     );
     const partnerButton = fixture.nativeElement.querySelector(
       '.entry-footer-partners-action'
+    ) as HTMLButtonElement | null;
+    const aboutButton = fixture.nativeElement.querySelector(
+      '.entry-footer-about-action'
     ) as HTMLButtonElement | null;
     const bugReportButton = fixture.nativeElement.querySelector(
       '.entry-footer-bug-report-action'
@@ -202,10 +211,25 @@ describe('EntryLandingComponent article lists', () => {
     expect(heroText).toContain('6 people · 6 priority lists → 1 team');
     expect(heroText.toLowerCase()).not.toContain('swip');
     expect(previewBadge).toBeNull();
+    expect(aboutButton).not.toBeNull();
     expect(partnerButton).not.toBeNull();
     expect(bugReportButton).not.toBeNull();
+    expect(aboutButton?.parentElement).toBe(partnerButton?.parentElement);
     expect(bugReportButton?.parentElement).toBe(partnerButton?.parentElement);
-    expect(partnerButton?.nextElementSibling).toBe(bugReportButton);
+
+    aboutButton?.click();
+    fixture.detectChanges();
+
+    expect(view(fixture.componentInstance).aboutPopupOpen).toBe(true);
+    const aboutText = fixture.nativeElement.querySelector('.entry-about-popup-body')
+      ?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    expect(aboutText).toContain('Peter Szabo');
+    expect(aboutText).toContain('A platform behind meetings, not swipes');
+    expect(aboutText).toContain('Free to join');
+    expect(aboutText).toContain('event, ticket, venue, travel, and partner services');
+    (fixture.nativeElement.querySelector('.ui-popup__close') as HTMLButtonElement | null)?.click();
+    fixture.detectChanges();
+    expect(view(fixture.componentInstance).aboutPopupOpen).toBe(false);
 
     partnerButton?.click();
     fixture.detectChanges();
@@ -314,6 +338,7 @@ interface EntryLandingTestView {
   openIdeasPopup: () => void;
   ideasPopupOpen: boolean;
   partnersPopupOpen: boolean;
+  aboutPopupOpen: boolean;
   ideasPopupModel: () => { title?: string; subtitle?: string };
   requestDemo: () => void;
 }

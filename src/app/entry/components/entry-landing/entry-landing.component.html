@@ -1,8 +1,8 @@
 <section
   class="entry-shell"
   [attr.data-deployment-theme]="deploymentBranding().themePreset.toLowerCase()"
-  [attr.inert]="(partnersPopupOpen || countriesPopupOpen) ? '' : null"
-  [attr.aria-hidden]="(partnersPopupOpen || countriesPopupOpen) ? 'true' : null"
+  [attr.inert]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? '' : null"
+  [attr.aria-hidden]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? 'true' : null"
 >
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
@@ -137,6 +137,12 @@
           <h3>Explore</h3>
           <button
             type="button"
+            class="entry-footer-text-action entry-footer-about-action"
+            [attr.aria-label]="'landing.about.open.aria' | i18n: 'Open the MyScoutee overview'"
+            (click)="openAboutPopup($event)"
+            >{{ 'landing.about.title' | i18n: 'About MyScoutee' }}</button>
+          <button
+            type="button"
             class="entry-footer-text-action entry-footer-partners-action"
             [attr.aria-label]="'landing.partners.open.aria' | i18n: 'Open partner overview'"
             (click)="openPartnersPopup($event)"
@@ -198,6 +204,59 @@
   </div>
   <span class="entry-version-label">{{ appVersionLabel }}</span>
 </section>
+
+@if (aboutPopupOpen) {
+  <app-popup [model]="aboutPopupModel()" [zIndex]="2430">
+    <div class="entry-about-popup-body">
+      <section class="entry-about-card entry-about-founder">
+        <span class="entry-about-icon" aria-hidden="true">
+          <mat-icon>person</mat-icon>
+        </span>
+        <div>
+          <span class="entry-about-label">
+            {{ 'landing.about.founder.label' | i18n: 'Who I am' }}
+          </span>
+          <h3>{{ 'landing.about.founder.title' | i18n: 'Peter Szabo · Independent founder and software developer' }}</h3>
+          <p>
+            {{ 'landing.about.founder.description' | i18n: 'I built MyScoutee after years of organizing my own journeys and looking for a more human path from online introductions to meeting in real life.' }}
+          </p>
+        </div>
+      </section>
+
+      <div class="entry-about-grid">
+        <section class="entry-about-card entry-about-product">
+          <span class="entry-about-icon" aria-hidden="true">
+            <mat-icon>groups</mat-icon>
+          </span>
+          <div>
+            <span class="entry-about-label">
+              {{ 'landing.about.product.label' | i18n: 'What it is' }}
+            </span>
+            <h3>{{ 'landing.about.product.title' | i18n: 'A platform behind meetings, not swipes' }}</h3>
+            <p>
+              {{ 'landing.about.product.description' | i18n: 'Private, editable priorities help form balanced group proposals. People choose whether to join, continue in chat, and meet through real events.' }}
+            </p>
+          </div>
+        </section>
+
+        <section class="entry-about-card entry-about-free">
+          <span class="entry-about-icon" aria-hidden="true">
+            <mat-icon>volunteer_activism</mat-icon>
+          </span>
+          <div>
+            <span class="entry-about-label">
+              {{ 'landing.about.free.label' | i18n: 'Why it is free' }}
+            </span>
+            <h3>{{ 'landing.about.free.title' | i18n: 'Free to join' }}</h3>
+            <p>
+              {{ 'landing.about.free.description' | i18n: 'Creating an account and using the core matching and community features is free. The planned model keeps optional event, ticket, venue, travel, and partner services separate; those may still have their own prices.' }}
+            </p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </app-popup>
+}
 
 @if (previewGuideOpen) {
   <app-popup [model]="previewGuidePopupModel()" [zIndex]="2425">
