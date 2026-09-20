@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import type * as ContractTypes from '../../../contracts';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
@@ -102,6 +103,51 @@ describe('LocalEventsRepository event membership pages', () => {
     const watchlist = repository.queryActivitiesEventRecordPage('viewer-1', eventsPage('watchlist')).records;
 
     expect(watchlist.map(item => item.id)).toEqual(['public-event']);
+  });
+
+  it('keeps an ongoing event in upcoming Explore until the event ends', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2030-04-18T20:00:00.000Z'));
+    seedUsers([
+      user('owner-1', 'Owner One'),
+      user('viewer-1', 'Viewer One')
+    ]);
+    seedEvents([
+      eventRecord({
+        id: 'ended-event',
+        startAtIso: '2030-04-18T17:00:00.000Z',
+        endAtIso: '2030-04-18T19:00:00.000Z'
+      }),
+      eventRecord({
+        id: 'ongoing-event',
+        startAtIso: '2030-04-18T18:00:00.000Z',
+        endAtIso: '2030-04-18T22:00:00.000Z'
+      }),
+      eventRecord({
+        id: 'future-event',
+        startAtIso: '2030-04-18T21:00:00.000Z',
+        endAtIso: '2030-04-18T23:00:00.000Z'
+      })
+    ]);
+
+    const upcoming = repository.queryEventExplorePage({
+      userId: 'viewer-1',
+      order: 'upcoming',
+      view: 'day',
+      friendsOnly: false,
+      openSpotsOnly: false,
+      topic: '',
+      excludedSourceIds: [],
+      cursor: null,
+      limit: 10
+    }).records;
+
+    expect(upcoming.map(item => item.id)).toEqual([
+      'ongoing-event',
+      'future-event',
+      'ended-event'
+    ]);
+    expect(upcoming.find(item => item.id === 'ongoing-event')?.exploreSortKey?.[0]).toBe(0);
+    expect(upcoming.find(item => item.id === 'ended-event')?.exploreSortKey?.[0]).toBe(1);
   });
 
   function seedUsers(users: UserDto[]): void {

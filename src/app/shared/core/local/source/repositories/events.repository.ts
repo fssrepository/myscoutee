@@ -2863,12 +2863,13 @@ export class LocalEventsRepository {
     viewerAffinity: number
   ): ActivityEventExploreSortTuple {
     const startAtMs = this.timestampOrderValue(record);
+    const endAtMs = this.resolveActivitiesEndTimestamp(record);
     const dayKey = this.dayOrderValue(record);
     const distanceMeters = this.distanceOrderValue(record);
     const ratingValue = -Math.round(AppUtils.clampNumber(Number(record.rating) || 0, 0, 10) * 100);
     const affinityDistance = Math.abs(this.affinityOrderValue(record) - viewerAffinity);
     const boostAffinityRank = this.boostAffinityRank(record, affinityDistance);
-    const isPast = startAtMs < Date.now() ? 1 : 0;
+    const isPast = endAtMs < Date.now() ? 1 : 0;
     const pastPriority = isPast === 1 ? 0 : 1;
 
     if (query.view === 'distance') {
