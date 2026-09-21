@@ -1710,13 +1710,6 @@
   text-transform: uppercase;
 }
 
-// Anchored context menus size to their actions; long card titles wrap instead
-// of widening a short action list. Field dropdowns and mobile sheets keep their layout.
-:host(.app-menu-host--panel-docked.app-menu-host--layout-desktop) .app-menu__title {
-  max-inline-size: 24ch;
-  overflow-wrap: anywhere;
-}
-
 .app-menu__items,
 .app-menu__groups {
   display: grid;
@@ -2462,10 +2455,6 @@ a.app-menu__item {
   background: var(--app-menu-bg);
   color: var(--app-menu-fg);
   box-shadow: none;
-}
-
-:host(.app-menu-host--layout-desktop.app-menu-host--content-actions) .app-menu__panel--dropdown-list .app-menu__item--layout-pill {
-  min-width: 0;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item--layout-pill:not(:disabled):not(.app-menu__item--disabled):hover,

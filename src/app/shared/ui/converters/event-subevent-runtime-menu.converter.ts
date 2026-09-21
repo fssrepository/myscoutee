@@ -163,7 +163,6 @@ export class EventSubeventRuntimeMenuConverter {
       icon: 'groups',
       palette: 'green',
       surface: 'tinted',
-      layout: 'pill',
       counter: this.groupPending(item) > 0 ? { value: this.groupPending(item), max: 99 } : null,
       counterTone: 'alert',
       context: {
@@ -201,7 +200,6 @@ export class EventSubeventRuntimeMenuConverter {
       icon: 'table_restaurant',
       palette: 'teal',
       surface: 'tinted',
-      layout: 'pill',
       counter: pending > 0 ? { value: pending, max: 99 } : null,
       counterTone: 'alert',
       context: {
@@ -304,7 +302,6 @@ export class EventSubeventRuntimeMenuConverter {
       icon: options.icon,
       palette: options.palette,
       surface: 'tinted',
-      layout: 'pill',
       context: {
         scope: 'mingle-runtime',
         expectedRevision,
@@ -537,7 +534,6 @@ export class EventSubeventRuntimeMenuConverter {
       icon: options.icon,
       palette: options.palette,
       surface: 'tinted',
-      layout: 'pill',
       context: {
         scope: 'stage-status',
         action: options.action,
@@ -577,7 +573,6 @@ export class EventSubeventRuntimeMenuConverter {
       icon: this.resourceIcon(resourceType),
       palette: this.resourcePalette(resourceType),
       surface: 'tinted',
-      layout: 'pill',
       counter: pending > 0 ? { value: pending, max: 99 } : null,
       counterTone: 'alert',
       context: {
