@@ -391,6 +391,7 @@ describe('OperatorRegistryStore registration', () => {
 
     session.set({
       kind: 'firebase',
+      sessionId: 'firebase-operator-session',
       profile: {
         id: 'firebase-operator',
         name: 'Firebase Operator',

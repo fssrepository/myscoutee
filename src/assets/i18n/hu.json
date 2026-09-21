@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.21.hu.121",
+  "version": "2026.09.21.hu.122",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -1386,10 +1386,10 @@
     "hosts": "Szervezők",
     "friends.only": "Csak barátok",
     "host.only": "Csak szervezők",
-    "public.1krc8z": "nyilvános",
-    "friends.only.10o064": "csak barátok",
-    "host.only.nfiqdr": "csak szervezők",
-    "inactive.1ubdbo": "inaktív",
+    "public.1krc8z": "Nyilvános",
+    "friends.only.10o064": "Csak barátok",
+    "host.only.nfiqdr": "Csak szervezők",
+    "inactive.1ubdbo": "Inaktív",
     "gender": "Nem",
     "gender.man": "Férfi",
     "gender.woman": "Nő",

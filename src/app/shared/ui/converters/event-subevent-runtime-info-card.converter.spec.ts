@@ -85,4 +85,23 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
     expect(card.mediaEnd).toMatchObject({ label: 'Event', icon: 'event' });
     expect(card.metaRows).toContain('Capacity 2 / 9');
   });
+
+  it('uses the Mingle pink accent for runtime round cards', () => {
+    const card = EventSubeventRuntimeInfoCardConverter.convert({
+      id: 'mingle-round-1',
+      name: 'Round 1',
+      description: 'Table rotation',
+      startAt: '2027-03-10T18:00:00Z',
+      endAt: '2027-03-10T18:20:00Z'
+    } as SubEventDTO, {
+      mode: 'Mingle',
+      sequenceNumber: 1,
+      sequenceTotal: 4
+    });
+
+    expect(card.surfaceTone).toBe('stage');
+    expect(card.accentHue).toBe(330);
+    expect(card.mediaTone).toBe('default');
+    expect(card.mediaStart).toBeNull();
+  });
 });

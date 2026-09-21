@@ -82,6 +82,7 @@ describe('installSessionActiveUserSync', () => {
 function firebaseSession(id: string): AppSession {
   return {
     kind: 'firebase',
+    sessionId: `session-${id}`,
     profile: {
       id,
       name: 'Firebase User',

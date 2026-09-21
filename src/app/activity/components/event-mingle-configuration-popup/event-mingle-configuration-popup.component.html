@@ -7,7 +7,7 @@
 
       <div class="mingle-configuration__grid">
         @for (field of numberFields; track field.key) {
-          <label class="mingle-configuration__field" [class.mingle-configuration__field--wide]="field.hint">
+          <label class="mingle-configuration__field" [class.mingle-configuration__field--wide]="field.wide">
             <span class="mingle-configuration__label">
               <mat-icon>{{ field.icon }}</mat-icon>
               <span>{{ field.label | i18n }}</span>

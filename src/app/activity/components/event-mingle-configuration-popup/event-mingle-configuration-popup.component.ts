@@ -23,6 +23,7 @@ interface MingleNumberFieldDefinition {
   min: number;
   max: number;
   step: number;
+  wide?: boolean;
   suffix?: string;
   hint?: string;
 }
@@ -62,12 +63,22 @@ export class EventMingleConfigurationPopupComponent {
       step: 1
     },
     {
+      key: 'tableCount',
+      label: 'event.editor.mingle.table.count',
+      icon: 'table_restaurant',
+      min: 0,
+      max: 500,
+      step: 1,
+      hint: 'event.editor.mingle.table.count.hint'
+    },
+    {
       key: 'plannedRounds',
       label: 'event.editor.mingle.planned.rounds',
       icon: 'repeat',
       min: 1,
       max: 100,
       step: 1,
+      wide: true,
       hint: 'event.editor.mingle.flexible.rounds.note'
     },
     {
@@ -87,15 +98,6 @@ export class EventMingleConfigurationPopupComponent {
       max: 60,
       step: 1,
       suffix: 'minutes.short'
-    },
-    {
-      key: 'tableCount',
-      label: 'event.editor.mingle.table.count',
-      icon: 'table_restaurant',
-      min: 0,
-      max: 500,
-      step: 1,
-      hint: 'event.editor.mingle.table.count.hint'
     }
   ];
 

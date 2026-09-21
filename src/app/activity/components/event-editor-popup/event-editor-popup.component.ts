@@ -943,6 +943,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO.mingleConfiguration = this.isPublishedManageMode()
       ? { ...current, plannedRounds: Math.max(current.plannedRounds, next.plannedRounds) }
       : next;
+    this.emitSubEventDefinitionsDraftPreview();
   }
 
   private toNonNegativeIntegerOrNull(value: unknown): number | null {

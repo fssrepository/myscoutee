@@ -71,7 +71,7 @@ export class EventSubeventRuntimeInfoCardConverter
       groupLabel: options.groupLabel ?? null,
       title: item.name,
       mediaMode: 'title',
-      mediaTone: 'neutral',
+      mediaTone: isMingle ? 'default' : 'neutral',
       mediaIcon: runtimeIcon,
       mediaTitle: sequenceLabel,
       mediaSubtitle: mode,
@@ -83,17 +83,17 @@ export class EventSubeventRuntimeInfoCardConverter
       descriptionLines: 2,
       description: item.description || 'No description',
       detailRows: [],
-      surfaceTone: isTournament || isMingle ? 'stage-runtime' : 'draft',
+      surfaceTone: isMingle ? 'stage' : isTournament ? 'stage-runtime' : 'draft',
       accentHue: isTournament
         ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal)
         : isMingle
-          ? 168
+          ? this.mingleRoundAccentHue(sequenceNumber, sequenceTotal)
           : null,
       leadingIcon: {
         icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : status.icon,
         tone: isTournament || isMingle ? 'stage' : isMainEvent ? 'public' : status.leadingTone
       },
-      mediaStart: {
+      mediaStart: isMingle ? null : {
         variant: 'avatar',
         tone: 'default',
         icon: 'location_on',
@@ -234,6 +234,11 @@ export class EventSubeventRuntimeInfoCardConverter
   private static nonNegativeInteger(value: unknown): number {
     const parsed = Math.trunc(Number(value));
     return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
+  private static mingleRoundAccentHue(roundNumber: number, totalRounds: number): number {
+    const ratio = totalRounds <= 1 ? 0 : (roundNumber - 1) / (totalRounds - 1);
+    return Math.round(330 - (24 * ratio));
   }
 
   private static isMainEventRuntime(item: SubEventDTO | null | undefined): boolean {

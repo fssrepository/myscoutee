@@ -57,7 +57,7 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
     );
 
     expect(next).not.toBe(state);
-    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toEqual({
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toEqual({
       accepted: 2,
       pending: 4,
       capacityMin: 0,
@@ -76,7 +76,7 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
       { accepted: -2, pending: -3, capacityMin: 0, capacityMax: -5 }
     );
 
-    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toEqual({
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toEqual({
       accepted: 0,
       pending: 0,
       capacityMin: 0,
@@ -108,7 +108,7 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
       'Transport',
       -1
     )).toBe(state);
-    expect(state.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toBeUndefined();
+    expect(state.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toBeUndefined();
   });
 
   it('creates the resource metric when the first assignment arrives as deltas', () => {
@@ -123,7 +123,7 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
       { accepted: 0, pending: 1, capacityMin: 0, capacityMax: 4 }
     );
 
-    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.Transport).toEqual({
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toEqual({
       accepted: 0,
       pending: 1,
       capacityMin: 0,

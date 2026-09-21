@@ -183,7 +183,8 @@ export class EventSubeventsListPopupComponent {
   private handledResourceMemberDeltaSyncMs = 0;
   private activeDefinitionDraftUpdate: EventSubeventsDefinitionDraftUpdate | null = null;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
-    density: 'compact'
+    density: 'compact',
+    actionSizing: 'content'
   };
 
   private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<SubEventDTO, EventSubeventsListFilters>>();

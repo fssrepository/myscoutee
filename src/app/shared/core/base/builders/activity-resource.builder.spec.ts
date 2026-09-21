@@ -102,12 +102,12 @@ describe('ActivityResourceBuilder group request scoping', () => {
   it('counts only requests whose booking owner matches the selected group', () => {
     const groupA = 'event-1:stage-1:stage-1:group:1';
     const groupB = 'event-1:stage-1:stage-1:group:2';
-    const card = {
+    const card = asset({
       requests: [
         request('request-a', 'user-a', groupA),
         request('request-b', 'user-b', groupB)
       ]
-    } as AssetDTO;
+    });
 
     expect(ActivityResourceBuilder.subEventOccupancyRequestCount(card, 'stage-1', 'pending', groupA)).toBe(1);
     expect(ActivityResourceBuilder.subEventOccupancyRequestCount(card, 'stage-1', 'pending', groupB)).toBe(1);
@@ -115,7 +115,7 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
   it('counts borrow requests rather than their requested quantity', () => {
     const groupA = 'event-1:stage-1:stage-1:group:1';
-    const card = {
+    const card = asset({
       requests: [{
         ...request('request-a', 'user-a', groupA),
         booking: {
@@ -123,7 +123,7 @@ describe('ActivityResourceBuilder group request scoping', () => {
           quantity: 3
         }
       }]
-    } as AssetDTO;
+    });
 
     expect(ActivityResourceBuilder.subEventOccupancyRequestCount(card, 'stage-1', 'pending', groupA)).toBe(1);
   });
@@ -154,12 +154,12 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
   it('builds the persisted group metric snapshot once during local assignment persistence', () => {
     const ownerId = 'event-1:stage-1:stage-1:group:1';
-    const card = {
+    const card = asset({
       id: 'asset-1',
       type: 'Transport',
       capacityTotal: 4,
       requests: [request('request-a', 'user-a', ownerId)]
-    } as AssetDTO;
+    });
     const metrics = ActivityResourceBuilder.buildPersistedResourceMetrics({
       ownerId,
       subEventId: 'stage-1',
@@ -192,12 +192,12 @@ describe('ActivityResourceBuilder group request scoping', () => {
 
   it('does not count a supplies assignment itself as pending', () => {
     const ownerId = 'event-1:stage-1:stage-1:group:1';
-    const card = {
+    const card = asset({
       id: 'supplies-1',
       type: 'Supplies',
       capacityTotal: 6,
       requests: []
-    } as AssetDTO;
+    });
     const metrics = ActivityResourceBuilder.buildPersistedResourceMetrics({
       ownerId,
       subEventId: 'stage-1',
@@ -275,5 +275,21 @@ function request(id: string, userId: string, eventId: string): AssetMemberReques
       acceptedPolicyIds: []
     },
     menuActions: []
+  };
+}
+
+function asset(overrides: Partial<AssetDTO>): AssetDTO {
+  return {
+    id: 'asset-1',
+    type: 'Transport',
+    title: 'Test asset',
+    subtitle: '',
+    city: 'Austin',
+    capacityTotal: 0,
+    quantity: 1,
+    description: '',
+    imageUrl: '',
+    requests: [],
+    ...overrides
   };
 }

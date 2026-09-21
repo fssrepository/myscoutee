@@ -217,7 +217,7 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
       gender: 'woman',
       status: 'accepted',
       note: '',
-      requestKind: 'join',
+      requestKind: 'manual',
       requestedAtIso: '2026-09-07T06:00:00.000Z',
       booking: null,
       menuActions: ['makeManager']

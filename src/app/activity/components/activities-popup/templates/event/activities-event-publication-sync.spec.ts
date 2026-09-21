@@ -20,7 +20,7 @@ describe('ActivitiesEventsController publication sync', () => {
       status: initialStatus,
       smartListKey: 'hosting:event-a'
     } as InfoCardData;
-    const source = {
+    const source = activityEvent({
       id: row.id,
       title: row.title,
       status: initialStatus,
@@ -30,7 +30,7 @@ describe('ActivitiesEventsController publication sync', () => {
       pendingMemberUserIds: [],
       invitedMemberUserIds: [],
       pendingRequestMemberUserIds: []
-    } as ActivityEventDTO;
+    });
     const emitActivityEventSync = vi.fn();
     const patchVisibleItem = vi.fn();
     let confirmation: { onConfirm: () => Promise<void> } | null = null;
@@ -88,3 +88,32 @@ describe('ActivitiesEventsController publication sync', () => {
     expect(patchVisibleItem).not.toHaveBeenCalled();
   });
 });
+
+function activityEvent(overrides: Partial<ActivityEventDTO>): ActivityEventDTO {
+  return {
+    id: 'event-a',
+    userId: 'casey',
+    type: 'hosting',
+    adminIds: ['casey'],
+    title: 'Event A',
+    subtitle: '',
+    timeframe: '',
+    inviter: null,
+    activity: 0,
+    creatorUserId: 'casey',
+    creatorName: 'Casey',
+    creatorInitials: 'CA',
+    creatorCity: 'Seattle',
+    visibility: 'Public',
+    startAtIso: '2026-09-21T18:00:00Z',
+    endAtIso: '2026-09-21T21:00:00Z',
+    distanceKm: 0,
+    imageUrl: '',
+    location: 'Seattle',
+    capacityTotal: 0,
+    acceptedMembers: 0,
+    pendingMembers: 0,
+    boost: 0,
+    ...overrides
+  };
+}

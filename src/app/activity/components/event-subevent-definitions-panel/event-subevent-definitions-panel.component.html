@@ -21,7 +21,7 @@
       @if (enabled) {
       @if (modeControl === 'badge') {
       <app-menu
-        class="subevent-definition-panel__mode-menu"
+        class="subevent-definition-panel__mode-menu subevent-definition-panel__mode-menu--badge"
         kind="select"
         [trigger]="modeBadgeTrigger()"
         [items]="[]"
@@ -111,7 +111,7 @@
     <app-event-mingle-configuration-popup
       [open]="mingleConfigurationPopupOpen()"
       [configuration]="normalizedMingleConfiguration()"
-      [readOnly]="readOnly"
+      [readOnly]="readOnly || disabled"
       [allowRoundIncrease]="allowMingleRoundIncrease"
       (save)="saveMingleConfiguration($event)"
       (cancel)="closeMingleConfiguration($event)"

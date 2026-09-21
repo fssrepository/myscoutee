@@ -81,7 +81,7 @@ export class IntegrationSettingsPopupComponent {
       backdropTone: 'dim',
       headerActions: [{
         id: 'integration-help',
-        icon: 'help_outline',
+        icon: 'help',
         ariaLabel: 'integration.help.aria',
         palette: 'blue'
       }],

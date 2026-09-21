@@ -58,6 +58,7 @@ describe('realtime activity counter synchronization', () => {
         invitations: 1,
         hosting: 0,
         drafts: 0,
+        watchlist: 0,
         trash: 0
       }
     });
@@ -132,6 +133,7 @@ describe('realtime activity counter synchronization', () => {
       invitations: 1,
       hosting: 1,
       drafts: 0,
+      watchlist: 0,
       trash: 0
     });
     const token = activityStore.captureUserCounterSyncToken('user-1');
@@ -177,6 +179,7 @@ function menuCounters(): UserMenuCountersDto {
       invitations: 2,
       hosting: 1,
       drafts: 0,
+      watchlist: 0,
       trash: 0
     },
     asset: { cars: 0, accommodation: 0, supplies: 0, tickets: 0 },

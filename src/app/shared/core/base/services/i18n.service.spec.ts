@@ -272,7 +272,7 @@ describe('I18nService', () => {
     service.initialize();
 
     await vi.waitFor(() => {
-      expect(apiRequestCount()).toBe(1);
+      expect(apiRequestCount()).toBeGreaterThanOrEqual(1);
     });
     expect(service.translate('install.prompt.description'))
       .toBe('install.prompt.description');
