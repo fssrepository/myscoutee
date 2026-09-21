@@ -114,6 +114,12 @@
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
+            <app-link-input
+              class="experience-description-field"
+              [(ngModel)]="eventDetailDTO.sourceLink"
+              [config]="{ label: 'event.external.link', placeholder: 'https://...' }"
+              [readOnly]="eventStructureReadOnly()"
+            ></app-link-input>
             @if (showSubEventDefinitionsPanel()) {
               <app-event-subevent-definitions-panel
                 class="experience-description-field"

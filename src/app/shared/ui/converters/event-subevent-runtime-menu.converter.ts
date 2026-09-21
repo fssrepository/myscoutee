@@ -196,7 +196,7 @@ export class EventSubeventRuntimeMenuConverter {
     }
     items.push({
       id: 'groups',
-      label: 'Tables',
+      label: 'mingle.action.tables',
       icon: 'table_restaurant',
       palette: 'teal',
       surface: 'tinted',
@@ -225,9 +225,9 @@ export class EventSubeventRuntimeMenuConverter {
     const current = state?.eventId === parentEventId ? state : null;
     if (!current && roundNumber === 1) {
       return [this.mingleActionItem(item, parentEventId, {
-        action: 'mingle-start', backendAction: 'start', label: 'Start Mingle', icon: 'play_circle',
-        palette: 'success', title: 'Start Mingle', description: 'Create and start the first table assignment?',
-        confirmLabel: 'Start', busyLabel: 'Starting...', destructive: false
+        action: 'mingle-start', backendAction: 'start', label: 'mingle.action.start', icon: 'play_circle',
+        palette: 'success', title: 'mingle.action.start', description: 'mingle.action.start.description',
+        confirmLabel: 'mingle.action.start.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
     if (!current || current.canManage !== true) {
@@ -237,41 +237,41 @@ export class EventSubeventRuntimeMenuConverter {
     if (current.status === 'ROUND' && roundNumber === currentRound) {
       return [
         this.mingleActionItem(item, parentEventId, {
-          action: 'mingle-pause', backendAction: 'pause', label: 'Pause timer', icon: 'pause_circle',
-          palette: 'amber', title: 'Pause Mingle', description: 'Pause the current round timer?',
-          confirmLabel: 'Pause', busyLabel: 'Pausing...', destructive: false
+          action: 'mingle-pause', backendAction: 'pause', label: 'mingle.action.pause', icon: 'pause_circle',
+          palette: 'amber', title: 'mingle.action.pause.title', description: 'mingle.action.pause.description',
+          confirmLabel: 'mingle.action.pause.confirm', busyLabel: 'mingle.action.pausing', destructive: false
         }),
         this.mingleActionItem(item, parentEventId, {
-          action: 'mingle-next', backendAction: 'next', label: 'End round', icon: 'skip_next',
-          palette: 'blue', title: 'End round', description: 'End this round and begin the table-change break?',
-          confirmLabel: 'End round', busyLabel: 'Ending...', destructive: false
+          action: 'mingle-next', backendAction: 'next', label: 'mingle.action.end', icon: 'skip_next',
+          palette: 'blue', title: 'mingle.action.end', description: 'mingle.action.end.description',
+          confirmLabel: 'mingle.action.end', busyLabel: 'mingle.action.ending', destructive: false
         }),
         this.mingleActionItem(item, parentEventId, {
-          action: 'mingle-complete', backendAction: 'complete', label: 'Complete Mingle', icon: 'stop_circle',
-          palette: 'danger', title: 'Complete Mingle', description: 'Stop the live Mingle sequence?',
-          confirmLabel: 'Complete', busyLabel: 'Completing...', destructive: true
+          action: 'mingle-complete', backendAction: 'complete', label: 'mingle.action.complete', icon: 'stop_circle',
+          palette: 'danger', title: 'mingle.action.complete', description: 'mingle.action.complete.description',
+          confirmLabel: 'mingle.action.complete.confirm', busyLabel: 'mingle.action.completing', destructive: true
         })
       ];
     }
     if (current.status === 'PAUSED' && roundNumber === currentRound) {
       return [this.mingleActionItem(item, parentEventId, {
-        action: 'mingle-resume', backendAction: 'resume', label: 'Resume timer', icon: 'play_circle',
-        palette: 'success', title: 'Resume Mingle', description: 'Resume the paused Mingle timer?',
-        confirmLabel: 'Resume', busyLabel: 'Resuming...', destructive: false
+        action: 'mingle-resume', backendAction: 'resume', label: 'mingle.action.resume', icon: 'play_circle',
+        palette: 'success', title: 'mingle.action.resume.title', description: 'mingle.action.resume.description',
+        confirmLabel: 'mingle.action.resume.confirm', busyLabel: 'mingle.action.resuming', destructive: false
       })];
     }
     if (current.status === 'BREAK' && roundNumber === currentRound + 1) {
       return [this.mingleActionItem(item, parentEventId, {
-        action: 'mingle-next', backendAction: 'next', label: 'Start round now', icon: 'skip_next',
-        palette: 'success', title: 'Start next round', description: 'End the table-change break and create the next assignment now?',
-        confirmLabel: 'Start round', busyLabel: 'Starting...', destructive: false
+        action: 'mingle-next', backendAction: 'next', label: 'mingle.action.next.now', icon: 'skip_next',
+        palette: 'success', title: 'mingle.action.next', description: 'mingle.action.next.description',
+        confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
     if (current.status === 'COMPLETED' && roundNumber === currentRound + 1) {
       return [this.mingleActionItem(item, parentEventId, {
-        action: 'mingle-start', backendAction: 'start', label: 'Start next round', icon: 'play_circle',
-        palette: 'success', title: 'Start next round', description: 'Create and start the next table assignment?',
-        confirmLabel: 'Start round', busyLabel: 'Starting...', destructive: false
+        action: 'mingle-start', backendAction: 'start', label: 'mingle.action.next', icon: 'play_circle',
+        palette: 'success', title: 'mingle.action.next', description: 'mingle.action.next.restart.description',
+        confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
     return [];

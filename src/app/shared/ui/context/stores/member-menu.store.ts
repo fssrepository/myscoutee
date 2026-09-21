@@ -69,6 +69,7 @@ export type ActivitiesNavigationRequest =
     }
   | {
       type: 'members';
+      mingleLive?: boolean;
       ownerId: string;
       ownerType?: ActivityMemberOwnerType;
       parentOwnerId?: string;

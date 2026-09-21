@@ -650,7 +650,6 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
         plannedRounds: 4,
         roundDurationMinutes: 20,
         breakDurationMinutes: 5,
-        tableCount: 6,
         requireGenderBalance: true
       },
       topics: ['Mingle', 'Social', 'Networking'],

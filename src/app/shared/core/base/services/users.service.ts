@@ -25,7 +25,7 @@ import type {
   UserRealtimeLongPollResponseDto,
   UserSubmitActionResponseDto
 } from '../../contracts/user.interface';
-import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { EventExploreFilterPreferences, UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import {
   BaseRouteModeService
@@ -261,6 +261,14 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
       return null;
     }
+  }
+
+  async loadPageFilterPreferences(userId: string, pageKey: 'event-explore'): Promise<EventExploreFilterPreferences> {
+    return this.userService.loadPageFilterPreferences(userId, pageKey);
+  }
+
+  async savePageFilterPreferences(userId: string, pageKey: 'event-explore', filters: EventExploreFilterPreferences): Promise<void> {
+    await this.userService.savePageFilterPreferences(userId, pageKey, filters);
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {

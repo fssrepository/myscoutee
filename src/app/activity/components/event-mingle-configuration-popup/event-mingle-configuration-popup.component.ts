@@ -14,7 +14,7 @@ import {
   type PopupModel
 } from '../../../shared/ui';
 
-type MingleNumberField = Exclude<keyof MingleConfigurationDTO, 'requireGenderBalance' | 'tableCount'>;
+type MingleNumberField = Exclude<keyof MingleConfigurationDTO, 'requireGenderBalance'>;
 
 interface MingleNumberFieldDefinition {
   key: MingleNumberField;
@@ -215,7 +215,6 @@ export class EventMingleConfigurationPopupComponent {
     return {
       ...normalized,
       plannedRounds: Math.max(minimumPlannedRounds, normalized.plannedRounds),
-      tableCount: 0
     };
   }
 
@@ -225,7 +224,6 @@ export class EventMingleConfigurationPopupComponent {
       plannedRounds: 0,
       roundDurationMinutes: 0,
       breakDurationMinutes: 0,
-      tableCount: 0,
       requireGenderBalance: true
     };
   }

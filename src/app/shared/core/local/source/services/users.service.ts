@@ -32,6 +32,7 @@ import type {
 } from '../../../contracts/user.interface';
 import {
   defaultUserGameFilterPreferences,
+  type EventExploreFilterPreferences,
   type UserGameFilterPreferencesDto
 } from '../../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
@@ -349,6 +350,19 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     this.realtimeCursorByUserId[userId] = nextCursor;
     this.realtimeLastAdvanceAtByUserId[userId] = now;
     return nextCursor;
+  }
+
+  async loadPageFilterPreferences(userId: string, pageKey: 'event-explore'): Promise<EventExploreFilterPreferences> {
+    const stored = this.usersRepository.queryUserFilterPreferences(userId)?.pageFilters?.[pageKey];
+    return stored ? { ...stored } : { friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' };
+  }
+
+  async savePageFilterPreferences(userId: string, pageKey: 'event-explore', filters: EventExploreFilterPreferences): Promise<void> {
+    const stored = this.usersRepository.queryUserFilterPreferences(userId) ?? LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences());
+    this.usersRepository.upsertUserFilterPreferences(userId, {
+      ...stored, pageFilters: { ...stored.pageFilters, [pageKey]: { ...filters } }
+    });
+    await this.usersRepository.flushToIndexedDb();
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {

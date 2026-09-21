@@ -215,6 +215,13 @@ export interface ActivitiesFeedFilters {
   supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
+export interface EventExploreFilterPreferences {
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  mode: EventContracts.EventMode | '';
+}
+
 export interface EventExploreFeedFilters {
   userId: string;
   order: EventExploreOrder;
@@ -223,6 +230,7 @@ export interface EventExploreFeedFilters {
   openSpotsOnly: boolean;
   topic: string;
   excludedSourceIds?: string[];
+  mode?: EventContracts.EventMode | '';
 }
 
 export type ActivityEventScopeFilter = ActivitiesEventScope;
@@ -638,7 +646,6 @@ export interface MingleConfigurationDTO {
   plannedRounds: number;
   roundDurationMinutes: number;
   breakDurationMinutes: number;
-  tableCount: number;
   requireGenderBalance: boolean;
 }
 
@@ -1168,7 +1175,6 @@ export class ActivityEventDetailDTO {
       plannedRounds: ActivityEventDetailDTO.boundedInteger(value?.plannedRounds, 1, 100, 4),
       roundDurationMinutes: ActivityEventDetailDTO.boundedInteger(value?.roundDurationMinutes, 1, 240, 20),
       breakDurationMinutes: ActivityEventDetailDTO.boundedInteger(value?.breakDurationMinutes, 0, 60, 5),
-      tableCount: ActivityEventDetailDTO.boundedInteger(value?.tableCount, 0, 500, 0),
       requireGenderBalance: value?.requireGenderBalance !== false
     };
   }
@@ -1316,6 +1322,7 @@ export interface ActivityEventExploreQuery {
   limit: number;
   cursor?: string | null;
   excludedSourceIds?: string[];
+  mode?: EventContracts.EventMode | '';
 }
 
 export interface ActivityEventExploreQueryResult {

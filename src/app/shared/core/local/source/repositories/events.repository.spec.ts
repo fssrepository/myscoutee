@@ -25,6 +25,29 @@ describe('LocalEventsRepository event membership pages', () => {
     TestBed.resetTestingModule();
   });
 
+  it('filters event formats before counting and paginating Explore', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2030-04-18T10:00:00.000Z'));
+    seedUsers([user('owner-1', 'Owner'), user('viewer-1', 'Viewer')]);
+    seedEvents([
+      eventRecord({ id: 'standard', mode: 'Casual' }),
+      eventRecord({ id: 'mingle-a', mode: 'Mingle' }),
+      eventRecord({ id: 'tournament', mode: 'Tournament' }),
+      eventRecord({ id: 'mingle-b', mode: 'Mingle' })
+    ]);
+    const query = { userId: 'viewer-1', order: 'upcoming' as const, view: 'day' as const,
+      friendsOnly: false, openSpotsOnly: false, topic: '', mode: 'Mingle' as const, limit: 1 };
+    const first = repository.queryEventExplorePage(query);
+    expect(first.total).toBe(2);
+    expect(first.records).toHaveLength(1);
+    expect(first.records[0].mode).toBe('Mingle');
+    const second = repository.queryEventExplorePage({ ...query, cursor: first.nextCursor });
+    expect(second.records).toHaveLength(1);
+    expect(second.records[0].id).not.toBe(first.records[0].id);
+    expect(second.nextCursor).toBeNull();
+    expect(repository.queryEventExplorePage({ ...query, mode: '', limit: 10 }).total).toBe(4);
+    vi.restoreAllMocks();
+  });
+
   it('keeps a cancelled waitlist membership out of pending activity pages', () => {
     seedUsers([
       user('owner-1', 'Owner One'),

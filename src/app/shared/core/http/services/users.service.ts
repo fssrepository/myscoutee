@@ -29,7 +29,7 @@ import type {
   UserSubmitActionResponseDto,
   UserDto
 } from '../../contracts/user.interface';
-import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { EventExploreFilterPreferences, UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type * as AssetContracts from '../../contracts/asset.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import {
@@ -304,6 +304,18 @@ export class HttpUsersService implements UserService {
       }
       return null;
     }
+  }
+
+  async loadPageFilterPreferences(userId: string, pageKey: 'event-explore'): Promise<EventExploreFilterPreferences> {
+    const result = await this.http.get<EventExploreFilterPreferences>(`${this.apiBaseUrl}/auth/me/page-filter-preferences`, {
+      params: { userId, pageKey }
+    }).toPromise();
+    if (!result) throw new Error('Missing filter preferences.');
+    return result;
+  }
+
+  async savePageFilterPreferences(userId: string, pageKey: 'event-explore', filters: EventExploreFilterPreferences): Promise<void> {
+    await this.http.post(`${this.apiBaseUrl}/auth/me/page-filter-preferences`, { userId, pageKey, filters }).toPromise();
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {

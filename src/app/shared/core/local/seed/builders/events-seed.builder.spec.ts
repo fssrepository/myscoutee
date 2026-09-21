@@ -76,7 +76,6 @@ describe('SeedEventsBuilder invitation pricing', () => {
       plannedRounds: 4,
       roundDurationMinutes: 20,
       breakDurationMinutes: 5,
-      tableCount: 6,
       requireGenderBalance: true
     });
     expect(persisted?.subEventDefinitions).toEqual([]);

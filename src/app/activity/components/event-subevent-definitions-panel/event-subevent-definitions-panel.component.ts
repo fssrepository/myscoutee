@@ -1,3 +1,4 @@
+import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode-menu.converter';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, computed, forwardRef, Input, Output, inject, signal } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -300,15 +301,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected modeMenuTrigger(): AppMenuTrigger {
-    const tournamentMode = this.mode === 'Tournament';
-    const mingleMode = this.mode === 'Mingle';
-    return {
-      label: this.modeLabel(),
-      icon: tournamentMode ? 'emoji_events' : mingleMode ? 'table_restaurant' : 'groups',
-      palette: tournamentMode ? 'cyan' : mingleMode ? 'rose' : 'slate',
-      layout: 'pill',
-      disabled: !this.canConfigureDefinitions()
-    };
+    return { ...EventModeMenuConverter.trigger(this.mode), layout: 'pill', disabled: !this.canConfigureDefinitions() };
   }
 
   protected modeBadgeTrigger(): AppMenuTrigger {
@@ -320,38 +313,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected modeMenuItems(): readonly AppMenuItem<EventContracts.EventMode, unknown>[] {
-    return [
-      {
-        id: 'Casual',
-        label: 'Casual',
-        icon: 'groups',
-        kind: 'radio',
-        palette: 'slate',
-        surface: 'tinted',
-        active: this.mode === 'Casual',
-        checked: this.mode === 'Casual'
-      },
-      {
-        id: 'Tournament',
-        label: 'Tournament',
-        icon: 'emoji_events',
-        kind: 'radio',
-        palette: 'cyan',
-        surface: 'tinted',
-        active: this.mode === 'Tournament',
-        checked: this.mode === 'Tournament'
-      },
-      {
-        id: 'Mingle',
-        label: 'Mingle',
-        icon: 'table_restaurant',
-        kind: 'radio',
-        palette: 'rose',
-        surface: 'tinted',
-        active: this.mode === 'Mingle',
-        checked: this.mode === 'Mingle'
-      }
-    ];
+    return EventModeMenuConverter.items(this.mode) as readonly AppMenuItem<EventContracts.EventMode, unknown>[];
   }
 
   protected onModeMenuSelect(event: AppMenuItemSelectEvent<EventContracts.EventMode, unknown>): void {
@@ -1090,7 +1052,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       && left.plannedRounds === right.plannedRounds
       && left.roundDurationMinutes === right.roundDurationMinutes
       && left.breakDurationMinutes === right.breakDurationMinutes
-      && left.tableCount === right.tableCount
       && left.requireGenderBalance === right.requireGenderBalance;
   }
 

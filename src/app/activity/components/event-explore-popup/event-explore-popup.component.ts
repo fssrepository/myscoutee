@@ -1,3 +1,4 @@
+import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -21,7 +22,7 @@ import {
   from
 } from 'rxjs';
 
-import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
+import type { EventExploreFilterPreferences, EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import {
   APP_STATIC_DATA
@@ -53,7 +54,6 @@ import {
   AppMenuComponent,
   AppMenuOutletComponent,
   appMenuPaletteFromToneClass,
-  buildTabbedMenuModel,
   EventExploreInfoCardConverter,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -114,8 +114,6 @@ type CheckoutDraftMenuVisual = {
 type EventExploreMenuContext =
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
-  | { menu: 'filter-toggle'; filter: 'friends' | 'open-spots' }
-  | { menu: 'topic-filter'; topic: string }
   | { menu: 'checkout-draft'; entry: CheckoutDraftEntry }
   | {
       menu: 'info-card';
@@ -129,6 +127,7 @@ type EventExploreMenuContext =
   standalone: true,
   imports: [
     CommonModule,
+    EventExploreFilterPopupComponent,
     MatIconModule,
     AppMenuComponent,
     AppMenuOutletComponent,
@@ -177,6 +176,53 @@ export class EventExplorePopupComponent {
   protected eventExploreFilterFriendsOnly = false;
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
+  protected eventExploreFilterMode: EventExploreFilterPreferences['mode'] = '';
+  protected filterPopup: EventExploreFilterPreferences | null = null;
+  protected filterSaving = false;
+  protected filterSaveFailed = false;
+  private exploreOpenRevision = 0;
+
+  protected get filterCount(): number {
+    return Number(this.eventExploreFilterFriendsOnly) + Number(this.eventExploreFilterHasRooms)
+      + Number(!!this.eventExploreFilterTopic) + Number(!!this.eventExploreFilterMode);
+  }
+
+  protected openFilters(): void {
+    this.filterSaveFailed = false;
+    this.filterPopup = {
+      friendsOnly: this.eventExploreFilterFriendsOnly, openSpotsOnly: this.eventExploreFilterHasRooms,
+      topic: this.eventExploreFilterTopic, mode: this.eventExploreFilterMode
+    };
+  }
+
+  protected async closeFilters(filters: EventExploreFilterPreferences | null): Promise<void> {
+    if (this.filterSaving) return;
+    if (!filters) { this.filterPopup = null; return; }
+    const userId = this.activeUserId;
+    this.filterSaving = true;
+    this.filterSaveFailed = false;
+    this.cdr.markForCheck();
+    try {
+      await this.usersService.savePageFilterPreferences(userId, 'event-explore', filters);
+      if (userId !== this.activeUserId) return;
+      this.applyFilters(filters);
+      this.filterPopup = null;
+      this.syncEventExploreQuery();
+      this.reloadEventExploreSmartList();
+    } catch {
+      if (userId === this.activeUserId) this.filterSaveFailed = true;
+    } finally {
+      this.filterSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private applyFilters(filters: EventExploreFilterPreferences): void {
+    this.eventExploreFilterFriendsOnly = filters.friendsOnly;
+    this.eventExploreFilterHasRooms = filters.openSpotsOnly;
+    this.eventExploreFilterTopic = filters.topic;
+    this.eventExploreFilterMode = filters.mode;
+  }
 
   protected eventExploreHeaderProgress = 0;
   protected eventExploreHeaderProgressLoading = false;
@@ -281,6 +327,10 @@ export class EventExplorePopupComponent {
         return;
       }
       this.activeUserId = nextActiveUserId;
+      this.exploreOpenRevision++;
+      this.isOpen = false;
+      this.filterPopup = null;
+      this.applyFilters({ friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' });
       this.locallyTrackedMembershipSourceIds.clear();
       this.syncEventExploreQuery();
       if (this.isOpen) {
@@ -349,6 +399,7 @@ export class EventExplorePopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented) {
       return;
     }
+    if (this.filterPopup) return;
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
     if (this.selectedMembersRecord) {
@@ -386,6 +437,11 @@ export class EventExplorePopupComponent {
           items: this.eventExploreOrderMenuItems()
         },
         {
+          id: 'event-explore-filters', icon: 'filter_alt', label: 'event.explore.filters',
+          ariaLabel: 'event.explore.filters', palette: 'filter', compactOnMobile: true,
+          counter: this.filterCount > 0 ? { value: this.filterCount, max: 99 } : null
+        },
+        {
           kind: 'menu',
           id: 'event-explore-view',
           menuKind: 'select',
@@ -394,15 +450,7 @@ export class EventExplorePopupComponent {
           items: this.eventExploreViewMenuItems()
         }
       ],
-      toolbarControls: [
-        {
-          kind: 'menu',
-          id: 'event-explore-filters',
-          menuKind: 'inline',
-          model: this.eventExploreCompactMenuModel,
-          items: this.eventExploreFilterMenuItems()
-        }
-      ],
+      onAction: event => { if (event.action.id === 'event-explore-filters') this.openFilters(); },
       onClose: () => this.closeEventExplore(),
       onMenuSelect: event => this.onEventExploreMenuSelect(event.itemSelect)
     };
@@ -413,6 +461,8 @@ export class EventExplorePopupComponent {
   }
 
   protected closeEventExplore(): void {
+    if (this.filterPopup) return;
+    this.exploreOpenRevision++;
     this.isOpen = false;
     this.closeEventExploreSubeventsPopup();
     this.closeMembersPopup();
@@ -440,32 +490,6 @@ export class EventExplorePopupComponent {
     this.eventExploreView = view;
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
-  }
-
-  protected toggleEventExploreFriendsOnly(event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreFilterFriendsOnly = !this.eventExploreFilterFriendsOnly;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected toggleEventExploreHasRooms(event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreFilterHasRooms = !this.eventExploreFilterHasRooms;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
-    event?.stopPropagation();
-    const normalizedTopic = this.normalizeTopic(topic);
-    this.eventExploreFilterTopic = normalizedTopic === this.normalizeTopic(this.eventExploreFilterTopic) ? '' : topic;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected eventExploreTopicLabel(topic: string): string {
-    return topic.replace(/^#+\s*/, '');
   }
 
   protected eventExploreOrderMenuTrigger(): AppMenuTrigger {
@@ -516,69 +540,6 @@ export class EventExplorePopupComponent {
     }));
   }
 
-  protected eventExploreFilterMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
-    return [
-      {
-        id: 'filter-friends-going',
-        label: 'Friends going',
-        icon: 'groups',
-        kind: 'toggle',
-        layout: 'pill',
-        active: this.eventExploreFilterFriendsOnly,
-        checked: this.eventExploreFilterFriendsOnly,
-        closeOnSelect: false,
-        palette: 'green',
-        context: { menu: 'filter-toggle', filter: 'friends' }
-      },
-      {
-        id: 'filter-open-spots',
-        label: 'Open spots',
-        icon: 'hotel',
-        kind: 'toggle',
-        layout: 'pill',
-        active: this.eventExploreFilterHasRooms,
-        checked: this.eventExploreFilterHasRooms,
-        closeOnSelect: false,
-        palette: 'blue',
-        context: { menu: 'filter-toggle', filter: 'open-spots' }
-      },
-      {
-        id: 'filter-topic',
-        label: this.eventExploreFilterTopic
-          ? `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`
-          : 'Topic',
-        icon: 'sell',
-        kind: 'select-trigger',
-        layout: 'pill',
-        active: !!this.eventExploreFilterTopic,
-        checked: !!this.eventExploreFilterTopic,
-        closeOnSelect: false,
-        palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
-        ariaLabel: 'Open topic filter',
-        filterable: true,
-        model: this.eventExploreTopicMenuModel()
-      }
-    ];
-  }
-
-  private eventExploreTopicMenuModel(): AppMenuModel<string, EventExploreMenuContext> {
-    return buildTabbedMenuModel<string, EventExploreMenuContext>({
-      idPrefix: 'topic',
-      groups: this.topicFilterGroups,
-      selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
-      maxSelected: 1,
-      kind: 'radio',
-      context: topic => ({ menu: 'topic-filter', topic }),
-      itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
-      removeAriaLabel: topic => `Clear ${topic}`,
-      summary: {
-        emptyLabel: 'Topic',
-        maxLabels: 1,
-        counter: 'none'
-      }
-    });
-  }
-
   protected onEventExploreMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as EventExploreMenuContext | undefined;
     if (!context) {
@@ -601,14 +562,6 @@ export class EventExplorePopupComponent {
       this.selectEventExploreView(context.view, event.sourceEvent);
       return;
     }
-    if (context.menu === 'filter-toggle') {
-      if (context.filter === 'friends') {
-        this.toggleEventExploreFriendsOnly(event.sourceEvent);
-        return;
-      }
-      this.toggleEventExploreHasRooms(event.sourceEvent);
-      return;
-    }
     if (context.menu === 'checkout-draft') {
       if (event.action === 'remove') {
         this.requestClearCheckoutDraft(context.entry.draft, event.sourceEvent);
@@ -616,19 +569,6 @@ export class EventExplorePopupComponent {
       }
       void this.openCheckoutDraftForm(context.entry, event.sourceEvent);
       return;
-    }
-    if (context.menu === 'topic-filter') {
-      if (event.action === 'remove') {
-        event.sourceEvent.stopPropagation();
-        if (this.normalizeTopic(context.topic) !== this.normalizeTopic(this.eventExploreFilterTopic)) {
-          return;
-        }
-        this.eventExploreFilterTopic = '';
-        this.syncEventExploreQuery();
-        this.reloadEventExploreSmartList();
-        return;
-      }
-      this.selectEventExploreTopicFilter(context.topic, event.sourceEvent);
     }
   }
 
@@ -901,6 +841,10 @@ export class EventExplorePopupComponent {
   }
 
   protected onEventExploreCardMenuAction(record: ActivityEventRecord, action: CardMenuActionEvent<InfoCardData>): void {
+    if (action.actionId === 'externalInfo') {
+      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(record.sourceLink));
+      return;
+    }
     if (action.actionId === 'view') {
       this.runEventExploreViewAction(record);
       return;
@@ -1476,7 +1420,8 @@ export class EventExplorePopupComponent {
         view: query.filters?.view ?? this.eventExploreView,
         friendsOnly: query.filters?.friendsOnly === true,
         openSpotsOnly: query.filters?.openSpotsOnly === true,
-        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
+        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic),
+        mode: query.filters?.mode ?? this.eventExploreFilterMode
       }
     });
     this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
@@ -1665,7 +1610,19 @@ export class EventExplorePopupComponent {
   }
 
 
-  private openEventExplore(): void {
+  private async openEventExplore(): Promise<void> {
+    const revision = ++this.exploreOpenRevision;
+    const userId = this.activeUserId;
+    try {
+      const filters = await this.usersService.loadPageFilterPreferences(userId, 'event-explore');
+      if (revision !== this.exploreOpenRevision || userId !== this.activeUserId) return;
+      this.applyFilters(filters);
+    } catch {
+      if (revision === this.exploreOpenRevision) this.dialogStore.open({
+        title: 'event.explore.filters', message: 'event.filters.load.failed', confirmLabel: 'OK'
+      });
+      return;
+    }
     this.isOpen = true;
     this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
@@ -1682,7 +1639,8 @@ export class EventExplorePopupComponent {
         view: this.eventExploreView,
         friendsOnly: this.eventExploreFilterFriendsOnly,
         openSpotsOnly: this.eventExploreFilterHasRooms,
-        topic: this.normalizeTopic(this.eventExploreFilterTopic)
+        topic: this.normalizeTopic(this.eventExploreFilterTopic),
+        mode: this.eventExploreFilterMode
       }
     };
   }
@@ -2315,6 +2273,7 @@ export class EventExplorePopupComponent {
   }
 
   private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
+    if (this.eventExploreFilterMode && record.mode !== this.eventExploreFilterMode) return false;
     if (this.eventExploreFilterFriendsOnly) {
       return false;
     }

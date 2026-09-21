@@ -1561,3 +1561,10 @@
     padding-right: 0.24rem;
   }
 }
+
+.entry-hero-formats {
+  margin: 0;
+  font-size: clamp(.75rem, 2.8vw, 1rem);
+  font-weight: 600;
+  white-space: nowrap;
+}

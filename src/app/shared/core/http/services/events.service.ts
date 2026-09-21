@@ -889,6 +889,7 @@ export class HttpEventsService implements IEventsService {
         })).filter(participant => Boolean(participant.userId))
       })),
       canManage: response.canManage === true,
+      waitingForTable: response.waitingForTable === true,
       revision: Math.max(0, Math.trunc(Number(response.revision) || 0))
     };
   }

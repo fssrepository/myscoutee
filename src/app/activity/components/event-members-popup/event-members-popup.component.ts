@@ -1,3 +1,5 @@
+import { I18nPipe } from '../../../shared/ui';
+import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -143,6 +145,7 @@ interface ActivityMembersListPollState {
   standalone: true,
   imports: [
     CommonModule,
+    I18nPipe,
     MatIconModule,
     PopupComponent,
     SmartListComponent,
@@ -176,6 +179,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
+  protected readonly mingleStore = inject(MingleStore);
+  protected mingleLive = false;
   protected isOpen = false;
   protected ownerId = '';
   protected title = 'Members';
@@ -273,12 +278,23 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      const state = this.mingleStore.state();
+      if (!this.isOpen || !this.mingleLive || state?.eventId !== this.memberEventId) return;
+      const table = state.tables.find(item => item.tableNumber === state.tableNumber);
+      const expectedOwnerId = table?.memberOwnerId ?? state.eventId;
+      if (this.ownerId !== expectedOwnerId && state.status !== 'COMPLETED') {
+        void this.mingleStore.openCurrentTable(state.eventId);
+      }
+      this.cdr.markForCheck();
+    });
+    effect(() => {
       const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
       this.memberMenuStore.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
+        this.mingleLive = request.mingleLive === true;
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
           parentOwnerId: request.parentOwnerId,
@@ -444,6 +460,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     this.membersListPollScheduler.stop({ abort: true });
     this.isOpen = false;
+    if (this.mingleLive) this.mingleStore.closeLiveView();
+    this.mingleLive = false;
     this.ownerId = '';
     this.ownerRef = null;
     this.parentOwnerRef = null;
@@ -1708,7 +1726,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       }
 
       this.syncMembersSmartListQuery();
-      if (this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group') {
+      if (!this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group') {
         void this.resolveOwnerPresentation(normalizedOwnerId, options);
       }
       this.cdr.markForCheck();
@@ -1780,11 +1798,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   ): Promise<PageResult<ActivityContracts.ActivityMemberDTO>> {
     const ownerId = query.filters?.ownerId?.trim() ?? '';
     const pendingOnly = query.filters?.pendingOnly === true;
-    if (!ownerId) {
-      return {
-        items: [],
-        total: 0
-      };
+    if (!ownerId || (this.mingleLive && this.mingleStore.state()?.waitingForTable)) {
+      return { items: [], total: 0 };
     }
 
     const cacheKey = this.membersCacheKey(ownerId, pendingOnly);
@@ -2008,6 +2023,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private shouldPollMembersList(): boolean {
     return this.isOpen
+      && !this.mingleLive
       && this.membersListReady
       && this.runtimeStore.isDataSourceAvailable()
       && this.lookupRef?.type !== 'chat'

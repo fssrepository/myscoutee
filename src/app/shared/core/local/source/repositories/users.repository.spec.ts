@@ -21,6 +21,17 @@ describe('LocalUsersRepository demo selector', () => {
     TestBed.resetTestingModule();
   });
 
+  it('keeps page filters when home filters change and isolates users', () => {
+    const filters = { friendsOnly: true, openSpotsOnly: false, topic: 'Music', mode: 'Mingle' as const };
+    repository.upsertUserFilterPreferences('viewer', { ageMin: 20, pageFilters: { 'event-explore': filters } });
+    repository.upsertUserFilterPreferences('viewer', { ageMin: 30 });
+    expect(repository.queryUserFilterPreferences('viewer')).toEqual({ ageMin: 30, pageFilters: { 'event-explore': filters } });
+    expect(repository.queryUserFilterPreferences('other')).toBeNull();
+    repository.upsertUserFilterPreferences('viewer', { pageFilters: { 'event-explore': { friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' } } });
+    expect(repository.queryUserFilterPreferences('viewer')?.ageMin).toBe(30);
+    expect(repository.queryUserFilterPreferences('viewer')?.pageFilters?.['event-explore']?.mode).toBe('');
+  });
+
   it('returns member and admin selector users alphabetically by display name', () => {
     seedUsers([
       user('zoe', 'Zoe', { affinity: 100 }),

@@ -103,13 +103,14 @@ export class EventExploreInfoCardConverter {
     const watchActions = this.canWatchEvent(record, normalizedUserId)
       ? [this.watchActionId(record)]
       : [];
+    const externalActions: CardMenuActionId[] = AppUtils.normalizeHttpUrl(record.sourceLink) ? ['externalInfo'] : [];
     if (normalizedUserId && record.creatorUserId === normalizedUserId) {
-      return ['view', 'notifyParticipants'];
+      return ['view', ...externalActions, 'notifyParticipants'];
     }
     if (normalizedUserId && this.hasVisibleCheckoutBasket(record, normalizedUserId)) {
-      return ['view', 'continueBookingPending', ...watchActions, 'askOrganizer', 'shareEvent', 'reportOrganizer'];
+      return ['view', ...externalActions, 'continueBookingPending', ...watchActions, 'askOrganizer', 'shareEvent', 'reportOrganizer'];
     }
-    const actions: CardMenuActionId[] = ['view'];
+    const actions: CardMenuActionId[] = ['view', ...externalActions];
     if (!(record.slotsEnabled === true && this.isFull(record))) {
       actions.push(this.joinActionId(record));
     }

@@ -1017,6 +1017,7 @@ export class LocalEventsRepository {
     const normalizedRecords = this.queryExploreItems(normalizedUserId)
       .filter(record => !excludedSourceIds.has(record.id))
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
+      .filter(record => !query.mode || record.mode === query.mode)
       .filter(record => !query.friendsOnly || this.exploreHasFriendGoing(record, normalizedUserId))
       .filter(record => !query.openSpotsOnly || this.exploreHasOpenSpots(record))
       .filter(record => !selectedTopic || record.topics.some(topic => this.normalizeExploreTopic(topic) === selectedTopic))

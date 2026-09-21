@@ -135,6 +135,7 @@ export interface MingleStateDTO {
   tableNumber: number | null;
   tables: MingleTableDTO[];
   canManage: boolean;
+  waitingForTable: boolean;
   revision: number;
 }
 
