@@ -1,3 +1,4 @@
+import { LocalUserRatesMapper } from '../../source/mappers/rate.mapper';
 import { USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
@@ -94,7 +95,7 @@ export class SeedAdminAffinityGraphRepository {
       return;
     }
     const key = this.edgeKey(source, target);
-    const weight = this.rateWeight(record);
+    const weight = LocalUserRatesMapper.affinityWeight(record);
     if (weight <= 0) {
       return;
     }
@@ -110,15 +111,6 @@ export class SeedAdminAffinityGraphRepository {
       affinityScore: weight,
       updatedDate: record.updatedAtIso ?? record.happenedAtIso ?? record.createdAtIso ?? null
     });
-  }
-
-  private rateWeight(record: UserRateRecord): number {
-    const score = Math.max(
-      Number(record.rate) || 0,
-      Number(record.scoreGiven) || 0,
-      Number(record.scoreReceived) || 0
-    );
-    return this.clamp(score / 10, 0, 1);
   }
 
   private edgeKey(source: string, target: string): string {

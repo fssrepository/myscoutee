@@ -868,8 +868,9 @@ export class EventSubeventsListPopupComponent {
       if (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504) {
         return this.i18n.translate('mingle.error.service.unavailable');
       }
-      const payload = error.error;
-      if (typeof payload === 'object' && payload !== null) {
+    }
+    const payload = error instanceof HttpErrorResponse ? error.error : error;
+    if (typeof payload === 'object' && payload !== null) {
         const response = payload as { code?: unknown; parameters?: unknown };
         const code = `${response.code ?? ''}`.trim();
         const key = MINGLE_ACTION_ERROR_I18N_KEYS[code];
@@ -882,7 +883,6 @@ export class EventSubeventsListPopupComponent {
             : {};
           return this.i18n.translateParams(key, parameters);
         }
-      }
     }
     return this.i18n.translate('mingle.error.action.failed');
   }

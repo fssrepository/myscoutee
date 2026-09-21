@@ -665,6 +665,44 @@ export class LocalRatesRepository {
       .map(record => ({ ...record }));
   }
 
+  /** Record meeting facts at round completion without inventing either person's rating. */
+  projectMetTables(tables: readonly { memberUserIds: readonly string[] }[], eventName: string, happenedAtIso: string): void {
+    const pairs = new Map<string, [string, string]>();
+    const pairKey = (left: string, right: string) => [left, right].sort().join('\n');
+    for (const table of tables) {
+      const members = [...new Set(table.memberUserIds)].sort();
+      for (let left = 0; left < members.length; left++) {
+        for (let right = left + 1; right < members.length; right++) {
+          pairs.set(pairKey(members[left], members[right]), [members[left], members[right]]);
+        }
+      }
+    }
+    if (!pairs.size) return;
+    this.memoryDb.write(state => {
+      const current = state[USER_RATES_TABLE_NAME];
+      const byId = { ...current.byId }, ids = [...current.ids];
+      const matched = new Set<string>();
+      for (const id of current.ids) {
+        const record = current.byId[id];
+        const key = pairKey(record.fromUserId, record.toUserId);
+        if (record.mode !== 'single' || !pairs.has(key)) continue;
+        matched.add(key);
+        const next = { ...record, met: true, eventName, happenedAtIso, updatedAtIso: happenedAtIso };
+        next.displayDirection = this.deriveOwnerSingleDirection(next, this.dynamicScoreGiven(next), this.dynamicScoreReceived(next)) ?? 'met';
+        byId[id] = next;
+      }
+      for (const [key, [left, right]] of pairs) {
+        if (matched.has(key)) continue;
+        const id = `met:${left}:${right}`;
+        byId[id] = { id, displayId: id, fromUserId: left, toUserId: right, ownerUserId: left,
+          mode: 'single', rate: 0, scoreGiven: 0, scoreReceived: 0, met: true, displayDirection: 'met',
+          eventName, happenedAtIso, createdAtIso: happenedAtIso, updatedAtIso: happenedAtIso };
+        ids.push(id);
+      }
+      return { ...state, [USER_RATES_TABLE_NAME]: this.rebuildUserRatesTableIndex({ ...current, byId, ids }) };
+    });
+  }
+
   upsertGameCardRatings(records: readonly UserRateRecord[]): string[] {
     const normalizedRecords = records
       .map(record => this.normalizeIncomingRateRecord(record))

@@ -1,3 +1,6 @@
+import { MINGLE_SESSIONS_TABLE_NAME } from '../entity/mingle.entity';
+import { completedMinglePeerIds } from '../mappers/mingle.mapper';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { EventFeedbackPersistedState, EventFeedbackStatRecord } from '../entity/event.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
@@ -24,6 +27,12 @@ export class LocalEventFeedbackRepository {
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly memoryDb = inject(LocalMemoryDb);
+
+  queryMinglePeers(userId: string, events: readonly ActivityEventRecord[]): Record<string, string[]> {
+    const sessions = this.memoryDb.read()[MINGLE_SESSIONS_TABLE_NAME];
+    return Object.fromEntries(events.filter(event => event.mode === 'Mingle')
+      .map(event => [event.id, completedMinglePeerIds(sessions.byId[event.id], userId)]));
+  }
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();

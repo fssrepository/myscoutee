@@ -1,3 +1,4 @@
+import { MINGLE_SESSIONS_TABLE_NAME } from '../entity/mingle.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.entity';
 import type { ActivityEventRecordCollection } from '../entity/event.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
@@ -3475,6 +3476,26 @@ export class LocalEventsRepository {
   }
 
   private runtimeSubEvents(record: ActivityEventRecord | null | undefined): ContractTypes.SubEventDTO[] {
+    if (record?.mode === 'Mingle') {
+      const config = record.mingleConfiguration;
+      if (!config) return [];
+      const session = this.memoryDb.read()[MINGLE_SESSIONS_TABLE_NAME].byId[record.id];
+      return Array.from({ length: config.plannedRounds }, (_, index): ContractTypes.SubEventDTO => {
+        const number = index + 1, round = session?.rounds.find(item => item.roundNumber === number);
+        const plannedStart = Date.parse(record.startAtIso ?? '') + index * (config.roundDurationMinutes + config.breakDurationMinutes) * 60_000;
+        const start = round?.startedAtIso ?? (Number.isFinite(plannedStart) ? new Date(plannedStart).toISOString() : '');
+        return { id: `mingle-round-${number}`, name: `Round ${number}`, description: '',
+          startAt: start, endAt: round?.completedAtIso ?? (start ? new Date(Date.parse(start) + config.roundDurationMinutes * 60_000).toISOString() : ''),
+          location: record.location, optional: false, capacityMin: 2, capacityMax: record.capacityMax ?? 0,
+          tournamentGroupCapacityMin: 2, tournamentGroupCapacityMax: config.groupSize,
+          groupsCount: round?.tables.length ?? 0, membersAccepted: round?.tables.reduce((sum, table) => sum + table.memberUserIds.length, 0) ?? 0,
+          membersPending: 0, carsPending: 0, accommodationPending: 0, suppliesPending: 0,
+          stageStatus: round?.completedAtIso ? 'F' : round ? 'A' : 'RS',
+          stageFinalizedAt: round?.completedAtIso ?? null,
+          slotStartOffsetMinutes: index * (config.roundDurationMinutes + config.breakDurationMinutes),
+          slotDurationMinutes: config.roundDurationMinutes };
+      });
+    }
     const persisted = this.cloneSubEvents(record?.subEvents) ?? [];
     if (persisted.length > 0 || !record) {
       return persisted;
@@ -3719,6 +3740,13 @@ export class LocalEventsRepository {
     stages?: readonly ContractTypes.SubEventDTO[] | null,
     eventRecord?: ActivityEventRecord | null
   ): ContractTypes.SubEventGroupDTO[] {
+    if (eventRecord?.mode === 'Mingle') {
+      const session = this.memoryDb.read()[MINGLE_SESSIONS_TABLE_NAME].byId[eventRecord.id];
+      const number = Number(stage.id.replace('mingle-round-', ''));
+      const round = session?.rounds.find(item => item.roundNumber === number);
+      return (round?.tables ?? []).map(table => ({ id: `${eventRecord.id}:${stage.id}:table:${table.tableNumber}`,
+        name: `Table ${table.tableNumber}`, capacityMin: 2, capacityMax: eventRecord.mingleConfiguration?.groupSize ?? 2, source: 'generated' }));
+    }
     const generatedGroups = this.hasTournamentGroupCapacityRule(stage)
       ? this.localGeneratedGroups(stage, stages, eventRecord)
       : [];

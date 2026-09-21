@@ -1,3 +1,4 @@
+import { LocalUserRatesMapper } from '../mappers/rate.mapper';
 import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../contracts/activity.interface';
@@ -21,7 +22,9 @@ export class LocalMingleRepository {
   async flushToIndexedDb(): Promise<void> { await this.db.flushToIndexedDb(); }
 
   query(userId: string, eventId?: string | null, roundNumber?: number | null): MingleStateDTO | null {
-    if (!userId.trim()) return null;
+    userId = userId.trim();
+    eventId = eventId?.trim();
+    if (!userId) return null;
     const sessions = this.db.read()[MINGLE_SESSIONS_TABLE_NAME];
     const candidates = eventId ? [sessions.byId[eventId]] : sessions.ids.map(id => sessions.byId[id])
       .filter(session => session.status !== 'COMPLETED').sort((a, b) => b.updatedAtIso.localeCompare(a.updatedAtIso));
@@ -45,6 +48,7 @@ export class LocalMingleRepository {
   }
 
   apply(eventId: string, actorId: string, action: string): MingleStateDTO {
+    actorId = actorId.trim(); eventId = eventId.trim();
     const event = this.events.queryEventRecordById(actorId, eventId);
     if (!event || event.mode !== 'Mingle') return this.fail('MINGLE_EVENT_NOT_FOUND');
     if (!this.canManage(event, actorId)) return this.fail('MINGLE_MANAGE_FORBIDDEN');
@@ -88,9 +92,8 @@ export class LocalMingleRepository {
       const scores = new Map<string, number>();
       const rates = this.db.read()[USER_RATES_TABLE_NAME];
       for (const rate of Object.values(rates.byId)) {
-        if (rate.mode !== 'single') continue;
         const key = [rate.fromUserId, rate.toUserId].sort().join('\n');
-        scores.set(key, Math.max(scores.get(key) ?? 0, Math.min(rate.scoreGiven ?? rate.rate, rate.scoreReceived ?? 0)));
+        scores.set(key, Math.max(scores.get(key) ?? 0, LocalUserRatesMapper.affinityWeight(rate)));
       }
       const tables = planMingleTables({
         userIds: members.map(member => member.userId),

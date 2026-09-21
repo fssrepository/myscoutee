@@ -43,7 +43,7 @@ export class EventSubeventRuntimeInfoCardConverter
       : isTournament
         ? `Stage ${sequenceNumber}`
         : isMingle
-          ? `Round ${sequenceNumber}`
+          ? options.translateParams?.('event.editor.mingle.round.number', { number: sequenceNumber }, `Round ${sequenceNumber}`) ?? `Round ${sequenceNumber}`
           : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
     const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
@@ -74,7 +74,10 @@ export class EventSubeventRuntimeInfoCardConverter
       mediaTone: isMingle ? 'default' : 'neutral',
       mediaIcon: runtimeIcon,
       mediaTitle: sequenceLabel,
-      mediaSubtitle: mode,
+      mediaSubtitle: options.translateParams?.(
+        mode === 'Mingle' ? 'event.mode.mingle' : mode === 'Tournament' ? 'event.mode.tournament' : 'event.mode.standard',
+        {}, mode === 'Mingle' ? 'Speed meeting' : mode === 'Casual' ? 'Standard' : 'Tournament'
+      ) ?? (mode === 'Mingle' ? 'Speed meeting' : mode === 'Casual' ? 'Standard' : 'Tournament'),
       metaRows: [
         dateLabel,
         ...(location ? [location] : []),

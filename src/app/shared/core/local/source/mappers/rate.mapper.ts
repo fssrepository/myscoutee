@@ -8,6 +8,11 @@ import type { ActivityRateDTO, UserGameFilterPreferencesDto } from '../../../con
 import type { UserFilterPreferencesRecord, UserRateRecord } from '../entity/rate.entity';
 
 export class LocalUserRatesMapper {
+  static affinityWeight(record: UserRateRecord): number {
+    const score = Math.max(Number(record.rate) || 0, Number(record.scoreGiven) || 0, Number(record.scoreReceived) || 0);
+    return Math.max(0, Math.min(1, score / 10));
+  }
+
   static toRecord(ownerUserId: string, item: ActivityRateDTO): UserRateRecord;
   static toRecord(input: UserRateRecordDTO): UserRateRecord | null;
   static toRecord(ownerUserIdOrInput: string | UserRateRecordDTO, item?: ActivityRateDTO): UserRateRecord | null {
@@ -27,7 +32,8 @@ export const localUserRatesMapper =
 
 export class LocalUserFilterPreferencesMapper {
   static toDto(record: UserFilterPreferencesRecord): UserGameFilterPreferencesDto {
-    return this.clone(record);
+    const { pageFilters: _pageFilters, ...homePreferences } = record;
+    return this.clone(homePreferences);
   }
 
   static toDtoList(records: readonly UserFilterPreferencesRecord[]): UserGameFilterPreferencesDto[] {
