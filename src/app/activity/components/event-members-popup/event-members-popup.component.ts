@@ -357,17 +357,17 @@ export class EventMembersPopupComponent implements OnDestroy {
           palette: 'blue' as const,
           compactOnMobile: true
         }] : []),
-        {
+        ...(this.canManageMembers ? [{
           id: 'pending-only',
-          align: 'end',
+          align: 'end' as const,
           icon: 'pending_actions',
           label: 'Pending only',
           ariaLabel: this.pendingOnly ? 'Show all members' : 'Show pending members only',
-          palette: 'rose',
+          palette: 'rose' as const,
           active: this.pendingOnly,
           counter: this.pendingCount > 0 ? this.pendingCount : null,
           compactOnMobile: true
-        }
+        }] : [])
       ],
       onClose: event => this.closeMembersPopup(event),
       onAction: event => this.onMembersPopupAction(event)

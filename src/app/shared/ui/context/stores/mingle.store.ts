@@ -1,16 +1,18 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { EventsService } from '../../../core/base/services/events.service';
+import { I18nService } from '../../../core/base/services/i18n.service';
 import type { MingleStateDTO } from '../../../core/contracts/event.interface';
 import { UiPollCoordinator } from '../../scheduler/ui-poll-coordinator';
 import { UiTaskScheduler } from '../../scheduler/ui-task-scheduler';
-import { EventSubeventsPopupStore } from './event-subevents-popup.store';
+import { MemberMenuStore } from './member-menu.store';
 
 @Injectable({ providedIn: 'root' })
 export class MingleStore {
   private readonly eventsService = inject(EventsService);
+  private readonly i18n = inject(I18nService);
   private readonly pollCoordinator = inject(UiPollCoordinator);
-  private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activeUserIdRef = signal('');
   private readonly stateRef = signal<MingleStateDTO | null>(null);
   private readonly seenRevisionByEventId = new Map<string, number>();
@@ -30,7 +32,7 @@ export class MingleStore {
     return Boolean(
       state
       && (state.status === 'ROUND' || state.status === 'BREAK' || state.status === 'PAUSED')
-      && (state.canManage || state.tableNumber != null)
+      && state.tableNumber != null
     );
   });
   readonly attention = computed(() => {
@@ -75,29 +77,32 @@ export class MingleStore {
       return false;
     }
     this.seenRevisionByEventId.set(state.eventId, state.revision);
+    const tableNumber = state.tableNumber;
+    if (tableNumber == null) {
+      return false;
+    }
+    const table = state.tables.find(item => item.tableNumber === tableNumber);
+    if (!table) {
+      return false;
+    }
     const roundNumber = Math.max(1, state.roundNumber);
-    const stageId = `mingle-round-${roundNumber}`;
-    this.eventSubeventsStore.openEventTournamentGroupsPopup({
+    const subEventId = `mingle-round-${roundNumber}`;
+    const ownerId = `${state.eventId}:${subEventId}:table:${tableNumber}`;
+    this.memberMenuStore.requestActivitiesNavigation({
+      type: 'members',
+      ownerId,
+      ownerType: 'group',
+      parentOwnerId: state.eventId,
+      parentOwnerType: 'event',
       eventId: state.eventId,
-      title: state.eventTitle,
-      mode: 'Mingle',
+      subEventId,
+      subtitle: this.i18n.translateParams('mingle.table.number', { number: tableNumber }),
       canManage: state.canManage,
-      stages: [{
-        subEventId: stageId,
-        title: `Round ${roundNumber}`,
-        description: 'Table assignment round',
-        location: '',
-        startAt: state.phaseStartedAtIso ?? '',
-        endAt: state.phaseEndsAtIso ?? '',
-        stageNumber: roundNumber,
-        stageStatus: state.status === 'ROUND' ? 'A' : state.status === 'PAUSED' ? 'S' : 'RS',
-        leaderboardType: 'Score',
-        advancePerGroup: 0,
-        groups: []
-      }],
-      selectedStageId: stageId
+      viewOnly: !state.canManage,
+      acceptedMembers: table.participants.length,
+      pendingMembers: 0,
+      capacityTotal: table.participants.length
     });
-    await this.eventSubeventsStore.ensureEventTournamentGroupsPopupLoaded();
     return true;
   }
 
