@@ -107,11 +107,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private readonly modeState = signal<EventContracts.EventMode>('Casual');
   private readonly mingleConfigurationState = signal<MingleConfigurationDTO | null>(null);
   private readonly mingleProjectedDefinitions = computed<readonly SubEventDefinitionDTO[]>(() => {
-    if (this.modeState() !== 'Mingle') {
+    const source = this.mingleConfigurationState();
+    if (this.modeState() !== 'Mingle' || source === null) {
       return [];
     }
     this.i18n.revision();
-    const configuration = ActivityEventDetailDTO.normalizeMingleConfiguration(this.mingleConfigurationState());
+    const configuration = ActivityEventDetailDTO.normalizeMingleConfiguration(source);
     return Array.from({ length: configuration.plannedRounds }, (_, index): SubEventDefinitionDTO => ({
       id: `mingle-round-${index + 1}`,
       name: this.mingleRoundLabel(index),
@@ -440,8 +441,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return `${count} item${count === 1 ? '' : 's'}`;
   }
 
-  protected normalizedMingleConfiguration(): MingleConfigurationDTO {
-    return ActivityEventDetailDTO.normalizeMingleConfiguration(this.mingleConfiguration);
+  protected normalizedMingleConfiguration(): MingleConfigurationDTO | null {
+    return this.mingleConfiguration;
   }
 
   private displayDefinitions(): SubEventDefinitionDTO[] {

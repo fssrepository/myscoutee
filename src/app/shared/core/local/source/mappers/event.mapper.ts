@@ -1145,7 +1145,7 @@ export class LocalActivityEventDetailsMapper {
       subEventDefinitions,
       subEvents,
       mode,
-      mingleConfiguration: mode === 'Mingle'
+      mingleConfiguration: mode === 'Mingle' && payload.mingleConfiguration != null
         ? ActivityEventDetailDTO.normalizeMingleConfiguration(payload.mingleConfiguration)
         : null,
       currentStage: tournamentCurrentStageFromSubEvents(subEvents),
@@ -1217,7 +1217,7 @@ export class LocalActivityEventDetailsMapper {
       subEventDefinitions: record.subEventDefinitions ?? [],
       subEvents: record.subEvents ?? [],
       mode: this.normalizeEventMode(record.mode),
-      mingleConfiguration: record.mode === 'Mingle'
+      mingleConfiguration: record.mode === 'Mingle' && record.mingleConfiguration != null
         ? ActivityEventDetailDTO.normalizeMingleConfiguration(record.mingleConfiguration)
         : null,
       currentStage: record.currentStage ? { ...record.currentStage } : null,

@@ -928,9 +928,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO.mode = ActivityEventDetailDTO.normalizeMode(mode);
     if (this.eventDetailDTO.mode === 'Mingle') {
       this.eventDetailDTO.subEventsEnabled = true;
-      this.eventDetailDTO.mingleConfiguration = ActivityEventDetailDTO.normalizeMingleConfiguration(
-        this.eventDetailDTO.mingleConfiguration
-      );
     }
     this.emitSubEventDefinitionsDraftPreview();
   }
@@ -939,10 +936,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorStore.readOnly()) {
       return;
     }
-    const current = ActivityEventDetailDTO.normalizeMingleConfiguration(this.eventDetailDTO.mingleConfiguration);
     const next = ActivityEventDetailDTO.normalizeMingleConfiguration(value);
-    this.eventDetailDTO.mingleConfiguration = this.isPublishedManageMode()
-      ? { ...current, plannedRounds: Math.max(this.minimumMinglePlannedRounds(), next.plannedRounds) }
+    const current = this.eventDetailDTO.mingleConfiguration;
+    this.eventDetailDTO.mingleConfiguration = this.isPublishedManageMode() && current !== null
+      ? {
+          ...ActivityEventDetailDTO.normalizeMingleConfiguration(current),
+          plannedRounds: Math.max(this.minimumMinglePlannedRounds(), next.plannedRounds)
+        }
       : next;
     this.emitSubEventDefinitionsDraftPreview();
   }

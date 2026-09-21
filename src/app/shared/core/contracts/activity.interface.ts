@@ -780,9 +780,11 @@ export class ActivityEventDetailDTO {
     this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
     this.applySubEvents(update.subEvents ?? this.subEvents);
     this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
-    this.mingleConfiguration = update.mingleConfiguration === null
-      ? null
-      : ActivityEventDetailDTO.normalizeMingleConfiguration(update.mingleConfiguration ?? this.mingleConfiguration);
+    if (update.mingleConfiguration !== undefined) {
+      this.mingleConfiguration = update.mingleConfiguration === null
+        ? null
+        : ActivityEventDetailDTO.normalizeMingleConfiguration(update.mingleConfiguration);
+    }
     this.currentStage = update.currentStage ? { ...update.currentStage } : update.currentStage === null ? null : this.currentStage;
     this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
     this.boost = ActivityEventDetailDTO.nonNegativeInteger(update.boost ?? this.boost);
