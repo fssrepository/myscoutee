@@ -174,6 +174,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   @Input() showEnableToggle = true;
   @Input() readOnly = false;
   @Input() allowMingleRoundIncrease = false;
+  @Input() minimumMinglePlannedRounds = 1;
   @Output() readonly enabledChange = new EventEmitter<boolean>();
   @Output() readonly modeChange = new EventEmitter<EventContracts.EventMode>();
   @Output() readonly mingleConfigurationChange = new EventEmitter<MingleConfigurationDTO>();
@@ -484,11 +485,11 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       ],
       description: item.description || 'no.description',
       descriptionLines: 2,
-      surfaceTone: isTournament || isMingle ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
+      surfaceTone: isMingle ? 'subevent-strong' : isTournament ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
       accentHue: palette.accentHue,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : status.icon,
-        tone: isTournament || isMingle ? 'stage' : status.leadingTone
+        tone: isMingle ? 'public' : isTournament ? 'stage' : status.leadingTone
       },
       mediaStart: isMingle ? null : {
         variant: 'avatar',
@@ -577,7 +578,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (this.mode === 'Mingle') {
       const total = Math.max(this.displayDefinitions().length, 1);
       const ratio = total <= 1 ? 0 : safeIndex / (total - 1);
-      const accentHue = Math.round(330 - (24 * ratio));
+      const accentHue = Math.round(340 - (14 * ratio));
       return { accentHue, menuPalette: 'rose' };
     }
     if (this.mode !== 'Tournament') {
@@ -653,9 +654,11 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitionTimelineTone(item: SubEventDefinitionDTO): TextCardTone {
-    return this.mode === 'Tournament' || this.mode === 'Mingle'
-      ? 'stage'
-      : (item.optional ? 'subevent-light' : 'subevent-strong');
+    return this.mode === 'Mingle'
+      ? 'subevent-strong'
+      : this.mode === 'Tournament'
+        ? 'stage'
+        : (item.optional ? 'subevent-light' : 'subevent-strong');
   }
 
   protected definitionTimelineAccentHue(item: SubEventDefinitionDTO): number | null {

@@ -99,8 +99,9 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
       sequenceTotal: 4
     });
 
-    expect(card.surfaceTone).toBe('stage');
-    expect(card.accentHue).toBe(330);
+    expect(card.surfaceTone).toBe('subevent-strong');
+    expect(card.accentHue).toBe(340);
+    expect(card.leadingIcon?.tone).toBe('public');
     expect(card.mediaTone).toBe('default');
     expect(card.mediaStart).toBeNull();
   });

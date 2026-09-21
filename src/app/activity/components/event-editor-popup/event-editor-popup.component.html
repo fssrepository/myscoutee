@@ -129,6 +129,7 @@
                 [readOnly]="eventStructureReadOnly()"
                 [disabled]="eventStructureReadOnly()"
                 [allowMingleRoundIncrease]="isPublishedManageMode()"
+                [minimumMinglePlannedRounds]="minimumMinglePlannedRounds()"
               ></app-event-subevent-definitions-panel>
             }
             <section class="event-scheduling-stack">
@@ -224,6 +225,7 @@
           [readOnly]="eventStructureReadOnly()"
           [disabled]="eventEditorStore.readOnly()"
           [allowMingleRoundIncrease]="isPublishedManageMode()"
+          [minimumMinglePlannedRounds]="minimumMinglePlannedRounds()"
         ></app-event-subevent-definitions-panel>
       </div>
     </app-popup>

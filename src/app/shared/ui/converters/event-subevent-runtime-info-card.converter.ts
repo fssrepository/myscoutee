@@ -83,7 +83,7 @@ export class EventSubeventRuntimeInfoCardConverter
       descriptionLines: 2,
       description: item.description || 'No description',
       detailRows: [],
-      surfaceTone: isMingle ? 'stage' : isTournament ? 'stage-runtime' : 'draft',
+      surfaceTone: isMingle ? 'subevent-strong' : isTournament ? 'stage-runtime' : 'draft',
       accentHue: isTournament
         ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal)
         : isMingle
@@ -91,7 +91,7 @@ export class EventSubeventRuntimeInfoCardConverter
           : null,
       leadingIcon: {
         icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : status.icon,
-        tone: isTournament || isMingle ? 'stage' : isMainEvent ? 'public' : status.leadingTone
+        tone: isMingle ? 'public' : isTournament ? 'stage' : isMainEvent ? 'public' : status.leadingTone
       },
       mediaStart: isMingle ? null : {
         variant: 'avatar',
@@ -238,7 +238,7 @@ export class EventSubeventRuntimeInfoCardConverter
 
   private static mingleRoundAccentHue(roundNumber: number, totalRounds: number): number {
     const ratio = totalRounds <= 1 ? 0 : (roundNumber - 1) / (totalRounds - 1);
-    return Math.round(330 - (24 * ratio));
+    return Math.round(340 - (14 * ratio));
   }
 
   private static isMainEventRuntime(item: SubEventDTO | null | undefined): boolean {

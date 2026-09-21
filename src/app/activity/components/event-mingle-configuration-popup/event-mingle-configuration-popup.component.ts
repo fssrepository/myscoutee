@@ -45,6 +45,7 @@ export class EventMingleConfigurationPopupComponent {
   readonly configuration = input<MingleConfigurationDTO | null>(null);
   readonly readOnly = input(false);
   readonly allowRoundIncrease = input(false);
+  readonly minimumPlannedRounds = input(1);
 
   readonly save = output<MingleConfigurationDTO>();
   readonly cancel = output<Event>();
@@ -125,12 +126,25 @@ export class EventMingleConfigurationPopupComponent {
     effect(() => {
       const open = this.open();
       const configuration = this.configuration();
+      const minimumPlannedRounds = this.normalizedMinimumPlannedRounds();
       if (open && !this.wasOpen) {
-        this.draft.set(ActivityEventDetailDTO.normalizeMingleConfiguration(configuration));
+        this.draft.set(this.normalizeDraft(configuration, minimumPlannedRounds));
         void this.i18n.revalidate();
+      } else if (open && this.draft().plannedRounds < minimumPlannedRounds) {
+        this.draft.update(current => ({
+          ...current,
+          plannedRounds: minimumPlannedRounds
+        }));
       }
       this.wasOpen = open;
     });
+  }
+
+  protected fieldMinimum(field: MingleNumberField): number {
+    const definition = this.numberFields.find(candidate => candidate.key === field);
+    return field === 'plannedRounds'
+      ? this.normalizedMinimumPlannedRounds()
+      : definition?.min ?? 0;
   }
 
   protected fieldDisabled(field: keyof MingleConfigurationDTO): boolean {
@@ -148,10 +162,10 @@ export class EventMingleConfigurationPopupComponent {
       return;
     }
     const inputElement = event.target as HTMLInputElement | null;
-    this.draft.update(current => ActivityEventDetailDTO.normalizeMingleConfiguration({
+    this.draft.update(current => this.normalizeDraft({
       ...current,
       [field]: Number(inputElement?.value)
-    }));
+    }, this.normalizedMinimumPlannedRounds()));
   }
 
   protected updateGenderBalance(event: Event): void {
@@ -189,6 +203,21 @@ export class EventMingleConfigurationPopupComponent {
     if (event.itemSelect.context?.menu !== 'save') {
       return;
     }
-    this.save.emit(ActivityEventDetailDTO.normalizeMingleConfiguration(this.draft()));
+    this.save.emit(this.normalizeDraft(this.draft(), this.normalizedMinimumPlannedRounds()));
+  }
+
+  private normalizedMinimumPlannedRounds(): number {
+    return Math.min(100, Math.max(1, Math.trunc(Number(this.minimumPlannedRounds()) || 1)));
+  }
+
+  private normalizeDraft(
+    configuration: MingleConfigurationDTO | null,
+    minimumPlannedRounds: number
+  ): MingleConfigurationDTO {
+    const normalized = ActivityEventDetailDTO.normalizeMingleConfiguration(configuration);
+    return {
+      ...normalized,
+      plannedRounds: Math.max(minimumPlannedRounds, normalized.plannedRounds)
+    };
   }
 }

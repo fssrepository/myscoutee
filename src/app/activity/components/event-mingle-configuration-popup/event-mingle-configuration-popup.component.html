@@ -15,7 +15,7 @@
             <span class="mingle-configuration__number">
               <input
                 type="number"
-                [min]="field.min"
+                [min]="fieldMinimum(field.key)"
                 [max]="field.max"
                 [step]="field.step"
                 [value]="draft()[field.key]"

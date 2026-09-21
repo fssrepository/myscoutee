@@ -113,6 +113,7 @@
       [configuration]="normalizedMingleConfiguration()"
       [readOnly]="readOnly || disabled"
       [allowRoundIncrease]="allowMingleRoundIncrease"
+      [minimumPlannedRounds]="minimumMinglePlannedRounds"
       (save)="saveMingleConfiguration($event)"
       (cancel)="closeMingleConfiguration($event)"
     ></app-event-mingle-configuration-popup>
