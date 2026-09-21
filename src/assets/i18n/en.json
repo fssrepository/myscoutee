@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.21.en.135",
+  "version": "2026.09.22.en.136",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3576,6 +3576,7 @@
     "mingle.action.next.description": "End the table-change break and create the next assignment now?",
     "mingle.action.next.confirm": "Start round",
     "mingle.action.next.restart.description": "Create and start the next table assignment?",
+    "mingle.status.break": "Break",
     "mingle.live.round": "Round {round} of {total}",
     "mingle.live.ROUND": "Round ends in {time}",
     "mingle.live.BREAK": "Next round starts in {time}",

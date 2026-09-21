@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.21.hu.135",
+  "version": "2026.09.22.hu.136",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3576,6 +3576,7 @@
     "mingle.action.next.description": "Befejezed a szünetet és elkészíted a következő kiosztást?",
     "mingle.action.next.confirm": "Kör indítása",
     "mingle.action.next.restart.description": "Elkészíted és elindítod a következő asztalkiosztást?",
+    "mingle.status.break": "Szünet",
     "mingle.live.round": "{round}. kör / {total}",
     "mingle.live.ROUND": "Kör vége: {time}",
     "mingle.live.BREAK": "Következő kör: {time}",

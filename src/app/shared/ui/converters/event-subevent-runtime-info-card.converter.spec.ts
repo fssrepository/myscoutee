@@ -106,3 +106,37 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
     expect(card.mediaStart).toBeNull();
   });
 });
+
+describe('Speed meeting round status', () => {
+  const event = { id: 'meeting', mode: 'Mingle' as const };
+  const item = { id: 'mingle-round-2', name: 'Round 2' } as SubEventDTO;
+  const state = { eventId: 'meeting', status: 'ROUND', roundNumber: 2 };
+
+  it.each([
+    ['ROUND', 'stage-active'], ['PAUSED', 'stage-suspended'],
+    ['BREAK', 'stage-finalized'], ['COMPLETED', 'stage-finalized']
+  ])('shows the current round %s with the shared contextual badge', (status, tone) => {
+    const card = EventSubeventRuntimeInfoCardConverter.convert(item, {
+      event, sequenceNumber: 2, mingleState: { ...state, status }
+    });
+    expect(card.mediaEnd).toMatchObject({ variant: 'badge', interactive: false, tone });
+  });
+
+  it('keeps completed, current and future rounds distinct', () => {
+    const tones = [1, 2, 3].map(sequenceNumber =>
+      EventSubeventRuntimeInfoCardConverter.convert(item, { event, sequenceNumber, mingleState: state }).mediaEnd?.tone);
+    expect(tones).toEqual(['stage-finalized', 'stage-active', 'stage-scheduled']);
+  });
+
+  it('ignores a different event live state', () => {
+    expect(EventSubeventRuntimeInfoCardConverter.convert(item, {
+      event, sequenceNumber: 2, mingleState: { ...state, eventId: 'other' }
+    }).mediaEnd?.tone).toBe('stage-scheduled');
+  });
+
+  it('shows the session break on a main-event card, independently of its list position', () => {
+    expect(EventSubeventRuntimeInfoCardConverter.convert({ ...item, runtimeKind: 'MAIN_EVENT' }, {
+      event, mingleState: { ...state, status: 'BREAK' }
+    }).mediaEnd).toMatchObject({ label: 'mingle.status.break', tone: 'stage-suspended' });
+  });
+});

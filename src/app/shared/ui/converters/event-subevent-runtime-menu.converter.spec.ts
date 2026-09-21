@@ -69,3 +69,13 @@ function subEvent(overrides: Partial<SubEventDTO>): SubEventDTO {
     ...overrides
   } as SubEventDTO;
 }
+
+it.each([
+  ['ROUND', 'mingle-pause'], ['PAUSED', 'mingle-resume'], ['BREAK', 'mingle-next']
+])('keeps main-event controls available in round two during %s', (status, action) => {
+  const items = EventSubeventRuntimeMenuConverter.convert(subEvent({ runtimeKind: 'MAIN_EVENT' }), {
+    event: { id: 'meeting', mode: 'Mingle' }, canManageTournament: true, stageNumber: 1,
+    mingleState: { eventId: 'meeting', status, roundNumber: 2, plannedRounds: 3, canManage: true, revision: 4 }
+  });
+  expect(items.map(item => item.id)).toContain(action);
+});

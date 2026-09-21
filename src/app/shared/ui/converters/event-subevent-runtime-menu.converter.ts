@@ -235,6 +235,9 @@ export class EventSubeventRuntimeMenuConverter {
       return [];
     }
     const currentRound = Math.max(1, this.toInteger(current.roundNumber));
+    if (item.runtimeKind === 'MAIN_EVENT') {
+      roundNumber = currentRound + (current.status === 'BREAK' ? 1 : 0);
+    }
     if (current.status === 'ROUND' && roundNumber === currentRound) {
       return [
         this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {

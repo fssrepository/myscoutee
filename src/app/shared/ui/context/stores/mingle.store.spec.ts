@@ -77,6 +77,24 @@ describe('MingleStore live table flow', () => {
     expect(store.countdown()).toBe('1:23');
   });
 
+  it('uses the existing poll for the viewed event and fetches only once when that scope changes', async () => {
+    query.mockResolvedValue(state());
+    store.activate('viewer');
+    await vi.advanceTimersByTimeAsync(0);
+    query.mockClear();
+    store.observeRuntimeEvent('event-2');
+    store.observeRuntimeEvent('event-2');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenLastCalledWith('viewer', 'event-2');
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenLastCalledWith('viewer', 'event-2');
+    store.observeRuntimeEvent(null);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(query).toHaveBeenLastCalledWith('viewer', undefined);
+  });
+
   it('opens waiting status without pretending the viewer belongs to a table', async () => {
     query.mockResolvedValue(state(true));
     store.activate('viewer');
