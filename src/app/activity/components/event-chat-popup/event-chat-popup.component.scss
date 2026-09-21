@@ -1942,12 +1942,6 @@
 }
 
 
-// Keep the group menu above the composer within the chat popup's stacking
-// context; notifications retain their independent, higher overlay layer.
-:host ::ng-deep .event-chat-popup-shell .ui-popup__header:has(.app-menu-host--open) {
-  z-index: 71;
-}
-
 @media (max-width: 760px) {
   .chat-compose-box {
     min-height: 40px;

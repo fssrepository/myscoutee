@@ -542,18 +542,13 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.syncLandingPopupScrollLock();
   }
 
-  protected aboutProductText(key: string): string {
-    this.i18n.revision();
-    return this.i18n.translateParams(key, { productName: this.deploymentBranding().productName });
-  }
-
   protected aboutPopupModel(): PopupModel {
     return {
       headerBadge: 'landing.about.header.badge',
-      title: this.aboutProductText('landing.about.title'),
+      title: 'landing.about.title',
       subtitle: 'landing.about.subtitle',
-      ariaLabel: this.aboutProductText('landing.about.aria'),
-      closeAriaLabel: this.aboutProductText('landing.about.close.aria'),
+      ariaLabel: 'landing.about.aria',
+      closeAriaLabel: 'landing.about.close.aria',
       size: 'default',
       height: 'auto',
       headerLayout: 'document',
