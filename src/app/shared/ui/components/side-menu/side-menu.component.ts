@@ -292,6 +292,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly notificationRouteUrl = signal(this.router.url);
   private openingNotificationChat = '';
   private openingNotificationMingleTable = '';
+  private openingPartnerInvite = '';
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly notificationDismissDraggingRef = signal(false);
@@ -1028,6 +1029,7 @@ export class SideMenuComponent implements OnDestroy {
       if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
         void this.openNotificationChatTarget(url, userId);
         void this.openNotificationMingleTarget(url, userId);
+        void this.openPartnerInviteTarget(url, userId);
       }
     });
 
@@ -2365,6 +2367,30 @@ export class SideMenuComponent implements OnDestroy {
       );
     } finally {
       if (this.openingNotificationChat === key) this.openingNotificationChat = '';
+    }
+  }
+
+  private async openPartnerInviteTarget(url: string, userId: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game') return;
+    const tree = this.router.parseUrl(url);
+    const token = `${tree.queryParams['partnerInvite'] ?? ''}`.trim();
+    if (!token) return;
+    const key = `${userId}:${token}`;
+    if (this.openingPartnerInvite === key) return;
+    this.openingPartnerInvite = key;
+    try {
+      await this.usersService.claimPartnerInvite(userId, token);
+      if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      delete tree.queryParams['partnerInvite'];
+      await this.router.navigateByUrl(tree, { replaceUrl: true });
+      await this.usersService.loadUserById(userId);
+      if (this.userProfileStore.activeUserId() === userId) this.activitiesStore.openActivities('events', 'all');
+    } catch {
+      if (this.userProfileStore.activeUserId() === userId) this.dialogStore.open({
+        title: 'event.partner.invite', message: 'event.partner.invite.failed', confirmLabel: 'OK'
+      });
+    } finally {
+      if (this.openingPartnerInvite === key) this.openingPartnerInvite = '';
     }
   }
 

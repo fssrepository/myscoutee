@@ -50,7 +50,10 @@
           <p class="entry-hero-thesis">
             {{ heroGraphText().prefix }} <span class="entry-hero-thesis-result">{{ heroGraphText().result }}</span>
           </p>
-          <p class="entry-hero-formats">{{ 'landing.hero.event.formats' | i18n }}</p>
+          <p class="entry-hero-formats">
+            <span>{{ 'landing.hero.event.formats' | i18n }}</span>
+            <span class="entry-hero-free-badge">{{ 'landing.hero.free.to.join' | i18n }}</span>
+          </p>
           <app-menu
             class="entry-hero-cta-menu"
             kind="inline"

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.21.hu.126",
+  "version": "2026.09.21.hu.127",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -3593,6 +3593,7 @@
     "event.mode.standard": "Standard",
     "event.mode.tournament": "Verseny",
     "event.mode.mingle": "Mingle",
-    "landing.hero.event.formats": "Standard · Verseny · Mingle"
+    "landing.hero.event.formats": "Standard · Verseny · Mingle",
+    "landing.hero.free.to.join": "Ingyenes csatlakozás"
   }
 }

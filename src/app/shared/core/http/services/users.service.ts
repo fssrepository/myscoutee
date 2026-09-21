@@ -306,6 +306,12 @@ export class HttpUsersService implements UserService {
     }
   }
 
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string }> {
+    const result = await this.http.post<{ eventId: string }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
+    if (!result?.eventId) throw new Error('Invitation could not be claimed.');
+    return result;
+  }
+
   async loadPageFilterPreferences(userId: string, pageKey: 'event-explore'): Promise<EventExploreFilterPreferences> {
     const result = await this.http.get<EventExploreFilterPreferences>(`${this.apiBaseUrl}/auth/me/page-filter-preferences`, {
       params: { userId, pageKey }

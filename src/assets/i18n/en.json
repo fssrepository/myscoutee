@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.21.en.126",
+  "version": "2026.09.21.en.127",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3593,6 +3593,7 @@
     "event.mode.standard": "Standard",
     "event.mode.tournament": "Tournament",
     "event.mode.mingle": "Mingle",
-    "landing.hero.event.formats": "Standard · Tournament · Mingle"
+    "landing.hero.event.formats": "Standard · Tournament · Mingle",
+    "landing.hero.free.to.join": "Free to join"
   }
 }

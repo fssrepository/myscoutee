@@ -1563,8 +1563,21 @@
 }
 
 .entry-hero-formats {
-  margin: 0;
-  font-size: clamp(.75rem, 2.8vw, 1rem);
+  display: flex;
+  align-items: center;
+  gap: clamp(.35rem, 1.2vw, .75rem);
+  margin: .4rem 0 0;
+  font-size: clamp(.7rem, 2.4vw, 1rem);
   font-weight: 600;
   white-space: nowrap;
+}
+.entry-hero-free-badge {
+  padding: .3em .65em;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ddd0ff, #bfa2ff);
+  color: #34165f;
+  font-size: clamp(.6rem, 2vw, .75rem);
+  font-weight: 800;
+  letter-spacing: .025em;
+  text-transform: uppercase;
 }
