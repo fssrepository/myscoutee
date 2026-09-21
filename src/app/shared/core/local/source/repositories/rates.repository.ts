@@ -298,10 +298,7 @@ export class LocalRatesRepository {
       if (!direction) {
         return [];
       }
-      if (direction === 'met' && (
-        !this.didUsersMeetFromIndexedDb(normalizedUserId, relatedUserId)
-        || !this.isFinishedMetActivity(happenedAt)
-      )) {
+      if (direction === 'met' && !this.isFinishedMetActivity(happenedAt)) {
         return [];
       }
       return [{
@@ -327,11 +324,9 @@ export class LocalRatesRepository {
 
     const isMetBucket = record.met === true
       && ((scoreGiven <= 0 && scoreReceived <= 0) || (scoreGiven > 0 && scoreReceived > 0));
-    const participantDirection: ActivityRateDTO['direction'] = isMetBucket ? 'met' : 'received';
-    if (participantDirection === 'met' && (
-      !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
-      || !this.isFinishedMetActivity(happenedAt)
-    )) {
+    const participantDirection: ActivityRateDTO['direction'] = isMetBucket ? 'met'
+      : scoreReceived > 0 ? (scoreGiven > 0 ? 'mutual' : 'given') : 'received';
+    if (participantDirection === 'met' && !this.isFinishedMetActivity(happenedAt)) {
       return [];
     }
 
@@ -340,15 +335,15 @@ export class LocalRatesRepository {
       return [];
     }
     return [{
-      id: `${record.displayId?.trim() || record.id}:received:${normalizedUserId}`,
+      id: record.displayId?.trim() || record.id,
       userId: ownerUserId,
       mode: 'individual',
       direction: participantDirection,
       ...(socialContext ? { socialContext } : {}),
       bridgeUserId: record.bridgeUserId,
       bridgeCount: record.bridgeCount,
-      scoreGiven: participantDirection === 'met' && scoreReceived > 0 ? scoreReceived : 0,
-      scoreReceived: participantDirection === 'met' && scoreGiven > 0 ? scoreGiven : incomingScore,
+      scoreGiven: scoreReceived,
+      scoreReceived: scoreGiven,
       eventName: record.eventName?.trim() || (participantDirection === 'met' ? 'Met' : 'Rate'),
       happenedAt,
       distanceMetersExact: this.dynamicDistanceMetersExact(record),
@@ -686,6 +681,13 @@ export class LocalRatesRepository {
         const previous = byId[record.id];
         if (previous) {
           record.createdAtIso = previous.createdAtIso;
+          if (record.mode === 'single' && previous.met === true) {
+            record.met = true;
+            record.scoreReceived = previous.ownerUserId === record.ownerUserId
+              ? this.dynamicScoreReceived(previous) : this.dynamicScoreGiven(previous);
+            record.displayDirection = this.deriveOwnerSingleDirection(
+              record, this.dynamicScoreGiven(record), this.dynamicScoreReceived(record)) ?? record.displayDirection;
+          }
         }
         byId[record.id] = record;
         if (!existingIds.has(record.id)) {

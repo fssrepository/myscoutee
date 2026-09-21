@@ -19,6 +19,10 @@ describe('pendingActivitiesRateDirectionAfterRating', () => {
     expect(pendingActivitiesRateDirectionAfterRating(rate('received', true))).toBe('met');
   });
 
+  it('keeps a mutually rated Met in Met when editing its score', () => {
+    expect(pendingActivitiesRateDirectionAfterRating({ ...rate('met', true), scoreGiven: 7, scoreReceived: 8 })).toBe('met');
+  });
+
   it('keeps the normal received to mutual transition without met evidence', () => {
     expect(pendingActivitiesRateDirectionAfterRating(rate('received'))).toBe('mutual');
   });

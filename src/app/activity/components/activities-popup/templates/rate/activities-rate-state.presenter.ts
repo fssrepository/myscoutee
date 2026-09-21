@@ -28,7 +28,7 @@ export function pendingActivitiesRateDirectionAfterRating(
   if (item.mode === 'individual') {
     if (item.met === true) {
       if (direction === 'met') {
-        return 'given';
+        return item.scoreReceived > 0 ? 'met' : 'given';
       }
       if (direction === 'received') {
         return 'met';
