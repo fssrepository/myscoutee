@@ -865,6 +865,9 @@ export class EventSubeventsListPopupComponent {
 
   private mingleActionFailureMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
+      if (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504) {
+        return this.i18n.translate('mingle.error.service.unavailable');
+      }
       const payload = error.error;
       if (typeof payload === 'object' && payload !== null) {
         const response = payload as { code?: unknown; parameters?: unknown };

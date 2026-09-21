@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.21.en.122",
+  "version": "2026.09.21.en.123",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -2366,6 +2366,7 @@
     "mingle.tables": "Tables",
     "mingle.table.number": "Table {{number}}",
     "mingle.error.action.failed": "The Mingle action could not be completed because of a technical error.",
+    "mingle.error.service.unavailable": "The server was temporarily unavailable. Please try starting Mingle again.",
     "mingle.error.action.unsupported": "This Mingle action is not supported.",
     "mingle.error.round.limit.reached": "Increase the planned number of Mingle rounds before starting another round.",
     "mingle.error.state.cannot.advance": "The Mingle session cannot continue from its current state.",

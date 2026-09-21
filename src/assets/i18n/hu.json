@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.21.hu.122",
+  "version": "2026.09.21.hu.123",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -2366,6 +2366,7 @@
     "mingle.tables": "Asztalok",
     "mingle.table.number": "{{number}}. asztal",
     "mingle.error.action.failed": "A Mingle-művelet technikai hiba miatt nem hajtható végre.",
+    "mingle.error.service.unavailable": "A szerver átmenetileg nem volt elérhető. Próbáld meg újra elindítani a Mingle-t.",
     "mingle.error.action.unsupported": "Ez a Mingle-művelet nem támogatott.",
     "mingle.error.round.limit.reached": "Új kör indítása előtt növeld a tervezett Mingle-körök számát.",
     "mingle.error.state.cannot.advance": "A Mingle-folyamat a jelenlegi állapotából nem folytatható.",
