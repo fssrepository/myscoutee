@@ -23,6 +23,22 @@
         <ng-template #groupBodyTemplate let-item>
           @if (selectedGroupFromItem(item); as group) {
             <section class="event-tournament-group-content">
+              @if (isMingleMode()) {
+                <div class="event-mingle-member-grid" role="list" aria-label="Table members">
+                  @for (member of mingleMembers(group); track member.id) {
+                    <article class="event-mingle-member" role="listitem">
+                      <div class="event-mingle-member__avatar" aria-hidden="true">
+                        @if (member.avatarUrl) {
+                          <img [src]="member.avatarUrl" alt="" />
+                        } @else {
+                          <span>{{ mingleMemberInitials(member) }}</span>
+                        }
+                      </div>
+                      <strong>{{ member.name }}</strong>
+                    </article>
+                  }
+                </div>
+              } @else {
               <nav class="event-tournament-group-tabs" aria-label="Group view">
                 <button
                   type="button"
@@ -175,6 +191,7 @@
                     }
                   }
                 </section>
+              }
               }
             </section>
           }

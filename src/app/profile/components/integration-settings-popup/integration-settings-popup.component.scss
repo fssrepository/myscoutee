@@ -8,6 +8,28 @@
   --app-popup-small-width: 560px;
 }
 
+.integration-help-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  color: #263f5b;
+}
+
+.integration-help-body mat-icon {
+  color: #2f71b7;
+}
+
+.integration-help-body p {
+  margin: 0 0 0.75rem;
+  line-height: 1.45;
+}
+
+.integration-help-body a {
+  color: #1769aa;
+  font-weight: 700;
+}
+
 .integration-settings-body {
   width: 100%;
   display: grid;

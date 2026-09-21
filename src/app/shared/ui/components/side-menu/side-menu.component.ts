@@ -122,6 +122,7 @@ import type { PopupModel } from '../core/popup';
 import { IndicatorComponent } from '../core/indicator/indicator.component';
 import { I18nPipe } from '../../pipes/i18n.pipe';
 import { installSessionActiveUserSync } from './session-active-user-sync';
+import { MingleStore } from '../../context/stores/mingle.store';
 import { environment } from '../../../../../environments/environment';
 import {
   NotificationCenterPopupComponent
@@ -249,14 +250,22 @@ export class SideMenuComponent implements OnDestroy {
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly i18n = inject(I18nService);
   protected readonly pwaService = inject(PwaService);
+  protected readonly mingleStore = inject(MingleStore);
   private readonly appSetupStore = inject(AppSetupStore);
-  protected readonly installLabel = computed(() => {
-    this.i18n.revision();
-    return this.i18n.translate(this.pwaService.installAvailable() ? 'install.app' : 'app.setup.permissions');
-  });
   protected openAppSetup(): void {
     this.appSetupStore.open();
   }
+  protected openCurrentMingleTable(event?: Event): void {
+    event?.stopPropagation();
+    void this.mingleStore.openCurrentTable();
+  }
+  protected readonly mingleTableLabel = computed(() => {
+    this.i18n.revision();
+    const tableNumber = this.mingleStore.state()?.tableNumber;
+    return tableNumber == null
+      ? this.i18n.translate('mingle.tables')
+      : this.i18n.translateParams('mingle.table.number', { number: tableNumber });
+  });
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
@@ -282,6 +291,7 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly notificationRouteUrl = signal(this.router.url);
   private openingNotificationChat = '';
+  private openingNotificationMingleTable = '';
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly notificationDismissDraggingRef = signal(false);
@@ -996,6 +1006,7 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    effect(() => this.mingleStore.activate(this.userProfileStore.activeUserId()));
     effect(() => {
       if (this.sessionService.session() && this.userProfileStore.activeUserId()) {
         this.pwaService.offerInstallAfterLogin();
@@ -1016,6 +1027,7 @@ export class SideMenuComponent implements OnDestroy {
       const url = this.notificationRouteUrl();
       if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
         void this.openNotificationChatTarget(url, userId);
+        void this.openNotificationMingleTarget(url, userId);
       }
     });
 
@@ -2353,6 +2365,24 @@ export class SideMenuComponent implements OnDestroy {
       );
     } finally {
       if (this.openingNotificationChat === key) this.openingNotificationChat = '';
+    }
+  }
+
+  private async openNotificationMingleTarget(url: string, userId: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game') return;
+    const tree = this.router.parseUrl(url);
+    const eventId = `${tree.queryParams['mingleEventId'] ?? ''}`.trim();
+    if (!eventId) return;
+    const key = `${userId}:${eventId}`;
+    if (this.openingNotificationMingleTable === key) return;
+    this.openingNotificationMingleTable = key;
+    try {
+      const opened = await this.mingleStore.openCurrentTable(eventId);
+      if (!opened || this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      delete tree.queryParams['mingleEventId'];
+      await this.router.navigateByUrl(tree, { replaceUrl: true });
+    } finally {
+      if (this.openingNotificationMingleTable === key) this.openingNotificationMingleTable = '';
     }
   }
 

@@ -1,7 +1,7 @@
 import { APP_STATIC_DATA } from '../../app-static-data';
 import * as AppConstants from '../../core/common/constants';
 import type { SubEventResourceFilter } from '../../core/common/constants';
-import type { EventMode, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
+import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
 
 export type EventSubeventRuntimeStageAction =
@@ -12,8 +12,16 @@ export type EventSubeventRuntimeStageAction =
   | 'suspend-tournament'
   | 'resume-tournament';
 
+export type EventSubeventRuntimeMingleAction =
+  | 'mingle-start'
+  | 'mingle-next'
+  | 'mingle-pause'
+  | 'mingle-resume'
+  | 'mingle-complete';
+
 export type EventSubeventRuntimeMenuItemId =
   | EventSubeventRuntimeStageAction
+  | EventSubeventRuntimeMingleAction
   | 'groups'
   | 'members'
   | 'transport'
@@ -34,6 +42,19 @@ export type EventSubeventRuntimeMenuContext =
       subEventIndex: number;
       nextStatus: TournamentStageStatus;
       reason: string;
+      title: string;
+      description: string;
+      confirmLabel: string;
+      busyLabel: string;
+      destructive: boolean;
+      confirmPalette: AppMenuPalette;
+    }
+  | {
+      scope: 'mingle-runtime';
+      action: EventSubeventRuntimeMingleAction;
+      backendAction: 'start' | 'next' | 'pause' | 'resume' | 'complete';
+      item: SubEventDTO;
+      parentEventId: string;
       title: string;
       description: string;
       confirmLabel: string;
@@ -69,6 +90,7 @@ export interface EventSubeventRuntimeMenuConverterOptions {
   stageNumber?: number | null;
   siblingItems?: readonly SubEventDTO[];
   nowMs?: number;
+  mingleState?: Pick<MingleStateDTO, 'eventId' | 'status' | 'roundNumber' | 'plannedRounds' | 'canManage'> | null;
 }
 
 export class EventSubeventRuntimeMenuConverter {
@@ -77,8 +99,11 @@ export class EventSubeventRuntimeMenuConverter {
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const mode = this.resolveMode(item, options);
-    return mode === 'Tournament'
-      ? this.tournamentItems(item, options)
+    if (mode === 'Tournament') {
+      return this.tournamentItems(item, options);
+    }
+    return mode === 'Mingle'
+      ? this.mingleItems(item, options)
       : this.casualItems(item, options);
   }
 
@@ -87,7 +112,7 @@ export class EventSubeventRuntimeMenuConverter {
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): number {
     const mode = this.resolveMode(item, options);
-    if (mode === 'Tournament') {
+    if (mode === 'Tournament' || mode === 'Mingle') {
       return this.groupPending(item);
     }
     return [
@@ -151,6 +176,144 @@ export class EventSubeventRuntimeMenuConverter {
       }
     });
     return items;
+  }
+
+  private static mingleItems(
+    item: SubEventDTO,
+    options: EventSubeventRuntimeMenuConverterOptions
+  ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
+    const sourceId = `${options.sourceId ?? options.event?.id ?? ''}`.trim();
+    const parentEventId = `${options.parentEventId ?? options.event?.id ?? sourceId}`.trim();
+    const subEventIndex = Math.max(0, this.toInteger(options.subEventIndex));
+    const pending = this.groupPending(item);
+    const items: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
+    const stageNumber = Math.max(1, this.toInteger(options.stageNumber) || subEventIndex + 1);
+    if (options.canManageTournament) {
+      items.push(...this.mingleRuntimeItems(item, parentEventId, stageNumber, options.mingleState));
+    }
+    if (items.length > 0) {
+      items.push({ id: 'runtime-divider', kind: 'divider', disabled: true });
+    }
+    items.push({
+      id: 'groups',
+      label: 'Tables',
+      icon: 'table_restaurant',
+      palette: 'teal',
+      surface: 'tinted',
+      layout: 'pill',
+      counter: pending > 0 ? { value: pending, max: 99 } : null,
+      counterTone: 'alert',
+      context: {
+        scope: 'stage-dashboard',
+        action: 'groups',
+        item,
+        parentEventId,
+        slotId: `${options.slotId ?? ''}`.trim() || null,
+        sourceId,
+        subEventIndex
+      }
+    });
+    return items;
+  }
+
+  private static mingleRuntimeItems(
+    item: SubEventDTO,
+    parentEventId: string,
+    roundNumber: number,
+    state: EventSubeventRuntimeMenuConverterOptions['mingleState']
+  ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
+    const current = state?.eventId === parentEventId ? state : null;
+    if (!current && roundNumber === 1) {
+      return [this.mingleActionItem(item, parentEventId, {
+        action: 'mingle-start', backendAction: 'start', label: 'Start Mingle', icon: 'play_circle',
+        palette: 'success', title: 'Start Mingle', description: 'Create and start the first table assignment?',
+        confirmLabel: 'Start', busyLabel: 'Starting...', destructive: false
+      })];
+    }
+    if (!current || current.canManage !== true) {
+      return [];
+    }
+    const currentRound = Math.max(1, this.toInteger(current.roundNumber));
+    if (current.status === 'ROUND' && roundNumber === currentRound) {
+      return [
+        this.mingleActionItem(item, parentEventId, {
+          action: 'mingle-pause', backendAction: 'pause', label: 'Pause timer', icon: 'pause_circle',
+          palette: 'amber', title: 'Pause Mingle', description: 'Pause the current round timer?',
+          confirmLabel: 'Pause', busyLabel: 'Pausing...', destructive: false
+        }),
+        this.mingleActionItem(item, parentEventId, {
+          action: 'mingle-next', backendAction: 'next', label: 'End round', icon: 'skip_next',
+          palette: 'blue', title: 'End round', description: 'End this round and begin the table-change break?',
+          confirmLabel: 'End round', busyLabel: 'Ending...', destructive: false
+        }),
+        this.mingleActionItem(item, parentEventId, {
+          action: 'mingle-complete', backendAction: 'complete', label: 'Complete Mingle', icon: 'stop_circle',
+          palette: 'danger', title: 'Complete Mingle', description: 'Stop the live Mingle sequence?',
+          confirmLabel: 'Complete', busyLabel: 'Completing...', destructive: true
+        })
+      ];
+    }
+    if (current.status === 'PAUSED' && roundNumber === currentRound) {
+      return [this.mingleActionItem(item, parentEventId, {
+        action: 'mingle-resume', backendAction: 'resume', label: 'Resume timer', icon: 'play_circle',
+        palette: 'success', title: 'Resume Mingle', description: 'Resume the paused Mingle timer?',
+        confirmLabel: 'Resume', busyLabel: 'Resuming...', destructive: false
+      })];
+    }
+    if (current.status === 'BREAK' && roundNumber === currentRound + 1) {
+      return [this.mingleActionItem(item, parentEventId, {
+        action: 'mingle-next', backendAction: 'next', label: 'Start round now', icon: 'skip_next',
+        palette: 'success', title: 'Start next round', description: 'End the table-change break and create the next assignment now?',
+        confirmLabel: 'Start round', busyLabel: 'Starting...', destructive: false
+      })];
+    }
+    if (current.status === 'COMPLETED' && roundNumber === currentRound + 1) {
+      return [this.mingleActionItem(item, parentEventId, {
+        action: 'mingle-start', backendAction: 'start', label: 'Start next round', icon: 'play_circle',
+        palette: 'success', title: 'Start next round', description: 'Create and start the next table assignment?',
+        confirmLabel: 'Start round', busyLabel: 'Starting...', destructive: false
+      })];
+    }
+    return [];
+  }
+
+  private static mingleActionItem(
+    item: SubEventDTO,
+    parentEventId: string,
+    options: {
+      action: EventSubeventRuntimeMingleAction;
+      backendAction: 'start' | 'next' | 'pause' | 'resume' | 'complete';
+      label: string;
+      icon: string;
+      palette: AppMenuPalette;
+      title: string;
+      description: string;
+      confirmLabel: string;
+      busyLabel: string;
+      destructive: boolean;
+    }
+  ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext> {
+    return {
+      id: options.action,
+      label: options.label,
+      icon: options.icon,
+      palette: options.palette,
+      surface: 'tinted',
+      layout: 'pill',
+      context: {
+        scope: 'mingle-runtime',
+        action: options.action,
+        backendAction: options.backendAction,
+        item,
+        parentEventId,
+        title: options.title,
+        description: options.description,
+        confirmLabel: options.confirmLabel,
+        busyLabel: options.busyLabel,
+        destructive: options.destructive,
+        confirmPalette: options.palette
+      }
+    };
   }
 
   private static stageStatusItems(
@@ -289,7 +452,7 @@ export class EventSubeventRuntimeMenuConverter {
     options: EventSubeventRuntimeMenuConverterOptions
   ): EventMode {
     const requestedMode = options.mode ?? options.event?.mode ?? null;
-    if (requestedMode === 'Casual' || requestedMode === 'Tournament') {
+    if (requestedMode === 'Casual' || requestedMode === 'Tournament' || requestedMode === 'Mingle') {
       return requestedMode;
     }
     return this.isTournamentStage(item) ? 'Tournament' : 'Casual';

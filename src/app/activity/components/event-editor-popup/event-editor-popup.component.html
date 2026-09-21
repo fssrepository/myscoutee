@@ -67,7 +67,7 @@
                 [autoSize]="true"
                 slotImageVariant="medium"
                 [ariaLabel]="'event.editor.image.aria' | i18n"
-                [disabled]="eventStructureReadOnly()"
+                [disabled]="eventEditorStore.readOnly()"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
                 [uploadEntityId]="eventImageUploadEntityId()"
                 [ngModel]="eventImageUrls()"
@@ -121,11 +121,14 @@
                 (ngModelChange)="onSubEventDefinitionsChange($event)"
                 [mode]="eventDetailDTO.mode"
                 (modeChange)="onEventModeChange($event)"
+                [mingleConfiguration]="eventDetailDTO.mingleConfiguration"
+                (mingleConfigurationChange)="onMingleConfigurationChange($event)"
                 [enabled]="eventDetailDTO.subEventsEnabled"
                 (enabledChange)="onSubEventsEnabledChange($event)"
                 [bounds]="eventDetailDTO.dateRange"
                 [readOnly]="eventStructureReadOnly()"
                 [disabled]="eventStructureReadOnly()"
+                [allowMingleRoundIncrease]="isPublishedManageMode()"
               ></app-event-subevent-definitions-panel>
             }
             <section class="event-scheduling-stack">
@@ -213,12 +216,14 @@
           [ngModel]="overrideEditor.definitions"
           (ngModelChange)="onSlotOverrideDefinitionsChange($event)"
           [(mode)]="eventDetailDTO.mode"
+          [mingleConfiguration]="eventDetailDTO.mingleConfiguration"
           modeControl="badge"
           [showEnableToggle]="false"
           [enabled]="true"
           [bounds]="eventDetailDTO.dateRange"
           [readOnly]="eventStructureReadOnly()"
-          [disabled]="eventStructureReadOnly()"
+          [disabled]="eventEditorStore.readOnly()"
+          [allowMingleRoundIncrease]="isPublishedManageMode()"
         ></app-event-subevent-definitions-panel>
       </div>
     </app-popup>

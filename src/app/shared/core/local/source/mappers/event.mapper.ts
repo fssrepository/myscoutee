@@ -1045,9 +1045,11 @@ export class LocalActivityEventDetailsMapper {
     const frequency = hasSlots ? requestedFrequency : 'One-time';
     const topics = this.normalizeTopics(payload.topics);
     const slotTemplates = hasSlots ? normalizedSlotTemplates : [];
-    const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions);
-    const subEventsEnabled = payload.subEventsEnabled !== false && subEventDefinitions.length > 0;
     const subEvents = this.normalizeSubEvents(payload.subEvents);
+    const mode = this.normalizeEventMode(payload.mode ?? this.inferredEventMode(subEvents));
+    const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions);
+    const subEventsEnabled = payload.subEventsEnabled !== false
+      && (mode === 'Mingle' || subEventDefinitions.length > 0);
     const policiesEnabled = payload.policiesEnabled === true;
     const policies = this.normalizePolicies(payload.policies);
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
@@ -1142,10 +1144,10 @@ export class LocalActivityEventDetailsMapper {
       subEventsEnabled,
       subEventDefinitions,
       subEvents,
-      mode: this.normalizeEventMode(
-        payload.mode
-          ?? this.inferredEventMode(subEvents)
-      ),
+      mode,
+      mingleConfiguration: mode === 'Mingle'
+        ? ActivityEventDetailDTO.normalizeMingleConfiguration(payload.mingleConfiguration)
+        : null,
       currentStage: tournamentCurrentStageFromSubEvents(subEvents),
       rating,
       boost,
@@ -1215,6 +1217,9 @@ export class LocalActivityEventDetailsMapper {
       subEventDefinitions: record.subEventDefinitions ?? [],
       subEvents: record.subEvents ?? [],
       mode: this.normalizeEventMode(record.mode),
+      mingleConfiguration: record.mode === 'Mingle'
+        ? ActivityEventDetailDTO.normalizeMingleConfiguration(record.mingleConfiguration)
+        : null,
       currentStage: record.currentStage ? { ...record.currentStage } : null,
       rating: record.rating,
       boost: record.boost,
@@ -1243,7 +1248,7 @@ export class LocalActivityEventDetailsMapper {
   }
 
   private static normalizeEventMode(value: unknown): EventContracts.EventMode {
-    return `${value ?? ''}`.trim().toLowerCase() === 'tournament' ? 'Tournament' : 'Casual';
+    return ActivityEventDetailDTO.normalizeMode(value);
   }
 
   private static resolveEventAffinity(options: {

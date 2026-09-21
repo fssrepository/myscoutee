@@ -91,4 +91,19 @@
       }
     </div>
   </app-popup>
+  @if (helpOpen()) {
+    <app-popup [model]="helpPopupModel()" [zIndex]="2510">
+      <section class="integration-help-body">
+        <mat-icon>help_outline</mat-icon>
+        <div>
+          <p>{{ 'integration.help.description' | i18n }}</p>
+          <a
+            [href]="integrationDocumentationUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ 'integration.help.open.documentation' | i18n }}</a>
+        </div>
+      </section>
+    </app-popup>
+  }
 }

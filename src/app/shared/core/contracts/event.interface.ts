@@ -8,7 +8,7 @@ export interface EventPolicyDTO {
   required: boolean;
 }
 
-export type EventMode = 'Casual' | 'Tournament';
+export type EventMode = 'Casual' | 'Tournament' | 'Mingle';
 export type TournamentLeaderboardType = 'Score' | 'Fifa';
 export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
 export type EventEditorMode = 'edit' | 'create';
@@ -105,6 +105,35 @@ export interface EventCapacityRange {
 export interface SubEventLeaderboardMember {
   id: string;
   name: string;
+  initials?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface MingleParticipantDTO {
+  userId: string;
+  name: string;
+  initials: string;
+  avatarUrl: string | null;
+}
+
+export interface MingleTableDTO {
+  tableNumber: number;
+  participants: MingleParticipantDTO[];
+}
+
+export interface MingleStateDTO {
+  eventId: string;
+  eventTitle: string;
+  status: 'ROUND' | 'BREAK' | 'PAUSED' | 'COMPLETED' | string;
+  roundNumber: number;
+  plannedRounds: number;
+  phaseStartedAtIso: string | null;
+  phaseEndsAtIso: string | null;
+  remainingSeconds: number;
+  tableNumber: number | null;
+  tables: MingleTableDTO[];
+  canManage: boolean;
+  revision: number;
 }
 
 export interface SubEventLeaderboardScoreEntry {

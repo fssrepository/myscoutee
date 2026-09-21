@@ -15,6 +15,7 @@ import type {
   EventTournamentStageGroupsQueryDTO,
   EventTournamentStageSnapshotDTO,
   EventTournamentStageDTO,
+  MingleStateDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
@@ -349,7 +350,7 @@ export class HttpEventsService implements IEventsService {
         )
         .toPromise();
       const mode = response?.mode;
-      if (mode !== 'Casual' && mode !== 'Tournament') {
+      if (mode !== 'Casual' && mode !== 'Tournament' && mode !== 'Mingle') {
         return null;
       }
       return {
@@ -844,6 +845,73 @@ export class HttpEventsService implements IEventsService {
     return { groups, leaderboard };
   }
 
+  async queryMingleState(
+    userId: string,
+    eventId?: string | null,
+    roundNumber?: number | null
+  ): Promise<MingleStateDTO | null> {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    let params = new HttpParams().set('userId', normalizedUserId);
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (normalizedEventId) {
+      params = params.set('eventId', normalizedEventId);
+    }
+    const normalizedRoundNumber = Math.max(0, Math.trunc(Number(roundNumber) || 0));
+    if (normalizedRoundNumber > 0) {
+      params = params.set('roundNumber', normalizedRoundNumber);
+    }
+    const response = await this.http
+      .get<MingleStateDTO | null>(`${this.apiBaseUrl}/activities/events/mingle/state`, { params })
+      .toPromise();
+    if (!response?.eventId) {
+      return null;
+    }
+    return {
+      ...response,
+      roundNumber: Math.max(0, Math.trunc(Number(response.roundNumber) || 0)),
+      plannedRounds: Math.max(0, Math.trunc(Number(response.plannedRounds) || 0)),
+      remainingSeconds: Math.max(0, Math.trunc(Number(response.remainingSeconds) || 0)),
+      tableNumber: response.tableNumber == null
+        ? null
+        : Math.max(1, Math.trunc(Number(response.tableNumber) || 1)),
+      tables: (response.tables ?? []).map(table => ({
+        tableNumber: Math.max(1, Math.trunc(Number(table.tableNumber) || 1)),
+        participants: (table.participants ?? []).map(participant => ({
+          userId: `${participant.userId ?? ''}`.trim(),
+          name: `${participant.name ?? ''}`.trim(),
+          initials: `${participant.initials ?? ''}`.trim(),
+          avatarUrl: `${participant.avatarUrl ?? ''}`.trim() || null
+        })).filter(participant => Boolean(participant.userId))
+      })),
+      canManage: response.canManage === true,
+      revision: Math.max(0, Math.trunc(Number(response.revision) || 0))
+    };
+  }
+
+  async applyMingleAction(
+    eventId: string,
+    actorUserId: string,
+    action: string
+  ): Promise<MingleStateDTO | null> {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    const normalizedActorUserId = `${actorUserId ?? ''}`.trim();
+    const normalizedAction = `${action ?? ''}`.trim().toLowerCase();
+    if (!normalizedEventId || !normalizedActorUserId || !normalizedAction) {
+      return null;
+    }
+    return await this.http.post<MingleStateDTO | null>(
+      `${this.apiBaseUrl}/activities/events/mingle/action`,
+      {
+        eventId: normalizedEventId,
+        actorUserId: normalizedActorUserId,
+        action: normalizedAction
+      }
+    ).toPromise() ?? null;
+  }
+
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
     const response = await this.http
       .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group`, {
@@ -1318,10 +1386,19 @@ export class HttpEventsService implements IEventsService {
           advancePerGroup: Math.max(0, Math.trunc(Number(group.advancePerGroup) || 0)),
           advancingMemberIds: (group.advancingMemberIds ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean),
           members: (group.members ?? []).map(member => {
-            const rawMember = member as { id?: string; name?: string; memberId?: string; memberName?: string };
+            const rawMember = member as {
+              id?: string;
+              name?: string;
+              memberId?: string;
+              memberName?: string;
+              initials?: string | null;
+              avatarUrl?: string | null;
+            };
             return {
               id: `${rawMember.id ?? rawMember.memberId ?? ''}`.trim(),
-              name: `${rawMember.name ?? rawMember.memberName ?? 'Member'}`.trim() || 'Member'
+              name: `${rawMember.name ?? rawMember.memberName ?? 'Member'}`.trim() || 'Member',
+              initials: `${rawMember.initials ?? ''}`.trim() || null,
+              avatarUrl: `${rawMember.avatarUrl ?? ''}`.trim() || null
             };
           }).filter(member => member.id),
           scoreEntries: (group.scoreEntries ?? []).map(entry => ({

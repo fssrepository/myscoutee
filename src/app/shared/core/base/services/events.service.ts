@@ -14,6 +14,7 @@ import type {
   EventTournamentGroupUpsertRequestDTO,
   EventTournamentStageGroupsQueryDTO,
   EventTournamentStageSnapshotDTO,
+  MingleStateDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
@@ -406,6 +407,18 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   queryTournamentStageSnapshot(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentStageSnapshotDTO> {
     return this.eventsService.queryTournamentStageSnapshot(query);
+  }
+
+  queryMingleState(
+    userId: string,
+    eventId?: string | null,
+    roundNumber?: number | null
+  ): Promise<MingleStateDTO | null> {
+    return this.eventsService.queryMingleState(userId, eventId, roundNumber);
+  }
+
+  applyMingleAction(eventId: string, actorUserId: string, action: string): Promise<MingleStateDTO | null> {
+    return this.eventsService.applyMingleAction(eventId, actorUserId, action);
   }
 
   saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {

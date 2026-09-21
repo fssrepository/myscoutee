@@ -324,6 +324,7 @@ export class EventTournamentGroupsPopupComponent {
   protected viewModel(): EventTournamentGroupsPopupModel {
     return EventTournamentGroupsPopupConverter.convert({
       state: this.state,
+      mode: this.eventSubeventsStore.eventTournamentGroupsPopup()?.mode,
       selectedStageId: this.selectedStageId,
       openGroupIds: this.openGroupIds
     });
@@ -335,7 +336,7 @@ export class EventTournamentGroupsPopupComponent {
       title: vm.title,
       subtitle: vm.subtitle,
       ariaLabel: vm.title,
-      closeAriaLabel: 'Close tournament groups',
+      closeAriaLabel: this.isMingleMode() ? 'Close Mingle tables' : 'Close tournament groups',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -485,6 +486,26 @@ export class EventTournamentGroupsPopupComponent {
   protected selectedStageMode(): TournamentLeaderboardMode {
     const stage = this.viewModel().selectedStage;
     return stage?.leaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+  }
+
+  protected isMingleMode(): boolean {
+    return this.eventSubeventsStore.eventTournamentGroupsPopup()?.mode === 'Mingle';
+  }
+
+  protected mingleMembers(group: ContractTypes.EventTournamentGroupDTO): ContractTypes.SubEventLeaderboardMember[] {
+    return this.membersForGroup(group);
+  }
+
+  protected mingleMemberInitials(member: ContractTypes.SubEventLeaderboardMember): string {
+    const supplied = `${member.initials ?? ''}`.trim();
+    if (supplied) {
+      return supplied;
+    }
+    return `${member.name ?? ''}`.trim().split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('') || '?';
   }
 
   protected tabFor(groupId: string): TournamentGroupsTab {

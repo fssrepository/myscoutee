@@ -3,6 +3,7 @@ import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.bu
 import * as AppConstants from '../../core/common/constants';
 import type { AssetType } from '../../core/common/constants';
 import type {
+  EventMode,
   EventTournamentGroupDTO,
   EventTournamentGroupsStateDTO,
   EventTournamentStageDTO
@@ -18,6 +19,7 @@ import type { UiConverter } from './converter.types';
 
 export interface EventTournamentGroupsPopupConverterInput {
   state: EventTournamentGroupsStateDTO | null;
+  mode?: EventMode | null;
   selectedStageId: string | null;
   openGroupIds: readonly string[];
 }
@@ -47,6 +49,7 @@ export interface EventTournamentGroupsActionContext {
 }
 
 export interface EventTournamentGroupsPopupModel {
+  mode: EventMode;
   title: string;
   subtitle: string;
   selectedStage: EventTournamentStageDTO | null;
@@ -64,18 +67,20 @@ export class EventTournamentGroupsPopupConverter
   implements UiConverter<EventTournamentGroupsPopupConverterInput, EventTournamentGroupsPopupModel> {
   static convert(input: EventTournamentGroupsPopupConverterInput): EventTournamentGroupsPopupModel {
     const state = input.state;
+    const mode: EventMode = input.mode === 'Mingle' ? 'Mingle' : 'Tournament';
     const stages = state?.stages ?? [];
     const selectedStage = this.selectedStage(stages, input.selectedStageId);
     const openIds = new Set(input.openGroupIds.map(id => id.trim()).filter(Boolean));
     return {
-      title: state?.title?.trim() || 'Groups',
+      mode,
+      title: state?.title?.trim() || (mode === 'Mingle' ? 'Tables' : 'Groups'),
       subtitle: selectedStage
-        ? this.stageSubtitle(selectedStage)
-        : state?.subtitle?.trim() || 'Tournament groups',
+        ? this.stageSubtitle(selectedStage, mode)
+        : state?.subtitle?.trim() || (mode === 'Mingle' ? 'Mingle tables' : 'Tournament groups'),
       selectedStage,
       canManage: state?.canManage === true,
-      stageTrigger: this.stageTrigger(selectedStage),
-      stageItems: stages.map(stage => this.stageItem(stage, selectedStage?.subEventId ?? null)),
+      stageTrigger: this.stageTrigger(selectedStage, mode),
+      stageItems: stages.map(stage => this.stageItem(stage, selectedStage?.subEventId ?? null, mode)),
       accordion: {
         items: selectedStage
           ? selectedStage.groups.map((group, index) => this.groupAccordionItem(
@@ -83,12 +88,17 @@ export class EventTournamentGroupsPopupConverter
               group,
               index,
               openIds,
-              state?.canManage === true
+              state?.canManage === true,
+              mode
             ))
           : [],
         multi: false,
-        emptyTitle: selectedStage ? 'No groups yet' : 'No tournament stage',
-        emptyDescription: selectedStage ? 'Add a group from the header action.' : 'Select a tournament stage to manage groups.'
+        emptyTitle: selectedStage
+          ? mode === 'Mingle' ? 'No tables in this round yet' : 'No groups yet'
+          : mode === 'Mingle' ? 'No Mingle round' : 'No tournament stage',
+        emptyDescription: selectedStage
+          ? mode === 'Mingle' ? 'Tables appear when this round starts.' : 'Add a group from the header action.'
+          : mode === 'Mingle' ? 'Select a round to view its tables.' : 'Select a tournament stage to manage groups.'
       }
     };
   }
@@ -123,31 +133,32 @@ export class EventTournamentGroupsPopupConverter
     return stages[0] ?? null;
   }
 
-  private static stageTrigger(stage: EventTournamentStageDTO | null): AppMenuTrigger {
-    const pending = this.stagePendingTotal(stage);
+  private static stageTrigger(stage: EventTournamentStageDTO | null, mode: EventMode): AppMenuTrigger {
+    const pending = this.stagePendingTotal(stage, mode);
     return {
-      label: stage?.title ?? 'Stage',
-      icon: 'emoji_events',
-      palette: stage ? this.stagePalette(stage.stageNumber) : 'blue',
+      label: stage?.title ?? (mode === 'Mingle' ? 'Round' : 'Stage'),
+      icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
+      palette: mode === 'Mingle' ? 'teal' : stage ? this.stagePalette(stage.stageNumber) : 'blue',
       layout: 'pill',
       counter: pending > 0
         ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
         : null,
-      ariaLabel: 'Select stage'
+      ariaLabel: mode === 'Mingle' ? 'Select round' : 'Select stage'
     };
   }
 
   private static stageItem(
     stage: EventTournamentStageDTO,
-    selectedStageId: string | null
+    selectedStageId: string | null,
+    mode: EventMode
   ): AppMenuItem<string, EventTournamentGroupsStageMenuContext> {
-    const pending = this.stagePendingTotal(stage);
+    const pending = this.stagePendingTotal(stage, mode);
     return {
       id: stage.subEventId,
       label: stage.title,
-      description: this.stageSubtitle(stage),
-      icon: 'emoji_events',
-      palette: this.stagePalette(stage.stageNumber),
+      description: this.stageSubtitle(stage, mode),
+      icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
+      palette: mode === 'Mingle' ? 'teal' : this.stagePalette(stage.stageNumber),
       surface: 'tinted',
       kind: 'radio',
       active: stage.subEventId === selectedStageId,
@@ -164,7 +175,8 @@ export class EventTournamentGroupsPopupConverter
     group: EventTournamentGroupDTO,
     index: number,
     openIds: ReadonlySet<string>,
-    canManage: boolean
+    canManage: boolean,
+    mode: EventMode
   ): UiAccordionItem<
     string,
     EventTournamentGroupsAccordionContext,
@@ -172,18 +184,20 @@ export class EventTournamentGroupsPopupConverter
   > {
     const capacity = this.groupCapacityLabel(group);
     const accepted = Math.max(0, Math.trunc(Number(group.membersAccepted) || 0));
-    const pendingTotal = this.groupPendingTotal(group);
+    const pendingTotal = this.groupPendingTotal(group, mode);
     const memberLabel = accepted === 1 ? '1 member' : `${accepted} members`;
     const pendingLabel = pendingTotal === 1 ? '1 pending' : `${pendingTotal} pending`;
     return {
       id: group.id,
-      title: group.name || `Group ${String.fromCharCode(65 + (index % 26))}`,
+      title: group.name || (mode === 'Mingle'
+        ? `Table ${index + 1}`
+        : `Group ${String.fromCharCode(65 + (index % 26))}`),
       subtitle: [
         group.source === 'manual' ? 'Manual' : '',
         memberLabel,
         pendingTotal > 0 ? pendingLabel : ''
       ].filter(Boolean).join(' · '),
-      icon: 'groups',
+      icon: mode === 'Mingle' ? 'table_restaurant' : 'groups',
       badges: [
         {
           id: 'members-capacity',
@@ -195,7 +209,7 @@ export class EventTournamentGroupsPopupConverter
       ],
       palette: this.groupPalette(index),
       open: openIds.has(group.id),
-      actionMenu: this.groupActionMenu(stage, group, canManage, pendingTotal),
+      actionMenu: this.groupActionMenu(stage, group, canManage, pendingTotal, mode),
       context: {
         groupId: group.id,
         stageId: stage.subEventId
@@ -207,7 +221,8 @@ export class EventTournamentGroupsPopupConverter
     stage: EventTournamentStageDTO,
     group: EventTournamentGroupDTO,
     canManage: boolean,
-    pendingTotal: number
+    pendingTotal: number,
+    mode: EventMode
   ): {
     kind: 'select';
     trigger: AppMenuTrigger;
@@ -217,8 +232,8 @@ export class EventTournamentGroupsPopupConverter
   } {
     const contextBase = { stageId: stage.subEventId, groupId: group.id };
     const actions: AppMenuItem<string, EventTournamentGroupsActionContext>[] = [];
-    if (canManage) {
-      if (`${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'SR') {
+    if (canManage && (mode !== 'Mingle' || group.source === 'manual')) {
+      if (mode !== 'Mingle' && `${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'SR') {
         actions.push({
           id: 'add-entry',
           label: stage.leaderboardType === 'Fifa' ? 'Add Match' : 'Add Score',
@@ -272,11 +287,11 @@ export class EventTournamentGroupsPopupConverter
               )
             ]
           },
-          {
+          ...(mode === 'Mingle' ? [] : [{
             id: 'assets',
             label: 'Assets',
             items: AppConstants.ASSET_TYPES.map(type => this.resourceMenuItem(type, group, contextBase))
-          }
+          }])
         ]
       },
       panelAlign: 'auto',
@@ -343,20 +358,20 @@ export class EventTournamentGroupsPopupConverter
     };
   }
 
-  static groupPendingTotal(group: EventTournamentGroupDTO | null | undefined): number {
+  static groupPendingTotal(group: EventTournamentGroupDTO | null | undefined, mode: EventMode = 'Tournament'): number {
     if (!group) {
       return 0;
     }
-    const resourcePending = AppConstants.ASSET_TYPES.reduce(
+    const resourcePending = mode === 'Mingle' ? 0 : AppConstants.ASSET_TYPES.reduce(
       (total, type) => total + this.count(group.resourceMetricsByType?.[type]?.pending),
       0
     );
     return this.count(group.membersPending) + resourcePending;
   }
 
-  static stagePendingTotal(stage: EventTournamentStageDTO | null | undefined): number {
+  static stagePendingTotal(stage: EventTournamentStageDTO | null | undefined, mode: EventMode = 'Tournament'): number {
     return (stage?.groups ?? []).reduce(
-      (total, group) => total + this.groupPendingTotal(group),
+      (total, group) => total + this.groupPendingTotal(group, mode),
       0
     );
   }
@@ -431,9 +446,11 @@ export class EventTournamentGroupsPopupConverter
     return changed ? { ...state, stages } : state;
   }
 
-  private static stageSubtitle(stage: EventTournamentStageDTO): string {
+  private static stageSubtitle(stage: EventTournamentStageDTO, mode: EventMode): string {
     const range = AppUtils.dateTimeRangeLabel(stage.startAt, stage.endAt, '');
-    const groupLabel = stage.groups.length === 1 ? '1 group' : `${stage.groups.length} groups`;
+    const groupLabel = mode === 'Mingle'
+      ? stage.groups.length === 1 ? '1 table' : `${stage.groups.length} tables`
+      : stage.groups.length === 1 ? '1 group' : `${stage.groups.length} groups`;
     return [range, groupLabel].filter(Boolean).join(' · ');
   }
 

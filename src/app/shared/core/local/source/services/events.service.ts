@@ -12,6 +12,7 @@ import type {
   EventSlotOccurrenceDTO,
   EventTournamentStageGroupsQueryDTO,
   EventTournamentStageSnapshotDTO,
+  MingleStateDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../../contracts/event.interface';
@@ -301,7 +302,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     const mode = result.parentRecord.mode;
-    if (mode !== 'Casual' && mode !== 'Tournament') {
+    if (mode !== 'Casual' && mode !== 'Tournament' && mode !== 'Mingle') {
       return null;
     }
     const baseSlots = this.eventsRepository.filterSubEventsSlotsForParticipant(
@@ -1554,6 +1555,24 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   ): Promise<EventTournamentStageSnapshotDTO> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryTournamentStageSnapshot(query);
+  }
+
+  async queryMingleState(
+    _userId: string,
+    _eventId?: string | null,
+    _roundNumber?: number | null
+  ): Promise<MingleStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return null;
+  }
+
+  async applyMingleAction(
+    _eventId: string,
+    _actorUserId: string,
+    _action: string
+  ): Promise<MingleStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return null;
   }
 
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {

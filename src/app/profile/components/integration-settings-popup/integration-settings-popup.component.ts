@@ -8,7 +8,7 @@ import type {
   IntegrationSettingsDto,
   IntegrationTokenDto
 } from '../../../shared/core/contracts/integration.interface';
-import { PopupComponent, type PopupModel } from '../../../shared/ui';
+import { PopupComponent, type PopupActionEvent, type PopupModel } from '../../../shared/ui';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -42,6 +42,7 @@ export class IntegrationSettingsPopupComponent {
   private readonly dialogStore = inject(DialogStore);
 
   protected readonly open = signal(false);
+  protected readonly helpOpen = signal(false);
   protected readonly loading = signal(false);
   protected readonly mutating = signal(false);
   protected readonly settings = signal<IntegrationSettingsDto | null>(null);
@@ -55,6 +56,7 @@ export class IntegrationSettingsPopupComponent {
     return !!settings && settings.tokens.length < settings.maxActiveTokens && !this.mutating();
   });
   protected readonly actionMenuModel: AppMenuModel = { actionSizing: 'content' };
+  protected readonly integrationDocumentationUrl = 'https://github.com/fssrepository/myscoutee-backend#documentation-pdfs';
   protected readonly generateTokenActions = computed<readonly AppMenuItem[]>(() => [{
     id: 'generate-integration-token',
     kind: 'action',
@@ -77,7 +79,29 @@ export class IntegrationSettingsPopupComponent {
       height: 'auto',
       mobilePresentation: 'compact',
       backdropTone: 'dim',
+      headerActions: [{
+        id: 'integration-help',
+        icon: 'help_outline',
+        ariaLabel: 'integration.help.aria',
+        palette: 'blue'
+      }],
+      onAction: event => this.onPopupAction(event),
       onClose: () => this.closePopup()
+    };
+  }
+
+  protected helpPopupModel(): PopupModel {
+    return {
+      title: 'integration.help.title',
+      subtitle: 'integration.title',
+      ariaLabel: 'integration.help.aria',
+      closeAriaLabel: 'close',
+      size: 'small',
+      height: 'auto',
+      mobilePresentation: 'compact',
+      backdropTone: 'dim',
+      headerPalette: 'blue',
+      onClose: () => this.helpOpen.set(false)
     };
   }
 
@@ -92,9 +116,17 @@ export class IntegrationSettingsPopupComponent {
 
   protected closePopup(): void {
     this.open.set(false);
+    this.helpOpen.set(false);
     this.revealedToken.set('');
     this.revealedTokenId.set('');
     this.copiedValue.set('');
+  }
+
+  private onPopupAction(event: PopupActionEvent): void {
+    event.sourceEvent.stopPropagation();
+    if (event.action.id === 'integration-help') {
+      this.helpOpen.set(true);
+    }
   }
 
   protected requestGenerate(): void {

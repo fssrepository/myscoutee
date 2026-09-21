@@ -6,7 +6,11 @@ import { of } from 'rxjs';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
-import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../shared/core/contracts/activity.interface';
+import {
+  ActivityEventDetailDTO,
+  type MingleConfigurationDTO,
+  type SubEventDefinitionDTO
+} from '../../../shared/core/contracts/activity.interface';
 import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import type * as EventContracts from '../../../shared/core/contracts/event.interface';
 import {
@@ -108,12 +112,15 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   ];
 
   @Input() mode: EventContracts.EventMode = 'Casual';
+  @Input() mingleConfiguration: MingleConfigurationDTO | null = null;
   @Input() enabled = false;
   @Input() modeControl: 'menu' | 'badge' = 'menu';
   @Input() showEnableToggle = true;
   @Input() readOnly = false;
+  @Input() allowMingleRoundIncrease = false;
   @Output() readonly enabledChange = new EventEmitter<boolean>();
   @Output() readonly modeChange = new EventEmitter<EventContracts.EventMode>();
+  @Output() readonly mingleConfigurationChange = new EventEmitter<MingleConfigurationDTO>();
   @Input()
   set bounds(value: DateRangeDto | null | undefined) {
     this.boundsValue = value ? ActivityEventDetailDTO.normalizeDateRange(value) : null;
@@ -154,7 +161,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       resolveRange: item => this.definitionTimelineRange(item),
       badgeLabel: item => item.name,
       badgeMeta: item => `Duration ${this.durationLabel(item.durationMinutes)}`,
-      badgeToneClass: item => `calendar-badge-tone-${((this.definitions.indexOf(item) + 6) % 6) + 1}`,
+      badgeToneClass: item => `calendar-badge-tone-${((this.definitionIndex(item) + 6) % 6) + 1}`,
       offsetLabel: offset => this.minutesLabel(offset)
     },
     listLayout: 'card-grid',
@@ -169,8 +176,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   };
 
   protected readonly loadDefinitionsPage: SmartListLoadPage<SubEventDefinitionDTO, SubEventDefinitionsPanelFilters> = () => of({
-    items: this.definitions,
-    total: this.definitions.length
+    items: this.displayDefinitions(),
+    total: this.displayDefinitions().length
   } satisfies PageResult<SubEventDefinitionDTO>);
 
   writeValue(value: readonly SubEventDefinitionDTO[] | null | undefined): void {
@@ -205,6 +212,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected panelSubtitle(): string {
+    if (this.enabled && this.mode === 'Mingle') {
+      return 'event.editor.mingle.panel.description';
+    }
     return this.enabled
       ? this.countLabel()
       : 'event.editor.subevents.disabled.description';
@@ -221,15 +231,16 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected modeLabel(): string {
-    return this.mode === 'Tournament' ? 'Tournament' : 'Casual';
+    return this.mode;
   }
 
   protected modeMenuTrigger(): AppMenuTrigger {
     const tournamentMode = this.mode === 'Tournament';
+    const mingleMode = this.mode === 'Mingle';
     return {
       label: this.modeLabel(),
-      icon: tournamentMode ? 'emoji_events' : 'groups',
-      palette: tournamentMode ? 'cyan' : 'slate',
+      icon: tournamentMode ? 'emoji_events' : mingleMode ? 'table_restaurant' : 'groups',
+      palette: tournamentMode ? 'cyan' : mingleMode ? 'teal' : 'slate',
       layout: 'pill',
       disabled: !this.canConfigureDefinitions()
     };
@@ -252,8 +263,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         kind: 'radio',
         palette: 'slate',
         surface: 'tinted',
-        active: this.mode !== 'Tournament',
-        checked: this.mode !== 'Tournament'
+        active: this.mode === 'Casual',
+        checked: this.mode === 'Casual'
       },
       {
         id: 'Tournament',
@@ -264,6 +275,16 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         surface: 'tinted',
         active: this.mode === 'Tournament',
         checked: this.mode === 'Tournament'
+      },
+      {
+        id: 'Mingle',
+        label: 'Mingle',
+        icon: 'table_restaurant',
+        kind: 'radio',
+        palette: 'teal',
+        surface: 'tinted',
+        active: this.mode === 'Mingle',
+        checked: this.mode === 'Mingle'
       }
     ];
   }
@@ -272,7 +293,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (!this.canConfigureDefinitions()) {
       return;
     }
-    this.mode = event.id === 'Tournament' ? 'Tournament' : 'Casual';
+    this.mode = event.id === 'Tournament' || event.id === 'Mingle' ? event.id : 'Casual';
+    this.definitionForm = null;
     this.modeChange.emit(this.mode);
   }
 
@@ -337,14 +359,84 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected countLabel(): string {
-    return `${this.definitions.length} item${this.definitions.length === 1 ? '' : 's'}`;
+    const count = this.displayDefinitions().length;
+    return `${count} item${count === 1 ? '' : 's'}`;
+  }
+
+  protected normalizedMingleConfiguration(): MingleConfigurationDTO {
+    return ActivityEventDetailDTO.normalizeMingleConfiguration(this.mingleConfiguration);
+  }
+
+  private displayDefinitions(): SubEventDefinitionDTO[] {
+    if (this.mode !== 'Mingle') {
+      return this.definitions;
+    }
+    const configuration = this.normalizedMingleConfiguration();
+    return Array.from({ length: configuration.plannedRounds }, (_, index): SubEventDefinitionDTO => ({
+      id: `mingle-round-${index + 1}`,
+      name: `Round ${index + 1}`,
+      description: 'Table assignment round',
+      timing: 'After',
+      offsetMinutes: index === 0 ? 0 : configuration.breakDurationMinutes,
+      durationMinutes: configuration.roundDurationMinutes,
+      location: '',
+      tournamentGroupCapacityMin: configuration.groupSize,
+      tournamentGroupCapacityMax: configuration.groupSize,
+      optional: false,
+      pricing: null,
+      capacityMin: 0,
+      capacityMax: 0,
+      icon: 'table_restaurant'
+    }));
+  }
+
+  protected mingleFieldReadOnly(field: keyof MingleConfigurationDTO): boolean {
+    if (!this.enabled || this.disabled) {
+      return true;
+    }
+    if (!this.readOnly) {
+      return false;
+    }
+    return !(field === 'plannedRounds' && this.allowMingleRoundIncrease);
+  }
+
+  protected updateMingleNumber(field: 'groupSize' | 'plannedRounds' | 'roundDurationMinutes' | 'breakDurationMinutes' | 'tableCount', event: Event): void {
+    if (this.mingleFieldReadOnly(field)) {
+      return;
+    }
+    const target = event.target as HTMLInputElement | null;
+    const next = ActivityEventDetailDTO.normalizeMingleConfiguration({
+      ...this.normalizedMingleConfiguration(),
+      [field]: Number(target?.value)
+    });
+    this.mingleConfiguration = next;
+    this.mingleConfigurationChange.emit(next);
+    this.bumpList();
+    this.onTouched();
+    this.cdr.markForCheck();
+  }
+
+  protected updateMingleGenderBalance(event: Event): void {
+    if (this.mingleFieldReadOnly('requireGenderBalance')) {
+      return;
+    }
+    const target = event.target as HTMLInputElement | null;
+    const next = ActivityEventDetailDTO.normalizeMingleConfiguration({
+      ...this.normalizedMingleConfiguration(),
+      requireGenderBalance: target?.checked === true
+    });
+    this.mingleConfiguration = next;
+    this.mingleConfigurationChange.emit(next);
+    this.onTouched();
+    this.cdr.markForCheck();
   }
 
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
     const isTournament = this.mode === 'Tournament';
+    const isMingle = this.mode === 'Mingle';
     const stageNumber = index + 1;
     const palette = this.definitionPalette(item, index);
-    const sequenceLabel = isTournament ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
+    const sequenceLabel = isTournament ? `Stage ${stageNumber}` : isMingle ? `Round ${stageNumber}` : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
     const capacityMetaRow = this.definitionCapacityMetaRow(item, isTournament);
     return {
@@ -354,18 +446,18 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       mediaTone: 'neutral',
       mediaTitle: sequenceLabel,
       mediaSubtitle: this.mode,
-      mediaIcon: item.icon || (isTournament ? 'emoji_events' : 'inventory_2'),
+      mediaIcon: item.icon || (isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : 'inventory_2'),
       metaRows: [
         this.definitionStartLabel(item, index),
         ...(capacityMetaRow ? [capacityMetaRow] : [])
       ],
       description: item.description || 'no.description',
       descriptionLines: 2,
-      surfaceTone: isTournament ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
+      surfaceTone: isTournament || isMingle ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
       accentHue: palette.accentHue,
       leadingIcon: {
-        icon: isTournament ? 'emoji_events' : status.icon,
-        tone: isTournament ? 'stage' : status.leadingTone
+        icon: isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : status.icon,
+        tone: isTournament || isMingle ? 'stage' : status.leadingTone
       },
       mediaStart: {
         variant: 'avatar',
@@ -375,12 +467,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       },
       mediaEnd: {
         variant: 'badge',
-        layout: isTournament ? 'default' : 'badge-with-leading-accessory',
-        tone: isTournament ? 'stage' : status.overlayTone,
-        label: isTournament ? sequenceLabel : status.label,
-        icon: isTournament ? 'emoji_events' : undefined,
+        layout: isTournament || isMingle ? 'default' : 'badge-with-leading-accessory',
+        tone: isTournament || isMingle ? 'stage' : status.overlayTone,
+        label: isTournament || isMingle ? sequenceLabel : status.label,
+        icon: isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : undefined,
         interactive: false,
-        leadingAccessory: isTournament ? null : {
+        leadingAccessory: isTournament || isMingle ? null : {
           icon: status.icon,
           tone: status.accessoryTone
         }
@@ -393,14 +485,17 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         ariaLabel: `Duration ${this.durationLabel(item.durationMinutes)}`,
         interactive: false
       },
-      menuActions: this.canConfigureDefinitions() ? ['edit', 'delete'] : []
+      menuActions: !isMingle && this.canConfigureDefinitions() ? ['edit', 'delete'] : []
     };
   }
 
   private definitionCapacityMetaRow(item: SubEventDefinitionDTO, isTournament: boolean): string | null {
-    if (isTournament) {
+    if (isTournament || this.mode === 'Mingle') {
       const min = this.toNonNegativeInteger(item.tournamentGroupCapacityMin ?? 0);
       const max = Math.max(min, this.toNonNegativeInteger(item.tournamentGroupCapacityMax ?? min));
+      if (this.mode === 'Mingle') {
+        return max > 0 ? `Table size ${max}` : null;
+      }
       return min > 0 || max > 0 ? `Group capacity ${min} - ${max}` : null;
     }
     if (!item.optional) {
@@ -446,10 +541,16 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   private definitionPalette(_item: SubEventDefinitionDTO, index: number): SubEventDefinitionPalette {
     const safeIndex = Math.max(0, index);
+    if (this.mode === 'Mingle') {
+      const total = Math.max(this.displayDefinitions().length, 1);
+      const ratio = total <= 1 ? 0 : safeIndex / (total - 1);
+      const accentHue = Math.round(178 - (38 * ratio));
+      return { accentHue, menuPalette: this.menuPaletteForAccentHue(accentHue) };
+    }
     if (this.mode !== 'Tournament') {
       return this.casualDefinitionPalettes[safeIndex % this.casualDefinitionPalettes.length];
     }
-    const accentHue = this.stageAccentHue(safeIndex + 1, Math.max(this.definitions.length, 1));
+    const accentHue = this.stageAccentHue(safeIndex + 1, Math.max(this.displayDefinitions().length, 1));
     return {
       accentHue,
       menuPalette: this.menuPaletteForAccentHue(accentHue)
@@ -483,7 +584,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitionTimelineMenuItems(item: SubEventDefinitionDTO): readonly AppMenuItem<string, unknown>[] {
-    if (!this.canConfigureDefinitions()) {
+    if (this.mode === 'Mingle' || !this.canConfigureDefinitions()) {
       return [];
     }
     const editConfig = CARD_MENU_ACTIONS['edit'];
@@ -509,7 +610,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitionTimelineIcon(item: SubEventDefinitionDTO): string {
-    return item.icon || (this.mode === 'Tournament' ? 'emoji_events' : 'inventory_2');
+    return item.icon || (this.mode === 'Tournament'
+      ? 'emoji_events'
+      : this.mode === 'Mingle' ? 'table_restaurant' : 'inventory_2');
   }
 
   protected definitionTimelineDetail(item: SubEventDefinitionDTO): string {
@@ -517,7 +620,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitionTimelineTone(item: SubEventDefinitionDTO): TextCardTone {
-    return this.mode === 'Tournament'
+    return this.mode === 'Tournament' || this.mode === 'Mingle'
       ? 'stage'
       : (item.optional ? 'subevent-light' : 'subevent-strong');
   }
@@ -535,15 +638,20 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (this.mode === 'Tournament') {
       return `Stage ${index + 1}`;
     }
+    if (this.mode === 'Mingle') {
+      return `Round ${index + 1}`;
+    }
     return this.definitionStatus(item).label;
   }
 
   protected definitionTimelineStatusIcon(item: SubEventDefinitionDTO): string {
-    return this.mode === 'Tournament' ? 'emoji_events' : this.definitionStatus(item).icon;
+    return this.mode === 'Tournament'
+      ? 'emoji_events'
+      : this.mode === 'Mingle' ? 'table_restaurant' : this.definitionStatus(item).icon;
   }
 
   protected definitionTimelineStatusTone(item: SubEventDefinitionDTO): TextCardStatusTone {
-    if (this.mode === 'Tournament') {
+    if (this.mode === 'Tournament' || this.mode === 'Mingle') {
       return 'stage';
     }
     return item.optional ? 'public' : 'blocked';
@@ -552,6 +660,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected definitionTimelineStatusAriaLabel(item: SubEventDefinitionDTO): string {
     return this.mode === 'Tournament'
       ? `${this.definitionTimelineStatusLabel(item)} definition`
+      : this.mode === 'Mingle'
+        ? `${this.definitionTimelineStatusLabel(item)} projection`
       : `${this.definitionTimelineStatusLabel(item)} sub event definition`;
   }
 
@@ -791,6 +901,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private definitionSequenceLabel(index: number): string {
     return this.mode === 'Tournament'
       ? `Stage ${index + 1}`
+      : this.mode === 'Mingle'
+        ? `Round ${index + 1}`
       : `Sub Event ${index + 1}`;
   }
 
@@ -944,7 +1056,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   private definitionIndex(item: SubEventDefinitionDTO): number {
-    return Math.max(0, this.definitions.findIndex(candidate => candidate.id === item.id));
+    return Math.max(0, this.displayDefinitions().findIndex(candidate => candidate.id === item.id));
   }
 
   private definitionStartLabel(item: SubEventDefinitionDTO, index: number): string {
@@ -1005,7 +1117,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private definitionTimelineEntries(): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
     let previousStartOffsetMinutes = 0;
     let previousEndOffsetMinutes = 0;
-    return this.definitions.map((item, index) => {
+    return this.displayDefinitions().map((item, index) => {
       const durationMinutes = this.toPositiveInteger(item.durationMinutes);
       const offsetMinutes = this.toNonNegativeInteger(item.offsetMinutes);
       const startOffsetMinutes = index <= 0

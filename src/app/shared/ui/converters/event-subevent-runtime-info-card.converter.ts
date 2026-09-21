@@ -35,19 +35,28 @@ export class EventSubeventRuntimeInfoCardConverter
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
     const isMainEvent = this.isMainEventRuntime(item);
     const isTournament = mode === 'Tournament';
+    const isMingle = mode === 'Mingle';
     const sequenceNumber = Math.max(1, Math.trunc(Number(options.sequenceNumber) || 1));
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
     const sequenceLabel = isMainEvent
       ? 'Event'
       : isTournament
         ? `Stage ${sequenceNumber}`
-        : `Sub Event ${sequenceNumber}`;
+        : isMingle
+          ? `Round ${sequenceNumber}`
+          : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
     const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
     const stageStatus = isTournament
       ? this.stageStatusBadge(item, nowMs)
       : null;
-    const runtimeIcon = isMainEvent ? 'event' : isTournament ? 'emoji_events' : 'inventory_2';
+    const runtimeIcon = isMainEvent
+      ? 'event'
+      : isTournament
+        ? 'emoji_events'
+        : isMingle
+          ? 'table_restaurant'
+          : 'inventory_2';
     const menuBadgeCount = options.menuBadgeCount == null
       ? EventSubeventRuntimeMenuConverter.runtimeBadgeCount(item, {
           event: options.event,
@@ -74,11 +83,15 @@ export class EventSubeventRuntimeInfoCardConverter
       descriptionLines: 2,
       description: item.description || 'No description',
       detailRows: [],
-      surfaceTone: isTournament ? 'stage-runtime' : 'draft',
-      accentHue: isTournament ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal) : null,
+      surfaceTone: isTournament || isMingle ? 'stage-runtime' : 'draft',
+      accentHue: isTournament
+        ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal)
+        : isMingle
+          ? 168
+          : null,
       leadingIcon: {
-        icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : status.icon,
-        tone: isTournament ? 'stage' : isMainEvent ? 'public' : status.leadingTone
+        icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : status.icon,
+        tone: isTournament || isMingle ? 'stage' : isMainEvent ? 'public' : status.leadingTone
       },
       mediaStart: {
         variant: 'avatar',
@@ -86,7 +99,7 @@ export class EventSubeventRuntimeInfoCardConverter
         icon: 'location_on',
         interactive: false
       },
-      mediaEnd: isTournament ? stageStatus : isMainEvent ? {
+      mediaEnd: isTournament ? stageStatus : isMingle ? null : isMainEvent ? {
         variant: 'badge',
         tone: 'public',
         label: 'Event',
@@ -161,7 +174,7 @@ export class EventSubeventRuntimeInfoCardConverter
     options: EventSubeventRuntimeInfoCardConverterOptions
   ): EventMode {
     const requestedMode = options.mode ?? options.event?.mode ?? null;
-    if (requestedMode === 'Casual' || requestedMode === 'Tournament') {
+    if (requestedMode === 'Casual' || requestedMode === 'Tournament' || requestedMode === 'Mingle') {
       return requestedMode;
     }
     return this.isTournamentStage(item) ? 'Tournament' : 'Casual';
@@ -189,7 +202,7 @@ export class EventSubeventRuntimeInfoCardConverter
     mode: EventMode,
     options: EventSubeventRuntimeInfoCardConverterOptions
   ): string | null {
-    if (mode === 'Tournament') {
+    if (mode === 'Tournament' || mode === 'Mingle') {
       return this.tournamentGroupCapacitySummary(item, options);
     }
     if (!item.optional && !this.isMainEventRuntime(item)) {

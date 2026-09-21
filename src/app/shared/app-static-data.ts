@@ -994,7 +994,7 @@ const SUB_EVENT_RESOURCE_FILTER_LABELS: Record<SubEventResourceFilter, string> =
   [ASSET_TYPE_ACCOMMODATION]: ASSET_TYPE_ACCOMMODATION,
   [ASSET_TYPE_SUPPLIES]: ASSET_TYPE_SUPPLIES
 };
-const EVENT_MODE_OPTIONS: EventMode[] = ['Casual', 'Tournament'];
+const EVENT_MODE_OPTIONS: EventMode[] = ['Casual', 'Tournament', 'Mingle'];
 const TOURNAMENT_LEADERBOARD_TYPE_OPTIONS: TournamentLeaderboardType[] = ['Score', 'Fifa'];
 const ACTIVITY_GROUP_LABELS = {
   dateUnavailable: 'Date unavailable',

@@ -924,8 +924,25 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventDetailDTO.mode = mode === 'Tournament' ? 'Tournament' : 'Casual';
+    this.eventDetailDTO.mode = ActivityEventDetailDTO.normalizeMode(mode);
+    if (this.eventDetailDTO.mode === 'Mingle') {
+      this.eventDetailDTO.subEventsEnabled = true;
+      this.eventDetailDTO.mingleConfiguration = ActivityEventDetailDTO.normalizeMingleConfiguration(
+        this.eventDetailDTO.mingleConfiguration
+      );
+    }
     this.emitSubEventDefinitionsDraftPreview();
+  }
+
+  protected onMingleConfigurationChange(value: ActivityContracts.MingleConfigurationDTO): void {
+    if (this.eventEditorStore.readOnly()) {
+      return;
+    }
+    const current = ActivityEventDetailDTO.normalizeMingleConfiguration(this.eventDetailDTO.mingleConfiguration);
+    const next = ActivityEventDetailDTO.normalizeMingleConfiguration(value);
+    this.eventDetailDTO.mingleConfiguration = this.isPublishedManageMode()
+      ? { ...current, plannedRounds: Math.max(current.plannedRounds, next.plannedRounds) }
+      : next;
   }
 
   private toNonNegativeIntegerOrNull(value: unknown): number | null {

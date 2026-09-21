@@ -1,8 +1,8 @@
 @if (shouldShowPanel()) {
-<section class="subevent-definition-panel">
+<section class="subevent-definition-panel" [class.subevent-definition-panel--mingle]="mode === 'Mingle'">
   <header class="subevent-definition-panel__header">
     <div class="subevent-definition-panel__title">
-      <mat-icon>inventory_2</mat-icon>
+      <mat-icon>{{ mode === 'Mingle' ? 'table_restaurant' : 'inventory_2' }}</mat-icon>
       <div>
         <h3>{{ 'event.editor.subevents.title' | i18n }}</h3>
         <p>{{ panelSubtitle() }}</p>
@@ -42,7 +42,7 @@
         [items]="viewMenuItems()"
         (itemSelect)="onViewMenuSelect($event)"
       ></app-menu>
-      @if (canConfigureDefinitions()) {
+      @if (mode !== 'Mingle' && canConfigureDefinitions()) {
       <app-menu
         class="subevent-definition-panel__add-menu"
         kind="inline"
@@ -55,6 +55,62 @@
   </header>
 
   @if (enabled) {
+  @if (mode === 'Mingle') {
+  <section class="subevent-definition-panel__mingle-config">
+    <div class="subevent-definition-panel__mingle-fields">
+      <label>
+        <span>{{ 'event.editor.mingle.group.size' | i18n }}</span>
+        <input type="number" min="2" max="20" step="1"
+          [value]="normalizedMingleConfiguration().groupSize"
+          [readonly]="mingleFieldReadOnly('groupSize')"
+          (change)="updateMingleNumber('groupSize', $event)" />
+      </label>
+      <label>
+        <span>{{ 'event.editor.mingle.planned.rounds' | i18n }}</span>
+        <input type="number" min="1" max="100" step="1"
+          [value]="normalizedMingleConfiguration().plannedRounds"
+          [readonly]="mingleFieldReadOnly('plannedRounds')"
+          (change)="updateMingleNumber('plannedRounds', $event)" />
+      </label>
+      <label>
+        <span>{{ 'event.editor.mingle.round.duration' | i18n }}</span>
+        <div class="subevent-definition-panel__mingle-number-unit">
+          <input type="number" min="1" max="240" step="1"
+            [value]="normalizedMingleConfiguration().roundDurationMinutes"
+            [readonly]="mingleFieldReadOnly('roundDurationMinutes')"
+            (change)="updateMingleNumber('roundDurationMinutes', $event)" />
+          <span>{{ 'minutes.short' | i18n }}</span>
+        </div>
+      </label>
+      <label>
+        <span>{{ 'event.editor.mingle.break.duration' | i18n }}</span>
+        <div class="subevent-definition-panel__mingle-number-unit">
+          <input type="number" min="0" max="60" step="1"
+            [value]="normalizedMingleConfiguration().breakDurationMinutes"
+            [readonly]="mingleFieldReadOnly('breakDurationMinutes')"
+            (change)="updateMingleNumber('breakDurationMinutes', $event)" />
+          <span>{{ 'minutes.short' | i18n }}</span>
+        </div>
+      </label>
+      <label>
+        <span>{{ 'event.editor.mingle.table.count' | i18n }}</span>
+        <input type="number" min="0" max="500" step="1"
+          [value]="normalizedMingleConfiguration().tableCount"
+          [readonly]="mingleFieldReadOnly('tableCount')"
+          (change)="updateMingleNumber('tableCount', $event)" />
+      </label>
+      <label class="subevent-definition-panel__mingle-check">
+        <span>{{ 'event.editor.mingle.require.gender.balance' | i18n }}</span>
+        <input type="checkbox"
+          [checked]="normalizedMingleConfiguration().requireGenderBalance"
+          [disabled]="mingleFieldReadOnly('requireGenderBalance')"
+          (change)="updateMingleGenderBalance($event)" />
+      </label>
+    </div>
+
+    <small class="subevent-definition-panel__mingle-note">{{ 'event.editor.mingle.flexible.rounds.note' | i18n }}</small>
+  </section>
+  }
   <app-smart-list
     class="subevent-definition-panel__list"
     [config]="smartListConfig"
