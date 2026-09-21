@@ -259,8 +259,25 @@
 
 .entry-hero-cta-menu {
   margin-top: 1rem;
+  max-width: 100%;
+  --app-menu-row-width: 100%;
+  --app-menu-action-flex: 0 1 auto;
+  --app-menu-action-min-width: 0;
   --app-menu-action-height: 44px;
   --app-menu-action-padding: 0.3rem 0.85rem;
+}
+
+:host ::ng-deep .entry-hero-cta-menu .app-menu__button-row-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+:host ::ng-deep .entry-hero-cta-menu .app-menu__palette--gold {
+  --app-menu-action-bg: linear-gradient(135deg, #fff0bd, #ffdc7b);
+  --app-menu-action-bg-hover: linear-gradient(135deg, #fff6d9, #ffe69d);
+  --app-menu-action-fg: #40265e;
+  --app-menu-action-border: #ffe9a5;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1144,6 +1161,7 @@
 
 .entry-hero-content {
   max-width: 760px;
+  min-width: 0;
 }
 
 .entry-hero .entry-stat-card {
@@ -1367,7 +1385,7 @@
   }
 
   .entry-hero-thesis {
-    font-size: 1.02rem;
+    font-size: clamp(.9rem, 4.5vw, 1.02rem);
   }
 
   .entry-footer-grid {
@@ -1563,21 +1581,5 @@
 }
 
 .entry-hero-formats {
-  display: flex;
-  align-items: center;
-  gap: clamp(.35rem, 1.2vw, .75rem);
   margin: .4rem 0 0;
-  font-size: clamp(.7rem, 2.4vw, 1rem);
-  font-weight: 600;
-  white-space: nowrap;
-}
-.entry-hero-free-badge {
-  padding: .3em .65em;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ddd0ff, #bfa2ff);
-  color: #34165f;
-  font-size: clamp(.6rem, 2vw, .75rem);
-  font-weight: 800;
-  letter-spacing: .025em;
-  text-transform: uppercase;
 }

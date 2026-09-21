@@ -32,7 +32,7 @@ import {
 import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
-type EntryHeroCtaId = 'explore';
+type EntryHeroCtaId = 'explore' | 'join';
 
 interface AppVersionPayload {
   readonly version?: unknown;
@@ -442,6 +442,15 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
         layout: 'action',
         palette: 'brand',
         disabled: this.networkUnavailable
+      },
+      {
+        id: 'join',
+        label: 'landing.hero.free.to.join',
+        icon: 'login',
+        kind: 'action',
+        layout: 'action',
+        palette: 'gold',
+        disabled: this.networkUnavailable || this.authUnavailable
       }
     ];
   }
@@ -451,6 +460,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   ): void {
     if (event.id === 'explore') {
       this.requestDemo();
+    } else if (event.id === 'join') {
+      this.requestHeaderAuth();
     }
   }
 

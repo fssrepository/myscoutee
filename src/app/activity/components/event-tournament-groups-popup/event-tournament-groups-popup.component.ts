@@ -392,7 +392,7 @@ export class EventTournamentGroupsPopupComponent {
       title: vm.title,
       subtitle: vm.subtitle,
       ariaLabel: vm.title,
-      closeAriaLabel: this.isMingleMode() ? 'Close Mingle tables' : 'Close tournament groups',
+      closeAriaLabel: this.isMingleMode() ? 'mingle.tables.close.aria' : 'Close tournament groups',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',

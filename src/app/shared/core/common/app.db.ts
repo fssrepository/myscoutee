@@ -1,3 +1,4 @@
+import { MINGLE_SESSIONS_TABLE_NAME } from '../local/source/entity/mingle.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/event.entity';
 import { EVENT_TICKETS_TABLE_NAME } from '../local/source/entity/event-ticket.entity';
@@ -66,6 +67,7 @@ export class AppMemoryDb {
     CHAT_MESSAGES_TABLE_NAME,
     EVENT_TICKETS_TABLE_NAME,
     EVENT_FEEDBACK_TABLE_NAME,
+    MINGLE_SESSIONS_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
     NOTIFICATIONS_TABLE_NAME,
@@ -322,6 +324,7 @@ export class AppMemoryDb {
         ids: [],
         idsByChatKey: {}
       },
+      [MINGLE_SESSIONS_TABLE_NAME]: { byId: {}, ids: [] },
       [EVENT_FEEDBACK_TABLE_NAME]: {
         byId: {},
         ids: []
@@ -837,6 +840,7 @@ export class AppMemoryDb {
     const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<AppMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const chatMessagesSource = source[CHAT_MESSAGES_TABLE_NAME] as Partial<AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]> | undefined;
+    const mingleSource = source[MINGLE_SESSIONS_TABLE_NAME] as Partial<AppMemorySchema[typeof MINGLE_SESSIONS_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const eventTicketsSource = source[EVENT_TICKETS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_TICKETS_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
@@ -952,6 +956,10 @@ export class AppMemoryDb {
         byId: chatMessagesById,
         ids: chatMessageIds,
         idsByChatKey: chatMessageIdsByChatKey
+      },
+      [MINGLE_SESSIONS_TABLE_NAME]: {
+        byId: mingleSource?.byId && typeof mingleSource.byId === 'object' ? { ...mingleSource.byId } : {},
+        ids: Array.isArray(mingleSource?.ids) ? mingleSource.ids.map(String) : []
       },
       [EVENT_FEEDBACK_TABLE_NAME]: {
         byId: eventFeedbackSource?.byId && typeof eventFeedbackSource.byId === 'object'

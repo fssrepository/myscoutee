@@ -31,6 +31,8 @@ describe('EntryLandingComponent article lists', () => {
     'landing.hero.history': 'Meeting people was once social.',
     'landing.hero.return': 'We’re making it social again.',
     'landing.hero.graph': '6 people · 6 priority lists → 1 team',
+    'landing.hero.free.to.join': 'Free to join',
+    'landing.hero.event.formats': 'Standard · Tournament · Speed meeting',
     'bug.report': 'Bug report',
     'close.articles': 'Close articles'
   };
@@ -160,6 +162,35 @@ describe('EntryLandingComponent article lists', () => {
     expect(demoRequested).toHaveBeenCalledTimes(2);
   });
 
+  it('opens authentication from Free to join and keeps exploring independently available', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    const component = fixture.componentInstance;
+    component.authMode = 'firebase';
+    const authRequested = vi.fn();
+    const demoRequested = vi.fn();
+    component.firebaseAuthRequested.subscribe(authRequested);
+    component.demoRequested.subscribe(demoRequested);
+    fixture.detectChanges();
+    const buttons = fixture.nativeElement.querySelectorAll(
+      '.entry-hero-cta-menu .app-menu__button-row-item'
+    ) as NodeListOf<HTMLButtonElement>;
+    buttons[1].click();
+    expect(authRequested).toHaveBeenCalledOnce();
+    expect(demoRequested).not.toHaveBeenCalled();
+
+    component.authUnavailable = true;
+    fixture.detectChanges();
+    expect(buttons[1].disabled).toBe(true);
+    expect(buttons[0].disabled).toBe(false);
+    buttons[0].click();
+    expect(demoRequested).toHaveBeenCalledOnce();
+
+    component.networkUnavailable = true;
+    fixture.detectChanges();
+    expect(buttons[0].disabled).toBe(true);
+    expect(buttons[1].disabled).toBe(true);
+  });
+
   it('uses deployment branding and singular count in the article popup', () => {
     branding.set({
       ...DEFAULT_DEPLOYMENT_BRANDING,
@@ -201,7 +232,8 @@ describe('EntryLandingComponent article lists', () => {
       '.entry-preview-badge'
     ) as HTMLElement | null;
     expect(ctaMenu).not.toBeNull();
-    expect(heroButtons).toHaveLength(1);
+    expect(heroButtons).toHaveLength(2);
+    expect(heroButtons[1].textContent).toContain('Free to join');
     expect(ctaMenu?.textContent).not.toContain('For Partners');
     expect(ctaMenu?.textContent).not.toContain('Bug report');
     expect(ctaMenu?.textContent).not.toContain('see.how.it.works');
