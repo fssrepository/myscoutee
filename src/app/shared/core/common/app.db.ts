@@ -1230,6 +1230,9 @@ export class AppMemoryDb {
     } else {
       normalized.distanceMetersExact = 0;
     }
+    if (source.met === true) {
+      normalized.met = true;
+    }
     return normalized;
   }
 

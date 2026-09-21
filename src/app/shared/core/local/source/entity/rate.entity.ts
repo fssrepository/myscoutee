@@ -24,6 +24,7 @@ export interface UserRateRecord {
   eventName?: string;
   happenedAtIso?: string;
   distanceMetersExact?: number;
+  met?: boolean;
 }
 
 export type ActivityRateRecordSort = 'happenedAt' | 'distance' | 'relevance';

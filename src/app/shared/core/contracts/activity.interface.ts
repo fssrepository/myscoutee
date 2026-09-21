@@ -40,6 +40,7 @@ export interface ActivityRateDTO {
   eventName: string;
   happenedAt: string;
   distanceMetersExact?: number;
+  met?: boolean;
 }
 
 export interface ActivityRatePageResultDTO {

@@ -316,7 +316,8 @@ export class LocalRatesRepository {
         scoreReceived,
         eventName: record.eventName?.trim() || (direction === 'met' ? 'Met' : 'Rate'),
         happenedAt,
-        distanceMetersExact: this.dynamicDistanceMetersExact(record)
+        distanceMetersExact: this.dynamicDistanceMetersExact(record),
+        met: record.met === true
       }];
     }
 
@@ -324,7 +325,9 @@ export class LocalRatesRepository {
       return [];
     }
 
-    const participantDirection: ActivityRateDTO['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
+    const isMetBucket = record.met === true
+      && ((scoreGiven <= 0 && scoreReceived <= 0) || (scoreGiven > 0 && scoreReceived > 0));
+    const participantDirection: ActivityRateDTO['direction'] = isMetBucket ? 'met' : 'received';
     if (participantDirection === 'met' && (
       !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
       || !this.isFinishedMetActivity(happenedAt)
@@ -333,7 +336,7 @@ export class LocalRatesRepository {
     }
 
     const incomingScore = scoreGiven > 0 ? scoreGiven : scoreReceived;
-    if (incomingScore <= 0) {
+    if (incomingScore <= 0 && participantDirection !== 'met') {
       return [];
     }
     return [{
@@ -344,11 +347,12 @@ export class LocalRatesRepository {
       ...(socialContext ? { socialContext } : {}),
       bridgeUserId: record.bridgeUserId,
       bridgeCount: record.bridgeCount,
-      scoreGiven: 0,
-      scoreReceived: incomingScore,
+      scoreGiven: participantDirection === 'met' && scoreReceived > 0 ? scoreReceived : 0,
+      scoreReceived: participantDirection === 'met' && scoreGiven > 0 ? scoreGiven : incomingScore,
       eventName: record.eventName?.trim() || (participantDirection === 'met' ? 'Met' : 'Rate'),
       happenedAt,
-      distanceMetersExact: this.dynamicDistanceMetersExact(record)
+      distanceMetersExact: this.dynamicDistanceMetersExact(record),
+      met: record.met === true
     }];
   }
 
@@ -460,7 +464,8 @@ export class LocalRatesRepository {
     scoreGiven: number,
     scoreReceived: number
   ): ActivityRateDTO['direction'] | null {
-    if (record.displayDirection === 'met') {
+    if (record.met === true
+      && ((scoreGiven <= 0 && scoreReceived <= 0) || (scoreGiven > 0 && scoreReceived > 0))) {
       return 'met';
     }
     if (scoreGiven > 0 && scoreReceived > 0) {
