@@ -207,7 +207,9 @@
       </div>
     </footer>
   </div>
-  <span class="entry-version-label">{{ appVersionLabel }}</span>
+  @if (appVersionLabel) {
+    <span class="entry-version-label">{{ appVersionLabel }}</span>
+  }
 </section>
 
 @if (aboutPopupOpen) {

@@ -249,7 +249,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
-  protected appVersionLabel = 'v1.0.0';
+  protected appVersionLabel = '';
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
   private readonly articlesReadySignal = new BehaviorSubject<number>(0);
   private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;
