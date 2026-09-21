@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ActivityEventDetailDTO,
-  type ActivityEventRecord,
-  type ActivitySubEventResourceStateDTO
+  type ActivitySubEventResourceStateDTO,
+  type SubEventsSlotDTO
 } from '../../../contracts/activity.interface';
 import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
 
@@ -35,8 +35,10 @@ describe('LocalActivityEventDetailsMapper empty child definitions', () => {
 
 describe('LocalActivityEventsMapper slot-scoped main Event runtime', () => {
   it('maps every Slot without Sub Event definitions to one MAIN_EVENT item', () => {
-    const parent = {
+    const parent = LocalActivityEventDetailsMapper.toRecord(new ActivityEventDetailDTO().apply({
       id: 'event-1',
+      userId: 'user-1',
+      type: 'hosting',
       title: 'Runtime Event',
       subtitle: 'Slot-scoped main runtimes',
       location: 'Austin',
@@ -55,7 +57,7 @@ describe('LocalActivityEventsMapper slot-scoped main Event runtime', () => {
       capacityMax: 8,
       acceptedMembers: 1,
       pendingMembers: 0
-    } as ActivityEventRecord;
+    }));
 
     const slots = LocalActivityEventsMapper.toSubEventsSlots('event-1', parent, {
       userId: 'user-1',
@@ -84,12 +86,21 @@ describe('LocalActivityEventsMapper slot-scoped main Event runtime', () => {
 
 describe('LocalActivityEventsMapper common resource metrics', () => {
   it('keeps the stored common counters for a viewer with an empty own assignment state', () => {
-    const slots = [{
+    const slots: readonly SubEventsSlotDTO[] = [{
       id: 'event-1:default',
       parentEventId: 'event-1',
       slotSourceId: null,
       subEventItems: [{
         id: 'sub-1',
+        name: 'Sub Event',
+        description: '',
+        startAt: '2099-03-10T12:00:00Z',
+        endAt: '2099-03-10T13:00:00Z',
+        optional: false,
+        capacityMin: 0,
+        capacityMax: 8,
+        membersAccepted: 0,
+        membersPending: 0,
         carsAccepted: 1,
         carsPending: 0,
         carsCapacityMin: 0,
@@ -103,7 +114,7 @@ describe('LocalActivityEventsMapper common resource metrics', () => {
         suppliesCapacityMin: 0,
         suppliesCapacityMax: 6
       }]
-    }] as Parameters<typeof LocalActivityEventsMapper.withSubEventResourceRecords>[0];
+    }];
     const rileyState: ActivitySubEventResourceStateDTO = {
       ownerId: 'event-1',
       subEventId: 'sub-1',

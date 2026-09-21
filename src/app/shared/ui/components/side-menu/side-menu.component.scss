@@ -215,6 +215,24 @@
   mat-icon { width: 18px; height: 18px; font-size: 18px; }
 }
 
+.navigator-mingle-table-action button {
+  position: relative;
+  border-color: #5eead4;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.navigator-mingle-table-action__attention {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
 .navigator-menu-header-card {
   display: block;
   border-bottom: 1px solid rgba(23, 33, 54, 0.12);

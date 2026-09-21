@@ -167,7 +167,7 @@ export class SeedUserRatesBuilder {
       scoreGiven = 4 + (seed % 7);
       scoreReceived = 4 + ((seed + 5) % 7);
     } else if (direction === 'met') {
-      scoreGiven = 4 + (seed % 7);
+      scoreGiven = 0;
       scoreReceived = 0;
     }
     const distanceMetersExact = ((2 + ((seed + laneIndex + userIndex) % 33)) * 1000)
@@ -194,7 +194,8 @@ export class SeedUserRatesBuilder {
         ? `${mode === 'pair' ? 'Pair' : 'Single'} ${direction} ${variantIndex + 1}`
         : `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
       happenedAt,
-      distanceMetersExact
+      distanceMetersExact,
+      met: direction === 'met'
     };
   }
 

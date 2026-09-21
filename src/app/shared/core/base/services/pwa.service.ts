@@ -39,6 +39,7 @@ export class PwaService {
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
   private readonly registrationRef = signal<ServiceWorkerRegistration | null>(null);
   private initialized = false;
+  private updateCheckInFlight: Promise<void> | null = null;
   private onBeforeInstallPrompt = (event: Event) => {
     const promptEvent = event as BeforeInstallPromptEvent;
     promptEvent.preventDefault();
@@ -50,6 +51,15 @@ export class PwaService {
     this.installPromptPendingRef.set(false);
     this.installBusyRef.set(false);
     this.setInstallDismissed(true);
+  };
+  private onApplicationForegrounded = () => {
+    if (typeof document === 'undefined' || document.visibilityState === 'hidden') {
+      return;
+    }
+    const registration = this.registrationRef();
+    if (registration) {
+      void this.requestBundleUpdateCheck(registration);
+    }
   };
 
   readonly installBusy = this.installBusyRef.asReadonly();
@@ -193,13 +203,35 @@ export class PwaService {
       updateViaCache: 'none'
     });
     this.registrationRef.set(registration);
-    await this.checkForPageLoadBundleUpdate(registration);
+    window.addEventListener('pageshow', this.onApplicationForegrounded);
+    window.addEventListener('focus', this.onApplicationForegrounded);
+    window.addEventListener('online', this.onApplicationForegrounded);
+    document.addEventListener('visibilitychange', this.onApplicationForegrounded);
+    await this.requestBundleUpdateCheck(registration);
   }
 
-  private async checkForPageLoadBundleUpdate(registration: ServiceWorkerRegistration): Promise<void> {
+  private async requestBundleUpdateCheck(
+    registration: ServiceWorkerRegistration
+  ): Promise<void> {
     if (!environment.production || typeof document === 'undefined') {
       return;
     }
+    if (this.updateCheckInFlight) {
+      return this.updateCheckInFlight;
+    }
+
+    const updateCheck = this.checkForBundleUpdate(registration);
+    this.updateCheckInFlight = updateCheck;
+    try {
+      await updateCheck;
+    } finally {
+      if (this.updateCheckInFlight === updateCheck) {
+        this.updateCheckInFlight = null;
+      }
+    }
+  }
+
+  private async checkForBundleUpdate(registration: ServiceWorkerRegistration): Promise<void> {
 
     const currentBuildId = this.readDocumentBuildId();
     if (!currentBuildId) {

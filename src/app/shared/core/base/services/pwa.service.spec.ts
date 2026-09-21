@@ -114,3 +114,91 @@ describe('PWA refresh after a completed deployment', () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('PWA automatic frontend release checks', () => {
+  const originalProduction = environment.production;
+
+  afterEach(() => {
+    environment.production = originalProduction;
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function fixture() {
+    return runInInjectionContext(Injector.create({ providers: [] }), () => new PwaService());
+  }
+
+  it('checks on registration and whenever a visible browser or WebView returns to the foreground', async () => {
+    const registration = {} as ServiceWorkerRegistration;
+    const register = vi.fn(async () => registration);
+    vi.stubGlobal('navigator', { serviceWorker: { register } });
+    const service = fixture();
+    const check = vi.spyOn(service as any, 'requestBundleUpdateCheck').mockResolvedValue(undefined);
+    const windowListeners = vi.spyOn(window, 'addEventListener');
+    const documentListeners = vi.spyOn(document, 'addEventListener');
+
+    await (service as any).registerServiceWorker();
+
+    expect(register).toHaveBeenCalledWith(
+      new URL('app-sw.js', document.baseURI).toString(),
+      { updateViaCache: 'none' }
+    );
+    expect(check).toHaveBeenCalledWith(registration);
+    expect(windowListeners).toHaveBeenCalledWith('pageshow', expect.any(Function));
+    expect(windowListeners).toHaveBeenCalledWith('focus', expect.any(Function));
+    expect(windowListeners).toHaveBeenCalledWith('online', expect.any(Function));
+    expect(documentListeners).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+
+    (service as any).onApplicationForegrounded();
+    expect(check).toHaveBeenLastCalledWith(registration);
+
+    const visibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    const checksBeforeHiddenEvent = check.mock.calls.length;
+    (service as any).onApplicationForegrounded();
+    expect(check).toHaveBeenCalledTimes(checksBeforeHiddenEvent);
+    if (visibilityDescriptor) {
+      Object.defineProperty(document, 'visibilityState', visibilityDescriptor);
+    }
+  });
+
+  it('downloads and activates a different public build automatically, then reloads once', async () => {
+    environment.production = true;
+    const service = fixture();
+    const waitingWorker = {} as ServiceWorker;
+    const registration = { update: vi.fn(async () => undefined) } as unknown as ServiceWorkerRegistration;
+    vi.spyOn(service as any, 'readDocumentBuildId').mockReturnValue('old-build');
+    vi.spyOn(service as any, 'fetchLatestBuildId').mockResolvedValue('new-build');
+    vi.spyOn(service as any, 'waitForWaitingWorker').mockResolvedValue(waitingWorker);
+    const activate = vi.spyOn(service as any, 'activateWaitingWorker').mockResolvedValue(undefined);
+    const reload = vi.spyOn(service as any, 'reloadPage').mockImplementation(() => {});
+
+    await (service as any).requestBundleUpdateCheck(registration);
+
+    expect(registration.update).toHaveBeenCalledTimes(1);
+    expect(activate).toHaveBeenCalledWith(waitingWorker);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates simultaneous foreground checks without suppressing the next later check', async () => {
+    environment.production = true;
+    const service = fixture();
+    const registration = {} as ServiceWorkerRegistration;
+    let finishCheck!: () => void;
+    const check = vi.spyOn(service as any, 'checkForBundleUpdate').mockImplementation(
+      () => new Promise<void>(resolve => { finishCheck = resolve; })
+    );
+
+    const first = (service as any).requestBundleUpdateCheck(registration);
+    const simultaneous = (service as any).requestBundleUpdateCheck(registration);
+    expect(check).toHaveBeenCalledTimes(1);
+    finishCheck();
+    await Promise.all([first, simultaneous]);
+
+    const later = (service as any).requestBundleUpdateCheck(registration);
+    finishCheck();
+    await later;
+    expect(check).toHaveBeenCalledTimes(2);
+  });
+});

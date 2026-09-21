@@ -2,10 +2,10 @@
 <section class="subevent-definition-panel">
   <header class="subevent-definition-panel__header">
     <div class="subevent-definition-panel__title">
-      <mat-icon>inventory_2</mat-icon>
+      <mat-icon>{{ mode === 'Mingle' ? 'table_restaurant' : 'inventory_2' }}</mat-icon>
       <div>
         <h3>{{ 'event.editor.subevents.title' | i18n }}</h3>
-        <p>{{ panelSubtitle() }}</p>
+        <p>{{ panelSubtitle() | i18n }}</p>
       </div>
     </div>
     <div class="subevent-definition-panel__toggle-wrap">
@@ -21,7 +21,7 @@
       @if (enabled) {
       @if (modeControl === 'badge') {
       <app-menu
-        class="subevent-definition-panel__mode-menu"
+        class="subevent-definition-panel__mode-menu subevent-definition-panel__mode-menu--badge"
         kind="select"
         [trigger]="modeBadgeTrigger()"
         [items]="[]"
@@ -42,7 +42,7 @@
         [items]="viewMenuItems()"
         (itemSelect)="onViewMenuSelect($event)"
       ></app-menu>
-      @if (canConfigureDefinitions()) {
+      @if ((mode === 'Mingle' && canOpenMingleConfiguration()) || (mode !== 'Mingle' && canConfigureDefinitions())) {
       <app-menu
         class="subevent-definition-panel__add-menu"
         kind="inline"
@@ -105,6 +105,18 @@
       (save)="saveDefinitionForm($event)"
       (cancel)="cancelDefinitionForm($event)"
     ></app-event-subevent-stage-form-popup>
+  }
+
+  @if (enabled && mode === 'Mingle') {
+    <app-event-mingle-configuration-popup
+      [open]="mingleConfigurationPopupOpen()"
+      [configuration]="normalizedMingleConfiguration()"
+      [readOnly]="readOnly || disabled"
+      [allowRoundIncrease]="allowMingleRoundIncrease"
+      [minimumPlannedRounds]="minimumMinglePlannedRounds"
+      (save)="saveMingleConfiguration($event)"
+      (cancel)="closeMingleConfiguration($event)"
+    ></app-event-mingle-configuration-popup>
   }
 </section>
 }

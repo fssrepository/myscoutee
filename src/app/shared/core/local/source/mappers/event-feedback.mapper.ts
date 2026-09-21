@@ -33,6 +33,7 @@ export class LocalEventFeedbackMapper {
     activeUser: UserDto;
     states: readonly EventFeedbackStateDto[];
     receivedEvents: readonly EventFeedbackReceivedEventDto[];
+    minglePeersByEventId?: Readonly<Record<string, readonly string[]>>;
     eventFeedbackUnlockDelayMs?: number;
     nowMs?: number;
   }): EventFeedbackPageResultDto {
@@ -49,6 +50,7 @@ export class LocalEventFeedbackMapper {
       events,
       users,
       activeUser: options.activeUser,
+      minglePeersByEventId: options.minglePeersByEventId,
       eventFeedbackUnlockDelayMs: unlockDelayMs,
       nowMs
     });
@@ -58,6 +60,7 @@ export class LocalEventFeedbackMapper {
       cardsByEventId,
       state,
       activeUserId: options.activeUser.id,
+      minglePeersByEventId: options.minglePeersByEventId,
       eventFeedbackUnlockDelayMs: unlockDelayMs,
       nowMs
     });
@@ -81,6 +84,7 @@ export class LocalEventFeedbackMapper {
     events: readonly ActivityEventDTO[];
     users: readonly UserDto[];
     activeUser: UserDto;
+    minglePeersByEventId?: Readonly<Record<string, readonly string[]>>;
     eventFeedbackUnlockDelayMs?: number;
     nowMs?: number;
   }): EventFeedbackDetailDto {
@@ -99,6 +103,7 @@ export class LocalEventFeedbackMapper {
       events: [event],
       users,
       activeUser: options.activeUser,
+      minglePeersByEventId: options.minglePeersByEventId,
       eventFeedbackUnlockDelayMs: options.eventFeedbackUnlockDelayMs ?? this.DEFAULT_UNLOCK_DELAY_MS,
       nowMs: options.nowMs ?? Date.now()
     }).filter(card => card.eventId === eventId);
@@ -156,6 +161,7 @@ export class LocalEventFeedbackMapper {
     events: readonly ActivityEventDTO[];
     users: readonly UserDto[];
     activeUser: UserDto;
+    minglePeersByEventId?: Readonly<Record<string, readonly string[]>>;
     eventFeedbackUnlockDelayMs: number;
     nowMs: number;
   }): EventFeedbackCardDto[] {
@@ -165,12 +171,17 @@ export class LocalEventFeedbackMapper {
         continue;
       }
       const startMs = this.eventStartAtMs(event);
-      if (startMs === null || options.nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
+      const mingle = options.minglePeersByEventId?.[event.id] !== undefined;
+      if (mingle ? !this.isFeedbackUnlocked(event, options.eventFeedbackUnlockDelayMs, options.nowMs)
+        : startMs === null || options.nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
         continue;
       }
       const eventLabel = this.eventFeedbackWhenLabel(event);
       const host = this.feedbackHostUserForEvent(event, options.users, options.activeUser);
-      const attendees = this.feedbackAttendeesForEvent(event, host.id, options.users, options.activeUser.id);
+      const peerIds = options.minglePeersByEventId?.[event.id];
+      const attendees = peerIds === undefined
+        ? this.feedbackAttendeesForEvent(event, host.id, options.users, options.activeUser.id)
+        : options.users.filter(user => user.id !== host.id && user.id !== options.activeUser.id && peerIds.includes(user.id));
       cards.push({
         id: `feedback-event-${event.id}`,
         eventId: event.id,
@@ -222,6 +233,7 @@ export class LocalEventFeedbackMapper {
     cardsByEventId: Record<string, EventFeedbackCardDto[]>;
     state: EventFeedbackPageStateSnapshotDto;
     activeUserId: string;
+    minglePeersByEventId?: Readonly<Record<string, readonly string[]>>;
     eventFeedbackUnlockDelayMs: number;
     nowMs: number;
   }): EventFeedbackDto[] {
@@ -231,7 +243,9 @@ export class LocalEventFeedbackMapper {
         continue;
       }
       const startMs = this.eventStartAtMs(event);
-      if (startMs === null || options.nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
+      const mingle = options.minglePeersByEventId?.[event.id] !== undefined;
+      if (mingle ? !this.isFeedbackUnlocked(event, options.eventFeedbackUnlockDelayMs, options.nowMs)
+        : startMs === null || options.nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
         continue;
       }
       const cards = (options.cardsByEventId[event.id] ?? [])
@@ -250,7 +264,7 @@ export class LocalEventFeedbackMapper {
         subtitle: event.subtitle,
         timeframe: event.timeframe,
         imageUrl: event.imageUrl?.trim() || '',
-        startAtMs: startMs,
+        startAtMs: startMs ?? 0,
         pendingCards,
         totalCards: cards.length,
         isRemoved,

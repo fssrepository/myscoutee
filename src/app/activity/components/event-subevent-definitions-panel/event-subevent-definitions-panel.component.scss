@@ -86,6 +86,11 @@
   display: inline-flex;
 }
 
+:host ::ng-deep .subevent-definition-panel__mode-menu--badge .app-menu__trigger:disabled {
+  opacity: 0.84;
+  filter: none;
+}
+
 .subevent-definition-panel__view-menu {
   display: inline-flex;
 }

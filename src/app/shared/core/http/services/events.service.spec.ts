@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
 import { RouteDelayService } from '../../base/services/route-delay.service';
+import { PricingBuilder } from '../../base/builders/pricing.builder';
 import { ActivityEventDetailDTO } from '../../contracts/activity.interface';
 import { HttpEventsService } from './events.service';
 
@@ -165,6 +166,7 @@ describe('HttpEventsService', () => {
     );
     expect(result).toEqual({
       mode: 'Casual',
+      canAccessResources: false,
       slots: [{ id: 'slot-13', parentEventId: 'event-1', subEventItems: [] }],
       total: 100,
       nextCursor: '24'
@@ -197,7 +199,12 @@ describe('HttpEventsService', () => {
         capacityMin: 2,
         capacityMax: 8
       }],
-      pricing: { enabled: true, basePrice: 20, currency: 'EUR' },
+      pricing: {
+        ...PricingBuilder.createDefaultPricingConfig('event'),
+        enabled: true,
+        basePrice: 20,
+        currency: 'EUR'
+      },
       policiesEnabled: true,
       policies: [{ id: 'policy-1', title: 'Rules', description: 'Play fair', required: true }],
       slotsEnabled: true,
@@ -303,7 +310,7 @@ describe('HttpEventsService', () => {
     await expect(TestBed.inject(HttpEventsService).queryEventExplorePage({
       userId: 'user-1',
       view: 'day',
-      order: 'recent',
+      order: 'upcoming',
       friendsOnly: false,
       openSpotsOnly: false,
       topic: '',

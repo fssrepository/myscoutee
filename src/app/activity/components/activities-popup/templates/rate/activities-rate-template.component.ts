@@ -228,9 +228,6 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     if (!item) {
       return false;
     }
-    if (context.getDisplayedDirection(item) === 'met') {
-      return false;
-    }
     if (!context.hasOwnRating(item) && context.getDisplayedDirection(item) === 'received' && item.mode === 'pair') {
       return context.pairReceivedAverageScore(item) <= 0;
     }

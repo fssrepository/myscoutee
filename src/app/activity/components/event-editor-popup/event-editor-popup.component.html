@@ -67,7 +67,7 @@
                 [autoSize]="true"
                 slotImageVariant="medium"
                 [ariaLabel]="'event.editor.image.aria' | i18n"
-                [disabled]="eventStructureReadOnly()"
+                [disabled]="eventEditorStore.readOnly()"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
                 [uploadEntityId]="eventImageUploadEntityId()"
                 [ngModel]="eventImageUrls()"
@@ -114,6 +114,12 @@
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
+            <app-link-input
+              class="experience-description-field"
+              [(ngModel)]="eventDetailDTO.sourceLink"
+              [config]="{ label: 'event.external.link', placeholder: 'https://...' }"
+              [readOnly]="eventStructureReadOnly()"
+            ></app-link-input>
             @if (showSubEventDefinitionsPanel()) {
               <app-event-subevent-definitions-panel
                 class="experience-description-field"
@@ -121,11 +127,15 @@
                 (ngModelChange)="onSubEventDefinitionsChange($event)"
                 [mode]="eventDetailDTO.mode"
                 (modeChange)="onEventModeChange($event)"
+                [mingleConfiguration]="eventDetailDTO.mingleConfiguration"
+                (mingleConfigurationChange)="onMingleConfigurationChange($event)"
                 [enabled]="eventDetailDTO.subEventsEnabled"
                 (enabledChange)="onSubEventsEnabledChange($event)"
                 [bounds]="eventDetailDTO.dateRange"
                 [readOnly]="eventStructureReadOnly()"
                 [disabled]="eventStructureReadOnly()"
+                [allowMingleRoundIncrease]="isPublishedManageMode()"
+                [minimumMinglePlannedRounds]="minimumMinglePlannedRounds()"
               ></app-event-subevent-definitions-panel>
             }
             <section class="event-scheduling-stack">
@@ -213,12 +223,15 @@
           [ngModel]="overrideEditor.definitions"
           (ngModelChange)="onSlotOverrideDefinitionsChange($event)"
           [(mode)]="eventDetailDTO.mode"
+          [mingleConfiguration]="eventDetailDTO.mingleConfiguration"
           modeControl="badge"
           [showEnableToggle]="false"
           [enabled]="true"
           [bounds]="eventDetailDTO.dateRange"
           [readOnly]="eventStructureReadOnly()"
-          [disabled]="eventStructureReadOnly()"
+          [disabled]="eventEditorStore.readOnly()"
+          [allowMingleRoundIncrease]="isPublishedManageMode()"
+          [minimumMinglePlannedRounds]="minimumMinglePlannedRounds()"
         ></app-event-subevent-definitions-panel>
       </div>
     </app-popup>

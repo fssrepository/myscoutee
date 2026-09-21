@@ -39,7 +39,7 @@ describe('AssetBorrowDraftStore', () => {
 
     const reconstructed = new AssetBorrowDraftStore().read('nova', 'stage-1', 'asset-1');
 
-    expect(reconstructed).toEqual(jasmine.objectContaining({
+    expect(reconstructed).toEqual(expect.objectContaining({
       userId: 'nova',
       subEventId: 'stage-1',
       cardId: 'asset-1',

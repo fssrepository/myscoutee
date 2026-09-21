@@ -175,7 +175,7 @@ export class LocalUsersRepository {
         [USER_FILTER_PREFERENCES_TABLE_NAME]: {
           byId: {
             ...table.byId,
-            [normalizedUserId]: preferences
+            [normalizedUserId]: { ...table.byId[normalizedUserId], ...preferences }
           },
           ids: exists ? [...table.ids] : [...table.ids, normalizedUserId]
         }
