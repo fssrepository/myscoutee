@@ -417,8 +417,8 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.queryMingleState(userId, eventId, roundNumber);
   }
 
-  applyMingleAction(eventId: string, actorUserId: string, action: string): Promise<MingleStateDTO | null> {
-    return this.eventsService.applyMingleAction(eventId, actorUserId, action);
+  applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<MingleStateDTO | null> {
+    return this.eventsService.applyMingleAction(eventId, actorUserId, action, expectedRevision);
   }
 
   saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {

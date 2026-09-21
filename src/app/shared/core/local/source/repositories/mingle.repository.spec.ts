@@ -61,6 +61,17 @@ describe('LocalMingleRepository', () => {
     expect(groups.map(group => group.membersAccepted)).toEqual([2, 2]);
   });
 
+  it('rejects an old break confirmation after the next round starts without changing that round', () => {
+    repository.apply('event', 'owner', 'start', 0);
+    const breakState = repository.apply('event', 'owner', 'next');
+    const nextRound = repository.apply('event', 'owner', 'next', breakState.revision);
+    expect(nextRound.status).toBe('ROUND');
+    expect(nextRound.roundNumber).toBe(2);
+    const before = structuredClone(db.read());
+    expect(() => repository.apply('event', 'owner', 'next', breakState.revision)).toThrow('MINGLE_STATE_CHANGED');
+    expect(db.read()).toEqual(before);
+  });
+
   it('preserves paused time across a persisted-state round trip and advances elapsed phases once', async () => {
     repository.apply('event', 'owner', 'start');
     vi.mocked(Date.now).mockReturnValue(start + 20_000);

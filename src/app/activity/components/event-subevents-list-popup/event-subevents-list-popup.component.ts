@@ -101,6 +101,7 @@ interface EventSubeventsListFilters {
 
 const MINGLE_ACTION_ERROR_I18N_KEYS: Readonly<Record<string, string>> = {
   MINGLE_ACTION_FAILED: 'mingle.error.action.failed',
+  MINGLE_STATE_CHANGED: 'mingle.error.state.changed',
   MINGLE_ACTION_UNSUPPORTED: 'mingle.error.action.unsupported',
   MINGLE_ROUND_LIMIT_REACHED: 'mingle.error.round.limit.reached',
   MINGLE_STATE_CANNOT_ADVANCE: 'mingle.error.state.cannot.advance',
@@ -850,7 +851,8 @@ export class EventSubeventsListPopupComponent {
           const next = await this.mingleStore.applyAction(
             context.parentEventId,
             actorUserId,
-            context.backendAction
+            context.backendAction,
+            context.expectedRevision
           );
           if (!next) {
             throw new Error(failureMessage);

@@ -165,8 +165,8 @@ export class MingleStore implements OnDestroy {
     return true;
   }
 
-  async applyAction(eventId: string, actorUserId: string, action: string): Promise<MingleStateDTO | null> {
-    const next = await this.eventsService.applyMingleAction(eventId, actorUserId, action);
+  async applyAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<MingleStateDTO | null> {
+    const next = await this.eventsService.applyMingleAction(eventId, actorUserId, action, expectedRevision);
     if (next && this.activeUserIdRef() === `${actorUserId ?? ''}`.trim()) {
       this.stateRef.set(next);
       this.scheduler.restart();

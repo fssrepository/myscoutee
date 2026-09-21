@@ -47,12 +47,15 @@ export class LocalMingleRepository {
     return null;
   }
 
-  apply(eventId: string, actorId: string, action: string): MingleStateDTO {
+  apply(eventId: string, actorId: string, action: string, expectedRevision?: number): MingleStateDTO {
     actorId = actorId.trim(); eventId = eventId.trim();
     const event = this.events.queryEventRecordById(actorId, eventId);
     if (!event || event.mode !== 'Mingle') return this.fail('MINGLE_EVENT_NOT_FOUND');
     if (!this.canManage(event, actorId)) return this.fail('MINGLE_MANAGE_FORBIDDEN');
     const session = this.db.read()[MINGLE_SESSIONS_TABLE_NAME].byId[eventId] ?? null;
+    if (expectedRevision != null && expectedRevision !== (session?.revision ?? 0)) {
+      return this.fail('MINGLE_STATE_CHANGED');
+    }
     return this.toState(event, this.mutate(event, session, action.trim().toLowerCase(), Date.now()), actorId);
   }
 

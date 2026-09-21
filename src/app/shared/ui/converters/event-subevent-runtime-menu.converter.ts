@@ -51,6 +51,7 @@ export type EventSubeventRuntimeMenuContext =
     }
   | {
       scope: 'mingle-runtime';
+      expectedRevision: number;
       action: EventSubeventRuntimeMingleAction;
       backendAction: 'start' | 'next' | 'pause' | 'resume' | 'complete';
       item: SubEventDTO;
@@ -90,7 +91,7 @@ export interface EventSubeventRuntimeMenuConverterOptions {
   stageNumber?: number | null;
   siblingItems?: readonly SubEventDTO[];
   nowMs?: number;
-  mingleState?: Pick<MingleStateDTO, 'eventId' | 'status' | 'roundNumber' | 'plannedRounds' | 'canManage'> | null;
+  mingleState?: Pick<MingleStateDTO, 'eventId' | 'status' | 'roundNumber' | 'plannedRounds' | 'canManage'> & Partial<Pick<MingleStateDTO, 'revision'>> | null;
 }
 
 export class EventSubeventRuntimeMenuConverter {
@@ -224,7 +225,7 @@ export class EventSubeventRuntimeMenuConverter {
   ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const current = state?.eventId === parentEventId ? state : null;
     if (!current && roundNumber === 1) {
-      return [this.mingleActionItem(item, parentEventId, {
+      return [this.mingleActionItem(item, parentEventId, 0, {
         action: 'mingle-start', backendAction: 'start', label: 'mingle.action.start', icon: 'play_circle',
         palette: 'success', title: 'mingle.action.start', description: 'mingle.action.start.description',
         confirmLabel: 'mingle.action.start.confirm', busyLabel: 'mingle.action.starting', destructive: false
@@ -236,17 +237,17 @@ export class EventSubeventRuntimeMenuConverter {
     const currentRound = Math.max(1, this.toInteger(current.roundNumber));
     if (current.status === 'ROUND' && roundNumber === currentRound) {
       return [
-        this.mingleActionItem(item, parentEventId, {
+        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
           action: 'mingle-pause', backendAction: 'pause', label: 'mingle.action.pause', icon: 'pause_circle',
           palette: 'amber', title: 'mingle.action.pause.title', description: 'mingle.action.pause.description',
           confirmLabel: 'mingle.action.pause.confirm', busyLabel: 'mingle.action.pausing', destructive: false
         }),
-        this.mingleActionItem(item, parentEventId, {
+        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
           action: 'mingle-next', backendAction: 'next', label: 'mingle.action.end', icon: 'skip_next',
           palette: 'blue', title: 'mingle.action.end', description: 'mingle.action.end.description',
           confirmLabel: 'mingle.action.end', busyLabel: 'mingle.action.ending', destructive: false
         }),
-        this.mingleActionItem(item, parentEventId, {
+        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
           action: 'mingle-complete', backendAction: 'complete', label: 'mingle.action.complete', icon: 'stop_circle',
           palette: 'danger', title: 'mingle.action.complete', description: 'mingle.action.complete.description',
           confirmLabel: 'mingle.action.complete.confirm', busyLabel: 'mingle.action.completing', destructive: true
@@ -254,21 +255,21 @@ export class EventSubeventRuntimeMenuConverter {
       ];
     }
     if (current.status === 'PAUSED' && roundNumber === currentRound) {
-      return [this.mingleActionItem(item, parentEventId, {
+      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
         action: 'mingle-resume', backendAction: 'resume', label: 'mingle.action.resume', icon: 'play_circle',
         palette: 'success', title: 'mingle.action.resume.title', description: 'mingle.action.resume.description',
         confirmLabel: 'mingle.action.resume.confirm', busyLabel: 'mingle.action.resuming', destructive: false
       })];
     }
     if (current.status === 'BREAK' && roundNumber === currentRound + 1) {
-      return [this.mingleActionItem(item, parentEventId, {
+      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
         action: 'mingle-next', backendAction: 'next', label: 'mingle.action.next.now', icon: 'skip_next',
         palette: 'success', title: 'mingle.action.next', description: 'mingle.action.next.description',
         confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
     if (current.status === 'COMPLETED' && roundNumber === currentRound + 1) {
-      return [this.mingleActionItem(item, parentEventId, {
+      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
         action: 'mingle-start', backendAction: 'start', label: 'mingle.action.next', icon: 'play_circle',
         palette: 'success', title: 'mingle.action.next', description: 'mingle.action.next.restart.description',
         confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
@@ -280,6 +281,7 @@ export class EventSubeventRuntimeMenuConverter {
   private static mingleActionItem(
     item: SubEventDTO,
     parentEventId: string,
+    expectedRevision: number,
     options: {
       action: EventSubeventRuntimeMingleAction;
       backendAction: 'start' | 'next' | 'pause' | 'resume' | 'complete';
@@ -302,6 +304,7 @@ export class EventSubeventRuntimeMenuConverter {
       layout: 'pill',
       context: {
         scope: 'mingle-runtime',
+        expectedRevision,
         action: options.action,
         backendAction: options.backendAction,
         item,

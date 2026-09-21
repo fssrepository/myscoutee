@@ -1577,9 +1577,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return state;
   }
 
-  async applyMingleAction(eventId: string, actorUserId: string, action: string): Promise<MingleStateDTO | null> {
+  async applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<MingleStateDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const state = this.mingleRepository.apply(eventId, actorUserId, action);
+    const state = this.mingleRepository.apply(eventId, actorUserId, action, expectedRevision);
     await this.mingleRepository.flushToIndexedDb();
     return state;
   }

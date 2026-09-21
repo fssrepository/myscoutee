@@ -138,7 +138,7 @@ export interface IEventsService {
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
   queryTournamentStageSnapshot(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentStageSnapshotDTO>;
   queryMingleState(userId: string, eventId?: string | null, roundNumber?: number | null): Promise<EventContracts.MingleStateDTO | null>;
-  applyMingleAction(eventId: string, actorUserId: string, action: string): Promise<EventContracts.MingleStateDTO | null>;
+  applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<EventContracts.MingleStateDTO | null>;
   saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;

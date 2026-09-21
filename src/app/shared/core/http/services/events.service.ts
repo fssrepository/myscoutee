@@ -897,7 +897,8 @@ export class HttpEventsService implements IEventsService {
   async applyMingleAction(
     eventId: string,
     actorUserId: string,
-    action: string
+    action: string,
+    expectedRevision?: number
   ): Promise<MingleStateDTO | null> {
     const normalizedEventId = `${eventId ?? ''}`.trim();
     const normalizedActorUserId = `${actorUserId ?? ''}`.trim();
@@ -910,7 +911,8 @@ export class HttpEventsService implements IEventsService {
       {
         eventId: normalizedEventId,
         actorUserId: normalizedActorUserId,
-        action: normalizedAction
+        action: normalizedAction,
+        expectedRevision
       }
     ).toPromise() ?? null;
   }

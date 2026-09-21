@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.21.hu.130",
+  "version": "2026.09.21.hu.131",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -2366,6 +2366,7 @@
     "mingle.tables": "Asztalok",
     "mingle.table.number": "{{number}}. asztal",
     "mingle.error.action.failed": "A villámtalálkozók műveletét technikai hiba miatt nem sikerült végrehajtani.",
+    "mingle.error.state.changed": "A kör állapota közben megváltozott. Zárd be ezt az ablakot, és válaszd ki újra a műveletet.",
     "mingle.error.service.unavailable": "A szerver átmenetileg nem volt elérhető. Próbáld újra elindítani a villámtalálkozókat.",
     "mingle.error.action.unsupported": "Ez a művelet nem támogatott a villámtalálkozóknál.",
     "mingle.error.round.limit.reached": "Új kör indítása előtt növeld a villámtalálkozók tervezett körszámát.",
