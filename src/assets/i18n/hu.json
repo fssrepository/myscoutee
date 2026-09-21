@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.21.hu.131",
+  "version": "2026.09.21.hu.132",
   "messages": {
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
@@ -1249,7 +1249,7 @@
     "landing.about.aria": "A MyScoutee bemutatása",
     "landing.about.close.aria": "MyScoutee bemutatkozás bezárása",
     "landing.about.founder.label": "Ki vagyok",
-    "landing.about.founder.title": "Peter Szabo · független alapító és szoftverfejlesztő",
+    "landing.about.founder.title": "Független alapító és szoftverfejlesztő",
     "landing.about.founder.description": "A MyScoutee-t több évnyi önálló utazásszervezés és egy emberibb, az online bemutatkozástól a valós találkozásig vezető út keresése után építettem fel.",
     "landing.about.product.label": "Mi ez",
     "landing.about.product.title": "A találkozások mögötti platform, nem swipe-alkalmazás",

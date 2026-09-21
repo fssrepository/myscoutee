@@ -68,6 +68,7 @@ describe('EntryLandingComponent article lists', () => {
           provide: I18nService,
           useValue: {
             revision: i18nRevision.asReadonly(),
+            founderName: signal('Configured Founder').asReadonly(),
             translate: (key: string, fallback?: string) =>
               translations[key] ?? fallback ?? key,
             translateParams: (
@@ -255,7 +256,7 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(fixture.componentInstance).aboutPopupOpen).toBe(true);
     const aboutText = fixture.nativeElement.querySelector('.entry-about-popup-body')
       ?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-    expect(aboutText).toContain('Peter Szabo');
+    expect(aboutText).toContain('Configured Founder');
     expect(aboutText).toContain('A platform behind meetings, not swipes');
     expect(aboutText).toContain('Free to join');
     expect(aboutText).toContain('event, ticket, venue, travel, and partner services');

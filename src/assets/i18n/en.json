@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.21.en.131",
+  "version": "2026.09.21.en.132",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -1249,7 +1249,7 @@
     "landing.about.aria": "About MyScoutee",
     "landing.about.close.aria": "Close the MyScoutee overview",
     "landing.about.founder.label": "Who I am",
-    "landing.about.founder.title": "Peter Szabo · Independent founder and software developer",
+    "landing.about.founder.title": "Independent founder and software developer",
     "landing.about.founder.description": "I built MyScoutee after years of organizing my own journeys and looking for a more human path from online introductions to meeting in real life.",
     "landing.about.product.label": "What it is",
     "landing.about.product.title": "A platform behind meetings, not swipes",

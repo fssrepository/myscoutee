@@ -219,7 +219,12 @@
           <span class="entry-about-label">
             {{ 'landing.about.founder.label' | i18n: 'Who I am' }}
           </span>
-          <h3>{{ 'landing.about.founder.title' | i18n: 'Peter Szabo · Independent founder and software developer' }}</h3>
+          <h3>
+            @if (founderName()) {
+              <span data-i18n-ignore>{{ founderName() }}</span> ·
+            }
+            {{ 'landing.about.founder.title' | i18n: 'Independent founder and software developer' }}
+          </h3>
           <p>
             {{ 'landing.about.founder.description' | i18n: 'I built MyScoutee after years of organizing my own journeys and looking for a more human path from online introductions to meeting in real life.' }}
           </p>

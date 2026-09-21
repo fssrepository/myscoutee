@@ -18,6 +18,7 @@ interface I18nAssetBundle {
 }
 
 interface I18nRemoteBundleResponse {
+  founderName?: string;
   lang?: string;
   version?: string;
   data?: Record<string, string> | null;
@@ -92,6 +93,9 @@ export class I18nService {
   private missingKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private lastMissingKeyRefreshAt = 0;
   private bundleRefreshPromise: Promise<void> | null = null;
+
+  private readonly founderNameSignal = signal('');
+  readonly founderName = this.founderNameSignal.asReadonly();
 
   readonly currentLanguage = this.currentLanguageSignal.asReadonly();
   readonly isDefaultLanguage = computed(() => this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE);
@@ -188,6 +192,7 @@ export class I18nService {
 
   private startLanguageLoad(scope: I18nBundleScope): void {
     this.activeBundleScope = scope;
+    this.founderNameSignal.set('');
     const generation = ++this.bundleLoadGeneration;
     this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
     this.messagesSignal.set({});
@@ -214,7 +219,7 @@ export class I18nService {
       return;
     }
     if (stored) {
-      this.applyBundle(stored.lang, stored.version, stored.data);
+      this.applyBundle(stored.lang, stored.version, stored.data, stored.founderName);
     }
 
     const seed = this.usesHttpBundles()
@@ -346,7 +351,7 @@ export class I18nService {
         return;
       }
       if (data && Object.keys(data).length > 0) {
-        const bundle = { lang, version: version || '0', data, storedAt: Date.now() };
+        const bundle = { lang, version: version || '0', data, founderName: response.founderName ?? '', storedAt: Date.now() };
         await this.bundleRepository.writeStoredBundle(scope, bundle);
         if (!this.isCurrentBundleLoad(scope, generation)) {
           return;
@@ -355,7 +360,11 @@ export class I18nService {
         return;
       }
       if (stored && stored.lang === lang && version && version === stored.version) {
-        this.applyServerBundle(stored, activateTranslation);
+        const bundle = { ...stored, founderName: response.founderName ?? '', storedAt: Date.now() };
+        await this.bundleRepository.writeStoredBundle(scope, bundle);
+        if (this.isCurrentBundleLoad(scope, generation)) {
+          this.applyServerBundle(bundle, activateTranslation);
+        }
       }
     } catch {
       // A previously cached backend bundle remains available. Local assets are
@@ -367,6 +376,9 @@ export class I18nService {
     bundle: StoredI18nBundle,
     activateTranslation: boolean
   ): void {
+    if (activateTranslation || bundle.lang === this.currentLanguageSignal()) {
+      this.founderNameSignal.set(bundle.founderName ?? '');
+    }
     if (bundle.lang === I18nService.DEFAULT_LANGUAGE) {
       if (activateTranslation) {
         this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
@@ -377,7 +389,7 @@ export class I18nService {
       return;
     }
     if (activateTranslation) {
-      this.applyBundle(bundle.lang, bundle.version, bundle.data);
+      this.applyBundle(bundle.lang, bundle.version, bundle.data, bundle.founderName);
     }
   }
 
@@ -454,7 +466,8 @@ export class I18nService {
     }
   }
 
-  private applyBundle(lang: string, version: string, data: Record<string, string>): void {
+  private applyBundle(lang: string, version: string, data: Record<string, string>, founderName = ''): void {
+    this.founderNameSignal.set(founderName);
     const normalizedLang = this.normalizeLanguage(lang);
     if (!normalizedLang || normalizedLang === I18nService.DEFAULT_LANGUAGE) {
       if (normalizedLang === I18nService.DEFAULT_LANGUAGE && Object.keys(data).length > 0) {
