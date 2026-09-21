@@ -1389,14 +1389,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.isLoadingEventData.set(true);
     this.eventVisibilityReady.set(false);
     try {
-      const [eventDetailDTO, mingleState] = await Promise.all([
-        this.routeDelay.withRequestTimeout(
-          EventEditorPopupComponent.EVENTS_ROUTE,
-          this.eventsService.loadEventDetailById(activeUserId, eventId),
-          'Event editor reload timed out.'
-        ),
-        this.eventsService.queryMingleState(activeUserId, eventId).catch(() => null)
-      ]);
+      const eventDetailDTO = await this.routeDelay.withRequestTimeout(
+        EventEditorPopupComponent.EVENTS_ROUTE,
+        this.eventsService.loadEventDetailById(activeUserId, eventId),
+        'Event editor reload timed out.'
+      );
+      const mingleState = eventDetailDTO?.mode === 'Mingle'
+          && this.isCurrentEventDetailLoad(loadSequence, eventId)
+        ? await this.eventsService.queryMingleState(activeUserId, eventId).catch(() => null)
+        : null;
       if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
         return;
       }
@@ -2152,14 +2153,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     try {
-      const [eventDetailDTO, mingleState] = await Promise.all([
-        this.routeDelay.withRequestTimeout(
-          EventEditorPopupComponent.EVENTS_ROUTE,
-          this.eventsService.loadEventDetailById(activeUserId, eventId),
-          'Event editor load timed out.'
-        ),
-        this.eventsService.queryMingleState(activeUserId, eventId).catch(() => null)
-      ]);
+      const eventDetailDTO = await this.routeDelay.withRequestTimeout(
+        EventEditorPopupComponent.EVENTS_ROUTE,
+        this.eventsService.loadEventDetailById(activeUserId, eventId),
+        'Event editor load timed out.'
+      );
+      const mingleState = eventDetailDTO?.mode === 'Mingle'
+          && this.isCurrentEventDetailLoad(loadSequence, eventId)
+        ? await this.eventsService.queryMingleState(activeUserId, eventId).catch(() => null)
+        : null;
 
       if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
         return;

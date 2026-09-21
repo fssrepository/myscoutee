@@ -1345,16 +1345,12 @@ export class HttpEventsService implements IEventsService {
     if (!normalizedUserId) {
       return [];
     }
-    try {
-      const response = await this.http
-        .get<ActivityEventRecord[] | null>(`${this.apiBaseUrl}${route}`, {
-          params: new HttpParams().set('userId', normalizedUserId)
-        })
-        .toPromise();
-      return this.cloneRecords(response);
-    } catch {
-      return [];
-    }
+    const response = await this.http
+      .get<ActivityEventRecord[] | null>(`${this.apiBaseUrl}${route}`, {
+        params: new HttpParams().set('userId', normalizedUserId)
+      })
+      .toPromise();
+    return this.cloneRecords(response);
   }
 
   private async postVoid(route: string, payload: unknown): Promise<void> {

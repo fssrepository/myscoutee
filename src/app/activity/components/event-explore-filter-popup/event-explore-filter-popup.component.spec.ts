@@ -5,11 +5,17 @@ import type { EventExploreFilterPreferences } from '../../../shared/core/contrac
 class FilterHarness extends EventExploreFilterPopupComponent {
   changeMode(mode: string) { this.selectMode({ id: mode } as AppMenuItemSelectEvent); }
   changeFriends() { this.toggle({ id: 'friendsOnly' } as AppMenuItemSelectEvent); }
+  popupModel() { return this.model(); }
   apply() { this.model().onMenuSelect!({} as never); }
   cancel() { this.model().onClose!(new Event('close')); }
 }
 
 describe('Explore filter draft', () => {
+  it('uses a content-sized compact popup with a dim backdrop on desktop and mobile', () => {
+    expect(new FilterHarness().popupModel()).toMatchObject({
+      size: 'small', height: 'auto', mobilePresentation: 'compact', backdropTone: 'dim'
+    });
+  });
   it('keeps edits private until the header tick is clicked, and cancels without applying', () => {
     const filters: EventExploreFilterPreferences = { friendsOnly: false, openSpotsOnly: false, mode: '', topic: '' };
     const popup = new FilterHarness();

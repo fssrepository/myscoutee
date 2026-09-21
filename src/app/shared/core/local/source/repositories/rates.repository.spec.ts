@@ -57,6 +57,17 @@ describe('LocalRatesRepository Met rating lifecycle', () => {
     expect(item('a').id).toBe(item('b').id);
   });
 
+  it('adds completed-table evidence to an existing mutual rating without replacing either score', () => {
+    const record = BaseUserRatesMapper.toRecord('a', { ...emptyMet, direction: 'mutual', met: false,
+      scoreGiven: 7, scoreReceived: 9 });
+    db.write(state => ({ ...state, userRates: { ...state.userRates, byId: { [record.id]: record } } }));
+    expect(item('a').direction).toBe('mutual');
+    repository.projectMetTables([{ memberUserIds: ['a', 'b'] }], 'Finished event', '2026-01-02T10:00:00Z');
+    expect(item('a')).toMatchObject({ met: true, direction: 'met', scoreGiven: 7, scoreReceived: 9 });
+    expect(item('b')).toMatchObject({ met: true, direction: 'met', scoreGiven: 9, scoreReceived: 7 });
+    expect(db.read().userRates.ids).toEqual(['meeting']);
+  });
+
   it('moves both viewers through Met, Given/Received, Met with one stored record', async () => {
     const staleFirstView = item('a');
     rate('b', item('b'), 8);

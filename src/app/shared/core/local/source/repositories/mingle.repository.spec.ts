@@ -106,6 +106,21 @@ describe('LocalMingleRepository', () => {
     expect(repository.query('a', 'event', 1)?.tables[0].participants.map(user => user.userId).sort()).toEqual(['a', replacement].sort());
   });
 
+  for (const mode of ['Casual', 'Tournament'] as const) {
+    it(`does not start a live round or change memberships for ${mode}`, () => {
+      db.write(state => ({ ...state, events: { ...state.events, byId: {
+        event: { ...state.events.byId['event'], mode }
+      } } }));
+      const before = structuredClone(db.read().activityMembers);
+      expect(repository.query('owner', 'event')).toBeNull();
+      expect(() => repository.apply('event', 'owner', 'start')).toThrow('MINGLE_EVENT_NOT_FOUND');
+      expect(db.read().activityMembers).toEqual(before);
+      expect(db.read().mingleSessions.ids).toEqual([]);
+      expect(db.read().notifications.ids).toEqual([]);
+      expect(db.read().userRates.ids).toEqual([]);
+    });
+  }
+
   it('waits when balanced full tables are impossible and does not create a partial session', () => {
     db.write(state => ({ ...state, events: { ...state.events, byId: { event: { ...state.events.byId['event'],
       mingleConfiguration: { ...state.events.byId['event'].mingleConfiguration!, requireGenderBalance: true, groupSize: 6 } } } } }));

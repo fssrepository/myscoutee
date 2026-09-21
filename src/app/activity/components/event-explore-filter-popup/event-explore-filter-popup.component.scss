@@ -2,6 +2,6 @@
   display: grid;
   gap: 1.25rem;
   padding: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 .explore-filters__field { display: grid; gap: .5rem; align-content: start; }

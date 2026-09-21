@@ -293,8 +293,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         return;
       }
       this.memberMenuStore.clearActivitiesNavigationRequest();
+      this.setMingleLive(request.type === 'members' && request.mingleLive === true);
       if (request.type === 'members') {
-        this.mingleLive = request.mingleLive === true;
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
           parentOwnerId: request.parentOwnerId,
@@ -339,7 +339,13 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.setMingleLive(false);
     this.membersListPollScheduler.destroy();
+  }
+
+  private setMingleLive(live: boolean): void {
+    if (this.mingleLive && !live) this.mingleStore.closeLiveView();
+    this.mingleLive = live;
   }
 
   protected membersPopupZIndex(): number {
@@ -373,7 +379,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           palette: 'blue' as const,
           compactOnMobile: true
         }] : []),
-        ...(this.canManageMembers ? [{
+        ...(!this.mingleLive || this.canManageMembers ? [{
           id: 'pending-only',
           align: 'end' as const,
           icon: 'pending_actions',
@@ -460,8 +466,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     this.membersListPollScheduler.stop({ abort: true });
     this.isOpen = false;
-    if (this.mingleLive) this.mingleStore.closeLiveView();
-    this.mingleLive = false;
+    this.setMingleLive(false);
     this.ownerId = '';
     this.ownerRef = null;
     this.parentOwnerRef = null;

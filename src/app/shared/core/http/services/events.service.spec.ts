@@ -166,6 +166,7 @@ describe('HttpEventsService', () => {
     );
     expect(result).toEqual({
       mode: 'Casual',
+      canAccessResources: false,
       slots: [{ id: 'slot-13', parentEventId: 'event-1', subEventItems: [] }],
       total: 100,
       nextCursor: '24'

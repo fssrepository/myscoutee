@@ -34,7 +34,7 @@ export class EventExploreFilterPopupComponent implements OnChanges {
 
   protected model(): PopupModel {
     return {
-      title: 'event.explore.filters', size: 'wide', height: 'full', headerTone: 'accent',
+      title: 'event.explore.filters', size: 'small', height: 'auto', mobilePresentation: 'compact', headerTone: 'accent',
       backdropTone: 'dim', closeOnBackdrop: !this.saving,
       headerControls: [{ kind: 'menu', id: 'apply-filters', menuKind: 'inline', items: [{
         id: 'apply', icon: 'check', kind: 'action', palette: 'green', disabled: this.saving,
