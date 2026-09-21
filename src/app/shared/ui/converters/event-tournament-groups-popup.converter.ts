@@ -138,7 +138,7 @@ export class EventTournamentGroupsPopupConverter
     return {
       label: stage?.title ?? (mode === 'Mingle' ? 'Round' : 'Stage'),
       icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
-      palette: mode === 'Mingle' ? 'teal' : stage ? this.stagePalette(stage.stageNumber) : 'blue',
+      palette: mode === 'Mingle' ? 'pink' : stage ? this.stagePalette(stage.stageNumber) : 'blue',
       layout: 'pill',
       counter: pending > 0
         ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
@@ -158,7 +158,7 @@ export class EventTournamentGroupsPopupConverter
       label: stage.title,
       description: this.stageSubtitle(stage, mode),
       icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
-      palette: mode === 'Mingle' ? 'teal' : this.stagePalette(stage.stageNumber),
+      palette: mode === 'Mingle' ? 'pink' : this.stagePalette(stage.stageNumber),
       surface: 'tinted',
       kind: 'radio',
       active: stage.subEventId === selectedStageId,

@@ -67,8 +67,7 @@ export class EventMingleConfigurationPopupComponent {
       icon: 'repeat',
       min: 1,
       max: 100,
-      step: 1,
-      hint: 'event.editor.mingle.flexible.rounds.note'
+      step: 1
     },
     {
       key: 'roundDurationMinutes',

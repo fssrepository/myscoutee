@@ -46,6 +46,18 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
     expect(menuItems.find(item => item.id === 'transport')?.counterTone).toBe('alert');
   });
 
+  it('uses the Mingle pink palette for the round selector and its menu items', () => {
+    const model = EventTournamentGroupsPopupConverter.convert({
+      state: tournamentState(),
+      mode: 'Mingle',
+      selectedStageId: 'stage-1',
+      openGroupIds: []
+    });
+
+    expect(model.stageTrigger.palette).toBe('pink');
+    expect(model.stageItems.every(item => item.palette === 'pink')).toBe(true);
+  });
+
   it('applies a scoped resource-member delta only to the matching group and resource type', () => {
     const state = tournamentState();
     const next = EventTournamentGroupsPopupConverter.withResourcePendingDelta(
