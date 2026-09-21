@@ -2049,8 +2049,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventCapacityMaxReadOnly()) {
       return;
     }
-    const parsed = this.toNonNegativeIntegerOrNull(value);
-    this.eventDetailDTO.capacityMax = parsed === null ? null : Math.max(parsed, this.eventCapacityMaxMinimum());
+    this.eventDetailDTO.capacityMax = this.toNonNegativeIntegerOrNull(value);
   }
 
   onEventCapacityMaxBlur(): void {

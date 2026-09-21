@@ -15,6 +15,7 @@ import {
 import {
   MatIconModule
 } from '@angular/material/icon';
+import { of } from 'rxjs';
 
 import {
   ActivityResourceBuilder,
@@ -30,6 +31,7 @@ import {
   FormFlowComponent,
   IndicatorComponent,
   PopupComponent,
+  SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -37,6 +39,9 @@ import {
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListLoadPage,
   type FormFlowControlModel,
   type FormFlowModel,
   type UiAccordionActionMenuSelectEvent,
@@ -72,6 +77,12 @@ import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.s
 type TournamentGroupsHeaderAction = 'add-group';
 type TournamentGroupsTab = 'standings' | 'history';
 type TournamentLeaderboardMode = 'Score' | 'Fifa';
+type TournamentGroupsAccordionItem = UiAccordionItem<
+  string,
+  EventTournamentGroupsAccordionContext,
+  EventTournamentGroupsActionContext
+>;
+type TournamentGroupsListFilters = { source: 'tournament-groups' };
 const TOURNAMENT_RESOURCE_TYPES: readonly AssetType[] = AppConstants.ASSET_TYPES;
 const TOURNAMENT_MEMBER_PALETTES: readonly AppMenuPalette[] = [
   'blue',
@@ -103,6 +114,16 @@ interface TournamentEntryFormModel {
   homeScore: number | null;
   awayScore: number | null;
   note: string;
+}
+
+interface MingleSeat {
+  id: string;
+  seatNumber: number;
+  name: string;
+  initials: string;
+  avatarUrl: string | null;
+  palette: AppMenuPalette;
+  isEmpty: boolean;
 }
 
 interface ScoreRow {
@@ -142,6 +163,7 @@ interface FifaRow {
     FormFlowComponent,
     IndicatorComponent,
     PopupComponent,
+    SmartListComponent,
     EventSubeventGroupFormPopupComponent
   ],
   templateUrl: './event-tournament-groups-popup.component.html',
@@ -186,6 +208,40 @@ export class EventTournamentGroupsPopupComponent {
   private readonly emittedStagePendingByKey = new Map<string, number>();
   private loadSequence = 0;
   private leaderboardSequence = 0;
+
+  protected readonly groupsSmartListConfig: SmartListConfig<
+    TournamentGroupsAccordionItem,
+    TournamentGroupsListFilters
+  > = {
+    pageSize: 10,
+    defaultView: 'list',
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    emptyLabel: () => this.viewModel().accordion.emptyTitle ?? 'Nothing here yet',
+    emptyDescription: () => this.viewModel().accordion.emptyDescription ?? '',
+    listLayout: 'stack',
+    snapMode: 'none',
+    headerProgress: {
+      enabled: true,
+      placement: 'inline',
+      tone: 'accent'
+    },
+    trackBy: (_index, item) => item.id
+  };
+
+  protected readonly loadGroupsPage: SmartListLoadPage<
+    TournamentGroupsAccordionItem,
+    TournamentGroupsListFilters
+  > = query => {
+    const items = this.viewModel().accordion.items;
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const start = page * pageSize;
+    return of({
+      items: items.slice(start, start + pageSize),
+      total: items.length
+    } satisfies PageResult<TournamentGroupsAccordionItem>);
+  };
 
   constructor() {
     effect(() => {
@@ -382,10 +438,15 @@ export class EventTournamentGroupsPopupComponent {
     }
   }
 
-  protected accordionModel(
-    vm: EventTournamentGroupsPopupModel
+  protected accordionItemModel(
+    vm: EventTournamentGroupsPopupModel,
+    item: TournamentGroupsAccordionItem
   ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, EventTournamentGroupsActionContext> {
-    return vm.accordion;
+    const currentItem = vm.accordion.items.find(candidate => candidate.id === item.id);
+    return {
+      ...vm.accordion,
+      items: currentItem ? [currentItem] : []
+    };
   }
 
   protected headerActionItems(): readonly AppMenuItem<string, TournamentGroupsHeaderActionContext>[] {
@@ -492,20 +553,30 @@ export class EventTournamentGroupsPopupComponent {
     return this.eventSubeventsStore.eventTournamentGroupsPopup()?.mode === 'Mingle';
   }
 
-  protected mingleMembers(group: ContractTypes.EventTournamentGroupDTO): ContractTypes.SubEventLeaderboardMember[] {
-    return this.membersForGroup(group);
-  }
+  protected mingleSeats(group: ContractTypes.EventTournamentGroupDTO): MingleSeat[] {
+    return this.membersForGroup(group).map((member, index) => {
+      const seatNumber = index + 1;
+      const name = `${member.name ?? ''}`.trim();
+      const isGeneratedPlaceholder = member.id === `${group.id}-member-${seatNumber}`
+        && name === `Member ${seatNumber}`;
+      const isEmpty = !name || name === '-----' || isGeneratedPlaceholder;
+      const suppliedInitials = `${member.initials ?? ''}`.trim();
+      const initials = suppliedInitials || name.split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part.charAt(0).toUpperCase())
+        .join('') || '?';
 
-  protected mingleMemberInitials(member: ContractTypes.SubEventLeaderboardMember): string {
-    const supplied = `${member.initials ?? ''}`.trim();
-    if (supplied) {
-      return supplied;
-    }
-    return `${member.name ?? ''}`.trim().split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(part => part.charAt(0).toUpperCase())
-      .join('') || '?';
+      return {
+        id: member.id,
+        seatNumber,
+        name: isEmpty ? '' : name,
+        initials: isEmpty ? '' : initials,
+        avatarUrl: isEmpty ? null : `${member.avatarUrl ?? ''}`.trim() || null,
+        palette: TOURNAMENT_MEMBER_PALETTES[index % TOURNAMENT_MEMBER_PALETTES.length] ?? 'blue',
+        isEmpty
+      };
+    });
   }
 
   protected tabFor(groupId: string): TournamentGroupsTab {

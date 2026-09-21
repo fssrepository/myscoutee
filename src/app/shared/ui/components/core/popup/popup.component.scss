@@ -490,6 +490,13 @@ app-popup {
   pointer-events: none;
 }
 
+.ui-popup__action--large-icon .mat-icon {
+  width: 1.92rem;
+  height: 1.92rem;
+  font-size: 1.92rem;
+  line-height: 1.92rem;
+}
+
 .ui-popup__action:hover {
   background: linear-gradient(180deg, #d4e8ff 0%, #b5d1f3 100%);
   border-color: rgba(27, 74, 130, 0.6);

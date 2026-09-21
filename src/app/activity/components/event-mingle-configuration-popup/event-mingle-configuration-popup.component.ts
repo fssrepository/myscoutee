@@ -14,7 +14,7 @@ import {
   type PopupModel
 } from '../../../shared/ui';
 
-type MingleNumberField = Exclude<keyof MingleConfigurationDTO, 'requireGenderBalance'>;
+type MingleNumberField = Exclude<keyof MingleConfigurationDTO, 'requireGenderBalance' | 'tableCount'>;
 
 interface MingleNumberFieldDefinition {
   key: MingleNumberField;
@@ -62,22 +62,12 @@ export class EventMingleConfigurationPopupComponent {
       step: 1
     },
     {
-      key: 'tableCount',
-      label: 'event.editor.mingle.table.count',
-      icon: 'table_restaurant',
-      min: 0,
-      max: 500,
-      step: 1,
-      hint: 'event.editor.mingle.table.count.hint'
-    },
-    {
       key: 'plannedRounds',
       label: 'event.editor.mingle.planned.rounds',
       icon: 'repeat',
       min: 1,
       max: 100,
       step: 1,
-      wide: true,
       hint: 'event.editor.mingle.flexible.rounds.note'
     },
     {
@@ -225,7 +215,8 @@ export class EventMingleConfigurationPopupComponent {
     const normalized = ActivityEventDetailDTO.normalizeMingleConfiguration(configuration);
     return {
       ...normalized,
-      plannedRounds: Math.max(minimumPlannedRounds, normalized.plannedRounds)
+      plannedRounds: Math.max(minimumPlannedRounds, normalized.plannedRounds),
+      tableCount: 0
     };
   }
 
@@ -249,8 +240,6 @@ export class EventMingleConfigurationPopupComponent {
       && value.roundDurationMinutes >= 1
       && value.roundDurationMinutes <= 240
       && value.breakDurationMinutes >= 0
-      && value.breakDurationMinutes <= 60
-      && value.tableCount >= 0
-      && value.tableCount <= 500;
+      && value.breakDurationMinutes <= 60;
   }
 }
