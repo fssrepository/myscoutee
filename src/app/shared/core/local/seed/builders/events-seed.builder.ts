@@ -614,6 +614,50 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
   ],
   u3: [
     {
+      id: 'mingle-demo-nagy-eszter',
+      avatar: 'NE',
+      title: 'Mingle Demo · Table Rotation Social',
+      shortDescription: 'A live social mixer with four planned rounds and table assignments for checked-in participants.',
+      timeframe: 'Mingle demo',
+      activity: 8,
+      status: 'A',
+      isAdmin: true,
+      creatorUserId: 'u3',
+      startAt: '2026-09-21T18:00:00',
+      endAt: '2026-09-21T21:00:00',
+      frequency: 'One-time',
+      ticketing: true,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Seattle · Mingle Demo Hall',
+      capacityMin: 8,
+      capacityMax: 24,
+      capacityTotal: 24,
+      acceptedMemberUserIds: ['u3', 'u1', 'u2', 'u4', 'u5', 'u6', 'u7', 'u8'],
+      pendingMemberUserIds: [],
+      policiesEnabled: true,
+      policies: [{
+        id: 'mingle-demo-flow',
+        title: 'Live table flow',
+        description: 'Follow the current table assignment. Round timing may change while the event is running.',
+        required: true
+      }],
+      subEventsEnabled: true,
+      subEventDefinitions: [],
+      mode: 'Mingle',
+      mingleConfiguration: {
+        groupSize: 4,
+        plannedRounds: 4,
+        roundDurationMinutes: 20,
+        breakDurationMinutes: 5,
+        tableCount: 6,
+        requireGenderBalance: true
+      },
+      topics: ['Mingle', 'Social', 'Networking'],
+      rating: 9.5,
+      boost: 100
+    },
+    {
       id: 'asset-join-demo-nagy-eszter',
       avatar: 'NE',
       title: 'Asset Join Demo · Shuttle Seat',
@@ -959,6 +1003,7 @@ interface ActivityEventSeedOverrides {
   subEventsEnabled?: boolean;
   subEventDefinitions?: ContractTypes.SubEventDefinitionDTO[];
   mode?: ContractTypes.EventMode;
+  mingleConfiguration?: ContractTypes.MingleConfigurationDTO | null;
   rating?: number;
   boost?: number;
   affinity?: number;
@@ -1003,6 +1048,9 @@ export class SeedEventsBuilder {
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
           subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
+          mingleConfiguration: item.mingleConfiguration
+            ? ActivityEventDetailDTO.normalizeMingleConfiguration(item.mingleConfiguration)
+            : item.mingleConfiguration,
           topics: item.topics ? [...item.topics] : item.topics,
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
           pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
@@ -1014,6 +1062,12 @@ export class SeedEventsBuilder {
     for (const [userId, items] of Object.entries(seeded)) {
       seeded[userId] = items.map(item => {
         const demo = demoEventPlaceholder(`demo-event-events:${userId}:${item.id}`);
+        if (item.mode === 'Mingle') {
+          return {
+            ...item,
+            imageUrl: demo.imageUrl
+          };
+        }
         return {
           ...item,
           title: demo.title,
@@ -1926,10 +1980,13 @@ export class SeedEventsBuilder {
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
+    const mode = record.seed?.mode;
     const explicitSubEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
-    const subEventDefinitions = explicitSubEventDefinitions.length > 0
-      ? explicitSubEventDefinitions
-      : this.buildSeededSubEventDefinitions(record, startAtIso, endAtIso, capacityRange);
+    const subEventDefinitions = mode === 'Mingle'
+      ? []
+      : (explicitSubEventDefinitions.length > 0
+        ? explicitSubEventDefinitions
+        : this.buildSeededSubEventDefinitions(record, startAtIso, endAtIso, capacityRange));
     const subEventsEnabled = record.seed?.subEventsEnabled ?? subEventDefinitions.length > 0;
     const subEvents = subEventsEnabled
       ? this.buildSeededSubEventsFromDefinitions(subEventDefinitions, {
@@ -2002,7 +2059,10 @@ export class SeedEventsBuilder {
       subEventsEnabled,
       subEventDefinitions,
       subEvents,
-      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventModeFromDefinitions(subEventDefinitions),
+      mode: mode ?? SeedEventBuilder.inferredEventModeFromDefinitions(subEventDefinitions),
+      mingleConfiguration: mode === 'Mingle'
+        ? ActivityEventDetailDTO.normalizeMingleConfiguration(record.seed?.mingleConfiguration)
+        : null,
       currentStage: tournamentCurrentStageFromSubEvents(subEvents),
       rating,
       boost: Number.isFinite(record.seed?.boost)
@@ -2479,6 +2539,11 @@ export class SeedEventsBuilder {
       subEventsEnabled: 'subEventsEnabled' in item ? item.subEventsEnabled : undefined,
       subEventDefinitions: 'subEventDefinitions' in item ? this.cloneSubEventDefinitions(item.subEventDefinitions) ?? undefined : undefined,
       mode: 'mode' in item ? item.mode : undefined,
+      mingleConfiguration: 'mingleConfiguration' in item
+        ? item.mingleConfiguration
+          ? ActivityEventDetailDTO.normalizeMingleConfiguration(item.mingleConfiguration)
+          : item.mingleConfiguration
+        : undefined,
       rating: 'rating' in item ? item.rating : undefined,
       boost: 'boost' in item ? item.boost : undefined,
       affinity: 'affinity' in item ? item.affinity : undefined,

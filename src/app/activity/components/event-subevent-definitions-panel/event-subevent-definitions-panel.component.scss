@@ -3,71 +3,6 @@
   min-width: 0;
 }
 
-.subevent-definition-panel__mingle-config {
-  display: grid;
-  gap: 0.8rem;
-  padding: 0.85rem;
-  border: 1px solid rgba(22, 132, 123, 0.24);
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(231, 250, 248, 0.94), rgba(240, 248, 255, 0.94));
-  color: #24435a;
-}
-
-.subevent-definition-panel__mingle-fields {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.subevent-definition-panel__mingle-fields > label {
-  display: grid;
-  gap: 0.28rem;
-  min-width: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.subevent-definition-panel__mingle-fields input[type='number'] {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  border: 1px solid rgba(73, 124, 137, 0.34);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.92);
-  color: inherit;
-  padding: 0.48rem 0.56rem;
-  font: inherit;
-}
-
-.subevent-definition-panel__mingle-check {
-  align-content: start;
-}
-
-.subevent-definition-panel__mingle-check input {
-  width: 18px;
-  height: 18px;
-  margin: 0.45rem 0 0;
-  accent-color: #198178;
-}
-
-.subevent-definition-panel__mingle-number-unit {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.subevent-definition-panel__mingle-note {
-  color: rgba(36, 67, 90, 0.68);
-  font-size: 0.7rem;
-}
-
-@media (max-width: 760px) {
-  .subevent-definition-panel__mingle-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .subevent-definition-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -82,25 +17,6 @@
     radial-gradient(circle at 8% 10%, rgba(255, 255, 255, 0.72), transparent 32%),
     linear-gradient(180deg, rgba(250, 244, 234, 0.98), rgba(243, 235, 221, 0.94));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.46);
-}
-
-.subevent-definition-panel--mingle {
-  border-color: rgba(41, 145, 136, 0.46);
-  background:
-    radial-gradient(circle at 8% 10%, rgba(255, 255, 255, 0.76), transparent 32%),
-    linear-gradient(180deg, rgba(235, 250, 248, 0.98), rgba(226, 243, 241, 0.94));
-}
-
-.subevent-definition-panel--mingle .subevent-definition-panel__title {
-  color: #174f4b;
-}
-
-.subevent-definition-panel--mingle .subevent-definition-panel__title mat-icon {
-  color: #198178;
-}
-
-.subevent-definition-panel--mingle .subevent-definition-panel__title p {
-  color: #4c7773;
 }
 
 .subevent-definition-panel__header {

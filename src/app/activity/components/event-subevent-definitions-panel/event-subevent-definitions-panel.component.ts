@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, forwardRef, Input, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, forwardRef, Input, Output, inject, signal } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 
 import { AppUtils } from '../../../shared/app-utils';
+import { I18nService } from '../../../shared/core';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import {
   ActivityEventDetailDTO,
@@ -35,6 +36,7 @@ import {
   type TextCardTone
 } from '../../../shared/ui';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+import { EventMingleConfigurationPopupComponent } from '../event-mingle-configuration-popup/event-mingle-configuration-popup.component';
 import {
   EventSubeventStageFormPopupComponent,
   type EventSubeventStageFormModel,
@@ -77,7 +79,8 @@ interface SubEventDefinitionFormState {
     InfoCardComponent,
     TextCardComponent,
     I18nPipe,
-    EventSubeventStageFormPopupComponent
+    EventSubeventStageFormPopupComponent,
+    EventMingleConfigurationPopupComponent
   ],
   providers: [
     {
@@ -93,6 +96,7 @@ interface SubEventDefinitionFormState {
 export class EventSubeventDefinitionsPanelComponent implements ControlValueAccessor {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly dialogStore = inject(DialogStore);
+  private readonly i18n = inject(I18nService);
   private onChange: (value: SubEventDefinitionDTO[]) => void = () => undefined;
   private onTouched: () => void = () => undefined;
   private revision = 0;
@@ -130,6 +134,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected definitions: SubEventDefinitionDTO[] = [];
   @Input() disabled = false;
   protected definitionForm: SubEventDefinitionFormState | null = null;
+  protected readonly mingleConfigurationPopupOpen = signal(false);
   protected definitionFormModelValue: EventSubeventStageFormModel = this.createDefinitionFormModel(null, 1);
   protected definitionFormView: EventSubeventStageFormPopupView = this.createDefinitionFormPopupView(null, this.definitionFormModelValue);
   protected definitionView: SubEventDefinitionSmartListView = 'timeline';
@@ -211,6 +216,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return this.canEdit() && this.enabled;
   }
 
+  protected canOpenMingleConfiguration(): boolean {
+    return this.enabled
+      && (!this.disabled || this.allowMingleRoundIncrease)
+      && (!this.readOnly || this.allowMingleRoundIncrease);
+  }
+
   protected panelSubtitle(): string {
     if (this.enabled && this.mode === 'Mingle') {
       return 'event.editor.mingle.panel.description';
@@ -240,7 +251,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return {
       label: this.modeLabel(),
       icon: tournamentMode ? 'emoji_events' : mingleMode ? 'table_restaurant' : 'groups',
-      palette: tournamentMode ? 'cyan' : mingleMode ? 'teal' : 'slate',
+      palette: tournamentMode ? 'cyan' : mingleMode ? 'pink' : 'slate',
       layout: 'pill',
       disabled: !this.canConfigureDefinitions()
     };
@@ -281,7 +292,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         label: 'Mingle',
         icon: 'table_restaurant',
         kind: 'radio',
-        palette: 'teal',
+        palette: 'pink',
         surface: 'tinted',
         active: this.mode === 'Mingle',
         checked: this.mode === 'Mingle'
@@ -295,6 +306,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }
     this.mode = event.id === 'Tournament' || event.id === 'Mingle' ? event.id : 'Casual';
     this.definitionForm = null;
+    this.mingleConfigurationPopupOpen.set(false);
     this.modeChange.emit(this.mode);
   }
 
@@ -340,19 +352,31 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected addMenuItems(): readonly AppMenuItem<string, unknown>[] {
-    if (!this.canConfigureDefinitions()) {
+    const mingleConfiguration = this.mode === 'Mingle';
+    if (mingleConfiguration ? !this.canOpenMingleConfiguration() : !this.canConfigureDefinitions()) {
       return [];
     }
     return [{
       id: 'add',
       icon: 'add',
-      ariaLabel: 'event.editor.subevents.definition.add.aria',
-      palette: 'amber'
+      ariaLabel: mingleConfiguration
+        ? 'event.editor.mingle.open.aria'
+        : 'event.editor.subevents.definition.add.aria',
+      palette: mingleConfiguration ? 'pink' : 'amber'
     }];
   }
 
   protected onAddMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     if (event.id !== 'add') {
+      return;
+    }
+    if (this.mode === 'Mingle') {
+      event.sourceEvent?.stopPropagation();
+      if (!this.canOpenMingleConfiguration()) {
+        return;
+      }
+      this.mingleConfigurationPopupOpen.set(true);
+      this.onTouched();
       return;
     }
     this.openCreateDefinitionForm(event.sourceEvent);
@@ -371,11 +395,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (this.mode !== 'Mingle') {
       return this.definitions;
     }
+    this.i18n.revision();
     const configuration = this.normalizedMingleConfiguration();
     return Array.from({ length: configuration.plannedRounds }, (_, index): SubEventDefinitionDTO => ({
       id: `mingle-round-${index + 1}`,
-      name: `Round ${index + 1}`,
-      description: 'Table assignment round',
+      name: this.mingleRoundLabel(index),
+      description: this.i18n.translate('event.editor.mingle.round.description'),
       timing: 'After',
       offsetMinutes: index === 0 ? 0 : configuration.breakDurationMinutes,
       durationMinutes: configuration.roundDurationMinutes,
@@ -390,45 +415,18 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }));
   }
 
-  protected mingleFieldReadOnly(field: keyof MingleConfigurationDTO): boolean {
-    if (!this.enabled || this.disabled) {
-      return true;
-    }
-    if (!this.readOnly) {
-      return false;
-    }
-    return !(field === 'plannedRounds' && this.allowMingleRoundIncrease);
-  }
-
-  protected updateMingleNumber(field: 'groupSize' | 'plannedRounds' | 'roundDurationMinutes' | 'breakDurationMinutes' | 'tableCount', event: Event): void {
-    if (this.mingleFieldReadOnly(field)) {
-      return;
-    }
-    const target = event.target as HTMLInputElement | null;
-    const next = ActivityEventDetailDTO.normalizeMingleConfiguration({
-      ...this.normalizedMingleConfiguration(),
-      [field]: Number(target?.value)
-    });
+  protected saveMingleConfiguration(value: MingleConfigurationDTO): void {
+    const next = ActivityEventDetailDTO.normalizeMingleConfiguration(value);
     this.mingleConfiguration = next;
     this.mingleConfigurationChange.emit(next);
     this.bumpList();
     this.onTouched();
+    this.mingleConfigurationPopupOpen.set(false);
     this.cdr.markForCheck();
   }
 
-  protected updateMingleGenderBalance(event: Event): void {
-    if (this.mingleFieldReadOnly('requireGenderBalance')) {
-      return;
-    }
-    const target = event.target as HTMLInputElement | null;
-    const next = ActivityEventDetailDTO.normalizeMingleConfiguration({
-      ...this.normalizedMingleConfiguration(),
-      requireGenderBalance: target?.checked === true
-    });
-    this.mingleConfiguration = next;
-    this.mingleConfigurationChange.emit(next);
-    this.onTouched();
-    this.cdr.markForCheck();
+  protected closeMingleConfiguration(_event: Event): void {
+    this.mingleConfigurationPopupOpen.set(false);
   }
 
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
@@ -436,7 +434,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     const isMingle = this.mode === 'Mingle';
     const stageNumber = index + 1;
     const palette = this.definitionPalette(item, index);
-    const sequenceLabel = isTournament ? `Stage ${stageNumber}` : isMingle ? `Round ${stageNumber}` : `Sub Event ${stageNumber}`;
+    const sequenceLabel = isTournament ? `Stage ${stageNumber}` : isMingle ? this.mingleRoundLabel(index) : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
     const capacityMetaRow = this.definitionCapacityMetaRow(item, isTournament);
     return {
@@ -494,7 +492,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       const min = this.toNonNegativeInteger(item.tournamentGroupCapacityMin ?? 0);
       const max = Math.max(min, this.toNonNegativeInteger(item.tournamentGroupCapacityMax ?? min));
       if (this.mode === 'Mingle') {
-        return max > 0 ? `Table size ${max}` : null;
+        return max > 0
+          ? this.i18n.translateParams('event.editor.mingle.table.size', { count: max })
+          : null;
       }
       return min > 0 || max > 0 ? `Group capacity ${min} - ${max}` : null;
     }
@@ -544,8 +544,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (this.mode === 'Mingle') {
       const total = Math.max(this.displayDefinitions().length, 1);
       const ratio = total <= 1 ? 0 : safeIndex / (total - 1);
-      const accentHue = Math.round(178 - (38 * ratio));
-      return { accentHue, menuPalette: this.menuPaletteForAccentHue(accentHue) };
+      const accentHue = Math.round(350 - (28 * ratio));
+      return { accentHue, menuPalette: 'pink' };
     }
     if (this.mode !== 'Tournament') {
       return this.casualDefinitionPalettes[safeIndex % this.casualDefinitionPalettes.length];
@@ -639,7 +639,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       return `Stage ${index + 1}`;
     }
     if (this.mode === 'Mingle') {
-      return `Round ${index + 1}`;
+      return this.mingleRoundLabel(index);
     }
     return this.definitionStatus(item).label;
   }
@@ -661,8 +661,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return this.mode === 'Tournament'
       ? `${this.definitionTimelineStatusLabel(item)} definition`
       : this.mode === 'Mingle'
-        ? `${this.definitionTimelineStatusLabel(item)} projection`
+        ? this.i18n.translateParams('event.editor.mingle.projection.aria', {
+          round: this.definitionTimelineStatusLabel(item)
+        })
       : `${this.definitionTimelineStatusLabel(item)} sub event definition`;
+  }
+
+  private mingleRoundLabel(index: number): string {
+    return this.i18n.translateParams('event.editor.mingle.round.number', { number: index + 1 });
   }
 
   protected onDefinitionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {

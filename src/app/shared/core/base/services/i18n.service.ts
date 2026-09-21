@@ -28,6 +28,8 @@ interface I18nRemoteBundleResponse {
 })
 export class I18nService {
   private static readonly DEFAULT_LANGUAGE = 'en';
+  private static readonly MISSING_KEY_REFRESH_DELAY_MS = 100;
+  private static readonly MISSING_KEY_REFRESH_COOLDOWN_MS = 30_000;
   private static readonly REVALIDATE_HEADERS = new HttpHeaders({
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache'
@@ -87,6 +89,9 @@ export class I18nService {
   private bundleLoadGeneration = 0;
   private scanQueued = false;
   private translatingDom = false;
+  private missingKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastMissingKeyRefreshAt = 0;
+  private bundleRefreshPromise: Promise<void> | null = null;
 
   readonly currentLanguage = this.currentLanguageSignal.asReadonly();
   readonly isDefaultLanguage = computed(() => this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE);
@@ -118,11 +123,55 @@ export class I18nService {
       return `${fallback ?? ''}`;
     }
     const translated = this.translateRaw(source);
+    if (translated === source && this.looksLikeTranslationKey(source)) {
+      this.scheduleMissingKeyRefresh();
+    }
     const fallbackText = `${fallback ?? ''}`.trim();
     if (fallbackText && translated === source && fallbackText !== source.trim()) {
       return this.translateRaw(fallbackText);
     }
     return translated;
+  }
+
+  revalidate(): Promise<void> {
+    if (!this.initialized || !this.usesHttpBundles()) {
+      return Promise.resolve();
+    }
+    if (this.bundleRefreshPromise) {
+      return this.bundleRefreshPromise;
+    }
+    const scope = this.activeBundleScope;
+    const generation = this.bundleLoadGeneration;
+    const refresh = this.refreshFromServer(scope, generation, this.localizedBrowserCandidates());
+    let pending: Promise<void>;
+    pending = refresh.finally(() => {
+      if (this.bundleRefreshPromise === pending) {
+        this.bundleRefreshPromise = null;
+      }
+    });
+    this.bundleRefreshPromise = pending;
+    return this.bundleRefreshPromise;
+  }
+
+  private looksLikeTranslationKey(value: string): boolean {
+    return /^[a-z0-9]+(?:[._-][a-z0-9]+)+$/i.test(value.trim());
+  }
+
+  private scheduleMissingKeyRefresh(): void {
+    const now = Date.now();
+    if (!this.initialized
+      || !this.usesHttpBundles()
+      || this.missingKeyRefreshTimer !== null
+      || now - this.lastMissingKeyRefreshAt < I18nService.MISSING_KEY_REFRESH_COOLDOWN_MS) {
+      return;
+    }
+    this.lastMissingKeyRefreshAt = now;
+    this.zone.runOutsideAngular(() => {
+      this.missingKeyRefreshTimer = setTimeout(() => {
+        this.missingKeyRefreshTimer = null;
+        void this.revalidate();
+      }, I18nService.MISSING_KEY_REFRESH_DELAY_MS);
+    });
   }
 
   translateParams(

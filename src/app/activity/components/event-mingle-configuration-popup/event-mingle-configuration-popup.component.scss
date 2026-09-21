@@ -1,0 +1,145 @@
+:host {
+  display: contents;
+  --app-popup-small-width: 620px;
+}
+
+.mingle-configuration {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  color: #24435a;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(255, 255, 255, 0.94), transparent 36%),
+    linear-gradient(145deg, rgba(255, 242, 245, 0.98), rgba(249, 240, 250, 0.98));
+}
+
+.mingle-configuration__intro {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(201, 65, 99, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #81505f;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.mingle-configuration__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mingle-configuration__field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(73, 124, 137, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.mingle-configuration__field--wide {
+  grid-column: span 2;
+}
+
+.mingle-configuration__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: #7c2943;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.mingle-configuration__label mat-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  font-size: 18px;
+  color: #c63f67;
+}
+
+.mingle-configuration__number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.mingle-configuration__number input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(73, 124, 137, 0.34);
+  border-radius: 9px;
+  background: #fff;
+  color: #24435a;
+  padding: 0.56rem 0.62rem;
+  font: inherit;
+  font-weight: 700;
+}
+
+.mingle-configuration__number input:focus {
+  outline: 2px solid rgba(198, 63, 103, 0.2);
+  border-color: #c63f67;
+}
+
+.mingle-configuration__number input:disabled {
+  opacity: 0.66;
+  background: rgba(232, 239, 241, 0.92);
+}
+
+.mingle-configuration__number > span,
+.mingle-configuration small {
+  color: rgba(36, 67, 90, 0.7);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.mingle-configuration__constraint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(198, 63, 103, 0.25);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+}
+
+.mingle-configuration__constraint.is-disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+
+.mingle-configuration__constraint > input {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  margin: 1px 0 0;
+  accent-color: #c63f67;
+}
+
+.mingle-configuration__constraint-copy {
+  display: grid;
+  gap: 4px;
+}
+
+@media (max-width: 560px) {
+  .mingle-configuration {
+    padding: 12px;
+  }
+
+  .mingle-configuration__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mingle-configuration__field--wide {
+    grid-column: auto;
+  }
+}

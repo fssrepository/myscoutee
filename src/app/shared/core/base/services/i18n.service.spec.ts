@@ -279,6 +279,39 @@ describe('I18nService', () => {
     expect(localAssetRequestCount()).toBe(0);
   });
 
+  it('revalidates the backend bundle when a newly deployed translation key is missing', async () => {
+    let latestBundleAvailable = false;
+    get.mockImplementation((url: string) => {
+      if (url !== `${environment.apiBaseUrl ?? '/api'}/i18n/bundle`) {
+        throw new Error(`Unexpected i18n request: ${url}`);
+      }
+      return of(latestBundleAvailable
+        ? {
+          lang: 'en',
+          version: 'remote.3',
+          data: { 'event.editor.mingle.title': 'Mingle configuration' }
+        }
+        : {
+          lang: 'en',
+          version: 'remote.2',
+          data: { existing: 'Existing translation' }
+        });
+    });
+    const service = TestBed.inject(I18nService);
+    service.initialize();
+
+    await vi.waitFor(() => {
+      expect(service.translate('existing')).toBe('Existing translation');
+    });
+    latestBundleAvailable = true;
+    expect(service.translate('event.editor.mingle.title')).toBe('event.editor.mingle.title');
+
+    await vi.waitFor(() => {
+      expect(service.translate('event.editor.mingle.title')).toBe('Mingle configuration');
+    });
+    expect(apiRequestCount()).toBeGreaterThanOrEqual(2);
+  });
+
   it('uses local seed bundles when the application has no backend', async () => {
     environment.activitiesDataSource = 'local';
     get.mockImplementation((url: string) => {

@@ -53,4 +53,30 @@ describe('SeedEventsBuilder invitation pricing', () => {
     expect(alpine?.imageUrl).toBe(expectedPresentation.imageUrl);
     expect(alpine?.topics).toEqual([...expectedPresentation.topics]);
   });
+
+  it('includes an identifiable Mingle event for the local Nagy Eszter seed', () => {
+    const eventsByUser = SeedEventsBuilder.buildSeedEventItemsByUser();
+    const mingle = eventsByUser['u3']?.find(item => item.id === 'mingle-demo-nagy-eszter');
+    const collection = SeedEventsBuilder.buildRecordCollection({
+      invitationsByUser: SeedEventsBuilder.buildSeedInvitationItemsByUser(),
+      eventsByUser,
+      hostingByUser: SeedEventsBuilder.buildSeedHostingItemsByUser(),
+      statusById: SeedEventsBuilder.buildSeedStatusById()
+    });
+    const persisted = collection.ids
+      .map(id => collection.byId[id])
+      .find(record => record?.id === 'mingle-demo-nagy-eszter' && record.userId === 'u3');
+
+    expect(mingle?.title).toBe('Mingle Demo · Table Rotation Social');
+    expect(persisted?.mode).toBe('Mingle');
+    expect(persisted?.mingleConfiguration).toEqual({
+      groupSize: 4,
+      plannedRounds: 4,
+      roundDurationMinutes: 20,
+      breakDurationMinutes: 5,
+      tableCount: 6,
+      requireGenderBalance: true
+    });
+    expect(persisted?.subEventDefinitions).toEqual([]);
+  });
 });

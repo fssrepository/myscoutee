@@ -1,0 +1,55 @@
+@if (open()) {
+  <app-popup [model]="popupModel()" [zIndex]="4650">
+    <section class="mingle-configuration">
+      <p class="mingle-configuration__intro">
+        {{ 'event.editor.mingle.description' | i18n }}
+      </p>
+
+      <div class="mingle-configuration__grid">
+        @for (field of numberFields; track field.key) {
+          <label class="mingle-configuration__field" [class.mingle-configuration__field--wide]="field.hint">
+            <span class="mingle-configuration__label">
+              <mat-icon>{{ field.icon }}</mat-icon>
+              <span>{{ field.label | i18n }}</span>
+            </span>
+            <span class="mingle-configuration__number">
+              <input
+                type="number"
+                [min]="field.min"
+                [max]="field.max"
+                [step]="field.step"
+                [value]="draft()[field.key]"
+                [disabled]="fieldDisabled(field.key)"
+                [attr.aria-label]="field.label | i18n"
+                (change)="updateNumber(field.key, $event)"
+              />
+              @if (field.suffix) {
+                <span>{{ field.suffix | i18n }}</span>
+              }
+            </span>
+            @if (field.hint) {
+              <small>{{ field.hint | i18n }}</small>
+            }
+          </label>
+        }
+      </div>
+
+      <label class="mingle-configuration__constraint" [class.is-disabled]="fieldDisabled('requireGenderBalance')">
+        <input
+          type="checkbox"
+          [checked]="draft().requireGenderBalance"
+          [disabled]="fieldDisabled('requireGenderBalance')"
+          [attr.aria-label]="'event.editor.mingle.require.gender.balance' | i18n"
+          (change)="updateGenderBalance($event)"
+        />
+        <span class="mingle-configuration__constraint-copy">
+          <span class="mingle-configuration__label">
+            <mat-icon>balance</mat-icon>
+            <span>{{ 'event.editor.mingle.require.gender.balance' | i18n }}</span>
+          </span>
+          <small>{{ 'event.editor.mingle.require.gender.balance.hint' | i18n }}</small>
+        </span>
+      </label>
+    </section>
+  </app-popup>
+}

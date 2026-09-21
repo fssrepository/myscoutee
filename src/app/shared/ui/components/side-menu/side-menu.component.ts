@@ -544,9 +544,9 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'permissions',
-        label: 'app.setup.permissions',
-        icon: 'tune',
-        ariaLabel: 'app.setup.permissions'
+        label: 'install.app',
+        icon: 'install_desktop',
+        ariaLabel: 'install.app'
       });
     }
     items.push({
