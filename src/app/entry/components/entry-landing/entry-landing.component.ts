@@ -79,7 +79,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly i18n = inject(I18nService);
-  protected readonly founderName = this.i18n.founderName;
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   protected readonly deploymentSocialLinks =

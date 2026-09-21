@@ -78,31 +78,6 @@ describe('I18nService', () => {
     TestBed.resetTestingModule();
   });
 
-  it('loads and persists the configured founder in the translation request, including version-only refreshes', async () => {
-    const stored = { lang: 'en', version: 'remote.2', data: { role: 'Founder' }, storedAt: 1, founderName: 'Cached Founder' };
-    bundleRepository.firstStoredBundle.mockResolvedValue(stored);
-    bundleRepository.readStoredBundle.mockResolvedValue(stored);
-    get.mockReturnValue(of({ lang: 'en', version: 'remote.2', data: null, founderName: 'Configured Founder' }));
-    const service = TestBed.inject(I18nService);
-    service.initialize();
-    await vi.waitFor(() => expect(service.founderName()).toBe('Configured Founder'));
-    expect(bundleRepository.writeStoredBundle).toHaveBeenCalledWith('real', expect.objectContaining({ founderName: 'Configured Founder', data: stored.data }));
-    expect(get.mock.calls.every(([url]) => url === `${environment.apiBaseUrl ?? '/api'}/i18n/bundle`)).toBe(true);
-    get.mockReturnValue(of({ lang: 'en', version: 'remote.3', data: { role: 'Founder' }, founderName: '' }));
-    await service.revalidate();
-    expect(service.founderName()).toBe('');
-  });
-
-  it('restores the founder from the cached bundle when offline', async () => {
-    const stored = { lang: 'en', version: 'remote.2', data: { role: 'Founder' }, storedAt: 1, founderName: 'Offline Founder' };
-    bundleRepository.firstStoredBundle.mockResolvedValue(stored);
-    bundleRepository.readStoredBundle.mockResolvedValue(stored);
-    get.mockReturnValue(throwError(() => new Error('offline')));
-    const service = TestBed.inject(I18nService);
-    service.initialize();
-    await vi.waitFor(() => expect(service.founderName()).toBe('Offline Founder'));
-  });
-
   it('uses Mongo-backed English install-prompt text in HTTP mode', async () => {
     const service = TestBed.inject(I18nService);
 

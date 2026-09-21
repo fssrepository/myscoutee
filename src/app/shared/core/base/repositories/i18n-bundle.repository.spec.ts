@@ -14,7 +14,6 @@ describe('I18nBundleRepository', () => {
     await repository.writeStoredBundle('real', {
       lang: 'en',
       version: 'real.1',
-      founderName: 'Configured Founder',
       data: { greeting: 'Real greeting' },
       storedAt: 1
     });
@@ -25,10 +24,9 @@ describe('I18nBundleRepository', () => {
       storedAt: 2
     });
 
-    await expect(new I18nBundleRepository().readStoredBundle('real', 'en'))
+    await expect(repository.readStoredBundle('real', 'en'))
       .resolves.toEqual(expect.objectContaining({
         version: 'real.1',
-        founderName: 'Configured Founder',
         data: { greeting: 'Real greeting' }
       }));
     await expect(repository.readStoredBundle('demo', 'en'))

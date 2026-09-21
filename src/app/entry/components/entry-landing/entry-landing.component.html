@@ -1,15 +1,17 @@
+@let branding = deploymentBranding();
+
 <section
   class="entry-shell"
-  [attr.data-deployment-theme]="deploymentBranding().themePreset.toLowerCase()"
+  [attr.data-deployment-theme]="branding.themePreset.toLowerCase()"
   [attr.inert]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? '' : null"
   [attr.aria-hidden]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? 'true' : null"
 >
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
-      <div class="entry-brand" [attr.aria-label]="deploymentBranding().productName">
+      <div class="entry-brand" [attr.aria-label]="branding.productName">
         <span class="entry-brand-copy">
           <app-deployment-brand
-            [branding]="deploymentBranding()"
+            [branding]="branding"
           ></app-deployment-brand>
         </span>
       </div>
@@ -130,7 +132,7 @@
         <section class="entry-footer-brand">
           <div class="entry-footer-title">
             <app-deployment-brand
-              [branding]="deploymentBranding()"
+              [branding]="branding"
             ></app-deployment-brand>
           </div>
           <p>Where fast matches turn into real connections.</p>
@@ -201,7 +203,7 @@
         </section>
       </div>
       <div class="entry-footer-bottom">
-        <span>© 2026 {{ deploymentBranding().productName }}</span>
+        <span>© 2026 {{ branding.productName }}</span>
       </div>
     </footer>
   </div>
@@ -220,9 +222,7 @@
             {{ 'landing.about.founder.label' | i18n: 'Who I am' }}
           </span>
           <h3>
-            @if (founderName()) {
-              <span data-i18n-ignore>{{ founderName() }}</span> ·
-            }
+            <span data-i18n-ignore>{{ branding.productName }}</span> ·
             {{ 'landing.about.founder.title' | i18n: 'Independent founder and software developer' }}
           </h3>
           <p>
