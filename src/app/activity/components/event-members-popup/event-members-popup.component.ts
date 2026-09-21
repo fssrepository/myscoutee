@@ -1,4 +1,3 @@
-import { I18nPipe } from '../../../shared/ui';
 import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
 import {
   CommonModule
@@ -145,7 +144,6 @@ interface ActivityMembersListPollState {
   standalone: true,
   imports: [
     CommonModule,
-    I18nPipe,
     MatIconModule,
     PopupComponent,
     SmartListComponent,
@@ -367,7 +365,9 @@ export class EventMembersPopupComponent implements OnDestroy {
       height: 'full',
       headerTone: 'accent',
       bodyLayout: 'fill',
-      headerBadge: this.isSummaryVisible ? this.localizedSummaryLabel() : null,
+      headerBadge: this.mingleLive ? this.mingleStore.countdown() : (this.isSummaryVisible ? this.localizedSummaryLabel() : null),
+      headerBadgeTone: this.mingleLive && ['BREAK', 'PAUSED'].includes(this.mingleStore.state()?.status ?? '')
+        ? 'warning' : 'neutral',
       translateHeaderBadge: false,
       toolbarControls: [
         ...(this.canShowInviteButton ? [{

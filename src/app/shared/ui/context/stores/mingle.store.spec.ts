@@ -59,6 +59,24 @@ describe('MingleStore live table flow', () => {
     expect(query).toHaveBeenCalledTimes(3);
   });
 
+  it('ticks the badge locally and freezes it while paused without requesting data on reads', async () => {
+    query.mockResolvedValue(state());
+    store.activate('viewer');
+    await vi.advanceTimersByTimeAsync(0);
+    await store.openCurrentTable();
+    expect(store.countdown()).toBe('2:00');
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(store.countdown()).toBe('1:59');
+    const calls = query.mock.calls.length;
+    for (let index = 0; index < 20; index++) store.countdown();
+    expect(query).toHaveBeenCalledTimes(calls);
+    query.mockResolvedValue({ ...state(), status: 'PAUSED', remainingSeconds: 83 });
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(store.countdown()).toBe('1:23');
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(store.countdown()).toBe('1:23');
+  });
+
   it('opens waiting status without pretending the viewer belongs to a table', async () => {
     query.mockResolvedValue(state(true));
     store.activate('viewer');

@@ -3,10 +3,22 @@ import { EventMembersPopupComponent } from './event-members-popup.component';
 describe('Event member popup mode isolation', () => {
   function popup() {
     const component = Object.create(EventMembersPopupComponent.prototype);
-    Object.assign(component, { mingleLive: true, mingleStore: { closeLiveView: vi.fn() },
+    Object.assign(component, { mingleLive: true, mingleStore: { closeLiveView: vi.fn(), countdown: () => '9:23', state: vi.fn(() => ({ status: 'ROUND' })) },
       membersListPollScheduler: { destroy: vi.fn() }, canManageMembers: false });
     return component;
   }
+
+  it('shows only the countdown in the shared header badge, with the phase tone', () => {
+    const component = popup();
+    expect(component.membersPopupModel()).toMatchObject({ headerBadge: '9:23', headerBadgeTone: 'neutral' });
+    expect(component.membersPopupModel().secondarySubtitle).toBeUndefined();
+    component.mingleStore.state.mockReturnValue({ status: 'PAUSED' });
+    expect(component.membersPopupModel().headerBadgeTone).toBe('warning');
+    component.mingleStore.state.mockReturnValue({ status: 'BREAK' });
+    expect(component.membersPopupModel().headerBadgeTone).toBe('warning');
+    component.setMingleLive(false);
+    expect(component.membersPopupModel()).toMatchObject({ headerBadge: null, headerBadgeTone: 'neutral' });
+  });
 
   it('leaves the live table context when an ordinary member list replaces it', () => {
     const component = popup();

@@ -29,13 +29,16 @@ export class MingleStore implements OnDestroy {
     task: async () => { this.now.set(Date.now()); }
   });
 
-  readonly statusLabel = computed(() => {
+  readonly countdown = computed(() => {
     const state = this.stateRef();
     if (!state) return '';
     const seconds = state.status === 'PAUSED' ? state.remainingSeconds
       : Math.max(0, Math.ceil((Date.parse(state.phaseEndsAtIso ?? '') - this.now()) / 1_000)) || 0;
-    const time = `${Math.floor(seconds / 60)}:${`${seconds % 60}`.padStart(2, '0')}`;
-    return this.i18n.translateParams(`mingle.live.${state.status}`, { time });
+    return `${Math.floor(seconds / 60)}:${`${seconds % 60}`.padStart(2, '0')}`;
+  });
+  readonly statusLabel = computed(() => {
+    const state = this.stateRef();
+    return state ? this.i18n.translateParams(`mingle.live.${state.status}`, { time: this.countdown() }) : '';
   });
   readonly roundLabel = computed(() => {
     const state = this.stateRef();
