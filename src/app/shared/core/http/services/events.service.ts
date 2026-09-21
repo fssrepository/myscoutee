@@ -879,6 +879,7 @@ export class HttpEventsService implements IEventsService {
         : Math.max(1, Math.trunc(Number(response.tableNumber) || 1)),
       tables: (response.tables ?? []).map(table => ({
         tableNumber: Math.max(1, Math.trunc(Number(table.tableNumber) || 1)),
+        subEventId: `${table.subEventId ?? ''}`.trim(),
         memberOwnerId: `${table.memberOwnerId ?? ''}`.trim(),
         participants: (table.participants ?? []).map(participant => ({
           userId: `${participant.userId ?? ''}`.trim(),

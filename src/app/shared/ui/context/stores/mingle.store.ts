@@ -85,10 +85,9 @@ export class MingleStore {
     if (!table) {
       return false;
     }
-    const roundNumber = Math.max(1, state.roundNumber);
-    const subEventId = `mingle-round-${roundNumber}`;
+    const subEventId = `${table.subEventId ?? ''}`.trim();
     const ownerId = `${table.memberOwnerId ?? ''}`.trim();
-    if (!ownerId) {
+    if (!subEventId || !ownerId) {
       return false;
     }
     this.memberMenuStore.requestActivitiesNavigation({

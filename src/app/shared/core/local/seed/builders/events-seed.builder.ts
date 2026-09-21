@@ -617,7 +617,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       id: 'mingle-demo-nagy-eszter',
       avatar: 'NE',
       title: 'Mingle Demo · Table Rotation Social',
-      shortDescription: 'A live social mixer with four planned rounds and table assignments for checked-in participants.',
+      shortDescription: 'A live social mixer with four planned rounds and table assignments for eligible event participants.',
       timeframe: 'Mingle demo',
       activity: 0,
       status: 'A',

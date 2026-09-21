@@ -118,6 +118,7 @@ export interface MingleParticipantDTO {
 
 export interface MingleTableDTO {
   tableNumber: number;
+  subEventId: string;
   memberOwnerId: string;
   participants: MingleParticipantDTO[];
 }

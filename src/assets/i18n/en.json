@@ -2377,7 +2377,7 @@
     "mingle.error.manage.forbidden": "You do not have permission to manage this Mingle event.",
     "mingle.error.session.not.started": "The Mingle session has not started yet.",
     "mingle.error.configuration.required": "Configure Mingle before starting it.",
-    "event.editor.mingle.flexible.rounds.note": "The planned round count is a guide, not a maximum. Additional rounds can be started during the event.",
+    "event.editor.mingle.flexible.rounds.note": "Increase the planned round count to make additional rounds available during the event.",
     "frequency": "Frequency",
     "select": "Select",
     "schedule.frequency.custom": "Custom",

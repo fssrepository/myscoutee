@@ -2377,7 +2377,7 @@
     "mingle.error.manage.forbidden": "Nincs jogosultságod ennek a Mingle-eseménynek a kezeléséhez.",
     "mingle.error.session.not.started": "A Mingle még nem indult el.",
     "mingle.error.configuration.required": "Indítás előtt állítsd be a Mingle-t.",
-    "event.editor.mingle.flexible.rounds.note": "A tervezett körszám tájékoztató érték, nem maximum. Az esemény közben további kör indítható.",
+    "event.editor.mingle.flexible.rounds.note": "Az esemény közben a tervezett körszám növelésével tehetsz elérhetővé további köröket.",
     "frequency": "Gyakoriság",
     "select": "Választás",
     "schedule.frequency.custom": "Egyéni",
