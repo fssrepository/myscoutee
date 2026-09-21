@@ -68,7 +68,9 @@ describe('SeedEventsBuilder invitation pricing', () => {
       .find(record => record?.id === 'mingle-demo-nagy-eszter' && record.userId === 'u3');
 
     expect(mingle?.title).toBe('Mingle Demo · Table Rotation Social');
+    expect(mingle?.acceptedMemberUserIds).toHaveLength(9);
     expect(persisted?.mode).toBe('Mingle');
+    expect(persisted?.acceptedMembers).toBe(9);
     expect(persisted?.mingleConfiguration).toEqual({
       groupSize: 4,
       plannedRounds: 4,

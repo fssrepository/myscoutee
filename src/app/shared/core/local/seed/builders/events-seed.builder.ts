@@ -633,7 +633,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       capacityMin: 8,
       capacityMax: 24,
       capacityTotal: 24,
-      acceptedMemberUserIds: ['u3', 'u1', 'u2', 'u4', 'u5', 'u6', 'u7', 'u8'],
+      acceptedMemberUserIds: ['u3', 'u1', 'u2', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9'],
       pendingMemberUserIds: [],
       policiesEnabled: true,
       policies: [{
