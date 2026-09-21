@@ -19,12 +19,12 @@ describe('EntryLandingComponent article lists', () => {
     'landing.articles.title': '{productName} articles',
     'landing.articles.count.one': '{count} article',
     'landing.articles.count.many': '{count} articles',
-    'landing.about.title': 'About MyScoutee',
-    'landing.about.open.aria': 'Open the MyScoutee overview',
+    'landing.about.title': 'About {productName}',
+    'landing.about.open.aria': 'Open the {productName} overview',
     'landing.about.header.badge': 'Independent project',
     'landing.about.subtitle': 'Who built it, what it does, and why it is free to join.',
-    'landing.about.aria': 'About MyScoutee',
-    'landing.about.close.aria': 'Close the MyScoutee overview',
+    'landing.about.aria': 'About {productName}',
+    'landing.about.close.aria': 'Close the {productName} overview',
     'landing.partners.title': 'For Partners',
     'landing.partners.open.aria': 'Open partner overview',
     'landing.preview.open.guide': 'Open preview guide',
@@ -83,6 +83,19 @@ describe('EntryLandingComponent article lists', () => {
         }
       ]
     });
+  });
+
+  it('uses operator branding in the About menu and popup when the product name changes', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.detectChanges();
+    branding.set({ ...DEFAULT_DEPLOYMENT_BRANDING, productName: 'Community Club' });
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('[aria-label="Open the Community Club overview"]') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.textContent).toContain('About Community Club');
+    button.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ui-popup__title-line h2')?.textContent).toContain('About Community Club');
   });
 
   afterEach(() => {

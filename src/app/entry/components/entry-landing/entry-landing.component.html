@@ -141,9 +141,9 @@
           <button
             type="button"
             class="entry-footer-text-action entry-footer-about-action"
-            [attr.aria-label]="'landing.about.open.aria' | i18n: 'Open the MyScoutee overview'"
+            [attr.aria-label]="aboutProductText('landing.about.open.aria')"
             (click)="openAboutPopup($event)"
-            >{{ 'landing.about.title' | i18n: 'About MyScoutee' }}</button>
+            >{{ aboutProductText('landing.about.title') }}</button>
           <button
             type="button"
             class="entry-footer-text-action entry-footer-partners-action"
@@ -226,7 +226,7 @@
             {{ 'landing.about.founder.title' | i18n: 'Independent founder and software developer' }}
           </h3>
           <p>
-            {{ 'landing.about.founder.description' | i18n: 'I built MyScoutee after years of organizing my own journeys and looking for a more human path from online introductions to meeting in real life.' }}
+            {{ aboutProductText('landing.about.founder.description') }}
           </p>
         </div>
       </section>
