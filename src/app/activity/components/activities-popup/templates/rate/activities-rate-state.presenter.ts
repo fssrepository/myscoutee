@@ -26,6 +26,14 @@ export function pendingActivitiesRateDirectionAfterRating(
 ): ActivityRateDTO['direction'] | null {
   const direction = item.direction;
   if (item.mode === 'individual') {
+    if (item.met === true) {
+      if (direction === 'met') {
+        return item.scoreReceived > 0 ? 'met' : 'given';
+      }
+      if (direction === 'received') {
+        return 'met';
+      }
+    }
     if (direction === 'given') {
       return 'given';
     }

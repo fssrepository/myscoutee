@@ -101,7 +101,8 @@ export class BaseUserRatesMapper {
       scoreReceived,
       eventName: item.eventName,
       happenedAtIso,
-      distanceMetersExact: this.normalizeDistanceMetersExact(item.distanceMetersExact)
+      distanceMetersExact: this.normalizeDistanceMetersExact(item.distanceMetersExact),
+      met: item.met === true || item.direction === 'met'
     };
   }
 
@@ -199,7 +200,8 @@ export class BaseUserRatesMapper {
       happenedAt: input.item.happenedAt?.trim() || new Date().toISOString(),
       distanceMetersExact: Number.isFinite(input.item.distanceMetersExact)
         ? Math.max(0, Math.trunc(Number(input.item.distanceMetersExact)))
-        : 0
+        : 0,
+      met: input.item.met === true
     });
   }
 
@@ -231,7 +233,8 @@ export class BaseUserRatesMapper {
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
             happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
+            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
+            met: record.met === true
           };
         }
         if (secondUserId === ownerUserId) {
@@ -248,7 +251,8 @@ export class BaseUserRatesMapper {
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
             happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
+            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
+            met: record.met === true
           };
         }
       } else if (firstUserId === ownerUserId || secondUserId === ownerUserId) {
@@ -267,7 +271,8 @@ export class BaseUserRatesMapper {
         scoreReceived: this.normalizeRateScore(record.scoreReceived),
         eventName: record.eventName?.trim() || 'Rate',
         happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-        distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
+        distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
+        met: record.met === true
       };
     }
     const counterpartyUserId = record.fromUserId === ownerUserId
@@ -285,7 +290,8 @@ export class BaseUserRatesMapper {
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-      distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact)
+      distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
+      met: record.met === true
     };
   }
 

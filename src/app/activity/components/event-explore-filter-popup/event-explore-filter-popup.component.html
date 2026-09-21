@@ -1,0 +1,17 @@
+<app-popup [model]="model()" [zIndex]="10020">
+  <div class="explore-filters">
+    <app-menu kind="inline" [items]="toggles()" (itemSelect)="toggle($event)"></app-menu>
+    <label class="explore-filters__field">
+      <span>{{ 'event.mode' | i18n }}</span>
+      <app-menu kind="select" [trigger]="modeTrigger()" [items]="modes.items(draft.mode, true)"
+        (itemSelect)="selectMode($event)"></app-menu>
+    </label>
+    <label class="explore-filters__field">
+      <span>{{ 'topic' | i18n }}</span>
+      <app-menu kind="select" [filterable]="true" [title]="'topic'"
+        [trigger]="{ icon: 'sell', palette: 'green', layout: 'field', ariaLabel: 'topic', disabled: saving }"
+        [model]="topics()" (itemSelect)="selectTopic($event)"></app-menu>
+    </label>
+    @if (error) { <p role="alert">{{ 'event.filters.save.failed' | i18n }}</p> }
+  </div>
+</app-popup>

@@ -44,7 +44,7 @@ describe('ChatPopupHeaderContextConverter event lifecycle', () => {
       members
     }), { includeThumbs: true });
 
-    expect(context.controls[0]?.visual).toEqual({
+    expect(context.controls?.[0]?.visual).toEqual({
       kind: 'thumbStack',
       maxVisible: 4,
       thumbs: [

@@ -16,7 +16,7 @@ describe('ActivitiesPopupComponent member sync source', () => {
       pendingCount: 1
     }
   } as InfoCardData;
-  const source = {
+  const source = activityEvent({
     id: row.id,
     acceptedMembers: 2,
     pendingMembers: 1,
@@ -26,7 +26,7 @@ describe('ActivitiesPopupComponent member sync source', () => {
     pendingMemberUserIds: ['riley'],
     invitedMemberUserIds: ['riley'],
     pendingRequestMemberUserIds: []
-  } as ActivityEventDTO;
+  });
 
   it('resolves a server-backed event from the Smart List source when the event cache misses', () => {
     const component = Object.create(ActivitiesPopupComponent.prototype) as any;
@@ -78,3 +78,32 @@ describe('ActivitiesPopupComponent member sync source', () => {
     );
   });
 });
+
+function activityEvent(overrides: Partial<ActivityEventDTO>): ActivityEventDTO {
+  return {
+    id: 'event-a',
+    userId: 'casey',
+    type: 'hosting',
+    adminIds: ['casey'],
+    title: 'Event A',
+    subtitle: '',
+    timeframe: '',
+    inviter: null,
+    activity: 0,
+    creatorUserId: 'casey',
+    creatorName: 'Casey',
+    creatorInitials: 'CA',
+    creatorCity: 'Seattle',
+    visibility: 'Public',
+    startAtIso: '2026-09-21T18:00:00Z',
+    endAtIso: '2026-09-21T21:00:00Z',
+    distanceKm: 0,
+    imageUrl: '',
+    location: 'Seattle',
+    capacityTotal: 0,
+    acceptedMembers: 0,
+    pendingMembers: 0,
+    boost: 0,
+    ...overrides
+  };
+}

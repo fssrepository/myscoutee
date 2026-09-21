@@ -14,6 +14,7 @@ describe('activity bucket count signal', () => {
       invitations: 2,
       hosting: 1,
       drafts: 3,
+      watchlist: 0,
       trash: 0
     }
   };
@@ -71,6 +72,7 @@ describe('activity bucket count signal', () => {
       invitations: 0,
       hosting: 0,
       drafts: 0,
+      watchlist: 0,
       trash: 0
     });
 
@@ -99,7 +101,10 @@ describe('activity bucket count signal', () => {
         cars: 2,
         accommodation: 4,
         supplies: 6,
-        tickets: 1
+        tickets: 1,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0
       }
     });
 
@@ -124,7 +129,10 @@ describe('activity bucket count signal', () => {
         cars: 1,
         accommodation: 2,
         supplies: 3,
-        tickets: 4
+        tickets: 4,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0
       }
     };
 

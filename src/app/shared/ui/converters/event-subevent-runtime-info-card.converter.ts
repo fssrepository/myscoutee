@@ -35,19 +35,28 @@ export class EventSubeventRuntimeInfoCardConverter
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
     const isMainEvent = this.isMainEventRuntime(item);
     const isTournament = mode === 'Tournament';
+    const isMingle = mode === 'Mingle';
     const sequenceNumber = Math.max(1, Math.trunc(Number(options.sequenceNumber) || 1));
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
     const sequenceLabel = isMainEvent
       ? 'Event'
       : isTournament
         ? `Stage ${sequenceNumber}`
-        : `Sub Event ${sequenceNumber}`;
+        : isMingle
+          ? options.translateParams?.('event.editor.mingle.round.number', { number: sequenceNumber }, `Round ${sequenceNumber}`) ?? `Round ${sequenceNumber}`
+          : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
     const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
     const stageStatus = isTournament
       ? this.stageStatusBadge(item, nowMs)
       : null;
-    const runtimeIcon = isMainEvent ? 'event' : isTournament ? 'emoji_events' : 'inventory_2';
+    const runtimeIcon = isMainEvent
+      ? 'event'
+      : isTournament
+        ? 'emoji_events'
+        : isMingle
+          ? 'table_restaurant'
+          : 'inventory_2';
     const menuBadgeCount = options.menuBadgeCount == null
       ? EventSubeventRuntimeMenuConverter.runtimeBadgeCount(item, {
           event: options.event,
@@ -62,10 +71,13 @@ export class EventSubeventRuntimeInfoCardConverter
       groupLabel: options.groupLabel ?? null,
       title: item.name,
       mediaMode: 'title',
-      mediaTone: 'neutral',
+      mediaTone: isMingle ? 'default' : 'neutral',
       mediaIcon: runtimeIcon,
       mediaTitle: sequenceLabel,
-      mediaSubtitle: mode,
+      mediaSubtitle: options.translateParams?.(
+        mode === 'Mingle' ? 'event.mode.mingle' : mode === 'Tournament' ? 'event.mode.tournament' : 'event.mode.standard',
+        {}, mode === 'Mingle' ? 'Speed meeting' : mode === 'Casual' ? 'Standard' : 'Tournament'
+      ) ?? (mode === 'Mingle' ? 'Speed meeting' : mode === 'Casual' ? 'Standard' : 'Tournament'),
       metaRows: [
         dateLabel,
         ...(location ? [location] : []),
@@ -74,19 +86,23 @@ export class EventSubeventRuntimeInfoCardConverter
       descriptionLines: 2,
       description: item.description || 'No description',
       detailRows: [],
-      surfaceTone: isTournament ? 'stage-runtime' : 'draft',
-      accentHue: isTournament ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal) : null,
+      surfaceTone: isMingle ? 'subevent-strong' : isTournament ? 'stage-runtime' : 'draft',
+      accentHue: isTournament
+        ? AppUtils.tournamentStageAccentHue(sequenceNumber, sequenceTotal)
+        : isMingle
+          ? this.mingleRoundAccentHue(sequenceNumber, sequenceTotal)
+          : null,
       leadingIcon: {
-        icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : status.icon,
-        tone: isTournament ? 'stage' : isMainEvent ? 'public' : status.leadingTone
+        icon: isMainEvent ? 'event' : isTournament ? 'emoji_events' : isMingle ? 'table_restaurant' : status.icon,
+        tone: isMingle ? 'public' : isTournament ? 'stage' : isMainEvent ? 'public' : status.leadingTone
       },
-      mediaStart: {
+      mediaStart: isMingle ? null : {
         variant: 'avatar',
         tone: 'default',
         icon: 'location_on',
         interactive: false
       },
-      mediaEnd: isTournament ? stageStatus : isMainEvent ? {
+      mediaEnd: isTournament ? stageStatus : isMingle ? null : isMainEvent ? {
         variant: 'badge',
         tone: 'public',
         label: 'Event',
@@ -161,7 +177,7 @@ export class EventSubeventRuntimeInfoCardConverter
     options: EventSubeventRuntimeInfoCardConverterOptions
   ): EventMode {
     const requestedMode = options.mode ?? options.event?.mode ?? null;
-    if (requestedMode === 'Casual' || requestedMode === 'Tournament') {
+    if (requestedMode === 'Casual' || requestedMode === 'Tournament' || requestedMode === 'Mingle') {
       return requestedMode;
     }
     return this.isTournamentStage(item) ? 'Tournament' : 'Casual';
@@ -189,7 +205,7 @@ export class EventSubeventRuntimeInfoCardConverter
     mode: EventMode,
     options: EventSubeventRuntimeInfoCardConverterOptions
   ): string | null {
-    if (mode === 'Tournament') {
+    if (mode === 'Tournament' || mode === 'Mingle') {
       return this.tournamentGroupCapacitySummary(item, options);
     }
     if (!item.optional && !this.isMainEventRuntime(item)) {
@@ -221,6 +237,11 @@ export class EventSubeventRuntimeInfoCardConverter
   private static nonNegativeInteger(value: unknown): number {
     const parsed = Math.trunc(Number(value));
     return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
+  private static mingleRoundAccentHue(roundNumber: number, totalRounds: number): number {
+    const ratio = totalRounds <= 1 ? 0 : (roundNumber - 1) / (totalRounds - 1);
+    return Math.round(340 - (14 * ratio));
   }
 
   private static isMainEventRuntime(item: SubEventDTO | null | undefined): boolean {

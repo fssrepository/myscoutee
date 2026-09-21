@@ -1,3 +1,4 @@
+import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -6,6 +7,8 @@ import {
   TemplateRef,
   ViewChild,
   effect,
+  computed,
+  signal,
   inject
 } from '@angular/core';
 import {
@@ -21,7 +24,7 @@ import {
   from
 } from 'rxjs';
 
-import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
+import type { EventExploreFilterPreferences, EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import {
   APP_STATIC_DATA
@@ -53,7 +56,6 @@ import {
   AppMenuComponent,
   AppMenuOutletComponent,
   appMenuPaletteFromToneClass,
-  buildTabbedMenuModel,
   EventExploreInfoCardConverter,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -72,6 +74,7 @@ import {
   type ListQuery,
   type PopupModel,
   type SmartListConfig,
+  type SmartListLoadContext,
   type SmartListItemTemplateContext,
   type SmartListLocalSortKey,
   type SmartListStateChange
@@ -114,8 +117,6 @@ type CheckoutDraftMenuVisual = {
 type EventExploreMenuContext =
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
-  | { menu: 'filter-toggle'; filter: 'friends' | 'open-spots' }
-  | { menu: 'topic-filter'; topic: string }
   | { menu: 'checkout-draft'; entry: CheckoutDraftEntry }
   | {
       menu: 'info-card';
@@ -129,6 +130,7 @@ type EventExploreMenuContext =
   standalone: true,
   imports: [
     CommonModule,
+    EventExploreFilterPopupComponent,
     MatIconModule,
     AppMenuComponent,
     AppMenuOutletComponent,
@@ -174,9 +176,52 @@ export class EventExplorePopupComponent {
   protected isOpen = false;
   protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: ContractTypes.EventExploreView = 'day';
-  protected eventExploreFilterFriendsOnly = false;
-  protected eventExploreFilterHasRooms = false;
-  protected eventExploreFilterTopic = '';
+  protected readonly eventExploreFilters = signal<EventExploreFilterPreferences>({
+    friendsOnly: false, openSpotsOnly: false, topic: '', mode: ''
+  });
+  protected readonly preferencesReady = signal(false);
+  private preferencesRequest: Promise<boolean> | null = null;
+  protected filterPopup: EventExploreFilterPreferences | null = null;
+  protected filterSaving = false;
+  protected filterSaveFailed = false;
+  private exploreOpenRevision = 0;
+
+  protected readonly filterCount = computed(() => {
+    const filters = this.eventExploreFilters();
+    return Number(filters.friendsOnly) + Number(filters.openSpotsOnly)
+      + Number(!!filters.topic) + Number(!!filters.mode);
+  });
+
+  protected openFilters(): void {
+    if (!this.preferencesReady()) return;
+    this.filterSaveFailed = false;
+    this.filterPopup = { ...this.eventExploreFilters() };
+  }
+
+  protected async closeFilters(filters: EventExploreFilterPreferences | null): Promise<void> {
+    if (this.filterSaving) return;
+    if (!filters) { this.filterPopup = null; return; }
+    const userId = this.activeUserId;
+    this.filterSaving = true;
+    this.filterSaveFailed = false;
+    this.cdr.markForCheck();
+    try {
+      await this.usersService.savePageFilterPreferences(userId, 'event-explore', filters);
+      if (userId !== this.activeUserId) return;
+      this.applyFilters(filters);
+      this.filterPopup = null;
+      this.syncEventExploreQuery();
+    } catch {
+      if (userId === this.activeUserId) this.filterSaveFailed = true;
+    } finally {
+      this.filterSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private applyFilters(filters: EventExploreFilterPreferences): void {
+    this.eventExploreFilters.set({ ...filters });
+  }
 
   protected eventExploreHeaderProgress = 0;
   protected eventExploreHeaderProgressLoading = false;
@@ -189,7 +234,7 @@ export class EventExplorePopupComponent {
   protected selectedMembersPendingOnly = false;
   protected selectedMembersRecord: ActivityEventRecord | null = null;
 
-  private activeUserId = '';
+  private activeUserId = this.userProfileStore.activeUserId().trim();
   private eventEditorPrewarmStarted = false;
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
@@ -213,8 +258,8 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.loadEventExplorePage(query));
+  protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>, context?: SmartListLoadContext) =>
+    from(this.loadEventExplorePage(query, context?.signal));
 
   private readonly eventExploreCompactMenuModel: AppMenuModel<string, EventExploreMenuContext> = {
     density: 'compact'
@@ -237,7 +282,7 @@ export class EventExplorePopupComponent {
     desktopColumns: 3,
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
-    pollIntervalMs: () => this.isOpen && !this.dialogStore.dialog()
+    pollIntervalMs: () => this.isOpen && this.preferencesReady() && !this.dialogStore.dialog()
       ? this.activitiesService.explorePollIntervalMs()
       : 0,
     cacheable: true,
@@ -281,6 +326,12 @@ export class EventExplorePopupComponent {
         return;
       }
       this.activeUserId = nextActiveUserId;
+      this.exploreOpenRevision++;
+      this.isOpen = false;
+      this.filterPopup = null;
+      this.preferencesRequest = null;
+      this.preferencesReady.set(false);
+      this.applyFilters({ friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' });
       this.locallyTrackedMembershipSourceIds.clear();
       this.syncEventExploreQuery();
       if (this.isOpen) {
@@ -349,6 +400,7 @@ export class EventExplorePopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented) {
       return;
     }
+    if (this.filterPopup) return;
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
     if (this.selectedMembersRecord) {
@@ -378,6 +430,12 @@ export class EventExplorePopupComponent {
       bodyLayout: 'fill',
       headerControls: [
         {
+          id: 'event-explore-filters', icon: 'filter_alt', label: 'event.explore.filters',
+          ariaLabel: 'event.explore.filters', palette: 'filter', compactOnMobile: true,
+          disabled: !this.preferencesReady(),
+          counter: this.filterCount() > 0 ? { value: this.filterCount(), max: 99 } : null
+        },
+        {
           kind: 'menu',
           id: 'event-explore-order',
           menuKind: 'select',
@@ -394,15 +452,7 @@ export class EventExplorePopupComponent {
           items: this.eventExploreViewMenuItems()
         }
       ],
-      toolbarControls: [
-        {
-          kind: 'menu',
-          id: 'event-explore-filters',
-          menuKind: 'inline',
-          model: this.eventExploreCompactMenuModel,
-          items: this.eventExploreFilterMenuItems()
-        }
-      ],
+      onAction: event => { if (event.action.id === 'event-explore-filters') this.openFilters(); },
       onClose: () => this.closeEventExplore(),
       onMenuSelect: event => this.onEventExploreMenuSelect(event.itemSelect)
     };
@@ -413,6 +463,8 @@ export class EventExplorePopupComponent {
   }
 
   protected closeEventExplore(): void {
+    if (this.filterPopup) return;
+    this.exploreOpenRevision++;
     this.isOpen = false;
     this.closeEventExploreSubeventsPopup();
     this.closeMembersPopup();
@@ -442,37 +494,12 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected toggleEventExploreFriendsOnly(event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreFilterFriendsOnly = !this.eventExploreFilterFriendsOnly;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected toggleEventExploreHasRooms(event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreFilterHasRooms = !this.eventExploreFilterHasRooms;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
-    event?.stopPropagation();
-    const normalizedTopic = this.normalizeTopic(topic);
-    this.eventExploreFilterTopic = normalizedTopic === this.normalizeTopic(this.eventExploreFilterTopic) ? '' : topic;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected eventExploreTopicLabel(topic: string): string {
-    return topic.replace(/^#+\s*/, '');
-  }
-
   protected eventExploreOrderMenuTrigger(): AppMenuTrigger {
     return {
       label: this.eventExploreOrderLabel(),
       icon: this.eventExploreOrderIcon(),
       ariaLabel: 'Open event explore order',
+      collapsible: true,
       palette: this.eventExploreOrderPalette(this.eventExploreOrder),
       layout: 'pill'
     };
@@ -497,6 +524,7 @@ export class EventExplorePopupComponent {
       label: this.eventExploreCurrentViewLabel(),
       icon: this.eventExploreCurrentViewIcon(),
       ariaLabel: 'Open event explore view',
+      collapsible: true,
       palette: this.eventExploreViewPalette(this.eventExploreView),
       layout: 'pill'
     };
@@ -514,69 +542,6 @@ export class EventExplorePopupComponent {
       surface: 'tinted',
       context: { menu: 'view', view: option.key }
     }));
-  }
-
-  protected eventExploreFilterMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
-    return [
-      {
-        id: 'filter-friends-going',
-        label: 'Friends going',
-        icon: 'groups',
-        kind: 'toggle',
-        layout: 'pill',
-        active: this.eventExploreFilterFriendsOnly,
-        checked: this.eventExploreFilterFriendsOnly,
-        closeOnSelect: false,
-        palette: 'green',
-        context: { menu: 'filter-toggle', filter: 'friends' }
-      },
-      {
-        id: 'filter-open-spots',
-        label: 'Open spots',
-        icon: 'hotel',
-        kind: 'toggle',
-        layout: 'pill',
-        active: this.eventExploreFilterHasRooms,
-        checked: this.eventExploreFilterHasRooms,
-        closeOnSelect: false,
-        palette: 'blue',
-        context: { menu: 'filter-toggle', filter: 'open-spots' }
-      },
-      {
-        id: 'filter-topic',
-        label: this.eventExploreFilterTopic
-          ? `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`
-          : 'Topic',
-        icon: 'sell',
-        kind: 'select-trigger',
-        layout: 'pill',
-        active: !!this.eventExploreFilterTopic,
-        checked: !!this.eventExploreFilterTopic,
-        closeOnSelect: false,
-        palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
-        ariaLabel: 'Open topic filter',
-        filterable: true,
-        model: this.eventExploreTopicMenuModel()
-      }
-    ];
-  }
-
-  private eventExploreTopicMenuModel(): AppMenuModel<string, EventExploreMenuContext> {
-    return buildTabbedMenuModel<string, EventExploreMenuContext>({
-      idPrefix: 'topic',
-      groups: this.topicFilterGroups,
-      selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
-      maxSelected: 1,
-      kind: 'radio',
-      context: topic => ({ menu: 'topic-filter', topic }),
-      itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
-      removeAriaLabel: topic => `Clear ${topic}`,
-      summary: {
-        emptyLabel: 'Topic',
-        maxLabels: 1,
-        counter: 'none'
-      }
-    });
   }
 
   protected onEventExploreMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -601,14 +566,6 @@ export class EventExplorePopupComponent {
       this.selectEventExploreView(context.view, event.sourceEvent);
       return;
     }
-    if (context.menu === 'filter-toggle') {
-      if (context.filter === 'friends') {
-        this.toggleEventExploreFriendsOnly(event.sourceEvent);
-        return;
-      }
-      this.toggleEventExploreHasRooms(event.sourceEvent);
-      return;
-    }
     if (context.menu === 'checkout-draft') {
       if (event.action === 'remove') {
         this.requestClearCheckoutDraft(context.entry.draft, event.sourceEvent);
@@ -616,19 +573,6 @@ export class EventExplorePopupComponent {
       }
       void this.openCheckoutDraftForm(context.entry, event.sourceEvent);
       return;
-    }
-    if (context.menu === 'topic-filter') {
-      if (event.action === 'remove') {
-        event.sourceEvent.stopPropagation();
-        if (this.normalizeTopic(context.topic) !== this.normalizeTopic(this.eventExploreFilterTopic)) {
-          return;
-        }
-        this.eventExploreFilterTopic = '';
-        this.syncEventExploreQuery();
-        this.reloadEventExploreSmartList();
-        return;
-      }
-      this.selectEventExploreTopicFilter(context.topic, event.sourceEvent);
     }
   }
 
@@ -901,6 +845,10 @@ export class EventExplorePopupComponent {
   }
 
   protected onEventExploreCardMenuAction(record: ActivityEventRecord, action: CardMenuActionEvent<InfoCardData>): void {
+    if (action.actionId === 'externalInfo') {
+      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(record.sourceLink));
+      return;
+    }
     if (action.actionId === 'view') {
       this.runEventExploreViewAction(record);
       return;
@@ -1466,20 +1414,32 @@ export class EventExplorePopupComponent {
   }
 
   private async loadEventExplorePage(
-    query: ListQuery<EventExploreFeedFilters>
+    query: ListQuery<EventExploreFeedFilters>, signal?: AbortSignal
   ): Promise<PageResult<ActivityEventRecord>> {
+    const userId = this.activeUserId;
+    const revision = this.exploreOpenRevision;
+    const current = () => this.isOpen && revision === this.exploreOpenRevision
+      && userId === this.activeUserId && !signal?.aborted;
+    if (!current()) throw new DOMException('Explore closed', 'AbortError');
+    this.preferencesRequest ??= this.loadExplorePreferences(userId, revision);
+    const ready = await this.preferencesRequest;
+    if (!current()) throw new DOMException('Explore closed', 'AbortError');
+    if (!ready) throw new Error('Explore preferences unavailable');
+    const filters = this.eventExploreFilters();
     const page = await this.activitiesService.loadExplore({
       ...query,
       filters: {
-        userId: query.filters?.userId ?? this.activeUserId,
+        userId,
         order: query.filters?.order ?? this.eventExploreOrder,
         view: query.filters?.view ?? this.eventExploreView,
-        friendsOnly: query.filters?.friendsOnly === true,
-        openSpotsOnly: query.filters?.openSpotsOnly === true,
-        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
+        friendsOnly: filters.friendsOnly,
+        openSpotsOnly: filters.openSpotsOnly,
+        topic: this.normalizeTopic(filters.topic),
+        mode: filters.mode
       }
     });
-    this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(this.activeUserId, page.items);
+    if (!current()) throw new DOMException('Explore closed', 'AbortError');
+    this.eventCheckoutDraftStore.reconcileExpiredEventDrafts(userId, page.items);
     for (const record of page.items) {
       if (record.exploreSortKey) this.eventExploreSortKeys.set(record.id, record.exploreSortKey);
     }
@@ -1666,12 +1626,35 @@ export class EventExplorePopupComponent {
 
 
   private openEventExplore(): void {
+    if (this.isOpen) return;
+    this.exploreOpenRevision++;
+    this.preferencesRequest = null;
+    this.preferencesReady.set(false);
     this.isOpen = true;
     this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
     this.closeMembersPopup();
     this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
+    this.cdr.markForCheck();
+  }
+
+  private async loadExplorePreferences(userId: string, revision: number): Promise<boolean> {
+    try {
+      const filters = await this.usersService.loadPageFilterPreferences(userId, 'event-explore');
+      if (!this.isOpen || revision !== this.exploreOpenRevision || userId !== this.activeUserId) return false;
+      this.applyFilters(filters);
+      this.preferencesReady.set(true);
+      return true;
+    } catch {
+      if (this.isOpen && revision === this.exploreOpenRevision && userId === this.activeUserId) {
+        this.preferencesRequest = null;
+        this.dialogStore.open({
+          title: 'event.explore.filters', message: 'event.filters.load.failed', confirmLabel: 'OK',
+          onConfirm: () => this.reloadEventExploreSmartList()
+        });
+      }
+      return false;
+    }
   }
 
   private syncEventExploreQuery(): void {
@@ -1680,9 +1663,10 @@ export class EventExplorePopupComponent {
         userId: this.activeUserId,
         order: this.eventExploreOrder,
         view: this.eventExploreView,
-        friendsOnly: this.eventExploreFilterFriendsOnly,
-        openSpotsOnly: this.eventExploreFilterHasRooms,
-        topic: this.normalizeTopic(this.eventExploreFilterTopic)
+        friendsOnly: this.eventExploreFilters().friendsOnly,
+        openSpotsOnly: this.eventExploreFilters().openSpotsOnly,
+        topic: this.normalizeTopic(this.eventExploreFilters().topic),
+        mode: this.eventExploreFilters().mode
       }
     };
   }
@@ -1742,7 +1726,7 @@ export class EventExplorePopupComponent {
       this.checkoutDraftClearSaveSourceIds.delete(sync.id);
       const existing = currentItems[currentIndex];
       if (existing) {
-        if (dto.full === true && this.eventExploreFilterHasRooms) {
+        if (dto.full === true && this.eventExploreFilters().openSpotsOnly) {
           this.removeVisibleEventExploreRecord(existing);
           this.cdr.markForCheck();
           return;
@@ -2223,7 +2207,7 @@ export class EventExplorePopupComponent {
     if (!currentRecord) {
       return false;
     }
-    if (sync.full === true && this.eventExploreFilterHasRooms) {
+    if (sync.full === true && this.eventExploreFilters().openSpotsOnly) {
       this.removeVisibleEventExploreRecord(currentRecord);
       return true;
     }
@@ -2315,13 +2299,14 @@ export class EventExplorePopupComponent {
   }
 
   private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
-    if (this.eventExploreFilterFriendsOnly) {
+    if (this.eventExploreFilters().mode && record.mode !== this.eventExploreFilters().mode) return false;
+    if (this.eventExploreFilters().friendsOnly) {
       return false;
     }
-    if (this.eventExploreFilterHasRooms && this.isEventExploreRecordFull(record)) {
+    if (this.eventExploreFilters().openSpotsOnly && this.isEventExploreRecordFull(record)) {
       return false;
     }
-    const selectedTopic = this.normalizeTopic(this.eventExploreFilterTopic);
+    const selectedTopic = this.normalizeTopic(this.eventExploreFilters().topic);
     if (selectedTopic && !record.topics.some(topic => this.normalizeTopic(topic) === selectedTopic)) {
       return false;
     }

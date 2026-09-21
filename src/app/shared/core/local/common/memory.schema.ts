@@ -1,3 +1,4 @@
+import type { MingleMemorySchema } from '../source/entity/mingle.entity';
 import type {
   ActivityMembersMemorySchema,
   ActivityResourcesMemorySchema,
@@ -32,4 +33,5 @@ export type AppMemorySchema = UsersMemorySchema
   & ContactsMemorySchema
   & ProfileExperiencesMemorySchema
   & ShareTokensMemorySchema
-  & ActivityEventsMemorySchema;
+  & ActivityEventsMemorySchema
+  & MingleMemorySchema;

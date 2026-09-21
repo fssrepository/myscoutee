@@ -45,6 +45,7 @@ describe('RouteDelayService', () => {
     environment.firebaseLoginEnabled = true;
     currentSession = {
       kind: 'firebase',
+      sessionId: 'real-session',
       profile: {
         id: 'real-user',
         name: 'Real User',

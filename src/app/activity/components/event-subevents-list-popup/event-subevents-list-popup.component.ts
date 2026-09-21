@@ -1,6 +1,7 @@
 import {
   CommonModule
 } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -81,6 +82,7 @@ import {
   EventSubeventsPopupStore,
   type EventSubeventsDefinitionDraftUpdate
 } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceMetricsUpdate
@@ -96,6 +98,21 @@ type EventSubeventsListPopupMenuContext =
 interface EventSubeventsListFilters {
   revision: number;
 }
+
+const MINGLE_ACTION_ERROR_I18N_KEYS: Readonly<Record<string, string>> = {
+  MINGLE_ACTION_FAILED: 'mingle.error.action.failed',
+  MINGLE_STATE_CHANGED: 'mingle.error.state.changed',
+  MINGLE_ACTION_UNSUPPORTED: 'mingle.error.action.unsupported',
+  MINGLE_ROUND_LIMIT_REACHED: 'mingle.error.round.limit.reached',
+  MINGLE_STATE_CANNOT_ADVANCE: 'mingle.error.state.cannot.advance',
+  MINGLE_MEMBERS_INSUFFICIENT: 'mingle.error.members.insufficient',
+  MINGLE_TABLE_ASSIGNMENT_UNAVAILABLE: 'mingle.error.table.assignment.unavailable',
+  MINGLE_TABLE_ASSIGNMENT_UNAVAILABLE_GENDER_BALANCE: 'mingle.error.table.assignment.unavailable.gender.balance',
+  MINGLE_EVENT_NOT_FOUND: 'mingle.error.event.not.found',
+  MINGLE_MANAGE_FORBIDDEN: 'mingle.error.manage.forbidden',
+  MINGLE_SESSION_NOT_STARTED: 'mingle.error.session.not.started',
+  MINGLE_CONFIGURATION_REQUIRED: 'mingle.error.configuration.required'
+};
 
 interface EventSubeventsParentContext {
   id: string;
@@ -146,6 +163,7 @@ export class EventSubeventsListPopupComponent {
   private readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
+  private readonly mingleStore = inject(MingleStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected isLoading = false;
@@ -181,7 +199,8 @@ export class EventSubeventsListPopupComponent {
   private handledResourceMemberDeltaSyncMs = 0;
   private activeDefinitionDraftUpdate: EventSubeventsDefinitionDraftUpdate | null = null;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
-    density: 'compact'
+    density: 'compact',
+    actionSizing: 'content'
   };
 
   private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<SubEventDTO, EventSubeventsListFilters>>();
@@ -780,6 +799,7 @@ export class EventSubeventsListPopupComponent {
       subEventIndex: this.subEventIndex(item),
       stageNumber: sequence.number,
       siblingItems: this.subEventSiblings(item),
+      mingleState: this.mingleStore.state(),
       nowMs: Date.now()
     });
   }
@@ -795,6 +815,9 @@ export class EventSubeventsListPopupComponent {
       case 'stage-status':
         this.requestStageStatusAction(context);
         return;
+      case 'mingle-runtime':
+        this.requestMingleRuntimeAction(context);
+        return;
       case 'stage-dashboard':
         this.openTournamentGroupsPopup(context, menuEvent.sourceEvent);
         return;
@@ -804,6 +827,66 @@ export class EventSubeventsListPopupComponent {
       default:
         return;
     }
+  }
+
+  private requestMingleRuntimeAction(
+    context: Extract<EventSubeventRuntimeMenuContext, { scope: 'mingle-runtime' }>
+  ): void {
+    const actorUserId = this.userProfileStore.activeUserId().trim();
+    if (!this.canManageRuntimeActions() || !actorUserId) {
+      return;
+    }
+    const failureMessage = this.i18n.translate('mingle.error.action.failed');
+    this.dialogStore.open({
+      title: context.title,
+      message: context.description,
+      cancelLabel: 'Cancel',
+      confirmLabel: context.confirmLabel,
+      busyConfirmLabel: context.busyLabel,
+      confirmTone: context.destructive ? 'danger' : 'accent',
+      confirmPalette: context.confirmPalette,
+      failureMessage,
+      onConfirm: async () => {
+        try {
+          const next = await this.mingleStore.applyAction(
+            context.parentEventId,
+            actorUserId,
+            context.backendAction,
+            context.expectedRevision
+          );
+          if (!next) {
+            throw new Error(failureMessage);
+          }
+          this.cdr.markForCheck();
+        } catch (error) {
+          throw new Error(this.mingleActionFailureMessage(error));
+        }
+      }
+    });
+  }
+
+  private mingleActionFailureMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504) {
+        return this.i18n.translate('mingle.error.service.unavailable');
+      }
+    }
+    const payload = error instanceof HttpErrorResponse ? error.error : error;
+    if (typeof payload === 'object' && payload !== null) {
+        const response = payload as { code?: unknown; parameters?: unknown };
+        const code = `${response.code ?? ''}`.trim();
+        const key = MINGLE_ACTION_ERROR_I18N_KEYS[code];
+        if (key) {
+          const parameters = typeof response.parameters === 'object' && response.parameters !== null
+            ? Object.fromEntries(Object.entries(response.parameters as Record<string, unknown>)
+              .filter((entry): entry is [string, string | number] => (
+                typeof entry[1] === 'string' || typeof entry[1] === 'number'
+              )))
+            : {};
+          return this.i18n.translateParams(key, parameters);
+        }
+    }
+    return this.i18n.translate('mingle.error.action.failed');
   }
 
   private requestStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): void {
@@ -1022,6 +1105,7 @@ export class EventSubeventsListPopupComponent {
       eventId,
       slotId: context.slotId,
       title: this.popupSubtitle(),
+      mode: this.event?.mode,
       canManage: this.canManageRuntimeActions(),
       stages: this.subEventSiblings(context.item).map((stage, index) => this.subEventTournamentStage(stage, index)),
       selectedStageId: `${context.item.id ?? ''}`.trim() || null
@@ -1093,12 +1177,16 @@ export class EventSubeventsListPopupComponent {
     const nextItems = nextSections.length > 0
       ? nextSections.flatMap(section => section.items)
       : this.items.map(patchItem);
-    if (!changed) {
+    const mingleRuntimeStage = ActivityEventDetailDTO.normalizeMode(this.event?.mode) === 'Mingle'
+      && stageId.startsWith('mingle-round-');
+    if (!changed && !mingleRuntimeStage) {
       return;
     }
-    this.slotSections = nextSections;
-    this.items = nextItems;
-    this.syncSubEventSmartListCaches(nextSections);
+    if (changed) {
+      this.slotSections = nextSections;
+      this.items = nextItems;
+      this.syncSubEventSmartListCaches(nextSections);
+    }
     this.activityStore.emitActivityEventRuntimeSync({
       eventId,
       subEventId: stageId,

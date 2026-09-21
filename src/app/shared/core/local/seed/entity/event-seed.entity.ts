@@ -1,5 +1,9 @@
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import type { ActivityEventStatus, SubEventDefinitionDTO } from '../../../contracts/activity.interface';
+import type {
+  ActivityEventStatus,
+  MingleConfigurationDTO,
+  SubEventDefinitionDTO
+} from '../../../contracts/activity.interface';
 import type {
   EventBlindMode,
   EventPolicyDTO,
@@ -93,6 +97,7 @@ export interface ActivityEventSeedItem {
   subEventsEnabled?: boolean;
   subEventDefinitions?: SubEventDefinitionDTO[];
   mode?: EventMode;
+  mingleConfiguration?: MingleConfigurationDTO | null;
   policies?: EventPolicyDTO[];
   policiesEnabled?: boolean;
   rating?: number;

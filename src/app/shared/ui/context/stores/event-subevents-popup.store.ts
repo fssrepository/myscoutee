@@ -1,6 +1,6 @@
 import { Injectable, Type, signal } from '@angular/core';
 
-import type { SubEventDefinitionDTO } from '../../../core/contracts/activity.interface';
+import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../core/contracts/activity.interface';
 import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../core/contracts/event.interface';
 
 export type EventSubeventsEditorAction = 'edit' | 'manage' | 'view';
@@ -28,6 +28,7 @@ export interface EventTournamentGroupsPopupRequest {
   eventId: string;
   slotId: string | null;
   title: string | null;
+  mode: EventMode;
   canManage: boolean;
   stages: readonly EventTournamentStageDTO[];
   selectedStageId?: string | null;
@@ -117,11 +118,9 @@ export class EventSubeventsPopupStore {
       timeframe: `${payload.timeframe ?? ''}`.trim() || null,
       startAtIso: `${payload.startAtIso ?? ''}`.trim() || null,
       endAtIso: `${payload.endAtIso ?? ''}`.trim() || null,
-      mode: payload.mode === 'Tournament'
-        ? 'Tournament'
-        : payload.mode === 'Casual'
-          ? 'Casual'
-          : null,
+      mode: payload.mode === 'Tournament' || payload.mode === 'Mingle' || payload.mode === 'Casual'
+        ? payload.mode
+        : null,
       acceptedMembers: this.nonNegativeInteger(payload.acceptedMembers),
       pendingMembers: this.nonNegativeInteger(payload.pendingMembers),
       capacityTotal: this.nonNegativeInteger(payload.capacityTotal),
@@ -154,6 +153,7 @@ export class EventSubeventsPopupStore {
     eventId: string;
     slotId?: string | null;
     title?: string | null;
+    mode?: EventMode | null;
     canManage?: boolean | null;
     stages?: readonly EventTournamentStageDTO[] | null;
     selectedStageId?: string | null;
@@ -168,6 +168,7 @@ export class EventSubeventsPopupStore {
       eventId,
       slotId: `${payload.slotId ?? ''}`.trim() || null,
       title: `${payload.title ?? ''}`.trim() || null,
+      mode: ActivityEventDetailDTO.normalizeMode(payload.mode),
       canManage: payload.canManage === true,
       stages: (payload.stages ?? []).map(stage => ({
         ...stage,
@@ -228,7 +229,7 @@ export class EventSubeventsPopupStore {
       updatedMs: this.nextDefinitionDraftUpdatedMs(),
       action: 'preview',
       eventId,
-      mode: payload.mode === 'Tournament' ? 'Tournament' : 'Casual',
+      mode: ActivityEventDetailDTO.normalizeMode(payload.mode),
       startAtIso: `${payload.startAtIso ?? ''}`.trim() || null,
       endAtIso: `${payload.endAtIso ?? ''}`.trim() || null,
       slotsEnabled: payload.slotsEnabled === true,

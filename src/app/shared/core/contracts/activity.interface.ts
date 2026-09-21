@@ -40,6 +40,7 @@ export interface ActivityRateDTO {
   eventName: string;
   happenedAt: string;
   distanceMetersExact?: number;
+  met?: boolean;
 }
 
 export interface ActivityRatePageResultDTO {
@@ -136,6 +137,8 @@ export interface IEventsService {
   queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
   queryTournamentStageSnapshot(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentStageSnapshotDTO>;
+  queryMingleState(userId: string, eventId?: string | null, roundNumber?: number | null): Promise<EventContracts.MingleStateDTO | null>;
+  applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<EventContracts.MingleStateDTO | null>;
   saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
@@ -212,6 +215,13 @@ export interface ActivitiesFeedFilters {
   supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
+export interface EventExploreFilterPreferences {
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  mode: EventContracts.EventMode | '';
+}
+
 export interface EventExploreFeedFilters {
   userId: string;
   order: EventExploreOrder;
@@ -220,6 +230,7 @@ export interface EventExploreFeedFilters {
   openSpotsOnly: boolean;
   topic: string;
   excludedSourceIds?: string[];
+  mode?: EventContracts.EventMode | '';
 }
 
 export type ActivityEventScopeFilter = ActivitiesEventScope;
@@ -314,6 +325,7 @@ export interface ActivityEventRecord {
   subEventDefinitions?: SubEventDefinitionDTO[];
   subEvents?: EventContracts.SubEventDTO[];
   mode?: EventContracts.EventMode;
+  mingleConfiguration?: MingleConfigurationDTO | null;
   currentStage?: EventContracts.TournamentCurrentStageDTO | null;
   rating: number;
   boost: number;
@@ -629,6 +641,14 @@ export interface SubEventDefinitionDTO {
   icon?: string | null;
 }
 
+export interface MingleConfigurationDTO {
+  groupSize: number;
+  plannedRounds: number;
+  roundDurationMinutes: number;
+  breakDurationMinutes: number;
+  requireGenderBalance: boolean;
+}
+
 export class ActivityEventDetailDTO {
   id = '';
   userId = '';
@@ -691,6 +711,7 @@ export class ActivityEventDetailDTO {
   subEventDefinitions: SubEventDefinitionDTO[] = [];
   subEvents: EventContracts.SubEventDTO[] = [];
   mode: EventContracts.EventMode = 'Casual';
+  mingleConfiguration: MingleConfigurationDTO | null = null;
   currentStage: EventContracts.TournamentCurrentStageDTO | null = null;
   rating = 0;
   boost = 0;
@@ -767,6 +788,11 @@ export class ActivityEventDetailDTO {
     this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
     this.applySubEvents(update.subEvents ?? this.subEvents);
     this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
+    if (update.mingleConfiguration !== undefined) {
+      this.mingleConfiguration = update.mingleConfiguration === null
+        ? null
+        : ActivityEventDetailDTO.normalizeMingleConfiguration(update.mingleConfiguration);
+    }
     this.currentStage = update.currentStage ? { ...update.currentStage } : update.currentStage === null ? null : this.currentStage;
     this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
     this.boost = ActivityEventDetailDTO.nonNegativeInteger(update.boost ?? this.boost);
@@ -1137,7 +1163,26 @@ export class ActivityEventDetailDTO {
 
   static normalizeMode(value: unknown): EventContracts.EventMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
-    return normalized === 'tournament' ? 'Tournament' : 'Casual';
+    if (normalized === 'tournament') {
+      return 'Tournament';
+    }
+    return normalized === 'mingle' ? 'Mingle' : 'Casual';
+  }
+
+  static normalizeMingleConfiguration(value: Partial<MingleConfigurationDTO> | null | undefined): MingleConfigurationDTO {
+    return {
+      groupSize: ActivityEventDetailDTO.boundedInteger(value?.groupSize, 2, 20, 4),
+      plannedRounds: ActivityEventDetailDTO.boundedInteger(value?.plannedRounds, 1, 100, 4),
+      roundDurationMinutes: ActivityEventDetailDTO.boundedInteger(value?.roundDurationMinutes, 1, 240, 20),
+      breakDurationMinutes: ActivityEventDetailDTO.boundedInteger(value?.breakDurationMinutes, 0, 60, 5),
+      requireGenderBalance: value?.requireGenderBalance !== false
+    };
+  }
+
+  private static boundedInteger(value: unknown, min: number, max: number, fallback: number): number {
+    const parsed = Number(value);
+    const normalized = Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+    return Math.max(min, Math.min(max, normalized));
   }
 
   static normalizeTopics(value: unknown): string[] {
@@ -1277,6 +1322,7 @@ export interface ActivityEventExploreQuery {
   limit: number;
   cursor?: string | null;
   excludedSourceIds?: string[];
+  mode?: EventContracts.EventMode | '';
 }
 
 export interface ActivityEventExploreQueryResult {

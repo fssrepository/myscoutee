@@ -1,3 +1,4 @@
+import type { EventExploreFilterPreferences } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 import type { UserGender } from '../../../common/constants';
 
@@ -24,6 +25,7 @@ export interface UserRateRecord {
   eventName?: string;
   happenedAtIso?: string;
   distanceMetersExact?: number;
+  met?: boolean;
 }
 
 export type ActivityRateRecordSort = 'happenedAt' | 'distance' | 'relevance';
@@ -75,6 +77,7 @@ export interface UserRatesOutboxRecordCollection {
 }
 
 export interface UserFilterPreferencesRecord {
+  pageFilters?: Partial<Record<'event-explore', EventExploreFilterPreferences>>;
   ageMin?: number;
   ageMax?: number;
   heightMinCm?: number;

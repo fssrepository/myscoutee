@@ -245,6 +245,7 @@ describe('PricingBuilder', () => {
       initials: 'B',
       gender: 'man',
       status: 'pending',
+      note: '',
       requestKind: 'borrow',
       booking: {
         startAtIso: '2026-09-09T09:00:00',

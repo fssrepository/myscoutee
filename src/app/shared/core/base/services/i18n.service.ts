@@ -18,6 +18,7 @@ interface I18nAssetBundle {
 }
 
 interface I18nRemoteBundleResponse {
+  founderName?: string;
   lang?: string;
   version?: string;
   data?: Record<string, string> | null;
@@ -28,6 +29,8 @@ interface I18nRemoteBundleResponse {
 })
 export class I18nService {
   private static readonly DEFAULT_LANGUAGE = 'en';
+  private static readonly MISSING_KEY_REFRESH_DELAY_MS = 100;
+  private static readonly MISSING_KEY_REFRESH_COOLDOWN_MS = 30_000;
   private static readonly REVALIDATE_HEADERS = new HttpHeaders({
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache'
@@ -87,6 +90,12 @@ export class I18nService {
   private bundleLoadGeneration = 0;
   private scanQueued = false;
   private translatingDom = false;
+  private missingKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastMissingKeyRefreshAt = 0;
+  private bundleRefreshPromise: Promise<void> | null = null;
+
+  private readonly founderNameSignal = signal('');
+  readonly founderName = this.founderNameSignal.asReadonly();
 
   readonly currentLanguage = this.currentLanguageSignal.asReadonly();
   readonly isDefaultLanguage = computed(() => this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE);
@@ -118,11 +127,55 @@ export class I18nService {
       return `${fallback ?? ''}`;
     }
     const translated = this.translateRaw(source);
+    if (translated === source && this.looksLikeTranslationKey(source)) {
+      this.scheduleMissingKeyRefresh();
+    }
     const fallbackText = `${fallback ?? ''}`.trim();
     if (fallbackText && translated === source && fallbackText !== source.trim()) {
       return this.translateRaw(fallbackText);
     }
     return translated;
+  }
+
+  revalidate(): Promise<void> {
+    if (!this.initialized || !this.usesHttpBundles()) {
+      return Promise.resolve();
+    }
+    if (this.bundleRefreshPromise) {
+      return this.bundleRefreshPromise;
+    }
+    const scope = this.activeBundleScope;
+    const generation = this.bundleLoadGeneration;
+    const refresh = this.refreshFromServer(scope, generation, this.localizedBrowserCandidates());
+    let pending: Promise<void>;
+    pending = refresh.finally(() => {
+      if (this.bundleRefreshPromise === pending) {
+        this.bundleRefreshPromise = null;
+      }
+    });
+    this.bundleRefreshPromise = pending;
+    return this.bundleRefreshPromise;
+  }
+
+  private looksLikeTranslationKey(value: string): boolean {
+    return /^[a-z0-9]+(?:[._-][a-z0-9]+)+$/i.test(value.trim());
+  }
+
+  private scheduleMissingKeyRefresh(): void {
+    const now = Date.now();
+    if (!this.initialized
+      || !this.usesHttpBundles()
+      || this.missingKeyRefreshTimer !== null
+      || now - this.lastMissingKeyRefreshAt < I18nService.MISSING_KEY_REFRESH_COOLDOWN_MS) {
+      return;
+    }
+    this.lastMissingKeyRefreshAt = now;
+    this.zone.runOutsideAngular(() => {
+      this.missingKeyRefreshTimer = setTimeout(() => {
+        this.missingKeyRefreshTimer = null;
+        void this.revalidate();
+      }, I18nService.MISSING_KEY_REFRESH_DELAY_MS);
+    });
   }
 
   translateParams(
@@ -139,6 +192,7 @@ export class I18nService {
 
   private startLanguageLoad(scope: I18nBundleScope): void {
     this.activeBundleScope = scope;
+    this.founderNameSignal.set('');
     const generation = ++this.bundleLoadGeneration;
     this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
     this.messagesSignal.set({});
@@ -165,7 +219,7 @@ export class I18nService {
       return;
     }
     if (stored) {
-      this.applyBundle(stored.lang, stored.version, stored.data);
+      this.applyBundle(stored.lang, stored.version, stored.data, stored.founderName);
     }
 
     const seed = this.usesHttpBundles()
@@ -297,7 +351,7 @@ export class I18nService {
         return;
       }
       if (data && Object.keys(data).length > 0) {
-        const bundle = { lang, version: version || '0', data, storedAt: Date.now() };
+        const bundle = { lang, version: version || '0', data, founderName: response.founderName ?? '', storedAt: Date.now() };
         await this.bundleRepository.writeStoredBundle(scope, bundle);
         if (!this.isCurrentBundleLoad(scope, generation)) {
           return;
@@ -306,7 +360,11 @@ export class I18nService {
         return;
       }
       if (stored && stored.lang === lang && version && version === stored.version) {
-        this.applyServerBundle(stored, activateTranslation);
+        const bundle = { ...stored, founderName: response.founderName ?? '', storedAt: Date.now() };
+        await this.bundleRepository.writeStoredBundle(scope, bundle);
+        if (this.isCurrentBundleLoad(scope, generation)) {
+          this.applyServerBundle(bundle, activateTranslation);
+        }
       }
     } catch {
       // A previously cached backend bundle remains available. Local assets are
@@ -318,6 +376,9 @@ export class I18nService {
     bundle: StoredI18nBundle,
     activateTranslation: boolean
   ): void {
+    if (activateTranslation || bundle.lang === this.currentLanguageSignal()) {
+      this.founderNameSignal.set(bundle.founderName ?? '');
+    }
     if (bundle.lang === I18nService.DEFAULT_LANGUAGE) {
       if (activateTranslation) {
         this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
@@ -328,7 +389,7 @@ export class I18nService {
       return;
     }
     if (activateTranslation) {
-      this.applyBundle(bundle.lang, bundle.version, bundle.data);
+      this.applyBundle(bundle.lang, bundle.version, bundle.data, bundle.founderName);
     }
   }
 
@@ -405,7 +466,8 @@ export class I18nService {
     }
   }
 
-  private applyBundle(lang: string, version: string, data: Record<string, string>): void {
+  private applyBundle(lang: string, version: string, data: Record<string, string>, founderName = ''): void {
+    this.founderNameSignal.set(founderName);
     const normalizedLang = this.normalizeLanguage(lang);
     if (!normalizedLang || normalizedLang === I18nService.DEFAULT_LANGUAGE) {
       if (normalizedLang === I18nService.DEFAULT_LANGUAGE && Object.keys(data).length > 0) {

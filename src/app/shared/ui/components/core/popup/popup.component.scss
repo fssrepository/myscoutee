@@ -456,11 +456,11 @@ app-popup {
 
 .ui-popup__action-counter {
   position: absolute;
-  top: -0.28rem;
+  top: -0.34rem;
   right: -0.28rem;
-  min-width: 1rem;
-  height: 1rem;
-  padding: 0 0.24rem;
+  min-width: 1.22rem;
+  height: 1.22rem;
+  padding: 0 0.32rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.86);
   color: #ffffff;
@@ -470,7 +470,7 @@ app-popup {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   line-height: 1;
   font-weight: 900;
   pointer-events: none;
@@ -488,6 +488,13 @@ app-popup {
   font-size: 1.14rem;
   line-height: 1.14rem;
   pointer-events: none;
+}
+
+.ui-popup__action--large-icon .mat-icon {
+  width: 1.92rem;
+  height: 1.92rem;
+  font-size: 1.92rem;
+  line-height: 1.92rem;
 }
 
 .ui-popup__action:hover {
@@ -597,12 +604,17 @@ app-popup {
   box-shadow: 0 4px 12px rgba(186, 65, 86, 0.2);
 }
 
-.ui-popup__close {
+.ui-popup__close,
+.ui-popup__header-actions > .ui-popup__action--icon-only {
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
   min-width: 34px;
   min-height: 34px;
+  box-sizing: border-box;
+}
+
+.ui-popup__close {
   border: 1px solid rgba(47, 86, 139, 0.2);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);

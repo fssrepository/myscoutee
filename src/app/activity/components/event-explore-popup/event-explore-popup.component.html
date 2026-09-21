@@ -43,3 +43,8 @@
     }
   }
 }
+
+@if (filterPopup) {
+  <app-event-explore-filter-popup [filters]="filterPopup" [saving]="filterSaving" [error]="filterSaveFailed"
+    (closed)="closeFilters($event)"></app-event-explore-filter-popup>
+}

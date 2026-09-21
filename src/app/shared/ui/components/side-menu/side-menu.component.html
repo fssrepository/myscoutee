@@ -75,12 +75,17 @@
       [class.is-covered]="isCoveredByAssetPopup()"
     >
       <div class="navigator-menu-header">
-        <div class="navigator-install-action">
-          <button type="button" (click)="openAppSetup()">
-            <mat-icon>{{ pwaService.installAvailable() ? 'install_desktop' : 'settings' }}</mat-icon>
-            <span>{{ installLabel() }}</span>
+        @if (mingleStore.visible()) {
+        <div class="navigator-install-action navigator-mingle-table-action">
+          <button type="button" (click)="openCurrentMingleTable($event)">
+            <mat-icon>table_restaurant</mat-icon>
+            <span>{{ mingleTableLabel() }}</span>
+            @if (mingleStore.attention()) {
+              <span class="navigator-mingle-table-action__attention" aria-label="New table assignment"></span>
+            }
           </button>
         </div>
+        }
         <app-header-card
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"

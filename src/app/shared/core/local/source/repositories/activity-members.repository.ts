@@ -1,3 +1,4 @@
+import { MINGLE_SESSIONS_TABLE_NAME } from '../entity/mingle.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
@@ -183,9 +184,13 @@ export class LocalActivityMembersRepository {
   private acceptedEventMemberGroupsFromTable(
     table: ActivityMembersRecordCollection
   ): DemoAcceptedEventMemberGroup[] {
+    const state = this.memoryDb.read();
+    const mingleEvents = new Map(Object.values(state[EVENTS_TABLE_NAME].byId)
+      .filter(event => event.mode === 'Mingle').map(event => [event.id, event.title]));
     const groupsByEventId = new Map<string, { eventName: string; userIds: Set<string> }>();
     for (const id of table.ids) {
       const record = table.byId[id];
+      if (record && mingleEvents.has(record.ownerId.split(':mingle-round-')[0])) continue;
       const activityOwnerType = record?.ownerType === 'event' || record?.ownerType === 'subEvent' || record?.ownerType === 'group'
         ? record.ownerType
         : null;
@@ -203,6 +208,17 @@ export class LocalActivityMembersRepository {
         group.eventName = record.metWhere.trim();
       }
       groupsByEventId.set(eventId, group);
+    }
+    for (const session of Object.values(state[MINGLE_SESSIONS_TABLE_NAME].byId)) {
+      if (!mingleEvents.has(session.eventId)) continue;
+      for (const round of session.rounds) {
+        if (!round.completedAtIso) continue;
+        for (const table of round.tables) {
+          groupsByEventId.set(`${session.eventId}:${round.roundNumber}:${table.tableNumber}`, {
+            eventName: mingleEvents.get(session.eventId)!, userIds: new Set(table.memberUserIds)
+          });
+        }
+      }
     }
     return [...groupsByEventId.entries()]
       .map(([eventId, group]) => ({
@@ -511,7 +527,9 @@ export class LocalActivityMembersRepository {
       const record = table.byId[id];
       return Math.max(latest, Number.isFinite(Number(record?.updatedMs)) ? Number(record?.updatedMs) : 0);
     }, 0);
-    return `${table.ids.length}:${Object.keys(table.idsByOwnerKey).length}:${latestUpdatedMs}`;
+    const mingleRevision = Object.values(this.memoryDb.read()[MINGLE_SESSIONS_TABLE_NAME].byId)
+      .map(session => `${session.eventId}:${session.revision}`).sort().join('|');
+    return `${table.ids.length}:${Object.keys(table.idsByOwnerKey).length}:${latestUpdatedMs}:${mingleRevision}`;
   }
 
   replaceRecordsByOwner(

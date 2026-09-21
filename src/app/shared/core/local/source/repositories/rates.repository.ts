@@ -298,10 +298,7 @@ export class LocalRatesRepository {
       if (!direction) {
         return [];
       }
-      if (direction === 'met' && (
-        !this.didUsersMeetFromIndexedDb(normalizedUserId, relatedUserId)
-        || !this.isFinishedMetActivity(happenedAt)
-      )) {
+      if (direction === 'met' && !this.isFinishedMetActivity(happenedAt)) {
         return [];
       }
       return [{
@@ -316,7 +313,8 @@ export class LocalRatesRepository {
         scoreReceived,
         eventName: record.eventName?.trim() || (direction === 'met' ? 'Met' : 'Rate'),
         happenedAt,
-        distanceMetersExact: this.dynamicDistanceMetersExact(record)
+        distanceMetersExact: this.dynamicDistanceMetersExact(record),
+        met: record.met === true
       }];
     }
 
@@ -324,31 +322,32 @@ export class LocalRatesRepository {
       return [];
     }
 
-    const participantDirection: ActivityRateDTO['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
-    if (participantDirection === 'met' && (
-      !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
-      || !this.isFinishedMetActivity(happenedAt)
-    )) {
+    const isMetBucket = record.met === true
+      && ((scoreGiven <= 0 && scoreReceived <= 0) || (scoreGiven > 0 && scoreReceived > 0));
+    const participantDirection: ActivityRateDTO['direction'] = isMetBucket ? 'met'
+      : scoreReceived > 0 ? (scoreGiven > 0 ? 'mutual' : 'given') : 'received';
+    if (participantDirection === 'met' && !this.isFinishedMetActivity(happenedAt)) {
       return [];
     }
 
     const incomingScore = scoreGiven > 0 ? scoreGiven : scoreReceived;
-    if (incomingScore <= 0) {
+    if (incomingScore <= 0 && participantDirection !== 'met') {
       return [];
     }
     return [{
-      id: `${record.displayId?.trim() || record.id}:received:${normalizedUserId}`,
+      id: record.displayId?.trim() || record.id,
       userId: ownerUserId,
       mode: 'individual',
       direction: participantDirection,
       ...(socialContext ? { socialContext } : {}),
       bridgeUserId: record.bridgeUserId,
       bridgeCount: record.bridgeCount,
-      scoreGiven: 0,
-      scoreReceived: incomingScore,
+      scoreGiven: scoreReceived,
+      scoreReceived: scoreGiven,
       eventName: record.eventName?.trim() || (participantDirection === 'met' ? 'Met' : 'Rate'),
       happenedAt,
-      distanceMetersExact: this.dynamicDistanceMetersExact(record)
+      distanceMetersExact: this.dynamicDistanceMetersExact(record),
+      met: record.met === true
     }];
   }
 
@@ -460,7 +459,8 @@ export class LocalRatesRepository {
     scoreGiven: number,
     scoreReceived: number
   ): ActivityRateDTO['direction'] | null {
-    if (record.displayDirection === 'met') {
+    if (record.met === true
+      && ((scoreGiven <= 0 && scoreReceived <= 0) || (scoreGiven > 0 && scoreReceived > 0))) {
       return 'met';
     }
     if (scoreGiven > 0 && scoreReceived > 0) {
@@ -665,6 +665,44 @@ export class LocalRatesRepository {
       .map(record => ({ ...record }));
   }
 
+  /** Record meeting facts at round completion without inventing either person's rating. */
+  projectMetTables(tables: readonly { memberUserIds: readonly string[] }[], eventName: string, happenedAtIso: string): void {
+    const pairs = new Map<string, [string, string]>();
+    const pairKey = (left: string, right: string) => [left, right].sort().join('\n');
+    for (const table of tables) {
+      const members = [...new Set(table.memberUserIds)].sort();
+      for (let left = 0; left < members.length; left++) {
+        for (let right = left + 1; right < members.length; right++) {
+          pairs.set(pairKey(members[left], members[right]), [members[left], members[right]]);
+        }
+      }
+    }
+    if (!pairs.size) return;
+    this.memoryDb.write(state => {
+      const current = state[USER_RATES_TABLE_NAME];
+      const byId = { ...current.byId }, ids = [...current.ids];
+      const matched = new Set<string>();
+      for (const id of current.ids) {
+        const record = current.byId[id];
+        const key = pairKey(record.fromUserId, record.toUserId);
+        if (record.mode !== 'single' || !pairs.has(key)) continue;
+        matched.add(key);
+        const next = { ...record, met: true, eventName, happenedAtIso, updatedAtIso: happenedAtIso };
+        next.displayDirection = this.deriveOwnerSingleDirection(next, this.dynamicScoreGiven(next), this.dynamicScoreReceived(next)) ?? 'met';
+        byId[id] = next;
+      }
+      for (const [key, [left, right]] of pairs) {
+        if (matched.has(key)) continue;
+        const id = `met:${left}:${right}`;
+        byId[id] = { id, displayId: id, fromUserId: left, toUserId: right, ownerUserId: left,
+          mode: 'single', rate: 0, scoreGiven: 0, scoreReceived: 0, met: true, displayDirection: 'met',
+          eventName, happenedAtIso, createdAtIso: happenedAtIso, updatedAtIso: happenedAtIso };
+        ids.push(id);
+      }
+      return { ...state, [USER_RATES_TABLE_NAME]: this.rebuildUserRatesTableIndex({ ...current, byId, ids }) };
+    });
+  }
+
   upsertGameCardRatings(records: readonly UserRateRecord[]): string[] {
     const normalizedRecords = records
       .map(record => this.normalizeIncomingRateRecord(record))
@@ -681,6 +719,13 @@ export class LocalRatesRepository {
         const previous = byId[record.id];
         if (previous) {
           record.createdAtIso = previous.createdAtIso;
+          if (record.mode === 'single' && previous.met === true) {
+            record.met = true;
+            record.scoreReceived = previous.ownerUserId === record.ownerUserId
+              ? this.dynamicScoreReceived(previous) : this.dynamicScoreGiven(previous);
+            record.displayDirection = this.deriveOwnerSingleDirection(
+              record, this.dynamicScoreGiven(record), this.dynamicScoreReceived(record)) ?? record.displayDirection;
+          }
         }
         byId[record.id] = record;
         if (!existingIds.has(record.id)) {

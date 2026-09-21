@@ -1,3 +1,4 @@
+import { LocalMingleRepository } from '../repositories/mingle.repository';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
@@ -12,6 +13,7 @@ import type {
   EventSlotOccurrenceDTO,
   EventTournamentStageGroupsQueryDTO,
   EventTournamentStageSnapshotDTO,
+  MingleStateDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../../contracts/event.interface';
@@ -119,6 +121,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly mingleRepository = inject(LocalMingleRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
@@ -301,7 +304,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     const mode = result.parentRecord.mode;
-    if (mode !== 'Casual' && mode !== 'Tournament') {
+    if (mode !== 'Casual' && mode !== 'Tournament' && mode !== 'Mingle') {
       return null;
     }
     const baseSlots = this.eventsRepository.filterSubEventsSlotsForParticipant(
@@ -744,6 +747,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       organizerEvents,
       users,
       activeUser,
+      minglePeersByEventId: this.eventFeedbackRepository.queryMinglePeers(normalizedUserId, records),
       states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
       receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId)
     });
@@ -794,7 +798,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       },
       events,
       users,
-      activeUser
+      activeUser,
+      minglePeersByEventId: this.eventFeedbackRepository.queryMinglePeers(normalizedUserId, records)
     });
     const state = this.eventFeedbackRepository
       .queryEventFeedbackStates(normalizedUserId)
@@ -804,6 +809,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const event = this.eventsRepository.queryEventRecordById(userId, request.eventId);
+    if (event?.mode === 'Mingle') {
+      const allowed = await this.loadEventFeedback({ userId, eventId: request.eventId });
+      const cards = new Map(allowed.cards.map(card => [card.id, card]));
+      if (request.cards.some(card => {
+        const target = cards.get(card.id);
+        return !target || target.kind !== card.kind || target.targetUserId !== card.targetUserId;
+      })) throw new Error('Invalid feedback target for this event.');
+    }
     this.eventFeedbackRepository.submitEventFeedback(userId, request);
     await this.eventFeedbackRepository.flushToIndexedDb();
     const normalizedUserId = userId.trim();
@@ -1554,6 +1568,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   ): Promise<EventTournamentStageSnapshotDTO> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryTournamentStageSnapshot(query);
+  }
+
+  async queryMingleState(userId: string, eventId?: string | null, roundNumber?: number | null): Promise<MingleStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const state = this.mingleRepository.query(userId, eventId, roundNumber);
+    await this.mingleRepository.flushToIndexedDb();
+    return state;
+  }
+
+  async applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<MingleStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const state = this.mingleRepository.apply(eventId, actorUserId, action, expectedRevision);
+    await this.mingleRepository.flushToIndexedDb();
+    return state;
   }
 
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {

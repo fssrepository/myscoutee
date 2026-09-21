@@ -115,6 +115,7 @@ export class ActivitiesService extends BaseRouteModeService {
       friendsOnly: input?.friendsOnly === true,
       openSpotsOnly: input?.openSpotsOnly === true,
       topic: this.normalizeEventExploreTopic(input?.topic ?? ''),
+      mode: input?.mode ?? '',
       excludedSourceIds: this.normalizeEventExploreExcludedSourceIds(input?.excludedSourceIds)
     };
   }

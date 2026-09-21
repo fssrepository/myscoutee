@@ -28,6 +28,7 @@ export type PopupControlAlign = 'start' | 'end';
 export type PopupToolbarMobileAlign = 'start' | 'center' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
 export type PopupMobilePresentation = 'fullscreen' | 'compact';
+export type PopupActionIconSize = 'default' | 'large';
 
 export interface PopupControlBase {
   id: string;
@@ -36,6 +37,7 @@ export interface PopupControlBase {
 
 export interface PopupAction extends PopupControlBase {
   icon: string;
+  iconSize?: PopupActionIconSize;
   label?: string | null;
   ariaLabel?: string | null;
   palette?: AppMenuPalette;

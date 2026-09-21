@@ -63,6 +63,7 @@ describe('BaseRouteModeService', () => {
     environment.firebaseLoginEnabled = true;
     currentSession = {
       kind: 'firebase',
+      sessionId: 'real-session',
       profile: {
         id: 'real-user',
         name: 'Real User',
@@ -93,6 +94,7 @@ describe('BaseRouteModeService', () => {
     environment.firebaseLoginEnabled = true;
     currentSession = {
       kind: 'firebase',
+      sessionId: 'real-session',
       profile: {
         id: 'real-user',
         name: 'Real User',

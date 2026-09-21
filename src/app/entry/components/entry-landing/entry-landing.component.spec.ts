@@ -19,12 +19,20 @@ describe('EntryLandingComponent article lists', () => {
     'landing.articles.title': '{productName} articles',
     'landing.articles.count.one': '{count} article',
     'landing.articles.count.many': '{count} articles',
+    'landing.about.title': 'About MyScoutee',
+    'landing.about.open.aria': 'Open the MyScoutee overview',
+    'landing.about.header.badge': 'Independent project',
+    'landing.about.subtitle': 'Who built it, what it does, and why it is free to join.',
+    'landing.about.aria': 'About MyScoutee',
+    'landing.about.close.aria': 'Close the MyScoutee overview',
     'landing.partners.title': 'For Partners',
     'landing.partners.open.aria': 'Open partner overview',
     'landing.preview.open.guide': 'Open preview guide',
     'landing.hero.history': 'Meeting people was once social.',
     'landing.hero.return': 'We’re making it social again.',
     'landing.hero.graph': '6 people · 6 priority lists → 1 team',
+    'landing.hero.free.to.join': 'Free to join',
+    'landing.hero.event.formats': 'Standard · Tournament · Speed meeting',
     'bug.report': 'Bug report',
     'close.articles': 'Close articles'
   };
@@ -60,6 +68,7 @@ describe('EntryLandingComponent article lists', () => {
           provide: I18nService,
           useValue: {
             revision: i18nRevision.asReadonly(),
+            founderName: signal('Configured Founder').asReadonly(),
             translate: (key: string, fallback?: string) =>
               translations[key] ?? fallback ?? key,
             translateParams: (
@@ -154,6 +163,35 @@ describe('EntryLandingComponent article lists', () => {
     expect(demoRequested).toHaveBeenCalledTimes(2);
   });
 
+  it('opens authentication from Free to join and keeps exploring independently available', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    const component = fixture.componentInstance;
+    component.authMode = 'firebase';
+    const authRequested = vi.fn();
+    const demoRequested = vi.fn();
+    component.firebaseAuthRequested.subscribe(authRequested);
+    component.demoRequested.subscribe(demoRequested);
+    fixture.detectChanges();
+    const buttons = fixture.nativeElement.querySelectorAll(
+      '.entry-hero-cta-menu .app-menu__button-row-item'
+    ) as NodeListOf<HTMLButtonElement>;
+    buttons[1].click();
+    expect(authRequested).toHaveBeenCalledOnce();
+    expect(demoRequested).not.toHaveBeenCalled();
+
+    component.authUnavailable = true;
+    fixture.detectChanges();
+    expect(buttons[1].disabled).toBe(true);
+    expect(buttons[0].disabled).toBe(false);
+    buttons[0].click();
+    expect(demoRequested).toHaveBeenCalledOnce();
+
+    component.networkUnavailable = true;
+    fixture.detectChanges();
+    expect(buttons[0].disabled).toBe(true);
+    expect(buttons[1].disabled).toBe(true);
+  });
+
   it('uses deployment branding and singular count in the article popup', () => {
     branding.set({
       ...DEFAULT_DEPLOYMENT_BRANDING,
@@ -172,7 +210,7 @@ describe('EntryLandingComponent article lists', () => {
     });
   });
 
-  it('keeps the hero focused and opens the partner overview from the footer', () => {
+  it('keeps the hero focused and opens the about and partner overviews from the footer', () => {
     const fixture = TestBed.createComponent(EntryLandingComponent);
     fixture.detectChanges();
 
@@ -185,6 +223,9 @@ describe('EntryLandingComponent article lists', () => {
     const partnerButton = fixture.nativeElement.querySelector(
       '.entry-footer-partners-action'
     ) as HTMLButtonElement | null;
+    const aboutButton = fixture.nativeElement.querySelector(
+      '.entry-footer-about-action'
+    ) as HTMLButtonElement | null;
     const bugReportButton = fixture.nativeElement.querySelector(
       '.entry-footer-bug-report-action'
     ) as HTMLButtonElement | null;
@@ -192,7 +233,8 @@ describe('EntryLandingComponent article lists', () => {
       '.entry-preview-badge'
     ) as HTMLElement | null;
     expect(ctaMenu).not.toBeNull();
-    expect(heroButtons).toHaveLength(1);
+    expect(heroButtons).toHaveLength(2);
+    expect(heroButtons[1].textContent).toContain('Free to join');
     expect(ctaMenu?.textContent).not.toContain('For Partners');
     expect(ctaMenu?.textContent).not.toContain('Bug report');
     expect(ctaMenu?.textContent).not.toContain('see.how.it.works');
@@ -202,10 +244,25 @@ describe('EntryLandingComponent article lists', () => {
     expect(heroText).toContain('6 people · 6 priority lists → 1 team');
     expect(heroText.toLowerCase()).not.toContain('swip');
     expect(previewBadge).toBeNull();
+    expect(aboutButton).not.toBeNull();
     expect(partnerButton).not.toBeNull();
     expect(bugReportButton).not.toBeNull();
+    expect(aboutButton?.parentElement).toBe(partnerButton?.parentElement);
     expect(bugReportButton?.parentElement).toBe(partnerButton?.parentElement);
-    expect(partnerButton?.nextElementSibling).toBe(bugReportButton);
+
+    aboutButton?.click();
+    fixture.detectChanges();
+
+    expect(view(fixture.componentInstance).aboutPopupOpen).toBe(true);
+    const aboutText = fixture.nativeElement.querySelector('.entry-about-popup-body')
+      ?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    expect(aboutText).toContain('Configured Founder');
+    expect(aboutText).toContain('A platform behind meetings, not swipes');
+    expect(aboutText).toContain('Free to join');
+    expect(aboutText).toContain('event, ticket, venue, travel, and partner services');
+    (fixture.nativeElement.querySelector('.ui-popup__close') as HTMLButtonElement | null)?.click();
+    fixture.detectChanges();
+    expect(view(fixture.componentInstance).aboutPopupOpen).toBe(false);
 
     partnerButton?.click();
     fixture.detectChanges();
@@ -314,6 +371,7 @@ interface EntryLandingTestView {
   openIdeasPopup: () => void;
   ideasPopupOpen: boolean;
   partnersPopupOpen: boolean;
+  aboutPopupOpen: boolean;
   ideasPopupModel: () => { title?: string; subtitle?: string };
   requestDemo: () => void;
 }

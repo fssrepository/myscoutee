@@ -78,6 +78,7 @@ import {
   SlotsInputComponent,
   type SlotsInputConfig,
   type SlotOverrideRequest,
+  LinkInputComponent,
   LocationInputComponent,
   type LocationInputConfig,
   PricingEditorInputComponent,
@@ -149,6 +150,7 @@ interface SlotOverrideEditorState {
     ImageCarouselComponent,
     PoliciesInputComponent,
     SlotsInputComponent,
+    LinkInputComponent,
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
@@ -197,6 +199,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly isLoadingEventData = signal(false);
   protected readonly eventVisibilityReady = signal(false);
   protected readonly eventPublicationReady = signal(false);
+  protected readonly minimumMinglePlannedRounds = signal(1);
 
   constructor() {
     effect(() => {
@@ -924,7 +927,25 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventDetailDTO.mode = mode === 'Tournament' ? 'Tournament' : 'Casual';
+    this.eventDetailDTO.mode = ActivityEventDetailDTO.normalizeMode(mode);
+    if (this.eventDetailDTO.mode === 'Mingle') {
+      this.eventDetailDTO.subEventsEnabled = true;
+    }
+    this.emitSubEventDefinitionsDraftPreview();
+  }
+
+  protected onMingleConfigurationChange(value: ActivityContracts.MingleConfigurationDTO): void {
+    if (this.eventEditorStore.readOnly()) {
+      return;
+    }
+    const next = ActivityEventDetailDTO.normalizeMingleConfiguration(value);
+    const current = this.eventDetailDTO.mingleConfiguration;
+    this.eventDetailDTO.mingleConfiguration = this.isPublishedManageMode() && current !== null
+      ? {
+          ...ActivityEventDetailDTO.normalizeMingleConfiguration(current),
+          plannedRounds: Math.max(this.minimumMinglePlannedRounds(), next.plannedRounds)
+        }
+      : next;
     this.emitSubEventDefinitionsDraftPreview();
   }
 
@@ -1373,6 +1394,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.eventsService.loadEventDetailById(activeUserId, eventId),
         'Event editor reload timed out.'
       );
+      const mingleState = eventDetailDTO?.mode === 'Mingle'
+          && this.isCurrentEventDetailLoad(loadSequence, eventId)
+        ? await this.eventsService.queryMingleState(activeUserId, eventId).catch(() => null)
+        : null;
       if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
         return;
       }
@@ -1382,6 +1407,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
       eventDetailDTO.status = status;
+      this.minimumMinglePlannedRounds.set(this.resolveMinimumMinglePlannedRounds(eventDetailDTO, mingleState));
       this.editorTarget = this.eventDetailDTOBelongsToActiveAdmin(eventDetailDTO)
         ? 'hosting'
         : this.editorTarget;
@@ -2026,8 +2052,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventCapacityMaxReadOnly()) {
       return;
     }
-    const parsed = this.toNonNegativeIntegerOrNull(value);
-    this.eventDetailDTO.capacityMax = parsed === null ? null : Math.max(parsed, this.eventCapacityMaxMinimum());
+    this.eventDetailDTO.capacityMax = this.toNonNegativeIntegerOrNull(value);
   }
 
   onEventCapacityMaxBlur(): void {
@@ -2133,6 +2158,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.eventsService.loadEventDetailById(activeUserId, eventId),
         'Event editor load timed out.'
       );
+      const mingleState = eventDetailDTO?.mode === 'Mingle'
+          && this.isCurrentEventDetailLoad(loadSequence, eventId)
+        ? await this.eventsService.queryMingleState(activeUserId, eventId).catch(() => null)
+        : null;
 
       if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
         return;
@@ -2142,6 +2171,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
+      this.minimumMinglePlannedRounds.set(this.resolveMinimumMinglePlannedRounds(eventDetailDTO, mingleState));
       this.editorTarget = this.eventDetailDTOBelongsToActiveAdmin(eventDetailDTO) ? 'hosting' : target;
       this.editingEventId = eventDetailDTO.id;
       this.openEventDetailDTO(eventDetailDTO, readOnly, this.editorTarget);
@@ -2239,6 +2269,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.publishedCapacityOccupancyFloor = 0;
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
+    this.minimumMinglePlannedRounds.set(1);
     this.eventVisibilityReady.set(false);
     this.eventPublicationReady.set(false);
   }
@@ -2272,6 +2303,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private currentEventIdentity(): string {
     return this.eventDetailDTO.id.trim() || this.editingEventId || this.draftEventId || '';
+  }
+
+  private resolveMinimumMinglePlannedRounds(
+    eventDetailDTO: ActivityEventDetailDTO | null,
+    mingleState: ContractTypes.MingleStateDTO | null
+  ): number {
+    if (eventDetailDTO?.mode !== 'Mingle'
+        || !mingleState
+        || `${mingleState.eventId ?? ''}`.trim() !== `${eventDetailDTO.id ?? ''}`.trim()) {
+      return 1;
+    }
+    return Math.min(100, Math.max(1, Math.trunc(Number(mingleState.roundNumber) || 1)));
   }
 
   private emitSubEventDefinitionsDraftPreview(): void {

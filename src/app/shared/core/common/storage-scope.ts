@@ -32,6 +32,7 @@ export const APP_INDEXED_DB_KEYS = {
   events: 'events',
   eventTickets: 'eventTickets',
   eventFeedback: 'eventFeedback',
+  mingleSessions: 'mingleSessions',
   eventCheckoutBaskets: 'eventCheckoutBaskets',
   helpCenter: 'helpCenter',
   ideaPosts: 'ideaPosts',
