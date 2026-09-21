@@ -239,6 +239,7 @@ export interface AppMenuModel<TId extends string = string, TContext = unknown> {
   layout?: AppMenuLayout;
   density?: AppMenuDensity;
   /** Content-sized action rows also stay compact on mobile. */
+  /** Labelled action buttons fit their content by default; fill is opt-in. */
   actionSizing?: 'fill' | 'content';
   summary?: AppMenuSummary | null;
   valueKey?: AppMenuValueKey | null;

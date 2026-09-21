@@ -301,7 +301,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   @HostBinding('class.app-menu-host--content-actions')
   protected get hostContentActionsClass(): boolean {
-    return this.model?.actionSizing === 'content';
+    return this.model?.actionSizing !== 'fill';
   }
 
   @HostBinding('class.app-menu-host--compact')
