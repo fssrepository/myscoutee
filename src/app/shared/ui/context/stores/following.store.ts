@@ -27,9 +27,19 @@ export class FollowingStore {
   async change(organizerId: string, followed: boolean): Promise<void> {
     const userId = this.profile.activeUserId();
     this.revision++;
-    const result = await this.service.change(userId, organizerId, followed);
-    this.revision++;
-    if (userId === this.profile.activeUserId()) this.stateRef.set(result);
+    try {
+      const { eventCountDelta, ...result } = await this.service.change(userId, organizerId, followed);
+      if (userId !== this.profile.activeUserId()) return;
+      this.stateRef.update(current => ({
+        ...result,
+        // Apply once against the server's pre-write count. A newer poll or a first
+        // unhydrated view reconciles to the returned snapshot instead of double-counting.
+        eventCount: current.eventCount === result.eventCount - eventCountDelta
+          ? current.eventCount + eventCountDelta : result.eventCount
+      }));
+    } finally {
+      this.revision++;
+    }
   }
   members() { return this.service.members(this.profile.activeUserId()); }
 }

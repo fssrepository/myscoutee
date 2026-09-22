@@ -154,15 +154,17 @@ export class EventExplorePopupComponent {
       ownerId: this.activeUserId, followedOrganizers: true, subtitle: 'event.following.members', viewOnly: true });
   }
 
-  private async changeOrganizerFollow(record: ActivityEventRecord, followed: boolean): Promise<void> {
-    try {
-      await this.followingStore.change(record.creatorUserId, followed);
-      this.appMenuDispatcher.close();
-      if (this.eventExploreFilters().followedOnly && !followed) this.reloadEventExploreSmartList();
-      this.cdr.markForCheck();
-    } catch {
-      this.dialogStore.openInfo('event.following.failed');
-    }
+  private changeOrganizerFollow(record: ActivityEventRecord, followed: boolean): void {
+    const label = followed ? 'event.following.follow' : 'event.following.unfollow';
+    this.appMenuDispatcher.close();
+    this.dialogStore.open({
+      title: label, message: record.creatorName, confirmLabel: label,
+      cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
+      onConfirm: async () => {
+        await this.followingStore.change(record.creatorUserId, followed);
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   private readonly cdr = inject(ChangeDetectorRef);
@@ -649,7 +651,7 @@ export class EventExplorePopupComponent {
     const followed = this.followingStore.state().organizerIds.includes(record.creatorUserId);
     const followingAction: AppMenuItem<string, EventExploreMenuContext> = {
       id: 'follow-organizer', label: followed ? 'event.following.unfollow' : 'event.following.follow',
-      icon: followed ? 'remove_circle_outline' : 'rss_feed', palette: 'violet',
+      icon: followed ? 'remove_circle_outline' : 'rss_feed', palette: 'cyan', surface: 'tinted',
       context: { menu: 'following', record, followed: !followed }
     };
     return [followingAction, ...(request.actions ?? []).flatMap<AppMenuItem<string, EventExploreMenuContext>>(actionId => {

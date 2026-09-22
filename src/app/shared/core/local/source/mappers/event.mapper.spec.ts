@@ -143,3 +143,14 @@ describe('LocalActivityEventsMapper common resource metrics', () => {
     });
   });
 });
+
+
+describe('activity event external link', () => {
+  it('keeps the link in the list DTO so the card menu needs no detail request', () => {
+    const record = LocalActivityEventDetailsMapper.toRecord(new ActivityEventDetailDTO().apply({
+      id: 'external-event', userId: 'viewer', creatorUserId: 'organizer',
+      sourceLink: 'https://example.com/event'
+    }));
+    expect(LocalActivityEventsMapper.toDto(record).sourceLink).toBe('https://example.com/event');
+  });
+});

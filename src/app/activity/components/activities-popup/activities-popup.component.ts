@@ -1,3 +1,4 @@
+import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -211,6 +212,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private static readonly ACTIVITY_LIST_POLL_INTERVAL_MS = 30000;
 
   // ── injected ──────────────────────────────────────────────────────────────
+  private readonly followingStore = inject(FollowingStore);
   protected readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activitiesService = inject(ActivitiesService);
@@ -598,11 +600,33 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isEventStyleActivity(row)) {
       return;
     }
+    if (action.actionId === 'externalInfo') {
+      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(this.activityEventMenuSubjectFromRow(row)?.sourceLink));
+      return;
+    }
+    if (action.actionId === 'followOrganizer' || action.actionId === 'unfollowOrganizer') {
+      const organizerId = this.activityEventMenuSubjectFromRow(row)?.ownerUserId;
+      if (organizerId) this.changeActivityOrganizerFollow(organizerId, row as ActivityEventListItem, action.actionId === 'followOrganizer');
+      return;
+    }
     if (action.actionId === 'removeWatchlist') {
       void this.removeActivityEventFromWatchlist(row as ActivityEventListItem);
       return;
     }
     this.activitiesEvents.onActivityEventCardMenuAction(row, action);
+  }
+
+  private changeActivityOrganizerFollow(organizerId: string, row: ActivityEventListItem, followed: boolean): void {
+    const label = followed ? 'event.following.follow' : 'event.following.unfollow';
+    this.activitiesSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: label, message: this.activityEventDTOFromVisibleSource(row)?.creatorName,
+      confirmLabel: label, cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
+      onConfirm: async () => {
+        await this.followingStore.change(organizerId, followed);
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   private async removeActivityEventFromWatchlist(row: ActivityEventListItem): Promise<void> {
@@ -681,6 +705,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? record?.checkoutBasket?.status ?? null,
       watched: dto?.watched ?? record?.watched ?? false,
+      sourceLink: dto?.sourceLink ?? record?.sourceLink,
+      organizerFollowed: this.followingStore.state().organizerIds.includes(
+        dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? ''),
       checkoutMenuAction: this.activityCheckoutMenuAction(
         draft,
         record?.checkoutBasket ?? null,

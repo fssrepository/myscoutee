@@ -594,7 +594,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   protected memberActionMenuItems(entry: ActivityContracts.ActivityMemberDTO): readonly AppMenuItem<string, MemberMenuContext>[] {
     if (this.followedOrganizers) return [{ id: 'unfollow-organizer', label: 'event.following.unfollow',
-      icon: 'remove_circle_outline', palette: 'violet', context: { menu: 'member-action', member: entry, action: 'unfollow' } }];
+      icon: 'remove_circle_outline', palette: 'cyan', surface: 'tinted', context: { menu: 'member-action', member: entry, action: 'unfollow' } }];
     const items: AppMenuItem<string, MemberMenuContext>[] = [];
     if (this.canLeaveScopedAssetBorrower(entry)) {
       items.push({
@@ -734,7 +734,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     switch (context.action) {
       case 'unfollow':
         this.dialogStore.open({ title: 'event.following.unfollow', message: context.member.name,
-          confirmLabel: 'event.following.unfollow', cancelLabel: 'Cancel',
+          confirmLabel: 'event.following.unfollow', cancelLabel: 'Cancel', confirmPalette: 'cyan',
           failureMessage: 'event.following.failed', onConfirm: async () => {
             await this.followingStore.change(context.member.userId, false);
             const previous = this.membersCacheByOwnerId.get(this.membersCacheKey(this.ownerId)) ?? [];

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.22.en.140",
+  "version": "2026.09.22.en.141",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3617,6 +3617,7 @@
     "event.following.members": "Followed organizers",
     "event.following.follow": "Follow organizer",
     "event.following.unfollow": "Unfollow",
-    "event.following.failed": "Could not update following. Please try again."
+    "event.following.failed": "Could not update following. Please try again.",
+    "event.external.info": "External info"
   }
 }

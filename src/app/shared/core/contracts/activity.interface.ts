@@ -532,6 +532,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
 }
 
 export interface ActivityEventDTO {
+  sourceLink?: string;
   id: string;
   userId: string;
   type: ActivityEventRepositoryItemType;

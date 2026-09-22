@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.22.hu.140",
+  "version": "2026.09.22.hu.141",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3617,6 +3617,7 @@
     "event.following.members": "Követett szervezők",
     "event.following.follow": "Szervező követése",
     "event.following.unfollow": "Kikövetés",
-    "event.following.failed": "Nem sikerült módosítani a követést. Próbáld újra."
+    "event.following.failed": "Nem sikerült módosítani a követést. Próbáld újra.",
+    "event.external.info": "Külső információ"
   }
 }
