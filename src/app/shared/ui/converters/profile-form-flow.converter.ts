@@ -384,7 +384,7 @@ export class ProfileFormFlowConverter {
       controls: [{
         id: 'images',
         kind: 'image-carousel',
-        label: 'profile.images',
+        label: 'profile.photos.minimum.three',
         bind: 'profile.images',
         required: true,
         min: 3,
@@ -396,6 +396,7 @@ export class ProfileFormFlowConverter {
           uploadEntityId: options.userId?.trim() || 'profile-onboarding'
         },
         summary: {
+          label: 'profile.images',
           value: (value: unknown) => `${this.imageCount(value)} / 8`
         }
       }]
