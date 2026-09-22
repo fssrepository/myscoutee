@@ -2,8 +2,10 @@ import { Injectable } from '@angular/core';
 
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type { CountryPartition } from '../entity/country-partition.entity';
+import { GERMANY_PARTITION } from './country-de.generated';
 
 const DEMO_COUNTRY_PARTITIONS: readonly CountryPartition[] = [
+  GERMANY_PARTITION,
   {
     partitionKey: 'country:hu',
     countryCode: 'HU',
@@ -48,6 +50,9 @@ export class LocalCountryPartitionsRepository {
       && latitude <= candidate.bounds.maxLatitude
       && longitude >= candidate.bounds.minLongitude
       && longitude <= candidate.bounds.maxLongitude
+      && (!candidate.geometry || candidate.geometry.coordinates.some(polygon =>
+        this.containsPoint(polygon[0], longitude, latitude)
+        && !polygon.slice(1).some(hole => this.containsPoint(hole, longitude, latitude))))
     );
     return partition?.partitionKey ?? null;
   }
@@ -58,5 +63,18 @@ export class LocalCountryPartitionsRepository {
       .toUpperCase()
       .replace(/[^A-Z]/g, '')
       .slice(0, 2);
+  }
+
+  private containsPoint(ring: number[][], longitude: number, latitude: number): boolean {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [x, y] = ring[i];
+      const [previousX, previousY] = ring[j];
+      if ((y > latitude) !== (previousY > latitude)
+          && longitude < (previousX - x) * (latitude - y) / (previousY - y) + x) {
+        inside = !inside;
+      }
+    }
+    return inside;
   }
 }
