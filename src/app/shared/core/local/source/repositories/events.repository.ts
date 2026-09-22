@@ -160,6 +160,15 @@ export class LocalEventsRepository {
     return this.queryUserRecords(userId);
   }
 
+  queryCalendarItemsByUser(userId: string): ActivityEventRecord[] {
+    const records = this.queryUserRecords(userId);
+    const accepted = this.acceptedParticipantOwnerIds('event', records.map(record => record.id), userId);
+    return records.map(record => ({
+      ...record,
+      currentUserMembershipStatus: accepted.has(record.id) ? 'accepted' : 'none'
+    }));
+  }
+
   queryInvitationItemsByUser(userId: string): ActivityEventRecord[] {
     return this.queryUserRecords(userId)
       .filter(record => !this.isTrashStatus(record))

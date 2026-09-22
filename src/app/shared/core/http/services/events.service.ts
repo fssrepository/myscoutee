@@ -107,6 +107,12 @@ export class HttpEventsService implements IEventsService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  exportCalendar(signal?: AbortSignal): Promise<string> {
+    return this.requestWithAbort(this.http.get(`${this.apiBaseUrl}/activities/events/calendar/export`, {
+      responseType: 'text'
+    }), signal);
+  }
+
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events', userId);
   }

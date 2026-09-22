@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.22.hu.146",
+  "version": "2026.09.23.hu.147",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3690,6 +3690,9 @@
     "affiliate.revenue.refunds": "Visszatérítések",
     "affiliate.revenue.net": "Visszatérítések után",
     "affiliate.revenue.commission.pending": "Százalékos affiliate jutalékot tervezünk. A mértéke és a jogosultsági szabályai még nincsenek meghatározva; ezek forgalmi összegek, nem megkeresett jutalék.",
-    "affiliate.revenue.button": "Forgalom"
+    "affiliate.revenue.button": "Forgalom",
+    "calendar.sync": "Naptár szinkronizálása",
+    "calendar.export.help": "Naptár szinkronizálása: töltsd le a közelgő eseményeidet ICS-fájlként, majd importáld a naptáradba. Kézi frissítés, háttérszinkron nélkül.",
+    "calendar.export.error": "Nem sikerült letölteni a naptárfájlt. Próbáld újra."
   }
 }

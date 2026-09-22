@@ -78,6 +78,7 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { IntegrationSettingsPopupComponent } from '../integration-settings-popup/integration-settings-popup.component';
+import { CalendarExportStore } from '../../../shared/ui/context/stores/calendar-export.store';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 
@@ -119,6 +120,7 @@ export class ProfileEditorComponent implements OnDestroy {
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
+  private readonly calendarExport = inject(CalendarExportStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
@@ -140,7 +142,17 @@ export class ProfileEditorComponent implements OnDestroy {
   });
   protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
   protected readonly profileHeaderActionMenuModel: AppMenuModel = { actionSizing: 'content' };
-  protected readonly profileApiIntegrationActions = computed<readonly AppMenuItem[]>(() => [{
+  protected readonly profileApiIntegrationActions = computed<readonly AppMenuItem[]>(() => [...(!this.activeUserIsAdmin() && !this.activeUserIsOperator() ? [{
+    id: 'profile-calendar-export',
+    kind: 'action' as const,
+    icon: 'calendar_month',
+    label: 'calendar.sync',
+    ariaLabel: 'calendar.export.help',
+    layout: 'action' as const,
+    palette: 'teal' as const,
+    disabled: this.calendarExport.downloading(),
+    progress: this.calendarExport.downloading() ? { state: 'loading' as const, shape: 'button' as const } : null
+  }] : []), {
     id: 'profile-api-integration',
     kind: 'action',
     icon: this.activeUserIsAdmin() ? 'api' : 'group_add',
@@ -328,6 +340,10 @@ export class ProfileEditorComponent implements OnDestroy {
   }
 
   protected onProfileApiIntegrationAction(event: AppMenuItemSelectEvent): void {
+    if (event.id === 'profile-calendar-export') {
+      void this.calendarExport.download();
+      return;
+    }
     if (event.id === 'profile-api-integration') {
       this.integrationSettingsPopup?.openPopup(event.sourceEvent);
     }
