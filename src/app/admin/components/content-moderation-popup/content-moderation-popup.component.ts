@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { from } from 'rxjs';
 import { AppMenuComponent, PopupComponent, SmartListComponent, SingleRowComponent, I18nPipe, type PopupModel, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type SmartListConfig, type SmartListLoadPage, type SingleRowData } from '../../../shared/ui';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
-import { MODERATION_CATEGORIES, MODERATION_STATUSES, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
+import { MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { ContentModerationStore } from '../../../shared/ui/context/stores/content-moderation.store';
@@ -17,7 +17,9 @@ import type { AssetDetailDTO } from '../../../shared/core/contracts/asset.interf
 import type { PhotoFeedPost } from '../../../shared/core/contracts/photo-feed.interface';
 import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 
-const CATEGORY_STYLE: Record<ModerationCategory, { icon: string; palette: AppMenuPalette }> = {
+const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed'];
+const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: AppMenuPalette }> = {
+  all: { icon: 'apps', palette: 'blue' },
   asset: { icon: 'inventory_2', palette: 'green' }, event: { icon: 'event', palette: 'blue' }, feed: { icon: 'photo_library', palette: 'orange' }
 };
 const STATUS_STYLE: Record<ModerationStatus, { icon: string; palette: AppMenuPalette }> = {
@@ -41,7 +43,7 @@ export class ContentModerationPopupComponent {
   private readonly assetEditor = inject(AssetStore);
   private readonly assetPopup = inject(AssetPopupStore);
   @ViewChild(SmartListComponent) private list?: SmartListComponent<ContentModerationItem>;
-  protected category: ModerationCategory = 'asset';
+  protected category: ModerationCategoryFilter = 'all';
   protected status: ModerationStatus = 'under-review';
   protected query = { filters: { category: this.category, status: this.status } };
   protected readonly settingsDraft = signal<ContentModerationSettings | null>(null);
@@ -53,7 +55,7 @@ export class ContentModerationPopupComponent {
     pageSize: 20, initialPageSize: 20, listLayout: 'stack', snapMode: 'none', emptyLabel: 'moderation.empty',
     groupBy: item => item.submittedAtIso.slice(0, 10), showStickyHeader: true,
     trackBy: (_index, item) => item.id,
-    menuItems: context => context.item ? MODERATION_STATUSES.map(status => ({ id: status, label: `moderation.status.${status}`,
+    menuItems: context => context.item ? MODERATION_STATUSES.map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
       ...STATUS_STYLE[status], surface: 'tinted', disabled: status === context.item!.status, context: context.item })) : []
   };
   protected readonly loadPage: SmartListLoadPage<ContentModerationItem> = query => from(this.load(query));
@@ -65,22 +67,26 @@ export class ContentModerationPopupComponent {
     });
   }
   private async load(query: Parameters<SmartListLoadPage<ContentModerationItem>>[0]) {
-    const result = await this.service.page(this.admin?.id ?? '', this.category, this.status, query);
+    const { category, status } = query.filters as { category: ModerationCategoryFilter; status: ModerationStatus };
+    const result = await this.service.page(this.admin?.id ?? '', category, status, query);
     this.state.apply(result.snapshot); return result;
   }
   protected model(): PopupModel {
     return { title: 'moderation.title', size: 'wide', height: 'full', bodyLayout: 'fill', headerTone: 'accent',
       headerActions: [{ id: 'settings', icon: 'settings', ariaLabel: 'moderation.settings', palette: 'blue' }],
       toolbarControls: [
-        { kind: 'menu', id: 'category', align: 'start', menuKind: 'select', trigger: { label: `moderation.category.${this.category}`, ...CATEGORY_STYLE[this.category] },
-          items: MODERATION_CATEGORIES.map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], active: id === this.category })) },
-        { kind: 'menu', id: 'status', align: 'end', menuKind: 'select', trigger: { label: `moderation.status.${this.status}`, ...STATUS_STYLE[this.status] },
+        { kind: 'menu', id: 'status', align: 'start', menuKind: 'select', trigger: {
+            label: `moderation.status.${this.status}`, ...STATUS_STYLE[this.status],
+            counter: { value: moderationCount(this.state.snapshot(), this.category, this.status), max: 9999 } },
           items: MODERATION_STATUSES.map(id => ({ id: `status:${id}`, label: `moderation.status.${id}`, ...STATUS_STYLE[id], active: id === this.status,
-            counter: { value: this.state.snapshot()?.counts[this.category]?.[id] ?? 0, max: 9999 } })) }
+            counter: { value: moderationCount(this.state.snapshot(), this.category, id), max: 9999 } })) },
+        { kind: 'menu', id: 'category', align: 'end', menuKind: 'select', trigger: { label: `moderation.category.${this.category}`, ...CATEGORY_STYLE[this.category] },
+          items: CATEGORY_FILTERS.map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], active: id === this.category,
+            counter: { value: moderationCount(this.state.snapshot(), id, this.status), max: 9999 } })) }
       ], onClose: () => this.adminMenu.closePopup(), onAction: () => this.openSettings(),
       onMenuSelect: event => {
         const id = String(event.itemSelect.id);
-        if (id.startsWith('category:')) this.category = id.slice(9) as ModerationCategory;
+        if (id.startsWith('category:')) this.category = id.slice(9) as ModerationCategoryFilter;
         if (id.startsWith('status:')) this.status = id.slice(7) as ModerationStatus;
         this.query = { filters: { category: this.category, status: this.status } };
       }
@@ -90,20 +96,26 @@ export class ContentModerationPopupComponent {
     return { id: item.id, title: item.title, subtitle: `moderation.category.${item.category}`, avatarUrl: item.imageUrl || null,
       detail: item.submittedAtIso, menuActions: ['moderation'], surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
   }
+  private decisionLabel(item: ContentModerationItem, status: ModerationStatus): string {
+    return item.status === 'blocked' && status === 'under-review' ? 'moderation.unblock' : `moderation.status.${status}`;
+  }
   protected decide(event: AppMenuItemSelectEvent): void {
     const item = event.context as ContentModerationItem;
     const status = event.id as ModerationStatus;
     if (!item || !MODERATION_STATUSES.includes(status)) return;
     const commandId = crypto.randomUUID();
-    this.dialogs.open({ title: `moderation.status.${status}`, message: item.title,
+    this.dialogs.open({ title: this.decisionLabel(item, status), message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
       confirmPalette: STATUS_STYLE[status].palette,
       input: ['rejected', 'blocked'].includes(status) ? { label: 'moderation.message', maxLength: 1000 } : null,
       onConfirm: async message => {
-        const snapshot = await this.service.decide(item.id, { adminUserId: this.admin?.id ?? '', commandId,
+        const result = await this.service.decide(item.id, { adminUserId: this.admin?.id ?? '', commandId,
           expectedVersion: item.version, status, message }, this.admin);
-        this.state.apply(snapshot);
-        if (status !== this.status) this.list?.removeVisibleItems(row => row.id === item.id, { totalDelta: -1 });
+        this.state.apply(result.snapshot);
+        const saved = result.item;
+        const matches = saved.status === this.status && (this.category === 'all' || saved.category === this.category);
+        if (matches) this.list?.patchVisibleItem(row => row.id === saved.id, saved);
+        else this.list?.removeVisibleItems(row => row.id === saved.id, { totalDelta: -1 });
       }
     });
   }

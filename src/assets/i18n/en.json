@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.22.en.143",
+  "version": "2026.09.22.en.144",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3636,6 +3636,8 @@
     "moderation.empty": "No items in this category and status.",
     "moderation.settings": "Moderation settings",
     "moderation.categories": "Categories",
+    "moderation.category.all": "All",
+    "moderation.unblock": "Unblock",
     "moderation.category.asset": "Asset",
     "moderation.category.event": "Event",
     "moderation.category.feed": "Photo Feed",

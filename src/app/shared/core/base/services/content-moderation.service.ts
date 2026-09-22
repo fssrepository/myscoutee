@@ -4,7 +4,7 @@ import { DestroyRef, Injectable, inject } from '@angular/core';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { HttpContentModerationService } from '../../http/services/content-moderation.service';
 import { LocalContentModerationService } from '../../local/source/services/content-moderation.service';
-import type { ContentModerationDecision, ContentModerationSettings, ModerationCategory, ModerationStatus } from '../../contracts/content-moderation.interface';
+import type { ContentModerationDecision, ContentModerationSettings, ModerationCategoryFilter, ModerationStatus } from '../../contracts/content-moderation.interface';
 import type { AdminUserDto } from '../../contracts/admin.interface';
 import type { ListQuery } from '../../contracts/list.interface';
 @Injectable({ providedIn: 'root' })
@@ -23,7 +23,7 @@ export class ContentModerationService extends BaseRouteModeService {
   private readonly local = inject(LocalContentModerationService);
   private get source() { return this.resolveRouteService('/admin/content-moderation', this.local, this.http); }
   snapshot(adminUserId: string) { return this.source.snapshot(adminUserId); }
-  page(adminUserId: string, category: ModerationCategory, status: ModerationStatus, query: ListQuery) { return this.source.page(adminUserId, category, status, query); }
+  page(adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery) { return this.source.page(adminUserId, category, status, query); }
   settings(adminUserId: string, revision: number, settings: ContentModerationSettings) { return this.source.settings(adminUserId, revision, settings); }
   decide(id: string, request: ContentModerationDecision, admin?: AdminUserDto) {
     const source = this.source; return source instanceof LocalContentModerationService ? source.decide(id, request, admin) : source.decide(id, request);

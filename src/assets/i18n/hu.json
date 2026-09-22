@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.22.hu.143",
+  "version": "2026.09.22.hu.144",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3636,6 +3636,8 @@
     "moderation.empty": "Nincs ilyen kategóriájú és állapotú elem.",
     "moderation.settings": "Moderációs beállítások",
     "moderation.categories": "Kategóriák",
+    "moderation.category.all": "Összes",
+    "moderation.unblock": "Feloldás",
     "moderation.category.asset": "Eszköz",
     "moderation.category.event": "Esemény",
     "moderation.category.feed": "Fotófolyam",
