@@ -1,3 +1,4 @@
+import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
 import {
@@ -224,6 +225,12 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
+  protected readonly followingStore = inject(FollowingStore);
+  protected openFollowedEvents(event: Event): void {
+    event.stopPropagation();
+    this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', followedOnly: true });
+  }
+
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
@@ -2190,6 +2197,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!userId || signal?.aborted) {
       return;
     }
+    const followingRevision = this.followingStore.captureRevision();
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(userId);
     this.userProfileStore.setUserRealtimePollInFlight(true);
@@ -2203,6 +2211,7 @@ export class SideMenuComponent implements OnDestroy {
       ) {
         return;
       }
+      this.followingStore.applySnapshot(snapshot.userId, snapshot.following, followingRevision);
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
       this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);

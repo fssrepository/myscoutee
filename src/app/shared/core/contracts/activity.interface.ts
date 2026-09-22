@@ -216,6 +216,7 @@ export interface ActivitiesFeedFilters {
 }
 
 export interface EventExploreFilterPreferences {
+  followedOnly?: boolean;
   friendsOnly: boolean;
   openSpotsOnly: boolean;
   topic: string;
@@ -223,6 +224,7 @@ export interface EventExploreFilterPreferences {
 }
 
 export interface EventExploreFeedFilters {
+  followedOnly?: boolean;
   userId: string;
   order: EventExploreOrder;
   view: EventExploreView;
@@ -1313,6 +1315,7 @@ export interface ActivityEventPageResultDTO {
 }
 
 export interface ActivityEventExploreQuery {
+  followedOnly?: boolean;
   userId: string;
   order: EventExploreOrder;
   view: EventExploreView;

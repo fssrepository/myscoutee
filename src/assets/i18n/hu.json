@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.22.hu.139",
+  "version": "2026.09.22.hu.140",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3611,6 +3611,12 @@
     "affiliate.help": "A személyes linked rögzíti, ki hívta meg az újonnan regisztrált tagot. Meglévő fiók nem számít új meghívásnak. A kliens aránya a regisztrált fiókhoz kapcsolt, különböző külső résztvevőazonosítókat mutatja; az ismételt betöltés nem növeli.",
     "landing.partners.role.affiliate.label": "Hívj meg embereket",
     "landing.partners.role.affiliate.title": "Affiliate partner",
-    "landing.partners.role.affiliate.description": "Bármelyik tag megoszthatja személyes meghívólinkjét a Profil → Affiliate menüből, és láthatja, hányan regisztráltak vele. API-kliensekkel is meghívhat résztvevőket, és követheti, hányan kapcsolódtak regisztrált fiókhoz."
+    "landing.partners.role.affiliate.description": "Bármelyik tag megoszthatja személyes meghívólinkjét a Profil → Affiliate menüből, és láthatja, hányan regisztráltak vele. API-kliensekkel is meghívhat résztvevőket, és követheti, hányan kapcsolódtak regisztrált fiókhoz.",
+    "event.following": "Követett",
+    "event.following.only": "Csak követettek",
+    "event.following.members": "Követett szervezők",
+    "event.following.follow": "Szervező követése",
+    "event.following.unfollow": "Kikövetés",
+    "event.following.failed": "Nem sikerült módosítani a követést. Próbáld újra."
   }
 }

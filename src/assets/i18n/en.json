@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.22.en.139",
+  "version": "2026.09.22.en.140",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3611,6 +3611,12 @@
     "affiliate.help": "Your personal link records who invited a newly registered member. Existing accounts do not count as new referrals. The client ratio counts distinct imported participant IDs linked to registered accounts; repeat imports do not increase it.",
     "landing.partners.role.affiliate.label": "Invite people",
     "landing.partners.role.affiliate.title": "Affiliate partner",
-    "landing.partners.role.affiliate.description": "Any member can share a personal invitation link from Profile → Affiliate and see how many people registered through it. API clients can also invite participants and track how many connected to registered accounts."
+    "landing.partners.role.affiliate.description": "Any member can share a personal invitation link from Profile → Affiliate and see how many people registered through it. API clients can also invite participants and track how many connected to registered accounts.",
+    "event.following": "Followed",
+    "event.following.only": "Only followed",
+    "event.following.members": "Followed organizers",
+    "event.following.follow": "Follow organizer",
+    "event.following.unfollow": "Unfollow",
+    "event.following.failed": "Could not update following. Please try again."
   }
 }

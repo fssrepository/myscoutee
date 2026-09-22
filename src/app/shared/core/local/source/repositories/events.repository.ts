@@ -1,3 +1,4 @@
+import { isCurrentFollowedEvent } from '../builders/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../entity/mingle.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.entity';
 import type { ActivityEventRecordCollection } from '../entity/event.entity';
@@ -581,7 +582,7 @@ export class LocalEventsRepository {
     return secondaryFilter === 'relevant' ? 'relevance' : 'date';
   }
 
-  queryExploreItems(userId: string): ActivityEventRecord[] {
+  queryExploreItems(userId: string, includeTracked = false): ActivityEventRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -598,7 +599,7 @@ export class LocalEventsRepository {
         this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), normalizedUserId),
         normalizedUserId
       );
-      if (!this.shouldIncludeExploreRecord(resolvedRecord, normalizedUserId)) {
+      if (!this.shouldIncludeExploreRecord(resolvedRecord, normalizedUserId, includeTracked)) {
         continue;
       }
       const existing = byEventId.get(resolvedRecord.id);
@@ -1015,7 +1016,9 @@ export class LocalEventsRepository {
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const viewerAffinity = this.queryUserAffinity(normalizedUserId);
     const excludedSourceIds = new Set(this.normalizeUserIds(query.excludedSourceIds));
-    const normalizedRecords = this.queryExploreItems(normalizedUserId)
+    const followedIds = new Set(this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId]?.following?.organizerIds ?? []);
+    const normalizedRecords = this.queryExploreItems(normalizedUserId, query.followedOnly)
+      .filter(record => !query.followedOnly || (followedIds.has(record.creatorUserId) && isCurrentFollowedEvent(record, normalizedUserId, Date.now())))
       .filter(record => !excludedSourceIds.has(record.id))
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
       .filter(record => !query.mode || record.mode === query.mode)
@@ -2991,8 +2994,8 @@ export class LocalEventsRepository {
     return value * (Math.PI / 180);
   }
 
-  private shouldIncludeExploreRecord(record: ActivityEventRecord, activeUserId: string): boolean {
-    if (this.isTrashStatus(record) || this.isInvitationRecordForUser(record, activeUserId)) {
+  private shouldIncludeExploreRecord(record: ActivityEventRecord, activeUserId: string, includeTracked = false): boolean {
+    if (this.isTrashStatus(record) || (!includeTracked && this.isInvitationRecordForUser(record, activeUserId))) {
       return false;
     }
     if (!this.isPublishedStatus(record.status)) {

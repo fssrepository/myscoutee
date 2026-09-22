@@ -242,6 +242,7 @@ export interface UserNotificationDeviceDto {
 }
 
 export interface UserRealtimeLongPollResponseDto {
+  following?: import('./following.interface').FollowingState;
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
   locationCoordinates?: LocationCoordinates | null;

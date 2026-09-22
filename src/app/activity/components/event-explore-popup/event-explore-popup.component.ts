@@ -1,3 +1,4 @@
+import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
   ChangeDetectionStrategy,
@@ -115,6 +116,7 @@ type CheckoutDraftMenuVisual = {
 };
 
 type EventExploreMenuContext =
+  | { menu: 'following'; record: ActivityEventRecord; followed: boolean }
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
   | { menu: 'checkout-draft'; entry: CheckoutDraftEntry }
@@ -144,6 +146,25 @@ type EventExploreMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventExplorePopupComponent {
+  protected readonly followingStore = inject(FollowingStore);
+  private requestedFollowedOnly = false;
+
+  protected openFollowedMembers(): void {
+    this.memberMenuStore.requestActivitiesNavigation({ type: 'members',
+      ownerId: this.activeUserId, followedOrganizers: true, subtitle: 'event.following.members', viewOnly: true });
+  }
+
+  private async changeOrganizerFollow(record: ActivityEventRecord, followed: boolean): Promise<void> {
+    try {
+      await this.followingStore.change(record.creatorUserId, followed);
+      this.appMenuDispatcher.close();
+      if (this.eventExploreFilters().followedOnly && !followed) this.reloadEventExploreSmartList();
+      this.cdr.markForCheck();
+    } catch {
+      this.dialogStore.openInfo('event.following.failed');
+    }
+  }
+
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activitiesService = inject(ActivitiesService);
@@ -188,7 +209,7 @@ export class EventExplorePopupComponent {
 
   protected readonly filterCount = computed(() => {
     const filters = this.eventExploreFilters();
-    return Number(filters.friendsOnly) + Number(filters.openSpotsOnly)
+    return Number(filters.followedOnly === true) + Number(filters.friendsOnly) + Number(filters.openSpotsOnly)
       + Number(!!filters.topic) + Number(!!filters.mode);
   });
 
@@ -305,6 +326,13 @@ export class EventExplorePopupComponent {
   };
 
   constructor() {
+    effect(() => {
+      const followedIds = this.followingStore.state().organizerIds;
+      if (!this.isOpen || !this.eventExploreFilters().followedOnly || !this.eventExploreSmartList) return;
+      const removed = this.eventExploreSmartList.itemsSnapshot().filter(item => !followedIds.includes(item.creatorUserId));
+      if (removed.length) this.eventExploreSmartList.removeVisibleItems(
+        item => !followedIds.includes(item.creatorUserId), { totalDelta: -removed.length });
+    });
     this.refreshUsersDirectory();
 
     effect(() => {
@@ -316,6 +344,11 @@ export class EventExplorePopupComponent {
       if (request.type === 'eventCheckoutDraft') {
         void this.continueCheckoutDraftBySourceId(request.sourceId);
         return;
+      }
+      this.requestedFollowedOnly = request.followedOnly === true;
+      if (this.requestedFollowedOnly) {
+        this.applyFilters({ ...this.eventExploreFilters(), followedOnly: true });
+        this.eventExploreOrder = 'upcoming';
       }
       this.openEventExplore();
     });
@@ -549,6 +582,10 @@ export class EventExplorePopupComponent {
     if (!context) {
       return;
     }
+    if (context.menu === 'following') {
+      void this.changeOrganizerFollow(context.record, context.followed);
+      return;
+    }
     if (context.menu === 'info-card') {
       this.onEventExploreCardMenuAction(context.record, {
         id: context.card.id,
@@ -609,7 +646,13 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord,
     request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, EventExploreMenuContext>[] {
-    return (request.actions ?? []).flatMap(actionId => {
+    const followed = this.followingStore.state().organizerIds.includes(record.creatorUserId);
+    const followingAction: AppMenuItem<string, EventExploreMenuContext> = {
+      id: 'follow-organizer', label: followed ? 'event.following.unfollow' : 'event.following.follow',
+      icon: followed ? 'remove_circle_outline' : 'rss_feed', palette: 'violet',
+      context: { menu: 'following', record, followed: !followed }
+    };
+    return [followingAction, ...(request.actions ?? []).flatMap<AppMenuItem<string, EventExploreMenuContext>>(actionId => {
       const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
@@ -631,7 +674,7 @@ export class EventExplorePopupComponent {
           action
         }
       }];
-    });
+    })];
   }
 
   private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
@@ -1432,6 +1475,7 @@ export class EventExplorePopupComponent {
         userId,
         order: query.filters?.order ?? this.eventExploreOrder,
         view: query.filters?.view ?? this.eventExploreView,
+        followedOnly: filters.followedOnly === true,
         friendsOnly: filters.friendsOnly,
         openSpotsOnly: filters.openSpotsOnly,
         topic: this.normalizeTopic(filters.topic),
@@ -1642,7 +1686,7 @@ export class EventExplorePopupComponent {
     try {
       const filters = await this.usersService.loadPageFilterPreferences(userId, 'event-explore');
       if (!this.isOpen || revision !== this.exploreOpenRevision || userId !== this.activeUserId) return false;
-      this.applyFilters(filters);
+      this.applyFilters(this.requestedFollowedOnly ? { ...filters, followedOnly: true } : filters);
       this.preferencesReady.set(true);
       return true;
     } catch {
@@ -1663,6 +1707,7 @@ export class EventExplorePopupComponent {
         userId: this.activeUserId,
         order: this.eventExploreOrder,
         view: this.eventExploreView,
+        followedOnly: this.eventExploreFilters().followedOnly === true,
         friendsOnly: this.eventExploreFilters().friendsOnly,
         openSpotsOnly: this.eventExploreFilters().openSpotsOnly,
         topic: this.normalizeTopic(this.eventExploreFilters().topic),

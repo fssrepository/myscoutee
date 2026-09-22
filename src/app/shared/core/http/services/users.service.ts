@@ -248,6 +248,7 @@ export class HttpUsersService implements UserService {
     }
     try {
       type HttpLongPollResponse = {
+        following?: UserRealtimeLongPollResponseDto['following'];
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
         locationCoordinates?: UserRealtimeLongPollResponseDto['locationCoordinates'];
@@ -277,6 +278,7 @@ export class HttpUsersService implements UserService {
         userId: response.userId ?? normalizedUserId,
         profileStatus: response.profileStatus ?? null,
         locationCoordinates: response.locationCoordinates,
+        following: response.following,
         notificationDevices: response.notificationDevices?.map(device => ({
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),

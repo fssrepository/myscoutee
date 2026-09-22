@@ -75,8 +75,16 @@
       [class.is-covered]="isCoveredByAssetPopup()"
     >
       <div class="navigator-menu-header">
+        <div class="navigator-install-action navigator-context-actions">
+          <button type="button" class="navigator-followed-action" (click)="openFollowedEvents($event)">
+            <mat-icon>rss_feed</mat-icon>
+            <span>{{ 'event.following' | i18n }}</span>
+            @if (followingStore.state().eventCount > 0) {
+              <span class="navigator-followed-count">{{ followingStore.state().eventCount }}</span>
+            }
+          </button>
         @if (mingleStore.visible()) {
-        <div class="navigator-install-action navigator-mingle-table-action">
+        <div class="navigator-mingle-table-action">
           <button type="button" (click)="openCurrentMingleTable($event)">
             <mat-icon>table_restaurant</mat-icon>
             <span>{{ mingleTableLabel() }}</span>
@@ -86,6 +94,7 @@
           </button>
         </div>
         }
+        </div>
         <app-header-card
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"

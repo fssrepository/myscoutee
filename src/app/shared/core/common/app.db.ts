@@ -1,3 +1,4 @@
+import { maintainFollowingState } from '../local/source/builders/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../local/source/entity/mingle.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/event.entity';
@@ -113,7 +114,8 @@ export class AppMemoryDb {
   }
 
   write(updater: (current: AppMemorySchema) => AppMemorySchema): void {
-    const next = this.normalizeState(updater(this._tables()));
+    const previous = this._tables();
+    const next = this.normalizeState(maintainFollowingState(previous, updater(previous)));
     this._tables.set(next);
     if (!this.hydrationComplete || !this.storageEnabled) {
       return;

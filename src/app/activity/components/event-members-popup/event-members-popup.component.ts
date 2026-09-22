@@ -1,3 +1,4 @@
+import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
 import {
   CommonModule
@@ -90,6 +91,7 @@ interface MembersSmartListFilters {
 
 type MemberMenuAction =
   | 'approve'
+  | 'unfollow'
   | 'remove'
   | 'leave'
   | 'disqualify'
@@ -154,6 +156,9 @@ interface ActivityMembersListPollState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent implements OnDestroy {
+  private readonly followingStore = inject(FollowingStore);
+  private followedOrganizers = false;
+
   private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
 
   private readonly cdr = inject(ChangeDetectorRef);
@@ -294,6 +299,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       this.setMingleLive(request.type === 'members' && request.mingleLive === true);
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
+          followedOrganizers: request.followedOrganizers,
           ownerType: request.ownerType ?? 'event',
           parentOwnerId: request.parentOwnerId,
           parentOwnerType: request.parentOwnerType,
@@ -347,6 +353,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected membersPopupZIndex(): number {
+    if (this.followedOrganizers) return 10120;
     const parentZIndex = Math.trunc(Number(this.parentZIndex) || 0);
     if (parentZIndex <= 0) {
       return EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX;
@@ -358,7 +365,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     return {
       title: this.title,
       subtitle: this.subtitle,
-      translateSubtitle: false,
+      translateSubtitle: this.followedOrganizers,
       ariaLabel: this.title,
       closeAriaLabel: 'Close',
       size: 'wide',
@@ -379,7 +386,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           palette: 'blue' as const,
           compactOnMobile: true
         }] : []),
-        ...(!this.mingleLive || this.canManageMembers ? [{
+        ...(!this.followedOrganizers && (!this.mingleLive || this.canManageMembers) ? [{
           id: 'pending-only',
           align: 'end' as const,
           icon: 'pending_actions',
@@ -520,6 +527,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canShowActionMenu(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.followedOrganizers) return true;
     if (this.isAcceptedScopedAssetBorrower(entry)) {
       return this.canLeaveScopedAssetBorrower(entry)
         || this.canTakeOverAsset(entry)
@@ -585,6 +593,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected memberActionMenuItems(entry: ActivityContracts.ActivityMemberDTO): readonly AppMenuItem<string, MemberMenuContext>[] {
+    if (this.followedOrganizers) return [{ id: 'unfollow-organizer', label: 'event.following.unfollow',
+      icon: 'remove_circle_outline', palette: 'violet', context: { menu: 'member-action', member: entry, action: 'unfollow' } }];
     const items: AppMenuItem<string, MemberMenuContext>[] = [];
     if (this.canLeaveScopedAssetBorrower(entry)) {
       items.push({
@@ -722,6 +732,15 @@ export class EventMembersPopupComponent implements OnDestroy {
       return;
     }
     switch (context.action) {
+      case 'unfollow':
+        this.dialogStore.open({ title: 'event.following.unfollow', message: context.member.name,
+          confirmLabel: 'event.following.unfollow', cancelLabel: 'Cancel',
+          failureMessage: 'event.following.failed', onConfirm: async () => {
+            await this.followingStore.change(context.member.userId, false);
+            const previous = this.membersCacheByOwnerId.get(this.membersCacheKey(this.ownerId)) ?? [];
+            this.applyCommittedMembers(previous.filter(member => member.userId !== context.member.userId), previous);
+          } });
+        break;
       case 'involvement':
         this.openMemberInvolvementPopup(context.member, event.sourceEvent);
         break;
@@ -1592,6 +1611,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private openMembersPopup(
     ownerId: string,
     options?: {
+      followedOrganizers?: boolean;
       subtitle?: string;
       canManage?: boolean;
       viewOnly?: boolean;
@@ -1623,6 +1643,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (!normalizedOwnerId) {
       return;
     }
+    this.followedOrganizers = options?.followedOrganizers === true;
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
     const providedInitialMembers = (ownerType !== 'event' || lookup?.type === 'chat') && Array.isArray(options?.initialMembers)
@@ -1642,7 +1663,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();
     this.lastEmittedMemberMetricBucketSignature = '';
     this.lookupRef = lookup ? { ...lookup } : null;
-    this.ownerRef = lookup?.type === 'chat'
+    this.ownerRef = this.followedOrganizers || lookup?.type === 'chat'
       ? null
       : {
           ownerType,
@@ -1681,7 +1702,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       && !this.scopedBorrowAsset
       && this.requestedCanManageMembers;
     this.canShowInviteButton = this.canManageMembers;
-    this.isLocalMembersSource = initialMembers !== null;
+    this.isLocalMembersSource = this.followedOrganizers || initialMembers !== null;
     if (initialMembers) {
       this.membersCacheByOwnerId.set(this.membersCacheKey(normalizedOwnerId), initialMembers);
       this.membersCacheByOwnerId.set(
@@ -1731,7 +1752,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       }
 
       this.syncMembersSmartListQuery();
-      if (!this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group') {
+      if (!this.followedOrganizers && !this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group') {
         void this.resolveOwnerPresentation(normalizedOwnerId, options);
       }
       this.cdr.markForCheck();
@@ -1809,6 +1830,12 @@ export class EventMembersPopupComponent implements OnDestroy {
 
     const cacheKey = this.membersCacheKey(ownerId, pendingOnly);
     let members = this.membersCacheByOwnerId.get(cacheKey);
+    if (this.followedOrganizers && !members) {
+      members = await this.followingStore.members();
+      if (!this.isOpen || this.ownerId !== ownerId) return { items: [], total: 0 };
+      this.membersCacheByOwnerId.set(cacheKey, members);
+      this.applySummaryFromMembers(members);
+    }
     if (this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId && !members) {
       return this.chatsService.queryChatMemberEntriesPage(ownerId, query);
     }

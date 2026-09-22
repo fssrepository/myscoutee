@@ -267,6 +267,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const snapshot = LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
       suppressImpressionChangeFlags: !advanced
     });
+    snapshot.following = currentUser?.following ?? { organizerIds: [], eventCount: 0 };
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
       userId: normalizedUserId,
       page: 0,

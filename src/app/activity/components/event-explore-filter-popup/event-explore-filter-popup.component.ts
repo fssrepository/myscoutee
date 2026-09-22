@@ -15,6 +15,8 @@ import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode
 export class EventExploreFilterPopupComponent implements OnChanges {
   @Input({ required: true }) filters!: EventExploreFilterPreferences;
   @Input() saving = false;
+  @Input() followedMemberCount = 0;
+  @Output() readonly membersOpened = new EventEmitter<void>();
   @Input() error = false;
   @Output() readonly closed = new EventEmitter<EventExploreFilterPreferences | null>();
   protected draft!: EventExploreFilterPreferences;
@@ -51,12 +53,23 @@ export class EventExploreFilterPopupComponent implements OnChanges {
     return [
       { id: 'friendsOnly', label: 'friends.going', icon: 'groups', palette: 'green' as const },
       { id: 'openSpotsOnly', label: 'open.spots', icon: 'hotel', palette: 'blue' as const }
-    ].map(item => ({ ...item, kind: 'toggle', layout: 'pill', closeOnSelect: false,
-      disabled: this.saving, checked: this.draft[item.id as 'friendsOnly' | 'openSpotsOnly'] }));
+    ].map(item => ({ ...item, kind: 'toggle', layout: 'pill', showToggleIndicator: true, closeOnSelect: false,
+      disabled: this.saving, checked: this.draft[item.id as 'friendsOnly' | 'openSpotsOnly' | 'followedOnly'] })) as AppMenuItem[];
+  }
+
+  protected followedToggle(): readonly AppMenuItem[] {
+    return [{ id: 'followedOnly', label: 'event.following.only', icon: 'rss_feed', palette: 'violet',
+      kind: 'toggle', layout: 'pill', showToggleIndicator: true, closeOnSelect: false,
+      disabled: this.saving, checked: this.draft.followedOnly === true }];
+  }
+
+  protected memberItems(): readonly AppMenuItem[] {
+    return [{ id: 'following-members', icon: 'format_list_bulleted', palette: 'violet',
+      ariaLabel: 'event.following.members', counter: { value: this.followedMemberCount, max: 999 } }];
   }
 
   protected toggle(event: AppMenuItemSelectEvent): void {
-    if (this.saving || (event.id !== 'friendsOnly' && event.id !== 'openSpotsOnly')) return;
+    if (this.saving || (event.id !== 'friendsOnly' && event.id !== 'openSpotsOnly' && event.id !== 'followedOnly')) return;
     this.draft = { ...this.draft, [event.id]: !this.draft[event.id] };
   }
 

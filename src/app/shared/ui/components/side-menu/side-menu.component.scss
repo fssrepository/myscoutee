@@ -362,3 +362,27 @@ app-event-supply-contributions-popup {
   min-height: 240px;
   color: #536a84;
 }
+
+.navigator-context-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.navigator-menu-header-card {
+  --app-header-card-padding: 0.66rem 0.66rem 3.2rem;
+}
+.navigator-followed-action { position: relative; }
+.navigator-followed-count {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.35rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.22rem;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 1.15rem;
+  text-align: center;
+}
