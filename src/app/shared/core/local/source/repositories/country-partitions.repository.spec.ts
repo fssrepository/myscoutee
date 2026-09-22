@@ -20,3 +20,21 @@ describe('Germany country eligibility', () => {
     expect(repository.resolvePartitionKeyByCoordinates({ latitude: 47.4979, longitude: 19.0402 })).toBe('country:hu');
   });
 });
+
+describe('Spain country eligibility', () => {
+  const repository = new LocalCountryPartitionsRepository();
+  it('lists Spain and resolves its country code', () => {
+    expect(repository.querySupportedCountries()).toContainEqual({ countryCode: 'ES', countryName: 'Spain' });
+    expect(repository.resolvePartitionKeyByCountryCode('es')).toBe('country:es');
+  });
+  it.each([
+    [40.4168, -3.7038], [41.3874, 2.1686], [37.3891, -5.9845],
+    [39.5696, 2.6502], [28.4636, -16.2518]
+  ])('accepts mainland and island coordinates %s, %s', (latitude, longitude) => {
+    expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBe('country:es');
+  });
+  it.each([[38.7223, -9.1393], [42.5063, 1.5218], [43.2965, 5.3698]])(
+    'rejects neighbouring-country coordinates %s, %s', (latitude, longitude) => {
+      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBeNull();
+    });
+});

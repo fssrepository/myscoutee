@@ -3,9 +3,11 @@ import { Injectable } from '@angular/core';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type { CountryPartition } from '../entity/country-partition.entity';
 import { GERMANY_PARTITION } from './country-de.generated';
+import { SPAIN_PARTITION } from './country-es.generated';
 
 const DEMO_COUNTRY_PARTITIONS: readonly CountryPartition[] = [
   GERMANY_PARTITION,
+  SPAIN_PARTITION,
   {
     partitionKey: 'country:hu',
     countryCode: 'HU',
