@@ -2379,10 +2379,11 @@ export class SideMenuComponent implements OnDestroy {
     if (this.openingPartnerInvite === key) return;
     this.openingPartnerInvite = key;
     try {
-      await this.usersService.claimPartnerInvite(userId, token);
+      const claim = await this.usersService.claimPartnerInvite(userId, token);
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['partnerInvite'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
+      if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);
       if (this.userProfileStore.activeUserId() === userId) this.activitiesStore.openActivities('events', 'all');
     } catch {

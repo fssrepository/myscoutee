@@ -263,7 +263,7 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string }> {
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string; invitationAvailable: boolean }> {
     // Partner invitation links refer to server-owned events even when browsing local demo data.
     return this.httpUsersService.claimPartnerInvite(userId, token);
   }
