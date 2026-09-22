@@ -1,3 +1,5 @@
+import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
+import { ImageGalleryStore } from '../../../shared/ui/context/stores/image-gallery.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -115,6 +117,7 @@ interface IdeaPostDraft {
   excerpt: string;
   contentHtml: string;
   imageUrls: string[];
+  imageDetails?: ImageDetailsMap;
   removedImageUrls: string[];
   featured: boolean;
   published: boolean;
@@ -174,6 +177,8 @@ export class AdminIdeaEditorPopupComponent {
   protected draft: IdeaPostDraft | null = null;
   protected viewerPostId = '';
   protected viewerPost: IdeaPostDto | null = null;
+  private readonly imageGalleryStore = inject(ImageGalleryStore);
+  private imageGalleryToken?: object;
   protected articlePanelLoading = false;
   protected articlePanelLoadingMode: IdeaPanelLoadingMode | null = null;
   protected ideaFilter: IdeaPostFilter = 'all';
@@ -440,6 +445,8 @@ export class AdminIdeaEditorPopupComponent {
       height: 'full',
       headerLayout: 'article',
       bodyLayout: 'flush',
+      headerActions: post.imageUrls.length ? [{ id: 'gallery', icon: 'fullscreen', ariaLabel: 'image.carousel.expand' }] : [],
+      onAction: () => this.openArticleGallery(post),
       onClose: event => this.closeViewer(event)
     };
   }
@@ -566,6 +573,7 @@ export class AdminIdeaEditorPopupComponent {
       excerpt: '',
       contentHtml: this.defaultDraftHtml(targetLang),
       imageUrls: [],
+      imageDetails: {},
       removedImageUrls: [],
       featured: false,
       published: false,
@@ -583,7 +591,15 @@ export class AdminIdeaEditorPopupComponent {
     this.viewerPost = targetPost;
   }
 
+  protected openArticleGallery(post: IdeaPostDto): void {
+    this.imageGalleryToken = this.imageGalleryStore.open({
+      images: post.imageUrls, imageDetails: post.imageDetails, slotCount: AdminIdeaEditorPopupComponent.IMAGE_LIMIT,
+      readOnly: true, title: 'image.carousel.images', uploadOwnerId: '', uploadEntityId: post.id
+    });
+  }
+
   protected closeViewer(event?: Event): void {
+    if (this.imageGalleryToken) this.imageGalleryStore.close(this.imageGalleryToken);
     event?.stopPropagation();
     if (this.articlePanelLoadingMode === 'viewer') {
       this.cancelArticlePanelLoad();
@@ -634,6 +650,7 @@ export class AdminIdeaEditorPopupComponent {
       contentHtml,
       imageUrl: imageUrls[0] || '',
       imageUrls,
+      imageDetails: normalizeImageDetails(activeDraft.imageDetails, imageUrls),
       featured: false,
       published: false,
       trashed: false,
@@ -772,6 +789,7 @@ export class AdminIdeaEditorPopupComponent {
         contentHtml: post.contentHtml,
         imageUrl: post.imageUrl,
         imageUrls: post.imageUrls,
+        imageDetails: post.imageDetails,
         featured: nextPublished ? post.featured : false,
         published: nextPublished,
         submittedAtIso: post.submittedAtIso
@@ -826,6 +844,7 @@ export class AdminIdeaEditorPopupComponent {
         contentHtml: post.contentHtml,
         imageUrl: post.imageUrl,
         imageUrls: post.imageUrls,
+        imageDetails: post.imageDetails,
         featured: nextFeatured,
         published: post.published,
         submittedAtIso: post.submittedAtIso
@@ -1459,6 +1478,7 @@ export class AdminIdeaEditorPopupComponent {
         0,
         AdminIdeaEditorPopupComponent.IMAGE_LIMIT
       ),
+      imageDetails: normalizeImageDetails(post.imageDetails, post.imageUrls),
       removedImageUrls: [],
       featured: false,
       published: false,
@@ -1475,6 +1495,7 @@ export class AdminIdeaEditorPopupComponent {
       excerpt: '',
       contentHtml: this.defaultDraftHtml(this.draftContentLang),
       imageUrls: [...source.imageUrls],
+      imageDetails: normalizeImageDetails(source.imageDetails, source.imageUrls),
       removedImageUrls: [],
       featured: false,
       published: false,
@@ -1501,6 +1522,7 @@ export class AdminIdeaEditorPopupComponent {
       contentHtml: draft.contentHtml,
       imageUrl: imageUrls[0] ?? '',
       imageUrls,
+      imageDetails: normalizeImageDetails(draft.imageDetails, imageUrls),
       removedImageUrls: [...draft.removedImageUrls],
       featured: false,
       published: false,

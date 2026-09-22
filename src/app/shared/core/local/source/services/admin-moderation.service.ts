@@ -125,7 +125,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     userId: string,
     admin: AdminUserDto | null | undefined,
     message: string,
-    status: SupportCaseStatus
+    status: SupportCaseStatus,
+    stableMessageId?: string
   ): Promise<AdminModerationUserPatch | null> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -135,7 +136,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!resolvedAdmin) {
       return null;
     }
-    return await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, status);
+    return await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, status, stableMessageId);
   }
 
   async sendFeedbackResolvedNotification(
@@ -196,13 +197,14 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     userId: string,
     admin: AdminUserDto,
     text: string,
-    status: SupportCaseStatus
+    status: SupportCaseStatus,
+    stableMessageId?: string
   ): Promise<AdminModerationUserPatch> {
     const reportedUser = this.supportSession.findUser(userId);
     const now = new Date();
     const nowIso = now.toISOString();
     const chatId = `c-support-admin-${userId}`;
-    const messageId = `m-admin-${Date.now()}`;
+    const messageId = stableMessageId || `m-admin-${Date.now()}`;
     const adminAvatar = {
       id: admin.id,
       initials: admin.initials,

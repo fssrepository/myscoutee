@@ -1,3 +1,10 @@
+import { ContentModerationStore } from '../../context/stores/content-moderation.store';
+import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
+import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
+import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
+import { ImageGalleryPopupComponent } from '../core/image-gallery/image-gallery-popup.component';
+import { ImageGalleryStore } from '../../context/stores/image-gallery.store';
+import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
 import {
@@ -175,6 +182,7 @@ type NavigatorMenuShortcutId =
   | 'contacts';
 
 type NavigatorAdminMenuShortcutId =
+  | 'adminModeration'
   | 'adminReports'
   | 'adminFeedback'
   | 'adminChat'
@@ -209,6 +217,8 @@ type NavigatorHeaderActionMenuItemId =
   selector: 'app-side-menu',
   standalone: true,
   imports: [
+    ImageGalleryPopupComponent,
+    PhotoFeedPopupComponent,
     CommonModule,
     MatIconModule,
     AppMenuComponent,
@@ -224,6 +234,14 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
+  protected readonly moderationStore = inject(ContentModerationStore);
+  private readonly moderationService = inject(ContentModerationService);
+  protected readonly followingStore = inject(FollowingStore);
+  protected openFollowedEvents(event: Event): void {
+    event.stopPropagation();
+    this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', followedOnly: true });
+  }
+
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
@@ -282,6 +300,8 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
+  protected readonly photoFeedStore = inject(PhotoFeedStore);
+  protected readonly imageGalleryStore = inject(ImageGalleryStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
   protected readonly stackedEventChatPopupInputs = computed(() => ({
@@ -692,6 +712,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
     return {
+      adminModeration: this.moderationStore.snapshot()?.pendingCount ?? 0,
       adminReports: reviewCounts.reports,
       adminFeedback: reviewCounts.feedback,
       adminChat: this.adminSupportCaseMenuCount(user.activities.chat),
@@ -885,6 +906,9 @@ export class SideMenuComponent implements OnDestroy {
           palette: 'orange',
           items: [
             {
+              id: 'adminModeration', label: 'moderation.title', icon: 'fact_check', palette: 'teal', ariaLabel: 'moderation.title', disabled
+            },
+            {
               id: 'adminReports',
               label: 'Reports',
               icon: 'report',
@@ -1007,6 +1031,14 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    effect(() => this.moderationService.setWorkerActive(!!this.sessionService.session()));
+    effect(() => {
+      const adminId = this.adminWorkspaceStore.dashboard()?.activeAdmin.id;
+      this.moderationStore.clear();
+      if (adminId) void this.moderationService.snapshot(adminId).then(snapshot => {
+        if (this.adminWorkspaceStore.dashboard()?.activeAdmin.id === adminId) this.moderationStore.apply(snapshot);
+      }).catch(() => {});
+    });
     effect(() => this.mingleStore.activate(this.userProfileStore.activeUserId()));
     effect(() => {
       if (this.sessionService.session() && this.userProfileStore.activeUserId()) {
@@ -1513,6 +1545,9 @@ export class SideMenuComponent implements OnDestroy {
 
   protected onAdminNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorAdminMenuShortcutId>): void {
     switch (event.id) {
+      case 'adminModeration':
+        this.adminMenuStore.openContentModeration();
+        return;
       case 'adminReports':
         this.openAdminReportsShortcut(event.sourceEvent);
         return;
@@ -2190,6 +2225,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!userId || signal?.aborted) {
       return;
     }
+    const followingRevision = this.followingStore.captureRevision();
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(userId);
     this.userProfileStore.setUserRealtimePollInFlight(true);
@@ -2203,6 +2239,8 @@ export class SideMenuComponent implements OnDestroy {
       ) {
         return;
       }
+      this.moderationStore.apply(snapshot.contentModeration);
+      this.followingStore.applySnapshot(snapshot.userId, snapshot.following, followingRevision);
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
       this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
@@ -2379,10 +2417,11 @@ export class SideMenuComponent implements OnDestroy {
     if (this.openingPartnerInvite === key) return;
     this.openingPartnerInvite = key;
     try {
-      await this.usersService.claimPartnerInvite(userId, token);
+      const claim = await this.usersService.claimPartnerInvite(userId, token);
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['partnerInvite'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
+      if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);
       if (this.userProfileStore.activeUserId() === userId) this.activitiesStore.openActivities('events', 'all');
     } catch {

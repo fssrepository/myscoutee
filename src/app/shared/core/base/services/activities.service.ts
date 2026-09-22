@@ -112,6 +112,7 @@ export class ActivitiesService extends BaseRouteModeService {
       userId: input?.userId?.trim() || this.resolveActiveUserId(),
       order: this.normalizeEventExploreOrder(input?.order),
       view: this.normalizeEventExploreView(input?.view),
+      followedOnly: input?.followedOnly === true,
       friendsOnly: input?.friendsOnly === true,
       openSpotsOnly: input?.openSpotsOnly === true,
       topic: this.normalizeEventExploreTopic(input?.topic ?? ''),

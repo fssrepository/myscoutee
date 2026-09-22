@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { IntegrationService } from '../../../shared/core';
@@ -37,12 +37,27 @@ type IntegrationActionContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class IntegrationSettingsPopupComponent {
+  @Input() adminMode = false;
   private readonly integrationService = inject(IntegrationService);
   private readonly i18nService = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
 
   protected readonly open = signal(false);
   protected readonly helpOpen = signal(false);
+  protected readonly revenueOpen = signal(false);
+  protected readonly revenue = computed(() => this.settings()?.affiliate?.revenue ?? {
+    currencies: {}, purchases: 0, eventBookings: 0
+  });
+  protected readonly revenueCurrencies = computed(() => Object.entries(this.revenue().currencies)
+    .map(([currency, totals]) => ({ currency, ...totals })));
+  protected revenuePopupModel(): PopupModel {
+    return {
+      title: 'affiliate.revenue.title', size: 'small', height: 'auto',
+      mobilePresentation: 'compact', backdropTone: 'dim', closeAriaLabel: 'close',
+      onClose: () => this.revenueOpen.set(false)
+    };
+  }
+
   protected readonly loading = signal(false);
   protected readonly mutating = signal(false);
   protected readonly settings = signal<IntegrationSettingsDto | null>(null);
@@ -51,12 +66,18 @@ export class IntegrationSettingsPopupComponent {
   protected readonly errorMessage = signal('');
   protected readonly copiedValue = signal('');
   protected readonly baseUrl = computed(() => this.integrationService.absoluteBaseUrl(this.settings()?.baseUrl ?? ''));
+  protected readonly affiliateUrl = computed(() =>
+    this.integrationService.absoluteBaseUrl(this.settings()?.affiliate?.url ?? ''));
+  protected readonly copyAffiliateActions = computed(() =>
+    this.copyMenu('copy-affiliate-url', this.affiliateUrl(), 'affiliate.copy').items);
   protected readonly canGenerate = computed(() => {
     const settings = this.settings();
     return !!settings && settings.tokens.length < settings.maxActiveTokens && !this.mutating();
   });
   protected readonly actionMenuModel: AppMenuModel = { actionSizing: 'content' };
-  protected readonly integrationDocumentationUrl = 'https://github.com/fssrepository/myscoutee-backend#documentation-pdfs';
+  protected get integrationDocumentationUrl() { return this.adminMode
+    ? 'https://github.com/fssrepository/myscoutee-client-admin#documentation'
+    : 'https://github.com/fssrepository/myscoutee-backend#documentation-pdfs'; }
   protected readonly generateTokenActions = computed<readonly AppMenuItem[]>(() => [{
     id: 'generate-integration-token',
     kind: 'action',
@@ -71,14 +92,20 @@ export class IntegrationSettingsPopupComponent {
 
   protected popupModel(): PopupModel {
     return {
-      title: 'integration.title',
-      subtitle: 'integration.subtitle',
-      ariaLabel: 'integration.aria',
+      title: this.adminMode ? 'admin.api.title' : 'affiliate.title',
+      subtitle: this.adminMode ? 'admin.api.subtitle' : 'affiliate.subtitle',
+      ariaLabel: this.adminMode ? 'admin.api.title' : 'affiliate.open',
       closeAriaLabel: 'close',
       size: 'small',
       height: 'auto',
       mobilePresentation: 'compact',
       backdropTone: 'dim',
+      headerControls: this.adminMode || !this.settings() ? [] : [{
+        kind: 'menu', id: 'affiliate-revenue', model: { density: 'compact' },
+        trigger: { id: 'affiliate-revenue', label: 'affiliate.revenue.button', icon: 'payments', collapsible: true,
+          ariaLabel: 'affiliate.revenue.open', palette: 'green', layout: 'pill', action: 'custom' }
+      }],
+      onMenuSelect: () => { if (!this.adminMode) this.revenueOpen.set(true); },
       headerActions: [{
         id: 'integration-help',
         icon: 'question_mark',
@@ -93,7 +120,7 @@ export class IntegrationSettingsPopupComponent {
   protected helpPopupModel(): PopupModel {
     return {
       title: 'integration.help.title',
-      subtitle: 'integration.title',
+      subtitle: this.adminMode ? 'admin.api.title' : 'affiliate.title',
       ariaLabel: 'integration.help.aria',
       closeAriaLabel: 'close',
       size: 'small',
@@ -117,6 +144,7 @@ export class IntegrationSettingsPopupComponent {
   protected closePopup(): void {
     this.open.set(false);
     this.helpOpen.set(false);
+    this.revenueOpen.set(false);
     this.revealedToken.set('');
     this.revealedTokenId.set('');
     this.copiedValue.set('');
@@ -151,7 +179,7 @@ export class IntegrationSettingsPopupComponent {
       onConfirm: async () => {
         this.mutating.set(true);
         try {
-          const created = await this.integrationService.createToken(name, expiresInDays);
+          const created = await this.integrationService.createToken(name, expiresInDays, this.adminMode);
           this.revealedToken.set(created.value);
           this.revealedTokenId.set(created.token.id);
           await this.loadSettings(false);
@@ -180,7 +208,7 @@ export class IntegrationSettingsPopupComponent {
       onConfirm: async () => {
         this.mutating.set(true);
         try {
-          await this.integrationService.revokeToken(token.id);
+          await this.integrationService.revokeToken(token.id, this.adminMode);
           await this.loadSettings(false);
         } finally {
           this.mutating.set(false);
@@ -250,7 +278,7 @@ export class IntegrationSettingsPopupComponent {
     }
     this.errorMessage.set('');
     try {
-      this.settings.set(await this.integrationService.loadSettings());
+      this.settings.set(await this.integrationService.loadSettings(this.adminMode));
     } catch {
       this.errorMessage.set('integration.load.failed');
     } finally {

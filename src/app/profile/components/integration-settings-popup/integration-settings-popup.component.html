@@ -6,6 +6,25 @@
       } @else if (errorMessage()) {
         <div class="integration-settings-state integration-settings-state--error">{{ errorMessage() | i18n }}</div>
       } @else if (settings(); as config) {
+        @if (adminMode) {
+          <a [href]="integrationDocumentationUrl" target="_blank" rel="noopener noreferrer">{{ 'admin.api.client.download' | i18n }}</a>
+        }
+        @if (!adminMode) {
+        <section class="integration-settings-section">
+          <div class="integration-section-heading">
+            <h3>{{ 'affiliate.personal.link' | i18n }}</h3>
+            <span class="integration-count-badge"
+              [attr.title]="'affiliate.registered' | i18n"
+              [attr.aria-label]="('affiliate.registered' | i18n) + ': ' + config.affiliate.registered"
+            >{{ config.affiliate.registered }}</span>
+          </div>
+          <div class="integration-token-secret">
+            <input readonly [value]="affiliateUrl()" [attr.aria-label]="'affiliate.personal.link' | i18n" />
+            <app-menu kind="inline" layout="row" [model]="actionMenuModel"
+              [items]="copyAffiliateActions()" (itemSelect)="onTokenAction($event)"></app-menu>
+          </div>
+        </section>
+        }
         <section class="integration-settings-section integration-endpoint">
           <div class="integration-endpoint-copy">
             <span class="integration-endpoint-label">{{ 'integration.base.url' | i18n }}</span>
@@ -18,7 +37,7 @@
             [items]="copyBaseUrlActions()"
             (itemSelect)="onTokenAction($event)"
           ></app-menu>
-          <small>{{ 'integration.batch.maximum' | i18n }} {{ config.maxBatchSize }}</small>
+          @if (!adminMode) { <small>{{ 'integration.batch.maximum' | i18n }} {{ config.maxBatchSize }}</small> }
         </section>
 
         <section class="integration-settings-section">
@@ -27,14 +46,20 @@
               <h3>{{ 'integration.client.keys' | i18n }}</h3>
               <small>{{ config.tokens.length }} / {{ config.maxActiveTokens }} {{ 'integration.token.active' | i18n }}</small>
             </div>
-            <app-menu
-              class="integration-generate-action"
-              kind="inline"
-              layout="row"
-              [model]="actionMenuModel"
-              [items]="generateTokenActions()"
-              (itemSelect)="onGenerateTokenAction($event)"
-            ></app-menu>
+            <div class="integration-section-actions">
+              @if (!adminMode) { <span class="integration-count-badge"
+                [attr.title]="'affiliate.clients.ratio' | i18n"
+                [attr.aria-label]="('affiliate.clients.ratio' | i18n) + ': ' + config.participants.registered + ' / ' + config.participants.imported"
+              >{{ config.participants.registered }} / {{ config.participants.imported }}</span> }
+              <app-menu
+                class="integration-generate-action"
+                kind="inline"
+                layout="row"
+                [model]="actionMenuModel"
+                [items]="generateTokenActions()"
+                (itemSelect)="onGenerateTokenAction($event)"
+              ></app-menu>
+            </div>
           </div>
 
           @if (config.tokens.length > 0) {
@@ -68,19 +93,23 @@
                     }
                     <small class="integration-token-meta">
                       <span>{{ 'integration.token.expires' | i18n }} {{ formatDate(token.expiresAt) }}</span>
-                      @if (token.claimedAddress) {
-                        <span>IP {{ token.claimedAddress }}</span>
-                      }
                     </small>
                   </div>
-                  <app-menu
-                    class="integration-token-action"
-                    kind="inline"
-                    layout="row"
-                    [model]="actionMenuModel"
-                    [items]="revokeTokenActions(token)"
-                    (itemSelect)="onTokenAction($event)"
-                  ></app-menu>
+                  <div class="integration-token-actions">
+                    @if (token.claimedAddress) {
+                      <span class="integration-count-badge integration-count-badge--ip"
+                        [attr.title]="('integration.token.ip' | i18n) + ' ' + token.claimedAddress"
+                      >{{ 'integration.token.ip' | i18n }} {{ token.claimedAddress }}</span>
+                    }
+                    <app-menu
+                      class="integration-token-action"
+                      kind="inline"
+                      layout="row"
+                      [model]="actionMenuModel"
+                      [items]="revokeTokenActions(token)"
+                      (itemSelect)="onTokenAction($event)"
+                    ></app-menu>
+                  </div>
                 </article>
               }
             </div>
@@ -91,12 +120,31 @@
       }
     </div>
   </app-popup>
+  @if (!adminMode && revenueOpen()) {
+    <app-popup [model]="revenuePopupModel()" [zIndex]="2510">
+      <section class="integration-settings-section affiliate-revenue-summary">
+        <p>{{ 'affiliate.revenue.description' | i18n }}</p>
+        <dl>
+          <div><dt>{{ 'affiliate.revenue.purchases' | i18n }}</dt><dd>{{ revenue().purchases }}</dd></div>
+          <div><dt>{{ 'affiliate.revenue.bookings' | i18n }}</dt><dd>{{ revenue().eventBookings }}</dd></div>
+          @for (row of revenueCurrencies(); track row.currency) {
+            <div><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ row.currency }} {{ row.gross | number:'1.0-2' }}</dd></div>
+            <div><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ row.currency }} {{ row.refunded | number:'1.0-2' }}</dd></div>
+            <div class="affiliate-revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ row.currency }} {{ row.net | number:'1.0-2' }}</dd></div>
+          } @empty { <div><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>0</dd></div> }
+        </dl>
+        <small>{{ 'affiliate.revenue.commission.pending' | i18n }}</small>
+      </section>
+    </app-popup>
+  }
   @if (helpOpen()) {
     <app-popup [model]="helpPopupModel()" [zIndex]="2510">
       <section class="integration-help-body">
         <mat-icon>question_mark</mat-icon>
         <div>
-          <p>{{ 'integration.help.description' | i18n }}</p>
+          @if (adminMode) { <p>{{ 'admin.api.help' | i18n }}</p> } @else {
+            <p>{{ 'affiliate.help' | i18n }}</p><p>{{ 'integration.help.description' | i18n }}</p>
+          }
           <a
             [href]="integrationDocumentationUrl"
             target="_blank"

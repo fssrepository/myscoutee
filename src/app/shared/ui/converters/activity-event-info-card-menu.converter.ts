@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import type {
   AppMenuItem,
   AppMenuPalette
@@ -24,6 +25,8 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   checkoutMenuAction?: 'continueBooking' | 'paymentSummary' | null;
   checkoutState?: EventCheckoutState | null;
   watched?: boolean;
+  sourceLink?: string | null;
+  organizerFollowed?: boolean;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -54,6 +57,9 @@ export class ActivityEventInfoCardMenuConverter {
     'notifyParticipants',
     'askOrganizer',
     'shareEvent',
+    'externalInfo',
+    'followOrganizer',
+    'unfollowOrganizer',
     'unpublish',
     'reportOrganizer',
     'accept',
@@ -117,7 +123,8 @@ export class ActivityEventInfoCardMenuConverter {
       id: actionId,
       label: config.label,
       icon: config.icon,
-      palette: this.actionPalette(actionId, config.tone),
+      palette: actionId === 'followOrganizer' || actionId === 'unfollowOrganizer'
+        ? 'cyan' : this.actionPalette(actionId, config.tone),
       surface: 'tinted',
       counter: isEventEntryAction && this.pendingActivityCount(subject) > 0
         ? { value: this.pendingActivityCount(subject), max: 99 }
@@ -178,6 +185,13 @@ export class ActivityEventInfoCardMenuConverter {
         return !this.isAdmin(subject, activeUserId);
       case 'shareEvent':
         return true;
+      case 'externalInfo':
+        return !!AppUtils.normalizeHttpUrl(subject.sourceLink);
+      case 'followOrganizer':
+      case 'unfollowOrganizer':
+        return !!activeUserId.trim() && !!subject.ownerUserId?.trim()
+          && subject.ownerUserId.trim() !== activeUserId.trim()
+          && (actionId === 'unfollowOrganizer') === (subject.organizerFollowed === true);
       case 'unpublish':
         return this.isAdmin(subject, activeUserId)
           && !this.isDraft(subject)

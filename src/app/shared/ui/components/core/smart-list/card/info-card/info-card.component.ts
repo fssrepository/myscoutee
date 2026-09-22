@@ -8,6 +8,7 @@ import {
   HostListener,
   Input,
   OnDestroy,
+  OnChanges,
   Output,
   inject
 } from '@angular/core';
@@ -61,7 +62,13 @@ import { CARD_MENU_ACTIONS } from '../card.types';
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class InfoCardComponent implements OnDestroy {
+export class InfoCardComponent implements OnDestroy, OnChanges {
+  protected imageIndex = 0;
+  private imageSequence = '';
+  ngOnChanges(): void {
+    const sequence = JSON.stringify([this.card?.id, this.card?.imageUrls]);
+    if (sequence !== this.imageSequence) { this.imageIndex = 0; this.imageSequence = sequence; }
+  }
   private static readonly MOBILE_BREAKPOINT_PX = 760;
   private static activeSharedMenuInstance: InfoCardComponent | null = null;
   private static activeDocumentMenuInstance: InfoCardComponent | null = null;
@@ -122,6 +129,9 @@ export class InfoCardComponent implements OnDestroy {
       return;
     }
     event?.stopPropagation();
+    if ((this.card.imageUrls?.length ?? 0) > 1) {
+      this.imageIndex = (this.imageIndex + 1) % this.card.imageUrls!.length;
+    }
     this.cardClick.emit({
       id: this.card.id,
       card: this.card
@@ -132,7 +142,7 @@ export class InfoCardComponent implements OnDestroy {
     if (this.isTitleMedia()) {
       return null;
     }
-    const imageUrl = AppUtils.mediaImageVariantUrl(this.card?.imageUrl, 'medium');
+    const imageUrl = AppUtils.mediaImageVariantUrl(this.card?.imageUrls?.[this.imageIndex] ?? this.card?.imageUrl, 'medium');
     return imageUrl || null;
   }
 

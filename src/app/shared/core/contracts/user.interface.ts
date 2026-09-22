@@ -242,6 +242,8 @@ export interface UserNotificationDeviceDto {
 }
 
 export interface UserRealtimeLongPollResponseDto {
+  contentModeration?: import('./content-moderation.interface').ContentModerationSnapshot | null;
+  following?: import('./following.interface').FollowingState;
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
   locationCoordinates?: LocationCoordinates | null;
@@ -353,6 +355,7 @@ export interface UserByIdQueryResponse {
 }
 
 export class ProfileExtDto {
+  affiliateCode?: string;
   profile = new UserDto();
   experienceEntries: ProfileContracts.ExperienceEntry[] = [];
 }

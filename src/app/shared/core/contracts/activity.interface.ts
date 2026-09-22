@@ -1,3 +1,4 @@
+import { ImageDetailsMap, normalizeImageDetails } from './image-gallery.interface';
 import * as AppConstants from '../common/constants';
 import type * as AssetContracts from './asset.interface';
 import type * as ChatContracts from './chat.interface';
@@ -216,6 +217,7 @@ export interface ActivitiesFeedFilters {
 }
 
 export interface EventExploreFilterPreferences {
+  followedOnly?: boolean;
   friendsOnly: boolean;
   openSpotsOnly: boolean;
   topic: string;
@@ -223,6 +225,7 @@ export interface EventExploreFilterPreferences {
 }
 
 export interface EventExploreFeedFilters {
+  followedOnly?: boolean;
   userId: string;
   order: EventExploreOrder;
   view: EventExploreView;
@@ -285,6 +288,8 @@ export interface ActivityEventRecord {
   endAtIso: string;
   distanceKm: number;
   imageUrl: string;
+  imageUrls?: string[];
+  imageDetails?: ImageDetailsMap;
   sourceLink: string;
   location: string;
   locationCoordinates: UserContracts.LocationCoordinates | null;
@@ -530,6 +535,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
 }
 
 export interface ActivityEventDTO {
+  sourceLink?: string;
   id: string;
   userId: string;
   type: ActivityEventRepositoryItemType;
@@ -676,6 +682,8 @@ export class ActivityEventDetailDTO {
   dateRange: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
   distanceKm = 0;
   imageUrl = '';
+  imageUrls?: string[];
+  imageDetails?: ImageDetailsMap;
   sourceLink = '';
   location = '';
   locationCoordinates: UserContracts.LocationCoordinates | null = null;
@@ -752,7 +760,11 @@ export class ActivityEventDetailDTO {
     this.startAtIso = this.dateRange.startAt;
     this.endAtIso = this.dateRange.endAt;
     this.distanceKm = Number.isFinite(update.distanceKm) ? Number(update.distanceKm) : this.distanceKm;
-    this.imageUrl = update.imageUrl ?? this.imageUrl;
+    if (update.imageUrls !== undefined || update.imageUrl !== undefined) {
+      this.imageUrls = ActivityEventDetailDTO.normalizeImageUrls(update.imageUrls, update.imageUrl ?? this.imageUrl);
+      this.imageUrl = this.imageUrls[0] ?? '';
+    }
+    this.imageDetails = normalizeImageDetails(update.imageDetails ?? this.imageDetails, this.imageUrls ?? []);
     this.sourceLink = update.sourceLink ?? this.sourceLink;
     this.location = update.location ?? this.location;
     this.locationCoordinates = update.locationCoordinates ? { ...update.locationCoordinates } : update.locationCoordinates === null ? null : this.locationCoordinates;
@@ -978,6 +990,12 @@ export class ActivityEventDetailDTO {
       ? { ...item, location: normalizedLocation }
       : { ...item });
     return this;
+  }
+
+  static normalizeImageUrls(images: readonly string[] | null | undefined, cover = ''): string[] {
+    const urls = [...new Set((images ?? (cover ? [cover] : [])).map(url => `${url ?? ''}`.trim()).filter(Boolean))];
+    if (urls.length > 5) throw new Error('An event gallery supports at most five images.');
+    return urls;
   }
 
   static normalizePolicies(items: readonly EventContracts.EventPolicyDTO[]): EventContracts.EventPolicyDTO[] {
@@ -1313,6 +1331,7 @@ export interface ActivityEventPageResultDTO {
 }
 
 export interface ActivityEventExploreQuery {
+  followedOnly?: boolean;
   userId: string;
   order: EventExploreOrder;
   view: EventExploreView;

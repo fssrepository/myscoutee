@@ -22,6 +22,7 @@ export class MingleStore implements OnDestroy {
   private readonly seenRevisionByEventId = signal<Record<string, number>>({});
   private requestSequence = 0;
   private readonly liveViewEventId = signal('');
+  private readonly runtimeViewEventId = signal('');
   private readonly now = signal(Date.now());
   private readonly clock = new UiTaskScheduler<string>({
     intervalMs: () => this.liveViewEventId() ? 1_000 : 0,
@@ -29,13 +30,16 @@ export class MingleStore implements OnDestroy {
     task: async () => { this.now.set(Date.now()); }
   });
 
-  readonly statusLabel = computed(() => {
+  readonly countdown = computed(() => {
     const state = this.stateRef();
     if (!state) return '';
     const seconds = state.status === 'PAUSED' ? state.remainingSeconds
       : Math.max(0, Math.ceil((Date.parse(state.phaseEndsAtIso ?? '') - this.now()) / 1_000)) || 0;
-    const time = `${Math.floor(seconds / 60)}:${`${seconds % 60}`.padStart(2, '0')}`;
-    return this.i18n.translateParams(`mingle.live.${state.status}`, { time });
+    return `${Math.floor(seconds / 60)}:${`${seconds % 60}`.padStart(2, '0')}`;
+  });
+  readonly statusLabel = computed(() => {
+    const state = this.stateRef();
+    return state ? this.i18n.translateParams(`mingle.live.${state.status}`, { time: this.countdown() }) : '';
   });
   readonly roundLabel = computed(() => {
     const state = this.stateRef();
@@ -108,6 +112,7 @@ export class MingleStore implements OnDestroy {
     this.stateRef.set(null);
     this.seenRevisionByEventId.set({});
     this.closeLiveView();
+    this.runtimeViewEventId.set('');
     this.scheduler.stop({ abort: true });
     this.requestSequence += 1;
     if (!normalizedUserId) {
@@ -117,6 +122,13 @@ export class MingleStore implements OnDestroy {
     }
     void this.refresh(normalizedUserId);
     this.scheduler.restart();
+  }
+
+  observeRuntimeEvent(eventId: string | null): void {
+    const next = eventId?.trim() ?? '';
+    if (next === this.runtimeViewEventId()) return;
+    this.runtimeViewEventId.set(next);
+    void this.refresh(this.activeUserIdRef());
   }
 
   async openCurrentTable(eventId?: string): Promise<boolean> {
@@ -182,7 +194,7 @@ export class MingleStore implements OnDestroy {
     const sequence = ++this.requestSequence;
     let state: MingleStateDTO | null;
     try {
-      state = await this.eventsService.queryMingleState(normalizedUserId, this.liveViewEventId() || undefined);
+      state = await this.eventsService.queryMingleState(normalizedUserId, this.liveViewEventId() || this.runtimeViewEventId() || undefined);
     } catch {
       return;
     }

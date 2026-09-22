@@ -1,3 +1,4 @@
+import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
 import type { ListQuery } from '../../../contracts/list.interface';
@@ -21,6 +22,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   private readonly artworkRepository = inject(LocalPaymentCardArtworkRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly deletedPaymentMethodIds = new Set<string>();
+  private readonly affiliateRepository = inject(LocalIntegrationRepository);
   private readonly refundRequestStatusByPaymentId = new Map<string, 'pending' | 'approved'>();
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
@@ -134,6 +136,8 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       throw new Error('There is no pending refund request for this payment.');
     }
     this.refundRequestStatusByPaymentId.set(paymentId, 'approved');
+    this.affiliateRepository.refundPayment(paymentId);
+    await this.affiliateRepository.flushToIndexedDb();
     await this.patchPendingRefundCounter(userId, -1);
     return this.localMutation(userId, this.withRefundState({ ...item, status: 'refunded' }));
   }

@@ -16,6 +16,13 @@
           </button>
         }
       </div>
+      @if (state.input; as input) {
+        <label class="dialog-input">
+          <span>{{ input.label | i18n }} <small>{{ input.maxLength - input.value.length }}</small></span>
+          <textarea rows="3" [attr.maxlength]="input.maxLength" [disabled]="state.busy"
+            [ngModel]="input.value" (ngModelChange)="dialogStore.updateInput($event)"></textarea>
+        </label>
+      }
       @if (state.message) {
         <p>{{ state.message | i18n }}</p>
       }

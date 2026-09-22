@@ -1,0 +1,25 @@
+@if (adminMenu.activePopup() === 'content-moderation') {
+  <app-popup [model]="model()" [zIndex]="2470">
+    @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
+    <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="rowTemplate" (menuItemSelect)="decide($event)"></app-smart-list>
+    <ng-template #rowTemplate let-item let-openMenu="openMenu">
+      <single-row [row]="row(item)" [clickable]="true" [useSharedMenu]="true"
+        (rowClick)="openItem(item)" (menuRequest)="openMenu($event)"></single-row>
+    </ng-template>
+  </app-popup>
+}
+@if (settingsDraft(); as draft) {
+  <app-popup [model]="settingsModel()" [zIndex]="2480">
+    <div class="moderation-settings">
+      <div class="moderation-settings__automatic">
+        <app-menu kind="inline" [items]="autoItems()" (itemSelect)="toggleAuto()"></app-menu>
+        <label>{{ 'moderation.delayMinutes' | i18n }}
+          <input type="number" min="0" max="43200" step="1" [ngModel]="draft.delayMinutes" (ngModelChange)="delay($event)" [disabled]="saving()">
+        </label>
+      </div>
+      <app-menu kind="select" [trigger]="{ label: 'moderation.categories', icon: 'category', palette: 'blue', layout: 'field' }"
+        [items]="categoryItems()" (itemSelect)="toggleCategory($event)"></app-menu>
+      @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
+    </div>
+  </app-popup>
+}

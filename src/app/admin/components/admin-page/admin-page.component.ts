@@ -73,6 +73,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
   private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
+  private readonly moderationPopupComponentRef = signal<Type<unknown> | null>(null);
+  protected readonly moderationPopupComponent = this.moderationPopupComponentRef.asReadonly();
   private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly feedbackPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -104,6 +106,9 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
     effect(() => {
       switch (this.adminMenu.activePopup()) {
+        case 'content-moderation':
+          void this.ensureModerationPopupLoaded();
+          break;
         case 'reports':
           void this.ensureReportsPopupLoaded();
           break;
@@ -329,6 +334,12 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private currentRouteIsAdminShell(): boolean {
     const route = this.router.url.split('?')[0];
     return route === '/admin' || route === '/admin/workspace';
+  }
+
+  private async ensureModerationPopupLoaded(): Promise<void> {
+    if (this.moderationPopupComponentRef()) return;
+    const module = await import('../content-moderation-popup/content-moderation-popup.component');
+    this.moderationPopupComponentRef.set(module.ContentModerationPopupComponent);
   }
 
   private async ensureReportsPopupLoaded(): Promise<void> {

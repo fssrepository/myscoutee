@@ -1,3 +1,4 @@
+import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { LocalMingleRepository } from '../repositories/mingle.repository';
 import { Injectable, inject } from '@angular/core';
 
@@ -121,6 +122,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly affiliateRepository = inject(LocalIntegrationRepository);
   private readonly mingleRepository = inject(LocalMingleRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly chatsRepository = inject(LocalChatsRepository);
@@ -870,6 +872,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
+    if (existingRecord && existingRecord.status !== 'DR') {
+      record.imageUrl = existingRecord.imageUrl;
+      record.imageUrls = [...(existingRecord.imageUrls ?? (existingRecord.imageUrl ? [existingRecord.imageUrl] : []))];
+      record.imageDetails = { ...(existingRecord.imageDetails ?? {}) };
+    }
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
     if (savedRecord) {
       this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
@@ -2922,6 +2929,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       paymentUrl: null
     };
     await this.saveCheckoutBasketRecord(this.withCheckoutBasketState(request, 'pay', session.id));
+    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount);
+    await this.affiliateRepository.flushToIndexedDb();
     return session;
   }
 
@@ -2942,6 +2951,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.saveCheckoutBasketRecord(
       this.withCheckoutBasketState(request, 'pay', session.id)
     );
+    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount);
+    await this.affiliateRepository.flushToIndexedDb();
     return session;
   }
 

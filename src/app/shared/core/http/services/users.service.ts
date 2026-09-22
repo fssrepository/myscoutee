@@ -248,6 +248,8 @@ export class HttpUsersService implements UserService {
     }
     try {
       type HttpLongPollResponse = {
+        contentModeration?: UserRealtimeLongPollResponseDto['contentModeration'];
+        following?: UserRealtimeLongPollResponseDto['following'];
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
         locationCoordinates?: UserRealtimeLongPollResponseDto['locationCoordinates'];
@@ -277,6 +279,8 @@ export class HttpUsersService implements UserService {
         userId: response.userId ?? normalizedUserId,
         profileStatus: response.profileStatus ?? null,
         locationCoordinates: response.locationCoordinates,
+        contentModeration: response.contentModeration,
+        following: response.following,
         notificationDevices: response.notificationDevices?.map(device => ({
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),
@@ -306,8 +310,8 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string }> {
-    const result = await this.http.post<{ eventId: string }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string; invitationAvailable: boolean }> {
+    const result = await this.http.post<{ eventId: string; invitationAvailable: boolean }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
     if (!result?.eventId) throw new Error('Invitation could not be claimed.');
     return result;
   }

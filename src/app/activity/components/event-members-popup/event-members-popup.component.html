@@ -1,15 +1,6 @@
 @if (isOpen) {
   <app-popup [model]="membersPopupModel()" [zIndex]="membersPopupZIndex()">
     <div class="activity-members-popup-shell">
-      @if (mingleLive) {
-        <section class="mingle-live-status" aria-live="polite">
-          <strong>{{ mingleStore.roundLabel() }}</strong>
-          <p>{{ mingleStore.statusLabel() }}</p>
-          @if (mingleStore.state()?.waitingForTable) {
-            <p>{{ 'mingle.live.waiting' | i18n }}</p>
-          }
-        </section>
-      }
       <div class="activity-members-popup-wrap">
         <app-smart-list
           #membersSmartList

@@ -1766,6 +1766,8 @@ export class HttpEventsService implements IEventsService {
         endAtIso: `${record.endAtIso ?? ''}`.trim(),
         distanceKm: Math.max(0, Number(record.distanceKm) || 0),
         imageUrl: `${record.imageUrl ?? ''}`.trim(),
+        imageUrls: record.imageUrls ? [...record.imageUrls] : undefined,
+        imageDetails: record.imageDetails,
         sourceLink: `${record.sourceLink ?? ''}`.trim(),
         location: `${record.location ?? ''}`.trim(),
         locationCoordinates: record.locationCoordinates ?? null,

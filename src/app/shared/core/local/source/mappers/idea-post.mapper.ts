@@ -1,3 +1,4 @@
+import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type {
   IdeaPostAdminCountsDto,
   IdeaPostAdminPageResultDto,
@@ -33,6 +34,7 @@ export class LocalIdeaPostsMapper {
       contentHtml,
       imageUrl: `${record.imageUrl ?? ''}`.trim() || imageUrls[0] || '',
       imageUrls,
+      imageDetails: normalizeImageDetails(record.imageDetails, imageUrls),
       featured: record.featured === true,
       published: record.published !== false,
       trashed: record.trashed === true,
@@ -93,6 +95,7 @@ export class LocalIdeaPostsMapper {
       contentHtml,
       imageUrl: `${request.imageUrl ?? ''}`.trim() || imageUrls[0] || '',
       imageUrls,
+      imageDetails: normalizeImageDetails(request.imageDetails, imageUrls),
       featured: request.featured === true,
       published: request.published !== false,
       trashed: false,

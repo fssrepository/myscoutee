@@ -60,19 +60,18 @@
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDetailDTO.visibility)">
           <div class="experience-form-grid">
             <div class="experience-description-field event-image-field">
-              <app-image-carousel
+              <app-image-gallery
                 class="event-image-carousel"
-                [slotCount]="1"
-                [compact]="true"
-                [autoSize]="true"
-                slotImageVariant="medium"
-                [ariaLabel]="'event.editor.image.aria' | i18n"
-                [disabled]="eventEditorStore.readOnly()"
+                [slotCount]="5"
+                [readOnly]="eventStructureReadOnly()"
+                title="event.editor.image.aria"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
                 [uploadEntityId]="eventImageUploadEntityId()"
-                [ngModel]="eventImageUrls()"
-                (ngModelChange)="onEventImageUrlsChange($event)"
-              ></app-image-carousel>
+                [images]="eventImageUrls()"
+                [imageDetails]="eventDetailDTO.imageDetails ?? {}"
+                (imageDetailsChange)="onEventImageDetailsChange($event)"
+                (imagesChange)="onEventImageUrlsChange($event)"
+              ></app-image-gallery>
             </div>
             <label class="experience-title-field">
               <span>{{ 'name' | i18n }} <span class="required-star">*</span></span>

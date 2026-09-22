@@ -1,3 +1,4 @@
+import { OperatorEmailConfigurationComponent } from '../operator-email-configuration/operator-email-configuration.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -120,6 +121,7 @@ interface OperatorPopupActionContext {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    OperatorEmailConfigurationComponent,
     AppMenuComponent,
     FormFlowComponent,
     FormsModule,

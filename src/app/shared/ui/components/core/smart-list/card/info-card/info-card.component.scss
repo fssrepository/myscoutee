@@ -1514,3 +1514,9 @@ button.asset-occupancy-badge:focus-visible {
     line-height: 18px;
   }
 }
+
+.ui-info-card__image-progress {
+  position: absolute; inset: 0.2rem 0.3rem auto; display: flex; gap: 0.2rem; z-index: 2; pointer-events: none;
+  span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.45); }
+  .is-current { background: #fff; box-shadow: 0 0 2px #26354c; }
+}

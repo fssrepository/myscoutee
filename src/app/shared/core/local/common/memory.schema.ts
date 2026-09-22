@@ -1,3 +1,5 @@
+import type { ContentModerationMemorySchema } from '../source/entity/content-moderation.entity';
+import type { PhotoFeedMemorySchema } from '../source/entity/photo-feed.entity';
 import type { MingleMemorySchema } from '../source/entity/mingle.entity';
 import type {
   ActivityMembersMemorySchema,
@@ -30,6 +32,8 @@ export type AppMemorySchema = UsersMemorySchema
   & EventTicketsMemorySchema
   & HelpCenterMemorySchema
   & IdeaPostsMemorySchema
+  & PhotoFeedMemorySchema
+  & ContentModerationMemorySchema
   & ContactsMemorySchema
   & ProfileExperiencesMemorySchema
   & ShareTokensMemorySchema

@@ -111,7 +111,7 @@
         }
         <div class="ui-popup__header-actions" [class.ui-popup__header-actions--empty]="!hasHeaderBadge && !hasHeaderActions && !showClose">
           @if (popupModel.headerBadge) {
-            <span class="ui-popup__badge" [attr.data-i18n-ignore]="popupModel.translateHeaderBadge === false ? '' : null">
+            <span class="ui-popup__badge" [attr.data-tone]="popupModel.headerBadgeTone ?? 'neutral'" [attr.data-i18n-ignore]="popupModel.translateHeaderBadge === false ? '' : null">
               {{ popupModel.translateHeaderBadge === false ? popupModel.headerBadge : (popupModel.headerBadge | i18n) }}
             </span>
           }

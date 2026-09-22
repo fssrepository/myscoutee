@@ -207,6 +207,33 @@ export class AdminNotificationsSeedBuilder {
           startTime: '00:00'
         }),
         this.defaultNotificationRule({
+          ruleKey: 'content-auto-approve',
+          label: 'admin.jobs.rule.content.autoApprove',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.content.autoApprove.description',
+          actionKey: 'content.auto-approve',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 255,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1,
+          startTime: '00:00'
+        }),
+        this.defaultNotificationRule({
+          ruleKey: 'account-deletion-warning',
+          label: 'admin.jobs.rule.account.deletion.warning',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.account.deletion.warning.description',
+          actionKey: 'users.account-deletion-warning',
+          triggerKind: 'scheduled_process',
+          enabled: true, manualRunEnabled: false, adminManageable: true, priority: 258,
+          pushEnabled: false, emailEnabled: true, timingMode: 'interval', intervalMinutes: 60, startTime: '00:00'
+        }),
+        this.defaultNotificationRule({
           ruleKey: 'account-purge',
           label: 'admin.jobs.rule.account.purge',
           category: 'admin.jobs.category.scheduled',

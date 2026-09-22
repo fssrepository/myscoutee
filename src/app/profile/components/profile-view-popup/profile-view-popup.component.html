@@ -1,8 +1,8 @@
 @if (target(); as currentTarget) {
   <app-popup [model]="profileViewPopupModel()" [zIndex]="16000">
-      <div class="profile-view-body">
+      <div #profileScroll class="profile-view-body">
         @if (user(); as profile) {
-          <div class="profile-view-top-layout">
+          
             <section class="profile-view-card-stage">
               <article
                 class="profile-view-card"
@@ -39,10 +39,13 @@
                     <small>{{ profile.headline || profile.statusText }}</small>
                   }
                 </div>
+                <app-menu class="profile-view-details-link" kind="inline"
+                  [items]="[{ id: 'profile-details', icon: 'keyboard_arrow_down', palette: 'blue', ariaLabel: 'profile.view.showDetails' }]"
+                  (itemSelect)="scrollToDetails(profileScroll, profileDetails)"></app-menu>
               </article>
             </section>
 
-            <section class="profile-view-section profile-view-section-basics">
+            <section #profileDetails tabindex="-1" class="profile-view-section profile-view-section-basics">
               <header class="profile-view-section-header">
                 <h3>Basics</h3>
               </header>
@@ -64,7 +67,6 @@
                 }
               </div>
             </section>
-          </div>
 
           <section class="profile-view-section profile-view-section-about">
             <header class="profile-view-section-header">

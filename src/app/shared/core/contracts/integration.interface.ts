@@ -9,11 +9,19 @@ export interface IntegrationTokenDto {
   lastUsedAt: string | null;
 }
 
+export interface AffiliateRevenueDto {
+  currencies: Record<string, { gross: number; refunded: number; net: number }>;
+  purchases: number;
+  eventBookings: number;
+}
+
 export interface IntegrationSettingsDto {
   baseUrl: string;
   maxActiveTokens: number;
   maxBatchSize: number;
   tokens: IntegrationTokenDto[];
+  affiliate: { url: string; registered: number; revenue?: AffiliateRevenueDto };
+  participants: { registered: number; imported: number };
 }
 
 export interface IntegrationTokenCreatedDto {

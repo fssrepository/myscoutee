@@ -91,7 +91,13 @@ export interface UserEventFeedbackCountersRecord {
 }
 
 export interface UserRecord {
+  following?: import('../../../contracts/following.interface').FollowingState;
   integrationTokens?: LocalIntegrationTokenRecord[];
+  affiliateCode?: string;
+  affiliateRegistrations?: { userId: string; registeredAtIso: string }[];
+  affiliateReferrerUserId?: string;
+  affiliateRevenue?: import('../../../contracts/integration.interface').AffiliateRevenueDto;
+  affiliatePayments?: Record<string, { ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean }>;
   devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;

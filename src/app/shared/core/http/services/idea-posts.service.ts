@@ -1,3 +1,4 @@
+import { normalizeImageDetails } from '../../contracts/image-gallery.interface';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
@@ -172,6 +173,7 @@ export class HttpIdeaPostsService {
       contentHtml,
       imageUrl,
       imageUrls,
+      imageDetails: normalizeImageDetails(value?.imageDetails, imageUrls),
       featured: value?.featured === true,
       published: value?.published !== false,
       trashed: value?.trashed === true,

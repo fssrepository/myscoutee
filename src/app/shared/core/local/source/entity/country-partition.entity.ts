@@ -10,4 +10,5 @@ export interface CountryPartition {
   countryCode: string;
   countryName: string;
   bounds: CountryPartitionBounds;
+  geometry?: { type: 'MultiPolygon'; coordinates: number[][][][] };
 }

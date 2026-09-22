@@ -25,6 +25,23 @@ describe('LocalChatsRepository chat pages', () => {
     TestBed.resetTestingModule();
   });
 
+  it('keeps moderation support-message retries from incrementing unread counters twice', () => {
+    const ownerId = 'moderation-retry-owner';
+    seedUser(user(ownerId));
+    const thread = chat('moderation-retry-chat', ownerId, 'appSupport', '2026-09-22T10:00:00Z');
+    const message: ContractTypes.ChatMessageDto = {
+      id: 'content-moderation:one-command', sender: 'Admin',
+      senderAvatar: { id: 'admin', initials: 'AD', gender: 'system' },
+      text: 'Please review this photo.', time: '10:00', sentAtIso: thread.dateIso,
+      mine: false, readBy: []
+    };
+    const before = memoryDb.read()[USERS_TABLE_NAME].byId[ownerId].activities.chats ?? 0;
+    repository.upsertSupportChatMessage(thread, message, true);
+    repository.upsertSupportChatMessage(thread, message, true);
+    expect(repository.queryChatItemById(ownerId, thread.id)?.unread).toBe(1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId[ownerId].activities.chats).toBe(before + 1);
+  });
+
   it('pages all IndexedDB chat categories by date', () => {
     seedChats([
       chat('chat-event', 'user-1', 'mainEvent', '2026-05-01T10:00:00Z'),

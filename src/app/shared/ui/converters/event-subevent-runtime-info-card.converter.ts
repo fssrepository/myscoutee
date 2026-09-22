@@ -1,11 +1,11 @@
 import { AppUtils } from '../../app-utils';
-import type { EventMode, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
+import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
 import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 import { EventSubeventRuntimeMenuConverter } from './event-subevent-runtime-menu.converter';
 
 export interface EventSubeventRuntimeInfoCardConverterOptions {
-  event?: { location?: string | null; mode?: EventMode | null } | null;
+  event?: { id?: string | null; location?: string | null; mode?: EventMode | null } | null;
   mode?: EventMode | null;
   cardId?: string | null;
   slotTimeframe?: string | null;
@@ -13,6 +13,7 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
   nowMs?: number;
+  mingleState?: Pick<MingleStateDTO, 'eventId' | 'status' | 'roundNumber'> | null;
   hasMenuOptions?: boolean;
   menuBadgeCount?: number | null;
   menuTitle?: string | null;
@@ -102,7 +103,7 @@ export class EventSubeventRuntimeInfoCardConverter
         icon: 'location_on',
         interactive: false
       },
-      mediaEnd: isTournament ? stageStatus : isMingle ? null : isMainEvent ? {
+      mediaEnd: isTournament ? stageStatus : isMingle ? this.mingleStatusBadge(item, options) : isMainEvent ? {
         variant: 'badge',
         tone: 'public',
         label: 'Event',
@@ -246,6 +247,32 @@ export class EventSubeventRuntimeInfoCardConverter
 
   private static isMainEventRuntime(item: SubEventDTO | null | undefined): boolean {
     return `${item?.runtimeKind ?? ''}`.trim().toUpperCase() === 'MAIN_EVENT';
+  }
+
+  private static mingleStatusBadge(
+    item: SubEventDTO,
+    options: EventSubeventRuntimeInfoCardConverterOptions
+  ): InfoCardOverlayAction {
+    const eventId = options.event?.id ?? item.eventId;
+    const state = options.mingleState?.eventId === eventId ? options.mingleState : null;
+    const round = Math.max(1, Math.trunc(Number(options.sequenceNumber) || 1));
+    const mainEvent = this.isMainEventRuntime(item);
+    let label = 'stage.status.scheduled';
+    let icon = 'schedule';
+    let tone: InfoCardOverlayTone = 'stage-scheduled';
+    if (state && (mainEvent || round <= state.roundNumber)) {
+      if ((!mainEvent && round < state.roundNumber) || state.status === 'COMPLETED'
+        || (!mainEvent && state.status === 'BREAK')) {
+        label = 'completed'; icon = 'check_circle'; tone = 'stage-finalized';
+      } else if (state.status === 'ROUND') {
+        label = 'stage.status.started'; icon = 'play_circle'; tone = 'stage-active';
+      } else if (state.status === 'PAUSED') {
+        label = 'stage.status.suspended'; icon = 'pause_circle'; tone = 'stage-suspended';
+      } else if (state.status === 'BREAK') {
+        label = 'mingle.status.break'; icon = 'hourglass_empty'; tone = 'stage-suspended';
+      }
+    }
+    return { variant: 'badge', label, icon, tone, interactive: false };
   }
 
   private static stageStatusBadge(
