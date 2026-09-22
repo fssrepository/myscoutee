@@ -58,13 +58,13 @@ export class EventExploreFilterPopupComponent implements OnChanges {
   }
 
   protected followedToggle(): readonly AppMenuItem[] {
-    return [{ id: 'followedOnly', label: 'event.following.only', icon: 'rss_feed', palette: 'violet',
+    return [{ id: 'followedOnly', label: 'event.following.only', icon: 'rss_feed', palette: 'cyan',
       kind: 'toggle', layout: 'pill', showToggleIndicator: true, closeOnSelect: false,
       disabled: this.saving, checked: this.draft.followedOnly === true }];
   }
 
   protected memberItems(): readonly AppMenuItem[] {
-    return [{ id: 'following-members', icon: 'format_list_bulleted', palette: 'violet',
+    return [{ id: 'following-members', icon: 'format_list_bulleted', palette: 'cyan',
       ariaLabel: 'event.following.members', counter: { value: this.followedMemberCount, max: 999 } }];
   }
 

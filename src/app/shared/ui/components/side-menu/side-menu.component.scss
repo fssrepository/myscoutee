@@ -364,6 +364,7 @@ app-event-supply-contributions-popup {
 }
 
 .navigator-context-actions {
+  left: 0.75rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -371,7 +372,15 @@ app-event-supply-contributions-popup {
 .navigator-menu-header-card {
   --app-header-card-padding: 0.66rem 0.66rem 3.2rem;
 }
-.navigator-followed-action { position: relative; }
+.navigator-install-action .navigator-followed-action {
+  margin-left: auto;
+  position: relative;
+  border-color: rgba(45, 142, 154, 0.32);
+  background: linear-gradient(180deg, #eefdff 0%, #d9f4f9 100%);
+  color: #1f7280;
+
+  mat-icon { color: #2f8e9d; }
+}
 .navigator-followed-count {
   position: absolute;
   top: -0.4rem;
