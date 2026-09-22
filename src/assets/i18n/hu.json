@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.22.hu.144",
+  "version": "2026.09.22.hu.146",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3675,6 +3675,21 @@
     "account.deletion.warning.body": "Kedves {{name}}!\n\nTörölt fiókod végleges törlésének időpontja: {{purgeAt}}. Ez az öt nappal korábbi emlékeztető. Ha meg szeretnéd tartani fiókodat, állítsd vissza az alkalmazásban a megadott időpont előtt.",
     "account.deletion.warning.started": "A fióktörlési figyelmeztetés Job elindult.",
     "account.deletion.warning.completed": "A fióktörlési figyelmeztetések feldolgozása befejeződött.",
-    "account.deletion.warning.failed": "Egyes fióktörlési figyelmeztetések kézbesítése sikertelen."
+    "account.deletion.warning.failed": "Egyes fióktörlési figyelmeztetések kézbesítése sikertelen.",
+    "admin.api.title": "API",
+    "admin.api.subtitle": "Privát adminfigyelő kliens.",
+    "admin.api.help": "Az önálló adminkliensben add meg ezt az URL-t és egy API-kulcsot. Összesített statisztikát és jelzéseket mutat; az ügyek intézéséhez nyisd meg az alkalmazást.",
+    "admin.api.denied": "Adminisztrátori fiók szükséges.",
+    "admin.api.client.download": "Adminkliens · telepítő és dokumentáció",
+    "affiliate.revenue.title": "Meghívásokból származó forgalom",
+    "affiliate.revenue.open": "Meghívások forgalmi összesítőjének megnyitása",
+    "affiliate.revenue.description": "Az általad meghívottak vásárlásai. Az összegek pénznemenként külön szerepelnek.",
+    "affiliate.revenue.purchases": "Fizetett vásárlások",
+    "affiliate.revenue.bookings": "Fizetett eseményfoglalások",
+    "affiliate.revenue.gross": "Vásárlások összege",
+    "affiliate.revenue.refunds": "Visszatérítések",
+    "affiliate.revenue.net": "Visszatérítések után",
+    "affiliate.revenue.commission.pending": "Százalékos affiliate jutalékot tervezünk. A mértéke és a jogosultsági szabályai még nincsenek meghatározva; ezek forgalmi összegek, nem megkeresett jutalék.",
+    "affiliate.revenue.button": "Forgalom"
   }
 }

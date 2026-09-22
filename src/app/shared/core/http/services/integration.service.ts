@@ -15,20 +15,20 @@ export class HttpIntegrationService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  loadSettings(): Promise<IntegrationSettingsDto> {
-    return firstValueFrom(this.http.get<IntegrationSettingsDto>(`${this.apiBaseUrl}/integrations/settings`));
+  loadSettings(admin = false): Promise<IntegrationSettingsDto> {
+    return firstValueFrom(this.http.get<IntegrationSettingsDto>(`${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/settings`));
   }
 
-  createToken(name: string, expiresInDays: number): Promise<IntegrationTokenCreatedDto> {
-    return firstValueFrom(this.http.post<IntegrationTokenCreatedDto>(`${this.apiBaseUrl}/integrations/tokens`, {
+  createToken(name: string, expiresInDays: number, admin = false): Promise<IntegrationTokenCreatedDto> {
+    return firstValueFrom(this.http.post<IntegrationTokenCreatedDto>(`${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/tokens`, {
       name: name.trim(),
       expiresInDays
     }));
   }
 
-  revokeToken(tokenId: string): Promise<void> {
+  revokeToken(tokenId: string, admin = false): Promise<void> {
     return firstValueFrom(this.http.delete<void>(
-      `${this.apiBaseUrl}/integrations/tokens/${encodeURIComponent(tokenId.trim())}`
+      `${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/tokens/${encodeURIComponent(tokenId.trim())}`
     ));
   }
 

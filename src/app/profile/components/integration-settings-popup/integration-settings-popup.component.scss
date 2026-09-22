@@ -255,3 +255,10 @@
     gap: 0.16rem;
   }
 }
+
+.affiliate-revenue-summary {
+  p, dl { margin: 0; }
+  dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0; }
+  dd { margin: 0; font-weight: 700; text-align: right; }
+  .affiliate-revenue-net { color: #16815c; }
+}

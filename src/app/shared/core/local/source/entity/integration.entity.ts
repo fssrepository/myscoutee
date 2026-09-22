@@ -2,4 +2,5 @@ import type { IntegrationTokenDto } from '../../../contracts/integration.interfa
 
 export interface LocalIntegrationTokenRecord extends IntegrationTokenDto {
   value: string;
+  scope?: 'integration' | 'admin-client';
 }

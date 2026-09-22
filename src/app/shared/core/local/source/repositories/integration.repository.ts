@@ -22,9 +22,10 @@ export class LocalIntegrationRepository {
     return this.memoryDb.flushToIndexedDb();
   }
 
-  settings(userId: string, baseUrl: string): IntegrationSettingsDto {
+  settings(userId: string, baseUrl: string, admin = false): IntegrationSettingsDto {
     let user = this.requireUser(userId);
-    if (!user.affiliateCode) {
+    if (admin && !user.admin) throw new Error('admin.api.denied');
+    if (!admin && !user.affiliateCode) {
       const code = globalThis.crypto.randomUUID();
       this.memoryDb.write(state => ({ ...state, [USERS_TABLE_NAME]: {
         ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId,
@@ -35,11 +36,11 @@ export class LocalIntegrationRepository {
     }
     return {
       baseUrl,
-      affiliate: { url: `/entry?affiliate=${user.affiliateCode}`, registered: user.affiliateRegistrations?.length ?? 0 },
+      affiliate: { url: `/entry?affiliate=${user.affiliateCode}`, registered: user.affiliateRegistrations?.length ?? 0, revenue: user.affiliateRevenue ?? { currencies: {}, purchases: 0, eventBookings: 0 } },
       participants: { registered: 0, imported: 0 },
       maxActiveTokens: LocalIntegrationRepository.MAX_ACTIVE_TOKENS,
       maxBatchSize: LocalIntegrationRepository.MAX_BATCH_SIZE,
-      tokens: this.activeTokens(this.requireUser(userId)).map(({ value: _value, ...token }) => token)
+      tokens: this.activeTokens(this.requireUser(userId), admin).map(({ value: _value, ...token }) => token)
     };
   }
 
@@ -59,13 +60,54 @@ export class LocalIntegrationRepository {
     });
   }
 
+  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true): void {
+    currency = currency.trim().toUpperCase();
+    if (!paymentId || !/^[A-Z]{3}$/.test(currency) || !Number.isFinite(amount) || !Number.isFinite(refunded)) return;
+    const grossMinor = Math.max(0, Math.round(amount * 100));
+    const refundMinor = Math.max(0, Math.min(grossMinor, Math.round(refunded * 100)));
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const payer = table.byId[userId];
+      const previous = payer?.affiliatePayments?.[paymentId];
+      const ownerId = previous?.ownerId ?? payer?.affiliateReferrerUserId;
+      const owner = ownerId ? table.byId[ownerId] : null;
+      if (!payer || !owner || owner.id === userId || (previous && previous.currency !== currency)) return state;
+      const revenue = owner.affiliateRevenue ?? { currencies: {}, purchases: 0, eventBookings: 0 };
+      const totals = revenue.currencies[currency] ?? { gross: 0, refunded: 0, net: 0 };
+      const gross = (Math.round(totals.gross * 100) + grossMinor - Math.round((previous?.gross ?? 0) * 100)) / 100;
+      const refunds = (Math.round(totals.refunded * 100) + refundMinor - Math.round((previous?.refunded ?? 0) * 100)) / 100;
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+        [userId]: { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: {
+          ownerId: owner.id, currency, gross: grossMinor / 100, refunded: refundMinor / 100, eventBooking
+        } } },
+        [owner.id]: { ...owner, affiliateRevenue: {
+          currencies: { ...revenue.currencies, [currency]: { gross, refunded: refunds, net: Math.round((gross - refunds) * 100) / 100 } },
+          purchases: revenue.purchases + Number(grossMinor > 0) - Number((previous?.gross ?? 0) > 0),
+          eventBookings: revenue.eventBookings + Number(grossMinor > 0 && eventBooking) - Number((previous?.gross ?? 0) > 0 && previous?.eventBooking)
+        } }
+      } } };
+    });
+  }
+
+  refundPayment(paymentId: string): void {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    for (const id of users.ids) {
+      const payment = users.byId[id].affiliatePayments?.[paymentId];
+      if (payment) {
+        this.recordPayment(id, paymentId, payment.currency, payment.gross, payment.gross, payment.eventBooking);
+        return;
+      }
+    }
+  }
+
   createToken(
     userId: string,
     name: string,
-    expiresInDays: number
+    expiresInDays: number, admin = false
   ): IntegrationTokenCreatedDto {
     const user = this.requireUser(userId);
-    const activeTokens = this.activeTokens(user);
+    if (admin && !user.admin) throw new Error('admin.api.denied');
+    const activeTokens = this.activeTokens(user, admin);
     if (activeTokens.length >= LocalIntegrationRepository.MAX_ACTIVE_TOKENS) {
       throw new Error('integration.token.limit.reached');
     }
@@ -78,7 +120,7 @@ export class LocalIntegrationRepository {
     const id = this.uuid();
     const value = `msc_${id.replaceAll('-', '')}_${this.uuid().replaceAll('-', '')}`;
     const record: LocalIntegrationTokenRecord = {
-      id,
+      id, scope: admin ? 'admin-client' : 'integration',
       name: normalizedName,
       prefix: value.slice(0, 12),
       value,
@@ -88,24 +130,25 @@ export class LocalIntegrationRepository {
       claimedAddress: null,
       lastUsedAt: null
     };
-    this.writeTokens(user.id, [...activeTokens, record]);
+    this.writeTokens(user.id, [...(user.integrationTokens ?? []), record]);
     const { value: _storedValue, ...token } = record;
     return { token, value };
   }
 
-  revokeToken(userId: string, tokenId: string): void {
+  revokeToken(userId: string, tokenId: string, admin = false): void {
     const user = this.requireUser(userId);
+    if (admin && !user.admin) throw new Error('admin.api.denied');
     const normalizedId = tokenId.trim();
     this.writeTokens(
       user.id,
-      this.activeTokens(user).filter(token => token.id !== normalizedId)
+      (user.integrationTokens ?? []).filter(token => token.id !== normalizedId || (token.scope ?? 'integration') !== (admin ? 'admin-client' : 'integration'))
     );
   }
 
-  private activeTokens(user: UserRecord): LocalIntegrationTokenRecord[] {
+  private activeTokens(user: UserRecord, admin = false): LocalIntegrationTokenRecord[] {
     const now = Date.now();
     return (user.integrationTokens ?? [])
-      .filter(token => Date.parse(token.expiresAt) > now)
+      .filter(token => Date.parse(token.expiresAt) > now && (token.scope ?? 'integration') === (admin ? 'admin-client' : 'integration'))
       .map(token => ({ ...token }));
   }
 

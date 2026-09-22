@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.22.en.144",
+  "version": "2026.09.22.en.146",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3675,6 +3675,21 @@
     "account.deletion.warning.body": "Hello {{name}},\n\nYour deleted account is scheduled for permanent deletion on {{purgeAt}}. This is your five-day reminder. If you want to keep your account, restore it in the application before that date.",
     "account.deletion.warning.started": "Account deletion warning Job started.",
     "account.deletion.warning.completed": "Account deletion warnings processed.",
-    "account.deletion.warning.failed": "Some account deletion warnings could not be delivered."
+    "account.deletion.warning.failed": "Some account deletion warnings could not be delivered.",
+    "admin.api.title": "API",
+    "admin.api.subtitle": "Private admin monitoring client.",
+    "admin.api.help": "Connect the standalone admin client with this URL and an API key. It shows aggregate statistics and alerts; open the application to handle cases.",
+    "admin.api.denied": "An administrator account is required.",
+    "admin.api.client.download": "Admin client · installer and documentation",
+    "affiliate.revenue.title": "Referral revenue",
+    "affiliate.revenue.open": "Open referral revenue summary",
+    "affiliate.revenue.description": "Purchases made by people you invited. Amounts are kept separately by currency.",
+    "affiliate.revenue.purchases": "Paid purchases",
+    "affiliate.revenue.bookings": "Paid event bookings",
+    "affiliate.revenue.gross": "Purchases total",
+    "affiliate.revenue.refunds": "Refunded",
+    "affiliate.revenue.net": "After refunds",
+    "affiliate.revenue.commission.pending": "A percentage-based affiliate commission is planned. Its rate and eligibility rules have not been set; these amounts are referral revenue, not earned commission.",
+    "affiliate.revenue.button": "Revenue"
   }
 }

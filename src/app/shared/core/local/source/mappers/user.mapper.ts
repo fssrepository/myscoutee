@@ -5,7 +5,7 @@ import type { UserRecord } from '../entity/user.entity';
 
 export class LocalUsersMapper {
   static toDto(record: UserRecord): UserDto {
-    const { devices: _devices, affiliateCode: _code, affiliateRegistrations: _registrations, affiliateReferrerUserId: _referrer, ...profile } = record;
+    const { devices: _devices, affiliateCode: _code, affiliateRegistrations: _registrations, affiliateReferrerUserId: _referrer, affiliateRevenue: _revenue, affiliatePayments: _payments, ...profile } = record;
     return this.cloneUser({ ...profile, notificationDevices: (_devices ?? []).map(device => ({
       deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
     })) });
@@ -52,6 +52,8 @@ export class LocalUsersMapper {
   static cloneRecord(record: UserRecord): UserRecord {
     return { ...this.toRecord(this.toDto(record)), affiliateCode: record.affiliateCode,
       affiliateReferrerUserId: record.affiliateReferrerUserId,
+      affiliateRevenue: record.affiliateRevenue ? structuredClone(record.affiliateRevenue) : undefined,
+      affiliatePayments: record.affiliatePayments ? structuredClone(record.affiliatePayments) : undefined,
       affiliateRegistrations: record.affiliateRegistrations?.map(item => ({ ...item })) };
   }
 

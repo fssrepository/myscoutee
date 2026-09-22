@@ -17,33 +17,33 @@ export class LocalIntegrationService extends LocalRouteDelayService {
   private readonly operatorRepository = inject(LocalOperatorRegistryRepository);
   private readonly session = inject(SessionService);
 
-  async loadSettings(): Promise<IntegrationSettingsDto> {
+  async loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
-    const settings = this.repository.settings(this.requireUserId(), await this.publicBaseUrl());
+    const settings = this.repository.settings(this.requireUserId(), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
     await this.repository.flushToIndexedDb();
     return settings;
   }
 
   async createToken(
     name: string,
-    expiresInDays: number
+    expiresInDays: number, admin = false
   ): Promise<IntegrationTokenCreatedDto> {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`);
     const created = this.repository.createToken(
       this.requireUserId(),
       name,
-      expiresInDays
+      expiresInDays, admin
     );
     await this.repository.flushToIndexedDb();
     return created;
   }
 
-  async revokeToken(tokenId: string): Promise<void> {
+  async revokeToken(tokenId: string, admin = false): Promise<void> {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`);
-    this.repository.revokeToken(this.requireUserId(), tokenId);
+    this.repository.revokeToken(this.requireUserId(), tokenId, admin);
     await this.repository.flushToIndexedDb();
   }
 
