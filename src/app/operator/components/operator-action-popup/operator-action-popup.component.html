@@ -191,6 +191,7 @@
               }
             }
             @case ('configuration') {
+              <app-operator-email-configuration></app-operator-email-configuration>
               @if (workspace.configuration(); as configuration) {
                 @if (workspace.configurationDraft(); as draft) {
                   @if (configuration.capability !== 'AVAILABLE') {

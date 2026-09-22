@@ -1,3 +1,4 @@
+export * from './core/image-gallery/image-gallery.component';
 export * from './core/image-carousel';
 export * from './core/deployment-brand';
 export * from './core/indicator';

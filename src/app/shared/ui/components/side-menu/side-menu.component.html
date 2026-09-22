@@ -87,6 +87,9 @@
               </button>
             </div>
           }
+          <button type="button" class="navigator-feed-action" (click)="$event.stopPropagation(); photoFeedStore.open()">
+            <mat-icon>photo_library</mat-icon><span>{{ 'feed.title' | i18n }}</span>
+          </button>
           <button type="button" class="navigator-followed-action" (click)="openFollowedEvents($event)">
             <mat-icon>rss_feed</mat-icon>
             <span>{{ 'event.following' | i18n }}</span>
@@ -232,4 +235,12 @@
 
 @if (profileStore.explanationPopupComponent(); as explanationComponent) {
   <ng-container *ngComponentOutlet="explanationComponent"></ng-container>
+}
+
+@defer (when imageGalleryStore.request()) {
+  <app-image-gallery-popup></app-image-gallery-popup>
+}
+
+@defer (when photoFeedStore.userId()) {
+  @if (photoFeedStore.userId()) { <app-photo-feed-popup></app-photo-feed-popup> }
 }

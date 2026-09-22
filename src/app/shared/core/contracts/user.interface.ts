@@ -242,6 +242,7 @@ export interface UserNotificationDeviceDto {
 }
 
 export interface UserRealtimeLongPollResponseDto {
+  contentModeration?: import('./content-moderation.interface').ContentModerationSnapshot | null;
   following?: import('./following.interface').FollowingState;
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;

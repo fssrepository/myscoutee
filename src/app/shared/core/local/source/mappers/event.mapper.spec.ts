@@ -154,3 +154,24 @@ describe('activity event external link', () => {
     expect(LocalActivityEventsMapper.toDto(record).sourceLink).toBe('https://example.com/event');
   });
 });
+
+describe('Event gallery persistence', () => {
+  it('round-trips five ordered images and uses the first as the card cover', () => {
+    const images = ['a', 'b', 'c', 'd', 'e'];
+    const dto = new ActivityEventDetailDTO().apply({ id: 'gallery', userId: 'owner', creatorUserId: 'owner', imageUrls: images });
+    const record = LocalActivityEventDetailsMapper.toRecord(dto.toPersistencePayload());
+    const restored = LocalActivityEventDetailsMapper.toDto(record);
+    expect(restored.imageUrls).toEqual(images);
+    expect(LocalActivityEventsMapper.toDto(record).imageUrl).toBe('a');
+    restored.apply({ imageUrls: ['b', 'c'] });
+    expect(restored.toPersistencePayload().imageUrl).toBe('b');
+    restored.apply({ imageUrls: [] });
+    const cleared = LocalActivityEventDetailsMapper.toDto(LocalActivityEventDetailsMapper.toRecord(restored.toPersistencePayload()));
+    expect(cleared.imageUrls).toEqual([]);
+    expect(cleared.imageUrl).toBe('');
+  });
+  it('accepts legacy single images but rejects a sixth event image', () => {
+    expect(new ActivityEventDetailDTO().apply({ imageUrl: 'old' }).imageUrls).toEqual(['old']);
+    expect(() => new ActivityEventDetailDTO().apply({ imageUrls: ['1','2','3','4','5','6'] })).toThrow();
+  });
+});

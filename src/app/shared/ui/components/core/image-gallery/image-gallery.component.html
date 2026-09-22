@@ -1,0 +1,7 @@
+<app-image-carousel
+  [slotCount]="1" [compact]="true" [autoSize]="true" slotImageVariant="medium"
+  [disabled]="readOnly" [expandable]="true" [ariaLabel]="title"
+  [uploadOwnerId]="uploadOwnerId" [uploadEntityId]="uploadEntityId"
+  [ngModel]="images.slice(0, 1)" (ngModelChange)="updateCover($event)"
+  (expand)="openGallery()"
+></app-image-carousel>

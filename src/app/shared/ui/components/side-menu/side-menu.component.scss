@@ -365,7 +365,8 @@ app-event-supply-contributions-popup {
 
 .navigator-context-actions {
   left: 0.75rem;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 0.5rem;
 }
@@ -395,3 +396,10 @@ app-event-supply-contributions-popup {
   line-height: 1.15rem;
   text-align: center;
 }
+
+.navigator-context-actions .navigator-mingle-table-action { grid-column: 1; grid-row: 1; justify-self: start; }
+.navigator-context-actions .navigator-feed-action {
+  grid-column: 2; grid-row: 1; justify-self: center;
+  background: linear-gradient(180deg, #fff7ed, #ffedd5); border-color: #fed7aa; color: #9a4c13;
+}
+.navigator-context-actions .navigator-followed-action { grid-column: 3; grid-row: 1; justify-self: end; }

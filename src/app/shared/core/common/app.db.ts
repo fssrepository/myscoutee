@@ -1,3 +1,6 @@
+import { CONTENT_MODERATION_TABLE_NAME, emptyContentModeration } from '../local/source/entity/content-moderation.entity';
+import { maintainContentModeration } from '../local/source/builders/content-moderation.builder';
+import { PHOTO_FEED_TABLE_NAME } from '../local/source/entity/photo-feed.entity';
 import { maintainFollowingState } from '../local/source/builders/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../local/source/entity/mingle.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
@@ -71,6 +74,8 @@ export class AppMemoryDb {
     MINGLE_SESSIONS_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
+    PHOTO_FEED_TABLE_NAME,
+    CONTENT_MODERATION_TABLE_NAME,
     NOTIFICATIONS_TABLE_NAME,
     CONTACTS_TABLE_NAME,
     PROFILE_EXPERIENCES_TABLE_NAME,
@@ -115,7 +120,7 @@ export class AppMemoryDb {
 
   write(updater: (current: AppMemorySchema) => AppMemorySchema): void {
     const previous = this._tables();
-    const next = this.normalizeState(maintainFollowingState(previous, updater(previous)));
+    const next = this.normalizeState(maintainFollowingState(previous, maintainContentModeration(previous, updater(previous))));
     this._tables.set(next);
     if (!this.hydrationComplete || !this.storageEnabled) {
       return;
@@ -347,6 +352,8 @@ export class AppMemoryDb {
         privacyConsentsById: {},
         privacyConsentIds: []
       },
+      [CONTENT_MODERATION_TABLE_NAME]: emptyContentModeration(),
+      [PHOTO_FEED_TABLE_NAME]: { byId: {}, ids: [] },
       [IDEA_POSTS_TABLE_NAME]: {
         seeded: false,
         byId: {},
@@ -846,6 +853,7 @@ export class AppMemoryDb {
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const eventTicketsSource = source[EVENT_TICKETS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_TICKETS_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
+    const photoFeedSource = source[PHOTO_FEED_TABLE_NAME] as Partial<AppMemorySchema[typeof PHOTO_FEED_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
     const notificationsSource = source[NOTIFICATIONS_TABLE_NAME] as Partial<AppMemorySchema[typeof NOTIFICATIONS_TABLE_NAME]> | undefined;
     const contactsSource = source[CONTACTS_TABLE_NAME] as Partial<AppMemorySchema[typeof CONTACTS_TABLE_NAME]> | undefined;
@@ -1008,6 +1016,11 @@ export class AppMemoryDb {
         privacyConsentIds: Array.isArray(helpCenterSource?.privacyConsentIds)
           ? helpCenterSource.privacyConsentIds.map(id => String(id))
           : [...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentIds ?? [])]
+      },
+      [CONTENT_MODERATION_TABLE_NAME]: source[CONTENT_MODERATION_TABLE_NAME] ?? fallback[CONTENT_MODERATION_TABLE_NAME],
+      [PHOTO_FEED_TABLE_NAME]: {
+        byId: { ...(photoFeedSource?.byId ?? fallback[PHOTO_FEED_TABLE_NAME].byId) },
+        ids: [...(photoFeedSource?.ids ?? fallback[PHOTO_FEED_TABLE_NAME].ids)]
       },
       [IDEA_POSTS_TABLE_NAME]: {
         seeded: ideaPostsSource?.seeded === true || fallback[IDEA_POSTS_TABLE_NAME].seeded === true,

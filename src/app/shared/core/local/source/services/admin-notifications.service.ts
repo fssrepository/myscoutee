@@ -1,3 +1,4 @@
+import { LocalContentModerationRepository } from '../repositories/content-moderation.repository';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -39,6 +40,35 @@ export interface LocalAdminNotificationDelayOptions {
 })
 export class LocalAdminNotificationsService extends LocalRouteDelayService {
   private readonly repository = inject(LocalAdminNotificationsRepository);
+  private readonly moderation = inject(LocalContentModerationRepository);
+  private moderationRunning = false;
+
+  async runContentApprovalTick(): Promise<void> {
+    if (this.moderationRunning) return;
+    this.moderationRunning = true;
+    try {
+      const state = await this.readNotificationCenter();
+      const rule = state.rules.find(item => item.ruleKey === 'content-auto-approve');
+      if (!rule?.enabled || rule.timing?.mode !== 'interval') return;
+      const now = Date.now();
+      const last = Date.parse(rule.runState.lastRunAtIso || '');
+      const interval = Math.max(1, Number(rule.timing.intervalSeconds) || Number(rule.timing.intervalMinutes) * 60 || 60) * 1000;
+      if (Number.isFinite(last) && last + interval > now) return;
+      let count = 0, status = 'completed', detail = 'admin.jobs.rule.content.autoApprove.completed';
+      try { count = await this.moderation.approveDue(now); }
+      catch { status = 'failed'; detail = 'moderation.failed'; }
+      const finishedAtIso = new Date().toISOString(), startedAtIso = new Date(now).toISOString();
+      const current = await this.readNotificationCenter();
+      const rules = current.rules.map(item => item.ruleKey !== rule.ruleKey ? item : {
+        ...item, runState: { ...item.runState, currentStatus: status, progressPercent: 100, progressDetail: detail,
+          startedAtIso, finishedAtIso, durationMillis: Date.now() - now, lastRunAtIso: finishedAtIso,
+          lastRunStatus: status, lastRunDetail: detail, lastRunCount: count, lastRunUser: 'content-auto-approve' },
+        runHistory: [{ id: crypto.randomUUID(), trigger: 'scheduled', runnerUser: 'content-auto-approve',
+          startedAtIso, finishedAtIso, durationMillis: Date.now() - now, processedCount: count, status, detail }, ...(item.runHistory ?? [])].slice(0, 12)
+      });
+      await this.repository.writeStore({ ...current, rules, updatedDate: finishedAtIso });
+    } finally { this.moderationRunning = false; }
+  }
 
   async loadNotificationCenter(options?: LocalAdminNotificationDelayOptions): Promise<AdminNotificationCenterState> {
     const state = await this.withAdminNotificationDelay(

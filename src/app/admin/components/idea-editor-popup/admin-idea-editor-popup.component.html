@@ -100,6 +100,9 @@
           <app-image-carousel
             name="ideaImages"
             [(ngModel)]="editDraft.imageUrls"
+            [detailsEditable]="true"
+            [imageDetails]="editDraft.imageDetails ?? {}"
+            (imageDetailsChange)="editDraft.imageDetails = $event"
             [disabled]="saving"
             slotImageVariant="medium"
             mediaFit="cover"

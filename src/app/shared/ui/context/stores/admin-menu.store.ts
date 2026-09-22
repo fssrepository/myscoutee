@@ -4,6 +4,7 @@ import { type AdminReportedUserDto, type AdminReportDto } from '../../../core';
 
 export type AdminMenuKind =
   | 'reports'
+  | 'content-moderation'
   | 'feedback'
   | 'chat-review'
   | 'warn-chat'
@@ -36,6 +37,8 @@ export class AdminMenuStore {
     this.selectedReportRef.set(resolvedUser?.reports[0] ?? null);
     this.activePopupRef.set('reports');
   }
+
+  openContentModeration(): void { this.activePopupRef.set('content-moderation'); }
 
   openFeedback(): void {
     this.activePopupRef.set('feedback');

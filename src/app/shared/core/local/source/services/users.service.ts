@@ -1,3 +1,4 @@
+import { LocalContentModerationRepository } from '../repositories/content-moderation.repository';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
@@ -57,6 +58,7 @@ import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
   providedIn: 'root'
 })
 export class LocalUsersService extends LocalRouteDelayService implements UserService {
+  private readonly contentModeration = inject(LocalContentModerationRepository);
   private readonly integrationRepository = inject(LocalIntegrationRepository);
   private static readonly INELIGIBLE_REGION_MESSAGE = 'Unavailable in your country';
   private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = APP_STORAGE_KEYS.demoCountryCode;
@@ -267,6 +269,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const snapshot = LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
       suppressImpressionChangeFlags: !advanced
     });
+    snapshot.contentModeration = currentUser?.admin ? this.contentModeration.snapshot() : null;
     snapshot.following = currentUser?.following ?? { organizerIds: [], eventCount: 0 };
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
       userId: normalizedUserId,

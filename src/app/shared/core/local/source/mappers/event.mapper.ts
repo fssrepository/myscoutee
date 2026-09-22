@@ -1,3 +1,4 @@
+import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type { DtoListMapper, DtoMapper } from './mapper.types';
 import { AppUtils } from '../../../../app-utils';
 import { PricingBuilder } from '../../../base/builders';
@@ -1110,7 +1111,9 @@ export class LocalActivityEventDetailsMapper {
       startAtIso,
       endAtIso,
       distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
-      imageUrl: payload.imageUrl.trim(),
+      imageUrl: ActivityEventDetailDTO.normalizeImageUrls(payload.imageUrls, payload.imageUrl)[0] ?? '',
+      imageUrls: ActivityEventDetailDTO.normalizeImageUrls(payload.imageUrls, payload.imageUrl),
+      imageDetails: normalizeImageDetails(payload.imageDetails, ActivityEventDetailDTO.normalizeImageUrls(payload.imageUrls, payload.imageUrl)),
       sourceLink: payload.sourceLink.trim(),
       location: this.normalizeLocation(payload.location),
       locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates),
@@ -1183,6 +1186,8 @@ export class LocalActivityEventDetailsMapper {
       endAtIso: record.endAtIso,
       distanceKm: record.distanceKm,
       imageUrl: record.imageUrl,
+      imageUrls: ActivityEventDetailDTO.normalizeImageUrls(record.imageUrls, record.imageUrl),
+      imageDetails: normalizeImageDetails(record.imageDetails, ActivityEventDetailDTO.normalizeImageUrls(record.imageUrls, record.imageUrl)),
       sourceLink: record.sourceLink ?? '',
       location: record.location,
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),

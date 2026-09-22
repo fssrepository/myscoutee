@@ -30,6 +30,9 @@
       </section>
     </div>
 
+    @if (moderationPopupComponent(); as moderationComponent) {
+      <ng-container *ngComponentOutlet="moderationComponent"></ng-container>
+    }
     @if (reportsPopupComponent(); as reportsComponent) {
       <ng-container *ngComponentOutlet="reportsComponent"></ng-container>
     }

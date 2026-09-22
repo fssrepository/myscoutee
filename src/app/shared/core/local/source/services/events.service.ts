@@ -870,6 +870,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
+    if (existingRecord && existingRecord.status !== 'DR') {
+      record.imageUrl = existingRecord.imageUrl;
+      record.imageUrls = [...(existingRecord.imageUrls ?? (existingRecord.imageUrl ? [existingRecord.imageUrl] : []))];
+      record.imageDetails = { ...(existingRecord.imageDetails ?? {}) };
+    }
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
     if (savedRecord) {
       this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
