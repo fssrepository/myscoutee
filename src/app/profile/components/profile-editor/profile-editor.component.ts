@@ -147,7 +147,7 @@ export class ProfileEditorComponent implements OnDestroy {
     label: 'affiliate.title',
     ariaLabel: 'affiliate.open',
     layout: 'action',
-    palette: 'green'
+    palette: 'pink'
   }];
 
   protected panel: ProfileEditorPanel = 'profile';

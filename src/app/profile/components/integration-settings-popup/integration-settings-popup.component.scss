@@ -107,6 +107,32 @@
   gap: 0.42rem;
 }
 
+.integration-section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.integration-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  box-sizing: border-box;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  background: #e8eef6;
+  color: #28476d;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .integration-token-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -186,6 +212,12 @@
   user-select: all;
   width: 100%;
   box-sizing: border-box;
+}
+
+.integration-token-secret input {
+  border-color: #c3d2e5;
+  background: #f5f8fc;
+  color: #315d91;
 }
 
 .integration-settings-state,

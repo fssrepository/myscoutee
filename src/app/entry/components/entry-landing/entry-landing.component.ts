@@ -42,7 +42,7 @@ interface AppVersionPayload {
 
 type HowStepSlide = WarpImageCardData;
 
-type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green';
+type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green' | 'pink';
 
 interface PartnerRoleOverview {
   readonly id: string;
@@ -194,7 +194,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       labelKey: 'landing.partners.role.affiliate.label',
       titleKey: 'landing.partners.role.affiliate.title',
       descriptionKey: 'landing.partners.role.affiliate.description',
-      tone: 'green'
+      tone: 'pink'
     },
     {
       id: 'strategic-collaborator',

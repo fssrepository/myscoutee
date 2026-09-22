@@ -9,6 +9,10 @@
         <section class="integration-settings-section">
           <div class="integration-section-heading">
             <h3>{{ 'affiliate.personal.link' | i18n }}</h3>
+            <span class="integration-count-badge"
+              [attr.title]="'affiliate.registered' | i18n"
+              [attr.aria-label]="('affiliate.registered' | i18n) + ': ' + config.affiliate.registered"
+            >{{ config.affiliate.registered }}</span>
           </div>
           <div class="integration-token-secret">
             <input readonly [value]="affiliateUrl()" [attr.aria-label]="'affiliate.personal.link' | i18n" />
@@ -34,19 +38,23 @@
         <section class="integration-settings-section">
           <div class="integration-section-heading">
             <div>
-              <h3>{{ 'integration.client.keys' | i18n }}
-                <small [attr.title]="'affiliate.clients.ratio' | i18n">{{ config.participants.registered }} / {{ config.participants.imported }}</small>
-              </h3>
+              <h3>{{ 'integration.client.keys' | i18n }}</h3>
               <small>{{ config.tokens.length }} / {{ config.maxActiveTokens }} {{ 'integration.token.active' | i18n }}</small>
             </div>
-            <app-menu
-              class="integration-generate-action"
-              kind="inline"
-              layout="row"
-              [model]="actionMenuModel"
-              [items]="generateTokenActions()"
-              (itemSelect)="onGenerateTokenAction($event)"
-            ></app-menu>
+            <div class="integration-section-actions">
+              <span class="integration-count-badge"
+                [attr.title]="'affiliate.clients.ratio' | i18n"
+                [attr.aria-label]="('affiliate.clients.ratio' | i18n) + ': ' + config.participants.registered + ' / ' + config.participants.imported"
+              >{{ config.participants.registered }} / {{ config.participants.imported }}</span>
+              <app-menu
+                class="integration-generate-action"
+                kind="inline"
+                layout="row"
+                [model]="actionMenuModel"
+                [items]="generateTokenActions()"
+                (itemSelect)="onGenerateTokenAction($event)"
+              ></app-menu>
+            </div>
           </div>
 
           @if (config.tokens.length > 0) {

@@ -54,14 +54,7 @@ export class IntegrationSettingsPopupComponent {
   protected readonly affiliateUrl = computed(() =>
     this.integrationService.absoluteBaseUrl(this.settings()?.affiliate?.url ?? ''));
   protected readonly copyAffiliateActions = computed(() =>
-    this.copyMenu('copy-affiliate-url', this.affiliateUrl(), 'affiliate.copy').items.map(item => ({
-      ...item,
-      counter: {
-        value: String(this.settings()?.affiliate?.registered ?? 0),
-        ariaLabel: this.i18nService.translate('affiliate.registered')
-      },
-      counterTone: 'success' as const
-    })));
+    this.copyMenu('copy-affiliate-url', this.affiliateUrl(), 'affiliate.copy').items);
   protected readonly canGenerate = computed(() => {
     const settings = this.settings();
     return !!settings && settings.tokens.length < settings.maxActiveTokens && !this.mutating();
