@@ -87,7 +87,10 @@ export class LocalUsersRepository {
         [USERS_TABLE_NAME]: {
           byId: {
             ...usersTable.byId,
-            [user.id]: { ...user, devices: usersTable.byId[user.id]?.devices }
+            [user.id]: { ...user, devices: usersTable.byId[user.id]?.devices,
+              affiliateCode: usersTable.byId[user.id]?.affiliateCode,
+              affiliateRegistrations: usersTable.byId[user.id]?.affiliateRegistrations,
+              affiliateReferrerUserId: usersTable.byId[user.id]?.affiliateReferrerUserId }
           },
           ids: exists ? [...usersTable.ids] : [...usersTable.ids, user.id]
         }

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.22.en.136",
+  "version": "2026.09.22.en.138",
   "messages": {
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -3599,6 +3599,17 @@
     "landing.hero.free.to.join": "Free to join",
     "event.partner.invite": "Event invitation",
     "event.partner.invite.failed": "The event invitation could not be opened.",
-    "mingle.tables.close.aria": "Close Speed meeting tables"
+    "mingle.tables.close.aria": "Close Speed meeting tables",
+    "affiliate.title": "Affiliate",
+    "affiliate.open": "Open affiliate settings",
+    "affiliate.subtitle": "Share your personal invitation link or connect an API client.",
+    "affiliate.personal.link": "Personal invitation link",
+    "affiliate.copy": "Copy personal invitation link",
+    "affiliate.registered": "People registered through your personal invitation link",
+    "affiliate.clients.ratio": "Registered accounts linked / distinct API participants imported",
+    "affiliate.help": "Your personal link records who invited a newly registered member. Existing accounts do not count as new referrals. The client ratio counts distinct imported participant IDs linked to registered accounts; repeat imports do not increase it.",
+    "landing.partners.role.affiliate.label": "Invite people",
+    "landing.partners.role.affiliate.title": "Affiliate partner",
+    "landing.partners.role.affiliate.description": "Any member can share a personal invitation link from Profile → Affiliate and see how many people registered through it. API clients can also invite participants and track how many connected to registered accounts."
   }
 }

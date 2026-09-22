@@ -1,3 +1,4 @@
+import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -56,6 +57,7 @@ import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
   providedIn: 'root'
 })
 export class LocalUsersService extends LocalRouteDelayService implements UserService {
+  private readonly integrationRepository = inject(LocalIntegrationRepository);
   private static readonly INELIGIBLE_REGION_MESSAGE = 'Unavailable in your country';
   private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = APP_STORAGE_KEYS.demoCountryCode;
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
@@ -430,7 +432,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!profile?.id?.trim()) {
       return null;
     }
+    await this.usersRepository.whenReady();
+    const existing = this.usersRepository.queryUserById(profile.id);
     const savedUser = this.upsertUser(profile);
+    if (!existing) this.integrationRepository.recordRegistration(savedUser.id, request.affiliateCode);
     this.profileExperiencesRepository.replaceUserExperienceRecords(
       savedUser.id,
       request.experienceEntries ?? []

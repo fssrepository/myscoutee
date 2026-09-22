@@ -14,6 +14,8 @@ export interface IntegrationSettingsDto {
   maxActiveTokens: number;
   maxBatchSize: number;
   tokens: IntegrationTokenDto[];
+  affiliate: { url: string; registered: number };
+  participants: { registered: number; imported: number };
 }
 
 export interface IntegrationTokenCreatedDto {

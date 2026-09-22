@@ -353,6 +353,7 @@ export interface UserByIdQueryResponse {
 }
 
 export class ProfileExtDto {
+  affiliateCode?: string;
   profile = new UserDto();
   experienceEntries: ProfileContracts.ExperienceEntry[] = [];
 }

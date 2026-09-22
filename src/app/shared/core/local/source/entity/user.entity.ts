@@ -92,6 +92,9 @@ export interface UserEventFeedbackCountersRecord {
 
 export interface UserRecord {
   integrationTokens?: LocalIntegrationTokenRecord[];
+  affiliateCode?: string;
+  affiliateRegistrations?: { userId: string; registeredAtIso: string }[];
+  affiliateReferrerUserId?: string;
   devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;

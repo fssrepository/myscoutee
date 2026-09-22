@@ -23,12 +23,40 @@ export class LocalIntegrationRepository {
   }
 
   settings(userId: string, baseUrl: string): IntegrationSettingsDto {
+    let user = this.requireUser(userId);
+    if (!user.affiliateCode) {
+      const code = globalThis.crypto.randomUUID();
+      this.memoryDb.write(state => ({ ...state, [USERS_TABLE_NAME]: {
+        ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId,
+          [userId]: { ...state[USERS_TABLE_NAME].byId[userId], affiliateCode: code }
+        }
+      }}));
+      user = this.requireUser(userId);
+    }
     return {
       baseUrl,
+      affiliate: { url: `/entry?affiliate=${user.affiliateCode}`, registered: user.affiliateRegistrations?.length ?? 0 },
+      participants: { registered: 0, imported: 0 },
       maxActiveTokens: LocalIntegrationRepository.MAX_ACTIVE_TOKENS,
       maxBatchSize: LocalIntegrationRepository.MAX_BATCH_SIZE,
       tokens: this.activeTokens(this.requireUser(userId)).map(({ value: _value, ...token }) => token)
     };
+  }
+
+  recordRegistration(userId: string, code: string | undefined): void {
+    if (!code || !/^[a-f0-9-]{36}$/.test(code)) return;
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const user = table.byId[userId];
+      const owner = table.ids.map(id => table.byId[id]).find(item => item.affiliateCode === code && !item.deletedAtIso);
+      if (!user || !owner || owner.id === userId || user.affiliateReferrerUserId) return state;
+      const registrations = owner.affiliateRegistrations ?? [];
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+        [userId]: { ...user, affiliateReferrerUserId: owner.id },
+        [owner.id]: { ...owner, affiliateRegistrations: registrations.some(item => item.userId === userId)
+          ? registrations : [...registrations, { userId, registeredAtIso: new Date().toISOString() }] }
+      }}};
+    });
   }
 
   createToken(

@@ -48,11 +48,11 @@ interface PartnerRoleOverview {
   readonly id: string;
   readonly icon: string;
   readonly labelKey: string;
-  readonly label: string;
+  readonly label?: string;
   readonly titleKey: string;
-  readonly title: string;
+  readonly title?: string;
   readonly descriptionKey: string;
-  readonly description: string;
+  readonly description?: string;
   readonly tone: PartnerRoleTone;
 }
 
@@ -187,6 +187,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       descriptionKey: 'landing.partners.role.community.description',
       description: 'Bring an active local community and help turn mutual interest into group chats, events, attendance and feedback.',
       tone: 'blue'
+    },
+    {
+      id: 'affiliate-partner',
+      icon: 'group_add',
+      labelKey: 'landing.partners.role.affiliate.label',
+      titleKey: 'landing.partners.role.affiliate.title',
+      descriptionKey: 'landing.partners.role.affiliate.description',
+      tone: 'green'
     },
     {
       id: 'strategic-collaborator',

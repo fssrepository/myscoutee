@@ -173,7 +173,8 @@
   margin-top: 0.28rem;
 }
 
-.integration-token-secret code {
+.integration-token-secret code,
+.integration-token-secret input {
   min-width: 0;
   padding: 0.42rem 0.5rem;
   border: 1px solid rgba(47, 126, 82, 0.25);
@@ -183,6 +184,8 @@
   font-size: 0.7rem;
   overflow-wrap: anywhere;
   user-select: all;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .integration-settings-state,

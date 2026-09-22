@@ -143,11 +143,11 @@ export class ProfileEditorComponent implements OnDestroy {
   protected readonly profileApiIntegrationActions: readonly AppMenuItem[] = [{
     id: 'profile-api-integration',
     kind: 'action',
-    icon: 'api',
-    label: 'API',
-    ariaLabel: 'Open API integration settings',
+    icon: 'group_add',
+    label: 'affiliate.title',
+    ariaLabel: 'affiliate.open',
     layout: 'action',
-    palette: 'blue'
+    palette: 'green'
   }];
 
   protected panel: ProfileEditorPanel = 'profile';

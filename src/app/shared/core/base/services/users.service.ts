@@ -1,3 +1,4 @@
+import { AffiliateReferralService } from './affiliate-referral.service';
 import {
   Injectable,
   inject
@@ -49,6 +50,7 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
+  private readonly affiliateReferral = inject(AffiliateReferralService);
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -357,8 +359,11 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
-      const savedUser = await this.userService.saveUserProfileExt(request);
+      const savedUser = await this.userService.saveUserProfileExt({
+        ...request, affiliateCode: this.affiliateReferral.pending()
+      });
       if (savedUser) {
+        this.affiliateReferral.clear();
         this.userProfileStore.setProfileExt({
           profile: savedUser,
           experienceEntries: request.experienceEntries

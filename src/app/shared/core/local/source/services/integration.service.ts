@@ -20,10 +20,9 @@ export class LocalIntegrationService extends LocalRouteDelayService {
   async loadSettings(): Promise<IntegrationSettingsDto> {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
-    return this.repository.settings(
-      this.requireUserId(),
-      await this.publicBaseUrl()
-    );
+    const settings = this.repository.settings(this.requireUserId(), await this.publicBaseUrl());
+    await this.repository.flushToIndexedDb();
+    return settings;
   }
 
   async createToken(

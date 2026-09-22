@@ -6,6 +6,16 @@
       } @else if (errorMessage()) {
         <div class="integration-settings-state integration-settings-state--error">{{ errorMessage() | i18n }}</div>
       } @else if (settings(); as config) {
+        <section class="integration-settings-section">
+          <div class="integration-section-heading">
+            <h3>{{ 'affiliate.personal.link' | i18n }}</h3>
+          </div>
+          <div class="integration-token-secret">
+            <input readonly [value]="affiliateUrl()" [attr.aria-label]="'affiliate.personal.link' | i18n" />
+            <app-menu kind="inline" layout="row" [model]="actionMenuModel"
+              [items]="copyAffiliateActions()" (itemSelect)="onTokenAction($event)"></app-menu>
+          </div>
+        </section>
         <section class="integration-settings-section integration-endpoint">
           <div class="integration-endpoint-copy">
             <span class="integration-endpoint-label">{{ 'integration.base.url' | i18n }}</span>
@@ -24,7 +34,9 @@
         <section class="integration-settings-section">
           <div class="integration-section-heading">
             <div>
-              <h3>{{ 'integration.client.keys' | i18n }}</h3>
+              <h3>{{ 'integration.client.keys' | i18n }}
+                <small [attr.title]="'affiliate.clients.ratio' | i18n">{{ config.participants.registered }} / {{ config.participants.imported }}</small>
+              </h3>
               <small>{{ config.tokens.length }} / {{ config.maxActiveTokens }} {{ 'integration.token.active' | i18n }}</small>
             </div>
             <app-menu
@@ -96,6 +108,7 @@
       <section class="integration-help-body">
         <mat-icon>question_mark</mat-icon>
         <div>
+          <p>{{ 'affiliate.help' | i18n }}</p>
           <p>{{ 'integration.help.description' | i18n }}</p>
           <a
             [href]="integrationDocumentationUrl"
