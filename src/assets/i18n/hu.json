@@ -1,7 +1,8 @@
 {
   "lang": "hu",
-  "version": "2026.09.22.hu.138",
+  "version": "2026.09.22.hu.139",
   "messages": {
+    "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
     "allow.location": "Hely engedélyezése",
     "checking.location": "Hely ellenőrzése",

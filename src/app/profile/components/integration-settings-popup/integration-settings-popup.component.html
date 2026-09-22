@@ -88,19 +88,23 @@
                     }
                     <small class="integration-token-meta">
                       <span>{{ 'integration.token.expires' | i18n }} {{ formatDate(token.expiresAt) }}</span>
-                      @if (token.claimedAddress) {
-                        <span>IP {{ token.claimedAddress }}</span>
-                      }
                     </small>
                   </div>
-                  <app-menu
-                    class="integration-token-action"
-                    kind="inline"
-                    layout="row"
-                    [model]="actionMenuModel"
-                    [items]="revokeTokenActions(token)"
-                    (itemSelect)="onTokenAction($event)"
-                  ></app-menu>
+                  <div class="integration-token-actions">
+                    @if (token.claimedAddress) {
+                      <span class="integration-count-badge integration-count-badge--ip"
+                        [attr.title]="('integration.token.ip' | i18n) + ' ' + token.claimedAddress"
+                      >{{ 'integration.token.ip' | i18n }} {{ token.claimedAddress }}</span>
+                    }
+                    <app-menu
+                      class="integration-token-action"
+                      kind="inline"
+                      layout="row"
+                      [model]="actionMenuModel"
+                      [items]="revokeTokenActions(token)"
+                      (itemSelect)="onTokenAction($event)"
+                    ></app-menu>
+                  </div>
                 </article>
               }
             </div>

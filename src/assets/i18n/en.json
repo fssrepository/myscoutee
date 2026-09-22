@@ -1,7 +1,8 @@
 {
   "lang": "en",
-  "version": "2026.09.22.en.138",
+  "version": "2026.09.22.en.139",
   "messages": {
+    "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
     "checking.location": "Checking location",

@@ -150,6 +150,25 @@
   gap: 0.08rem;
 }
 
+.integration-token-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.integration-count-badge--ip {
+  display: block;
+  min-width: 0;
+  max-width: 10rem;
+  height: auto;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .integration-token-title {
   min-width: 0;
   display: flex;
