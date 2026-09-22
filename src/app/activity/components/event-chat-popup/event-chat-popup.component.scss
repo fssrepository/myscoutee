@@ -1171,7 +1171,6 @@
 
 .chat-compose-box {
   position: relative;
-  z-index: 70;
   background: #fff;
   padding-top: 0.18rem;
   margin-top: 0;
@@ -1973,7 +1972,6 @@
     left: auto;
     right: auto;
     bottom: auto;
-    z-index: 70;
     margin-top: 0;
     padding: 0.45rem 0.45rem max(0.45rem, env(safe-area-inset-bottom, 0px));
     background: #fff;
