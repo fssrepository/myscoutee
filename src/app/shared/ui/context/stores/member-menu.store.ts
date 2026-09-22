@@ -36,7 +36,7 @@ export interface NavigatorEventFeedbackRequest {
 }
 
 export type ActivitiesNavigationRequest =
-  | { type: 'eventExplore'; stacked?: boolean }
+  | { type: 'eventExplore'; stacked?: boolean; followedOnly?: boolean }
   | { type: 'eventCheckoutDraft'; sourceId: string }
   | {
       type: 'assetExplore';
@@ -69,6 +69,7 @@ export type ActivitiesNavigationRequest =
     }
   | {
       type: 'members';
+      followedOrganizers?: boolean;
       mingleLive?: boolean;
       ownerId: string;
       ownerType?: ActivityMemberOwnerType;

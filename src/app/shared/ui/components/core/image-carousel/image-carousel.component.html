@@ -1,8 +1,8 @@
 @let slots = imageSlots();
 @let slotPages = pages();
 
-<div class="image-carousel" role="region" [attr.aria-label]="ariaLabel" aria-roledescription="carousel">
-  @if (previewMode) {
+<div class="image-carousel" role="region" [attr.aria-label]="ariaLabel | i18n" aria-roledescription="carousel">
+  @if (previewMode && !slideshow) {
     @let previewUrl = selectedPreviewUrl(slots);
     <div
       class="image-carousel__preview"
@@ -10,10 +10,10 @@
       [appLazyBgImage]="previewUrl || null"
     >
       @if (!previewUrl) {
-        <span>Select a slot to upload an image</span>
+        <span>{{ 'select.a.slot.to.upload.an.image' | i18n }}</span>
       }
       @if (isSelectedPreviewUploading(slots)) {
-        <span class="image-carousel__preview-ring" aria-label="Uploading image">
+        <span class="image-carousel__preview-ring" [attr.aria-label]="'uploading.image' | i18n">
           <app-indicator kind="spinner-ring"></app-indicator>
         </span>
       }
@@ -21,15 +21,22 @@
   }
 
   <div class="image-carousel__carousel">
+    @if (expandable) {
+      <button type="button" class="image-carousel__expand" (click)="expandGallery($event)"
+        [attr.aria-label]="'image.carousel.expand' | i18n" [title]="'image.carousel.expand' | i18n">
+        <mat-icon>fullscreen</mat-icon>
+      </button>
+    }
+    @if (!slots.length) { <div class="image-carousel__empty">{{ 'no.image' | i18n }}</div> }
     @if (slotPages.length > 1 && carouselIndex > 0) {
       <button
         type="button"
         class="image-carousel__arrow image-carousel__arrow--prev"
         data-motion="none"
-        [disabled]="isDisabled() || uploadingSlotIndex !== null"
+        [disabled]="uploadingSlotIndex !== null"
         (click)="showPreviousPage($event)"
-        aria-label="Previous image slot"
-        title="Previous"
+        [attr.aria-label]="'image.carousel.previous' | i18n"
+        [title]="'image.carousel.previous' | i18n"
       >
         <mat-icon>chevron_left</mat-icon>
       </button>
@@ -48,33 +55,53 @@
               <article
                 class="image-carousel__slot"
                 [class.is-selected]="isSelected(slotIndex)"
+                [class.is-primary]="highlightFirst && slotIndex === 0"
                 [class.is-filled]="imageUrl"
                 [class.is-uploading]="isUploading(slotIndex)"
                 [appLazyBgImage]="slotImageUrl(imageUrl)"
               >
+                @if (slideshow && imageUrl) {
+                  @if (imageDetails[imageUrl]?.location) {
+                    <a class="image-carousel__location" [href]="locationUrl(imageUrl)" target="_blank" rel="noopener noreferrer"
+                      [attr.aria-label]="imageDetails[imageUrl].location" [title]="imageDetails[imageUrl].location">
+                      <mat-icon>location_on</mat-icon>
+                    </a>
+                  }
+                  @if (imageDetails[imageUrl]?.caption) {
+                    <p class="image-carousel__caption">{{ imageDetails[imageUrl].caption }}</p>
+                  }
+                }
                 <span class="image-carousel__slot-index">{{ slotIndex + 1 }}</span>
 
                 @if (isUploading(slotIndex)) {
-                  <span class="image-carousel__upload-ring" aria-label="Uploading image">
+                  <span class="image-carousel__upload-ring" [attr.aria-label]="'uploading.image' | i18n">
                     <app-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-indicator>
                   </span>
                 } @else if (imageUrl) {
                   @if (!isDisabled()) {
+                    @if (detailsEditable) {
+                      <button type="button" class="image-carousel__slot-action image-carousel__slot-action--details"
+                        (click)="openDetails(imageUrl, $event)" [attr.aria-label]="'image.details.title' | i18n"
+                        [title]="'image.details.title' | i18n"><mat-icon>edit_note</mat-icon></button>
+                    } @else {
                     <button
                       type="button"
                       class="image-carousel__slot-action image-carousel__slot-action--copy"
                       (click)="copySlot(imageUrl, slotIndex, $event)"
-                      aria-label="Copy image link"
-                      title="Copy link"
+                      [attr.aria-label]="'copy.image.link' | i18n"
+                      [title]="'copy.image.link' | i18n"
                     >
                       <mat-icon>content_copy</mat-icon>
                     </button>
+                    }
                     <button
                       type="button"
                       class="image-carousel__slot-action image-carousel__slot-action--remove"
+                      [class.image-carousel__slot-action--before-expand]="expandable"
+                      [class.image-carousel__slot-action--left]="detailsEditable"
                       (click)="removeSlot(imageUrl, slotIndex, $event)"
-                      aria-label="Remove image"
-                      title="Remove"
+                      [attr.aria-label]="'remove.image' | i18n"
+                      [title]="'remove.image' | i18n"
                     >
                       <mat-icon>close</mat-icon>
                     </button>
@@ -83,6 +110,7 @@
                   <span class="image-carousel__slot-add">+</span>
                 }
 
+                @if (!isDisabled()) {
                 <input
                   #imageSlotInput
                   class="image-carousel__slot-input"
@@ -96,9 +124,10 @@
                   class="image-carousel__slot-hit"
                   [disabled]="isDisabled() || uploadingSlotIndex !== null || isUploading(slotIndex)"
                   (click)="openSlot(imageSlotInput, slotIndex, imageUrl, $event)"
-                  [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
-                  [title]="imageUrl ? 'Replace image' : 'Upload image'"
+                  [attr.aria-label]="((imageUrl ? 'replace.image.slot' : 'upload.image.slot') | i18n) + ' ' + (slotIndex + 1)"
+                  [title]="(imageUrl ? 'replace.image' : 'upload.image') | i18n"
                 ></button>
+                }
               </article>
             }
           </div>
@@ -111,24 +140,24 @@
         type="button"
         class="image-carousel__arrow image-carousel__arrow--next"
         data-motion="none"
-        [disabled]="isDisabled() || uploadingSlotIndex !== null"
+        [disabled]="uploadingSlotIndex !== null"
         (click)="showNextPage($event)"
-        aria-label="Next image slot"
-        title="Next"
+        [attr.aria-label]="'image.carousel.next' | i18n"
+        [title]="'image.carousel.next' | i18n"
       >
         <mat-icon>chevron_right</mat-icon>
       </button>
     }
 
     @if (slotPages.length > 1) {
-      <div class="image-carousel__dots" aria-label="Image slot pages">
+      <div class="image-carousel__dots" [attr.aria-label]="'image.carousel.pages' | i18n">
         @for (page of slotPages; track $index; let pageIndex = $index) {
           <button
             type="button"
             class="image-carousel__dot"
             [class.is-active]="carouselIndex === pageIndex"
             [attr.aria-current]="carouselIndex === pageIndex ? 'true' : null"
-            [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
+            [attr.aria-label]="('show.image.slot.page' | i18n) + ' ' + (pageIndex + 1)"
             (click)="showPage(pageIndex, $event)"
           ></button>
         }
@@ -136,3 +165,17 @@
     }
   </div>
 </div>
+
+@if (detailsDraft; as draft) {
+  <app-popup [model]="detailsPopupModel()">
+    <div class="image-carousel__details-form">
+      <app-location-input [(ngModel)]="draft.location" [config]="{ label: ('location' | i18n) }"></app-location-input>
+      <label class="image-carousel__caption-label" for="gallery-caption">
+        <span>{{ 'image.details.caption' | i18n }}</span>
+        <small>{{ captionMaxLength - draft.caption.length }}</small>
+      </label>
+      <textarea id="gallery-caption" rows="2" [maxLength]="captionMaxLength"
+        [ngModel]="draft.caption" (ngModelChange)="updateCaption($event)"></textarea>
+    </div>
+  </app-popup>
+}

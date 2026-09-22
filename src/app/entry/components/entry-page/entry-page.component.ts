@@ -1,3 +1,4 @@
+import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
 import {
   NgComponentOutlet
 } from '@angular/common';
@@ -217,9 +218,12 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.initializeEntryFlow();
   }
 
+  private readonly affiliateReferral = inject(AffiliateReferralService);
+
   ngOnInit(): void {
     this.syncMobileView();
     this.queryParamSubscription = this.route.queryParamMap.subscribe(queryParams => {
+      this.affiliateReferral.capture(queryParams.get('affiliate'));
       this.autoOnboardingRequested = queryParams.get('onboarding') === '1';
       this.beginAutoOnboardingIfReady();
     });

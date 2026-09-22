@@ -13,7 +13,6 @@ export interface StoredI18nBundle {
   version: string;
   data: Record<string, string>;
   storedAt: number;
-  founderName?: string;
 }
 
 export type I18nBundleScope = 'real' | 'demo';
@@ -162,7 +161,6 @@ export class I18nBundleRepository {
     }
     return {
       lang: normalizedLang,
-      founderName: typeof parsed?.founderName === 'string' ? parsed.founderName.trim() : '',
       version,
       data,
       storedAt: Number.isFinite(parsed?.storedAt) ? Number(parsed?.storedAt) : 0

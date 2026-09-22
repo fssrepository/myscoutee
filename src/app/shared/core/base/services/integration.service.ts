@@ -15,19 +15,19 @@ export class IntegrationService extends BaseRouteModeService {
   private readonly localService = inject(LocalIntegrationService);
   private readonly httpService = inject(HttpIntegrationService);
 
-  loadSettings(): Promise<IntegrationSettingsDto> {
-    return this.service.loadSettings();
+  loadSettings(admin = false): Promise<IntegrationSettingsDto> {
+    return this.service(admin).loadSettings(admin);
   }
 
   createToken(
     name: string,
-    expiresInDays: number
+    expiresInDays: number, admin = false
   ): Promise<IntegrationTokenCreatedDto> {
-    return this.service.createToken(name, expiresInDays);
+    return this.service(admin).createToken(name, expiresInDays, admin);
   }
 
-  revokeToken(tokenId: string): Promise<void> {
-    return this.service.revokeToken(tokenId);
+  revokeToken(tokenId: string, admin = false): Promise<void> {
+    return this.service(admin).revokeToken(tokenId, admin);
   }
 
   absoluteBaseUrl(baseUrl: string): string {
@@ -45,9 +45,9 @@ export class IntegrationService extends BaseRouteModeService {
     }
   }
 
-  private get service(): LocalIntegrationService | HttpIntegrationService {
+  private service(admin: boolean): LocalIntegrationService | HttpIntegrationService {
     return this.resolveRouteService(
-      INTEGRATIONS_ROUTE,
+      admin ? '/admin/client-api' : INTEGRATIONS_ROUTE,
       this.localService,
       this.httpService
     );

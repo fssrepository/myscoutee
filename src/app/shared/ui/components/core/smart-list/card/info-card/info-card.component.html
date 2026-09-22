@@ -4,6 +4,8 @@
   [style.--ui-info-card-accent-hue]="cardAccentHue()"
   [attr.data-group-label]="card?.groupLabel"
   [attr.data-info-card-id]="card?.id"
+  [attr.tabindex]="(card?.imageUrls?.length ?? 0) > 1 ? 0 : null"
+  (keydown.enter)="onCardActivated($event)"
   (click)="onCardActivated($event)"
   >
   <div
@@ -13,6 +15,11 @@
     [class.ui-info-card__media--tone-neutral]="mediaTone() === 'neutral'"
     [appLazyBgImage]="cardImageUrl()"
     >
+      @if ((card?.imageUrls?.length ?? 0) > 1) {
+        <div class="ui-info-card__image-progress" aria-hidden="true">
+          @for (url of card?.imageUrls; track $index) { <span [class.is-current]="$index === imageIndex"></span> }
+        </div>
+      }
       @if (isTitleMedia()) {
         <span class="ui-info-card__media-title-content">
           @if (mediaIcon()) {

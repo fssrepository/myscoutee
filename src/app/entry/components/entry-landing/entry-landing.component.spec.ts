@@ -68,7 +68,6 @@ describe('EntryLandingComponent article lists', () => {
           provide: I18nService,
           useValue: {
             revision: i18nRevision.asReadonly(),
-            founderName: signal('Configured Founder').asReadonly(),
             translate: (key: string, fallback?: string) =>
               translations[key] ?? fallback ?? key,
             translateParams: (
@@ -256,10 +255,14 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(fixture.componentInstance).aboutPopupOpen).toBe(true);
     const aboutText = fixture.nativeElement.querySelector('.entry-about-popup-body')
       ?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-    expect(aboutText).toContain('Configured Founder');
+    expect(aboutText).toContain('MyScoutee');
+    expect(aboutText).not.toContain('Peter');
     expect(aboutText).toContain('A platform behind meetings, not swipes');
     expect(aboutText).toContain('Free to join');
     expect(aboutText).toContain('event, ticket, venue, travel, and partner services');
+    branding.set({ ...DEFAULT_DEPLOYMENT_BRANDING, productName: 'Operator Brand' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.entry-about-founder h3')?.textContent).toContain('Operator Brand');
     (fixture.nativeElement.querySelector('.ui-popup__close') as HTMLButtonElement | null)?.click();
     fixture.detectChanges();
     expect(view(fixture.componentInstance).aboutPopupOpen).toBe(false);

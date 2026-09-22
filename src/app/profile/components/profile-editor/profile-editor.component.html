@@ -22,7 +22,7 @@
                   kind="inline"
                   layout="row"
                   [model]="profileHeaderActionMenuModel"
-                  [items]="profileApiIntegrationActions"
+                  [items]="profileApiIntegrationActions()"
                   (itemSelect)="onProfileApiIntegrationAction($event)"
                 ></app-menu>
               </div>
@@ -40,7 +40,7 @@
                   ></app-form-flow>
                 </div>
               </div>
-              <app-integration-settings-popup></app-integration-settings-popup>
+              <app-integration-settings-popup [adminMode]="activeUserIsAdmin()"></app-integration-settings-popup>
             </div>
           }
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>

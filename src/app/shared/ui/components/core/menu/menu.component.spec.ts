@@ -27,6 +27,24 @@ describe('AppMenuComponent delayed drag', () => {
     TestBed.resetTestingModule();
   });
 
+  it('fits labelled action buttons to content by default and fills only when configured', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'inline');
+    fixture.componentRef.setInput('layout', 'row');
+    fixture.componentRef.setInput('items', [
+      { id: 'cancel', label: 'Cancel', layout: 'action' },
+      { id: 'join', label: 'Join', layout: 'action' }
+    ]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList.contains('app-menu-host--content-actions')).toBe(true);
+    fixture.componentRef.setInput('model', { actionSizing: 'fill' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList.contains('app-menu-host--content-actions')).toBe(false);
+    fixture.componentRef.setInput('model', { actionSizing: 'content' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList.contains('app-menu-host--content-actions')).toBe(true);
+  });
+
   it('reveals a successfully replaced image after an earlier request failed', () => {
     const fixture = TestBed.createComponent(AppMenuComponent);
     fixture.componentRef.setInput('kind', 'inline');

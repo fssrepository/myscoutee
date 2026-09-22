@@ -228,7 +228,9 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   editAsset: { label: 'edit.asset', icon: 'edit' },
   editEvent: { label: 'edit.event', icon: 'edit' },
   editOrganizerNote: { label: 'edit.organizer.note', icon: 'edit_note' },
-  externalInfo: { label: 'External Info', icon: 'open_in_new', tone: 'accent' },
+  externalInfo: { label: 'event.external.info', icon: 'open_in_new', tone: 'accent' },
+  followOrganizer: { label: 'event.following.follow', icon: 'rss_feed' },
+  unfollowOrganizer: { label: 'event.following.unfollow', icon: 'remove_circle_outline' },
   feature: { label: 'feature', icon: 'star', tone: 'accent' },
   joinResource: { label: 'join.resource', icon: 'login', tone: 'accent' },
   joinWaitlist: { label: 'join.waiting.list', icon: 'hourglass_empty', tone: 'accent' },
@@ -321,6 +323,8 @@ export interface SingleRowBadge {
 }
 
 export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
+  /** Optional gallery: card activation advances the image, overlay actions remain independent. */
+  imageUrls?: readonly string[];
   status?: string | null;
   groupLabel?: string | null;
   title: string;

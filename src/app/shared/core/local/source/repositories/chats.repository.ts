@@ -532,6 +532,7 @@ export class LocalChatsRepository {
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      if (currentMessagesTable.byId[messageRecord.recordId]) return currentState;
       const existing = currentTable.byId[recordKey];
       const nextRecord: ChatThreadRecord = {
         ...(existing ?? chat),

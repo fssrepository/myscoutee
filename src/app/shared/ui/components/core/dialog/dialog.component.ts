@@ -1,5 +1,6 @@
 
 import { Component, HostListener, Input, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DialogStore, type DialogState, type DialogTone } from '../../../context/stores/dialog.store';
@@ -33,6 +34,7 @@ export interface DialogLocalConfig {
 }
 
 type RenderedDialogState = {
+  input?: DialogState['input'];
   title: string;
   message: string;
   warningMessage: string;
@@ -53,7 +55,7 @@ type RenderedDialogState = {
 @Component({
   selector: 'app-dialog',
   standalone: true,
-  imports: [MatIconModule, AppMenuComponent, I18nPipe],
+  imports: [FormsModule, MatIconModule, AppMenuComponent, I18nPipe],
   templateUrl: './dialog.component.html',
   styleUrl: './dialog.component.scss'
 })
@@ -211,6 +213,7 @@ export class DialogComponent {
     return {
       title: state.title,
       message: state.message,
+      input: state.input,
       warningMessage: state.warningMessage,
       cancelLabel: state.cancelLabel,
       confirmLabel: state.confirmLabel,

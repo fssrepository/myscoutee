@@ -1,3 +1,4 @@
+import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -74,7 +75,7 @@ import {
   type AppMenuTrigger,
   DateInputComponent,
   type DateInputModel,
-  ImageCarouselComponent,
+  ImageGalleryComponent,
   SlotsInputComponent,
   type SlotsInputConfig,
   type SlotOverrideRequest,
@@ -147,7 +148,7 @@ interface SlotOverrideEditorState {
     DateInputComponent,
     EventBasketInputComponent,
     EventPaymentInputComponent,
-    ImageCarouselComponent,
+    ImageGalleryComponent,
     PoliciesInputComponent,
     SlotsInputComponent,
     LinkInputComponent,
@@ -1993,22 +1994,25 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventImageUrls(): string[] {
-    const imageUrl = `${this.eventDetailDTO.imageUrl ?? ''}`.trim();
-    if (this.eventImageUrlsCacheKey !== imageUrl) {
-      this.eventImageUrlsCacheKey = imageUrl;
-      this.eventImageUrlsCache = imageUrl ? [imageUrl] : [];
+    const urls = this.eventDetailDTO.imageUrls ?? (this.eventDetailDTO.imageUrl ? [this.eventDetailDTO.imageUrl] : []);
+    const key = JSON.stringify(urls);
+    if (this.eventImageUrlsCacheKey !== key) {
+      this.eventImageUrlsCacheKey = key;
+      this.eventImageUrlsCache = [...urls];
     }
     return this.eventImageUrlsCache;
   }
 
   protected onEventImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
-    this.eventDetailDTO.imageUrl = imageUrl;
-    this.eventImageUrlsCacheKey = imageUrl;
-    this.eventImageUrlsCache = imageUrl ? [imageUrl] : [];
+    if (this.eventStructureReadOnly()) return;
+    const images = [...new Set((imageUrls ?? []).map(url => url.trim()).filter(Boolean))];
+    this.eventDetailDTO.imageUrls = images;
+    this.eventDetailDTO.imageUrl = images[0] ?? '';
+    this.eventDetailDTO.imageDetails = normalizeImageDetails(this.eventDetailDTO.imageDetails, images);
+  }
+
+  protected onEventImageDetailsChange(details: ImageDetailsMap): void {
+    if (!this.eventStructureReadOnly()) this.eventDetailDTO.imageDetails = normalizeImageDetails(details, this.eventImageUrls());
   }
 
   protected eventImageUploadOwnerId(): string {

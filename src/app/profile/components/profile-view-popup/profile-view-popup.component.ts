@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { I18nPipe, IndicatorComponent } from '../../../shared/ui';
+import { AppMenuComponent, I18nPipe, IndicatorComponent } from '../../../shared/ui';
 import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import {
   ContactsService,
@@ -28,6 +28,7 @@ interface ProfileViewRow {
   standalone: true,
   imports: [
     CommonModule,
+    AppMenuComponent,
     MatIconModule,
     I18nPipe,
     IndicatorComponent,
@@ -145,10 +146,18 @@ export class ProfileViewPopupComponent implements OnDestroy {
       translateSubtitle: false,
       size: 'wide',
       height: 'full',
+      mobilePresentation: 'fullscreen',
       headerTone: 'accent',
       bodyLayout: 'flush',
       onClose: event => this.closePopup(event)
     };
+  }
+
+  protected scrollToDetails(body: HTMLElement, details: HTMLElement): void {
+    const reducedMotion = body.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    body.scrollTo({ top: body.scrollTop + details.getBoundingClientRect().top - body.getBoundingClientRect().top,
+      behavior: reducedMotion ? 'instant' : 'smooth' });
+    details.focus({ preventScroll: true });
   }
 
   protected displayTitle(user: UserDto): string {

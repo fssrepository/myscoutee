@@ -68,6 +68,7 @@
             class="document-viewer-action-menu"
             kind="inline"
             layout="row"
+            [model]="{ actionSizing: 'content' }"
             [items]="actionMenuItems()"
             (itemSelect)="onActionMenuSelect($event)"
           ></app-menu>

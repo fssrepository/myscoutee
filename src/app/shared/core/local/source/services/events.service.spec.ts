@@ -723,6 +723,17 @@ describe('LocalEventsService', () => {
     });
   });
 
+  it('preserves published gallery images and metadata in local mode', async () => {
+    const previous = { ...lifecycleEvent('A'), imageUrl: 'original', imageUrls: ['original', 'second'],
+      imageDetails: { original: { location: 'Park', caption: 'Original' } } };
+    queryEventRecordById.mockReturnValue(previous);
+    saveEventSnapshot.mockImplementation(record => record);
+    await TestBed.inject(LocalEventsService).saveActivityEvent(new ActivityEventDetailDTO().apply({
+      id: previous.id, userId: previous.userId, imageUrls: ['replacement']
+    }));
+    expect(saveEventSnapshot.mock.calls[0][0]).toMatchObject({ imageUrl: 'original', imageUrls: previous.imageUrls, imageDetails: previous.imageDetails });
+  });
+
   it('stores event editor local wall times as UTC instants', async () => {
     queryEventRecordById.mockReturnValue(null);
     saveEventSnapshot.mockImplementation(record => record);

@@ -42,17 +42,17 @@ interface AppVersionPayload {
 
 type HowStepSlide = WarpImageCardData;
 
-type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green';
+type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green' | 'pink';
 
 interface PartnerRoleOverview {
   readonly id: string;
   readonly icon: string;
   readonly labelKey: string;
-  readonly label: string;
+  readonly label?: string;
   readonly titleKey: string;
-  readonly title: string;
+  readonly title?: string;
   readonly descriptionKey: string;
-  readonly description: string;
+  readonly description?: string;
   readonly tone: PartnerRoleTone;
 }
 
@@ -79,7 +79,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly i18n = inject(I18nService);
-  protected readonly founderName = this.i18n.founderName;
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   protected readonly deploymentSocialLinks =
@@ -190,6 +189,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       tone: 'blue'
     },
     {
+      id: 'affiliate-partner',
+      icon: 'group_add',
+      labelKey: 'landing.partners.role.affiliate.label',
+      titleKey: 'landing.partners.role.affiliate.title',
+      descriptionKey: 'landing.partners.role.affiliate.description',
+      tone: 'pink'
+    },
+    {
       id: 'strategic-collaborator',
       icon: 'handshake',
       labelKey: 'landing.partners.role.strategic.label',
@@ -250,7 +257,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
-  protected appVersionLabel = 'v1.0.0';
+  protected appVersionLabel = '';
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
   private readonly articlesReadySignal = new BehaviorSubject<number>(0);
   private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;

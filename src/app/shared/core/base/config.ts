@@ -248,6 +248,13 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/content-moderation', demoDelayMs: 1500, intervalMs: 60000, demoIntervalMs: 60000
+    },
+    {
+      routePrefix: '/activities/feed',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/activities/events',
       demoDelayMs: 1500
     },

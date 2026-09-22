@@ -303,6 +303,7 @@ export class EventSubeventsListPopupComponent {
         this.loadedPageTotal = null;
         this.loadedPageNextCursor = null;
         this.event = null;
+        this.mingleStore.observeRuntimeEvent(null);
         this.items = [];
         this.slotSections = [];
         this.participantOnly = false;
@@ -770,6 +771,7 @@ export class EventSubeventsListPopupComponent {
       groupLabel,
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
+      mingleState: this.mingleStore.state(),
       hasMenuOptions: this.event?.canAccessResources === true,
       menuBadgeCount: this.event?.canAccessResources === true ? this.runtimeBadgeCount(item) : 0,
       menuTitle: item.name,
@@ -1703,6 +1705,7 @@ export class EventSubeventsListPopupComponent {
     };
     const slots = result?.slots ?? [];
     this.event = event;
+    this.mingleStore.observeRuntimeEvent(event.mode === 'Mingle' ? eventId : null);
     this.slotSections = EventSubeventsSlotConverter.convertList(slots, {
       event,
       order: this.order

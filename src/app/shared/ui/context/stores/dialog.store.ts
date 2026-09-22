@@ -19,7 +19,8 @@ export interface DialogConfig {
   showClose?: boolean;
   failureMessage?: string | null;
   ringPerimeter?: number;
-  onConfirm?: (() => void | Promise<void>) | null;
+  input?: { label: string; maxLength: number; value?: string } | null;
+  onConfirm?: ((input: string) => void | Promise<void>) | null;
   onCancel?: (() => void | Promise<void>) | null;
 }
 
@@ -41,7 +42,8 @@ export interface DialogState {
   errorMessage: string;
   failureMessage: string;
   ringPerimeter: number;
-  onConfirm: (() => void | Promise<void>) | null;
+  input: { label: string; maxLength: number; value: string } | null;
+  onConfirm: ((input: string) => void | Promise<void>) | null;
   onCancel: (() => void | Promise<void>) | null;
 }
 
@@ -73,6 +75,7 @@ export class DialogStore {
       errorMessage: '',
       failureMessage: config.failureMessage?.trim() || 'Unable to complete this action.',
       ringPerimeter: Number.isFinite(Number(config.ringPerimeter)) ? Math.max(0, Number(config.ringPerimeter)) : 100,
+      input: config.input ? { ...config.input, value: (config.input.value ?? '').slice(0, config.input.maxLength) } : null,
       onConfirm: config.onConfirm ?? null,
       onCancel: config.onCancel ?? null
     });
@@ -127,7 +130,7 @@ export class DialogStore {
       ? { ...current, busy: true, errorMessage: '' }
       : current);
     try {
-      await Promise.resolve(state.onConfirm());
+      await Promise.resolve(state.onConfirm(state.input?.value ?? ''));
       if (this.stateRef()?.id === dialogId) {
         this.stateRef.set(null);
       }
@@ -143,6 +146,11 @@ export class DialogStore {
           }
         : current);
     }
+  }
+
+  updateInput(value: string): void {
+    this.stateRef.update(current => current?.input && !current.busy
+      ? { ...current, input: { ...current.input, value: value.slice(0, current.input.maxLength) } } : current);
   }
 
   close(): void {

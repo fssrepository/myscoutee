@@ -1,3 +1,4 @@
+import { ImageDetailsMap } from './image-gallery.interface';
 import type * as UserContracts from './user.interface';
 
 export interface IdeaPostDto {
@@ -10,6 +11,7 @@ export interface IdeaPostDto {
   contentHtml: string;
   imageUrl: string;
   imageUrls: string[];
+  imageDetails?: ImageDetailsMap;
   featured: boolean;
   published: boolean;
   trashed: boolean;
@@ -68,6 +70,7 @@ export interface IdeaPostSaveRequestDto {
   contentHtml: string;
   imageUrl: string;
   imageUrls: string[];
+  imageDetails?: ImageDetailsMap;
   removedImageUrls?: string[];
   featured: boolean;
   published: boolean;

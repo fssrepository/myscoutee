@@ -65,7 +65,7 @@ export class EventFeedbackRatedDetailPopupComponent {
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
-      bodyLayout: 'fill',
+      bodyLayout: 'default',
       backdropTone: 'dim',
       onClose: event => this.close(event)
     };

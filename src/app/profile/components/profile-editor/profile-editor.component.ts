@@ -140,15 +140,15 @@ export class ProfileEditorComponent implements OnDestroy {
   });
   protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
   protected readonly profileHeaderActionMenuModel: AppMenuModel = { actionSizing: 'content' };
-  protected readonly profileApiIntegrationActions: readonly AppMenuItem[] = [{
+  protected readonly profileApiIntegrationActions = computed<readonly AppMenuItem[]>(() => [{
     id: 'profile-api-integration',
     kind: 'action',
-    icon: 'api',
-    label: 'API',
-    ariaLabel: 'Open API integration settings',
+    icon: this.activeUserIsAdmin() ? 'api' : 'group_add',
+    label: this.activeUserIsAdmin() ? 'admin.api.title' : 'affiliate.title',
+    ariaLabel: this.activeUserIsAdmin() ? 'admin.api.title' : 'affiliate.open',
     layout: 'action',
-    palette: 'blue'
-  }];
+    palette: this.activeUserIsAdmin() ? 'blue' : 'pink'
+  }]);
 
   protected panel: ProfileEditorPanel = 'profile';
   protected profileEditorData = new ProfileExtDto();

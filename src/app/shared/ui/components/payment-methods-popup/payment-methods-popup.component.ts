@@ -215,6 +215,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       headerPalette: 'blue',
       headerControls: [this.historyFilterControl(), this.headerActionControl({
         id: 'open-cards',
+        collapsible: true,
         icon: 'credit_card',
         label: 'payment.cards.open',
         ariaLabel: 'payment.cards.open.aria',
@@ -787,6 +788,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       title: 'payment.history.filter.title',
       trigger: {
         id: 'payment-history-filter-trigger',
+        collapsible: true,
         label: labels[direction],
         icon: 'filter_list',
         trailingIcon: 'expand_more',

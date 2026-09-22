@@ -1,6 +1,10 @@
 <app-popup [model]="model()" [zIndex]="10020">
   <div class="explore-filters">
     <app-menu kind="inline" [items]="toggles()" (itemSelect)="toggle($event)"></app-menu>
+    <div class="explore-filters__toggle-row">
+      <app-menu kind="inline" [items]="followedToggle()" (itemSelect)="toggle($event)"></app-menu>
+      <app-menu kind="inline" [items]="memberItems()" (itemSelect)="membersOpened.emit()"></app-menu>
+    </div>
     <label class="explore-filters__field">
       <span>{{ 'event.mode' | i18n }}</span>
       <app-menu kind="select" [trigger]="modeTrigger()" [items]="modes.items(draft.mode, true)"

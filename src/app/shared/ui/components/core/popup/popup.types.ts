@@ -77,6 +77,7 @@ export interface PopupModel<TContext = unknown> {
   headerLabel?: string | null;
   headerLabelIcon?: string | null;
   headerBadge?: string | null;
+  headerBadgeTone?: PopupHeaderBadgeTone;
   headerTitleBadge?: string | null;
   headerTitleBadgeTone?: PopupHeaderBadgeTone;
   title?: string | null;
