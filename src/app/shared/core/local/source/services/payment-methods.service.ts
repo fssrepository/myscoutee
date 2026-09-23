@@ -29,7 +29,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
-    if (!Object.hasOwn(SEED_PAYMENT_EXCHANGE_RATES, currency)) throw new Error('payment.summary.currency.invalid');
+    if (!Object.hasOwn(SEED_PAYMENT_EXCHANGE_RATES, currency)) throw new Error('payment.currency.save.error');
     globalThis.localStorage?.setItem(`myscoutee.summary-currency.${userId}`, currency);
   }
 
