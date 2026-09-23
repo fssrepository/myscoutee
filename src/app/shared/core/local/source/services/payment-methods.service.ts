@@ -15,6 +15,8 @@ import type {
 import { LocalPaymentCardArtworkRepository } from '../repositories/payment-card-artwork.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalPaymentSummaryMapper } from '../mappers/payment-summary.mapper';
+import { SEED_PAYMENT_EXCHANGE_RATES } from '../../seed/payment-exchange-rates';
 
 @Injectable({ providedIn: 'root' })
 export class LocalPaymentMethodsService extends LocalRouteDelayService implements PaymentMethodDataService {
@@ -27,17 +29,16 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
+    if (!Object.hasOwn(SEED_PAYMENT_EXCHANGE_RATES, currency)) throw new Error('payment.summary.currency.invalid');
     globalThis.localStorage?.setItem(`myscoutee.summary-currency.${userId}`, currency);
   }
 
   private summary(userId: string, items: PaymentHistoryItemDto[]): import('../../../contracts/payment-method.interface').PaymentEuroSummaryDto {
-    const currency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${userId}`) || 'EUR';
-    const outgoing = this.paymentTotals(items, 'expense');
-    const incoming = this.paymentTotals(items, 'income');
-    const currencies = [...new Set(['EUR', currency, ...Object.keys(outgoing), ...Object.keys(incoming)])].sort();
-    return { currency, currencies, outgoing: outgoing[currency] ?? 0, incoming: incoming[currency] ?? 0,
-      gross: 0, refunded: 0, net: 0,
-      missingRates: currencies.filter(code => code !== currency && ((outgoing[code] ?? 0) > 0 || (incoming[code] ?? 0) > 0)).length };
+    return LocalPaymentSummaryMapper.build(userId, items
+      .filter(item => item.status === 'captured' || item.status === 'approved')
+      .map(item => ({ currency: item.currency,
+        outgoing: item.direction === 'expense' ? item.amount : 0,
+        incoming: item.direction === 'income' ? item.amount : 0 })));
   }
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {

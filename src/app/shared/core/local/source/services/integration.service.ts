@@ -8,6 +8,7 @@ import type {
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { LocalOperatorRegistryRepository } from '../repositories/operator-registry.repository';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalPaymentSummaryMapper } from '../mappers/payment-summary.mapper';
 
 const INTEGRATIONS_ROUTE = '/integrations';
 
@@ -23,11 +24,8 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     const settings = this.repository.settings(this.requireUserId(), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
     if (settings.affiliate?.revenue) {
       const revenue = settings.affiliate.revenue;
-      const currency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${this.requireUserId()}`) || 'EUR';
-      const native = revenue.currencies[currency];
-      revenue.euroSummary = { currency, currencies: [...new Set(['EUR', currency, ...Object.keys(revenue.currencies)])].sort(),
-        outgoing: 0, incoming: 0, gross: native?.gross ?? 0, refunded: native?.refunded ?? 0, net: native?.net ?? 0,
-        missingRates: Object.entries(revenue.currencies).filter(([code, row]) => code !== currency && row.gross > 0).length };
+      revenue.euroSummary = LocalPaymentSummaryMapper.build(this.requireUserId(),
+        Object.entries(revenue.currencies).map(([currency, row]) => ({ currency, gross: row.gross, refunded: row.refunded })));
     }
     await this.repository.flushToIndexedDb();
     return settings;
