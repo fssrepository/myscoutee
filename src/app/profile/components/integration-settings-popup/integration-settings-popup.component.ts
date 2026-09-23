@@ -78,6 +78,18 @@ export class IntegrationSettingsPopupComponent {
   protected get integrationDocumentationUrl() { return this.adminMode
     ? 'https://github.com/fssrepository/myscoutee-client-admin#documentation'
     : 'https://github.com/fssrepository/myscoutee-backend#documentation-pdfs'; }
+  protected readonly clientDownloadActions: readonly AppMenuItem[] = [{
+    id: 'admin-client-download',
+    icon: 'install_desktop',
+    label: 'admin.api.client.download',
+    ariaLabel: 'admin.api.client.download',
+    layout: 'pill',
+    palette: 'blue',
+    surface: 'tinted',
+    href: () => this.integrationDocumentationUrl,
+    target: '_blank',
+    rel: 'noopener noreferrer'
+  }];
   protected readonly generateTokenActions = computed<readonly AppMenuItem[]>(() => [{
     id: 'generate-integration-token',
     kind: 'action',
