@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.23.hu.156",
+  "version": "2026.09.23.hu.157",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3720,6 +3720,6 @@
     "email.unsubscribe.landing": "MyScoutee weboldal",
     "email.unsubscribe.javascript": "Az email-beállítások megerősítéséhez engedélyezd a JavaScriptet.",
     "game.location.required.title": "Hiányzó helyadat",
-    "game.location.required.description": "A helyadatod még nincs elmentve. A profilok betöltéséhez frissítsd a helyadatot az Engedélyek és telepítés ablakban."
+    "game.location.required.description": "A profilok megjelenítéséhez nyisd meg a Beállítások → Telepítés menüpontot, engedélyezd a helyadatok használatát, majd nyomd meg a Frissítés gombot."
   }
 }
