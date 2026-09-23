@@ -535,7 +535,7 @@ describe('OperatorWorkspaceStore', () => {
     expect(loadDeploymentUpdate).toHaveBeenCalledTimes(2);
   });
 
-  it('hydrates claim, update, and community state together and reuses it', async () => {
+  it('hydrates claim and community without waiting for the avatar update check', async () => {
     const update = deploymentUpdate('1.1.0');
     const community = operatorCommunity();
     loadClaimStatus.mockResolvedValue({
@@ -550,14 +550,15 @@ describe('OperatorWorkspaceStore', () => {
 
     expect(store.claimStatus()?.verificationStatus).toBe('PENDING_REVIEW');
     expect(store.claimDraft()).toEqual(claimSubmission());
-    expect(store.deploymentUpdate()).toEqual(update);
+    expect(store.deploymentUpdate()).toBeNull();
     expect(store.community()).toEqual(community);
     expect(loadClaimStatus).toHaveBeenCalledTimes(1);
-    expect(loadDeploymentUpdate).toHaveBeenCalledTimes(1);
+    expect(loadDeploymentUpdate).not.toHaveBeenCalled();
     expect(loadCommunityStatus).toHaveBeenCalledTimes(1);
 
     await store.loadClaimStatus();
-    await store.loadDeploymentUpdate();
+    await store.preloadDeploymentUpdate();
+    expect(await store.loadDeploymentUpdate()).toEqual(update);
     await store.loadCommunityStatus();
 
     expect(loadClaimStatus).toHaveBeenCalledTimes(1);

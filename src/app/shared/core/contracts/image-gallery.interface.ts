@@ -1,4 +1,15 @@
-export interface ImageDetails { location: string; caption: string; }
+export interface ImageEventReference {
+  id: string;
+  title: string;
+  organizerId: string;
+  organizerName: string;
+  location: string;
+}
+export interface ImageDetails { location: string; caption: string; event?: ImageEventReference | null; }
+export interface ImageDetailsConfig {
+  eventRequired?: boolean;
+  selectEvent?: (current?: ImageEventReference | null) => Promise<ImageEventReference | null>;
+}
 export type ImageDetailsMap = Record<string, ImageDetails>;
 export const IMAGE_CAPTION_MAX_LENGTH = 40;
 
@@ -9,6 +20,6 @@ export function normalizeImageDetails(details: ImageDetailsMap | null | undefine
     const caption = `${value.caption ?? ''}`.replace(/\s+/g, ' ').trim();
     const location = `${value.location ?? ''}`.trim();
     if (caption.length > IMAGE_CAPTION_MAX_LENGTH || location.length > 240) throw new Error('Image details exceed the allowed length.');
-    return [url, { location, caption }];
+    return [url, { location, caption, ...(value.event ? { event: { ...value.event } } : {}) }];
   }));
 }

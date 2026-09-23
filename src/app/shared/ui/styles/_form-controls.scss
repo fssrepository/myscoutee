@@ -1,5 +1,21 @@
 @use './material' as material;
 
+@mixin text-control() {
+  width: 100%;
+  border: 1px solid rgba(15, 27, 47, 0.16);
+  border-radius: 10px;
+  padding: 0.48rem 0.56rem;
+  font: inherit;
+  color: var(--text-main);
+  background: #fff;
+
+  &:focus {
+    outline: 0;
+    border-color: rgba(52, 103, 182, 0.72);
+    box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+  }
+}
+
 @mixin form-controls() {
   .app-popup,
   .mobile-profile-selector-sheet-wrap,
@@ -123,13 +139,7 @@
   .experience-form-popup input,
   .experience-form-popup select,
   .mobile-profile-selector-sheet-wrap input {
-    width: 100%;
-    border: 1px solid rgba(15, 27, 47, 0.16);
-    border-radius: 10px;
-    padding: 0.48rem 0.56rem;
-    font: inherit;
-    color: var(--text-main);
-    background: #fff;
+    @include text-control();
   }
 
   .app-popup textarea,

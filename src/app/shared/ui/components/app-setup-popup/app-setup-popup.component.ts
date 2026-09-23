@@ -45,6 +45,7 @@ export class AppSetupPopupComponent {
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
   readonly showPermissionAction = computed(() => this.store.actionPending()
+    || this.store.locationMissing()
     || this.toggles().some(item => !item.disabled));
   readonly permissionActionPending = computed(() => this.store.busy() || this.store.notificationConfigurationPending());
   readonly permissionActions = computed<AppMenuItem[]>(() => [

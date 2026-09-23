@@ -1,3 +1,4 @@
+import { contentModerationBadge } from './content-moderation-badge';
 import { AppUtils } from '../../app-utils';
 import type {
   ActivityEventDTO,
@@ -54,7 +55,8 @@ export class ActivityEventInfoCardConverter {
       ownerUserId: profileUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: trashView ? 'deleted' : this.surfaceTone(status, dto, activeUserId),
+      surfaceTone: trashView ? 'deleted' : status === 'B' && contentModerationBadge(dto.moderationStatus)
+        ? this.surfaceTone('A', { ...dto, status: 'A' }, activeUserId) : this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
@@ -73,7 +75,7 @@ export class ActivityEventInfoCardConverter {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
       },
       mediaStart: this.mediaStart(dto),
-      mediaEnd: {
+      mediaEnd: contentModerationBadge(dto.moderationStatus) ?? {
         variant: 'badge',
         tone: trashView ? 'deleted' : this.mediaEndTone(status, dto, activeUserId),
         label: statusBadgeLabelKey || this.capacityLabel(dto),
@@ -165,6 +167,9 @@ export class ActivityEventInfoCardConverter {
     if (!pending) {
       return [];
     }
+    if (dto.pendingReason === 'payment') {
+      return [{ label: 'event.member.payment.pending' }];
+    }
     if (dto.pendingReason === 'waitlist') {
       return [{ label: 'waiting.list' }];
     }
@@ -212,6 +217,7 @@ export class ActivityEventInfoCardConverter {
     }
     return this.includesUserId(dto.pendingRequestMemberUserIds, userId)
       || dto.pendingReason === 'approval'
+      || dto.pendingReason === 'payment'
       || dto.pendingReason === 'waitlist';
   }
 

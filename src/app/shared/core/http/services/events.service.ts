@@ -107,6 +107,12 @@ export class HttpEventsService implements IEventsService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  exportCalendar(signal?: AbortSignal): Promise<string> {
+    return this.requestWithAbort(this.http.get(`${this.apiBaseUrl}/activities/events/calendar/export`, {
+      responseType: 'text'
+    }), signal);
+  }
+
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events', userId);
   }
@@ -1744,6 +1750,7 @@ export class HttpEventsService implements IEventsService {
         userId: `${record.userId ?? ''}`.trim(),
         type: record.type ?? 'events',
         status: record.status,
+        moderationStatus: record.moderationStatus,
         adminIds: [...(record.adminIds ?? [])],
         avatar: `${record.avatar ?? ''}`.trim(),
         title: `${record.title ?? ''}`.trim(),
@@ -1782,6 +1789,8 @@ export class HttpEventsService implements IEventsService {
         frequency: record.frequency ?? '',
         ticketing: record.ticketing === true,
         approvalRequired: record.approvalRequired === true,
+      paymentDeadlineHours: record.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: record.paymentDeadlineEnabled ?? true,
         pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
         policiesEnabled: record.policiesEnabled === true,
         policies: (record.policies ?? []).map(item => ({ ...item })),

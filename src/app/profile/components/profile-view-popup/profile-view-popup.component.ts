@@ -77,6 +77,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
     return targetUserId && user?.id?.trim() === targetUserId ? user : null;
   });
   protected readonly loadingUser = computed(() => Boolean(this.targetUserId()) && this.profileResource.isLoading());
+  private readonly hiddenFields = computed(() => new Set(this.profileResource.value().hiddenFields ?? []));
   protected readonly experiences = computed(() => this.user() ? this.profileResource.value().experiences : []);
   protected readonly loadingExperiences = computed(() => this.loadingUser() && Boolean(this.user()));
   protected readonly activePhotoIndex = signal(0);
@@ -291,9 +292,22 @@ export class ProfileViewPopupComponent implements OnDestroy {
       { label: 'City', value: this.valueOrNotSet(user.city), icon: 'location_on' },
       { label: 'Height', value: this.heightLabel(user.height), icon: 'height' },
       { label: 'Physique', value: this.valueOrNotSet(user.physique), icon: 'accessibility_new' },
+      { label: 'profile.gender', value: user.gender === 'woman' ? 'Woman' : 'Man', icon: 'person' },
       { label: 'Languages', value: this.listLabel(user.languages), icon: 'translate' },
+      { label: 'profile.profession', value: this.valueOrNotSet(this.profileDetailGroupsForUser(user)
+        .flatMap(group => group.rows).find(row => row.labelKey === 'profile.profession')?.value), icon: 'work' },
+      { label: 'profile.experience.workplace', value: this.experienceSummary('Workspace'), icon: 'business' },
+      { label: 'profile.experience.school', value: this.experienceSummary('School'), icon: 'school' },
       { label: 'Horoscope', value: this.valueOrNotSet(user.horoscope), icon: 'auto_awesome' }
-    ];
+    ].filter(row => !this.hiddenFields().has(row.label));
+  }
+
+  private experienceSummary(type: ExperienceEntry['type']): string {
+    return this.valueOrNotSet(this.experiences()
+      .filter(entry => entry.type === type)
+      .map(entry => entry.org || entry.title)
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .join(', '));
   }
 
   private buildAboutRows(user: UserDto | null): ProfileViewRow[] {
@@ -319,12 +333,17 @@ export class ProfileViewPopupComponent implements OnDestroy {
       'profile.height',
       'profile.physique',
       'profile.languages',
+      'profile.gender',
+      'profile.profession',
+      'profile.experience.workplace',
+      'profile.experience.school',
       'profile.horoscope'
     ]);
     return groups
       .map(group => ({
         ...group,
         rows: (group.rows ?? [])
+          .filter(row => !this.hiddenFields().has(row.labelKey))
           .filter(row => !duplicatedBasics.has(AppUtils.normalizeText(row.labelKey)))
           .filter(row => `${row.value ?? ''}`.trim().length > 0)
       }))

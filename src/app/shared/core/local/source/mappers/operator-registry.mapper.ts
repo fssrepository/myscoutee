@@ -250,11 +250,11 @@ export class LocalOperatorRegistryMapper {
         : payment.availableProviders ?? initial.payment.availableProviders
     );
     const requestedProviderId = `${
-      payment.providerId
-      ?? (payment.provider && payment.provider !== 'NONE'
-        ? payment.provider
-        : initial.payment.providerId)
-      ?? ''
+      payment.providerId !== undefined
+        ? payment.providerId
+        : payment.provider !== undefined
+          ? payment.provider === 'NONE' ? null : payment.provider
+          : initial.payment.providerId
     }`.trim().toLowerCase();
     const providerId = availableProviders.find(
       provider => provider.id.trim().toLowerCase() === requestedProviderId

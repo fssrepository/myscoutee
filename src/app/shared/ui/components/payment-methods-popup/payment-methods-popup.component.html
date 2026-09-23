@@ -7,7 +7,7 @@
       }
       @if (historyHeaderTotals(); as totals) {
         @if (totals.length) {
-          <div class="payment-methods-popup__history-totals" [attr.aria-label]="'payment.history.totals' | i18n">
+          <div class="payment-methods-popup__history-totals motion-static" role="region" tabindex="0" [attr.aria-label]="'payment.history.totals' | i18n">
             @for (total of totals; track total.tone + ':' + total.text) {
               <span
                 class="payment-methods-popup__history-total"

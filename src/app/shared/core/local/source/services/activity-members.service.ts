@@ -235,6 +235,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const actorIsInvitee = targetIsInvitation
       && normalizedActorUserId === normalizedTargetUserId;
     const targetIsApprovalRequest = targetMember?.status === 'pending'
+      && targetMember.requestKind !== 'payment'
       && !targetIsInvitation;
     const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
     if (organizerParticipationAction
@@ -284,6 +285,10 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
 
     const nowIso = AppUtils.toIsoDateTime(new Date());
+    const approvalBasket = normalizedOwner.ownerType === 'event' && action === 'accept' && targetIsApprovalRequest
+      ? await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedTargetUserId, normalizedOwner.ownerId)
+      : null;
+    const awaitingPayment = Boolean(approvalBasket && approvalBasket.totalAmount > 0 && !approvalBasket.checkoutSessionId);
     const nextMembers = previousMembers.map(member => {
       const targetExactMember = member.id === targetMember?.id;
       const targetOrganizerScope = organizerParticipationAction
@@ -319,9 +324,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           )) {
         return {
           ...member,
-          status: 'accepted' as const,
-          pendingSource: null,
-          requestKind: null,
+          status: awaitingPayment ? 'pending' as const : 'accepted' as const,
+          pendingSource: awaitingPayment ? 'member' as const : null,
+          requestKind: awaitingPayment ? 'payment' as const : null,
           invitedByUserId: null,
           invitedByActiveUser: false,
           actionAtIso: nowIso
@@ -435,6 +440,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       );
     }
 
+    if (awaitingPayment) {
+      await this.eventCheckoutBasketsRepository.updateBasketState({
+        userId: normalizedTargetUserId, sourceId: normalizedOwner.ownerId,
+        checkoutState: 'approved', resultState: 'pending'
+      });
+    }
     const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
     const nextRecords = nextMembers.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,
@@ -504,7 +515,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           nowIso
         );
       }
-      if (refreshedEvent && action === 'accept') {
+      if (refreshedEvent && action === 'accept' && !awaitingPayment) {
         this.appendEventMemberJoinedNotifications(
           refreshedEvent,
           nextMembers.find(member => member.userId === normalizedTargetUserId) ?? targetMember,

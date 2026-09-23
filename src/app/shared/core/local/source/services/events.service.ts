@@ -1,4 +1,5 @@
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
+import { renderCalendarExport } from '../../../common/calendar-export';
 import { LocalMingleRepository } from '../repositories/mingle.repository';
 import { Injectable, inject } from '@angular/core';
 
@@ -139,6 +140,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryItemsByUser(userId);
+  }
+
+  async exportCalendar(userId: string): Promise<string> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const records = this.eventsRepository.queryCalendarItemsByUser(userId).map(record => ({
+      ...LocalActivityEventsMapper.toDto(record),
+      currentUserMembershipStatus: record.currentUserMembershipStatus
+    }));
+    return renderCalendarExport(userId, records);
   }
 
   peekItemsByUser(userId: string): ActivityEventRecord[] {

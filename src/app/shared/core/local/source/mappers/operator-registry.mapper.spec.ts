@@ -3,6 +3,18 @@ import { SeedOperatorRegistryBuilder } from '../../seed/builders/operator-regist
 import { LocalOperatorRegistryMapper } from './operator-registry.mapper';
 
 describe('LocalOperatorRegistryMapper', () => {
+  it('seeds a demo card provider without replacing an explicit cash-only choice', () => {
+    const initial = SeedOperatorRegistryBuilder.buildInitialRecord();
+    expect(initial.configuration.payment.providerId).toBe('stripe');
+    expect(initial.configuration.payment.credentialConfigured).toBe(true);
+    const cashOnly = structuredClone(initial);
+    cashOnly.configuration.payment.providerId = null;
+    cashOnly.configuration.payment.credentialConfigured = false;
+    const restored = LocalOperatorRegistryMapper.toSeedRecord({ registryRecord: cashOnly }, initial);
+    expect(restored.configuration.payment.providerId).toBeNull();
+    expect(restored.configuration.payment.credentialConfigured).toBe(false);
+  });
+
   it('migrates the v6 local default theme from Aurora to Violet', () => {
     const initial = SeedOperatorRegistryBuilder.buildInitialRecord(
       new Date('2026-08-15T18:50:00.000Z')

@@ -160,6 +160,15 @@ export class LocalEventsRepository {
     return this.queryUserRecords(userId);
   }
 
+  queryCalendarItemsByUser(userId: string): ActivityEventRecord[] {
+    const records = this.queryUserRecords(userId);
+    const accepted = this.acceptedParticipantOwnerIds('event', records.map(record => record.id), userId);
+    return records.map(record => ({
+      ...record,
+      currentUserMembershipStatus: accepted.has(record.id) ? 'accepted' : 'none'
+    }));
+  }
+
   queryInvitationItemsByUser(userId: string): ActivityEventRecord[] {
     return this.queryUserRecords(userId)
       .filter(record => !this.isTrashStatus(record))
@@ -627,6 +636,20 @@ export class LocalEventsRepository {
       this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), userId),
       viewerCoordinates
     );
+  }
+
+  queryFeedEventOptions(userId: string): import('../../../contracts/photo-feed.interface').PhotoFeedEventOption[] {
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    return this.computePreferredEventRecords(table)
+      .filter(record => this.isRootActivityRecord(record) && !this.isTrashStatus(record)
+        && this.isPublishedStatus(record.status)
+        && (record.creatorUserId === userId || record.adminIds?.includes(userId)
+          || this.hasTrackedUserParticipation(record, userId)
+          || this.shouldIncludeExploreRecord(record, userId, true)))
+      .sort((a, b) => (b.startAtIso ?? '').localeCompare(a.startAtIso ?? '') || a.id.localeCompare(b.id))
+      .map(record => ({ event: { id: record.id, title: record.title, organizerId: record.creatorUserId,
+        organizerName: record.creatorName, location: record.location ?? '' },
+        imageUrl: record.imageUrl, startAtIso: record.startAtIso }));
   }
 
   queryGeneratedTournamentRoomsByParent(parentEventId: string): ActivityEventRecord[] {
@@ -2531,6 +2554,10 @@ export class LocalEventsRepository {
     const member = (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .find(entry => entry?.userId === normalizedUserId && entry.status === 'pending');
+    if (member?.requestKind === 'payment'
+      || (member?.requestKind === 'join' && record.pricing?.enabled)) {
+      return 'payment';
+    }
     if (member?.requestKind === 'waitlist') {
       return 'waitlist';
     }
@@ -3128,6 +3155,8 @@ export class LocalEventsRepository {
       watchingUserIds: this.normalizeUserIds(record.watchingUserIds),
       policiesEnabled: record.policiesEnabled === true,
       approvalRequired: record.approvalRequired === true,
+      paymentDeadlineHours: record.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: record.paymentDeadlineEnabled ?? true,
       policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
       slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -4531,6 +4560,8 @@ export class LocalEventsRepository {
           frequency: parent.frequency,
           ticketing: parent.ticketing,
           approvalRequired: parent.approvalRequired === true,
+          paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
+          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
           slotsEnabled: false,
           slotTemplates: [],
           parentEventId: parent.id,
@@ -4621,6 +4652,8 @@ export class LocalEventsRepository {
         frequency: parent.frequency,
         ticketing: parent.ticketing,
         approvalRequired: parent.approvalRequired === true,
+          paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
+          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
         slotsEnabled: false,
         slotTemplates: [],
         parentEventId: parent.id,

@@ -40,8 +40,8 @@ export class LocalEventParticipationActionMapper {
     if (value === 'waitlist') {
       return 'waitlist';
     }
-    if (value === 'approval') {
-      return 'approval';
+    if (value === 'approval' || value === 'payment') {
+      return value;
     }
     return null;
   }

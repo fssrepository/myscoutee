@@ -273,6 +273,7 @@ export interface AssetRecord {
   menuActions?: string[];
   visibility: EventVisibility;
   status?: AssetLifecycleStatus | string;
+  moderationStatus?: string | null;
   statusBeforeSuppression?: AssetLifecycleStatus | string | null;
   ownerReleasedAtIso?: string | null;
   affinity?: number;

@@ -59,8 +59,7 @@ export class EventCheckoutDraftStore {
 
   reconcileExpiredEventDrafts(
     userId: string,
-    records: readonly Pick<ActivityEventRecord, 'id' | 'checkoutResultState'>[],
-    nowMs = Date.now()
+    records: readonly Pick<ActivityEventRecord, 'id' | 'checkoutResultState'>[]
   ): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || records.length === 0) {
@@ -68,14 +67,11 @@ export class EventCheckoutDraftStore {
     }
     const recordsById = new Map(records.map(record => [record.id, record]));
     for (const draft of this.listByUser(normalizedUserId)) {
-      const expiresAtMs = Date.parse(draft.expiresAtIso ?? '');
       const record = recordsById.get(draft.sourceId);
       if (record && (
         record.checkoutResultState === null
         || record.checkoutResultState === 'succeeded'
-        || (record.checkoutResultState === 'deleted'
-          && Number.isFinite(expiresAtMs)
-          && expiresAtMs <= nowMs)
+        || record.checkoutResultState === 'deleted'
       )) {
         this.clear(normalizedUserId, draft.sourceId);
       }

@@ -445,7 +445,9 @@ export class AdminIdeaEditorPopupComponent {
       height: 'full',
       headerLayout: 'article',
       bodyLayout: 'flush',
-      headerActions: post.imageUrls.length ? [{ id: 'gallery', icon: 'fullscreen', ariaLabel: 'image.carousel.expand' }] : [],
+      headerActions: post.imageUrls.length ? [{ id: 'gallery', icon: '', variant: 'badge',
+        label: `${post.imageUrls.length} / ${AdminIdeaEditorPopupComponent.IMAGE_LIMIT}`,
+        ariaLabel: 'image.carousel.expand' }] : [],
       onAction: () => this.openArticleGallery(post),
       onClose: event => this.closeViewer(event)
     };
@@ -1127,7 +1129,7 @@ export class AdminIdeaEditorPopupComponent {
         id: actionId,
         label: config.label,
         icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
+        palette: this.infoCardActionPalette(action),
         surface: 'tinted',
         context: {
           card,
@@ -1137,8 +1139,10 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
-    switch (tone) {
+  private infoCardActionPalette(action: CardMenuAction): AppMenuPalette {
+    if (action.id === 'viewArticle') return 'blue';
+    if (action.id === 'edit') return 'violet';
+    switch (action.tone) {
       case 'accent':
         return 'green';
       case 'review':

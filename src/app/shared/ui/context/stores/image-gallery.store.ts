@@ -1,9 +1,10 @@
-import { ImageDetailsMap, normalizeImageDetails } from '../../../core/contracts/image-gallery.interface';
-import { Injectable, signal } from '@angular/core';
+import { ImageDetailsMap, ImageDetailsConfig, normalizeImageDetails } from '../../../core/contracts/image-gallery.interface';
+import { Injectable, computed, signal } from '@angular/core';
 
 export interface ImageGalleryRequest {
   images: readonly string[];
   imageDetails?: ImageDetailsMap;
+  detailsConfig?: ImageDetailsConfig;
   onDetailsChange?: (details: ImageDetailsMap) => void;
   slotCount: number;
   readOnly: boolean;
@@ -21,6 +22,10 @@ export class ImageGalleryStore {
   readonly uploading = signal(false);
   readonly error = signal(false);
   readonly request = this.requestRef.asReadonly();
+  readonly invalid = computed(() => {
+    const request = this.request();
+    return !!request?.detailsConfig?.eventRequired && request.images.some(url => !request.imageDetails?.[url]?.event?.id);
+  });
 
   open(request: ImageGalleryRequest): object {
     const token = {};
@@ -40,7 +45,7 @@ export class ImageGalleryStore {
   async save(token: object): Promise<void> {
     const request = this.request();
     if (!request || request.token !== token || request.readOnly || !request.onSave
-      || this.saving() || this.uploading() || !request.images.length) return;
+      || this.saving() || this.uploading() || this.invalid() || !request.images.length) return;
     this.saving.set(true); this.error.set(false);
     try {
       await request.onSave([...request.images], normalizeImageDetails(request.imageDetails, request.images));

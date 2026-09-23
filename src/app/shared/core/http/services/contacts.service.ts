@@ -142,7 +142,8 @@ export class HttpContactsService {
   private normalizeProfileView(value: Partial<ProfileViewData> | null | undefined): ProfileViewData {
     return {
       user: value?.user ? this.cloneUser(value.user) : null,
-      experiences: this.normalizeExperienceEntries(value?.experiences)
+      experiences: this.normalizeExperienceEntries(value?.experiences),
+      hiddenFields: (value?.hiddenFields ?? []).filter(key => typeof key === 'string')
     };
   }
 

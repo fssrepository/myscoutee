@@ -40,6 +40,7 @@ export class DeploymentConfigurationService
     structuredClone(DEFAULT_DEPLOYMENT_PRIVACY_CONTACT)
   );
   private readonly paymentProviderIdRef = signal<string | null>(null);
+  private readonly paymentCardsAvailableRef = signal(false);
   private readonly firebaseMessagingConfiguredRef = signal(false);
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
@@ -49,6 +50,10 @@ export class DeploymentConfigurationService
   readonly socialLinks = this.socialLinksRef.asReadonly();
   readonly privacyContact = this.privacyContactRef.asReadonly();
   readonly paymentProviderId = this.paymentProviderIdRef.asReadonly();
+  readonly paymentCardsAvailable = this.paymentCardsAvailableRef.asReadonly();
+  applyPaymentCardsAvailable(value: boolean | undefined): void {
+    this.paymentCardsAvailableRef.set(value === true);
+  }
   readonly firebaseMessagingConfigured = this.firebaseMessagingConfiguredRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
 

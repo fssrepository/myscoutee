@@ -2,10 +2,12 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { FollowingService } from '../../../core/base/services/following.service';
 import type { FollowingState } from '../../../core/contracts/following.interface';
 import { UserProfileStore } from './user-profile.store';
+import { DialogStore } from './dialog.store';
 @Injectable({ providedIn: 'root' })
 export class FollowingStore {
   private readonly service = inject(FollowingService);
   private readonly profile = inject(UserProfileStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly stateRef = signal<FollowingState>({ organizerIds: [], eventCount: 0 });
   private userId = '';
   private revision = 0;
@@ -21,6 +23,17 @@ export class FollowingStore {
     });
   }
   captureRevision(): number { return this.revision; }
+  confirmChange(organizerId: string, organizerName: string, followed: boolean, onCommitted?: () => void): void {
+    const label = followed ? 'event.following.follow' : 'event.following.unfollow';
+    this.dialogStore.open({
+      title: label, message: organizerName, confirmLabel: label,
+      cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
+      onConfirm: async () => {
+        await this.change(organizerId, followed);
+        onCommitted?.();
+      }
+    });
+  }
   applySnapshot(userId: string, state: FollowingState | undefined, revision: number): void {
     if (state && userId === this.profile.activeUserId() && revision === this.revision) this.stateRef.set(state);
   }
