@@ -6,6 +6,7 @@
         [class.operator-action-popup--loading]="loading()"
         [class.operator-action-popup--updates]="activeKind === 'updates'"
         [class.operator-action-popup--deployments]="activeKind === 'deployments'"
+        [class.operator-action-popup--configuration]="activeKind === 'configuration'"
         [attr.aria-busy]="busy()"
       >
         @if (loading()) {
@@ -191,7 +192,6 @@
               }
             }
             @case ('configuration') {
-              <app-operator-email-configuration></app-operator-email-configuration>
               @if (workspace.configuration(); as configuration) {
                 @if (workspace.configurationDraft(); as draft) {
                   @if (configuration.capability !== 'AVAILABLE') {
@@ -1095,6 +1095,7 @@
                   </section>
                 }
               }
+              <app-operator-email-configuration></app-operator-email-configuration>
             }
             @case ('revenue') {
               @if (workspace.revenueSync(); as delivery) {

@@ -9,7 +9,7 @@ export class PhotoFeedService extends BaseRouteModeService implements IPhotoFeed
   private readonly http = inject(HttpPhotoFeedService);
   private readonly local = inject(LocalPhotoFeedService);
   private get source(): IPhotoFeedService { return this.resolveRouteService('/activities/feed', this.local, this.http); }
-  page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal) { return this.source.page(userId, query, signal); }
+  page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal, seenPostIds?: string[]) { return this.source.page(userId, query, signal, seenPostIds); }
   create(request: CreatePhotoFeedPost) { return this.source.create(request); }
   remove(userId: string, id: string) { return this.source.remove(userId, id); }
   seen(userId: string, postIds: string[]) { return this.source.seen(userId, postIds); }

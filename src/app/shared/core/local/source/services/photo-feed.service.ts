@@ -16,9 +16,14 @@ export class LocalPhotoFeedService extends LocalRouteDelayService implements IPh
       || Math.abs(point.latitude) > 90 || Math.abs(point.longitude) > 180) throw new Error('feed.locationRequired');
     return point;
   }
-  async page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal) {
+  async page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal, seenPostIds?: string[]) {
     await this.waitForRouteDelay('/activities/feed', signal);
     await this.repository.whenReady();
+    if (seenPostIds?.length) {
+      if (query.filters?.status !== 'public' || seenPostIds.length > 5000
+        || seenPostIds.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) throw new Error('Invalid seen posts.');
+      await this.repository.markSeen(userId, seenPostIds);
+    }
     return this.repository.page(userId, this.coordinates(userId), query, new Set(await this.repository.seenIds(userId)));
   }
   async create(request: CreatePhotoFeedPost) {

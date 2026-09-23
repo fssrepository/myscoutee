@@ -103,6 +103,7 @@
             <div class="event-intel-row">
               <app-menu
                 class="event-intel-menu"
+                [style.--app-menu-mobile-big-columns]="2"
                 kind="inline"
                 [items]="eventIntelMenuItems()"
                 (itemSelect)="onEventEditorMenuSelect($event)"

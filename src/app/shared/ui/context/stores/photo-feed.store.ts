@@ -71,15 +71,31 @@ export class PhotoFeedStore {
   }
   async page(query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal) {
     const userId = this.userId() ?? '';
-    const pendingAtStart = this.seenOutbox.pendingNow(userId);
-    const page = await this.service.page(userId, query, signal);
-    this.applyCounters(userId, page.context);
-    const pending = new Set(this.seenOutbox.pendingNow(userId));
-    if (query.filters?.status === 'public') {
-      const excluded = new Set([...pendingAtStart, ...pending, ...(this.viewedPosts.get(userId)?.keys() ?? [])]);
-      return { ...page, items: page.items.filter(post => !excluded.has(post.id)) };
+    // The popup opens immediately; its first lazy load awaits the small outbox
+    // read (normally preloaded at login), then syncs and loads in one request.
+    let openingSeen = query.filters?.status === 'public' && !query.cursor
+      ? (await this.seenOutbox.pending(userId)).slice(0, 5000) : [];
+    const excluded = new Set(this.seenOutbox.pendingNow(userId));
+    const cursors = new Set([query.cursor]);
+    let nextQuery = query;
+    for (;;) {
+      signal?.throwIfAborted();
+      const page = await this.service.page(userId, nextQuery, signal, openingSeen);
+      if (openingSeen.length) void this.seenOutbox.acknowledge(userId, openingSeen).catch(() => {});
+      openingSeen = [];
+      signal?.throwIfAborted();
+      this.applyCounters(userId, page.context);
+      if (query.filters?.status !== 'public') return page;
+      for (const id of this.seenOutbox.pendingNow(userId)) excluded.add(id);
+      for (const id of this.viewedPosts.get(userId)?.keys() ?? []) excluded.add(id);
+      const items = page.items.filter(post => !excluded.has(post.id));
+      if (items.length || !page.nextCursor) return { ...page, items };
+      // A locally filtered page is not the end of the public feed. Keep the
+      // backend cursor advancing until SmartList can render an unseen row.
+      if (cursors.has(page.nextCursor)) throw new Error('Feed cursor did not advance.');
+      cursors.add(page.nextCursor);
+      nextQuery = { ...nextQuery, page: nextQuery.page + 1, cursor: page.nextCursor };
     }
-    return page;
   }
   seen(post: PhotoFeedPost): void {
     const userId = this.userId();

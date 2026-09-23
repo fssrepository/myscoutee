@@ -731,6 +731,10 @@
   > span { flex: 0 0 auto; }
   > app-menu { min-width: 0; }
 }
+.required-star {
+  color: #bf2f2f;
+  font-weight: 800;
+}
 :host .image-carousel__slot-action--left { left: .24rem; right: auto; }
 .image-carousel__details-form { display: flex; flex-direction: column; gap: .6rem; padding: 1rem; }
 .image-carousel__caption-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 700; color: #1f3252; }

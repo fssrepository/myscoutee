@@ -147,6 +147,8 @@ export class OperatorWorkspaceStore {
   private readonly feedbackActionRef =
     signal<Exclude<OperatorWorkspaceBusyAction, null> | null>(null);
   private requestGeneration = 0;
+  private deploymentUpdateGeneration = 0;
+  private deploymentUpdateRequest: Promise<OperatorDeploymentUpdateDto | null> | null = null;
   private configurationAuthenticationFeedbackTimer:
     ReturnType<typeof setTimeout> | null = null;
   private configurationMessagingFeedbackTimer:
@@ -383,19 +385,15 @@ export class OperatorWorkspaceStore {
       'load-workspace',
       () => Promise.allSettled([
         this.service.loadClaimStatus(),
-        this.service.loadDeploymentUpdate(),
         this.service.loadCommunityStatus()
       ])
     );
     if (!settled) {
       return;
     }
-    const [claimResult, updateResult, communityResult] = settled;
+    const [claimResult, communityResult] = settled;
     if (claimResult.status === 'fulfilled') {
       this.applyClaimOverview(claimResult.value);
-    }
-    if (updateResult.status === 'fulfilled') {
-      this.deploymentUpdateRef.set(updateResult.value);
     }
     if (communityResult.status === 'fulfilled') {
       this.communityRef.set(communityResult.value);
@@ -495,12 +493,35 @@ export class OperatorWorkspaceStore {
     }
     const result = await this.run(
       'load-update',
-      () => this.service.loadDeploymentUpdate()
+      () => this.requestDeploymentUpdate()
     );
     if (result) {
       this.deploymentUpdateRef.set(result);
     }
     return result;
+  }
+
+  async preloadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
+    if (this.deploymentUpdateRef()) return this.deploymentUpdateRef();
+    // Avatar hydration starts this independently of the workspace/list loader.
+    // A failed background check is retried through the ordinary Updates action.
+    return this.requestDeploymentUpdate().catch(() => null);
+  }
+
+  private requestDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
+    if (this.deploymentUpdateRequest) return this.deploymentUpdateRequest;
+    const generation = this.deploymentUpdateGeneration;
+    const contextKey = this.sessionKey(this.sessionService.currentSession());
+    const request = this.service.loadDeploymentUpdate().then(result => {
+      if (generation !== this.deploymentUpdateGeneration
+        || contextKey !== this.sessionKey(this.sessionService.currentSession())) return null;
+      this.deploymentUpdateRef.set(result);
+      return result;
+    }).finally(() => {
+      if (this.deploymentUpdateRequest === request) this.deploymentUpdateRequest = null;
+    });
+    this.deploymentUpdateRequest = request;
+    return request;
   }
 
   async refreshDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
@@ -1370,6 +1391,8 @@ export class OperatorWorkspaceStore {
 
   private reset(): void {
     this.requestGeneration += 1;
+    this.deploymentUpdateGeneration += 1;
+    this.deploymentUpdateRequest = null;
     this.claimStatusRef.set(null);
     this.claimDraftRef.set(this.emptyClaimDraft());
     this.groupingTokenRef.set(null);

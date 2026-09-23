@@ -25,7 +25,7 @@ export interface CreatePhotoFeedPost {
 }
 export interface IPhotoFeedService {
   events(userId: string, query: ListQuery): Promise<PageResult<PhotoFeedEventOption>>;
-  page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal): Promise<PageResult<PhotoFeedPost, PhotoFeedCounters>>;
+  page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal, seenPostIds?: string[]): Promise<PageResult<PhotoFeedPost, PhotoFeedCounters>>;
   create(request: CreatePhotoFeedPost): Promise<PhotoFeedPost>;
   remove(userId: string, id: string): Promise<PhotoFeedCounters>;
   seen(userId: string, postIds: string[]): Promise<string[]>;

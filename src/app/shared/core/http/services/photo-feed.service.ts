@@ -9,7 +9,10 @@ import type { PhotoFeedCounters } from '../../contracts/photo-feed.interface';
 export class HttpPhotoFeedService implements IPhotoFeedService {
   private readonly http = inject(HttpClient);
   private readonly url = `${environment.apiBaseUrl ?? '/api'}/activities/feed`;
-  page(userId: string, query: ListQuery<PhotoFeedFilters>): Promise<PageResult<PhotoFeedPost, PhotoFeedCounters>> {
+  page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal, seenPostIds?: string[]): Promise<PageResult<PhotoFeedPost, PhotoFeedCounters>> {
+    signal?.throwIfAborted();
+    if (seenPostIds?.length) return firstValueFrom(this.http.post<PageResult<PhotoFeedPost, PhotoFeedCounters>>(`${this.url}/page`,
+      { userId, pageSize: query.pageSize, cursor: query.cursor, status: query.filters?.status ?? 'public', seenPostIds }));
     return firstValueFrom(this.http.get<PageResult<PhotoFeedPost, PhotoFeedCounters>>(this.url,
       { params: { userId, pageSize: query.pageSize, status: query.filters?.status ?? 'public', ...(query.cursor ? { cursor: query.cursor } : {}) } }));
   }

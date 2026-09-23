@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, inject, signal } from '@angular
 import { defer } from 'rxjs';
 import { PhotoFeedService } from '../../../core/base/services/photo-feed.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
+import { AppUtils } from '../../../app-utils';
 import type { ImageEventReference } from '../../../core/contracts/image-gallery.interface';
 import type { PhotoFeedEventOption } from '../../../core/contracts/photo-feed.interface';
 import { PopupComponent, type PopupModel } from '../core/popup';
@@ -29,6 +30,12 @@ export class PhotoFeedEventPickerComponent {
   protected readonly config: SmartListConfig<PhotoFeedEventOption> = {
     pageSize: 10, listLayout: 'card-grid', desktopColumns: 3,
     trackBy: (_index, option) => option.event.id,
+    snapMode: 'mandatory', initialScrollAnchor: 'first-item', scrollPaddingTop: '2.6rem',
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    groupBy: option => {
+      const date = new Date(option.startAtIso ?? '');
+      return Number.isNaN(date.getTime()) ? 'Date unavailable' : AppUtils.smartListDayLabel(date);
+    },
     headerProgress: { enabled: true },
     emptyLabel: () => this.i18n.translate('feed.event.empty')
   };

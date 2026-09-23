@@ -14,6 +14,7 @@ import {
   Component,
   ElementRef,
   HostListener,
+  Injector,
   OnDestroy,
   ViewChild,
   computed,
@@ -119,6 +120,7 @@ import {
   OperatorMenuStore
 } from '../../context/stores/operator-menu.store';
 import { isNavigatorHydrationRoute } from './navigator-hydration-route';
+import { hasOperatorRole } from '../../../core/common/user-role';
 import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
@@ -260,6 +262,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
   private readonly operatorMenuStore = inject(OperatorMenuStore);
+  private readonly injector = inject(Injector);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -1907,7 +1910,16 @@ export class SideMenuComponent implements OnDestroy {
 
     this.syncHydratedUser(loadedUser);
     void this.helpCenterService.preload('help');
+    if (hasOperatorRole(loadedUser)) {
+      void this.preloadOperatorUpdate(requestVersion);
+    }
     return loadedUser;
+  }
+
+  private async preloadOperatorUpdate(requestVersion: number): Promise<void> {
+    const { OperatorWorkspaceStore } = await import('../../context/stores/operator-workspace.store');
+    if (requestVersion !== this.hydrationRequestVersion) return;
+    await this.injector.get(OperatorWorkspaceStore).preloadDeploymentUpdate();
   }
 
   private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {

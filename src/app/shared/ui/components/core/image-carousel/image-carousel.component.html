@@ -173,7 +173,7 @@
     <div class="image-carousel__details-form">
       @if (detailsConfig.eventRequired) {
         <div class="image-carousel__event-field">
-          <span>{{ 'feed.event.label' | i18n }} *</span>
+          <span>{{ 'feed.event.label' | i18n }} <span class="required-star">*</span></span>
           <app-menu [items]="eventItems()" (itemSelect)="selectDetailsEvent()"></app-menu>
         </div>
       } @else {
