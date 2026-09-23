@@ -22,9 +22,10 @@
 
   <div class="image-carousel__carousel">
     @if (expandable) {
-      <button type="button" class="image-carousel__expand" (click)="expandGallery($event)"
-        [attr.aria-label]="'image.carousel.expand' | i18n" [title]="'image.carousel.expand' | i18n">
-        <mat-icon>fullscreen</mat-icon>
+      <button type="button" class="image-carousel__expand"
+        [attr.aria-label]="'image.carousel.expand' | i18n" [title]="'image.carousel.expand' | i18n"
+        (click)="$event.stopPropagation(); expandGallery()">
+        {{ galleryCount() }} / {{ galleryCapacity ?? slotCount }}
       </button>
     }
     @if (!slots.length) { <div class="image-carousel__empty">{{ 'no.image' | i18n }}</div> }
@@ -72,7 +73,9 @@
                     <p class="image-carousel__caption">{{ imageDetails[imageUrl].caption }}</p>
                   }
                 }
-                <span class="image-carousel__slot-index">{{ slotIndex + 1 }}</span>
+                @if (!(expandable && galleryCapacity)) {
+                  <span class="image-carousel__slot-index">{{ slotIndex + 1 }}</span>
+                }
 
                 @if (isUploading(slotIndex)) {
                   <span class="image-carousel__upload-ring" [attr.aria-label]="'uploading.image' | i18n">
@@ -96,10 +99,10 @@
                       <mat-icon>content_copy</mat-icon>
                     </button>
                     }
+                    @if (!expandable) {
                     <button
                       type="button"
                       class="image-carousel__slot-action image-carousel__slot-action--remove"
-                      [class.image-carousel__slot-action--before-expand]="expandable"
                       [class.image-carousel__slot-action--left]="detailsEditable"
                       (click)="removeSlot(imageUrl, slotIndex, $event)"
                       [attr.aria-label]="'remove.image' | i18n"
@@ -107,6 +110,7 @@
                     >
                       <mat-icon>close</mat-icon>
                     </button>
+                    }
                   }
                 } @else if (!isDisabled()) {
                   <span class="image-carousel__slot-add">+</span>

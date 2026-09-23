@@ -36,6 +36,7 @@ export interface PopupControlBase {
 }
 
 export interface PopupAction extends PopupControlBase {
+  variant?: 'badge';
   icon: string;
   iconSize?: PopupActionIconSize;
   label?: string | null;

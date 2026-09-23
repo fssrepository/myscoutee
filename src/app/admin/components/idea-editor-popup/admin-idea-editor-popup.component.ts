@@ -445,7 +445,9 @@ export class AdminIdeaEditorPopupComponent {
       height: 'full',
       headerLayout: 'article',
       bodyLayout: 'flush',
-      headerActions: post.imageUrls.length ? [{ id: 'gallery', icon: 'fullscreen', ariaLabel: 'image.carousel.expand' }] : [],
+      headerActions: post.imageUrls.length ? [{ id: 'gallery', icon: '', variant: 'badge',
+        label: `${post.imageUrls.length} / ${AdminIdeaEditorPopupComponent.IMAGE_LIMIT}`,
+        ariaLabel: 'image.carousel.expand' }] : [],
       onAction: () => this.openArticleGallery(post),
       onClose: event => this.closeViewer(event)
     };

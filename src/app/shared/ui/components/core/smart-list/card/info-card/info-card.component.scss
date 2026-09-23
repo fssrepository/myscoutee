@@ -1,3 +1,4 @@
+@use '../../../../../styles/media-badge' as mediaBadge;
 @use '../../../../../styles/contextual-colors' as colors;
 
 :host {
@@ -646,17 +647,7 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__overlay-action--badge {
-  min-width: 0;
-  height: 25px;
-  border-radius: 999px;
-  padding: 0 0.32rem;
-  background: rgba(26, 45, 71, 0.82);
-  color: #fff;
-  font-size: 0.7rem;
-  letter-spacing: 0.01em;
-  font-weight: 800;
-  box-shadow: 0 5px 10px rgba(8, 18, 34, 0.24);
-  overflow: visible;
+  @include mediaBadge.surface;
 }
 
 .ui-info-card__overlay-action--badge.ui-info-card__overlay-action--shape-circle {

@@ -59,6 +59,8 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   @Input() slideshow = false;
   @Input() highlightFirst = false;
   @Input() expandable = false;
+  @Input() galleryImageCount: number | null = null;
+  @Input() galleryCapacity: number | null = null;
   @Input() detailsEditable = false;
   @Input() imageDetails: ImageDetailsMap = {};
   @Input() detailsConfig: ImageDetailsConfig = {};
@@ -192,8 +194,11 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
 
   ngOnDestroy(): void { this.destroyed = true; this.clearScrollLock(); }
 
-  protected expandGallery(event: Event): void {
-    event.stopPropagation();
+  protected galleryCount(): number {
+    return this.galleryImageCount ?? this.localImageUrls.length;
+  }
+
+  protected expandGallery(): void {
     this.expand.emit();
   }
 

@@ -1,4 +1,5 @@
 @use '../../../styles/form-controls' as controls;
+@use '../../../styles/media-badge' as mediaBadge;
 
 :host {
   display: block;
@@ -661,22 +662,19 @@
 }
 
 .image-carousel__expand {
+  @include mediaBadge.surface;
   position: absolute;
   z-index: 5;
-  top: .22rem;
-  right: .22rem;
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(42, 67, 101, .22);
-  border-radius: 50%;
-  color: #2c5d9e;
-  background: rgba(255, 255, 255, .94);
+  top: .7rem;
+  right: .7rem;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid rgba(17, 33, 56, .2);
   cursor: pointer;
 }
-:host .image-carousel__slot-action--before-expand { right: 2.5rem; }
 .image-carousel__empty { padding: 2rem; text-align: center; }
 :host(.image-carousel-host--slideshow) {
   display: flex;

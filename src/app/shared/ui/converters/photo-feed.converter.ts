@@ -15,7 +15,8 @@ export class PhotoFeedConverter {
       localSortKey: [bucket, -Date.parse(post.createdAtIso), post.id],
       metaRows: [`${post.distanceKm.toFixed(1)} km`], i18nIgnoreContent: true,
       mediaStart: { variant: 'avatar', imageUrl: post.creatorAvatarUrl, label: post.creatorName, interactive: false },
-      mediaEnd: { variant: 'badge', icon: 'fullscreen', ariaLabel: 'image.carousel.expand', interactive: true },
+      mediaEnd: { variant: 'badge', label: `${post.imageUrls.length} / 5`,
+        ariaLabel: 'image.carousel.expand', interactive: true },
       mediaBottomEnd: contentModerationBadge(post.moderationStatus),
       eagerDetail: post };
   }
