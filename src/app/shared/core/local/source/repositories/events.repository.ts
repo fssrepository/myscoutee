@@ -638,6 +638,20 @@ export class LocalEventsRepository {
     );
   }
 
+  queryFeedEventOptions(userId: string): import('../../../contracts/photo-feed.interface').PhotoFeedEventOption[] {
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    return this.computePreferredEventRecords(table)
+      .filter(record => this.isRootActivityRecord(record) && !this.isTrashStatus(record)
+        && this.isPublishedStatus(record.status)
+        && (record.creatorUserId === userId || record.adminIds?.includes(userId)
+          || this.hasTrackedUserParticipation(record, userId)
+          || this.shouldIncludeExploreRecord(record, userId, true)))
+      .sort((a, b) => (b.startAtIso ?? '').localeCompare(a.startAtIso ?? '') || a.id.localeCompare(b.id))
+      .map(record => ({ event: { id: record.id, title: record.title, organizerId: record.creatorUserId,
+        organizerName: record.creatorName, location: record.location ?? '' },
+        imageUrl: record.imageUrl, startAtIso: record.startAtIso }));
+  }
+
   queryGeneratedTournamentRoomsByParent(parentEventId: string): ActivityEventRecord[] {
     const normalizedParentEventId = parentEventId.trim();
     if (!normalizedParentEventId) {

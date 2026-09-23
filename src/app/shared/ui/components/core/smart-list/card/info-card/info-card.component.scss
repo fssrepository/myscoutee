@@ -401,6 +401,10 @@ button.asset-occupancy-badge:active::after,
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
+.ui-info-card__actions--bottom {
+  align-self: end;
+}
+
 .ui-info-card__head--without-leading {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -1533,4 +1537,16 @@ button.asset-occupancy-badge:focus-visible {
   background: colors.$teal-background;
   border-color: colors.$teal-border;
   color: colors.$teal-foreground;
+}
+
+.ui-info-card__overlay-action--tone-purple.ui-info-card__overlay-action--badge {
+  background: colors.$purple-background;
+  border-color: colors.$purple-border;
+  color: colors.$purple-foreground;
+}
+
+.ui-info-card__overlay-action--tone-danger.ui-info-card__overlay-action--badge {
+  background: colors.$danger-background;
+  border-color: colors.$danger-border;
+  color: colors.$danger-foreground;
 }

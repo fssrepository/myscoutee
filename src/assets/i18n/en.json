@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.23.en.149",
+  "version": "2026.09.23.en.153",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3694,6 +3694,17 @@
     "calendar.sync": "Sync calendar",
     "calendar.export.help": "Sync calendar: download your upcoming events as an ICS file, then import it in your calendar app. Refresh manually; no background sync.",
     "calendar.export.error": "The calendar file could not be downloaded. Please try again.",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "feed.event.label": "Event",
+    "feed.event.select": "Select event",
+    "feed.event.selected": "Selected event",
+    "feed.event.confirm": "Use selected event",
+    "feed.event.empty": "No events available.",
+    "feed.eventRequired": "Select an event for every photo.",
+    "feed.public": "Public feed",
+    "feed.remove": "Remove",
+    "feed.removeConfirm": "Remove this photo post?",
+    "feed.removeFailed": "Unable to remove this post. Please retry.",
+    "feed.seen": "Seen"
   }
 }

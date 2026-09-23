@@ -17,15 +17,12 @@ import { AssetCardBuilder } from '../../../shared/core/base/builders/asset-card.
 import type { AssetDetailDTO } from '../../../shared/core/contracts/asset.interface';
 import type { PhotoFeedPost } from '../../../shared/core/contracts/photo-feed.interface';
 import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
+import { MODERATION_STATUS_STYLE as STATUS_STYLE } from '../../../shared/ui/converters/content-moderation-presentation';
 
 const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed'];
 const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: AppMenuPalette }> = {
   all: { icon: 'apps', palette: 'slate' },
   asset: { icon: 'inventory_2', palette: 'green' }, event: { icon: 'event', palette: 'blue' }, feed: { icon: 'photo_library', palette: 'orange' }
-};
-const STATUS_STYLE: Record<ModerationStatus, { icon: string; palette: AppMenuPalette }> = {
-  'under-review': { icon: 'fact_check', palette: 'teal' }, accepted: { icon: 'check_circle', palette: 'green' },
-  rejected: { icon: 'cancel', palette: 'purple' }, blocked: { icon: 'block', palette: 'danger' }
 };
 @Component({
   selector: 'app-content-moderation-popup', standalone: true,

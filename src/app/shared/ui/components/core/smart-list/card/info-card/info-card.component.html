@@ -54,6 +54,8 @@
             [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaStart) === 'default'"
             [class.ui-info-card__overlay-action--tone-orange]="overlayTone(mediaStart) === 'orange'"
             [class.ui-info-card__overlay-action--tone-teal]="overlayTone(mediaStart) === 'teal'"
+            [class.ui-info-card__overlay-action--tone-purple]="overlayTone(mediaStart) === 'purple'"
+            [class.ui-info-card__overlay-action--tone-danger]="overlayTone(mediaStart) === 'danger'"
             [class.ui-info-card__overlay-action--tone-stage]="overlayTone(mediaStart) === 'stage'"
             [class.ui-info-card__overlay-action--tone-cool]="overlayTone(mediaStart) === 'cool'"
             [class.ui-info-card__overlay-action--tone-cool-mid]="overlayTone(mediaStart) === 'cool-mid'"
@@ -95,6 +97,8 @@
             [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaStart) === 'default'"
             [class.ui-info-card__overlay-action--tone-orange]="overlayTone(mediaStart) === 'orange'"
             [class.ui-info-card__overlay-action--tone-teal]="overlayTone(mediaStart) === 'teal'"
+            [class.ui-info-card__overlay-action--tone-purple]="overlayTone(mediaStart) === 'purple'"
+            [class.ui-info-card__overlay-action--tone-danger]="overlayTone(mediaStart) === 'danger'"
             [class.ui-info-card__overlay-action--tone-stage]="overlayTone(mediaStart) === 'stage'"
             [class.ui-info-card__overlay-action--layout-avatar-metric]="overlayLayout(mediaStart) === 'avatar-metric'"
             [class.ui-info-card__overlay-action--layout-badge-with-leading-accessory]="overlayLayout(mediaStart) === 'badge-with-leading-accessory'"
@@ -143,6 +147,8 @@
             [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaEnd) === 'default'"
             [class.ui-info-card__overlay-action--tone-orange]="overlayTone(mediaEnd) === 'orange'"
             [class.ui-info-card__overlay-action--tone-teal]="overlayTone(mediaEnd) === 'teal'"
+            [class.ui-info-card__overlay-action--tone-purple]="overlayTone(mediaEnd) === 'purple'"
+            [class.ui-info-card__overlay-action--tone-danger]="overlayTone(mediaEnd) === 'danger'"
             [class.ui-info-card__overlay-action--tone-stage]="overlayTone(mediaEnd) === 'stage'"
             [class.ui-info-card__overlay-action--tone-stage-active]="overlayTone(mediaEnd) === 'stage-active'"
             [class.ui-info-card__overlay-action--tone-stage-scheduled]="overlayTone(mediaEnd) === 'stage-scheduled'"
@@ -203,6 +209,8 @@
             [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaEnd) === 'default'"
             [class.ui-info-card__overlay-action--tone-orange]="overlayTone(mediaEnd) === 'orange'"
             [class.ui-info-card__overlay-action--tone-teal]="overlayTone(mediaEnd) === 'teal'"
+            [class.ui-info-card__overlay-action--tone-purple]="overlayTone(mediaEnd) === 'purple'"
+            [class.ui-info-card__overlay-action--tone-danger]="overlayTone(mediaEnd) === 'danger'"
             [class.ui-info-card__overlay-action--tone-stage]="overlayTone(mediaEnd) === 'stage'"
             [class.ui-info-card__overlay-action--tone-stage-active]="overlayTone(mediaEnd) === 'stage-active'"
             [class.ui-info-card__overlay-action--tone-stage-scheduled]="overlayTone(mediaEnd) === 'stage-scheduled'"
@@ -258,6 +266,8 @@
           [class.ui-info-card__overlay-action--tone-neutral]="overlayTone(mediaBottomEnd) === 'neutral'"
           [class.ui-info-card__overlay-action--tone-orange]="overlayTone(mediaBottomEnd) === 'orange'"
           [class.ui-info-card__overlay-action--tone-teal]="overlayTone(mediaBottomEnd) === 'teal'"
+          [class.ui-info-card__overlay-action--tone-purple]="overlayTone(mediaBottomEnd) === 'purple'"
+          [class.ui-info-card__overlay-action--tone-danger]="overlayTone(mediaBottomEnd) === 'danger'"
           [class.ui-info-card__overlay-action--tone-stage]="overlayTone(mediaBottomEnd) === 'stage'"
           [class.ui-info-card__overlay-action--tone-blocked]="overlayTone(mediaBottomEnd) === 'blocked'"
           [attr.aria-hidden]="mediaBottomEnd.ariaLabel ? null : true"
@@ -300,7 +310,7 @@
     </div>
 
     @if (hasMenuActions()) {
-      <div class="ui-info-card__actions">
+      <div class="ui-info-card__actions" [class.ui-info-card__actions--bottom]="card?.menuPosition === 'bottom-right'">
         @if (useSharedMenuTrigger) {
           <app-menu-trigger
             kind="select"

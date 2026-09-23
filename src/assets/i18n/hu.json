@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.23.hu.149",
+  "version": "2026.09.23.hu.153",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3694,6 +3694,17 @@
     "calendar.sync": "Naptár szinkronizálása",
     "calendar.export.help": "Naptár szinkronizálása: töltsd le a közelgő eseményeidet ICS-fájlként, majd importáld a naptáradba. Kézi frissítés, háttérszinkron nélkül.",
     "calendar.export.error": "Nem sikerült letölteni a naptárfájlt. Próbáld újra.",
-    "confirm": "Megerősítés"
+    "confirm": "Megerősítés",
+    "feed.event.label": "Esemény",
+    "feed.event.select": "Esemény kiválasztása",
+    "feed.event.selected": "Kiválasztott esemény",
+    "feed.event.confirm": "Kiválasztott esemény használata",
+    "feed.event.empty": "Nincs elérhető esemény.",
+    "feed.eventRequired": "Minden képhez válassz egy eseményt.",
+    "feed.public": "Nyilvános feed",
+    "feed.remove": "Eltávolítás",
+    "feed.removeConfirm": "Eltávolítod ezt a fotóbejegyzést?",
+    "feed.removeFailed": "A bejegyzés eltávolítása nem sikerült. Próbáld újra.",
+    "feed.seen": "Látott"
   }
 }

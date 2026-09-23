@@ -4,6 +4,7 @@ export type ModerationCategoryFilter = ModerationCategory | 'all';
 export type ModerationStatus = 'under-review' | 'accepted' | 'rejected' | 'blocked';
 export interface ContentModerationSettings { enabled: boolean; autoApprove: boolean; delayMinutes: number; categories: ModerationCategory[]; }
 export interface ContentModerationItem {
+  deleted?: boolean;
   id: string; category: ModerationCategory; sourceId: string; ownerUserId: string; title: string; imageUrl: string;
   submittedAtIso: string; status: ModerationStatus; version: number; commandId: string; reviewedBy: string; reviewedAtIso: string;
   publiclyVisibleOnce?: boolean;

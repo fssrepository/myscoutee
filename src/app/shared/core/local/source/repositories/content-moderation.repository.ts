@@ -14,7 +14,7 @@ export class LocalContentModerationRepository {
   item(id: string) { return this.state().items[id]; }
   page(category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery) {
     const snapshot = this.snapshot();
-    const rows = Object.values(this.state().items).filter(item => (category === 'all' || item.category === category) && item.status === status && (!query.cursor || item.id > query.cursor))
+    const rows = Object.values(this.state().items).filter(item => !item.deleted && (category === 'all' || item.category === category) && item.status === status && (!query.cursor || item.id > query.cursor))
       .sort((a,b) => a.id.localeCompare(b.id));
     const limit = Math.max(1, Math.min(50, query.pageSize || 10));
     const items = rows.slice(0, limit);
@@ -31,7 +31,7 @@ export class LocalContentModerationRepository {
   async decide(id: string, request: ContentModerationDecision, admin?: import('../../../contracts/admin.interface').AdminUserDto) {
     this.db.write(state => {
       const current = state[CONTENT_MODERATION_TABLE_NAME], item = current.items[id];
-      if (!item) throw new Error('moderation.changed');
+      if (!item || item.deleted) throw new Error('moderation.changed');
       if (item.commandId === request.commandId) return state;
       if (!current.settings.enabled && request.status !== 'accepted') throw new Error('moderation.changed');
       if (item.version !== request.expectedVersion) throw new Error('moderation.changed');
@@ -57,6 +57,7 @@ export class LocalContentModerationRepository {
       let table = state[CONTENT_MODERATION_TABLE_NAME]; const settings = table.settings;
       if (settings.enabled && !settings.autoApprove) return state;
       for (const item of Object.values(table.items)) {
+        if (item.deleted) continue;
         if (changed >= 100) break;
         if (settings.enabled ? item.status !== 'under-review' || !settings.categories.includes(item.category)
           || Date.parse(item.submittedAtIso) + settings.delayMinutes * 60000 > now : item.status === 'accepted') continue;

@@ -89,6 +89,9 @@
           }
           <button type="button" class="navigator-feed-action" (click)="$event.stopPropagation(); photoFeedStore.open()">
             <mat-icon>photo_library</mat-icon><span>{{ 'feed.title' | i18n }}</span>
+            @if (photoFeedStore.count() > 0) {
+              <span class="navigator-followed-count">{{ photoFeedStore.count() }}</span>
+            }
           </button>
           <button type="button" class="navigator-followed-action" (click)="openFollowedEvents($event)">
             <mat-icon>rss_feed</mat-icon>

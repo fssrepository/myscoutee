@@ -4,15 +4,17 @@ import { CONTENT_MODERATION_TABLE_NAME, type ContentModerationTable } from '../e
 import { ASSETS_TABLE_NAME } from '../entity/asset.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { PHOTO_FEED_TABLE_NAME } from '../entity/photo-feed.entity';
+import { USERS_TABLE_NAME } from '../entity/user.entity';
+import { MODERATION_STATUSES } from '../../../contracts/content-moderation.interface';
 
 export function changeModerationItem(table: ContentModerationTable, item: ContentModerationItem): ContentModerationTable {
   const previous = table.items[item.id];
   item = { ...item, publiclyVisibleOnce: moderationHasBeenPublic(item) || (!!previous && moderationHasBeenPublic(previous)) };
   const counts = { ...table.counts, [item.category]: { ...(table.counts[item.category] ?? {}) } };
-  if (previous) counts[item.category][previous.status] = (counts[item.category][previous.status] ?? 0) - 1;
-  counts[item.category][item.status] = (counts[item.category][item.status] ?? 0) + 1;
+  if (previous && !previous.deleted) counts[item.category][previous.status] = (counts[item.category][previous.status] ?? 0) - 1;
+  if (!item.deleted) counts[item.category][item.status] = (counts[item.category][item.status] ?? 0) + 1;
   return { ...table, revision: table.revision + 1, counts,
-    pendingCount: table.pendingCount + Number(item.status === 'under-review') - Number(previous?.status === 'under-review'),
+    pendingCount: table.pendingCount + Number(!item.deleted && item.status === 'under-review') - Number(!!previous && !previous.deleted && previous.status === 'under-review'),
     items: { ...table.items, [item.id]: item } };
 }
 
@@ -46,6 +48,7 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
       }
       if (!item) continue;
       const patch: Record<string, unknown> = { ...value, moderationStatus: item.status };
+      if (category === 'feed') patch['deleted'] = !!item.deleted;
       if (category !== 'feed') {
         if (item.status === 'accepted') {
           if (value['moderationPreviousStatus']) {
@@ -61,6 +64,27 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
       updated[key] = patch;
     }
     if (updated !== records) result = { ...result, [tableKey]: { ...table, byId: updated } } as AppMemorySchema;
+  }
+  if (previous[PHOTO_FEED_TABLE_NAME] !== result[PHOTO_FEED_TABLE_NAME]) {
+    const oldRows = previous[PHOTO_FEED_TABLE_NAME].byId;
+    const rows = result[PHOTO_FEED_TABLE_NAME].byId;
+    const owners = new Set<string>();
+    for (const id of new Set([...Object.keys(oldRows), ...Object.keys(rows)])) {
+      if (oldRows[id] === rows[id]) continue;
+      if (oldRows[id]) owners.add(oldRows[id].creatorUserId);
+      if (rows[id]) owners.add(rows[id].creatorUserId);
+    }
+    const users = result[USERS_TABLE_NAME];
+    const byId = { ...users.byId };
+    for (const owner of owners) {
+      const user = byId[owner];
+      if (!user) continue;
+      const counts = Object.fromEntries(MODERATION_STATUSES.map(status => [status, 0])) as Record<import('../../../contracts/content-moderation.interface').ModerationStatus, number>;
+      for (const row of Object.values(rows)) if (!row.deleted && row.creatorUserId === owner && row.moderationStatus) counts[row.moderationStatus]++;
+      if (MODERATION_STATUSES.every(status => user.feedCounters?.counts[status] === counts[status])) continue;
+      byId[owner] = { ...user, feedCounters: { revision: (user.feedCounters?.revision ?? 0) + 1, counts } };
+    }
+    result = { ...result, [USERS_TABLE_NAME]: { ...users, byId } };
   }
   return moderation === result[CONTENT_MODERATION_TABLE_NAME] ? result : { ...result, [CONTENT_MODERATION_TABLE_NAME]: moderation };
 }

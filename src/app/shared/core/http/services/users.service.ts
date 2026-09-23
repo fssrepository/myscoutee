@@ -250,6 +250,8 @@ export class HttpUsersService implements UserService {
       type HttpLongPollResponse = {
         contentModeration?: UserRealtimeLongPollResponseDto['contentModeration'];
         following?: UserRealtimeLongPollResponseDto['following'];
+        feedCounters?: UserRealtimeLongPollResponseDto['feedCounters'];
+        paymentCardsAvailable?: boolean;
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
         locationCoordinates?: UserRealtimeLongPollResponseDto['locationCoordinates'];
@@ -281,6 +283,8 @@ export class HttpUsersService implements UserService {
         locationCoordinates: response.locationCoordinates,
         contentModeration: response.contentModeration,
         following: response.following,
+        feedCounters: response.feedCounters,
+        paymentCardsAvailable: response.paymentCardsAvailable === true,
         notificationDevices: response.notificationDevices?.map(device => ({
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),

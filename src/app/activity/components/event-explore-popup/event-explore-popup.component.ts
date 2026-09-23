@@ -155,16 +155,9 @@ export class EventExplorePopupComponent {
   }
 
   private changeOrganizerFollow(record: ActivityEventRecord, followed: boolean): void {
-    const label = followed ? 'event.following.follow' : 'event.following.unfollow';
     this.appMenuDispatcher.close();
-    this.dialogStore.open({
-      title: label, message: record.creatorName, confirmLabel: label,
-      cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
-      onConfirm: async () => {
-        await this.followingStore.change(record.creatorUserId, followed);
-        this.cdr.markForCheck();
-      }
-    });
+    this.followingStore.confirmChange(record.creatorUserId, record.creatorName, followed,
+      () => this.cdr.markForCheck());
   }
 
   private readonly cdr = inject(ChangeDetectorRef);
@@ -667,7 +660,8 @@ export class EventExplorePopupComponent {
         id: actionId,
         label: config.label,
         icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
+        palette: actionId === 'addWatchlist' || actionId === 'removeWatchlist'
+          ? 'blue' : this.infoCardActionPalette(config.tone),
         surface: 'tinted',
         context: {
           menu: 'info-card',

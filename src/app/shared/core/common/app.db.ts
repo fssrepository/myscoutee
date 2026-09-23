@@ -243,6 +243,24 @@ export class AppMemoryDb {
     }
     await this.putIndexedDbEntry(db, normalizedKey, this.indexedDbEntryForPersistence(normalizedKey, value));
   }
+  /** Atomic, small-entry update without serializing the application memory snapshot. */
+  async updateIndexedDbTableEntry<T>(key: string, update: (value: T | null) => T): Promise<T> {
+    const db = await this.openIndexedDb(true);
+    if (!db) throw new Error('IndexedDB unavailable');
+    return new Promise<T>((resolve, reject) => {
+      const transaction = db.transaction(APP_TABLES_STORE, 'readwrite');
+      const table = transaction.objectStore(APP_TABLES_STORE);
+      const request = table.get(key);
+      let next: T;
+      request.onsuccess = () => {
+        try { next = update((request.result ?? null) as T | null); table.put(next, key); }
+        catch (error) { transaction.abort(); reject(error); }
+      };
+      transaction.oncomplete = () => resolve(next!);
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    });
+  }
 
   async deleteIndexedDbTableEntry(key: string): Promise<void> {
     const normalizedKey = key.trim();

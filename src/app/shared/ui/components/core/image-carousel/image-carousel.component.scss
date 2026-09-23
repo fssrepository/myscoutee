@@ -711,6 +711,26 @@
 }
 
 :host .image-carousel__slot-action--details { right: .24rem; width: 28px; height: 28px; }
+
+:host .image-carousel__slot.has-details-error {
+  border-color: #cf334b;
+  box-shadow: inset 0 0 0 1px #cf334b;
+}
+:host .image-carousel__slot-action--details.has-details-error {
+  background: #bd2635;
+  border-color: #bd2635;
+  color: #fff;
+}
+
+.image-carousel__event-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-width: 0;
+  > span { flex: 0 0 auto; }
+  > app-menu { min-width: 0; }
+}
 :host .image-carousel__slot-action--left { left: .24rem; right: auto; }
 .image-carousel__details-form { display: flex; flex-direction: column; gap: .6rem; padding: 1rem; }
 .image-carousel__caption-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 700; color: #1f3252; }
@@ -718,9 +738,10 @@
 .image-carousel__details-form textarea { @include controls.text-control(); box-sizing: border-box; resize: none; line-height: 1.45; }
 .image-carousel__location {
   position: absolute; z-index: 5; top: .65rem; left: .65rem;
-  display: grid; place-items: center; width: 34px; height: 34px;
+  display: grid; place-items: center; box-sizing: border-box; width: 26px; height: 26px;
   background: #fff3de; color: #98601b; border: 1px solid #e7bd7c; border-radius: 50%;
 }
+.image-carousel__location .mat-icon { width: 16px; height: 16px; font-size: 16px; line-height: 16px; }
 .image-carousel__caption {
   position: absolute; z-index: 5; bottom: .5rem; left: .75rem; right: .75rem;
   margin: 0; padding: .45rem .5rem; background: rgba(0, 0, 0, .72); color: white;

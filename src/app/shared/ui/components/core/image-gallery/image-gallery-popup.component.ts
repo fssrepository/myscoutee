@@ -17,10 +17,11 @@ import { ImageGalleryStore } from '../../../context/stores/image-gallery.store';
           <app-image-carousel
             [disabled]="store.saving()" (uploadingChange)="store.setUploading(gallery.token, $event)"
             [imageDetails]="gallery.imageDetails ?? {}" [detailsEditable]="!gallery.readOnly"
+            [detailsConfig]="gallery.detailsConfig ?? {}"
             (imageDetailsChange)="store.updateDetails(gallery.token, $event)"
             [slotCount]="gallery.slotCount" [highlightFirst]="!gallery.readOnly"
             [previewMode]="!gallery.readOnly" [readOnly]="gallery.readOnly" [slideshow]="gallery.readOnly"
-            [slotImageVariant]="gallery.readOnly ? 'large' : 'small'" mediaFit="contain"
+            [slotImageVariant]="gallery.readOnly ? 'large' : 'small'" mediaFit="contain" imagePosition="center"
             [ariaLabel]="gallery.title" [uploadOwnerId]="gallery.uploadOwnerId" [uploadEntityId]="gallery.uploadEntityId"
             [ngModel]="gallery.images" (ngModelChange)="store.updateImages(gallery.token, $event)"
           ></app-image-carousel>
@@ -48,8 +49,8 @@ export class ImageGalleryPopupComponent {
       headerPalette: 'slate',
       mobilePresentation: 'fullscreen',
       showClose: !this.store.saving(),
-      headerActions: !gallery?.readOnly && gallery?.onSave ? [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: 'success',
-        disabled: this.store.saving() || this.store.uploading() || !gallery.images.length }] : [],
+      headerActions: !gallery?.readOnly && gallery?.onSave ? [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.store.invalid() ? 'danger' : 'success',
+        disabled: this.store.saving() || this.store.uploading() || this.store.invalid() || !gallery.images.length }] : [],
       onAction: () => { if (gallery) void this.store.save(gallery.token); },
       onClose: () => this.store.close(gallery?.token)
     };

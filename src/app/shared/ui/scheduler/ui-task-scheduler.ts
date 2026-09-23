@@ -22,12 +22,12 @@ export class UiTaskScheduler<TState> {
 
   constructor(private readonly config: UiTaskSchedulerConfig<TState>) {}
 
-  restart(): void {
+  restart(options: { immediate?: boolean } = {}): void {
     if (this.destroyed) {
       return;
     }
     this.clearTimer();
-    this.scheduleNext();
+    this.scheduleNext(options.immediate === true);
   }
 
   stop(options: { abort?: boolean } = {}): void {
@@ -83,7 +83,7 @@ export class UiTaskScheduler<TState> {
     this.scheduleNext();
   }
 
-  private scheduleNext(): void {
+  private scheduleNext(immediate = false): void {
     if (this.destroyed || this.timer) {
       return;
     }
@@ -97,7 +97,7 @@ export class UiTaskScheduler<TState> {
     }
     this.timer = setTimeout(() => {
       void this.run();
-    }, delayMs);
+    }, immediate && intervalMs > 0 ? 0 : delayMs);
   }
 
   private clearTimer(): void {

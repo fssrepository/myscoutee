@@ -1,4 +1,5 @@
-import { ImageDetailsMap, IMAGE_CAPTION_MAX_LENGTH, normalizeImageDetails } from '../../../../core/contracts/image-gallery.interface';
+import { ImageDetails, ImageDetailsConfig, ImageDetailsMap, IMAGE_CAPTION_MAX_LENGTH, normalizeImageDetails } from '../../../../core/contracts/image-gallery.interface';
+import { AppMenuComponent, type AppMenuItem } from '../menu';
 import { PopupComponent, PopupModel } from '../popup';
 import { LocationInputComponent } from '../form/inputs/location-input/location-input.component';
 import { CommonModule } from '@angular/common';
@@ -34,7 +35,7 @@ export type ImageCarouselSlotImageVariant = 'small' | 'medium' | 'large';
 @Component({
   selector: 'app-image-carousel',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, FormsModule, PopupComponent, LocationInputComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, FormsModule, PopupComponent, LocationInputComponent, AppMenuComponent],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -60,15 +61,17 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   @Input() expandable = false;
   @Input() detailsEditable = false;
   @Input() imageDetails: ImageDetailsMap = {};
+  @Input() detailsConfig: ImageDetailsConfig = {};
   @Output() readonly uploadingChange = new EventEmitter<boolean>();
   @Output() readonly imageDetailsChange = new EventEmitter<ImageDetailsMap>();
   protected readonly captionMaxLength = IMAGE_CAPTION_MAX_LENGTH;
-  protected detailsDraft: { url: string; location: string; caption: string } | null = null;
+  protected detailsDraft: (ImageDetails & { url: string }) | null = null;
 
   protected openDetails(url: string, event: Event): void {
     event.stopPropagation();
     if (this.isDisabled() || !this.detailsEditable) return;
-    this.detailsDraft = { url, location: this.imageDetails[url]?.location ?? '', caption: this.imageDetails[url]?.caption ?? '' };
+    this.detailsDraft = { url, location: this.imageDetails[url]?.location ?? '', caption: this.imageDetails[url]?.caption ?? '',
+      event: this.imageDetails[url]?.event };
   }
 
   protected detailsPopupModel(): PopupModel {
@@ -76,8 +79,9 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
       title: 'image.details.title', size: 'small', mobilePresentation: 'compact',
       backdropTone: 'dim',
       onClose: () => this.detailsDraft = null,
-      headerActions: [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: 'success',
-        disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240 }],
+      headerActions: [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id ? 'danger' : 'success',
+        disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240
+          || (this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id) }],
       onAction: () => this.saveDetails()
     };
   }
@@ -89,8 +93,28 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   protected saveDetails(): void {
     const draft = this.detailsDraft;
     if (!draft || this.isDisabled() || !this.detailsEditable || !this.localImageUrls.includes(draft.url)) return;
-    this.imageDetailsChange.emit(normalizeImageDetails({ ...this.imageDetails, [draft.url]: { location: draft.location, caption: draft.caption } }, this.localImageUrls));
+    if (this.detailsConfig.eventRequired && !draft.event?.id) return;
+    this.imageDetailsChange.emit(normalizeImageDetails({ ...this.imageDetails, [draft.url]: { location: draft.location, caption: draft.caption, event: draft.event } }, this.localImageUrls));
     this.detailsDraft = null;
+  }
+
+  protected imageDetailsInvalid(url: string | null | undefined): boolean {
+    return !!url && this.detailsEditable && !!this.detailsConfig.eventRequired && !this.imageDetails[url]?.event?.id;
+  }
+
+  protected eventItems(): readonly AppMenuItem[] {
+    return [{ id: 'event', icon: 'event', label: this.detailsDraft?.event?.title || 'feed.event.select',
+      palette: this.detailsDraft?.event?.id ? 'blue' : 'danger', surface: 'tinted', layout: 'action' }];
+  }
+
+  protected async selectDetailsEvent(): Promise<void> {
+    const draft = this.detailsDraft;
+    if (!draft || !this.detailsConfig.selectEvent || this.isDisabled()) return;
+    const event = await this.detailsConfig.selectEvent(draft.event);
+    if (event && this.detailsDraft === draft && !this.isDisabled()) {
+      this.detailsDraft = { ...draft, event, location: event.location };
+      this.changeDetectorRef.markForCheck();
+    }
   }
 
   protected locationUrl(imageUrl: string): string {

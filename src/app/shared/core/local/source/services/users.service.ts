@@ -271,6 +271,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     });
     snapshot.contentModeration = currentUser?.admin ? this.contentModeration.snapshot() : null;
     snapshot.following = currentUser?.following ?? { organizerIds: [], eventCount: 0 };
+    snapshot.feedCounters = currentUser?.feedCounters ?? { revision: 0, counts: {} };
+    snapshot.paymentCardsAvailable = false;
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
       userId: normalizedUserId,
       page: 0,

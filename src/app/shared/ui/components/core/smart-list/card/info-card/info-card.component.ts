@@ -239,6 +239,7 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
         this.cdr.markForCheck();
       }
       this.menuRequest.emit({
+        imageUrl: this.card.imageUrls?.[this.imageIndex] ?? this.card.imageUrl,
         id: this.card.id,
         card: this.card,
         actions: this.card.menuActions ?? [],

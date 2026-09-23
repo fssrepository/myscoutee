@@ -58,6 +58,7 @@
                 [class.is-primary]="highlightFirst && slotIndex === 0"
                 [class.is-filled]="imageUrl"
                 [class.is-uploading]="isUploading(slotIndex)"
+                [class.has-details-error]="imageDetailsInvalid(imageUrl)"
                 [appLazyBgImage]="slotImageUrl(imageUrl)"
               >
                 @if (slideshow && imageUrl) {
@@ -81,6 +82,7 @@
                   @if (!isDisabled()) {
                     @if (detailsEditable) {
                       <button type="button" class="image-carousel__slot-action image-carousel__slot-action--details"
+                        [class.has-details-error]="imageDetailsInvalid(imageUrl)"
                         (click)="openDetails(imageUrl, $event)" [attr.aria-label]="'image.details.title' | i18n"
                         [title]="'image.details.title' | i18n"><mat-icon>edit_note</mat-icon></button>
                     } @else {
@@ -169,7 +171,14 @@
 @if (detailsDraft; as draft) {
   <app-popup [model]="detailsPopupModel()">
     <div class="image-carousel__details-form">
-      <app-location-input [(ngModel)]="draft.location" [config]="{ label: ('location' | i18n) }"></app-location-input>
+      @if (detailsConfig.eventRequired) {
+        <div class="image-carousel__event-field">
+          <span>{{ 'feed.event.label' | i18n }} *</span>
+          <app-menu [items]="eventItems()" (itemSelect)="selectDetailsEvent()"></app-menu>
+        </div>
+      } @else {
+        <app-location-input [(ngModel)]="draft.location" [config]="{ label: ('location' | i18n) }"></app-location-input>
+      }
       <label class="image-carousel__caption-label" for="gallery-caption">
         <span>{{ 'image.details.caption' | i18n }}</span>
         <small>{{ captionMaxLength - draft.caption.length }}</small>

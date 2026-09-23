@@ -333,11 +333,11 @@
 }
 
 .app-menu__palette--purple {
-  --app-menu-bg: linear-gradient(180deg, #f6efff 0%, #ede2ff 100%);
+  --app-menu-bg: #{colors.$purple-background};
   --app-menu-bg-hover: linear-gradient(180deg, #fbf7ff 0%, #e8daff 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #8061c8 0%, #5f3d98 100%);
-  --app-menu-border: rgba(109, 74, 172, 0.34);
-  --app-menu-fg: #5f3d98;
+  --app-menu-border: #{colors.$purple-border};
+  --app-menu-fg: #{colors.$purple-foreground};
   --app-menu-icon: #7358b0;
   --app-menu-line: rgba(109, 74, 172, 0.34);
   --app-menu-shadow: rgba(88, 55, 146, 0.2);
@@ -367,11 +367,11 @@
 
 .app-menu__palette--red,
 .app-menu__palette--danger {
-  --app-menu-bg: linear-gradient(180deg, #fff1f2 0%, #ffe5e7 100%);
+  --app-menu-bg: #{colors.$danger-background};
   --app-menu-bg-hover: linear-gradient(180deg, #fff8f9 0%, #ffdde0 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #e24955 0%, #c93240 100%);
-  --app-menu-border: rgba(188, 54, 67, 0.38);
-  --app-menu-fg: #a43c45;
+  --app-menu-border: #{colors.$danger-border};
+  --app-menu-fg: #{colors.$danger-foreground};
   --app-menu-icon: #c13f4b;
   --app-menu-line: rgba(188, 54, 67, 0.34);
   --app-menu-shadow: rgba(163, 36, 48, 0.24);
