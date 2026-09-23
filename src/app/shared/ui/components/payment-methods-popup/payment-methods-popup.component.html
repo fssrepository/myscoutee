@@ -10,7 +10,7 @@
           <div class="payment-methods-popup__history-totals motion-static" role="region" tabindex="0" [attr.aria-label]="'payment.history.totals' | i18n">
             @for (total of totals; track total.tone + ':' + total.text) {
               <button type="button" (click)="currencyPickerOpen.set(true)"
-                class="payment-methods-popup__history-total motion-static"
+                class="payment-methods-popup__history-total"
                 [class.payment-methods-popup__history-total--expense]="total.tone === 'expense'"
                 [class.payment-methods-popup__history-total--income]="total.tone === 'income'"
               >{{ total.text }} ›</button>

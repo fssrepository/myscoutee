@@ -12,7 +12,7 @@ import { I18nPipe } from '../../pipes/i18n.pipe';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<app-popup [model]="model()" [zIndex]="24000">
     <div class="currency-picker">
-      <app-menu kind="inline" layout="grid" [model]="{ density: 'compact' }" [items]="items()" [closeOnSelect]="false"
+      <app-menu kind="select" layout="row" panelMode="auto" [trigger]="{ label: draft(), icon: 'payments', palette: 'blue' }" [items]="items()" [closeOnSelect]="true"
         (itemSelect)="draft.set($event.item.id)"></app-menu>
       @if (error()) { <p role="alert">{{ 'payment.currency.save.error' | i18n }}</p> }
     </div>
@@ -33,7 +33,7 @@ export class SummaryCurrencyPopupComponent implements OnInit {
       kind: 'radio', checked: this.draft() === currency, palette: 'blue', disabled: this.saving() }));
   }
   protected model(): PopupModel {
-    return { title: 'payment.currency.title', size: 'small', height: 'auto', mobilePresentation: 'compact', backdropTone: 'dim',
+    return { title: 'payment.currency.title', size: 'small', height: 'auto', mobilePresentation: 'compact', bodyLayout: 'overflow', backdropTone: 'dim',
       headerControls: [{ kind: 'menu', id: 'save', menuKind: 'inline', items: [{ id: 'save', icon: 'check',
         palette: 'green', ariaLabel: 'save', disabled: this.saving() }] }],
       onClose: () => { if (!this.saving()) this.closed.emit(); }, onMenuSelect: () => void this.save() };
