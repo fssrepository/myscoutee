@@ -79,7 +79,6 @@ type CheckoutFooterDecisionState = {
 })
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
-  private static readonly CHECKOUT_BASKET_TTL_MS = 10 * 60 * 1000;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
   protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);
@@ -916,7 +915,7 @@ export class EventCheckoutPopupComponent {
     const slotId = slot?.slotTemplateId ?? null;
     const selectedDateKey = slot?.startAtIso ? this.slotDateKeyFromIso(slot.startAtIso) : this.selectedSlotDateKey() || null;
     const nowIso = new Date().toISOString();
-    const expiresAtIso = new Date(Date.now() + EventCheckoutPopupComponent.CHECKOUT_BASKET_TTL_MS).toISOString();
+    const expiresAtIso = new Date(Date.parse(slot?.startAtIso ?? dialog.record.startAtIso) - (dialog.record.approvalRequired ? (dialog.record.paymentDeadlineHours ?? 4) * 60 * 60 * 1000 : 0)).toISOString();
     const eventPricing = this.resolvePricing(
       dialog.record.pricing,
       dialog.record,
@@ -1737,8 +1736,11 @@ export class EventCheckoutPopupComponent {
         return 'EUR ';
       case 'GBP':
         return 'GBP ';
-      default:
+      case 'USD':
+      case '':
         return '$';
+      default:
+        return `${currency.trim().toUpperCase()} `;
     }
   }
 
@@ -2004,7 +2006,7 @@ export class EventCheckoutPopupComponent {
 
   private checkoutPaymentReviewStateActive(): boolean {
     const draft = this.currentCheckoutDraft();
-    const checkoutStates: ActivityContracts.EventCheckoutState[] = ['confirmed', 'pay'];
+    const checkoutStates: ActivityContracts.EventCheckoutState[] = ['confirmed', 'approved', 'pay'];
     return Boolean(draft?.checkoutState && checkoutStates.includes(draft.checkoutState))
       || Boolean(this.checkoutBasket?.status && checkoutStates.includes(this.checkoutBasket.status))
       || this.activeCheckoutBasketItems().some(item => checkoutStates.includes(item.status))
@@ -2387,7 +2389,7 @@ export class EventCheckoutPopupComponent {
 
   private isApprovedAfterOwnerReview(): boolean {
     const dialog = this.dialog();
-    if (!dialog?.approvalGranted) {
+    if (!dialog || !(dialog.approvalGranted || this.checkoutBasket?.status === 'approved')) {
       return false;
     }
     const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
@@ -2407,7 +2409,7 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return false;
     }
-    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted;
+    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.checkoutBasket?.status !== 'approved';
   }
 
   private checkoutDecisionPending(): boolean {
@@ -2663,7 +2665,7 @@ export class EventCheckoutPopupComponent {
 
   private checkoutDecisionPendingReason(): AppConstants.ActivityPendingReason {
     const dialog = this.dialog();
-    if (!dialog || dialog.approvalGranted) {
+    if (!dialog || dialog.approvalGranted || this.checkoutBasket?.status === 'approved') {
       return null;
     }
     const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
@@ -2695,7 +2697,7 @@ export class EventCheckoutPopupComponent {
 
   protected isWaitingListSelection(): boolean {
     const dialog = this.dialog();
-    if (!dialog || dialog.approvalGranted) {
+    if (!dialog || dialog.approvalGranted || this.checkoutBasket?.status === 'approved') {
       return false;
     }
     const slot = this.selectedSlot();
@@ -3059,7 +3061,7 @@ export class EventCheckoutPopupComponent {
     if (Boolean(draft.checkoutSessionId?.trim())) {
       return true;
     }
-    return draft.checkoutState === 'confirmed'
+    return (draft.checkoutState === 'confirmed' || draft.checkoutState === 'approved')
       && !draft.pendingReason
       && Math.max(0, Number(draft.totalAmount) || 0) > 0;
   }
@@ -3080,7 +3082,7 @@ export class EventCheckoutPopupComponent {
     if (Boolean(basket.checkoutSessionId?.trim())) {
       return true;
     }
-    return basket.status === 'confirmed'
+    return (basket.status === 'confirmed' || basket.status === 'approved')
       && Math.max(0, Number(basket.totalAmount) || 0) > 0;
   }
 

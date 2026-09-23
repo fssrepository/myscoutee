@@ -1143,6 +1143,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       ownerType: this.ownerRef?.ownerType ?? 'event',
       menuOpen: this.isActionMenuOpen(entry),
       checkedInLabel: this.i18n.translate('asset.ticket.checked.in', 'Checked in'),
+      paymentPendingLabel: this.i18n.translate('event.member.payment.pending', 'Waiting for payment'),
       formatCheckedInAt: value => this.formatAttendanceDate(value)
     });
   }
@@ -1461,7 +1462,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'accepted' && entry.role === 'Admin') {
       return 'Remove admin?';
     }
-    if (entry.status === 'accepted') {
+    if (entry.status === 'accepted' || entry.requestKind === 'payment') {
       return 'Remove member?';
     }
     return 'Delete invitation?';
@@ -1483,7 +1484,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'accepted' && entry.role === 'Admin') {
       return `Remove ${entry.name} as an admin and from this ${this.ownerScopeLabel()}?`;
     }
-    if (entry.status === 'accepted') {
+    if (entry.status === 'accepted' || entry.requestKind === 'payment') {
       return `Remove ${entry.name} from this ${this.ownerScopeLabel()}?`;
     }
     return `Delete ${entry.name}'s invitation to this ${this.ownerScopeLabel()}?`;
@@ -1543,7 +1544,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'accepted' && entry.role === 'Admin') {
       return 'Unable to remove admin.';
     }
-    if (entry.status === 'accepted') {
+    if (entry.status === 'accepted' || entry.requestKind === 'payment') {
       return 'Unable to remove member.';
     }
     return 'Unable to delete invitation.';
@@ -1559,7 +1560,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (entry.status === 'accepted' && entry.role === 'Admin') {
       return 'Remove admin';
     }
-    if (entry.status === 'accepted') {
+    if (entry.status === 'accepted' || entry.requestKind === 'payment') {
       return 'Remove member';
     }
     if (this.isInvitation(entry) && this.isCurrentUser(entry)) {

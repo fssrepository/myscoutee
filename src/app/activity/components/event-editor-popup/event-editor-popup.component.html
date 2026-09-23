@@ -236,5 +236,20 @@
       </div>
     </app-popup>
     }
+    @if (approvalSettingsDraft; as draft) {
+      <app-popup [model]="approvalSettingsModel()" [zIndex]="eventEditorPopupZIndex() + 100">
+        <div class="event-approval-settings">
+          <app-menu kind="inline" [items]="approvalSettingsItems()" (itemSelect)="toggleApprovalSettings()"></app-menu>
+          <label class="event-approval-settings__deadline">
+            <span>{{ 'event.approval.deadline.hours' | i18n }}</span>
+            <div class="event-approval-settings__hours">
+              <input type="number" min="0" step="1" [(ngModel)]="draft.hours"
+                [disabled]="!draft.approvalRequired" [readOnly]="!draft.approvalRequired">
+              <span>{{ 'event.approval.hours.unit' | i18n }}</span>
+            </div>
+          </label>
+        </div>
+      </app-popup>
+    }
 </app-popup>
 }

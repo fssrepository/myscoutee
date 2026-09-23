@@ -146,8 +146,11 @@ export class EventPaymentInputComponent {
         return 'EUR ';
       case 'GBP':
         return 'GBP ';
-      default:
+      case 'USD':
+      case '':
         return '$';
+      default:
+        return `${currency.trim().toUpperCase()} `;
     }
   }
 

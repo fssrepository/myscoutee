@@ -159,3 +159,41 @@ describe('Explore first navigation', () => {
     expect(view.isOpen).toBe(false);
   });
 });
+
+describe('checkout continuation after owner approval', () => {
+  function approvalPopup(status: string, cachedStatus: string = 'pending') {
+    const { component } = popup();
+    const record = { id: 'event', currentUserMembershipStatus: status, approvalRequired: true };
+    Object.assign(component, {
+      checkoutDraftReleaseSourceIds: new Set(),
+      activityMembersService: { peekMembersByOwner: () => [{ userId: 'user', status: cachedStatus }] },
+      visibleEventExploreRecordById: () => record,
+      eventsService: { peekKnownRecordById: () => record },
+      openEventExploreCheckout: vi.fn()
+    });
+    const draft = { sourceId: 'event', pendingReason: 'approval', checkoutState: 'approval-pending',
+      totalAmount: 100, basketItems: [{ resultState: 'pending' }] };
+    return { component, record, draft };
+  }
+
+  it('keeps payment locked until the current membership is accepted', async () => {
+    const { component, record, draft } = approvalPopup('pending', 'accepted');
+    expect(component.canContinueCheckoutDraft({ draft, record })).toBe(false);
+    await component.openCheckoutDraftForm({ draft, record });
+    expect(component.openEventExploreCheckout).toHaveBeenCalledWith(record,
+      { approvalGranted: false, pendingReason: 'approval' });
+  });
+
+  it('uses confirmed acceptance despite the old pending draft and member cache', async () => {
+    const { component, record, draft } = approvalPopup('accepted');
+    expect(component.checkoutDraftMenuVisual({ draft, record }).label).toBe('event.checkout.ready.for.payment');
+    await component.continueCheckoutDraft({ draft, record });
+    expect(component.openEventExploreCheckout).toHaveBeenCalledWith(record,
+      { approvalGranted: true, pendingReason: null });
+  });
+
+  it('does not resurrect acceptance from a stale member cache after removal', () => {
+    const { component, record, draft } = approvalPopup('none', 'accepted');
+    expect(component.canContinueCheckoutDraft({ draft, record })).toBe(false);
+  });
+});

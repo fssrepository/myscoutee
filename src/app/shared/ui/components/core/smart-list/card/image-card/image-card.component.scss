@@ -452,3 +452,10 @@
     min-height: 190px;
   }
 }
+
+.ui-image-card .ui-image-card__badge--payment-pending {
+  top: auto;
+  bottom: 5.2rem;
+  right: 0.48rem;
+  max-width: calc(100% - 0.96rem);
+}

@@ -141,6 +141,10 @@ export class LocalEventCheckoutBasketsRepository {
     userId: string,
     sourceId: string
   ): Promise<LocalEventCheckoutBasketRecord | null> {
+    const basket = await this.loadBasketByEvent(userId, sourceId);
+    if (basket && basket.totalAmount > 0 && !basket.checkoutSessionId?.trim()) {
+      return this.updateBasketState({ userId, sourceId, checkoutState: 'approved', resultState: 'pending' });
+    }
     return this.updateBasketStateMatching({
       userId,
       sourceId,

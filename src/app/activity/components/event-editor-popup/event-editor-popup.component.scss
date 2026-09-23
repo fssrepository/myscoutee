@@ -280,7 +280,8 @@
 }
 
 .experience-form-panel input,
-.experience-form-panel textarea {
+.experience-form-panel textarea,
+.event-approval-settings input {
   box-sizing: border-box;
   width: 100%;
   border: 1px solid rgba(136, 156, 186, 0.5);
@@ -294,7 +295,8 @@
 }
 
 .experience-form-panel input:focus,
-.experience-form-panel textarea:focus {
+.experience-form-panel textarea:focus,
+.event-approval-settings input:focus {
   outline: 0;
   border-color: rgba(52, 103, 182, 0.72);
   box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
@@ -1307,4 +1309,18 @@ button.event-slots-enable-btn:disabled {
   min-height: 300px;
   background: var(--color-popup-bg);
   border-radius: var(--radius-l);
+}
+
+.event-approval-settings {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem;
+  &__deadline { display: grid; gap: 0.5rem; font-size: 0.8rem; color: #1d3556; }
+  &__hours {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    input { width: 6.5rem; }
+    input:disabled { background: #eef2f7; color: #8190a6; }
+  }
 }

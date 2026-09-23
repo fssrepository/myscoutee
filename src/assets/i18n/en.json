@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.23.en.157",
+  "version": "2026.09.23.en.161",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3720,6 +3720,11 @@
     "email.unsubscribe.landing": "Visit MyScoutee",
     "email.unsubscribe.javascript": "Please enable JavaScript to confirm your email preferences.",
     "game.location.required.title": "Location required",
-    "game.location.required.description": "To see profiles, open Settings → Install, enable location access, then press Update."
+    "game.location.required.description": "To see profiles, open Settings → Install, enable location access, then press Update.",
+    "event.member.payment.pending": "Waiting for payment",
+    "event.checkout.payment.deadline.passed": "The payment deadline for this event has passed.",
+    "event.approval.settings": "Join approval",
+    "event.approval.deadline.hours": "Payment deadline before the event",
+    "event.approval.hours.unit": "in hours"
   }
 }

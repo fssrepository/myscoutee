@@ -973,6 +973,12 @@ export class EventExplorePopupComponent {
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
       return false;
     }
+    if (this.resolveCheckoutDraftMembershipStatus(entry.draft.sourceId, entry.record) === 'accepted') {
+      return true;
+    }
+    if (entry.draft.checkoutState === 'approved') {
+      return true;
+    }
     if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
       return false;
     }
@@ -1113,6 +1119,13 @@ export class EventExplorePopupComponent {
       };
     }
 
+    if ((entry.draft.checkoutState === 'approval-pending' || entry.draft.checkoutState === 'waiting')
+      && this.resolveCheckoutDraftMembershipStatus(entry.draft.sourceId, entry.record) === 'accepted') {
+      return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
+        ? { label: 'event.checkout.ready.for.payment', icon: 'payments', palette: 'green' }
+        : { label: 'approved', icon: 'verified', palette: 'success' };
+    }
+
     if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
       return {
         label: 'waiting.list',
@@ -1216,7 +1229,7 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    const pendingReason = this.checkoutDraftPendingReason(draft);
+    const pendingReason = this.checkoutDraftPendingReason(draft, record);
     this.openEventExploreCheckout(record, {
       approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
       pendingReason
@@ -1245,7 +1258,7 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    const pendingReason = this.checkoutDraftPendingReason(draft);
+    const pendingReason = this.checkoutDraftPendingReason(draft, record);
     this.openEventExploreCheckout(record, {
       approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
       pendingReason
@@ -1494,7 +1507,10 @@ export class EventExplorePopupComponent {
     }
     const recordsToRestore = records.filter(record =>
       (record.checkoutResultState === 'pending' || record.checkoutResultState === 'failed')
-      && !this.eventCheckoutDraftStore.read(activeUserId, record.id)
+      && (() => {
+        const draft = this.eventCheckoutDraftStore.read(activeUserId, record.id);
+        return !draft || (draft.checkoutState === 'approval-pending' && !draft.basketChanged);
+      })()
     );
     await Promise.all(recordsToRestore.map(async record => {
       const basket = await this.eventsService.loadCheckoutBasketByEvent(activeUserId, record.id);
@@ -1512,7 +1528,7 @@ export class EventExplorePopupComponent {
           .filter(item => item.kind === 'sub_event')
           .map(item => item.subEventId?.trim() ?? '')
           .filter(Boolean),
-        acceptedPolicyIds: [],
+        acceptedPolicyIds: this.eventCheckoutDraftStore.read(activeUserId, record.id)?.acceptedPolicyIds ?? [],
         appliedPromoCodes: [...(basket.appliedPromoCodes ?? [])],
         basketItems: basket.items.map(item => ({ ...item })),
         pricingSummaryRows: basket.pricingSummaryRows.map(row => ({ ...row })),
@@ -1972,7 +1988,18 @@ export class EventExplorePopupComponent {
     return draft?.pendingReason === 'approval';
   }
 
-  private checkoutDraftPendingReason(draft: EventCheckoutDraft | null | undefined): ActivityPendingReason {
+  private checkoutDraftPendingReason(
+    draft: EventCheckoutDraft | null | undefined,
+    record?: ActivityEventRecord | null
+  ): ActivityPendingReason {
+    if (draft && this.resolveCheckoutDraftMembershipStatus(draft.sourceId,
+      record ?? this.visibleEventExploreRecordById(draft.sourceId)
+        ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)) === 'accepted') {
+      return null;
+    }
+    if (draft?.checkoutState === 'approved') {
+      return null;
+    }
     if (draft?.pendingReason === 'waitlist' || draft?.checkoutState === 'waiting') {
       return 'waitlist';
     }
@@ -1984,12 +2011,15 @@ export class EventExplorePopupComponent {
 
   private resolveCheckoutDraftMembershipStatus(
     sourceId: string,
-    _record: ActivityEventRecord | null
+    record: ActivityEventRecord | null
   ): 'accepted' | 'pending' | 'none' {
     const activeUserId = this.activeUserId.trim();
     const ownerId = sourceId.trim();
     if (!activeUserId || !ownerId) {
       return 'none';
+    }
+    if (record?.currentUserMembershipStatus) {
+      return this.eventExploreMembershipStatus(record, activeUserId);
     }
     const memberEntries = this.activityMembersService.peekMembersByOwner({
       ownerType: 'event',
