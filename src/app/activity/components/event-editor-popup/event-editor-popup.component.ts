@@ -979,6 +979,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       && this.eventDetailDTO.capacityMax !== null
       && this.eventDetailDTO.dateRange.startAt
       && this.eventDetailDTO.dateRange.endAt
+      && (!this.eventDetailDTO.pricing?.enabled || !this.eventDetailDTO.paymentDeadlineEnabled
+        || (Number.isInteger(this.eventDetailDTO.paymentDeadlineHours) && this.eventDetailDTO.paymentDeadlineHours >= 0))
     );
   }
 
@@ -1114,9 +1116,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         detail: this.eventApprovalRequiredDescription(this.eventDetailDTO.approvalRequired),
         icon: this.eventApprovalRequiredIcon(this.eventDetailDTO.approvalRequired),
         kind: 'toggle',
+        checked: !this.eventDetailDTO.approvalRequired,
         layout: 'big',
         active: this.eventDetailDTO.approvalRequired,
-        checked: this.eventDetailDTO.approvalRequired,
         palette: this.eventDetailDTO.approvalRequired ? 'orange' : 'green',
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
@@ -2099,11 +2101,47 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO.ticketing = !this.eventDetailDTO.ticketing;
   }
 
+  protected paymentDeadlineDraft: { enabled: boolean; hours: number } | null = null;
+
+  protected paymentDeadlineMenuItems(): readonly AppMenuItem[] {
+    return [{ id: 'payment-deadline', icon: 'schedule', ariaLabel: 'event.payment.deadline.title',
+      palette: this.eventDetailDTO.paymentDeadlineEnabled ? 'blue' : 'slate',
+      disabled: this.eventStructureReadOnly() }];
+  }
+
+  protected openPaymentDeadlineSettings(): void {
+    if (this.eventStructureReadOnly()) return;
+    this.paymentDeadlineDraft = { enabled: this.eventDetailDTO.paymentDeadlineEnabled,
+      hours: this.eventDetailDTO.paymentDeadlineHours };
+  }
+
+  protected paymentDeadlineToggleItems(): readonly AppMenuItem[] {
+    return [{ id: 'enabled', label: 'event.payment.deadline.title', icon: 'schedule',
+      palette: 'blue', kind: 'toggle', layout: 'pill', showToggleIndicator: true,
+      closeOnSelect: false, checked: this.paymentDeadlineDraft?.enabled }];
+  }
+
+  protected paymentDeadlineSettingsModel(): PopupModel {
+    const draft = this.paymentDeadlineDraft;
+    const validHours = !!draft && Number.isInteger(draft.hours) && draft.hours >= 0;
+    const invalid = !draft || (draft.enabled && !validHours);
+    return { title: 'event.payment.deadline.title', size: 'small', height: 'auto', mobilePresentation: 'compact',
+      headerControls: [{ kind: 'menu', id: 'save', menuKind: 'inline', items: [
+        { id: 'save', icon: 'check', palette: 'green', ariaLabel: 'save', disabled: invalid }
+      ] }],
+      onClose: () => { this.paymentDeadlineDraft = null; },
+      onMenuSelect: () => {
+        if (!draft || invalid) return;
+        this.eventDetailDTO.paymentDeadlineEnabled = draft.enabled;
+        if (validHours) this.eventDetailDTO.paymentDeadlineHours = draft.hours;
+        this.paymentDeadlineDraft = null;
+      }
+    };
+  }
+
   toggleEventApprovalRequired(event: Event): void {
     event.preventDefault();
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
+    if (this.eventStructureReadOnly()) return;
     this.eventDetailDTO.approvalRequired = !this.eventDetailDTO.approvalRequired;
   }
 
@@ -2266,6 +2304,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private resetEditorContext(): void {
+    this.paymentDeadlineDraft = null;
     this.editorTarget = 'events';
     this.editingEventId = null;
     this.draftEventId = null;

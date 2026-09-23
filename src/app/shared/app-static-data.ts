@@ -432,6 +432,9 @@ const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
       { labelKey: 'profile.height', privacy: 'Friends' },
       { labelKey: 'profile.physique', privacy: 'Friends' },
       { labelKey: 'profile.languages', privacy: 'Public' },
+      { labelKey: 'profile.profession', privacy: 'Public' },
+      { labelKey: 'profile.experience.workplace', privacy: 'Public' },
+      { labelKey: 'profile.experience.school', privacy: 'Public' },
       { labelKey: 'profile.horoscope', privacy: 'Public' }
     ]
   },
@@ -448,11 +451,11 @@ const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
   {
     title: 'Relationships',
     rows: [
-      { labelKey: 'profile.details.familyPlans', privacy: 'Hosts' },
+      { labelKey: 'profile.details.familyPlans', privacy: 'Private' },
       { labelKey: 'profile.details.children', privacy: 'Private' },
-      { labelKey: 'profile.details.loveStyle', privacy: 'Hosts' },
+      { labelKey: 'profile.details.loveStyle', privacy: 'Private' },
       { labelKey: 'profile.details.communicationStyle', privacy: 'Friends' },
-      { labelKey: 'profile.details.sexualOrientation', privacy: 'Hosts' },
+      { labelKey: 'profile.details.sexualOrientation', privacy: 'Private' },
       { labelKey: 'profile.gender', privacy: 'Public' }
     ]
   },
@@ -592,7 +595,7 @@ const INTEREST_OPTION_GROUPS: InterestOptionGroup[] = [
     options: ['#Sustainability', '#Entrepreneurship', '#CareerDriven', '#FamilyOriented', '#Activism', '#Tech', '#Minimalism']
   }
 ];
-const DETAIL_PRIVACY_OPTIONS: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+const DETAIL_PRIVACY_OPTIONS: DetailPrivacy[] = ['Public', 'Friends', 'Private'];
 const EXPERIENCE_FILTER_OPTIONS: Array<'All' | ExperienceEntry['type']> = [
   'All',
   'Workspace',

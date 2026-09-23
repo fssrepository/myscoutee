@@ -28,6 +28,10 @@ export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayShape = 'default' | 'circle';
 export type InfoCardOverlayTone =
+  | 'purple'
+  | 'danger'
+  | 'teal'
+  | 'orange'
   | 'default'
   | 'stage'
   | 'stage-active'
@@ -350,6 +354,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   mediaEnd?: InfoCardOverlayAction | null;
   mediaBottomEnd?: InfoCardOverlayAction | null;
   hasMenuOptions?: boolean;
+  menuPosition?: 'top-right' | 'bottom-right';
   menuActions?: readonly CardMenuActionId[];
   menuTitle?: string | null;
   menuBadgeCount?: number | null;
@@ -446,6 +451,7 @@ export interface ImageCardMediaActionEvent<TCard extends ImageCardData = ImageCa
 
 export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   title: string;
+  menuPosition?: 'side' | 'top-right';
   groupLabel?: string | null;
   subtitle?: string | null;
   detail?: string | null;
@@ -509,6 +515,7 @@ export interface CardMenuTriggerRect {
 }
 
 export interface CardMenuRequestEvent<TCard = DisplayData> {
+  imageUrl?: string | null;
   id: string;
   card: TCard;
   actions?: readonly CardMenuActionId[];

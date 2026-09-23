@@ -33,6 +33,23 @@ describe('Shared signal gallery', () => {
 });
 
 describe('Gallery submit boundary', () => {
+  it('requires a saved event on each uploaded image only when configured', async () => {
+    const store = new ImageGalleryStore(), save = vi.fn();
+    const event = { id: 'event', title: 'Event', organizerId: 'host', organizerName: 'Host', location: 'Park' };
+    const token = store.open({ images: ['one', 'two'], slotCount: 5, readOnly: false, title: '',
+      uploadOwnerId: 'uploader', uploadEntityId: 'post', onSave: save, detailsConfig: { eventRequired: true } });
+    expect(store.invalid()).toBe(true);
+    await store.save(token);
+    expect(save).not.toHaveBeenCalled();
+    store.updateDetails(token, { one: { location: 'Park', caption: '', event } });
+    expect(store.invalid()).toBe(true);
+    store.updateImages(token, ['one']);
+    expect(store.invalid()).toBe(false);
+    await store.save(token);
+    expect(save).toHaveBeenCalledOnce();
+    store.open({ images: ['one'], slotCount: 5, readOnly: false, title: '', uploadOwnerId: 'uploader', uploadEntityId: 'event' });
+    expect(store.invalid()).toBe(false);
+  });
   it('waits for save, blocks duplicate submissions and keeps a failed draft for retry', async () => {
     const store = new ImageGalleryStore();
     let reject!: (reason: Error) => void;

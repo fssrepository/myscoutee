@@ -93,6 +93,14 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.isLocalRouteEnabled('/activities/events');
   }
 
+  exportCalendar(signal?: AbortSignal): Promise<string> {
+    const actorId = this.resolveActiveUserId();
+    if (!actorId) return Promise.reject(new Error('No active user'));
+    return this.localModeEnabled
+      ? this.localEventsService.exportCalendar(actorId)
+      : this.httpEventsService.exportCalendar(signal);
+  }
+
   private get eventsService(): LocalEventsService | HttpEventsService {
     return this.resolveRouteService('/activities/events', this.localEventsService, this.httpEventsService);
   }

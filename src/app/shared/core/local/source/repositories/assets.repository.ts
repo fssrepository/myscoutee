@@ -178,7 +178,8 @@ export class LocalAssetsRepository {
     const visible = record
       && (record.ownerUserId === normalizedUserId
         || this.readVisibleAssetRecords(normalizedUserId, state).some(item => item.id === normalizedAssetId));
-    return record && visible && !this.isSuppressedAssetStatus(record.status)
+    return record && visible && (!this.isSuppressedAssetStatus(record.status)
+      || (record.ownerUserId === normalizedUserId && this.isContentModerated(record)))
       ? this.toAssetDetailDto(
           record,
           normalizedUserId,
@@ -1288,6 +1289,10 @@ export class LocalAssetsRepository {
     return normalized === 'UR' || normalized === 'B' || normalized === 'D' || normalized === 'I' || normalized === 'T';
   }
 
+  private isContentModerated(record: AssetRecord): boolean {
+    return record.status === 'B' && ['under-review', 'rejected', 'blocked'].includes(record.moderationStatus ?? '');
+  }
+
   private isActiveDemoUser(userId: string): boolean {
     const user = this.queryUsers().find(item => item.id === userId.trim()) as (UserDto & { status?: string; profileStatus?: string }) | undefined;
     const status = `${user?.status ?? ''}`.trim();
@@ -1308,7 +1313,7 @@ export class LocalAssetsRepository {
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => (
-        record.ownerUserId === ownerUserId && !this.isSuppressedAssetStatus(record.status)
+        record.ownerUserId === ownerUserId && (!this.isSuppressedAssetStatus(record.status) || this.isContentModerated(record))
       ) || (
         LocalAssetsMapper.normalizeAssetStatus(record.status) === 'UR'
         && this.canTakeOverAsset(record, ownerUserId)

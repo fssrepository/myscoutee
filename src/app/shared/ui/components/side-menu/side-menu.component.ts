@@ -14,6 +14,7 @@ import {
   Component,
   ElementRef,
   HostListener,
+  Injector,
   OnDestroy,
   ViewChild,
   computed,
@@ -119,6 +120,7 @@ import {
   OperatorMenuStore
 } from '../../context/stores/operator-menu.store';
 import { isNavigatorHydrationRoute } from './navigator-hydration-route';
+import { hasOperatorRole } from '../../../core/common/user-role';
 import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
@@ -260,6 +262,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
   private readonly operatorMenuStore = inject(OperatorMenuStore);
+  private readonly injector = inject(Injector);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -329,6 +332,7 @@ export class SideMenuComponent implements OnDestroy {
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
   private hydrationRequestVersion = 0;
+  private realtimePollingUserId = '';
   private readonly userRealtimeScheduler = new UiTaskScheduler<string>({
     intervalMs: () => this.userRealtimePollIntervalMs(),
     state: () => this.userProfileStore.activeUserId().trim(),
@@ -497,8 +501,9 @@ export class SideMenuComponent implements OnDestroy {
     || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
-    this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
-      && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen())
+    !this.userProfileStore.activeUserLocationMissing()
+      && (this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
+        && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen()))
   );
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
     const unreadCount = this.notificationCenterStore.unreadCount();
@@ -636,16 +641,17 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
-        disabled: this.notificationCenterStore.permissionActionPending(),
+        disabled: this.notificationCenterStore.permissionActionPending() || this.userProfileStore.activeUserLocationMissing(),
         progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
-        icon: this.connectionOffline() ? 'cloud_off' : notificationsMuted ? 'notifications_off' : 'notifications',
-        palette: this.connectionOffline() ? 'offline' : notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        icon: this.connectionOffline() ? 'cloud_off' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: this.connectionOffline() ? 'offline' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        ) + (this.connectionOffline() ? ' — Offline' : '')
+        ) + (this.connectionOffline() ? ' — Offline' : this.userProfileStore.activeUserLocationMissing()
+          ? ' — ' + this.i18n.translate('game.location.required.title') : '')
       });
     }
     if (!this.isPrivilegedWorkspaceMode()) {
@@ -1906,7 +1912,16 @@ export class SideMenuComponent implements OnDestroy {
 
     this.syncHydratedUser(loadedUser);
     void this.helpCenterService.preload('help');
+    if (hasOperatorRole(loadedUser)) {
+      void this.preloadOperatorUpdate(requestVersion);
+    }
     return loadedUser;
+  }
+
+  private async preloadOperatorUpdate(requestVersion: number): Promise<void> {
+    const { OperatorWorkspaceStore } = await import('../../context/stores/operator-workspace.store');
+    if (requestVersion !== this.hydrationRequestVersion) return;
+    await this.injector.get(OperatorWorkspaceStore).preloadDeploymentUpdate();
   }
 
   private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
@@ -2195,10 +2210,13 @@ export class SideMenuComponent implements OnDestroy {
     if (!normalizedUserId || this.userProfileStore.activeUserId().trim() !== normalizedUserId) {
       return;
     }
-    this.userRealtimeScheduler.restart();
+    const immediate = this.realtimePollingUserId !== normalizedUserId;
+    this.realtimePollingUserId = normalizedUserId;
+    this.userRealtimeScheduler.restart({ immediate });
   }
 
   private stopUserRealtimeLongPoll(): void {
+    this.realtimePollingUserId = '';
     this.userRealtimeScheduler.stop({ abort: true });
     this.userProfileStore.setUserRealtimePollInFlight(false);
   }
@@ -2241,6 +2259,8 @@ export class SideMenuComponent implements OnDestroy {
       }
       this.moderationStore.apply(snapshot.contentModeration);
       this.followingStore.applySnapshot(snapshot.userId, snapshot.following, followingRevision);
+      this.photoFeedStore.applyCounters(snapshot.userId, snapshot.feedCounters);
+      this.deploymentConfiguration.applyPaymentCardsAvailable(snapshot.paymentCardsAvailable);
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
       this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
@@ -2339,6 +2359,7 @@ export class SideMenuComponent implements OnDestroy {
   private openNotificationCenter(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (this.userProfileStore.activeUserLocationMissing()) return;
     this.closeSideMenu();
     this.notificationCenterStore.open();
   }

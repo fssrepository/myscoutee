@@ -9,8 +9,23 @@
 }
 
 .payment-methods-popup__list { flex: 1 1 auto; min-height: 0; height: 100%; }
-.payment-methods-popup__history-totals { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .4rem; min-height: 1.9rem; font-size: .82rem; font-weight: 900; }
-.payment-methods-popup__history-total { display: inline-flex; align-items: center; min-height: 1.8rem; padding: .2rem .62rem; border: 1px solid currentColor; border-radius: 999px; white-space: nowrap; }
+.payment-methods-popup__history-totals {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: .4rem;
+  min-width: 0;
+  min-height: 1.9rem;
+  overflow-x: auto;
+  padding-bottom: .25rem;
+  scrollbar-width: thin;
+  scrollbar-color: #9baecb transparent;
+  font-size: .82rem;
+  font-weight: 900;
+}
+.payment-methods-popup__history-total { display: inline-flex; flex: 0 0 auto; align-items: center; min-height: 1.8rem; padding: .2rem .62rem; border: 1px solid currentColor; border-radius: 999px; white-space: nowrap; }
+.payment-methods-popup__history-total:first-child { margin-inline-start: auto; }
 .payment-methods-popup__history-total--expense { color: #c4313c; background: #fff1f2; }
 .payment-methods-popup__history-total--income { color: #16845b; background: #edf9f3; }
 .payment-methods-popup__error { margin: 0; padding: .68rem .8rem; border: 1px solid rgba(180, 35, 24, .22); border-radius: .7rem; background: #fff1f0; color: #a82c22; font-size: .8rem; font-weight: 700; }

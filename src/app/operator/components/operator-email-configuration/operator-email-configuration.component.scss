@@ -1,0 +1,13 @@
+@use '../operator-configuration';
+
+:host { display: block; }
+
+.email-configuration__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.58rem;
+}
+
+@media (max-width: 560px) {
+  .email-configuration__fields { grid-template-columns: minmax(0, 1fr); }
+}

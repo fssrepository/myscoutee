@@ -7,5 +7,5 @@ export interface ContentModerationTable extends ContentModerationSnapshot {
 }
 export interface ContentModerationMemorySchema { [CONTENT_MODERATION_TABLE_NAME]: ContentModerationTable; }
 export function emptyContentModeration(): ContentModerationTable {
-  return { revision: 0, settings: { autoApprove: true, delayMinutes: 0, categories: ['asset', 'event', 'feed'] }, counts: {}, pendingCount: 0, items: {}, pendingMessages: [] };
+  return { revision: 0, settings: { enabled: false, autoApprove: false, delayMinutes: 0, categories: ['asset', 'event', 'feed'] }, counts: {}, pendingCount: 0, items: {}, pendingMessages: [] };
 }

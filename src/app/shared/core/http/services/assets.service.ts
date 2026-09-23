@@ -605,6 +605,7 @@ export class HttpAssetsService {
           ? 'Invitation only'
           : 'Public',
       status: this.normalizeAssetStatus(card?.status),
+      moderationStatus: card?.moderationStatus ?? null,
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
@@ -679,6 +680,7 @@ export class HttpAssetsService {
           ? 'Invitation only'
           : 'Public',
       status: this.normalizeAssetStatus(card?.status),
+      moderationStatus: card?.moderationStatus ?? null,
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,

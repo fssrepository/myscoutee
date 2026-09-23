@@ -450,7 +450,14 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get memberActionsAvailable(): boolean {
-    return this.isDataSourceAvailable && !this.userProfileStore.activeUserLocationMissing();
+    return this.userProfileStore.activeUserProfile()?.id === this.activeUserId
+      && this.isDataSourceAvailable
+      && (this.usersService.localModeEnabled || !backendUnavailable())
+      && !this.userProfileStore.activeUserLocationMissing();
+  }
+
+  protected get locationRequired(): boolean {
+    return this.userProfileStore.activeUserLocationMissing();
   }
 
   protected get isGameVisibilityPaused(): boolean {
@@ -1477,6 +1484,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async reloadServiceCardStack(): Promise<void> {
+    if (!this.isAvatarProfileSettled || !this.memberActionsAvailable) return;
     const reloadKey = this.serviceCardStackReloadKey();
     if (this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       if (this.inFlightServiceCardStackReloadKey !== reloadKey) {
@@ -1497,7 +1505,7 @@ export class HomeComponent implements OnDestroy {
         this.leftSocialQuery.trim() || null,
         this.rightSocialQuery.trim() || null
       );
-      if (requestUserId !== this.activeUserId) {
+      if (requestUserId !== this.activeUserId || !this.memberActionsAvailable) {
         return;
       }
       if (reloadKey !== this.serviceCardStackReloadKey()) {
@@ -1632,7 +1640,7 @@ export class HomeComponent implements OnDestroy {
   private async loadHomeSmartListPage(
     query: ListQuery<HomeSmartListFilters>
   ): Promise<PageResult<HomeSmartListRow>> {
-    if (this.isBlockedUserStatusPending || this.isBlockedUser || this.isGameVisibilityPaused) {
+    if (!this.memberActionsAvailable || this.isBlockedUserStatusPending || this.isBlockedUser || this.isGameVisibilityPaused) {
       return {
         items: [],
         total: 0,
@@ -1693,7 +1701,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async ensureHomeSmartListRowsAvailable(query: ListQuery<HomeSmartListFilters>): Promise<void> {
-    if (!this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
+    if (!this.memberActionsAvailable || !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       return;
     }
     const pageSize = Number.isFinite(query.pageSize)
@@ -1701,7 +1709,7 @@ export class HomeComponent implements OnDestroy {
       : this.gameStackPageSizeForCurrentMode();
     const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
     let pageRequestAttempted = false;
-    while (this.availableServiceRowsCount() < requiredCount) {
+    while (this.memberActionsAvailable && this.availableServiceRowsCount() < requiredCount) {
       const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
       if (snapshot.requestInFlight) {
         await this.waitForHomeGameStackTick();

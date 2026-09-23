@@ -27,6 +27,17 @@ describe('ActivityMemberImageCardConverter', () => {
     expect(card.statusChip?.title).toBe('Waiting For Owner Approval');
   });
 
+  it('keeps pending styling and adds the localized payment badge above the profile action', () => {
+    const card = ActivityMemberImageCardConverter.convert({ ...pendingInvitation(),
+      pendingSource: 'member', requestKind: 'payment'
+    }, { ownerType: 'event', paymentPendingLabel: 'Fizetésre vár' });
+    expect(card.statusChip?.palette).toBe('orange');
+    expect(card.statusChip?.icon).toBe('pending_actions');
+    expect(card.badge).toMatchObject({ label: 'Fizetésre vár', pending: true,
+      className: 'ui-image-card__badge--payment-pending' });
+    expect(card.detail).toBeNull();
+  });
+
   it('shows checked-in attendance without replacing the accepted member role', () => {
     const member: ActivityMemberDTO = {
       ...pendingInvitation(),

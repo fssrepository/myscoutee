@@ -125,13 +125,14 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
   }
 
   protected onCardActivated(event?: Event): void {
+    if ((this.card?.imageUrls?.length ?? 0) > 1) {
+      event?.stopPropagation();
+      this.imageIndex = (this.imageIndex + 1) % this.card!.imageUrls!.length;
+    }
     if (!this.card?.clickable) {
       return;
     }
     event?.stopPropagation();
-    if ((this.card.imageUrls?.length ?? 0) > 1) {
-      this.imageIndex = (this.imageIndex + 1) % this.card.imageUrls!.length;
-    }
     this.cardClick.emit({
       id: this.card.id,
       card: this.card
@@ -238,6 +239,7 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
         this.cdr.markForCheck();
       }
       this.menuRequest.emit({
+        imageUrl: this.card.imageUrls?.[this.imageIndex] ?? this.card.imageUrl,
         id: this.card.id,
         card: this.card,
         actions: this.card.menuActions ?? [],

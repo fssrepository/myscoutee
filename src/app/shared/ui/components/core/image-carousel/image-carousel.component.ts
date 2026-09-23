@@ -1,4 +1,5 @@
-import { ImageDetailsMap, IMAGE_CAPTION_MAX_LENGTH, normalizeImageDetails } from '../../../../core/contracts/image-gallery.interface';
+import { ImageDetails, ImageDetailsConfig, ImageDetailsMap, IMAGE_CAPTION_MAX_LENGTH, normalizeImageDetails } from '../../../../core/contracts/image-gallery.interface';
+import { AppMenuComponent, type AppMenuItem } from '../menu';
 import { PopupComponent, PopupModel } from '../popup';
 import { LocationInputComponent } from '../form/inputs/location-input/location-input.component';
 import { CommonModule } from '@angular/common';
@@ -34,7 +35,7 @@ export type ImageCarouselSlotImageVariant = 'small' | 'medium' | 'large';
 @Component({
   selector: 'app-image-carousel',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, FormsModule, PopupComponent, LocationInputComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, FormsModule, PopupComponent, LocationInputComponent, AppMenuComponent],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -58,25 +59,31 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   @Input() slideshow = false;
   @Input() highlightFirst = false;
   @Input() expandable = false;
+  @Input() galleryImageCount: number | null = null;
+  @Input() galleryCapacity: number | null = null;
   @Input() detailsEditable = false;
   @Input() imageDetails: ImageDetailsMap = {};
+  @Input() detailsConfig: ImageDetailsConfig = {};
   @Output() readonly uploadingChange = new EventEmitter<boolean>();
   @Output() readonly imageDetailsChange = new EventEmitter<ImageDetailsMap>();
   protected readonly captionMaxLength = IMAGE_CAPTION_MAX_LENGTH;
-  protected detailsDraft: { url: string; location: string; caption: string } | null = null;
+  protected detailsDraft: (ImageDetails & { url: string }) | null = null;
 
   protected openDetails(url: string, event: Event): void {
     event.stopPropagation();
     if (this.isDisabled() || !this.detailsEditable) return;
-    this.detailsDraft = { url, location: this.imageDetails[url]?.location ?? '', caption: this.imageDetails[url]?.caption ?? '' };
+    this.detailsDraft = { url, location: this.imageDetails[url]?.location ?? '', caption: this.imageDetails[url]?.caption ?? '',
+      event: this.imageDetails[url]?.event };
   }
 
   protected detailsPopupModel(): PopupModel {
     return {
       title: 'image.details.title', size: 'small', mobilePresentation: 'compact',
+      backdropTone: 'dim',
       onClose: () => this.detailsDraft = null,
-      headerActions: [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: 'success',
-        disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240 }],
+      headerActions: [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id ? 'danger' : 'success',
+        disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240
+          || (this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id) }],
       onAction: () => this.saveDetails()
     };
   }
@@ -88,8 +95,28 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   protected saveDetails(): void {
     const draft = this.detailsDraft;
     if (!draft || this.isDisabled() || !this.detailsEditable || !this.localImageUrls.includes(draft.url)) return;
-    this.imageDetailsChange.emit(normalizeImageDetails({ ...this.imageDetails, [draft.url]: { location: draft.location, caption: draft.caption } }, this.localImageUrls));
+    if (this.detailsConfig.eventRequired && !draft.event?.id) return;
+    this.imageDetailsChange.emit(normalizeImageDetails({ ...this.imageDetails, [draft.url]: { location: draft.location, caption: draft.caption, event: draft.event } }, this.localImageUrls));
     this.detailsDraft = null;
+  }
+
+  protected imageDetailsInvalid(url: string | null | undefined): boolean {
+    return !!url && this.detailsEditable && !!this.detailsConfig.eventRequired && !this.imageDetails[url]?.event?.id;
+  }
+
+  protected eventItems(): readonly AppMenuItem[] {
+    return [{ id: 'event', icon: 'event', label: this.detailsDraft?.event?.title || 'feed.event.select',
+      palette: this.detailsDraft?.event?.id ? 'blue' : 'danger', surface: 'tinted', layout: 'action' }];
+  }
+
+  protected async selectDetailsEvent(): Promise<void> {
+    const draft = this.detailsDraft;
+    if (!draft || !this.detailsConfig.selectEvent || this.isDisabled()) return;
+    const event = await this.detailsConfig.selectEvent(draft.event);
+    if (event && this.detailsDraft === draft && !this.isDisabled()) {
+      this.detailsDraft = { ...draft, event, location: event.location };
+      this.changeDetectorRef.markForCheck();
+    }
   }
 
   protected locationUrl(imageUrl: string): string {
@@ -167,8 +194,11 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
 
   ngOnDestroy(): void { this.destroyed = true; this.clearScrollLock(); }
 
-  protected expandGallery(event: Event): void {
-    event.stopPropagation();
+  protected galleryCount(): number {
+    return this.galleryImageCount ?? this.localImageUrls.length;
+  }
+
+  protected expandGallery(): void {
     this.expand.emit();
   }
 
@@ -227,7 +257,14 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   }
 
   protected carouselTransform(): string | null {
-    return this.usesNativeSnap() ? null : `translateX(-${this.carouselIndex * 100}%)`;
+    if (this.usesNativeSnap()) return null;
+    const slotsPerPage = this.slotsPerPage();
+    const unusedSlots = Math.max(0, (this.carouselIndex + 1) * slotsPerPage - this.normalizedSlotCount());
+    if (this.carouselIndex === 0 || unusedSlots === 0) {
+      return `translateX(-${this.carouselIndex * 100}%)`;
+    }
+    // Keep the final filled slot at the viewport edge instead of exposing empty grid columns.
+    return `translateX(calc(-${this.carouselIndex * 100}% + (100% - 2 * var(--image-carousel-edge-padding) + var(--image-slot-gap)) * ${unusedSlots / slotsPerPage}))`;
   }
 
   protected showPreviousPage(event?: Event): void {
@@ -537,10 +574,10 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
     return Math.max(0, Math.min(this.normalizedSlotCount() - 1, parsed));
   }
 
-  private slotsPerPage(): number {
-    if (this.slideshow) return 1;
+  protected slotsPerPage(): number {
+    if (this.slideshow || this.normalizedSlotCount() === 1) return 1;
     const viewportWidth = this.readViewportWidth();
-    if (viewportWidth <= 720) {
+    if (viewportWidth <= 760) {
       return 1;
     }
     if (viewportWidth <= 980) {
@@ -563,7 +600,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   }
 
   private usesNativeSnap(): boolean {
-    return this.readViewportWidth() <= 720;
+    return this.readViewportWidth() <= 760;
   }
 
   private readViewportWidth(): number {

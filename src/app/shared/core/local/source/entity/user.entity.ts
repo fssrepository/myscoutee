@@ -92,6 +92,7 @@ export interface UserEventFeedbackCountersRecord {
 
 export interface UserRecord {
   following?: import('../../../contracts/following.interface').FollowingState;
+  feedCounters?: import('../../../contracts/photo-feed.interface').PhotoFeedCounters;
   integrationTokens?: LocalIntegrationTokenRecord[];
   affiliateCode?: string;
   affiliateRegistrations?: { userId: string; registeredAtIso: string }[];

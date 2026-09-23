@@ -37,6 +37,8 @@ export const APP_INDEXED_DB_KEYS = {
   helpCenter: 'helpCenter',
   ideaPosts: 'ideaPosts',
   photoFeedPosts: 'photoFeedPosts',
+  photoFeedSeenOutboxPrefix: 'photoFeedSeenOutbox',
+  photoFeedViewsPrefix: 'photoFeedViews',
   contentModeration: 'contentModeration',
   notifications: 'notifications',
   operatorRegistry: 'operatorRegistry',

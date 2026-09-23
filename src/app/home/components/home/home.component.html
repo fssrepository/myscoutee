@@ -5,7 +5,7 @@
   <app-home-header
     [branding]="deploymentBranding()"
     [items]="homeHeaderMenuItems()"
-    [showControls]="!isAvatarProfileSettled || homeHeaderControlsReady"
+    [showControls]="memberActionsAvailable && (!isAvatarProfileSettled || homeHeaderControlsReady)"
     (itemSelect)="onHomeHeaderMenuSelect($event)"
   ></app-home-header>
 
@@ -47,7 +47,7 @@
   }
 
   <section class="game-layout-single">
-    @if (isBlockedUserStatusPending) {
+    @if (!isAvatarProfileSettled || isBlockedUserStatusPending) {
       <div class="game-card-deck"></div>
     } @else if (isBlockedUser) {
       <div class="game-blocked-panel">
@@ -61,6 +61,16 @@
         <mat-icon>visibility_off</mat-icon>
         <h2>{{ gameVisibilityPausedTitle | i18n }}</h2>
         <p>{{ gameVisibilityPausedDescription | i18n }}</p>
+      </div>
+    } @else if (!memberActionsAvailable) {
+      <div class="game-blocked-panel">
+        <mat-icon>{{ locationRequired ? 'location_off' : 'cloud_off' }}</mat-icon>
+        <h2>{{ (locationRequired ? 'game.location.required.title' : 'No network') | i18n }}</h2>
+        @if (locationRequired) {
+          <p>{{ 'game.location.required.description' | i18n }}</p>
+        } @else {
+          <p>{{ 'Saved tickets remain available. Profiles need a connection.' | i18n }}</p>
+        }
       </div>
     } @else {
     <div class="game-card-deck">

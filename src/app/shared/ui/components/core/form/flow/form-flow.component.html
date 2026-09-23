@@ -235,7 +235,7 @@
                     } @else if (control.kind === 'image-carousel') {
                       @if (control.label) {
                         <label class="form-flow__label">
-                          <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                          <span>{{ control.label | i18n }}@if (control.required) { <strong>*</strong> }</span>
                         </label>
                       }
                       @let image = imageConfig(control);

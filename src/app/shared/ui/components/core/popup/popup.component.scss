@@ -1,3 +1,5 @@
+@use '../../../styles/media-badge' as mediaBadge;
+
 app-popup {
   display: contents;
   --line: rgba(23, 33, 54, 0.12);
@@ -852,4 +854,9 @@ app-popup {
   .ui-popup__action--compact-mobile .ui-popup__action-label {
     display: none;
   }
+}
+
+.ui-popup__action.ui-popup__action--badge {
+  @include mediaBadge.surface;
+  min-height: 25px;
 }

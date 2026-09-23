@@ -213,7 +213,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       bodyLayout: 'fill',
       headerTone: 'accent',
       headerPalette: 'blue',
-      headerControls: [this.historyFilterControl(), this.headerActionControl({
+      headerControls: [this.historyFilterControl(), ...(this.deploymentConfiguration.paymentCardsAvailable() ? [this.headerActionControl({
         id: 'open-cards',
         collapsible: true,
         icon: 'credit_card',
@@ -223,7 +223,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         layout: 'pill',
         action: 'custom',
         context: { action: 'open-cards' }
-      })],
+      })] : [])],
       onMenuSelect: event => this.onHeaderMenuSelect(event),
       onClose: () => this.closeAll()
     };
@@ -493,6 +493,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       return;
     }
     if (action === 'open-cards') {
+      if (!this.deploymentConfiguration.paymentCardsAvailable()) return;
       this.errorRef.set('');
       this.cardsOpenRef.set(true);
       return;

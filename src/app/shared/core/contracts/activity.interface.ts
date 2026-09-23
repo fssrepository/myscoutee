@@ -265,6 +265,7 @@ export interface ActivityEventRecord {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  moderationStatus?: string | null;
   statusBeforeSuppression?: ActivityEventStatus | null;
   adminIds?: string[];
   avatar: string;
@@ -302,6 +303,8 @@ export interface ActivityEventRecord {
   ticketing: boolean;
   ticketCheckInsByHolderUserId?: Record<string, string>;
   approvalRequired?: boolean;
+  paymentDeadlineHours?: number;
+  paymentDeadlineEnabled?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
@@ -540,6 +543,7 @@ export interface ActivityEventDTO {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  moderationStatus?: string | null;
   statusBeforeSuppression?: ActivityEventStatus | null;
   trashedAtIso?: string | null;
   adminIds: string[];
@@ -587,6 +591,8 @@ export interface ActivityEventDTO {
   pendingReason?: AppConstants.ActivityPendingReason;
   currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   approvalRequired?: boolean;
+  paymentDeadlineHours?: number;
+  paymentDeadlineEnabled?: boolean;
   checkoutResultState?: EventCheckoutResultState | null;
   watched?: boolean;
   boost: number;
@@ -660,6 +666,7 @@ export class ActivityEventDetailDTO {
   userId = '';
   type: ActivityEventRepositoryItemType = 'events';
   status?: ActivityEventStatus = 'DR';
+  moderationStatus?: string | null;
   statusBeforeSuppression?: ActivityEventStatus | null = null;
   adminIds: string[] = [];
   avatar = '';
@@ -695,6 +702,8 @@ export class ActivityEventDetailDTO {
   frequency = 'One-time';
   ticketing = false;
   approvalRequired = false;
+  paymentDeadlineHours = 4;
+  paymentDeadlineEnabled = true;
   pricing: PricingContracts.PricingConfig | null = null;
   policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
@@ -735,6 +744,7 @@ export class ActivityEventDetailDTO {
     this.userId = update.userId ?? this.userId;
     this.type = update.type ?? this.type;
     this.status = update.status ?? this.status;
+    this.moderationStatus = update.moderationStatus ?? this.moderationStatus;
     this.statusBeforeSuppression = update.statusBeforeSuppression ?? this.statusBeforeSuppression;
     this.adminIds = [...(update.adminIds ?? this.adminIds)];
     this.avatar = update.avatar ?? this.avatar;
@@ -776,6 +786,8 @@ export class ActivityEventDetailDTO {
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
     this.approvalRequired = update.approvalRequired ?? this.approvalRequired;
+    this.paymentDeadlineHours = update.paymentDeadlineHours ?? this.paymentDeadlineHours;
+    this.paymentDeadlineEnabled = update.paymentDeadlineEnabled ?? this.paymentDeadlineEnabled;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
     this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);

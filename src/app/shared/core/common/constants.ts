@@ -9,13 +9,13 @@ export type ActivityMemberStatus = typeof ACTIVITY_MEMBER_STATUSES[number];
 export const ACTIVITY_PENDING_SOURCES = ['admin', 'member', null] as const;
 export type ActivityPendingSource = typeof ACTIVITY_PENDING_SOURCES[number];
 
-export const ACTIVITY_PENDING_REASONS = ['approval', 'waitlist', null] as const;
+export const ACTIVITY_PENDING_REASONS = ['approval', 'payment', 'waitlist', null] as const;
 export type ActivityPendingReason = typeof ACTIVITY_PENDING_REASONS[number];
 
 export const ACTIVITY_INVITE_SORTS = ['recent', 'relevant'] as const;
 export type ActivityInviteSort = typeof ACTIVITY_INVITE_SORTS[number];
 
-export const ACTIVITY_MEMBER_REQUEST_KINDS = ['invite', 'join', 'approval', 'waitlist', 'waitlist-invite', null] as const;
+export const ACTIVITY_MEMBER_REQUEST_KINDS = ['invite', 'join', 'approval', 'payment', 'waitlist', 'waitlist-invite', null] as const;
 export type ActivityMemberRequestKind = typeof ACTIVITY_MEMBER_REQUEST_KINDS[number];
 
 export const ACTIVITY_MEMBER_ROLES = ['Admin', 'Member', 'Manager'] as const;

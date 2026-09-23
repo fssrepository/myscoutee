@@ -244,6 +244,8 @@ export interface UserNotificationDeviceDto {
 export interface UserRealtimeLongPollResponseDto {
   contentModeration?: import('./content-moderation.interface').ContentModerationSnapshot | null;
   following?: import('./following.interface').FollowingState;
+  feedCounters?: import('./photo-feed.interface').PhotoFeedCounters;
+  paymentCardsAvailable?: boolean;
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
   locationCoordinates?: LocationCoordinates | null;

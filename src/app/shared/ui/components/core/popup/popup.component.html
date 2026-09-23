@@ -121,6 +121,7 @@
               class="ui-popup__action"
               [ngClass]="actionPaletteClass(headerAction)"
               [class.ui-popup__action--active]="headerAction.active"
+              [class.ui-popup__action--badge]="headerAction.variant === 'badge'"
               [class.ui-popup__action--icon-only]="!headerAction.label"
               [class.ui-popup__action--large-icon]="headerAction.iconSize === 'large'"
               [class.ui-popup__action--compact-mobile]="headerAction.compactOnMobile"
@@ -128,7 +129,9 @@
               [attr.aria-label]="headerAction.ariaLabel || headerAction.label || headerAction.id"
               (click)="selectAction(headerAction, $event)"
             >
-              <mat-icon>{{ headerAction.icon }}</mat-icon>
+              @if (headerAction.icon) {
+                <mat-icon>{{ headerAction.icon }}</mat-icon>
+              }
               @if (headerAction.label) {
                 <span class="ui-popup__action-label">{{ headerAction.label | i18n }}</span>
               }

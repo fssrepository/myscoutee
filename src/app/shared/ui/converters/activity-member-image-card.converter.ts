@@ -8,6 +8,7 @@ export interface ActivityMemberImageCardConverterOptions {
   ownerType?: ActivityMemberOwnerType | null;
   menuOpen?: boolean;
   checkedInLabel?: string;
+  paymentPendingLabel?: string;
   formatCheckedInAt?: (value: string) => string;
 }
 
@@ -28,12 +29,15 @@ export class ActivityMemberImageCardConverter {
           .filter(Boolean)
           .join(' · ')
       : null;
+    const paymentPending = dto.status === 'pending' && dto.requestKind === 'payment';
+    const paymentPendingLabel = options.paymentPendingLabel || 'Waiting for payment';
     const pendingDetail = dto.organizerOnly === true
       ? 'Organizer only'
+      : paymentPending ? null
       : dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
-    const statusChipLabel = checkedIn
+    const statusChipLabel = paymentPending ? paymentPendingLabel : checkedIn
       ? checkedInDetail || checkedInLabel
       : (dto.status === 'deleted' ? this.roleLabel(dto) : statusLabel);
 
@@ -63,7 +67,10 @@ export class ActivityMemberImageCardConverter {
         palette: this.statusPalette(dto),
         className: this.statusClass(dto)
       },
-      badge: dto.status === 'deleted'
+      badge: paymentPending
+        ? { label: paymentPendingLabel, ariaLabel: paymentPendingLabel, pending: true,
+            className: 'ui-image-card__badge--payment-pending' }
+        : dto.status === 'deleted'
         ? {
           label: statusLabel,
           ariaLabel: statusLabel,
@@ -137,7 +144,7 @@ export class ActivityMemberImageCardConverter {
       }
       return 'person';
     }
-    if (this.isJoinRequest(dto)) {
+    if (this.isJoinRequest(dto) || dto.requestKind === 'payment') {
       return 'pending_actions';
     }
     return 'outgoing_mail';
@@ -152,6 +159,9 @@ export class ActivityMemberImageCardConverter {
     }
     if (dto.status === 'accepted') {
       return this.roleLabel(dto);
+    }
+    if (dto.requestKind === 'payment') {
+      return 'Waiting for payment';
     }
     if (this.isJoinRequest(dto)) {
       if (dto.requestKind === 'waitlist') {
