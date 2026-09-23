@@ -124,20 +124,14 @@
   @if (!adminMode && revenueOpen()) {
     <app-popup [model]="revenuePopupModel()" [zIndex]="2510">
       <section class="integration-settings-section affiliate-revenue-summary">
-        <p>{{ 'payment.euro.description' | i18n }}</p>
-        @if (revenue().euroSummary; as summary) {
-          <app-menu kind="inline" [model]="{ actionSizing: 'content' }"
-            [items]="[{ id: 'currency', label: summary.currency + ' ›', palette: 'blue', layout: 'pill' }]"
-            (itemSelect)="currencyPickerOpen.set(true)"></app-menu>
-        }
         <dl>
           <div><dt>{{ 'affiliate.revenue.purchases' | i18n }}</dt><dd>{{ revenue().purchases }}</dd></div>
           <div><dt>{{ 'affiliate.revenue.bookings' | i18n }}</dt><dd>{{ revenue().eventBookings }}</dd></div>
           @if (revenue().euroSummary; as eur) {
             @if (eur.missingRates === 0) {
-              <div><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ eur.currency }} {{ eur.gross | number:'1.2-2' }}</dd></div>
-              <div><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ eur.currency }} {{ eur.refunded | number:'1.2-2' }}</dd></div>
-              <div class="affiliate-revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ eur.currency }} {{ eur.net | number:'1.2-2' }}</dd></div>
+              <div><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ eur.gross | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ eur.refunded | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div class="affiliate-revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ eur.net | number:'1.2-2' }} {{ eur.currency }}</dd></div>
             } @else { <p role="status">{{ 'payment.euro.pending' | i18n }}</p> }
           } @else { <p role="status">{{ 'payment.euro.pending' | i18n }}</p> }
         </dl>

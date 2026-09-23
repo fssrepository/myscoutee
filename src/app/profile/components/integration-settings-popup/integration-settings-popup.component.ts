@@ -57,12 +57,15 @@ export class IntegrationSettingsPopupComponent {
   protected readonly revenue = computed(() => this.settings()?.affiliate?.revenue ?? {
     currencies: {}, purchases: 0, eventBookings: 0, euroSummary: null
   });
-  protected readonly revenueCurrencies = computed(() => Object.entries(this.revenue().currencies)
-    .map(([currency, totals]) => ({ currency, ...totals })));
   protected revenuePopupModel(): PopupModel {
+    const summary = this.revenue().euroSummary;
     return {
       title: 'affiliate.revenue.title', size: 'small', height: 'auto',
       mobilePresentation: 'compact', backdropTone: 'dim', closeAriaLabel: 'close',
+      headerControls: summary ? [{ kind: 'menu', id: 'currency', model: { density: 'compact' },
+        trigger: { id: 'currency', label: summary.currency, trailingIcon: 'chevron_right', ariaLabel: 'payment.currency.title',
+          palette: 'blue', layout: 'pill', action: 'custom' } }] : [],
+      onMenuSelect: () => this.currencyPickerOpen.set(true),
       onClose: () => this.revenueOpen.set(false)
     };
   }
