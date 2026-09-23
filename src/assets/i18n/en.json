@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.23.en.148",
+  "version": "2026.09.23.en.149",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3641,7 +3641,7 @@
     "moderation.category.asset": "Asset",
     "moderation.category.event": "Event",
     "moderation.category.feed": "Photo Feed",
-    "moderation.status.under-review": "Under review",
+    "moderation.status.under-review": "Under moderation",
     "moderation.status.accepted": "Accepted",
     "moderation.status.rejected": "Rejected",
     "moderation.status.blocked": "Blocked",

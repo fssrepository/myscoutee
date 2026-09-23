@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.23.hu.148",
+  "version": "2026.09.23.hu.149",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3641,7 +3641,7 @@
     "moderation.category.asset": "Eszköz",
     "moderation.category.event": "Esemény",
     "moderation.category.feed": "Fotófolyam",
-    "moderation.status.under-review": "Ellenőrzés alatt",
+    "moderation.status.under-review": "Moderálás alatt",
     "moderation.status.accepted": "Elfogadva",
     "moderation.status.rejected": "Elutasítva",
     "moderation.status.blocked": "Letiltva",

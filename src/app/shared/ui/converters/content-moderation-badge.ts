@@ -5,7 +5,7 @@ export function contentModerationBadge(status?: string | null): InfoCardOverlayA
   const label = `moderation.status.${status}`;
   switch (status) {
     case 'under-review':
-      return { variant: 'badge', tone: 'orange', icon: 'pending_actions', label, ariaLabel: label, interactive: false };
+      return { variant: 'badge', tone: 'teal', icon: 'fact_check', label, ariaLabel: label, interactive: false };
     case 'rejected':
       return { variant: 'badge', tone: 'stage', icon: 'cancel', label, ariaLabel: label, interactive: false };
     case 'blocked':

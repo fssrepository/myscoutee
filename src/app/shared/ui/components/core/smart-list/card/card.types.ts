@@ -28,6 +28,7 @@ export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayShape = 'default' | 'circle';
 export type InfoCardOverlayTone =
+  | 'teal'
   | 'orange'
   | 'default'
   | 'stage'

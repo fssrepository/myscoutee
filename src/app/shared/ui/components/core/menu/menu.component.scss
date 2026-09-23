@@ -283,11 +283,11 @@
 }
 
 .app-menu__palette--teal {
-  --app-menu-bg: linear-gradient(180deg, #edfafa 0%, #ddf1f2 100%);
+  --app-menu-bg: #{colors.$teal-background};
   --app-menu-bg-hover: linear-gradient(180deg, #f4ffff 0%, #d5eeee 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #3aa3a1 0%, #247f7b 100%);
-  --app-menu-border: rgba(45, 120, 130, 0.28);
-  --app-menu-fg: #2b6a74;
+  --app-menu-border: #{colors.$teal-border};
+  --app-menu-fg: #{colors.$teal-foreground};
   --app-menu-icon: #2b7d84;
   --app-menu-line: rgba(45, 120, 130, 0.32);
   --app-menu-shadow: rgba(31, 105, 112, 0.2);

@@ -355,7 +355,7 @@ export class AssetInfoCardConverter {
   }
 
   private static assetStatusSurfaceTone(card: AppDTOs.AssetDTO): InfoCardData['surfaceTone'] {
-    if (card.moderationStatus === 'under-review') return 'review';
+    if (this.assetStatusCode(card) === 'B' && contentModerationBadge(card.moderationStatus)) return 'default';
     switch (this.assetStatusCode(card)) {
       case 'UR':
         return 'review';

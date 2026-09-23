@@ -1528,3 +1528,9 @@ button.asset-occupancy-badge:focus-visible {
   border-color: colors.$orange-border;
   color: colors.$orange-foreground;
 }
+
+.ui-info-card__overlay-action--tone-teal.ui-info-card__overlay-action--badge {
+  background: colors.$teal-background;
+  border-color: colors.$teal-border;
+  color: colors.$teal-foreground;
+}

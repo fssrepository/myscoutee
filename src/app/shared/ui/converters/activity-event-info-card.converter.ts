@@ -55,7 +55,8 @@ export class ActivityEventInfoCardConverter {
       ownerUserId: profileUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: trashView ? 'deleted' : dto.moderationStatus === 'under-review' ? 'review' : this.surfaceTone(status, dto, activeUserId),
+      surfaceTone: trashView ? 'deleted' : status === 'B' && contentModerationBadge(dto.moderationStatus)
+        ? this.surfaceTone('A', { ...dto, status: 'A' }, activeUserId) : this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [

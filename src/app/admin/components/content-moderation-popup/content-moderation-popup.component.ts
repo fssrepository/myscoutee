@@ -24,7 +24,7 @@ const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: 
   asset: { icon: 'inventory_2', palette: 'green' }, event: { icon: 'event', palette: 'blue' }, feed: { icon: 'photo_library', palette: 'orange' }
 };
 const STATUS_STYLE: Record<ModerationStatus, { icon: string; palette: AppMenuPalette }> = {
-  'under-review': { icon: 'pending_actions', palette: 'orange' }, accepted: { icon: 'check_circle', palette: 'green' },
+  'under-review': { icon: 'fact_check', palette: 'teal' }, accepted: { icon: 'check_circle', palette: 'green' },
   rejected: { icon: 'cancel', palette: 'purple' }, blocked: { icon: 'block', palette: 'danger' }
 };
 @Component({
