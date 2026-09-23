@@ -7,6 +7,8 @@ import { LocalContactsRepository } from '../repositories/contacts.repository';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRouteDelayService } from './route-delay.service';
+import { SessionService } from '../../../base/services/session.service';
+import { UserProfileState } from '../../../common/user-profile-state';
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +18,7 @@ export class LocalContactsService extends LocalRouteDelayService {
   private readonly contactsRepository = inject(LocalContactsRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly sessionService = inject(SessionService);
 
   async loadContacts(userId: string): Promise<StoredContact[]> {
     await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
@@ -28,12 +31,31 @@ export class LocalContactsService extends LocalRouteDelayService {
     if (!normalizedUserId) {
       return this.emptyProfileViewData();
     }
-    const user = this.usersRepository.queryUserById(normalizedUserId);
+    const record = this.usersRepository.queryUserById(normalizedUserId);
+    const user = record ? LocalUsersMapper.toDto(record) : null;
+    const viewer = this.sessionService.activeUserId();
+    const owner = normalizedUserId === viewer;
+    const friend = !!viewer && !owner && UserProfileState.isFriendOfActiveUser(normalizedUserId, viewer);
+    const hidden = new Set<string>();
+    if (user) {
+      user.profileDetails = (user.profileDetails ?? []).map(group => ({
+        ...group,
+        rows: group.rows.filter(row => {
+          const selectable = row.labelKey.startsWith('profile.details.')
+            || ['profile.profession', 'profile.experience.workplace', 'profile.experience.school'].includes(row.labelKey);
+          const visible = !selectable || owner || row.privacy === 'Public' || (friend && row.privacy === 'Friends');
+          if (!visible) hidden.add(row.labelKey);
+          return visible;
+        })
+      }));
+    }
     return {
-      user: user ? LocalUsersMapper.toDto(user) : null,
+      user,
       experiences: LocalProfileExperiencesMapper.cloneEntries(
         this.profileExperiencesRepository.queryUserExperienceRecords(normalizedUserId)
-      )
+      ).filter(entry => !(entry.type === 'Workspace' && hidden.has('profile.experience.workplace')))
+        .filter(entry => !(entry.type === 'School' && hidden.has('profile.experience.school'))),
+      hiddenFields: [...hidden]
     };
   }
 

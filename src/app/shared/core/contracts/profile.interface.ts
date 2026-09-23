@@ -141,4 +141,5 @@ export interface ProfileGroup {
 export interface ProfileViewData {
   user: UserContracts.UserDto | null;
   experiences: ExperienceEntry[];
+  hiddenFields?: string[];
 }

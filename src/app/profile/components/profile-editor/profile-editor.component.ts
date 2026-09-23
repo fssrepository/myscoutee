@@ -279,6 +279,13 @@ export class ProfileEditorComponent implements OnDestroy {
       this.refreshProfileEditorFlowModel();
       return;
     }
+    if (context?.menu === 'experiencePrivacy') {
+      this.setProfileDetailPrivacy(
+        context.type === 'workspace' ? 'profile.experience.workplace' : 'profile.experience.school',
+        context.value
+      );
+      return;
+    }
   }
 
   protected popupTitle(): string {
@@ -578,7 +585,11 @@ export class ProfileEditorComponent implements OnDestroy {
         profileSize: this.activeUserUsesCompactProfile() ? 'small' : 'big',
         imageEditor: 'external',
         privacy: {
-          values: this.profileEditorPrivacyValues()
+          values: this.profileEditorPrivacyValues(),
+          experience: {
+            workspace: this.profileDetailRowByKey('profile.experience.workplace')?.privacy ?? 'Public',
+            school: this.profileDetailRowByKey('profile.experience.school')?.privacy ?? 'Public'
+          }
         },
         showHeader: false,
         showSave: false

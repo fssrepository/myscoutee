@@ -181,11 +181,14 @@ export class ProfileFormFlowDataConverter {
   }
 
   private static profileDetailPrivacy(user: UserDto, labelKey: string, fallback: DetailPrivacy): DetailPrivacy {
+    if (labelKey === 'profile.gender') {
+      return 'Public';
+    }
     const normalizedLabel = this.normalizeToken(labelKey);
     for (const group of user.profileDetails ?? []) {
       for (const row of group.rows ?? []) {
         if (this.normalizeToken(row.labelKey) === normalizedLabel && this.isDetailPrivacy(row.privacy)) {
-          return row.privacy;
+          return row.privacy === 'Hosts' ? 'Private' : row.privacy;
         }
       }
     }
@@ -553,8 +556,7 @@ export class ProfileFormFlowConverter {
         label: 'profile.gender',
         bind: this.detailValueBind(profile, 'profile.gender'),
         required: true,
-        config: this.detailSelectMenuConfig('profile.gender', 'profile.gender', 'person', 'violet'),
-        accessory: this.privacyAccessory('profile.gender', options.privacy)
+        config: this.detailSelectMenuConfig('profile.gender', 'profile.gender', 'person', 'violet')
       },
       {
         id: 'languages',
@@ -570,6 +572,15 @@ export class ProfileFormFlowConverter {
           'select.languages',
           2
         )
+      },
+      {
+        id: 'profession',
+        kind: 'text',
+        layout: 'half',
+        label: 'profile.profession',
+        bind: this.detailValueBind(profile, 'profile.profession'),
+        placeholder: 'profile.profession',
+        accessory: this.privacyAccessory('profile.profession', options.privacy)
       },
       {
         id: 'workspace',
