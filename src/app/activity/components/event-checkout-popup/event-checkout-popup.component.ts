@@ -915,7 +915,7 @@ export class EventCheckoutPopupComponent {
     const slotId = slot?.slotTemplateId ?? null;
     const selectedDateKey = slot?.startAtIso ? this.slotDateKeyFromIso(slot.startAtIso) : this.selectedSlotDateKey() || null;
     const nowIso = new Date().toISOString();
-    const expiresAtIso = new Date(Date.parse(slot?.startAtIso ?? dialog.record.startAtIso) - (dialog.record.approvalRequired ? (dialog.record.paymentDeadlineHours ?? 4) * 60 * 60 * 1000 : 0)).toISOString();
+    const expiresAtIso = new Date(Date.parse(slot?.startAtIso ?? dialog.record.startAtIso) - (dialog.record.pricing?.enabled && dialog.record.paymentDeadlineEnabled !== false ? (dialog.record.paymentDeadlineHours ?? 4) * 60 * 60 * 1000 : 0)).toISOString();
     const eventPricing = this.resolvePricing(
       dialog.record.pricing,
       dialog.record,

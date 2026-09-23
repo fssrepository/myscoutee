@@ -979,6 +979,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       && this.eventDetailDTO.capacityMax !== null
       && this.eventDetailDTO.dateRange.startAt
       && this.eventDetailDTO.dateRange.endAt
+      && (!this.eventDetailDTO.pricing?.enabled || !this.eventDetailDTO.paymentDeadlineEnabled
+        || (Number.isInteger(this.eventDetailDTO.paymentDeadlineHours) && this.eventDetailDTO.paymentDeadlineHours >= 0))
     );
   }
 
@@ -1113,7 +1115,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         label: this.eventApprovalRequiredLabel(this.eventDetailDTO.approvalRequired),
         detail: this.eventApprovalRequiredDescription(this.eventDetailDTO.approvalRequired),
         icon: this.eventApprovalRequiredIcon(this.eventDetailDTO.approvalRequired),
-        kind: 'action',
+        kind: 'toggle',
+        checked: !this.eventDetailDTO.approvalRequired,
         layout: 'big',
         active: this.eventDetailDTO.approvalRequired,
         palette: this.eventDetailDTO.approvalRequired ? 'orange' : 'green',
@@ -2098,44 +2101,48 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO.ticketing = !this.eventDetailDTO.ticketing;
   }
 
-  protected approvalSettingsDraft: { approvalRequired: boolean; hours: number } | null = null;
+  protected paymentDeadlineDraft: { enabled: boolean; hours: number } | null = null;
+
+  protected paymentDeadlineMenuItems(): readonly AppMenuItem[] {
+    return [{ id: 'payment-deadline', icon: 'schedule', ariaLabel: 'event.payment.deadline.title',
+      palette: this.eventDetailDTO.paymentDeadlineEnabled ? 'blue' : 'slate',
+      disabled: this.eventStructureReadOnly() }];
+  }
+
+  protected openPaymentDeadlineSettings(): void {
+    if (this.eventStructureReadOnly()) return;
+    this.paymentDeadlineDraft = { enabled: this.eventDetailDTO.paymentDeadlineEnabled,
+      hours: this.eventDetailDTO.paymentDeadlineHours };
+  }
+
+  protected paymentDeadlineToggleItems(): readonly AppMenuItem[] {
+    return [{ id: 'enabled', label: 'event.payment.deadline.title', icon: 'schedule',
+      palette: 'blue', kind: 'toggle', layout: 'pill', showToggleIndicator: true,
+      closeOnSelect: false, checked: this.paymentDeadlineDraft?.enabled }];
+  }
+
+  protected paymentDeadlineSettingsModel(): PopupModel {
+    const draft = this.paymentDeadlineDraft;
+    const validHours = !!draft && Number.isInteger(draft.hours) && draft.hours >= 0;
+    const invalid = !draft || (draft.enabled && !validHours);
+    return { title: 'event.payment.deadline.title', size: 'small', height: 'auto', mobilePresentation: 'compact',
+      headerControls: [{ kind: 'menu', id: 'save', menuKind: 'inline', items: [
+        { id: 'save', icon: 'check', palette: 'green', ariaLabel: 'save', disabled: invalid }
+      ] }],
+      onClose: () => { this.paymentDeadlineDraft = null; },
+      onMenuSelect: () => {
+        if (!draft || invalid) return;
+        this.eventDetailDTO.paymentDeadlineEnabled = draft.enabled;
+        if (validHours) this.eventDetailDTO.paymentDeadlineHours = draft.hours;
+        this.paymentDeadlineDraft = null;
+      }
+    };
+  }
 
   toggleEventApprovalRequired(event: Event): void {
     event.preventDefault();
     if (this.eventStructureReadOnly()) return;
-    this.approvalSettingsDraft = {
-      approvalRequired: this.eventDetailDTO.approvalRequired,
-      hours: this.eventDetailDTO.paymentDeadlineHours
-    };
-  }
-
-  protected approvalSettingsItems(): readonly AppMenuItem[] {
-    return [{ id: 'auto', label: 'moderation.autoApprove', icon: 'verified',
-      palette: 'green', kind: 'toggle', layout: 'pill', showToggleIndicator: true,
-      closeOnSelect: false, checked: !this.approvalSettingsDraft?.approvalRequired }];
-  }
-
-  protected toggleApprovalSettings(): void {
-    if (this.approvalSettingsDraft) {
-      this.approvalSettingsDraft.approvalRequired = !this.approvalSettingsDraft.approvalRequired;
-    }
-  }
-
-  protected approvalSettingsModel(): PopupModel {
-    const draft = this.approvalSettingsDraft;
-    const invalid = !draft || (draft.approvalRequired && (!Number.isInteger(draft.hours) || draft.hours < 0));
-    return { title: 'event.approval.settings', size: 'small', height: 'auto', mobilePresentation: 'compact',
-      headerControls: [{ kind: 'menu', id: 'save', menuKind: 'inline', items: [
-        { id: 'save', icon: 'check', palette: 'green', ariaLabel: 'save', disabled: invalid }
-      ] }],
-      onClose: () => { this.approvalSettingsDraft = null; },
-      onMenuSelect: () => {
-        if (!draft || invalid) return;
-        this.eventDetailDTO.approvalRequired = draft.approvalRequired;
-        this.eventDetailDTO.paymentDeadlineHours = draft.hours;
-        this.approvalSettingsDraft = null;
-      }
-    };
+    this.eventDetailDTO.approvalRequired = !this.eventDetailDTO.approvalRequired;
   }
 
   onEventLocationChange(value: string): void {
@@ -2297,7 +2304,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private resetEditorContext(): void {
-    this.approvalSettingsDraft = null;
+    this.paymentDeadlineDraft = null;
     this.editorTarget = 'events';
     this.editingEventId = null;
     this.draftEventId = null;

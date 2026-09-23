@@ -304,6 +304,7 @@ export interface ActivityEventRecord {
   ticketCheckInsByHolderUserId?: Record<string, string>;
   approvalRequired?: boolean;
   paymentDeadlineHours?: number;
+  paymentDeadlineEnabled?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
@@ -591,6 +592,7 @@ export interface ActivityEventDTO {
   currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
   approvalRequired?: boolean;
   paymentDeadlineHours?: number;
+  paymentDeadlineEnabled?: boolean;
   checkoutResultState?: EventCheckoutResultState | null;
   watched?: boolean;
   boost: number;
@@ -701,6 +703,7 @@ export class ActivityEventDetailDTO {
   ticketing = false;
   approvalRequired = false;
   paymentDeadlineHours = 4;
+  paymentDeadlineEnabled = true;
   pricing: PricingContracts.PricingConfig | null = null;
   policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
@@ -784,6 +787,7 @@ export class ActivityEventDetailDTO {
     this.ticketing = update.ticketing ?? this.ticketing;
     this.approvalRequired = update.approvalRequired ?? this.approvalRequired;
     this.paymentDeadlineHours = update.paymentDeadlineHours ?? this.paymentDeadlineHours;
+    this.paymentDeadlineEnabled = update.paymentDeadlineEnabled ?? this.paymentDeadlineEnabled;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
     this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.23.hu.161",
+  "version": "2026.09.23.hu.162",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3723,6 +3723,7 @@
     "game.location.required.description": "A profilok megjelenítéséhez nyisd meg a Beállítások → Telepítés menüpontot, engedélyezd a helyadatok használatát, majd nyomd meg a Frissítés gombot.",
     "event.member.payment.pending": "Fizetésre vár",
     "event.checkout.payment.deadline.passed": "Az esemény fizetési határideje lejárt.",
+    "event.payment.deadline.title": "Fizetési türelmi idő",
     "event.approval.settings": "Jelentkezés jóváhagyása",
     "event.approval.deadline.hours": "Fizetési határidő az esemény előtt",
     "event.approval.hours.unit": "órában"

@@ -1790,6 +1790,7 @@ export class HttpEventsService implements IEventsService {
         ticketing: record.ticketing === true,
         approvalRequired: record.approvalRequired === true,
       paymentDeadlineHours: record.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: record.paymentDeadlineEnabled ?? true,
         pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
         policiesEnabled: record.policiesEnabled === true,
         policies: (record.policies ?? []).map(item => ({ ...item })),

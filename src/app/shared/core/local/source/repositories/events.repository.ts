@@ -2554,6 +2554,10 @@ export class LocalEventsRepository {
     const member = (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .find(entry => entry?.userId === normalizedUserId && entry.status === 'pending');
+    if (member?.requestKind === 'payment'
+      || (member?.requestKind === 'join' && record.pricing?.enabled)) {
+      return 'payment';
+    }
     if (member?.requestKind === 'waitlist') {
       return 'waitlist';
     }
@@ -3152,6 +3156,7 @@ export class LocalEventsRepository {
       policiesEnabled: record.policiesEnabled === true,
       approvalRequired: record.approvalRequired === true,
       paymentDeadlineHours: record.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: record.paymentDeadlineEnabled ?? true,
       policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
       slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -4556,6 +4561,7 @@ export class LocalEventsRepository {
           ticketing: parent.ticketing,
           approvalRequired: parent.approvalRequired === true,
           paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
+          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
           slotsEnabled: false,
           slotTemplates: [],
           parentEventId: parent.id,
@@ -4647,6 +4653,7 @@ export class LocalEventsRepository {
         ticketing: parent.ticketing,
         approvalRequired: parent.approvalRequired === true,
           paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
+          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
         slotsEnabled: false,
         slotTemplates: [],
         parentEventId: parent.id,

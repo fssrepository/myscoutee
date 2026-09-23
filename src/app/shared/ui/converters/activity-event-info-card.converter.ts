@@ -167,6 +167,9 @@ export class ActivityEventInfoCardConverter {
     if (!pending) {
       return [];
     }
+    if (dto.pendingReason === 'payment') {
+      return [{ label: 'event.member.payment.pending' }];
+    }
     if (dto.pendingReason === 'waitlist') {
       return [{ label: 'waiting.list' }];
     }
@@ -214,6 +217,7 @@ export class ActivityEventInfoCardConverter {
     }
     return this.includesUserId(dto.pendingRequestMemberUserIds, userId)
       || dto.pendingReason === 'approval'
+      || dto.pendingReason === 'payment'
       || dto.pendingReason === 'waitlist';
   }
 

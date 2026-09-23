@@ -120,6 +120,7 @@ export class LocalActivityEventsMapper {
       pendingReason: record.pendingReason,
       approvalRequired: record.approvalRequired === true,
       paymentDeadlineHours: record.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: record.paymentDeadlineEnabled ?? true,
       checkoutResultState: null,
       watched: record.watched === true,
       boost: record.boost
@@ -1128,6 +1129,7 @@ export class LocalActivityEventDetailsMapper {
       ticketing,
       approvalRequired,
       paymentDeadlineHours: payload.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: payload.paymentDeadlineEnabled ?? true,
       pricing,
       policiesEnabled,
       policies,
@@ -1204,6 +1206,7 @@ export class LocalActivityEventDetailsMapper {
       ticketing: record.ticketing,
       approvalRequired: record.approvalRequired === true,
       paymentDeadlineHours: record.paymentDeadlineHours ?? 4,
+      paymentDeadlineEnabled: record.paymentDeadlineEnabled ?? true,
       pricing: record.pricing ?? null,
       policiesEnabled: record.policiesEnabled === true,
       policies: record.policies ?? [],

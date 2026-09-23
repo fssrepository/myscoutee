@@ -9,7 +9,7 @@ export type ActivityMemberStatus = typeof ACTIVITY_MEMBER_STATUSES[number];
 export const ACTIVITY_PENDING_SOURCES = ['admin', 'member', null] as const;
 export type ActivityPendingSource = typeof ACTIVITY_PENDING_SOURCES[number];
 
-export const ACTIVITY_PENDING_REASONS = ['approval', 'waitlist', null] as const;
+export const ACTIVITY_PENDING_REASONS = ['approval', 'payment', 'waitlist', null] as const;
 export type ActivityPendingReason = typeof ACTIVITY_PENDING_REASONS[number];
 
 export const ACTIVITY_INVITE_SORTS = ['recent', 'relevant'] as const;

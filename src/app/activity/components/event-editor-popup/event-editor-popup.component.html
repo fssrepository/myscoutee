@@ -180,7 +180,10 @@
               [class.event-pricing-field-shell--promo]="showCheckoutPromoCodeAction()"
             >
               <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
-                [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
+                [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()">
+                <app-menu pricingAdditionalSettings class="event-payment-deadline-action"
+                  [items]="paymentDeadlineMenuItems()" (itemSelect)="openPaymentDeadlineSettings()"></app-menu>
+              </app-pricing-editor-input>
               @if (showCheckoutPromoCodeAction()) {
                 <app-menu
                   class="event-pricing-promo-action"
@@ -236,15 +239,15 @@
       </div>
     </app-popup>
     }
-    @if (approvalSettingsDraft; as draft) {
-      <app-popup [model]="approvalSettingsModel()" [zIndex]="eventEditorPopupZIndex() + 100">
-        <div class="event-approval-settings">
-          <app-menu kind="inline" [items]="approvalSettingsItems()" (itemSelect)="toggleApprovalSettings()"></app-menu>
-          <label class="event-approval-settings__deadline">
+
+    @if (paymentDeadlineDraft; as draft) {
+      <app-popup [model]="paymentDeadlineSettingsModel()" [zIndex]="eventEditorPopupZIndex() + 100">
+        <div class="event-payment-deadline">
+          <app-menu [items]="paymentDeadlineToggleItems()" (itemSelect)="draft.enabled = !draft.enabled"></app-menu>
+          <label class="event-payment-deadline__label">
             <span>{{ 'event.approval.deadline.hours' | i18n }}</span>
-            <div class="event-approval-settings__hours">
-              <input type="number" min="0" step="1" [(ngModel)]="draft.hours"
-                [disabled]="!draft.approvalRequired" [readOnly]="!draft.approvalRequired">
+            <div class="event-payment-deadline__hours">
+              <input type="number" min="0" step="1" [(ngModel)]="draft.hours" [disabled]="!draft.enabled">
               <span>{{ 'event.approval.hours.unit' | i18n }}</span>
             </div>
           </label>
