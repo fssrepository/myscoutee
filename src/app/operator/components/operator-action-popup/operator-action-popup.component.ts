@@ -89,6 +89,7 @@ type OperatorPopupAction =
   | 'remove-social-link'
   | 'save-social-links'
   | 'save-integration'
+  | 'save-exchange-rates'
   | 'register-payment'
   | 'register-firebase'
   | 'activate-firebase'
@@ -878,6 +879,17 @@ export class OperatorActionPopupComponent {
       : null,
     context: { action: 'save-integration' }
   }]);
+  protected readonly configurationExchangeRateActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => [{
+    id: 'operator-save-exchange-rates',
+    label: 'operator.configuration.payment.exchange.save',
+    icon: 'save', palette: 'teal', layout: 'action',
+    disabled: this.configurationDisabled(),
+    progress: this.busyAction() === 'save-exchange-rates'
+      ? { state: 'loading', durationMs: 3000 } : null,
+    context: { action: 'save-exchange-rates' }
+  }]);
   protected readonly configurationPaymentActionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -1180,6 +1192,9 @@ export class OperatorActionPopupComponent {
           'save-integration',
           'operator.configuration.integration.saved'
         );
+        return;
+      case 'save-exchange-rates':
+        await this.workspace.saveConfiguration('save-exchange-rates', 'operator.configuration.payment.exchange.saved');
         return;
       case 'register-payment':
         await this.workspace.saveConfiguration(
@@ -1908,6 +1923,7 @@ export class OperatorActionPopupComponent {
       case 'save-privacy-contact':
       case 'save-social-links':
       case 'save-integration':
+      case 'save-exchange-rates':
       case 'register-payment':
       case 'register-firebase':
       case 'activate-firebase':

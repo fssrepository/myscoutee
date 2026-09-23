@@ -794,6 +794,11 @@
                       [disabled]="configurationDisabled()"
                     ></app-link-input>
                     <small>{{ 'operator.configuration.payment.exchange.help' | i18n }}</small>
+                    <app-menu
+                      class="operator-action-popup__section-actions operator-action-popup__single-action-menu"
+                      [model]="{ actionSizing: 'content' }" kind="inline" layout="row" panelMode="anchored"
+                      [items]="configurationExchangeRateActionItems()" (itemSelect)="onAction($event)"
+                    ></app-menu>
 
                     @if (draft.payment.providerId) {
                       <div
@@ -857,7 +862,7 @@
                       [items]="configurationPaymentActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
-                    @if (workspace.feedbackAction() === 'register-payment') {
+                    @if (workspace.feedbackAction() === 'register-payment' || workspace.feedbackAction() === 'save-exchange-rates') {
                       @if (workspace.error()) {
                         <p class="operator-action-popup__result is-error" role="alert">
                           <mat-icon>error_outline</mat-icon>
