@@ -1071,6 +1071,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           current.configuration.payment.availableProviders
         ),
         providerId: paymentProvider,
+        exchangeRateUrl: request.payment.exchangeRateUrl ?? current.configuration.payment.exchangeRateUrl,
         publicBaseUrl: paymentPublicBaseUrl,
         merchantAccount: paymentMerchantAccount,
         credentialConfigured: paymentCredentialConfigured,

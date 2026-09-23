@@ -787,6 +787,14 @@
                       ></app-menu>
                     </div>
 
+                    <app-link-input
+                      [config]="configurationExchangeRateUrlConfig()"
+                      [ngModel]="draft.payment.exchangeRateUrl"
+                      (ngModelChange)="workspace.setConfigurationPayment({ exchangeRateUrl: $event })"
+                      [disabled]="configurationDisabled()"
+                    ></app-link-input>
+                    <small>{{ 'operator.configuration.payment.exchange.help' | i18n }}</small>
+
                     @if (draft.payment.providerId) {
                       <div
                         class="operator-action-popup__payment-routing"

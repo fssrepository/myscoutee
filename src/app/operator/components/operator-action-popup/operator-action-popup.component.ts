@@ -1742,6 +1742,15 @@ export class OperatorActionPopupComponent {
     };
   }
 
+  protected configurationExchangeRateUrlConfig(): LinkInputConfig {
+    return {
+      ...this.configurationPaymentPublicBaseUrlConfig(),
+      label: this.i18n.translate('operator.configuration.payment.exchange.url'),
+      placeholder: this.i18n.translate('operator.configuration.payment.exchange.url'),
+      required: false
+    };
+  }
+
   protected configurationPaymentPublicBaseUrlConfig(): LinkInputConfig {
     return {
       label: this.i18n.translate(

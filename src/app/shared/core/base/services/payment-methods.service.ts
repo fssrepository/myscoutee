@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
 import type { ListQuery } from '../../contracts/list.interface';
 import type {
@@ -17,6 +17,12 @@ export class PaymentMethodsService extends BaseRouteModeService {
   static readonly ROUTE = '/payment-methods';
   private readonly localService = inject(LocalPaymentMethodsService);
   private readonly httpService = inject(HttpPaymentMethodsService);
+
+  readonly summaryCurrencyRevision = signal(0);
+  async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
+    await this.service.selectSummaryCurrency(userId, currency);
+    this.summaryCurrencyRevision.update(value => value + 1);
+  }
 
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled(PaymentMethodsService.ROUTE);

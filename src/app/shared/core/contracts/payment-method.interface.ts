@@ -83,12 +83,14 @@ export interface PaymentRefundPreviewDto {
 }
 
 export interface PaymentHistoryPageDto extends PageResult<PaymentHistoryItemDto> {
+  euroSummary?: PaymentEuroSummaryDto | null;
   spendingTotals: Record<string, number>;
   incomeTotals: Record<string, number>;
   pendingRefundCount: number;
 }
 
 export interface PaymentHistoryMutationDto {
+  euroSummary?: PaymentEuroSummaryDto | null;
   item: PaymentHistoryItemDto;
   spendingTotals: Record<string, number>;
   incomeTotals: Record<string, number>;
@@ -113,4 +115,15 @@ export interface PaymentMethodDataService {
   queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto>;
   requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto>;
   approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto>;
+}
+
+export interface PaymentEuroSummaryDto {
+  currency: string;
+  currencies: readonly string[];
+  outgoing: number;
+  incoming: number;
+  gross: number;
+  refunded: number;
+  net: number;
+  missingRates: number;
 }

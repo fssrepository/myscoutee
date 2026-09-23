@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.23.en.162",
+  "version": "2026.09.23.en.164",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3726,6 +3726,21 @@
     "event.payment.deadline.title": "Payment grace period",
     "event.approval.settings": "Join approval",
     "event.approval.deadline.hours": "Payment deadline before the event",
-    "event.approval.hours.unit": "in hours"
+    "event.approval.hours.unit": "in hours",
+    "operator.configuration.payment.exchange.url": "Exchange-rate source URL",
+    "operator.configuration.payment.exchange.help": "Daily reference rates (ECB XML). Refreshed by the exchange-rate job.",
+    "admin.jobs.rule.payment.exchange.rates": "Refresh exchange rates",
+    "admin.jobs.rule.payment.exchange.rates.description": "Store daily reference rates for payment summaries.",
+    "payment.euro.pending": "Summary unavailable: some payments are waiting for an exchange rate.",
+    "payment.euro.reference": "Approximate total at payment-day reference rates",
+    "payment.euro.description": "Purchases by people you invited, at payment-day reference rates.",
+    "payment.currency.title": "Summary currency",
+    "payment.currency.save.error": "Could not save the currency. Please try again.",
+    "payments.exchange-rates": "Daily reference rates",
+    "admin.jobs.exchange.refreshing": "Refreshing daily exchange rates.",
+    "admin.jobs.exchange.completed": "Daily exchange rates stored.",
+    "admin.jobs.exchange.unconfigured": "Exchange-rate source is not configured.",
+    "admin.jobs.exchange.failed": "Exchange-rate refresh failed. Check the configured source.",
+    "error.str_max_length": "Length should between 1 and 255"
   }
 }

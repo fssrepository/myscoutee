@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.23.hu.162",
+  "version": "2026.09.23.hu.164",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3726,6 +3726,21 @@
     "event.payment.deadline.title": "Fizetési türelmi idő",
     "event.approval.settings": "Jelentkezés jóváhagyása",
     "event.approval.deadline.hours": "Fizetési határidő az esemény előtt",
-    "event.approval.hours.unit": "órában"
+    "event.approval.hours.unit": "órában",
+    "operator.configuration.payment.exchange.url": "Árfolyamforrás URL",
+    "operator.configuration.payment.exchange.help": "Napi referenciaárfolyamok (ECB XML). Az árfolyamfrissítő feladat tölti le.",
+    "admin.jobs.rule.payment.exchange.rates": "Árfolyamok frissítése",
+    "admin.jobs.rule.payment.exchange.rates.description": "Napi referenciaárfolyamok mentése a fizetési összesítőkhöz.",
+    "payment.euro.pending": "Az összesítő még nem elérhető: néhány tétel árfolyamra vár.",
+    "payment.euro.reference": "Tájékoztató összeg a fizetéskori referenciaárfolyamokon",
+    "payment.euro.description": "A meghívottaid vásárlásai, a fizetéskori referenciaárfolyamokon.",
+    "payment.currency.title": "Összesítő pénzneme",
+    "payment.currency.save.error": "A pénznem mentése nem sikerült. Próbáld újra.",
+    "payments.exchange-rates": "Napi referenciaárfolyamok",
+    "admin.jobs.exchange.refreshing": "Napi árfolyamok frissítése.",
+    "admin.jobs.exchange.completed": "A napi árfolyamok mentve.",
+    "admin.jobs.exchange.unconfigured": "Az árfolyamforrás nincs beállítva.",
+    "admin.jobs.exchange.failed": "Az árfolyamfrissítés sikertelen. Ellenőrizd a beállított forrást.",
+    "error.str_max_length": "A hossznak 1 és 255 között kell lennie"
   }
 }

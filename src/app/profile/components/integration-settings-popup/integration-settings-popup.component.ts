@@ -1,5 +1,7 @@
+import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
+import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, computed, effect, untracked, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { IntegrationService } from '../../../shared/core';
@@ -26,6 +28,7 @@ type IntegrationActionContext =
   selector: 'app-integration-settings-popup',
   standalone: true,
   imports: [
+    SummaryCurrencyPopupComponent,
     CommonModule,
     MatIconModule,
     PopupComponent,
@@ -44,9 +47,15 @@ export class IntegrationSettingsPopupComponent {
 
   protected readonly open = signal(false);
   protected readonly helpOpen = signal(false);
+  private readonly paymentMethods = inject(PaymentMethodsService);
+  protected readonly currencyPickerOpen = signal(false);
+  private readonly currencyRefresh = effect(() => {
+    const revision = this.paymentMethods.summaryCurrencyRevision();
+    if (revision > 0) untracked(() => { if (this.open() && !this.adminMode) void this.loadSettings(false); });
+  });
   protected readonly revenueOpen = signal(false);
   protected readonly revenue = computed(() => this.settings()?.affiliate?.revenue ?? {
-    currencies: {}, purchases: 0, eventBookings: 0
+    currencies: {}, purchases: 0, eventBookings: 0, euroSummary: null
   });
   protected readonly revenueCurrencies = computed(() => Object.entries(this.revenue().currencies)
     .map(([currency, totals]) => ({ currency, ...totals })));

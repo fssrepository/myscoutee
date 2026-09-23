@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
+import { SummaryCurrencyPopupComponent } from '../summary-currency-popup/summary-currency-popup.component';
+import { PaymentEuroSummaryDto } from '../../../core/contracts/payment-method.interface';
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, untracked, inject, signal } from '@angular/core';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { from } from 'rxjs';
 
@@ -63,7 +65,7 @@ interface PaymentPopupMenuContext {
 @Component({
   selector: 'app-payment-methods-popup',
   standalone: true,
-  imports: [PopupComponent, SmartListComponent, PaymentCardComponent, SingleRowComponent, I18nPipe],
+  imports: [SummaryCurrencyPopupComponent, PopupComponent, SmartListComponent, PaymentCardComponent, SingleRowComponent, I18nPipe],
   templateUrl: './payment-methods-popup.component.html',
   styleUrl: './payment-methods-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -99,6 +101,12 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly registrationFrameOpenRef = signal(false);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
+  protected readonly currencyPickerOpen = signal(false);
+  private readonly currencyRefresh = effect(() => {
+    const revision = this.paymentMethods.summaryCurrencyRevision();
+    if (revision > 0) untracked(() => this.revisionRef.update(value => value + 1));
+  });
+  protected readonly euroSummary = signal<PaymentEuroSummaryDto | null>(null);
   private readonly spendingTotalsRef = signal<Record<string, number>>({});
   private readonly incomeTotalsRef = signal<Record<string, number>>({});
   private readonly historyDirectionRef = signal<PaymentHistoryDirection>('all');
@@ -194,6 +202,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   protected readonly loadAllHistory: SmartListLoadPage<PaymentHistoryItemDto, PaymentListFilters> = (query, context) => from(
     this.paymentMethods.queryAllHistory(this.activeUserId(), query, context?.signal).then(page => {
+      this.euroSummary.set(page.euroSummary ?? null);
       this.spendingTotalsRef.set({ ...page.spendingTotals });
       this.incomeTotalsRef.set({ ...page.incomeTotals });
       this.historyTotalsLoadedRef.set(true);
@@ -617,6 +626,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.cardsOpenRef.set(false);
     this.errorRef.set('');
     this.historyTotalsLoadedRef.set(false);
+    this.euroSummary.set(null);
     this.spendingTotalsRef.set({});
     this.incomeTotalsRef.set({});
     this.store.close();
@@ -741,25 +751,16 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   protected historyHeaderTotals(): ReadonlyArray<{ text: string; tone: 'expense' | 'income' }> {
-    const stored = this.userProfileStore.activeUserProfile()?.paymentTotals;
-    const loadedOutgoing = this.spendingTotalsRef();
-    const loadedIncoming = this.incomeTotalsRef();
-    const outgoing = this.historyTotalsLoadedRef() ? loadedOutgoing : stored?.outgoing ?? {};
-    const incoming = this.historyTotalsLoadedRef() ? loadedIncoming : stored?.incoming ?? {};
-    const currencies = [...new Set([...Object.keys(outgoing), ...Object.keys(incoming)])]
-      .map(currency => currency.trim().toUpperCase())
-      .filter(Boolean)
-      .sort((left, right) => left.localeCompare(right));
-    return (currencies.length > 0 ? currencies : ['HUF']).flatMap(currency => [
-      {
-        text: this.formatSignedCurrency(Number(outgoing[currency]) || 0, currency, '−'),
-        tone: 'expense' as const
-      },
-      {
-        text: this.formatSignedCurrency(Number(incoming[currency]) || 0, currency, '+'),
-        tone: 'income' as const
-      }
-    ]);
+    const summary = this.euroSummary();
+    if (!summary) return [];
+    if (summary.missingRates > 0) return [
+      { text: `${summary.currency} −…`, tone: 'expense' },
+      { text: `${summary.currency} +…`, tone: 'income' }
+    ];
+    return [
+      { text: this.formatSignedCurrency(summary.outgoing, summary.currency, '−'), tone: 'expense' },
+      { text: this.formatSignedCurrency(summary.incoming, summary.currency, '+'), tone: 'income' }
+    ];
   }
 
   private historyFilterControl(): PopupControl<PaymentPopupMenuContext> {
@@ -889,6 +890,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private applyPaymentHistoryMutation(mutation: AppDTOs.PaymentHistoryMutationDto): void {
     const userId = this.activeUserId();
     const pendingRefundCount = Math.max(0, Math.trunc(Number(mutation.pendingRefundCount) || 0));
+    this.euroSummary.set(mutation.euroSummary ?? null);
     this.spendingTotalsRef.set({ ...mutation.spendingTotals });
     this.incomeTotalsRef.set({ ...mutation.incomeTotals });
     this.historyTotalsLoadedRef.set(true);

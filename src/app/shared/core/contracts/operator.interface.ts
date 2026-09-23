@@ -411,6 +411,7 @@ export interface OperatorPaymentProviderDto {
 }
 
 export interface OperatorPaymentConfigurationDto {
+  exchangeRateUrl?: string | null;
   availableProviders: readonly OperatorPaymentProviderDto[];
   providerId: string | null;
   publicBaseUrl: string | null;
@@ -477,6 +478,7 @@ export interface OperatorConfigurationSaveRequestDto {
     publicBaseUrl: string;
   };
   payment: {
+    exchangeRateUrl?: string;
     providerId: string | null;
     publicBaseUrl: string;
     merchantAccount: string;

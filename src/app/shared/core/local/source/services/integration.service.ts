@@ -21,6 +21,14 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
     const settings = this.repository.settings(this.requireUserId(), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
+    if (settings.affiliate?.revenue) {
+      const revenue = settings.affiliate.revenue;
+      const currency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${this.requireUserId()}`) || 'EUR';
+      const native = revenue.currencies[currency];
+      revenue.euroSummary = { currency, currencies: [...new Set(['EUR', currency, ...Object.keys(revenue.currencies)])].sort(),
+        outgoing: 0, incoming: 0, gross: native?.gross ?? 0, refunded: native?.refunded ?? 0, net: native?.net ?? 0,
+        missingRates: Object.entries(revenue.currencies).filter(([code, row]) => code !== currency && row.gross > 0).length };
+    }
     await this.repository.flushToIndexedDb();
     return settings;
   }

@@ -21,6 +21,11 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  async selectSummaryCurrency(_userId: string, currency: string): Promise<void> {
+    await this.routeDelay.waitForRouteDelay(HttpPaymentMethodsService.ROUTE);
+    await this.withTimeout(this.http.post(`${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/summary-currency`, { currency }));
+  }
+
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
     const response = await this.withTimeout(this.http.get<Partial<SavedPaymentMethodsPageDto> | null>(
       `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}`,
@@ -80,6 +85,7 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       items,
       total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
       nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
+      euroSummary: response?.euroSummary ?? null,
       spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
       incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
       pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
@@ -96,6 +102,7 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       items,
       total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
       nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
+      euroSummary: response?.euroSummary ?? null,
       spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
       incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
       pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
@@ -132,6 +139,7 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
     }
     return {
       item: { ...value.item },
+      euroSummary: value.euroSummary ?? null,
       spendingTotals: this.normalizeSpendingTotals(value.spendingTotals),
       incomeTotals: this.normalizeSpendingTotals(value.incomeTotals),
       pendingRefundCount: Math.max(0, Math.trunc(Number(value.pendingRefundCount) || 0))

@@ -282,6 +282,7 @@ export class OperatorWorkspaceStore {
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
       || draft.payment.publicBaseUrl.trim()
         !== (configuration.payment.publicBaseUrl ?? '')
+      || (draft.payment.exchangeRateUrl ?? '').trim() !== (configuration.payment.exchangeRateUrl ?? '')
       || draft.payment.merchantAccount.trim()
         !== (configuration.payment.merchantAccount ?? '')
       || Boolean(draft.payment.credential.trim())
@@ -1463,6 +1464,7 @@ export class OperatorWorkspaceStore {
         publicBaseUrl: configuration.integration?.publicBaseUrl ?? ''
       },
       payment: {
+        exchangeRateUrl: configuration.payment.exchangeRateUrl ?? '',
         providerId: configuration.payment.providerId,
         publicBaseUrl: configuration.payment.publicBaseUrl ?? '',
         merchantAccount: configuration.payment.merchantAccount ?? '',

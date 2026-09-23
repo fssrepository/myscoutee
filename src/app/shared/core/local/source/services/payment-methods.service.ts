@@ -25,6 +25,21 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   private readonly affiliateRepository = inject(LocalIntegrationRepository);
   private readonly refundRequestStatusByPaymentId = new Map<string, 'pending' | 'approved'>();
 
+  async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
+    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
+    globalThis.localStorage?.setItem(`myscoutee.summary-currency.${userId}`, currency);
+  }
+
+  private summary(userId: string, items: PaymentHistoryItemDto[]): import('../../../contracts/payment-method.interface').PaymentEuroSummaryDto {
+    const currency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${userId}`) || 'EUR';
+    const outgoing = this.paymentTotals(items, 'expense');
+    const incoming = this.paymentTotals(items, 'income');
+    const currencies = [...new Set(['EUR', currency, ...Object.keys(outgoing), ...Object.keys(incoming)])].sort();
+    return { currency, currencies, outgoing: outgoing[currency] ?? 0, incoming: incoming[currency] ?? 0,
+      gross: 0, refunded: 0, net: 0,
+      missingRates: currencies.filter(code => code !== currency && ((outgoing[code] ?? 0) > 0 || (incoming[code] ?? 0) > 0)).length };
+  }
+
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
     const all = await Promise.all(this.seedMethods(userId)
@@ -89,6 +104,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+      euroSummary: this.summary(userId, all),
       spendingTotals: this.paymentTotals(all, 'expense'),
       incomeTotals: {},
       pendingRefundCount: this.pendingRefundCount(userId)
@@ -110,6 +126,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+      euroSummary: this.summary(userId, [...expenses, ...income]),
       spendingTotals: this.paymentTotals(expenses, 'expense'),
       incomeTotals: this.paymentTotals(income, 'income'),
       pendingRefundCount: this.pendingRefundCount(userId)
@@ -271,6 +288,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     );
     return {
       item,
+      euroSummary: this.summary(userId, [...expenses, ...income]),
       spendingTotals: this.paymentTotals(expenses, 'expense'),
       incomeTotals: this.paymentTotals(income, 'income'),
       pendingRefundCount: this.pendingRefundCount(userId)

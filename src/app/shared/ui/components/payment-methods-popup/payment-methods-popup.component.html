@@ -9,14 +9,17 @@
         @if (totals.length) {
           <div class="payment-methods-popup__history-totals motion-static" role="region" tabindex="0" [attr.aria-label]="'payment.history.totals' | i18n">
             @for (total of totals; track total.tone + ':' + total.text) {
-              <span
-                class="payment-methods-popup__history-total"
+              <button type="button" (click)="currencyPickerOpen.set(true)"
+                class="payment-methods-popup__history-total motion-static"
                 [class.payment-methods-popup__history-total--expense]="total.tone === 'expense'"
                 [class.payment-methods-popup__history-total--income]="total.tone === 'income'"
-              >{{ total.text }}</span>
+              >{{ total.text }} ›</button>
             }
           </div>
         }
+      }
+      @if (!euroSummary() || euroSummary()!.missingRates > 0) {
+        <small role="status">{{ 'payment.euro.pending' | i18n }}</small>
       }
       <app-smart-list
         class="payment-methods-popup__list"
@@ -83,4 +86,8 @@
       ></iframe>
     </section>
   </app-popup>
+}
+
+@if (currencyPickerOpen() && euroSummary(); as summary) {
+  <app-summary-currency-popup [summary]="euroSummary()!" (closed)="currencyPickerOpen.set(false)"></app-summary-currency-popup>
 }
