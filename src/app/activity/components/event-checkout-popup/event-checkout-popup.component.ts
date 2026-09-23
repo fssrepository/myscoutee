@@ -2237,7 +2237,9 @@ export class EventCheckoutPopupComponent {
     }
     const label = this.continueLabel();
     this.confirmationDialogStore.open({
-      title: `${label}?`,
+      title: this.paymentStep
+        ? 'event.checkout.payment.confirm.title'
+        : `${label}?`,
       message: this.dialog()?.record.title ?? 'Checkout',
       warningMessage: this.checkoutConfirmWarningMessage(),
       cancelLabel: 'Back',
@@ -2308,7 +2310,7 @@ export class EventCheckoutPopupComponent {
       if (this.cashOnly()) {
         return 'event.editor.payment.cash.confirm.warning';
       }
-      return 'Payment will run for the selected basket item.';
+      return 'event.checkout.payment.confirm.message';
     }
     return 'The selected basket item will be joined.';
   }

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.165",
+  "version": "2026.09.24.hu.166",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3743,6 +3743,8 @@
     "admin.jobs.exchange.failed": "Az árfolyamfrissítés sikertelen. Ellenőrizd a beállított forrást.",
     "error.str_max_length": "A hossznak 1 és 255 között kell lennie",
     "operator.configuration.payment.exchange.save": "Árfolyamforrás mentése",
-    "operator.configuration.payment.exchange.saved": "Árfolyamforrás mentve."
+    "operator.configuration.payment.exchange.saved": "Árfolyamforrás mentve.",
+    "event.checkout.payment.confirm.title": "Szeretnéd elindítani a fizetést?",
+    "event.checkout.payment.confirm.message": "A kiválasztott tételt fogod kifizetni."
   }
 }

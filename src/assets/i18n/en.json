@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.165",
+  "version": "2026.09.24.en.166",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3743,6 +3743,8 @@
     "admin.jobs.exchange.failed": "Exchange-rate refresh failed. Check the configured source.",
     "error.str_max_length": "Length should between 1 and 255",
     "operator.configuration.payment.exchange.save": "Save exchange-rate source",
-    "operator.configuration.payment.exchange.saved": "Exchange-rate source saved."
+    "operator.configuration.payment.exchange.saved": "Exchange-rate source saved.",
+    "event.checkout.payment.confirm.title": "Would you like to proceed with payment?",
+    "event.checkout.payment.confirm.message": "You will pay for the selected item."
   }
 }
