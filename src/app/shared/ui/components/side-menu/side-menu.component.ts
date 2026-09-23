@@ -501,8 +501,9 @@ export class SideMenuComponent implements OnDestroy {
     || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
-    this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
-      && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen())
+    !this.userProfileStore.activeUserLocationMissing()
+      && (this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
+        && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen()))
   );
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
     const unreadCount = this.notificationCenterStore.unreadCount();
@@ -640,16 +641,17 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
-        disabled: this.notificationCenterStore.permissionActionPending(),
+        disabled: this.notificationCenterStore.permissionActionPending() || this.userProfileStore.activeUserLocationMissing(),
         progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
-        icon: this.connectionOffline() ? 'cloud_off' : notificationsMuted ? 'notifications_off' : 'notifications',
-        palette: this.connectionOffline() ? 'offline' : notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        icon: this.connectionOffline() ? 'cloud_off' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: this.connectionOffline() ? 'offline' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        ) + (this.connectionOffline() ? ' — Offline' : '')
+        ) + (this.connectionOffline() ? ' — Offline' : this.userProfileStore.activeUserLocationMissing()
+          ? ' — ' + this.i18n.translate('game.location.required.title') : '')
       });
     }
     if (!this.isPrivilegedWorkspaceMode()) {
@@ -2357,6 +2359,7 @@ export class SideMenuComponent implements OnDestroy {
   private openNotificationCenter(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (this.userProfileStore.activeUserLocationMissing()) return;
     this.closeSideMenu();
     this.notificationCenterStore.open();
   }

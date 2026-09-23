@@ -171,11 +171,11 @@ export class SeedOperatorRegistryBuilder {
                 palette: 'blue'
               }
             ],
-            providerId: null,
-            publicBaseUrl: null,
-            merchantAccount: null,
-            credentialConfigured: false,
-            credentialMask: null
+            providerId: 'stripe',
+            publicBaseUrl: 'https://demo.myscoutee.test',
+            merchantAccount: 'explore-demo',
+            credentialConfigured: true,
+            credentialMask: 'demo ••••'
           },
           firebase: {
             projectId: 'myscoutee-explore',

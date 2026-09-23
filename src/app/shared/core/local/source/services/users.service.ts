@@ -3,6 +3,7 @@ import { LocalIntegrationRepository } from '../repositories/integration.reposito
 import { Injectable, inject } from '@angular/core';
 
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalOperatorRegistryRepository } from '../repositories/operator-registry.repository';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 import type { BootstrapProcessState } from '../../../base/services/bootstrap.service';
@@ -78,6 +79,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
   private readonly adminModerationRepository = inject(LocalAdminModerationRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly operatorRegistryRepository = inject(LocalOperatorRegistryRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
@@ -272,7 +274,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     snapshot.contentModeration = currentUser?.admin ? this.contentModeration.snapshot() : null;
     snapshot.following = currentUser?.following ?? { organizerIds: [], eventCount: 0 };
     snapshot.feedCounters = currentUser?.feedCounters ?? { revision: 0, counts: {} };
-    snapshot.paymentCardsAvailable = false;
+    const payment = (await this.operatorRegistryRepository.read())?.configuration.payment;
+    snapshot.paymentCardsAvailable = payment?.credentialConfigured === true
+      && payment.availableProviders.some(provider => provider.id === payment.providerId);
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
       userId: normalizedUserId,
       page: 0,
