@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.23.en.154",
+  "version": "2026.09.23.en.155",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3706,6 +3706,18 @@
     "feed.remove": "Remove",
     "feed.removeConfirm": "Remove this photo post?",
     "feed.removeFailed": "Unable to remove this post. Please retry.",
-    "feed.seen": "Seen"
+    "feed.seen": "Seen",
+    "email.sender": "Sent by",
+    "email.unsubscribe.title": "Email preferences",
+    "email.unsubscribe.confirm": "Would you like to stop receiving emails from this MyScoutee service?",
+    "email.unsubscribe.success": "You have unsubscribed. You will no longer receive emails from this service.",
+    "email.unsubscribe.invalid": "This unsubscribe link is invalid. Please use the link in your email.",
+    "email.unsubscribe.error": "We could not update your email preferences. Please try again.",
+    "email.unsubscribe.loading": "Checking your email preferences…",
+    "email.unsubscribe.action": "Unsubscribe",
+    "email.unsubscribe.pending": "Please wait…",
+    "email.unsubscribe.retry": "Try again",
+    "email.unsubscribe.landing": "Visit MyScoutee",
+    "email.unsubscribe.javascript": "Please enable JavaScript to confirm your email preferences."
   }
 }

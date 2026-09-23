@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.23.hu.154",
+  "version": "2026.09.23.hu.155",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3706,6 +3706,18 @@
     "feed.remove": "Eltávolítás",
     "feed.removeConfirm": "Eltávolítod ezt a fotóbejegyzést?",
     "feed.removeFailed": "A bejegyzés eltávolítása nem sikerült. Próbáld újra.",
-    "feed.seen": "Látott"
+    "feed.seen": "Látott",
+    "email.sender": "Küldő",
+    "email.unsubscribe.title": "Email-beállítások",
+    "email.unsubscribe.confirm": "Szeretnél leiratkozni ennek a MyScoutee szolgáltatásnak az emailjeiről?",
+    "email.unsubscribe.success": "Sikeresen leiratkoztál. Ettől a szolgáltatástól nem kapsz több emailt.",
+    "email.unsubscribe.invalid": "Ez a leiratkozási hivatkozás érvénytelen. Használd az emailben kapott linket.",
+    "email.unsubscribe.error": "Nem sikerült módosítani az email-beállításokat. Próbáld újra.",
+    "email.unsubscribe.loading": "Email-beállítások ellenőrzése…",
+    "email.unsubscribe.action": "Leiratkozás",
+    "email.unsubscribe.pending": "Kérjük, várj…",
+    "email.unsubscribe.retry": "Újrapróbálás",
+    "email.unsubscribe.landing": "MyScoutee weboldal",
+    "email.unsubscribe.javascript": "Az email-beállítások megerősítéséhez engedélyezd a JavaScriptet."
   }
 }
