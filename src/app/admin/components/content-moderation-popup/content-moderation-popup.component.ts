@@ -55,10 +55,11 @@ export class ContentModerationPopupComponent {
   private get admin() { return this.workspace.dashboard()?.activeAdmin; }
   protected readonly config: SmartListConfig<ContentModerationItem> = {
     pageSize: 20, initialPageSize: 20, listLayout: 'stack', snapMode: 'none', emptyLabel: 'moderation.empty',
+    pollIntervalMs: 10000,
     groupBy: item => item.submittedAtIso.slice(0, 10), showStickyHeader: true,
     showFirstGroupMarker: false, showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     trackBy: (_index, item) => item.id,
-    menuItems: context => context.item ? MODERATION_STATUSES.filter(status => moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
+    menuItems: context => context.item && this.state.snapshot()?.settings.enabled ? MODERATION_STATUSES.filter(status => moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
       ...STATUS_STYLE[status], surface: 'tinted', disabled: status === context.item!.status, context: context.item })) : []
   };
   protected readonly loadPage: SmartListLoadPage<ContentModerationItem> = query => from(this.load(query));
@@ -103,7 +104,7 @@ export class ContentModerationPopupComponent {
   }
   protected row(item: ContentModerationItem): SingleRowData {
     return { id: item.id, title: item.title, subtitle: `moderation.category.${item.category}`, avatarUrl: item.imageUrl || null,
-      detail: item.submittedAtIso, menuActions: ['moderation'], menuPosition: 'top-right', surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
+      detail: item.submittedAtIso, menuActions: this.state.snapshot()?.settings.enabled ? ['moderation'] : [], menuPosition: 'top-right', surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
   }
   private decisionLabel(item: ContentModerationItem, status: ModerationStatus): string {
     return item.status === 'blocked' && status === 'under-review' ? 'moderation.unblock' : `moderation.status.${status}`;
@@ -111,7 +112,7 @@ export class ContentModerationPopupComponent {
   protected decide(event: AppMenuItemSelectEvent): void {
     const item = event.context as ContentModerationItem;
     const status = event.id as ModerationStatus;
-    if (!item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
+    if (!this.state.snapshot()?.settings.enabled || !item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
     const commandId = crypto.randomUUID();
     this.dialogs.open({ title: this.decisionLabel(item, status), message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
@@ -192,7 +193,10 @@ export class ContentModerationPopupComponent {
   private async saveSettings() {
     const settings = this.settingsDraft(); if (!settings || this.saving()) return;
     this.saving.set(true); this.error.set(false);
-    try { this.state.apply(await this.service.settings(this.admin?.id ?? '', this.settingsRevision, settings)); this.settingsDraft.set(null); }
+    try {
+      this.state.apply(await this.service.settings(this.admin?.id ?? '', this.settingsRevision, settings));
+      this.settingsDraft.set(null);
+    }
     catch { this.error.set(true); } finally { this.saving.set(false); }
   }
 }

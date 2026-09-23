@@ -33,6 +33,7 @@ export class LocalContentModerationRepository {
       const current = state[CONTENT_MODERATION_TABLE_NAME], item = current.items[id];
       if (!item) throw new Error('moderation.changed');
       if (item.commandId === request.commandId) return state;
+      if (!current.settings.enabled && request.status !== 'accepted') throw new Error('moderation.changed');
       if (item.version !== request.expectedVersion) throw new Error('moderation.changed');
       if (!moderationDecisionAllowed(item, request.status)) throw new Error('moderation.failed');
       const next = changeModerationItem(current, { ...item, status: request.status,
@@ -54,12 +55,13 @@ export class LocalContentModerationRepository {
     let changed = 0;
     this.db.write(state => {
       let table = state[CONTENT_MODERATION_TABLE_NAME]; const settings = table.settings;
-      if (!settings.enabled || !settings.autoApprove) return state;
+      if (settings.enabled && !settings.autoApprove) return state;
       for (const item of Object.values(table.items)) {
-        if (item.status !== 'under-review' || !settings.categories.includes(item.category)
-          || Date.parse(item.submittedAtIso) + settings.delayMinutes * 60000 > now) continue;
+        if (changed >= 100) break;
+        if (settings.enabled ? item.status !== 'under-review' || !settings.categories.includes(item.category)
+          || Date.parse(item.submittedAtIso) + settings.delayMinutes * 60000 > now : item.status === 'accepted') continue;
         table = changeModerationItem(table, { ...item, status: 'accepted', version: item.version + 1,
-          commandId: `auto:${item.id}:${item.version}`, reviewedBy: 'content-auto-approve', reviewedAtIso: new Date(now).toISOString() }); changed++;
+          commandId: `${settings.enabled ? 'auto' : 'disable'}:${item.id}:${item.version}`, reviewedBy: settings.enabled ? 'content-auto-approve' : 'content-moderation-disabled', reviewedAtIso: new Date(now).toISOString() }); changed++;
       }
       return changed ? { ...state, [CONTENT_MODERATION_TABLE_NAME]: table } : state;
     });

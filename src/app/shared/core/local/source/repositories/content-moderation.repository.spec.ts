@@ -27,6 +27,31 @@ describe('Content moderation canonical writes', () => {
     expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
     expect(await repository.approveDue()).toBe(0);
   });
+  it('releases pending, rejected and blocked photos through the Job when disabled and preserves counts on repeat and re-enable', async () => {
+    for (const id of ['pending', 'rejected', 'blocked']) {
+      await feed.insert({ id, creatorUserId: 'alice', creatorName: 'Alice', creatorAvatarUrl: '', createdAtIso: new Date().toISOString(),
+        imageUrls: ['photo'], imageDetails: {}, locationCoordinates: { latitude: 0, longitude: 0 } });
+    }
+    await repository.decide('feed:rejected', { adminUserId: 'admin', commandId: 'reject', expectedVersion: 1, status: 'rejected', message: '' });
+    await repository.decide('feed:blocked', { adminUserId: 'admin', commandId: 'accept', expectedVersion: 1, status: 'accepted', message: '' });
+    await repository.decide('feed:blocked', { adminUserId: 'admin', commandId: 'block', expectedVersion: 2, status: 'blocked', message: '' });
+    const settings = { enabled: false, autoApprove: false, delayMinutes: 43200, categories: ['asset'] as const };
+    await repository.saveSettings({ ...settings, categories: [...settings.categories] }, repository.snapshot().revision);
+    expect(repository.snapshot().pendingCount).toBe(1);
+    expect(await repository.approveDue()).toBe(3);
+    expect(repository.snapshot().pendingCount).toBe(0);
+    expect(repository.snapshot().counts.feed).toEqual({ 'under-review': 0, accepted: 3, rejected: 0, blocked: 0 });
+    expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(3);
+    const released = repository.item('feed:blocked')!;
+    await expect(repository.decide(released.id, { adminUserId: 'admin', commandId: 'blocked-while-off', expectedVersion: released.version,
+      status: 'blocked', message: '' })).rejects.toThrow();
+    await repository.saveSettings({ ...settings, categories: [...settings.categories] }, repository.snapshot().revision);
+    expect(await repository.approveDue()).toBe(0);
+    expect(repository.item(released.id)?.version).toBe(released.version);
+    await repository.saveSettings({ ...settings, enabled: true, categories: [...settings.categories] }, repository.snapshot().revision);
+    expect(repository.snapshot().pendingCount).toBe(0);
+    expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(3);
+  });
   it('hides pending photos and approves them through the delayed periodic Job', async () => {
     await repository.saveSettings({ enabled: true, autoApprove: true, delayMinutes: 1, categories: ['feed'] }, repository.snapshot().revision);
     await post(); expect(repository.snapshot().pendingCount).toBe(1);

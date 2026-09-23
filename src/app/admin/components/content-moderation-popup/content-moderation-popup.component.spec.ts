@@ -10,7 +10,7 @@ describe('Content moderation dual filters', () => {
     Object.assign(component, {
       category: 'all', status: 'under-review',
       workspace: { dashboard: () => ({ activeAdmin: { id: 'admin' } }) },
-      state: { apply: vi.fn(), snapshot: () => ({ counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
+      state: { apply: vi.fn(), snapshot: () => ({ settings: { enabled: true }, counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
       error: { set: vi.fn() }, dialogs: { open: vi.fn() }, service: { decide: vi.fn(), page: vi.fn() },
       list: { removeVisibleItems: vi.fn(), patchVisibleItem: vi.fn() }, adminMenu: { closePopup: vi.fn() }
     });
@@ -73,6 +73,14 @@ describe('Content moderation dual filters', () => {
     await expect(component.load(query)).resolves.toEqual(page);
     expect(component.error.set).toHaveBeenLastCalledWith(false);
     expect(component.state.apply).toHaveBeenCalledWith(page.snapshot);
+  });
+  it('hides moderation actions and ignores stale menu events while moderation is off', () => {
+    const component = popup();
+    component.state.snapshot = () => ({ settings: { enabled: false } });
+    expect(component.row(original).menuActions).toEqual([]);
+    component.decide({ id: 'rejected', context: original });
+    expect(component.dialogs.open).not.toHaveBeenCalled();
+    expect(component.service.decide).not.toHaveBeenCalled();
   });
   it('unblocks through confirmation into the Under review bucket', () => {
     const component = popup();
