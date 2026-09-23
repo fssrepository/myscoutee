@@ -3,7 +3,7 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { CONTENT_MODERATION_TABLE_NAME, type ContentModerationTable } from '../entity/content-moderation.entity';
 import { changeModerationItem } from '../builders/content-moderation.builder';
 import type { ContentModerationDecision, ContentModerationSettings, ContentModerationSnapshot, ModerationCategoryFilter, ModerationStatus } from '../../../contracts/content-moderation.interface';
-import { moderationCount } from '../../../contracts/content-moderation.interface';
+import { moderationCount, moderationDecisionAllowed } from '../../../contracts/content-moderation.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class LocalContentModerationRepository {
@@ -34,6 +34,7 @@ export class LocalContentModerationRepository {
       if (!item) throw new Error('moderation.changed');
       if (item.commandId === request.commandId) return state;
       if (item.version !== request.expectedVersion) throw new Error('moderation.changed');
+      if (!moderationDecisionAllowed(item, request.status)) throw new Error('moderation.failed');
       const next = changeModerationItem(current, { ...item, status: request.status,
         version: item.version + 1, commandId: request.commandId, reviewedBy: request.adminUserId, reviewedAtIso: new Date().toISOString() });
       if (request.message.trim() && ['rejected', 'blocked'].includes(request.status)) {
@@ -53,7 +54,7 @@ export class LocalContentModerationRepository {
     let changed = 0;
     this.db.write(state => {
       let table = state[CONTENT_MODERATION_TABLE_NAME]; const settings = table.settings;
-      if (!settings.autoApprove) return state;
+      if (!settings.enabled || !settings.autoApprove) return state;
       for (const item of Object.values(table.items)) {
         if (item.status !== 'under-review' || !settings.categories.includes(item.category)
           || Date.parse(item.submittedAtIso) + settings.delayMinutes * 60000 > now) continue;

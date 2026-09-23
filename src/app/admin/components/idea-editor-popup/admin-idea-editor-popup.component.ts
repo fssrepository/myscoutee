@@ -1127,7 +1127,7 @@ export class AdminIdeaEditorPopupComponent {
         id: actionId,
         label: config.label,
         icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
+        palette: this.infoCardActionPalette(action),
         surface: 'tinted',
         context: {
           card,
@@ -1137,8 +1137,10 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
-    switch (tone) {
+  private infoCardActionPalette(action: CardMenuAction): AppMenuPalette {
+    if (action.id === 'viewArticle') return 'blue';
+    if (action.id === 'edit') return 'violet';
+    switch (action.tone) {
       case 'accent':
         return 'green';
       case 'review':

@@ -2,10 +2,11 @@ import type { PageResult } from './list.interface';
 export type ModerationCategory = 'asset' | 'event' | 'feed';
 export type ModerationCategoryFilter = ModerationCategory | 'all';
 export type ModerationStatus = 'under-review' | 'accepted' | 'rejected' | 'blocked';
-export interface ContentModerationSettings { autoApprove: boolean; delayMinutes: number; categories: ModerationCategory[]; }
+export interface ContentModerationSettings { enabled: boolean; autoApprove: boolean; delayMinutes: number; categories: ModerationCategory[]; }
 export interface ContentModerationItem {
   id: string; category: ModerationCategory; sourceId: string; ownerUserId: string; title: string; imageUrl: string;
   submittedAtIso: string; status: ModerationStatus; version: number; commandId: string; reviewedBy: string; reviewedAtIso: string;
+  publiclyVisibleOnce?: boolean;
 }
 export interface ContentModerationSnapshot {
   revision: number; settings: ContentModerationSettings; counts: Record<string, Record<string, number>>; pendingCount: number;
@@ -17,6 +18,16 @@ export interface ContentModerationDecision {
 }
 export const MODERATION_CATEGORIES: readonly ModerationCategory[] = ['asset', 'event', 'feed'];
 export const MODERATION_STATUSES: readonly ModerationStatus[] = ['under-review', 'accepted', 'rejected', 'blocked'];
+
+export function moderationHasBeenPublic(item: ContentModerationItem): boolean {
+  return item.publiclyVisibleOnce === true || item.status === 'accepted' || item.status === 'blocked';
+}
+
+export function moderationDecisionAllowed(item: ContentModerationItem, status: ModerationStatus): boolean {
+  if (status === 'rejected') return !moderationHasBeenPublic(item);
+  if (status === 'blocked') return moderationHasBeenPublic(item);
+  return true;
+}
 
 /** Totals come exclusively from the compact counters maintained by writes. */
 export function moderationCount(snapshot: ContentModerationSnapshot | null | undefined, category: ModerationCategoryFilter, status: ModerationStatus): number {

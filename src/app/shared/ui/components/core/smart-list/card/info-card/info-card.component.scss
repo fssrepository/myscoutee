@@ -1,3 +1,5 @@
+@use '../../../../../styles/contextual-colors' as colors;
+
 :host {
   display: flex;
   flex: 1 1 auto;
@@ -1519,4 +1521,10 @@ button.asset-occupancy-badge:focus-visible {
   position: absolute; inset: 0.2rem 0.3rem auto; display: flex; gap: 0.2rem; z-index: 2; pointer-events: none;
   span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.45); }
   .is-current { background: #fff; box-shadow: 0 0 2px #26354c; }
+}
+
+.ui-info-card__overlay-action--tone-orange.ui-info-card__overlay-action--badge {
+  background: colors.$orange-background;
+  border-color: colors.$orange-border;
+  color: colors.$orange-foreground;
 }

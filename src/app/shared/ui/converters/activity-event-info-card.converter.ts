@@ -1,3 +1,4 @@
+import { contentModerationBadge } from './content-moderation-badge';
 import { AppUtils } from '../../app-utils';
 import type {
   ActivityEventDTO,
@@ -54,7 +55,7 @@ export class ActivityEventInfoCardConverter {
       ownerUserId: profileUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: trashView ? 'deleted' : this.surfaceTone(status, dto, activeUserId),
+      surfaceTone: trashView ? 'deleted' : dto.moderationStatus === 'under-review' ? 'review' : this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
@@ -73,7 +74,7 @@ export class ActivityEventInfoCardConverter {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
       },
       mediaStart: this.mediaStart(dto),
-      mediaEnd: {
+      mediaEnd: contentModerationBadge(dto.moderationStatus) ?? {
         variant: 'badge',
         tone: trashView ? 'deleted' : this.mediaEndTone(status, dto, activeUserId),
         label: statusBadgeLabelKey || this.capacityLabel(dto),

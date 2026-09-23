@@ -24,7 +24,7 @@ export class PhotoFeedPopupComponent {
   private readonly i18n = inject(I18nService);
   @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<PhotoFeedPost>>;
   protected readonly config: SmartListConfig<InfoCardData<PhotoFeedPost>> = {
-    pageSize: 10, listLayout: 'card-grid', desktopColumns: 2, mobileColumns: 1,
+    pageSize: 10, listLayout: 'card-grid', desktopColumns: 3,
     trackBy: (_index, card) => card.id, cacheable: true, sortable: true,
     groupBy: card => card.groupLabel ?? '',
     snapMode: 'mandatory', initialScrollAnchor: 'first-item', scrollPaddingTop: '2.6rem',

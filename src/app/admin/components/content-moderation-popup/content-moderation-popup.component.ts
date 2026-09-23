@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { from } from 'rxjs';
 import { AppMenuComponent, PopupComponent, SmartListComponent, SingleRowComponent, I18nPipe, type PopupModel, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type SmartListConfig, type SmartListLoadPage, type SingleRowData } from '../../../shared/ui';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
-import { MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
+import { MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { ContentModerationStore } from '../../../shared/ui/context/stores/content-moderation.store';
@@ -37,6 +38,7 @@ export class ContentModerationPopupComponent {
   protected readonly state = inject(ContentModerationStore);
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly service = inject(ContentModerationService);
+  private readonly i18n = inject(I18nService);
   private readonly dialogs = inject(DialogStore);
   private readonly gallery = inject(ImageGalleryStore);
   private readonly eventEditor = inject(EventEditorPopupStore);
@@ -56,7 +58,7 @@ export class ContentModerationPopupComponent {
     groupBy: item => item.submittedAtIso.slice(0, 10), showStickyHeader: true,
     showFirstGroupMarker: false, showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     trackBy: (_index, item) => item.id,
-    menuItems: context => context.item ? MODERATION_STATUSES.map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
+    menuItems: context => context.item ? MODERATION_STATUSES.filter(status => moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
       ...STATUS_STYLE[status], surface: 'tinted', disabled: status === context.item!.status, context: context.item })) : []
   };
   protected readonly loadPage: SmartListLoadPage<ContentModerationItem> = query => from(this.load(query));
@@ -69,8 +71,14 @@ export class ContentModerationPopupComponent {
   }
   private async load(query: Parameters<SmartListLoadPage<ContentModerationItem>>[0]) {
     const { category, status } = query.filters as { category: ModerationCategoryFilter; status: ModerationStatus };
-    const result = await this.service.page(this.admin?.id ?? '', category, status, query);
-    this.state.apply(result.snapshot); return result;
+    try {
+      const result = await this.service.page(this.admin?.id ?? '', category, status, query);
+      this.error.set(false);
+      this.state.apply(result.snapshot); return result;
+    } catch (error) {
+      this.error.set(true);
+      throw error;
+    }
   }
   protected model(): PopupModel {
     return { title: 'moderation.title', size: 'wide', height: 'full', bodyLayout: 'fill', headerTone: 'accent',
@@ -103,7 +111,7 @@ export class ContentModerationPopupComponent {
   protected decide(event: AppMenuItemSelectEvent): void {
     const item = event.context as ContentModerationItem;
     const status = event.id as ModerationStatus;
-    if (!item || !MODERATION_STATUSES.includes(status)) return;
+    if (!item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
     const commandId = crypto.randomUUID();
     this.dialogs.open({ title: this.decisionLabel(item, status), message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
@@ -137,8 +145,9 @@ export class ContentModerationPopupComponent {
     } catch { this.error.set(true); }
   }
   private async openSettings() {
+    this.error.set(false);
     try { const snapshot = await this.service.snapshot(this.admin?.id ?? ''); this.state.apply(snapshot);
-      this.settingsRevision = snapshot.revision; this.settingsDraft.set({ ...snapshot.settings, categories: [...snapshot.settings.categories] });
+      this.settingsRevision = snapshot.revision; this.settingsDraft.set({ ...snapshot.settings, enabled: snapshot.settings.enabled === true, categories: [...snapshot.settings.categories] });
     } catch { this.error.set(true); }
   }
   protected settingsModel(): PopupModel {
@@ -149,15 +158,33 @@ export class ContentModerationPopupComponent {
   }
   protected autoItems(): readonly AppMenuItem[] {
     return [{ id: 'auto', label: 'moderation.autoApprove', icon: 'verified', palette: 'green', kind: 'toggle', layout: 'pill',
-      showToggleIndicator: true, closeOnSelect: false, checked: this.settingsDraft()?.autoApprove, disabled: this.saving() }];
+      showToggleIndicator: true, closeOnSelect: false, checked: this.settingsDraft()?.autoApprove, disabled: this.saving() || !this.settingsDraft()?.enabled }];
   }
-  protected toggleAuto() { this.settingsDraft.update(value => value && ({ ...value, autoApprove: !value.autoApprove })); }
-  protected delay(value: number) { this.settingsDraft.update(draft => draft && ({ ...draft, delayMinutes: value })); }
+  protected enabledItems(): readonly AppMenuItem[] {
+    return [{ id: 'enabled', label: 'moderation.title', icon: 'fact_check', palette: 'orange', kind: 'toggle', layout: 'pill',
+      showToggleIndicator: true, closeOnSelect: false, checked: this.settingsDraft()?.enabled === true, disabled: this.saving() }];
+  }
+  protected toggleEnabled() { this.settingsDraft.update(value => value && ({ ...value, enabled: !value.enabled })); }
+  protected toggleAuto() {
+    if (!this.saving() && this.settingsDraft()?.enabled) this.settingsDraft.update(value => value && ({ ...value, autoApprove: !value.autoApprove }));
+  }
+  protected delay(value: number) {
+    if (!this.saving() && this.settingsDraft()?.enabled && this.settingsDraft()?.autoApprove) {
+      this.settingsDraft.update(draft => draft && ({ ...draft, delayMinutes: value }));
+    }
+  }
   protected categoryItems(): readonly AppMenuItem[] {
     return MODERATION_CATEGORIES.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', kind: 'checkbox',
-      closeOnSelect: false, checked: this.settingsDraft()?.categories.includes(id), disabled: this.saving() }));
+      closeOnSelect: false, checked: this.settingsDraft()?.categories.includes(id), disabled: this.saving() || !this.settingsDraft()?.enabled }));
+  }
+  protected selectedCategoriesLabel(): string {
+    const categories = this.settingsDraft()?.categories ?? [];
+    if (categories.length === MODERATION_CATEGORIES.length) return 'moderation.category.all';
+    if (!categories.length) return 'select.option';
+    return categories.map(id => this.i18n.translate(`moderation.category.${id}`)).join(', ');
   }
   protected toggleCategory(event: AppMenuItemSelectEvent) {
+    if (this.saving() || !this.settingsDraft()?.enabled) return;
     const id = event.id as ModerationCategory;
     this.settingsDraft.update(draft => draft && ({ ...draft, categories: draft.categories.includes(id)
       ? draft.categories.filter(value => value !== id) : [...draft.categories, id] }));

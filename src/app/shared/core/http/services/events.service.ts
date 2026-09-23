@@ -1750,6 +1750,7 @@ export class HttpEventsService implements IEventsService {
         userId: `${record.userId ?? ''}`.trim(),
         type: record.type ?? 'events',
         status: record.status,
+        moderationStatus: record.moderationStatus,
         adminIds: [...(record.adminIds ?? [])],
         avatar: `${record.avatar ?? ''}`.trim(),
         title: `${record.title ?? ''}`.trim(),

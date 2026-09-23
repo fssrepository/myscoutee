@@ -74,6 +74,7 @@ export class LocalAssetsMapper {
           ? 'Invitation only'
           : 'Public',
       status: this.normalizeAssetStatus(card?.status),
+      moderationStatus: card?.moderationStatus,
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
@@ -118,6 +119,7 @@ export class LocalAssetsMapper {
       sourceLink: `${card.sourceLink ?? ''}`.trim(),
       visibility: card.visibility,
       status: this.normalizeAssetStatus(card.status),
+      moderationStatus: card.moderationStatus,
       ownerUserId: `${card.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card.ownerName ?? ''}`.trim() || undefined,
       ownerAvatarUrl: `${card.ownerAvatarUrl ?? ''}`.trim() || null,
@@ -178,6 +180,7 @@ export class LocalAssetsMapper {
           ? 'Invitation only'
           : 'Public',
       status: this.normalizeAssetStatus(card?.status),
+      moderationStatus: card?.moderationStatus,
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
@@ -229,6 +232,7 @@ export class LocalAssetsMapper {
       policyCount: record.policiesEnabled === true ? (record.policies ?? []).length : 0,
       visibility: record.visibility,
       status: this.normalizeAssetStatus(record.status),
+      moderationStatus: record.moderationStatus,
       ownerUserId: record.ownerUserId,
       ownerName: record.ownerName,
       requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
@@ -272,6 +276,7 @@ export class LocalAssetsMapper {
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       visibility: record.visibility,
       status: this.normalizeAssetStatus(record.status),
+      moderationStatus: record.moderationStatus,
       ownerUserId: record.ownerUserId,
       ownerName: record.ownerName,
       requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
@@ -615,6 +620,7 @@ export class LocalAssetsMapper {
       pricing: detail?.pricing ? PricingBuilder.clonePricingConfig(detail.pricing) : detail?.pricing,
       visibility: summary.visibility ?? 'Public',
       status: summary.status ?? 'A',
+      moderationStatus: summary.moderationStatus,
       statusBeforeSuppression: null,
       ownerUserId: `${summary.ownerUserId ?? ''}`.trim() || ownerUserId.trim(),
       ownerName: summary.ownerName,

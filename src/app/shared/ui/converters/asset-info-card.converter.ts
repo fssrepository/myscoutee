@@ -1,3 +1,4 @@
+import { contentModerationBadge } from './content-moderation-badge';
 import { AppUtils } from '../../app-utils';
 import { AssetCardBuilder } from '../../core/base/builders/asset-card.builder';
 import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
@@ -264,6 +265,8 @@ export class AssetInfoCardConverter {
   }
 
   private static ownedAssetMediaEnd(card: AppDTOs.AssetDTO): NonNullable<InfoCardData['mediaEnd']> | null {
+    const moderation = contentModerationBadge(card.moderationStatus);
+    if (moderation) return moderation;
     const statusLabel = this.assetStatusBadgeLabel(card);
     if (statusLabel) {
       return {
@@ -352,6 +355,7 @@ export class AssetInfoCardConverter {
   }
 
   private static assetStatusSurfaceTone(card: AppDTOs.AssetDTO): InfoCardData['surfaceTone'] {
+    if (card.moderationStatus === 'under-review') return 'review';
     switch (this.assetStatusCode(card)) {
       case 'UR':
         return 'review';

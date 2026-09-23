@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalContentModerationRepository } from './content-moderation.repository';
-import { CONTENT_MODERATION_TABLE_NAME } from '../entity/content-moderation.entity';
+import { CONTENT_MODERATION_TABLE_NAME, emptyContentModeration } from '../entity/content-moderation.entity';
 import { LocalPhotoFeedRepository } from './photo-feed.repository';
 
 describe('Content moderation canonical writes', () => {
@@ -10,24 +10,36 @@ describe('Content moderation canonical writes', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({}); await TestBed.inject(LocalMemoryDb).resetStorage();
     repository = TestBed.inject(LocalContentModerationRepository); feed = TestBed.inject(LocalPhotoFeedRepository);
+    await repository.saveSettings({ enabled: true, autoApprove: false, delayMinutes: 0, categories: ['asset', 'event', 'feed'] }, repository.snapshot().revision);
   });
   afterEach(() => TestBed.resetTestingModule());
   async function post() {
     return feed.insert({ id: 'post', creatorUserId: 'alice', creatorName: 'Alice', creatorAvatarUrl: '', createdAtIso: new Date().toISOString(),
       imageUrls: ['photo'], imageDetails: {}, locationCoordinates: { latitude: 0, longitude: 0 } });
   }
-  it('requires the periodic Job even at zero delay and hides unapproved photos from others', async () => {
+  it('defaults to disabled moderation without holding back publication or running auto approval', async () => {
+    const defaults = emptyContentModeration().settings;
+    expect(defaults.enabled).toBe(false);
+    expect(defaults.autoApprove).toBe(false);
+    await repository.saveSettings(defaults, repository.snapshot().revision);
+    await post();
+    expect(repository.snapshot().pendingCount).toBe(0);
+    expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
+    expect(await repository.approveDue()).toBe(0);
+  });
+  it('hides pending photos and approves them through the delayed periodic Job', async () => {
+    await repository.saveSettings({ enabled: true, autoApprove: true, delayMinutes: 1, categories: ['feed'] }, repository.snapshot().revision);
     await post(); expect(repository.snapshot().pendingCount).toBe(1);
     expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(0);
     expect(feed.page('alice', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
-    expect(await repository.approveDue()).toBe(1);
+    expect(await repository.approveDue(Date.now() + 60001)).toBe(1);
     expect(repository.snapshot().pendingCount).toBe(0);
     expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
     expect(await repository.approveDue()).toBe(0);
   });
   it('honours delay and leaves counts unchanged on reads', async () => {
     await post(); const snapshot = repository.snapshot();
-    await repository.saveSettings({ autoApprove: true, delayMinutes: 5, categories: ['feed'] }, snapshot.revision);
+    await repository.saveSettings({ enabled: true, autoApprove: true, delayMinutes: 5, categories: ['feed'] }, snapshot.revision);
     expect(await repository.approveDue()).toBe(0);
     expect(await repository.approveDue(Date.now() + 300001)).toBe(1);
     expect(repository.snapshot().counts.feed.accepted).toBe(1);
@@ -69,12 +81,22 @@ describe('Content moderation canonical writes', () => {
     expect(first.total).toBe(3); expect(first.items).toHaveLength(1);
     const next = repository.page('all', 'under-review', { page: 0, pageSize: 10, cursor: first.nextCursor });
     expect(next.items).toHaveLength(2);
-    for (const [index, status] of (['accepted', 'rejected', 'blocked', 'under-review'] as const).entries()) {
+    for (const [index, status] of (['accepted', 'blocked', 'under-review'] as const).entries()) {
       await repository.decide('feed:post', { adminUserId: 'admin', expectedVersion: index + 1, commandId: `move-${index}`, status, message: '' });
       expect(repository.page('feed', status, { page: 0, pageSize: 10 }).total).toBe(1);
       expect(repository.page('event', 'under-review', { page: 0, pageSize: 10 }).total).toBe(1);
       expect(repository.page('all', 'under-review', { page: 0, pageSize: 10 }).total).toBe(status === 'under-review' ? 3 : 2);
     }
+  });
+
+  it('publishes immediately at zero minutes without waiting for the Job', async () => {
+    await repository.saveSettings({ enabled: true, autoApprove: true, delayMinutes: 0, categories: ['feed'] }, repository.snapshot().revision);
+    await post();
+    expect(repository.item('feed:post')?.status).toBe('accepted');
+    expect(repository.item('feed:post')?.publiclyVisibleOnce).toBe(true);
+    expect(repository.snapshot().pendingCount).toBe(0);
+    expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
+    expect(await repository.approveDue()).toBe(0);
   });
 
 });

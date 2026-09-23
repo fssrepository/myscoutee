@@ -94,6 +94,7 @@ export interface AssetDTO {
   policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
+  moderationStatus?: string | null;
   ownerUserId?: string;
   ownerName?: string;
   ownerAvatarUrl?: string | null;
@@ -122,6 +123,7 @@ export interface AssetDetailDTO {
   pricing?: PricingConfig | null;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
+  moderationStatus?: string | null;
   ownerUserId?: string;
   ownerName?: string;
   ownerAvatarUrl?: string | null;
@@ -162,6 +164,7 @@ export class AssetDto implements AssetDTO {
   policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
+  moderationStatus?: string | null;
   ownerUserId?: string;
   ownerName?: string;
   ownerAvatarUrl?: string | null;
@@ -196,6 +199,7 @@ export class AssetDto implements AssetDTO {
         : 0,
       visibility: card.visibility,
       status: card.status,
+      moderationStatus: card.moderationStatus,
       ownerUserId: card.ownerUserId,
       ownerName: card.ownerName,
       ownerAvatarUrl: card.ownerAvatarUrl ?? null,
@@ -235,6 +239,7 @@ export class AssetDto implements AssetDTO {
       && (this.policyCount ?? 0) === (other.policyCount ?? 0)
       && (this.visibility ?? '') === (other.visibility ?? '')
       && (this.status ?? '') === (other.status ?? '')
+      && (this.moderationStatus ?? '') === (other.moderationStatus ?? '')
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
       && (this.ownerAvatarUrl ?? '') === (other.ownerAvatarUrl ?? '')

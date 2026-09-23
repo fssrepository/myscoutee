@@ -1,6 +1,8 @@
 :host { display: contents; }
 app-smart-list { flex: 1 1 auto; min-height: 0; }
 .moderation-settings { display: grid; gap: 1rem; padding: .8rem; }
+.moderation-settings__parameters { display: grid; gap: 1rem; min-width: 0; margin: 0; padding: .74rem; border: 1px solid rgba(46, 111, 178, .24); border-radius: 12px; background: linear-gradient(180deg, #f3f8ff 0%, #ecf4ff 100%); }
+.moderation-settings__categories { display: grid; min-width: 0; gap: .25rem; font-size: .8rem; }
 .moderation-settings__automatic { display: flex; align-items: flex-end; gap: .75rem; flex-wrap: wrap;
   label { display: grid; gap: .25rem; flex: 1; min-width: 6rem; font-size: .8rem; }
   input { width: 100%; box-sizing: border-box; padding: .5rem; border: 1px solid #c5d4e8; border-radius: .5rem; font: inherit; }

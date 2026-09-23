@@ -11,14 +11,21 @@
 @if (settingsDraft(); as draft) {
   <app-popup [model]="settingsModel()" [zIndex]="2480">
     <div class="moderation-settings">
-      <div class="moderation-settings__automatic">
-        <app-menu kind="inline" [items]="autoItems()" (itemSelect)="toggleAuto()"></app-menu>
-        <label>{{ 'moderation.delayMinutes' | i18n }}
-          <input type="number" min="0" max="43200" step="1" [ngModel]="draft.delayMinutes" (ngModelChange)="delay($event)" [disabled]="saving()">
-        </label>
-      </div>
-      <app-menu kind="select" [trigger]="{ label: 'moderation.categories', icon: 'category', palette: 'blue', layout: 'field' }"
-        [items]="categoryItems()" (itemSelect)="toggleCategory($event)"></app-menu>
+      <app-menu kind="inline" [items]="enabledItems()" (itemSelect)="toggleEnabled()"></app-menu>
+      <fieldset class="moderation-settings__parameters" [disabled]="saving() || !draft.enabled">
+        <div class="moderation-settings__automatic">
+          <app-menu kind="inline" [items]="autoItems()" (itemSelect)="toggleAuto()"></app-menu>
+          <label>{{ 'moderation.delayMinutes' | i18n }}
+            <input type="number" min="0" max="43200" step="1" [ngModel]="draft.delayMinutes" (ngModelChange)="delay($event)"
+              [disabled]="saving() || !draft.enabled || !draft.autoApprove" [readOnly]="!draft.enabled || !draft.autoApprove">
+          </label>
+        </div>
+        <div class="moderation-settings__categories">
+          <label id="moderation-categories-label">{{ 'moderation.categories' | i18n }}</label>
+          <app-menu kind="select" [trigger]="{ label: selectedCategoriesLabel(), ariaLabel: 'moderation.categories', icon: 'category', palette: 'blue', layout: 'field', disabled: saving() || !draft.enabled }"
+            [items]="categoryItems()" (itemSelect)="toggleCategory($event)"></app-menu>
+        </div>
+      </fieldset>
       @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
     </div>
   </app-popup>

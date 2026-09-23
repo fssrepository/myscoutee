@@ -1,3 +1,4 @@
+import { contentModerationBadge } from './content-moderation-badge';
 import type { PhotoFeedPost } from '../../core/contracts/photo-feed.interface';
 import type { InfoCardData } from '../components/core/smart-list/card';
 
@@ -11,6 +12,7 @@ export class PhotoFeedConverter {
       metaRows: [`${post.distanceKm.toFixed(1)} km`], i18nIgnoreContent: true,
       mediaStart: { variant: 'avatar', imageUrl: post.creatorAvatarUrl, label: post.creatorName, interactive: false },
       mediaEnd: { variant: 'badge', icon: 'fullscreen', ariaLabel: 'image.carousel.expand', interactive: true },
+      mediaBottomEnd: contentModerationBadge(post.moderationStatus),
       eagerDetail: post };
   }
   static convertList(posts: readonly PhotoFeedPost[]) { return posts.map(post => this.convert(post)); }

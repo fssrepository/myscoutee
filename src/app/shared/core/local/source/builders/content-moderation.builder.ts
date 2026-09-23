@@ -1,5 +1,5 @@
 import type { AppMemorySchema } from '../../common/memory.schema';
-import type { ContentModerationItem, ModerationCategory } from '../../../contracts/content-moderation.interface';
+import { moderationHasBeenPublic, type ContentModerationItem, type ModerationCategory } from '../../../contracts/content-moderation.interface';
 import { CONTENT_MODERATION_TABLE_NAME, type ContentModerationTable } from '../entity/content-moderation.entity';
 import { ASSETS_TABLE_NAME } from '../entity/asset.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
@@ -7,6 +7,7 @@ import { PHOTO_FEED_TABLE_NAME } from '../entity/photo-feed.entity';
 
 export function changeModerationItem(table: ContentModerationTable, item: ContentModerationItem): ContentModerationTable {
   const previous = table.items[item.id];
+  item = { ...item, publiclyVisibleOnce: moderationHasBeenPublic(item) || (!!previous && moderationHasBeenPublic(previous)) };
   const counts = { ...table.counts, [item.category]: { ...(table.counts[item.category] ?? {}) } };
   if (previous) counts[item.category][previous.status] = (counts[item.category][previous.status] ?? 0) - 1;
   counts[item.category][item.status] = (counts[item.category][item.status] ?? 0) + 1;
@@ -34,7 +35,9 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
       const id = `${category}:${sourceId}`;
       let item = moderation.items[id];
       if (!item && old[key] !== value && !['T', 'D', 'I'].includes(String(value['status'] ?? 'A'))) {
-        const status = 'under-review';
+        const settings = moderation.settings;
+        const status = !settings.enabled || (settings.autoApprove && settings.delayMinutes === 0 && settings.categories.includes(category))
+          ? 'accepted' : 'under-review';
         const images = value['imageUrls'] as string[] | undefined;
         item = { id, category, sourceId, ownerUserId: String(value['creatorUserId'] ?? value['ownerUserId'] ?? value['userId'] ?? ''),
           title: String(value['title'] ?? value['creatorName'] ?? ''), imageUrl: String(value['imageUrl'] ?? images?.[0] ?? ''),

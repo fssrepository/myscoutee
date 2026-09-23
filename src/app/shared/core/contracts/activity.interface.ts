@@ -265,6 +265,7 @@ export interface ActivityEventRecord {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  moderationStatus?: string | null;
   statusBeforeSuppression?: ActivityEventStatus | null;
   adminIds?: string[];
   avatar: string;
@@ -540,6 +541,7 @@ export interface ActivityEventDTO {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  moderationStatus?: string | null;
   statusBeforeSuppression?: ActivityEventStatus | null;
   trashedAtIso?: string | null;
   adminIds: string[];
@@ -660,6 +662,7 @@ export class ActivityEventDetailDTO {
   userId = '';
   type: ActivityEventRepositoryItemType = 'events';
   status?: ActivityEventStatus = 'DR';
+  moderationStatus?: string | null;
   statusBeforeSuppression?: ActivityEventStatus | null = null;
   adminIds: string[] = [];
   avatar = '';
@@ -735,6 +738,7 @@ export class ActivityEventDetailDTO {
     this.userId = update.userId ?? this.userId;
     this.type = update.type ?? this.type;
     this.status = update.status ?? this.status;
+    this.moderationStatus = update.moderationStatus ?? this.moderationStatus;
     this.statusBeforeSuppression = update.statusBeforeSuppression ?? this.statusBeforeSuppression;
     this.adminIds = [...(update.adminIds ?? this.adminIds)];
     this.avatar = update.avatar ?? this.avatar;

@@ -40,8 +40,8 @@ export class ImageGalleryPopupComponent {
     const gallery = this.store.request();
     return {
       title: gallery?.title,
-      size: gallery?.readOnly ? 'fullscreen' : 'wide',
-      height: gallery?.readOnly ? 'auto' : 'full',
+      size: 'wide',
+      height: 'full',
       bodyLayout: 'fill',
       backdropTone: 'dim',
       headerLayout: 'document',

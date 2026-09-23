@@ -1,3 +1,5 @@
+@use '../../../styles/contextual-colors' as colors;
+
 :host {
   display: inline-block;
   min-width: 0;
@@ -376,11 +378,11 @@
 }
 
 .app-menu__palette--orange {
-  --app-menu-bg: linear-gradient(180deg, #fff7f0 0%, #fee9da 100%);
+  --app-menu-bg: #{colors.$orange-background};
   --app-menu-bg-hover: linear-gradient(180deg, #fffaf6 0%, #fee2cd 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #df8a42 0%, #bd672b 100%);
-  --app-menu-border: rgba(183, 95, 47, 0.34);
-  --app-menu-fg: #87542a;
+  --app-menu-border: #{colors.$orange-border};
+  --app-menu-fg: #{colors.$orange-foreground};
   --app-menu-icon: #d07d33;
   --app-menu-line: rgba(189, 101, 42, 0.34);
   --app-menu-shadow: rgba(157, 95, 24, 0.24);
