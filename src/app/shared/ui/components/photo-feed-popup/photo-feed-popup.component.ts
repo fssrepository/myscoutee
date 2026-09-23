@@ -27,7 +27,9 @@ export class PhotoFeedPopupComponent {
     pageSize: 10, listLayout: 'card-grid', desktopColumns: 2, mobileColumns: 1,
     trackBy: (_index, card) => card.id, cacheable: true, sortable: true,
     groupBy: card => card.groupLabel ?? '',
-    showFirstGroupMarker: true, emptyLabel: () => this.i18n.translate('feed.empty')
+    snapMode: 'mandatory', initialScrollAnchor: 'first-item', scrollPaddingTop: '2.6rem',
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    emptyLabel: () => this.i18n.translate('feed.empty')
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<PhotoFeedPost>> = (query, context) =>
     defer(() => this.store.page(query, context?.signal)).pipe(map(page => ({ ...page, items: PhotoFeedConverter.convertList(page.items) })));

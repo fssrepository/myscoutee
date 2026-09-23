@@ -43,6 +43,7 @@ export class ImageGalleryPopupComponent {
       size: gallery?.readOnly ? 'fullscreen' : 'wide',
       height: gallery?.readOnly ? 'auto' : 'full',
       bodyLayout: 'fill',
+      backdropTone: 'dim',
       headerLayout: 'document',
       headerPalette: 'slate',
       mobilePresentation: 'fullscreen',

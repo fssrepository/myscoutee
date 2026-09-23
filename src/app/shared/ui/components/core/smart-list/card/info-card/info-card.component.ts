@@ -125,13 +125,14 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
   }
 
   protected onCardActivated(event?: Event): void {
+    if ((this.card?.imageUrls?.length ?? 0) > 1) {
+      event?.stopPropagation();
+      this.imageIndex = (this.imageIndex + 1) % this.card!.imageUrls!.length;
+    }
     if (!this.card?.clickable) {
       return;
     }
     event?.stopPropagation();
-    if ((this.card.imageUrls?.length ?? 0) > 1) {
-      this.imageIndex = (this.imageIndex + 1) % this.card.imageUrls!.length;
-    }
     this.cardClick.emit({
       id: this.card.id,
       card: this.card

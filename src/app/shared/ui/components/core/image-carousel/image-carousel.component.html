@@ -1,7 +1,7 @@
 @let slots = imageSlots();
 @let slotPages = pages();
 
-<div class="image-carousel" role="region" [attr.aria-label]="ariaLabel | i18n" aria-roledescription="carousel">
+<div class="image-carousel" [style.--image-slots-per-page]="slotsPerPage()" role="region" [attr.aria-label]="ariaLabel | i18n" aria-roledescription="carousel">
   @if (previewMode && !slideshow) {
     @let previewUrl = selectedPreviewUrl(slots);
     <div

@@ -91,6 +91,7 @@ export class SingleRowComponent {
     }
     if (this.hasMenuActions()) {
       classes.push('ui-single-row--with-menu-actions');
+      if (this.row?.menuPosition === 'top-right') classes.push('ui-single-row--menu-top-right');
     }
     return classes;
   }

@@ -19,12 +19,12 @@ import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/acti
 
 const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed'];
 const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: AppMenuPalette }> = {
-  all: { icon: 'apps', palette: 'blue' },
+  all: { icon: 'apps', palette: 'slate' },
   asset: { icon: 'inventory_2', palette: 'green' }, event: { icon: 'event', palette: 'blue' }, feed: { icon: 'photo_library', palette: 'orange' }
 };
 const STATUS_STYLE: Record<ModerationStatus, { icon: string; palette: AppMenuPalette }> = {
   'under-review': { icon: 'pending_actions', palette: 'orange' }, accepted: { icon: 'check_circle', palette: 'green' },
-  rejected: { icon: 'cancel', palette: 'rose' }, blocked: { icon: 'block', palette: 'danger' }
+  rejected: { icon: 'cancel', palette: 'purple' }, blocked: { icon: 'block', palette: 'danger' }
 };
 @Component({
   selector: 'app-content-moderation-popup', standalone: true,
@@ -54,6 +54,7 @@ export class ContentModerationPopupComponent {
   protected readonly config: SmartListConfig<ContentModerationItem> = {
     pageSize: 20, initialPageSize: 20, listLayout: 'stack', snapMode: 'none', emptyLabel: 'moderation.empty',
     groupBy: item => item.submittedAtIso.slice(0, 10), showStickyHeader: true,
+    showFirstGroupMarker: false, showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     trackBy: (_index, item) => item.id,
     menuItems: context => context.item ? MODERATION_STATUSES.map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
       ...STATUS_STYLE[status], surface: 'tinted', disabled: status === context.item!.status, context: context.item })) : []
@@ -78,10 +79,10 @@ export class ContentModerationPopupComponent {
         { kind: 'menu', id: 'status', align: 'start', menuKind: 'select', trigger: {
             label: `moderation.status.${this.status}`, ...STATUS_STYLE[this.status],
             counter: { value: moderationCount(this.state.snapshot(), this.category, this.status), max: 9999 } },
-          items: MODERATION_STATUSES.map(id => ({ id: `status:${id}`, label: `moderation.status.${id}`, ...STATUS_STYLE[id], active: id === this.status,
+          items: MODERATION_STATUSES.map(id => ({ id: `status:${id}`, label: `moderation.status.${id}`, ...STATUS_STYLE[id], surface: 'tinted', active: id === this.status,
             counter: { value: moderationCount(this.state.snapshot(), this.category, id), max: 9999 } })) },
         { kind: 'menu', id: 'category', align: 'end', menuKind: 'select', trigger: { label: `moderation.category.${this.category}`, ...CATEGORY_STYLE[this.category] },
-          items: CATEGORY_FILTERS.map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], active: id === this.category,
+          items: CATEGORY_FILTERS.map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', active: id === this.category,
             counter: { value: moderationCount(this.state.snapshot(), id, this.status), max: 9999 } })) }
       ], onClose: () => this.adminMenu.closePopup(), onAction: () => this.openSettings(),
       onMenuSelect: event => {
@@ -94,7 +95,7 @@ export class ContentModerationPopupComponent {
   }
   protected row(item: ContentModerationItem): SingleRowData {
     return { id: item.id, title: item.title, subtitle: `moderation.category.${item.category}`, avatarUrl: item.imageUrl || null,
-      detail: item.submittedAtIso, menuActions: ['moderation'], surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
+      detail: item.submittedAtIso, menuActions: ['moderation'], menuPosition: 'top-right', surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
   }
   private decisionLabel(item: ContentModerationItem, status: ModerationStatus): string {
     return item.status === 'blocked' && status === 'under-review' ? 'moderation.unblock' : `moderation.status.${status}`;
@@ -153,7 +154,7 @@ export class ContentModerationPopupComponent {
   protected toggleAuto() { this.settingsDraft.update(value => value && ({ ...value, autoApprove: !value.autoApprove })); }
   protected delay(value: number) { this.settingsDraft.update(draft => draft && ({ ...draft, delayMinutes: value })); }
   protected categoryItems(): readonly AppMenuItem[] {
-    return MODERATION_CATEGORIES.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], kind: 'checkbox',
+    return MODERATION_CATEGORIES.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', kind: 'checkbox',
       closeOnSelect: false, checked: this.settingsDraft()?.categories.includes(id), disabled: this.saving() }));
   }
   protected toggleCategory(event: AppMenuItemSelectEvent) {

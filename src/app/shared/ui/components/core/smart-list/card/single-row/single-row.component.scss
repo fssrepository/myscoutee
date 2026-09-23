@@ -445,3 +445,20 @@
     max-width: 80%;
   }
 }
+
+.ui-single-row--menu-top-right .ui-single-row__main {
+  padding-inline-end: 2.5rem;
+}
+
+.ui-single-row--menu-top-right .ui-single-row__side {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  grid-column: auto;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.ui-single-row--menu-top-right .ui-single-row__top-right {
+  right: 3rem;
+}

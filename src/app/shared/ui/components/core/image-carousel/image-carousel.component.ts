@@ -74,6 +74,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   protected detailsPopupModel(): PopupModel {
     return {
       title: 'image.details.title', size: 'small', mobilePresentation: 'compact',
+      backdropTone: 'dim',
       onClose: () => this.detailsDraft = null,
       headerActions: [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: 'success',
         disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240 }],
@@ -227,7 +228,14 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   }
 
   protected carouselTransform(): string | null {
-    return this.usesNativeSnap() ? null : `translateX(-${this.carouselIndex * 100}%)`;
+    if (this.usesNativeSnap()) return null;
+    const slotsPerPage = this.slotsPerPage();
+    const unusedSlots = Math.max(0, (this.carouselIndex + 1) * slotsPerPage - this.normalizedSlotCount());
+    if (this.carouselIndex === 0 || unusedSlots === 0) {
+      return `translateX(-${this.carouselIndex * 100}%)`;
+    }
+    // Keep the final filled slot at the viewport edge instead of exposing empty grid columns.
+    return `translateX(calc(-${this.carouselIndex * 100}% + (100% - 2 * var(--image-carousel-edge-padding) + var(--image-slot-gap)) * ${unusedSlots / slotsPerPage}))`;
   }
 
   protected showPreviousPage(event?: Event): void {
@@ -537,10 +545,10 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
     return Math.max(0, Math.min(this.normalizedSlotCount() - 1, parsed));
   }
 
-  private slotsPerPage(): number {
-    if (this.slideshow) return 1;
+  protected slotsPerPage(): number {
+    if (this.slideshow || this.normalizedSlotCount() === 1) return 1;
     const viewportWidth = this.readViewportWidth();
-    if (viewportWidth <= 720) {
+    if (viewportWidth <= 760) {
       return 1;
     }
     if (viewportWidth <= 980) {
@@ -563,7 +571,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   }
 
   private usesNativeSnap(): boolean {
-    return this.readViewportWidth() <= 720;
+    return this.readViewportWidth() <= 760;
   }
 
   private readViewportWidth(): number {

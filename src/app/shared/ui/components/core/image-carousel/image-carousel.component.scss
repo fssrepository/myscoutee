@@ -1,3 +1,5 @@
+@use '../../../styles/form-controls' as controls;
+
 :host {
   display: block;
   justify-self: stretch;
@@ -689,7 +691,8 @@
     width: 100%;
     height: 100%;
     min-height: 0;
-    padding: 0;
+    padding: 0 calc(var(--image-carousel-arrow-half) + .35rem);
+    box-sizing: border-box;
   }
   .image-carousel__carousel { height: 100%; box-sizing: border-box; }
   .image-carousel__window, .image-carousel__strip, .image-carousel__page {
@@ -710,9 +713,9 @@
 :host .image-carousel__slot-action--details { right: .24rem; width: 28px; height: 28px; }
 :host .image-carousel__slot-action--left { left: .24rem; right: auto; }
 .image-carousel__details-form { display: flex; flex-direction: column; gap: .6rem; padding: 1rem; }
-.image-carousel__caption-label { display: flex; justify-content: space-between; gap: .5rem; }
-.image-carousel__caption-label small { color: #5c718e; }
-.image-carousel__details-form textarea { width: 100%; box-sizing: border-box; resize: none; }
+.image-carousel__caption-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 700; color: #1f3252; }
+.image-carousel__caption-label small { color: #5c718e; font-size: .7rem; font-weight: 400; }
+.image-carousel__details-form textarea { @include controls.text-control(); box-sizing: border-box; resize: none; line-height: 1.45; }
 .image-carousel__location {
   position: absolute; z-index: 5; top: .65rem; left: .65rem;
   display: grid; place-items: center; width: 34px; height: 34px;

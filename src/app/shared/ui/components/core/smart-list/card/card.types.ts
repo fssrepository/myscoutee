@@ -446,6 +446,7 @@ export interface ImageCardMediaActionEvent<TCard extends ImageCardData = ImageCa
 
 export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   title: string;
+  menuPosition?: 'side' | 'top-right';
   groupLabel?: string | null;
   subtitle?: string | null;
   detail?: string | null;
