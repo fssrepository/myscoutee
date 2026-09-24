@@ -1,3 +1,4 @@
+import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
@@ -37,6 +38,7 @@ import type {
   providedIn: 'root'
 })
 export class LocalActivityMembersService extends LocalRouteDelayService {
+  private readonly affiliateRepository = inject(LocalIntegrationRepository);
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly assetsRepository = inject(LocalAssetsRepository);
@@ -127,6 +129,15 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       && this.canManageOwnerMembers(normalizedOwner, previousMembers, actorUserId, options);
     const invitationEvent = normalizedOwner.ownerType === 'event'
       ? this.eventsRepository.peekKnownItemById(actorUserId, normalizedOwner.ownerId) : null;
+    if (organizerInvitation) {
+      const retained = new Set(members.filter(member => !['deleted', 'removed', 'suppressed'].includes(member.status)).map(member => member.userId));
+      for (const member of previousMembers) {
+        if (member.userId !== actorUserId && !retained.has(member.userId)) {
+          this.affiliateRepository.cancelEventPayments(normalizedOwner.ownerId, member.userId, true);
+        }
+      }
+      await this.affiliateRepository.flushToIndexedDb();
+    }
     const records = members.map(member => {
       const previous = existingRecordsById.get(member.id) ?? null;
       const next = LocalActivityMembersBuilder.toRecord(normalizedOwner, member, previous);
@@ -445,6 +456,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
         userId: normalizedTargetUserId, sourceId: normalizedOwner.ownerId,
         checkoutState: 'approved', resultState: 'pending'
       });
+    }
+    if (normalizedOwner.ownerType === 'event' && action === 'remove'
+        && normalizedActorUserId !== normalizedTargetUserId) {
+      this.affiliateRepository.cancelEventPayments(normalizedOwner.ownerId, normalizedTargetUserId, true);
+      await this.affiliateRepository.flushToIndexedDb();
     }
     const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
     const nextRecords = nextMembers.map(member => LocalActivityMembersBuilder.toRecord(

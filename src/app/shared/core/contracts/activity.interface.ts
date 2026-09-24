@@ -128,6 +128,7 @@ export interface IEventsService {
   saveActivityEvent(
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
+  cancelItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
   unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
@@ -259,6 +260,9 @@ export type ActivityCurrentUserMembershipStatus =
   | 'unchanged';
 
 export interface ActivityEventRecord {
+  cancelled?: boolean;
+  cancellationRefundsPending?: boolean;
+  canCancelForFullRefund?: boolean;
   id: string;
   /** Query-only Explore ordering; not a persisted Event field. */
   exploreSortKey?: readonly number[];
@@ -538,6 +542,9 @@ export interface ActivitySubEventStageRuntimeStateDTO {
 }
 
 export interface ActivityEventDTO {
+  cancelled?: boolean;
+  cancellationRefundsPending?: boolean;
+  canCancelForFullRefund?: boolean;
   sourceLink?: string;
   id: string;
   userId: string;

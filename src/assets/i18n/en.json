@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.166",
+  "version": "2026.09.24.en.167",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
@@ -3745,6 +3745,20 @@
     "operator.configuration.payment.exchange.save": "Save exchange-rate source",
     "operator.configuration.payment.exchange.saved": "Exchange-rate source saved.",
     "event.checkout.payment.confirm.title": "Would you like to proceed with payment?",
-    "event.checkout.payment.confirm.message": "You will pay for the selected item."
+    "event.checkout.payment.confirm.message": "You will pay for the selected item.",
+    "cancel.event": "Cancel event",
+    "cancel.booking.refund": "Cancel with full refund",
+    "event.cancel.confirm.title": "Would you like to cancel this event?",
+    "event.cancel.booking.confirm.title": "Would you like to cancel your booking for a full refund?",
+    "event.cancel.busy": "Cancelling…",
+    "event.cancel.failed": "Unable to cancel the booking.",
+    "event.cancelled": "Cancelled",
+    "event.cancellation.processing": "Refunds in progress",
+    "notification.kind.event-cancelled.title": "Event cancelled",
+    "notification.kind.event-cancelled.message": "The organizer cancelled the event. Any remaining paid amount will be refunded.",
+    "notification.kind.event-paid-terms-changed.title": "Your event has changed",
+    "notification.kind.event-paid-terms-changed.message": "The event you paid for has changed. You can keep your booking or cancel it from the event menu for a full refund.",
+    "notification.kind.event-booking-cancelled.title": "Booking cancelled",
+    "notification.kind.event-booking-cancelled.message": "Your booking has been cancelled and the remaining paid amount has been refunded."
   }
 }

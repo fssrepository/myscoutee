@@ -60,7 +60,7 @@ export class LocalIntegrationRepository {
     });
   }
 
-  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true): void {
+  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true, sourceId?: string, recipientUserId?: string): void {
     currency = currency.trim().toUpperCase();
     if (!paymentId || !/^[A-Z]{3}$/.test(currency) || !Number.isFinite(amount) || !Number.isFinite(refunded)) return;
     const grossMinor = Math.max(0, Math.round(amount * 100));
@@ -71,15 +71,29 @@ export class LocalIntegrationRepository {
       const previous = payer?.affiliatePayments?.[paymentId];
       const ownerId = previous?.ownerId ?? payer?.affiliateReferrerUserId;
       const owner = ownerId ? table.byId[ownerId] : null;
-      if (!payer || !owner || owner.id === userId || (previous && previous.currency !== currency)) return state;
+      if (!payer || (previous && previous.currency !== currency)) return state;
+      const refundDelta = refundMinor / 100 - (previous?.refunded ?? 0);
+      const nextPayment = {
+        ...previous, ownerId: owner?.id ?? '', currency, gross: grossMinor / 100,
+        refunded: refundMinor / 100, eventBooking, sourceId: sourceId ?? previous?.sourceId,
+        recipientUserId: recipientUserId ?? previous?.recipientUserId,
+        createdAtIso: previous?.createdAtIso ?? new Date().toISOString(),
+        eventRefundEligible: refundMinor >= grossMinor ? false : previous?.eventRefundEligible,
+        refundOperations: refundDelta > 0 ? [...(previous?.refundOperations ?? []), {
+          id: `refund:${paymentId}:${refundMinor}`, amount: Math.round(refundDelta * 100) / 100,
+          createdAtIso: new Date().toISOString()
+        }] : previous?.refundOperations
+      };
+      const nextPayer = { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: nextPayment } };
+      if (!owner || owner.id === userId) return { ...state, [USERS_TABLE_NAME]: {
+        ...table, byId: { ...table.byId, [userId]: nextPayer }
+      } };
       const revenue = owner.affiliateRevenue ?? { currencies: {}, purchases: 0, eventBookings: 0 };
       const totals = revenue.currencies[currency] ?? { gross: 0, refunded: 0, net: 0 };
       const gross = (Math.round(totals.gross * 100) + grossMinor - Math.round((previous?.gross ?? 0) * 100)) / 100;
       const refunds = (Math.round(totals.refunded * 100) + refundMinor - Math.round((previous?.refunded ?? 0) * 100)) / 100;
       return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
-        [userId]: { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: {
-          ownerId: owner.id, currency, gross: grossMinor / 100, refunded: refundMinor / 100, eventBooking
-        } } },
+        [userId]: nextPayer,
         [owner.id]: { ...owner, affiliateRevenue: {
           currencies: { ...revenue.currencies, [currency]: { gross, refunded: refunds, net: Math.round((gross - refunds) * 100) / 100 } },
           purchases: revenue.purchases + Number(grossMinor > 0) - Number((previous?.gross ?? 0) > 0),
@@ -87,6 +101,53 @@ export class LocalIntegrationRepository {
         } }
       } } };
     });
+  }
+
+  paymentHistory(userId: string): import('../../../contracts/payment-method.interface').PaymentHistoryItemDto[] {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    return users.ids.flatMap(payerId => Object.entries(users.byId[payerId].affiliatePayments ?? {}).flatMap(([id, payment]) => {
+      if (!payment.sourceId || (payerId !== userId && payment.recipientUserId !== userId)) return [];
+      const direction = payerId === userId ? 'expense' as const : 'income' as const;
+      const base = { sourceId: payment.sourceId, provider: 'dummy', currency: payment.currency,
+        recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : 'joined',
+        canRequestRefund: false, canApproveRefund: false };
+      return [{ ...base, id, direction, amount: payment.gross, status: 'approved', auditKind: 'payment',
+          createdAtIso: payment.createdAtIso ?? '' },
+        ...(payment.refundOperations ?? []).map(refund => ({ ...base, id: refund.id,
+          direction: direction === 'expense' ? 'income' as const : 'expense' as const,
+          amount: refund.amount, status: 'refunded', auditKind: 'refund', createdAtIso: refund.createdAtIso }))];
+    }));
+  }
+
+  markEventTermsChanged(sourceId: string): string[] {
+    const affected: string[] = [];
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const byId = { ...table.byId };
+      for (const id of table.ids) {
+        const user = byId[id];
+        const payments = { ...user.affiliatePayments };
+        let changed = false;
+        for (const [key, payment] of Object.entries(payments)) {
+          if (payment.sourceId !== sourceId || payment.refunded >= payment.gross) continue;
+          payments[key] = { ...payment, eventRefundEligible: true };
+          changed = true;
+        }
+        if (changed) { affected.push(id); byId[id] = { ...user, affiliatePayments: payments }; }
+      }
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId } };
+    });
+    return affected;
+  }
+
+  cancelEventPayments(sourceId: string, userId?: string, adminRemoval = false): void {
+    const table = this.memoryDb.read()[USERS_TABLE_NAME];
+    const affected = table.ids.filter(id => !userId || id === userId).flatMap(id =>
+      Object.entries(table.byId[id].affiliatePayments ?? {})
+        .filter(([, payment]) => payment.sourceId === sourceId && (!userId || adminRemoval || payment.eventRefundEligible))
+        .map(([paymentId]) => paymentId));
+    if (userId && !adminRemoval && affected.length === 0) throw new Error('No changed-terms cancellation is available.');
+    for (const paymentId of affected) this.refundPayment(paymentId);
   }
 
   refundPayment(paymentId: string): void {

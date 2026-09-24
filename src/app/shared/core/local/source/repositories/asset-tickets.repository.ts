@@ -558,7 +558,7 @@ export class LocalAssetTicketsRepository {
   }
 
   private isPublished(event: ActivityEventRecord): boolean {
-    return `${event.status ?? 'A'}`.trim() === 'A';
+    return event.cancelled !== true && `${event.status ?? 'A'}`.trim() === 'A';
   }
 
   private invalid(reason: Exclude<AssetContracts.AssetTicketValidationReason, 'valid'>): AssetContracts.AssetTicketValidationDTO {

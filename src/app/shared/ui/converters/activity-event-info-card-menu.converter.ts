@@ -27,6 +27,8 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   watched?: boolean;
   sourceLink?: string | null;
   organizerFollowed?: boolean;
+  cancelled?: boolean;
+  canCancelForFullRefund?: boolean;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -64,6 +66,8 @@ export class ActivityEventInfoCardMenuConverter {
     'reportOrganizer',
     'accept',
     'leaveEvent',
+    'cancelEvent',
+    'cancelBooking',
     'deleteEvent',
     'rejectInvitation'
   ];
@@ -123,7 +127,7 @@ export class ActivityEventInfoCardMenuConverter {
       id: actionId,
       label: config.label,
       icon: config.icon,
-      palette: actionId === 'followOrganizer' || actionId === 'unfollowOrganizer'
+      palette: actionId === 'cancelEvent' || actionId === 'cancelBooking' ? 'pink' : actionId === 'followOrganizer' || actionId === 'unfollowOrganizer'
         ? 'cyan' : this.actionPalette(actionId, config.tone),
       surface: 'tinted',
       counter: isEventEntryAction && this.pendingActivityCount(subject) > 0
@@ -153,6 +157,7 @@ export class ActivityEventInfoCardMenuConverter {
         || actionId === 'view'
         || actionId === 'askOrganizer';
     }
+    if (subject.cancelled === true && ['publish', 'accept', 'continueBooking'].includes(actionId)) return false;
     switch (actionId) {
       case 'restore':
         return false;
@@ -205,6 +210,10 @@ export class ActivityEventInfoCardMenuConverter {
         return !this.isAdmin(subject, activeUserId)
           && this.isAcceptedOrActiveEventMember(subject, activeUserId)
           && !this.hasOutstandingInvitation(subject, activeUserId);
+      case 'cancelEvent':
+        return this.isAdmin(subject, activeUserId) && subject.cancelled !== true;
+      case 'cancelBooking':
+        return !this.isAdmin(subject, activeUserId) && subject.canCancelForFullRefund === true && subject.cancelled !== true;
       case 'deleteEvent':
         return this.isAdmin(subject, activeUserId)
           && !this.isPendingReview(subject);

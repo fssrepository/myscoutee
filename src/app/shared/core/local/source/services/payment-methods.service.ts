@@ -116,6 +116,9 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
     const expenses = this.seedMethods(userId).flatMap(card => this.seedHistory(card)).map(item => this.withRefundState(item));
     const income = this.seedIncomeHistory(userId).map(item => this.withRefundState(item));
+    const recorded = this.affiliateRepository.paymentHistory(userId);
+    expenses.push(...recorded.filter(item => item.direction === 'expense'));
+    income.push(...recorded.filter(item => item.direction === 'income'));
     const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? 'all'}`.trim();
     const all = (direction === 'expenses' ? expenses : direction === 'income' ? income : [...expenses, ...income])
       .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));

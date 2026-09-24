@@ -227,6 +227,8 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   continueBooking: { label: 'event.checkout.continue.booking', icon: 'shopping_basket', tone: 'accent' },
   continueBookingPending: { label: 'event.checkout.continue.booking', icon: 'shopping_basket', tone: 'warning' },
   delete: { label: 'delete', icon: 'delete', tone: 'destructive' },
+  cancelEvent: { label: 'cancel.event', icon: 'event_busy', tone: 'review' },
+  cancelBooking: { label: 'cancel.booking.refund', icon: 'currency_exchange', tone: 'review' },
   deleteEvent: { label: 'delete.event', icon: 'delete', tone: 'destructive' },
   edit: { label: 'edit', icon: 'edit', tone: 'accent' },
   editAsset: { label: 'edit.asset', icon: 'edit' },

@@ -110,6 +110,8 @@ type ActivityInfoCardActionId =
   | 'accept'
   | 'askOrganizer'
   | 'continueBooking'
+  | 'cancelEvent'
+  | 'cancelBooking'
   | 'deleteEvent'
   | 'editEvent'
   | 'leaveEvent'
@@ -455,6 +457,10 @@ export class ActivitiesEventsController {
       case 'accept':
         this.runActivityItemApproveAction(row);
         break;
+      case 'cancelEvent':
+      case 'cancelBooking':
+        this.runActivityCancellation(row, action.action);
+        break;
       case 'leaveEvent':
       case 'deleteEvent':
       case 'rejectInvitation':
@@ -732,6 +738,8 @@ export class ActivitiesEventsController {
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
       activity: dto?.activity ?? row.menuBadgeCount ?? 0,
+      cancelled: dto?.cancelled,
+      canCancelForFullRefund: dto?.canCancelForFullRefund,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? null
     };
@@ -1104,6 +1112,32 @@ export class ActivitiesEventsController {
       confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to restore event.',
       onConfirm: () => this.restoreActivityRow(row)
+    });
+  }
+
+  private runActivityCancellation(row: InfoCardData, action: CardMenuAction): void {
+    const organizer = action.id === 'cancelEvent';
+    this.dialogStore.open({
+      title: organizer ? 'event.cancel.confirm.title' : 'event.cancel.booking.confirm.title',
+      message: row.title,
+      cancelLabel: 'Back',
+      confirmLabel: organizer ? 'cancel.event' : 'cancel.booking.refund',
+      busyConfirmLabel: 'event.cancel.busy',
+      confirmTone: 'danger',
+      confirmPalette: 'pink',
+      failureMessage: 'event.cancel.failed',
+      onConfirm: async () => {
+        const result = await this.eventsService.cancelItem(this.activeUserId(), row.id);
+        if (!result?.changed) throw new Error('event.cancel.failed');
+        if (organizer) {
+          const dto = this.activityEventDTOForRow(row);
+          if (dto) this.activitiesStore.emitActivityEventSync({ ...dto, cancelled: true, cancellationRefundsPending: true });
+        } else {
+          this.activitiesStore.emitActivityEventRemoval(row.id);
+          this.signalActivityCounterDelta(this.activeUserId(), result.counterDelta ?? null);
+        }
+        this.cdr.markForCheck();
+      }
     });
   }
 

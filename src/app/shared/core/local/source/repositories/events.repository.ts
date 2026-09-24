@@ -1209,6 +1209,14 @@ export class LocalEventsRepository {
     });
   }
 
+  cancelItem(userId: string, sourceId: string): void {
+    this.updateItemState(userId, sourceId, { cancelled: true, cancellationRefundsPending: false });
+  }
+
+  markChangedTerms(sourceId: string, userIds: readonly string[]): void {
+    for (const userId of userIds) this.updateItemState(userId, sourceId, { canCancelForFullRefund: true });
+  }
+
   publishItem(userId: string, sourceId: string): void {
     this.updateItemState(userId, sourceId, {
       status: 'A'

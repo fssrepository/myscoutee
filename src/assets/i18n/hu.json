@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.166",
+  "version": "2026.09.24.hu.167",
   "messages": {
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",
@@ -3745,6 +3745,20 @@
     "operator.configuration.payment.exchange.save": "Árfolyamforrás mentése",
     "operator.configuration.payment.exchange.saved": "Árfolyamforrás mentve.",
     "event.checkout.payment.confirm.title": "Szeretnéd elindítani a fizetést?",
-    "event.checkout.payment.confirm.message": "A kiválasztott tételt fogod kifizetni."
+    "event.checkout.payment.confirm.message": "A kiválasztott tételt fogod kifizetni.",
+    "cancel.event": "Esemény lemondása",
+    "cancel.booking.refund": "Lemondás teljes visszatérítéssel",
+    "event.cancel.confirm.title": "Szeretnéd lemondani ezt az eseményt?",
+    "event.cancel.booking.confirm.title": "Szeretnéd lemondani a foglalásodat teljes visszatérítéssel?",
+    "event.cancel.busy": "Lemondás…",
+    "event.cancel.failed": "Nem sikerült lemondani a foglalást.",
+    "event.cancelled": "Lemondva",
+    "event.cancellation.processing": "Visszatérítés folyamatban",
+    "notification.kind.event-cancelled.title": "Az eseményt lemondták",
+    "notification.kind.event-cancelled.message": "A szervező lemondta az eseményt. A még vissza nem térített befizetésed visszajár.",
+    "notification.kind.event-paid-terms-changed.title": "Megváltozott az eseményed",
+    "notification.kind.event-paid-terms-changed.message": "Megváltozott az esemény, amelyre fizettél. Megtarthatod a foglalásodat, vagy az esemény menüjéből teljes visszatérítéssel lemondhatod.",
+    "notification.kind.event-booking-cancelled.title": "Foglalás lemondva",
+    "notification.kind.event-booking-cancelled.message": "A foglalásodat lemondtuk, és a még vissza nem térített befizetésed visszajárt."
   }
 }

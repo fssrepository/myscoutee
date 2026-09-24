@@ -580,6 +580,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    if (eventBeforeJoin?.cancelled) throw new Error('event.cancelled');
     const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
       .some(memberUserId => memberUserId.trim() === normalizedUserId);
     if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
@@ -878,6 +879,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return savedRecord;
   }
 
+  private paidEventTermsSignature(record: ActivityEventRecord): string {
+    const fields = ['title', 'subtitle', 'timeframe', 'startAtIso', 'endAtIso', 'location', 'locationCoordinates',
+      'imageUrl', 'imageUrls', 'sourceLink', 'capacityMin', 'capacityMax', 'frequency', 'pricing', 'policiesEnabled',
+      'policies', 'slotsEnabled', 'slotTemplates', 'subEventsEnabled', 'subEventDefinitions', 'mode',
+      'mingleConfiguration', 'visibility', 'blindMode', 'topics', 'approvalRequired'] as const;
+    return JSON.stringify([fields.map(field => record[field] ?? null), record.paymentDeadlineHours ?? 4,
+      record.paymentDeadlineEnabled ?? true]);
+  }
+
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
@@ -887,6 +897,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       record.imageUrls = [...(existingRecord.imageUrls ?? (existingRecord.imageUrl ? [existingRecord.imageUrl] : []))];
       record.imageDetails = { ...(existingRecord.imageDetails ?? {}) };
     }
+    record.cancelled = existingRecord?.cancelled;
+    record.cancellationRefundsPending = existingRecord?.cancellationRefundsPending;
+    record.canCancelForFullRefund = existingRecord?.canCancelForFullRefund;
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
     if (savedRecord) {
       this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
@@ -895,6 +908,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (savedRecord) {
       this.appendWatchlistDefinitionUpdateNotifications(record.creatorUserId, existingRecord, savedRecord);
       this.appendWatchlistAvailabilityNotifications(existingRecord, savedRecord);
+    }
+    if (existingRecord?.status === 'DR' && this.paidEventTermsSignature(existingRecord) !== this.paidEventTermsSignature(savedRecord ?? record)) {
+      const affected = this.affiliateRepository.markEventTermsChanged(record.id);
+      this.eventsRepository.markChangedTerms(record.id, affected);
+      this.appendEventLifecycleNotifications(record.userId, record.id,
+        { ...record, acceptedMemberUserIds: affected, pendingMemberUserIds: [], invitedMemberUserIds: [] },
+        'event-paid-terms-changed', record.title, 'Event details changed.', 'warning',
+        'notification.kind.event-paid-terms-changed.message');
+      await this.affiliateRepository.flushToIndexedDb();
     }
     await this.eventsRepository.flushToIndexedDb();
     if (runtimeChanged) {
@@ -963,10 +985,33 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return `subevent-${Math.max(1, index + 1)}`;
   }
 
+  async cancelItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const record = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (!record) return null;
+    const organizer = record.creatorUserId === userId || (record.adminIds ?? []).includes(userId);
+    if (!organizer && !record.canCancelForFullRefund) throw new Error('No changed-terms cancellation is available.');
+    this.affiliateRepository.cancelEventPayments(sourceId, organizer ? undefined : userId);
+    if (organizer) {
+      this.eventsRepository.cancelItem(userId, sourceId);
+      this.assetTicketsRepository.synchronizeForEvent(sourceId);
+      if (!record.cancelled) this.appendEventLifecycleNotifications(userId, sourceId, record,
+        'event-cancelled', record.title, 'Event cancelled.', 'warning', 'notification.kind.event-cancelled.message');
+    }
+    else await this.leaveEvent(userId, sourceId, { removeMembershipOnly: true });
+    await this.affiliateRepository.flushToIndexedDb();
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return this.localLifecycleResult(sourceId, 'cancel', this.eventsRepository.peekKnownItemById(userId, sourceId), true);
+  }
+
   async trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     const beforeCounters = this.localEventCounterSnapshot(userId);
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
     const resolvingInvitation = this.isEventInvitation(userId, sourceId);
+    if (beforeRecord && (beforeRecord.creatorUserId === userId || (beforeRecord.adminIds ?? []).includes(userId))) {
+      this.affiliateRepository.cancelEventPayments(sourceId);
+      await this.affiliateRepository.flushToIndexedDb();
+    }
     this.eventsRepository.trashItem(userId, sourceId);
     this.assetTicketsRepository.synchronizeForEvent(sourceId);
     if (resolvingInvitation) {
@@ -986,6 +1031,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     const beforeCounters = this.localEventCounterSnapshot(userId);
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (beforeRecord?.cancelled) throw new Error('event.cancelled');
     this.eventsRepository.publishItem(userId, sourceId);
     const published = this.eventsRepository.peekKnownItemById(userId, sourceId);
     if (published) {
@@ -1649,6 +1695,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
     const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
     const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    if (eventBeforeJoin?.cancelled) throw new Error('event.cancelled');
     const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
       .some(memberUserId => memberUserId.trim() === normalizedUserId);
     if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
@@ -2929,6 +2976,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    if (this.eventsRepository.peekKnownItemById(request.userId, request.sourceId)?.cancelled) throw new Error('event.cancelled');
     const session: EventCheckoutSession = {
       id: `payment-${Date.now()}`,
       provider: 'dummy',
@@ -2939,7 +2987,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       paymentUrl: null
     };
     await this.saveCheckoutBasketRecord(this.withCheckoutBasketState(request, 'pay', session.id));
-    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount);
+    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount, 0, true, request.sourceId,
+      this.eventsRepository.peekKnownItemById(request.userId, request.sourceId)?.creatorUserId);
     await this.affiliateRepository.flushToIndexedDb();
     return session;
   }
@@ -2949,6 +2998,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     paymentSessionId: string
   ): Promise<EventCheckoutSession | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    if (this.eventsRepository.peekKnownItemById(request.userId, request.sourceId)?.cancelled) throw new Error('event.cancelled');
     const session: EventCheckoutSession = {
       id: paymentSessionId.trim() || `checkout-${Date.now()}`,
       provider: 'dummy',
@@ -2961,7 +3011,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.saveCheckoutBasketRecord(
       this.withCheckoutBasketState(request, 'pay', session.id)
     );
-    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount);
+    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount, 0, true, request.sourceId,
+      this.eventsRepository.peekKnownItemById(request.userId, request.sourceId)?.creatorUserId);
     await this.affiliateRepository.flushToIndexedDb();
     return session;
   }

@@ -55,6 +55,9 @@ export class LocalActivityEventsMapper {
   static toDto(record: ActivityEventRecord): ActivityEventDTO {
     return {
       id: record.id,
+      cancelled: record.cancelled,
+      cancellationRefundsPending: record.cancellationRefundsPending,
+      canCancelForFullRefund: record.canCancelForFullRefund,
       userId: record.userId,
       type: record.type,
       status: record.status,
