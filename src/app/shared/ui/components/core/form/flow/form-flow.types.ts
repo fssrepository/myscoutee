@@ -211,6 +211,7 @@ export interface FormFlowPushEvent {
 
 export interface FormFlowModel {
   title: string;
+  deferPreparation?: boolean;
   subtitle?: string;
   layout?: 'default' | 'carousel' | 'grouped';
   tone?: FormFlowTone;

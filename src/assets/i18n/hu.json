@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.178",
+  "version": "2026.09.24.hu.179",
   "messages": {
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
@@ -3794,13 +3794,17 @@
     "groups.switch.failed": "Nem sikerült munkateret váltani.",
     "groups.confirm.join": "Jelentkezel a(z) „{name}” csoportba?",
     "groups.confirm.accept": "Elfogadod a(z) „{name}” csoport meghívását?",
-    "groups.confirm.set-participant": "Részt veszel a(z) „{name}” csoport értékeléseiben?",
-    "groups.confirm.set-organizer-only": "Befejezed a részvételt a(z) „{name}” csoport értékeléseiben, és adminisztrátorként folytatod?",
+    "groups.confirm.set-participant": "Tagként is részt veszel a(z) „{name}” csoportban?",
+    "groups.confirm.set-organizer-only": "Csak adminisztrátorként folytatod a(z) „{name}” csoportban?",
     "groups.name.too.long": "A csoportnév legfeljebb 20 karakter hosszú lehet.",
     "groups.hide.members.description": "A taglistában csak az adminok láthatók.",
     "groups.workspace.description": "Külön csoportprofilok, értékelések és tevékenységek.",
     "groups.show.members": "Tagok láthatók",
     "groups.show.members.description": "A tagok láthatják egymást a taglistában.",
-    "groups.member.list": "Taglista látható"
+    "groups.member.list": "Taglista látható",
+    "groups.report": "Csoport jelentése",
+    "groups.confirm.report": "Jelented a(z) „{name}” csoportot?",
+    "groups.report.details": "A jelentés indoka (legalább 12 karakter)",
+    "moderation.category.group": "Csoportok"
   }
 }

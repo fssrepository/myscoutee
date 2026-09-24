@@ -20,6 +20,11 @@ export interface SaveCommunityGroup {
   userId: string; id?: string; name: string; description: string; imageUrl: string | null;
   category: GroupCategory; visibility: GroupVisibility; hideMembers: boolean; policy: GroupPolicy; version?: number;
 }
+export type CommunityGroupSummary = Omit<CommunityGroup, 'description' | 'policy'>;
+export function communityGroupSummary(group: CommunityGroup | CommunityGroupSummary): CommunityGroupSummary {
+  const { description, policy, ...summary } = group as CommunityGroup;
+  return summary;
+}
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
 export interface GroupCounters { hosting: number; participation: number; }
 export interface GroupWorkspace {
@@ -27,13 +32,13 @@ export interface GroupWorkspace {
 }
 export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; }
 export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
-export interface GroupSyncResponse { upserts: CommunityGroup[]; removedIds: string[]; total: number; }
+export interface GroupSyncResponse { upserts: CommunityGroupSummary[]; removedIds: string[]; total: number; }
 export interface ICommunityGroupsService {
   sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse>;
   workspaces(userId: string): Promise<GroupWorkspace[]>;
   selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection>;
-  page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroup, GroupCounters>>;
-  detail(userId: string, id: string): Promise<CommunityGroup>;
+  page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>>;
+  detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup>;
   save(request: SaveCommunityGroup): Promise<CommunityGroup>;
   join(userId: string, groupId: string): Promise<CommunityGroup>;
   report(userId: string, groupId: string, details: string): Promise<void>;

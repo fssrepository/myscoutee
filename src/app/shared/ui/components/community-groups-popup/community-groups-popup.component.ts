@@ -7,7 +7,7 @@ import { I18nService } from '../../../core/base/services/i18n.service';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
-import { GROUP_CATEGORIES, CommunityGroup, GroupBucket, GroupFilters, GroupCategory } from '../../../core/contracts/community-group.interface';
+import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent],
@@ -21,16 +21,18 @@ import { CommunityGroupEditorComponent } from './community-group-editor.componen
           (mediaEndClick)="store.members(card.eagerDetail)"></app-info-card>
       </ng-template>
     </app-popup>
-    @if (store.editor(); as editor) { <app-community-group-editor [group]="editor.group" [readOnly]="editor.readOnly"></app-community-group-editor> }
+    @defer (when store.editor()) {
+      @if (store.editor(); as editor) { <app-community-group-editor [group]="editor.group" [readOnly]="editor.readOnly" [loading]="editor.loading === true"></app-community-group-editor> }
+    }
   `
 })
 export class CommunityGroupsPopupComponent {
   protected readonly store = inject(CommunityGroupsStore);
   protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);
-  @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroup>, GroupFilters>;
+  @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroupSummary>, GroupFilters>;
   protected query: { filters: GroupFilters } = { filters: { bucket: this.store.initialBucket(), category: null } };
-  protected readonly config: SmartListConfig<InfoCardData<CommunityGroup>, GroupFilters> = {
+  protected readonly config: SmartListConfig<InfoCardData<CommunityGroupSummary>, GroupFilters> = {
     pageSize: 10, initialPageSize: 20, listLayout: 'card-grid', desktopColumns: 3,
     containerClass: { 'experience-card-list': true, 'assets-card-list': true },
     snapMode: 'mandatory', scrollPaddingTop: '2.6rem', footerSpacerHeight: null,
@@ -50,7 +52,7 @@ export class CommunityGroupsPopupComponent {
     },
     menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(context.item.eagerDetail, this.store.openUserId()) : []
   };
-  protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityGroup>, GroupFilters> = (query, context) =>
+  protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityGroupSummary>, GroupFilters> = (query, context) =>
     defer(() => this.store.page(query, context?.signal)).pipe(map(page => ({ ...page,
       items: page.items.map(group => CommunityGroupConverter.card(group, key => this.i18n.translate(key))) })));
   constructor() {
@@ -68,7 +70,7 @@ export class CommunityGroupsPopupComponent {
       }
     });
   }
-  protected select(event: AppMenuItemSelectEvent): void { void this.store.action(event.id, event.context as CommunityGroup); }
+  protected select(event: AppMenuItemSelectEvent): void { void this.store.action(event.id, event.context as CommunityGroupSummary); }
   protected model(): PopupModel {
     const bucket = this.query.filters.bucket; const category = this.query.filters.category;
     return { title: 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,

@@ -1,5 +1,5 @@
 import { AppUtils } from '../../app-utils';
-import type { CommunityGroup, GroupBucket, GroupVisibility, GroupCategory } from '../../core/contracts/community-group.interface';
+import { communityGroupSummary, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../core/contracts/community-group.interface';
 import type { InfoCardData } from '../components/core/smart-list/card';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
 import { contentModerationBadge } from './content-moderation-badge';
@@ -18,10 +18,10 @@ export const GROUP_CATEGORY_PALETTE: Record<GroupCategory, AppMenuPalette> = {
   friends: 'teal', work: 'blue', sport: 'orange', learning: 'violet', hobbies: 'rose', neighbourhood: 'green'
 };
 export class CommunityGroupConverter {
-  static card(group: CommunityGroup, translate: (key: string) => string): InfoCardData<CommunityGroup> {
+  static card(group: CommunityGroupSummary, translate: (key: string) => string): InfoCardData<CommunityGroupSummary> {
     return { id: group.id, smartListKey: `community:${group.id}`, ownerId: group.ownerUserId, ownerUserId: group.ownerUserId,
       title: group.name, dateIso: group.createdAtIso, imageUrl: group.imageUrl,
-      placeholderLabel: group.imageUrl ? null : group.name, description: group.description, descriptionLines: 2,
+      placeholderLabel: group.imageUrl ? null : group.name,
       groupLabel: group.distanceKm == null ? translate('groups.title') : AppUtils.activityGroupLabel({ distanceMetersExact: group.distanceKm * 1000 }, 'distance', { dateUnavailable: '', weekPrefix: '' }),
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
@@ -31,9 +31,9 @@ export class CommunityGroupConverter {
         ariaLabel: group.ownerName, interactive: true },
       mediaEnd: { variant: 'badge', shape: 'circle', label: `${group.acceptedMembers}`, ariaLabel: 'open.members',
         interactive: true, pendingCount: group.pendingMembers },
-      hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: group };
+      hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
-  static menu(group: CommunityGroup, userId?: string | null): AppMenuItem[] {
+  static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
     const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: 'blue', surface: 'tinted', context: group },
       { id: 'members', label: 'members', icon: 'groups', palette: 'violet', surface: 'tinted', context: group }];
     if (group.role === 'Admin' && group.membershipStatus === 'accepted') {

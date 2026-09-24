@@ -13,7 +13,7 @@ export class CommunityGroupsService extends BaseRouteModeService implements ICom
   workspaces(userId: string) { return this.adapter.workspaces(userId); }
   selectWorkspace(userId: string, groupId: string | null) { return this.adapter.selectWorkspace(userId, groupId); }
   page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal) { return this.adapter.page(userId, query, signal); }
-  detail(userId: string, id: string) { return this.adapter.detail(userId, id); }
+  detail(userId: string, id: string, signal?: AbortSignal) { return this.adapter.detail(userId, id, signal); }
   save(request: SaveCommunityGroup) { return this.adapter.save(request); }
   join(userId: string, groupId: string) { return this.adapter.join(userId, groupId); }
   report(userId: string, groupId: string, details: string) { return this.adapter.report(userId, groupId, details); }

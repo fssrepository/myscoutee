@@ -10,7 +10,7 @@ import { LocalAdminModerationRepository } from '../repositories/admin-moderation
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
-import { GROUP_CATEGORIES } from '../../../contracts/community-group.interface';
+import { GROUP_CATEGORIES, communityGroupSummary, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../../contracts/list.interface';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
 
@@ -79,7 +79,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       a.tickets, a.contacts, a.feedback].reduce<number>((sum, count) => sum + Math.max(0, count ?? 0), 0)
       + (user.impressions?.host?.unreadCount ? 1 : 0) + (user.impressions?.member?.unreadCount ? 1 : 0);
   }
-  async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroup, GroupCounters>> {
+  async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>> {
     await this.waitForRouteDelay('/groups'); await this.groups.ready(); signal?.throwIfAborted();
     const bucket = query.filters?.bucket ?? 'explore';
     const rows = this.groups.records().filter(g => {
@@ -94,14 +94,15 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         Math.ceil((a.distanceKm ?? Infinity) / 5) - Math.ceil((b.distanceKm ?? Infinity) / 5)
         || b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id));
     const offset = Number(query.cursor ?? 0); if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
-    const items = rows.slice(offset, offset + query.pageSize);
+    const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
     return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
       context: (await this.workspaces(userId)).reduce((counts, w) => {
         counts[w.role === 'Admin' ? 'hosting' : 'participation'] += w.activity; return counts;
       }, { hosting: 0, participation: 0 }) };
   }
-  async detail(userId: string, id: string): Promise<CommunityGroup> {
-    await this.groups.ready(); return this.dto(userId, this.visible(userId, id));
+  async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
+    await this.waitForRouteDelay('/groups', signal); await this.groups.ready(); signal?.throwIfAborted();
+    return this.dto(userId, this.visible(userId, id));
   }
   async save(request: SaveCommunityGroup): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups'); await this.groups.ready();

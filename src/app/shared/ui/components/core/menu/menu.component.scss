@@ -78,6 +78,10 @@
   width: 100%;
 }
 
+:host(.app-menu-host--layout-row) {
+  width: var(--app-menu-row-width, max-content);
+}
+
 :host(.app-menu-host--layout-mobile) {
   --app-menu-grid-columns: 5;
   --app-menu-tile-height: 60px;

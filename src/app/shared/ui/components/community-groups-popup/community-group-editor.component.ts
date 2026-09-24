@@ -29,19 +29,24 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
       --form-flow-disabled-background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%);
       --form-flow-disabled-color: rgba(58, 76, 103, 0.9);
     }
+    .group-policy-fields {
+      --app-menu-row-width: 100%;
+      --app-menu-row-item-width: 100%;
+      --app-menu-row-item-justify: space-between;
+    }
     @media (max-width: 720px) {
       :host { --form-flow-grouped-media-image-height: clamp(160px, 54vw, 260px); }
     }
   `],
   template: `
     <app-popup [model]="popupModel()" [zIndex]="zIndex">
-      <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="store.busy()"
+      <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="loading || store.busy()" [loading]="loading"
         [saving]="store.busy()" (action)="action($event)"></app-form-flow>
       @if (store.error()) { <p role="alert">{{ store.error() }}</p> }
     </app-popup>
     @if (policyDraft) {
       <app-popup [model]="policyPopupModel()" [zIndex]="zIndex + 40">
-        <app-form-flow [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
+        <app-form-flow class="group-policy-fields" [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
       </app-popup>
     }
   `
@@ -49,6 +54,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
 export class CommunityGroupEditorComponent implements OnChanges {
   @Input() group: CommunityGroup | null = null;
   @Input() readOnly = false;
+  @Input() loading = false;
   @Input() zIndex = 1300;
   protected readonly store = inject(CommunityGroupsStore);
   private readonly i18n = inject(I18nService);
@@ -74,9 +80,9 @@ export class CommunityGroupEditorComponent implements OnChanges {
   private validName(): boolean { return !!this.form.name.trim() && Array.from(this.form.name).length <= 20; }
   protected popupModel(): PopupModel {
     const visibility = this.form.visibility;
-    return { title: this.group ? 'groups.edit' : 'groups.create', size: 'wide', height: 'full', mobilePresentation: 'fullscreen',
-      onClose: () => this.store.editor.set(null),
-      headerControls: [{ id: 'visibility', kind: 'menu', menuKind: 'select',
+    return { title: this.group || this.loading ? 'groups.edit' : 'groups.create', size: 'wide', height: 'full', mobilePresentation: 'fullscreen',
+      onClose: () => this.store.closeEditor(),
+      headerControls: this.loading ? [] : [{ id: 'visibility', kind: 'menu', menuKind: 'select',
         trigger: { label: `groups.visibility.${visibility}`, ...GROUP_VISIBILITY_STYLE[visibility], layout: 'pill', disabled: this.readOnly },
         items: (['public','private','invitation'] as GroupVisibility[]).map(id => ({ id, label: `groups.visibility.${id}`,
           ...GROUP_VISIBILITY_STYLE[id], kind: 'radio', showCheck: true, active: id === visibility, checked: id === visibility, surface: 'tinted', disabled: this.readOnly })) },
@@ -99,7 +105,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
         { id: 'category', bind: 'category', kind: 'menu', layout: 'half', config: { kind: 'select',
           trigger: { label: `groups.category.${this.form.category}`, icon: GROUP_CATEGORY_ICON[this.form.category], palette: GROUP_CATEGORY_PALETTE[this.form.category], layout: 'pill' },
           items: GROUP_CATEGORIES.map(id => ({ id, value: id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id], kind: 'radio', showCheck: true, active: this.form.category === id, checked: this.form.category === id, palette: GROUP_CATEGORY_PALETTE[id], surface: 'tinted' })) } },
-        { id: 'members-visible', kind: 'menu', layout: 'half', config: { kind: 'inline', layout: 'row', closeOnSelect: false, items: [
+        { id: 'members-visible', kind: 'menu', layout: 'half', align: 'end', config: { kind: 'inline', layout: 'row', closeOnSelect: false, items: [
           { id: 'hideMembers', label: 'groups.member.list', ariaLabel: this.form.hideMembers ? 'groups.hide.members' : 'groups.show.members',
             icon: this.form.hideMembers ? 'visibility_off' : 'visibility', kind: 'toggle', layout: 'pill', showToggleIndicator: true,
             palette: this.form.hideMembers ? 'red' : 'green', active: !this.form.hideMembers, checked: !this.form.hideMembers,
@@ -118,7 +124,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
       ] }] };
     return { ...model, steps: model.steps.map(step => ({ ...step, controls: step.controls
       .filter(() => step.id !== 'policy' || this.form.policy.enabled)
-      .filter(control => control.id !== 'rules-table' || this.form.policy.enabled && required.length > 0)
+      .filter(control => control.id !== 'rules-table' || this.form.policy.enabled && required.some(key => this.optionalPolicyField(key)))
       .map(control => ({ ...control, disabled: this.readOnly && control.id !== 'rules-open' })) })) };
   }
   protected action(event: FormFlowActionEvent): void {
@@ -135,7 +141,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
   }
   protected policyFlowModel(): FormFlowModel {
     const palettes: AppMenuPalette[] = ['blue','green','orange','violet'];
-    return { title: 'groups.visibility.rules', layout: 'grouped', header: false, save: null, summary: { enabled: false },
+    return { title: 'groups.visibility.rules', layout: 'grouped', deferPreparation: false, header: false, save: null, summary: { enabled: false },
       steps: APP_STATIC_DATA.profileDetailGroupTemplates.map((group, index) => ({
         id: `policy-${index}`, title: this.t(group.title), palette: palettes[index], controls: group.rows
           .filter(row => this.optionalPolicyField(row.labelKey))

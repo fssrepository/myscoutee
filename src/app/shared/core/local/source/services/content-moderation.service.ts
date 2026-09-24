@@ -8,6 +8,7 @@ import { LocalEventsService } from './events.service';
 import { LocalPhotoFeedRepository } from '../repositories/photo-feed.repository';
 import { LocalPhotoFeedMapper } from '../mappers/photo-feed.mapper';
 import { LocalCommunityGroupsService } from './community-groups.service';
+import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
 import { LocalAdminModerationService } from './admin-moderation.service';
 import { LocalRouteDelayService } from './route-delay.service';
 @Injectable({ providedIn: 'root' })
@@ -17,6 +18,7 @@ export class LocalContentModerationService extends LocalRouteDelayService {
   private readonly events = inject(LocalEventsService);
   private readonly feed = inject(LocalPhotoFeedRepository);
   private readonly groups = inject(LocalCommunityGroupsService);
+  private readonly groupRecords = inject(LocalCommunityGroupsRepository);
   private readonly support = inject(LocalAdminModerationService);
   private async prepare() { await this.repository.whenReady(); await this.deliverMessages(); await this.waitForRouteDelay('/admin/content-moderation'); }
   async snapshot(_adminUserId: string) { await this.prepare(); return this.repository.snapshot(); }
@@ -41,6 +43,11 @@ export class LocalContentModerationService extends LocalRouteDelayService {
     }
   }
   async detail<T>(_adminUserId: string, id: string): Promise<T> {
+    if (id.startsWith('group:')) {
+      await this.prepare(); const group = this.groupRecords.find(id.slice(6));
+      if (!group) throw new Error('moderation.changed');
+      return await this.groups.detail(group.ownerUserId, group.id) as T;
+    }
     await this.prepare(); const item = this.repository.item(id);
     if (!item) throw new Error('moderation.changed');
     let detail: unknown;

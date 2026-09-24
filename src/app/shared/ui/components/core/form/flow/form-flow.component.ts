@@ -152,6 +152,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   constructor() {
     afterNextRender(() => {
+      if (!this.preparing()) return;
       this.cancelPreparation = scheduleAfterPaint(() => {
         this.cancelPreparation = null;
         this.preparing.set(false);
@@ -162,6 +163,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
+      if (this.model?.deferPreparation === false) {
+        this.cancelPreparation?.(); this.cancelPreparation = null;
+        this.preparing.set(false);
+      }
       this.pageIndex = this.clampPageIndex(this.pageIndex);
       this.pendingPageIndex = null;
       this.queueViewportSync('auto');

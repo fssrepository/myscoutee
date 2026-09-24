@@ -9,7 +9,7 @@ import { CommunityGroupsService } from '../../../core/base/services/community-gr
 import { ActivityMembersService } from '../../../core/base/services/activity-members.service';
 import { UserProfileStore } from './user-profile.store';
 import { MemberMenuStore } from './member-menu.store';
-import type { CommunityGroup, SaveCommunityGroup, GroupFilters, GroupBucket, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
+import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
@@ -22,7 +22,8 @@ export class CommunityGroupsStore {
   private readonly memberMenu = inject(MemberMenuStore);
   readonly openUserId = signal<string | null>(null);
   readonly initialBucket = signal<GroupBucket>('hosting');
-  readonly editor = signal<{ group: CommunityGroup | null; readOnly: boolean } | null>(null);
+  readonly editor = signal<{ group: CommunityGroup | null; readOnly: boolean; loading?: boolean } | null>(null);
+  private editorRequest: AbortController | null = null;
   private readonly changes = inject(CommunityGroupChangesStore);
   readonly changed = computed(() => {
     const change = this.changes.change();
@@ -47,7 +48,8 @@ export class CommunityGroupsStore {
       this.members(group);
     } catch (error) { this.error.set(this.message(error)); }
   }
-  close(): void { this.editor.set(null); this.openUserId.set(null); }
+  closeEditor(): void { this.editorRequest?.abort(); this.editorRequest = null; this.editor.set(null); }
+  close(): void { this.closeEditor(); this.openUserId.set(null); }
   sync(request: GroupSyncRequest, signal?: AbortSignal) { return this.service.sync(this.openUserId() ?? '', request, signal); }
   async page(query: ListQuery<GroupFilters>, signal?: AbortSignal) {
     const userId = this.openUserId() ?? '';
@@ -55,7 +57,7 @@ export class CommunityGroupsStore {
     signal?.throwIfAborted(); if (userId === this.openUserId()) void this.workspaces.refresh();
     return page;
   }
-  members(group: CommunityGroup): void {
+  members(group: CommunityGroupSummary): void {
     this.memberMenu.requestActivitiesNavigation({ type: 'members', ownerType: 'community', ownerId: group.id, ownerUserId: group.ownerUserId,
       subtitle: group.name, canManage: group.role === 'Admin' && group.membershipStatus === 'accepted',
       acceptedMembers: group.acceptedMembers, pendingMembers: group.pendingMembers, capacityTotal: group.acceptedMembers,
@@ -73,8 +75,20 @@ export class CommunityGroupsStore {
       if (userId === this.openUserId()) { this.changes.publish(userId, group); this.editor.set(null); void this.workspaces.refresh(); }
     } catch (error) { this.error.set(this.message(error)); } finally { this.busy.set(false); }
   }
-  async action(action: string, group: CommunityGroup): Promise<void> {
-    if (action === 'view' || action === 'edit') { this.editor.set({ group, readOnly: action === 'view' }); return; }
+  async action(action: string, group: CommunityGroupSummary): Promise<void> {
+    if (action === 'view' || action === 'edit') {
+      this.closeEditor(); this.error.set('');
+      const controller = new AbortController(); this.editorRequest = controller;
+      const userId = this.openUserId() ?? '';
+      this.editor.set({ group: null, readOnly: action === 'view', loading: true });
+      try {
+        const detail = await this.service.detail(userId, group.id, controller.signal);
+        if (!controller.signal.aborted && userId === this.openUserId()) this.editor.set({ group: detail, readOnly: action === 'view' });
+      } catch (error) {
+        if (!controller.signal.aborted) { this.editor.set(null); this.error.set(this.message(error)); }
+      }
+      return;
+    }
     if (action === 'members') { this.members(group); return; }
     const item = CommunityGroupConverter.menu(group, this.openUserId()).find(item => item.id === action);
     if (!item) return;
@@ -85,7 +99,7 @@ export class CommunityGroupsStore {
       input: action === 'report' ? { label: 'groups.report.details', maxLength: 2000 } : null,
       onConfirm: details => action === 'report' ? this.service.report(this.openUserId() ?? '', group.id, details) : this.commitAction(action, group) });
   }
-  private async commitAction(action: string, group: CommunityGroup): Promise<void> {
+  private async commitAction(action: string, group: CommunityGroupSummary): Promise<void> {
     if (this.busy()) return; this.busy.set(true); this.error.set('');
     const userId = this.openUserId() ?? '';
     try {
