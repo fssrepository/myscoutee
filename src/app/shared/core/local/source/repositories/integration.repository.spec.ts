@@ -114,4 +114,54 @@ describe('Local affiliate summary', () => {
     injector.destroy();
   });
 
+  it.each([false, true])('settles cancellation once with a pending request (single member: %s)', (singleMember) => {
+    let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member', 'other'], byId: {
+      owner: { id: 'owner', activities: {} },
+      member: { id: 'member', affiliateReferrerUserId: 'owner', activities: {} },
+      other: { id: 'other', affiliateReferrerUserId: 'owner', activities: {} }
+    } } };
+    const db = { read: () => state, write: (change: any) => { state = change(state); } };
+    const injector = createEnvironmentInjector([{ provide: LocalMemoryDb, useValue: db }], null as any);
+    const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    repo.recordPayment('member', 'booking', 'EUR', 100, 25, true, 'event', 'owner');
+    repo.recordPayment('member', 'asset', 'EUR', 20, 0, false, 'event', 'owner');
+    repo.recordPayment('other', 'other-booking', 'EUR', 10, 0, true, 'event', 'owner');
+    repo.recordPayment('other', 'unrelated', 'EUR', 5, 0, true, 'unrelated-event', 'owner');
+    repo.markEventTermsChanged('event');
+    repo.cancelEventPayments('event', 'member');
+    expect(state[USERS_TABLE_NAME].byId.owner.activities.paymentRefundsPending).toBe(2);
+    const firstRefund = structuredClone(state[USERS_TABLE_NAME].byId.member.affiliatePayments.booking.refundOperations[0]);
+    const cancel = () => repo.cancelEventPayments('event', singleMember ? 'member' : undefined, singleMember);
+    cancel();
+    const completed = structuredClone(state);
+    cancel();
+    expect(state).toEqual(completed);
+    expect(state[USERS_TABLE_NAME].byId.owner.activities.paymentRefundsPending).toBe(0);
+    const payments = state[USERS_TABLE_NAME].byId.member.affiliatePayments;
+    expect(payments.booking.refundOperations.map((row: any) => row.amount)).toEqual([25, 75]);
+    expect(payments.booking.refundOperations[0]).toEqual(firstRefund);
+    expect(payments.asset.refunded).toBe(20);
+    expect(state[USERS_TABLE_NAME].byId.other.affiliatePayments['other-booking'].refunded).toBe(singleMember ? 0 : 10);
+    expect(state[USERS_TABLE_NAME].byId.other.affiliatePayments.unrelated.refunded).toBe(0);
+    const summary = repo.settings('owner', '/api').affiliate.revenue!;
+    expect(summary.purchases).toBe(4);
+    expect(summary.eventBookings).toBe(3);
+    expect(summary.currencies.EUR.net).toBe(singleMember ? 15 : 5);
+    injector.destroy();
+  });
+
+  it('does not give a later purchase an earlier changed-terms entitlement', () => {
+    let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member'], byId: {
+      owner: { id: 'owner', activities: {} }, member: { id: 'member', activities: {} }
+    } } };
+    const injector = createEnvironmentInjector([{ provide: LocalMemoryDb,
+      useValue: { read: () => state, write: (change: any) => { state = change(state); } } }], null as any);
+    const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    repo.markEventTermsChanged('event');
+    repo.recordPayment('member', 'new-booking', 'EUR', 10, 0, true, 'event', 'owner');
+    expect(() => repo.cancelEventPayments('event', 'member')).toThrow('No changed-terms cancellation');
+    expect(state[USERS_TABLE_NAME].byId.member.affiliatePayments['new-booking'].refunded).toBe(0);
+    expect(repo.paymentHistory('owner').some(row => row.refundRequestStatus === 'pending')).toBe(false);
+    injector.destroy();
+  });
 });
