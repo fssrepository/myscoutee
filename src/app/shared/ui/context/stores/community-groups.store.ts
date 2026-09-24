@@ -9,7 +9,7 @@ import { CommunityGroupsService } from '../../../core/base/services/community-gr
 import { ActivityMembersService } from '../../../core/base/services/activity-members.service';
 import { UserProfileStore } from './user-profile.store';
 import { MemberMenuStore } from './member-menu.store';
-import type { CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
+import type { CommunityGroup, SaveCommunityGroup, GroupFilters, GroupBucket, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
@@ -21,6 +21,7 @@ export class CommunityGroupsStore {
   private readonly profile = inject(UserProfileStore);
   private readonly memberMenu = inject(MemberMenuStore);
   readonly openUserId = signal<string | null>(null);
+  readonly initialBucket = signal<GroupBucket>('hosting');
   readonly editor = signal<{ group: CommunityGroup | null; readOnly: boolean } | null>(null);
   private readonly changes = inject(CommunityGroupChangesStore);
   readonly changed = computed(() => {
@@ -32,7 +33,20 @@ export class CommunityGroupsStore {
   readonly busy = signal(false);
   readonly error = signal('');
   constructor() { effect(() => { if (this.openUserId() && this.openUserId() !== this.workspace.accountId(this.profile.activeUserId())) this.close(); }); }
-  open(): void { this.error.set(''); this.openUserId.set(this.workspace.accountId(this.profile.getActiveUserId())); }
+  open(bucket: GroupBucket = 'hosting'): void {
+    this.error.set(''); this.initialBucket.set(bucket);
+    this.openUserId.set(this.workspace.accountId(this.profile.getActiveUserId()));
+  }
+  async openInvitation(groupId: string): Promise<void> {
+    this.open('participation');
+    const userId = this.openUserId()!;
+    try {
+      const group = await this.service.detail(userId, groupId);
+      if (userId !== this.openUserId()) return;
+      this.changes.publish(userId, group);
+      this.members(group);
+    } catch (error) { this.error.set(this.message(error)); }
+  }
   close(): void { this.editor.set(null); this.openUserId.set(null); }
   sync(request: GroupSyncRequest, signal?: AbortSignal) { return this.service.sync(this.openUserId() ?? '', request, signal); }
   async page(query: ListQuery<GroupFilters>, signal?: AbortSignal) {

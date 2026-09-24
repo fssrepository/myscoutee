@@ -8,6 +8,7 @@ import type {
   UserSupportCaseCountersDto
 } from '../../../core/contracts/user.interface';
 import type {
+  ActivityCounters,
   ActivityAssetCounters,
   ActivityChatCounters,
   ActivityEventCounters,
@@ -15,6 +16,19 @@ import type {
   ActivitySupportCaseCounters
 } from './activity.store';
 import type { UserProfileAdminUserDto } from './user-profile.store';
+
+/** Same actionable menu total for the profile avatar and its group workspace. */
+export function profileMenuBadgeCount(
+  user: UserDto,
+  overrides: Partial<ActivityCounters>,
+  impressions: { host: boolean; member: boolean }
+): number {
+  const counters = { ...user.activities, ...overrides };
+  return Number(impressions.host) + Number(impressions.member)
+    + ['game', 'chats', 'cars', 'accommodation', 'supplies', 'tickets', 'contacts', 'feedback']
+      .reduce((total, key) => total + normalizeCounterValue(counters[key as keyof ActivityCounters]), 0)
+    + normalizeCounterValue(counters.event?.all);
+}
 
 export function normalizeCounterValue(value: unknown): number {
   if (!Number.isFinite(value)) {

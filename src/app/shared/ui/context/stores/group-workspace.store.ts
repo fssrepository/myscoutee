@@ -7,6 +7,7 @@ import { GroupWorkspaceContextService } from '../../../core/base/services/group-
 import { SessionService } from '../../../core/base/services/session.service';
 import { UserProfileStore } from './user-profile.store';
 import { ActivityStore } from './activity.store';
+import { profileMenuBadgeCount } from './app-context-store.utils';
 import { UiTaskScheduler, UiPollCoordinator } from '../../scheduler';
 import type { GroupWorkspace } from '../../../core/contracts/community-group.interface';
 
@@ -18,7 +19,16 @@ export class GroupWorkspaceStore {
   private readonly activities = inject(ActivityStore);
   private readonly session = inject(SessionService);
   private generation = 0;
-  readonly workspaces = signal<readonly GroupWorkspace[]>([]);
+  private refreshSequence = 0;
+  private readonly workspaceSnapshots = signal<readonly GroupWorkspace[]>([]);
+  readonly workspaces = computed(() => {
+    const active = this.context.active();
+    const profile = this.profile.activeUserProfile();
+    return this.workspaceSnapshots().map(workspace => active?.groupId === workspace.groupId && profile?.id === workspace.profileId
+      ? { ...workspace, activity: profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id),
+          this.profile.getUserImpressionChangeFlags(profile.id)) }
+      : workspace);
+  });
   readonly error = signal('');
   readonly counters = computed(() => this.workspaces().reduce((counts, workspace) => {
     counts[workspace.role === 'Admin' ? 'hosting' : 'participation'] += workspace.activity;
@@ -36,7 +46,7 @@ export class GroupWorkspaceStore {
       const change = this.changes.change();
       if (!change || change.accountId !== this.context.accountUserId()) return;
       untracked(() => {
-        this.workspaces.update(workspaces => workspaces.map(workspace => workspace.groupId === change.group.id
+        this.workspaceSnapshots.update(workspaces => workspaces.map(workspace => workspace.groupId === change.group.id
           ? { ...workspace, name: change.group.name, activity: change.group.activity, role: change.group.role ?? '', policy: change.group.policy }
           : workspace).filter(workspace => workspace.groupId !== change.group.id || change.group.membershipStatus === 'accepted' && change.group.policy.workspace));
       });
@@ -52,7 +62,7 @@ export class GroupWorkspaceStore {
           this.context.accountUserId.set(accountId);
           this.context.active.set(null);
           this.context.switching.set(false);
-          this.workspaces.set([]);
+          this.workspaceSnapshots.set([]);
           this.error.set('');
           this.poller.stop({ abort: true });
 
@@ -81,9 +91,12 @@ export class GroupWorkspaceStore {
   async refresh(accountId = this.context.accountUserId()): Promise<void> {
     if (!accountId) return;
     const generation = this.generation;
+    const sequence = ++this.refreshSequence;
+    const mutation = this.changes.change();
     const workspaces = await this.service.workspaces(accountId);
-    if (generation === this.generation && accountId === this.context.accountUserId()) {
-      this.workspaces.set(workspaces);
+    if (generation === this.generation && sequence === this.refreshSequence && mutation === this.changes.change()
+        && accountId === this.context.accountUserId()) {
+      this.workspaceSnapshots.set(workspaces);
       const active = this.context.active();
       if (active) {
         const updated = workspaces.find(w => w.groupId === active.groupId);
@@ -100,6 +113,8 @@ export class GroupWorkspaceStore {
     try {
       const selected = await this.service.selectWorkspace(this.context.accountUserId(), groupId);
       if (generation !== this.generation) return false;
+      // Retain the last local menu deltas when leaving a workspace until its next canonical poll.
+      this.workspaceSnapshots.set(this.workspaces());
       this.context.active.set(selected.workspace);
       this.activities.clearUserCounterOverrides(selected.profile.id);
       this.profile.setActiveUserProfile(selected.profile);

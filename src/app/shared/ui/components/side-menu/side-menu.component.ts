@@ -12,6 +12,7 @@ import { ImageGalleryStore } from '../../context/stores/image-gallery.store';
 import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
+import { profileMenuBadgeCount } from '../../context/stores/app-context-store.utils';
 import {
   CommonModule
 } from '@angular/common';
@@ -1101,8 +1102,7 @@ export class SideMenuComponent implements OnDestroy {
       const userId = this.userProfileStore.activeUserId().trim();
       const url = this.notificationRouteUrl();
       if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
-        void this.openNotificationChatTarget(url, userId);
-        void this.openNotificationMingleTarget(url, userId);
+        void this.openNotificationRoute(url);
         void this.openPartnerInviteTarget(url, userId);
       }
     });
@@ -2369,19 +2369,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
     const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
-    return (
-      (impressionFlags.host ? 1 : 0) +
-      (impressionFlags.member ? 1 : 0) +
-      this.resolveActivityBadge(user, 'game') +
-      this.resolveActivityBadge(user, 'chats') +
-      (activityOverrides.event?.all ?? user.activities?.event?.all ?? 0) +
-      this.resolveActivityBadge(user, 'cars') +
-      this.resolveActivityBadge(user, 'accommodation') +
-      this.resolveActivityBadge(user, 'supplies') +
-      this.resolveActivityBadge(user, 'tickets') +
-      this.resolveActivityBadge(user, 'contacts') +
-      this.resolveActivityBadge(user, 'feedback')
-    );
+    return profileMenuBadgeCount(user, activityOverrides, impressionFlags);
   }
 
   private notificationLauncherAriaLabel(unreadCount: number, muted: boolean): string {
@@ -2395,7 +2383,7 @@ export class SideMenuComponent implements OnDestroy {
   private openNotificationCenter(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.userProfileStore.activeUserLocationMissing()) return;
+    if (this.accountLocationMissing()) return;
     this.closeSideMenu();
     this.notificationCenterStore.open();
   }
@@ -2437,6 +2425,25 @@ export class SideMenuComponent implements OnDestroy {
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
+  private openingNotificationRoute = '';
+  private async openNotificationRoute(url: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingNotificationRoute === url) return;
+    const params = this.router.parseUrl(url).queryParams;
+    if (!params['chatId'] && !params['mingleEventId']) return;
+    const accountId = this.groupWorkspaces.context.accountUserId();
+    this.openingNotificationRoute = url;
+    try {
+      const groupId = `${params['workspaceGroupId'] ?? ''}`.trim() || null;
+      if (!await this.groupWorkspaces.select(groupId) || this.router.url !== url
+          || this.groupWorkspaces.context.accountUserId() !== accountId) return;
+      const userId = this.userProfileStore.activeUserId();
+      await this.openNotificationChatTarget(url, userId);
+      await this.openNotificationMingleTarget(url, userId);
+    } finally {
+      if (this.openingNotificationRoute === url) this.openingNotificationRoute = '';
+    }
+  }
+
   private async openNotificationChatTarget(url: string, userId: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game') return;
     const tree = this.router.parseUrl(url);
@@ -2454,6 +2461,7 @@ export class SideMenuComponent implements OnDestroy {
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['chatId'];
       delete tree.queryParams['messageId'];
+      delete tree.queryParams['workspaceGroupId'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (this.userProfileStore.activeUserId() !== userId) return;
       this.activitiesStore.openEventChat(
@@ -2474,14 +2482,15 @@ export class SideMenuComponent implements OnDestroy {
     if (this.openingPartnerInvite === key) return;
     this.openingPartnerInvite = key;
     try {
-      const claim = await this.usersService.claimPartnerInvite(userId, token);
+      const accountId = this.groupWorkspaces.context.accountId(userId);
+      const claim = await this.usersService.claimPartnerInvite(accountId, token);
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['partnerInvite'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);
       if (this.userProfileStore.activeUserId() === userId) {
-        if (claim.groupId) { this.communityGroups.open(); await this.communityGroups.refresh(claim.groupId); }
+        if (claim.groupId) await this.communityGroups.openInvitation(claim.groupId);
         else this.activitiesStore.openActivities('events', 'all');
       }
     } catch {
@@ -2505,6 +2514,7 @@ export class SideMenuComponent implements OnDestroy {
       const opened = await this.mingleStore.openCurrentTable(eventId);
       if (!opened || this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['mingleEventId'];
+      delete tree.queryParams['workspaceGroupId'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
     } finally {
       if (this.openingNotificationMingleTable === key) this.openingNotificationMingleTable = '';

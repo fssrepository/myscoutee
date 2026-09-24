@@ -33,6 +33,11 @@ export class LocalNotificationsRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
+  private accountId(userId: string): string {
+    const id = userId.trim();
+    return this.memoryDb.read()[USERS_TABLE_NAME].byId[id]?.accountUserId ?? id;
+  }
+
   private accountNotification(record: NotificationRecord): NotificationRecord {
     const profile = this.memoryDb.read()[USERS_TABLE_NAME].byId[record.recipientUserId];
     const copy = this.cloneRecord(record);
@@ -153,7 +158,7 @@ export class LocalNotificationsRepository {
     unreadCount: number;
     muted: boolean;
   } {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.accountId(userId);
     const bucket = query.filters?.bucket === 'new' ? 'new' : 'all';
     const workspace = query.filters?.workspace;
     const table = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
@@ -183,7 +188,7 @@ export class LocalNotificationsRepository {
   }
 
   markRead(userId: string, notificationId: string): NotificationRecord | null {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.accountId(userId);
     const normalizedNotificationId = notificationId.trim();
     if (!normalizedUserId || !normalizedNotificationId) {
       return null;
@@ -231,7 +236,7 @@ export class LocalNotificationsRepository {
     sourceType: string,
     sourceId: string
   ): number {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.accountId(userId);
     const normalizedKind = kind.trim();
     const normalizedSourceType = sourceType.trim();
     const normalizedSourceId = sourceId.trim();
@@ -286,7 +291,7 @@ export class LocalNotificationsRepository {
   }
 
   setMuted(userId: string, muted: boolean): boolean {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.accountId(userId);
     if (!normalizedUserId) {
       return false;
     }
@@ -314,12 +319,12 @@ export class LocalNotificationsRepository {
   unreadCount(userId: string): number {
     return this.unreadCountFromTable(
       this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME],
-      userId.trim()
+      this.accountId(userId)
     );
   }
 
   muted(userId: string): boolean {
-    return this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME].mutedByUserId[userId.trim()] === true;
+    return this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME].mutedByUserId[this.accountId(userId)] === true;
   }
 
   sync(
@@ -332,7 +337,7 @@ export class LocalNotificationsRepository {
     unreadCount: number;
     muted: boolean;
   } {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.accountId(userId);
     const bucket = request.bucket === 'new' ? 'new' : 'all';
     const workspace = request.workspace;
     const table = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];

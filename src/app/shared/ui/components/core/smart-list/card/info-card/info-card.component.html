@@ -5,7 +5,7 @@
   [attr.data-group-label]="card?.groupLabel"
   [attr.data-info-card-id]="card?.id"
   [attr.data-motion]="(card?.imageUrls?.length ?? 0) > 1 ? 'none' : null"
-  [attr.tabindex]="(card?.imageUrls?.length ?? 0) > 1 ? 0 : null"
+  [attr.tabindex]="card?.clickable || (card?.imageUrls?.length ?? 0) > 1 ? 0 : null"
   (keydown.enter)="onCardActivated($event)"
   (click)="onCardActivated($event)"
   >

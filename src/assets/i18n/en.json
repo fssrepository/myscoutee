@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.174",
+  "version": "2026.09.24.en.178",
   "messages": {
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
@@ -3798,6 +3798,9 @@
     "groups.confirm.set-organizer-only": "Stop participating in ratings in “{name}” and continue as an administrator?",
     "groups.name.too.long": "The group name can contain at most 20 characters.",
     "groups.hide.members.description": "Only administrators are visible in the member list.",
-    "groups.workspace.description": "Separate group profiles, ratings and activities."
+    "groups.workspace.description": "Separate group profiles, ratings and activities.",
+    "groups.show.members": "Members visible",
+    "groups.show.members.description": "Members can see each other in the member list.",
+    "groups.member.list": "Member list visible"
   }
 }

@@ -10,6 +10,26 @@ describe('FormFlowComponent controls', () => {
     TestBed.resetTestingModule();
   });
 
+  it('emits an unbound menu action without replacing the form with its item ID', () => {
+    TestBed.configureTestingModule({ imports: [FormFlowComponent] });
+    const fixture = TestBed.createComponent(FormFlowComponent);
+    const component = fixture.componentInstance;
+    const form = { name: 'Group', policy: { enabled: true, requiredFields: ['profile.name'] } };
+    const control: FormFlowControlModel = { id: 'rules-open', kind: 'menu' };
+    const changed = vi.fn();
+    const action = vi.fn();
+    component.registerOnChange(changed);
+    component.action.subscribe(action);
+    component.writeValue(form);
+    const view = component as any;
+    view.updateControlValue(control, 'rules-open');
+    view.emitControlAction(control, { id: 'rules-open', item: { id: 'rules-open' }, sourceEvent: new Event('click') });
+    expect(changed).not.toHaveBeenCalled();
+    expect(action).toHaveBeenCalledWith(expect.objectContaining({ value: form,
+      sourceEvent: expect.objectContaining({ id: 'rules-open' }) }));
+    fixture.destroy();
+  });
+
   it('forwards the control maxlength to the shared link input config', () => {
     TestBed.configureTestingModule({
       imports: [FormFlowComponent]

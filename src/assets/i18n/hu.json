@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.174",
+  "version": "2026.09.24.hu.178",
   "messages": {
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
@@ -3798,6 +3798,9 @@
     "groups.confirm.set-organizer-only": "Befejezed a részvételt a(z) „{name}” csoport értékeléseiben, és adminisztrátorként folytatod?",
     "groups.name.too.long": "A csoportnév legfeljebb 20 karakter hosszú lehet.",
     "groups.hide.members.description": "A taglistában csak az adminok láthatók.",
-    "groups.workspace.description": "Külön csoportprofilok, értékelések és tevékenységek."
+    "groups.workspace.description": "Külön csoportprofilok, értékelések és tevékenységek.",
+    "groups.show.members": "Tagok láthatók",
+    "groups.show.members.description": "A tagok láthatják egymást a taglistában.",
+    "groups.member.list": "Taglista látható"
   }
 }

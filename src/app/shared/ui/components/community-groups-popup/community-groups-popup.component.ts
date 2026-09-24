@@ -17,6 +17,7 @@ import { CommunityGroupEditorComponent } from './community-group-editor.componen
         (menuItemSelect)="select($event)"></app-smart-list>
       <ng-template #cardTemplate let-card let-openMenu="openMenu">
         <app-info-card [card]="card" [useSharedMenu]="true" (menuRequest)="openMenu($event)"
+          (cardClick)="store.action('view', card.eagerDetail)"
           (mediaStartClick)="profiles.openProfileView({userId: card.ownerUserId})"
           (mediaEndClick)="store.members(card.eagerDetail)"></app-info-card>
       </ng-template>
@@ -29,7 +30,7 @@ export class CommunityGroupsPopupComponent {
   protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);
   @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroup>, GroupFilters>;
-  protected query: { filters: GroupFilters } = { filters: { bucket: 'hosting', category: null } };
+  protected query: { filters: GroupFilters } = { filters: { bucket: this.store.initialBucket(), category: null } };
   protected readonly config: SmartListConfig<InfoCardData<CommunityGroup>, GroupFilters> = {
     pageSize: 10, initialPageSize: 20, listLayout: 'card-grid', desktopColumns: 3,
     containerClass: { 'experience-card-list': true, 'assets-card-list': true },

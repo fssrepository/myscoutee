@@ -430,6 +430,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     if (this.isControlDisabled(control)) {
       return;
     }
+    // An unbound menu launches an action; its selected item ID is not the form value.
+    if (control.kind === 'menu' && control.bind === undefined) return;
     const formattedValue = control.valueFormat === 'csv' ? this.csvStringValue(value) : value;
     const nextValue = control.kind === 'number'
       ? this.normalizeNumberControlValue(formattedValue)

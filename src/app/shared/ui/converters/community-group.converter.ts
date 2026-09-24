@@ -30,7 +30,7 @@ export class CommunityGroupConverter {
         ariaLabel: group.ownerName, interactive: true },
       mediaEnd: { variant: 'badge', shape: 'circle', label: `${group.acceptedMembers}`, ariaLabel: 'open.members',
         interactive: true, pendingCount: group.pendingMembers },
-      hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: group };
+      hasMenuOptions: true, menuBadgeCount: group.activity, clickable: true, state: 'default', eagerDetail: group };
   }
   static menu(group: CommunityGroup): AppMenuItem[] {
     const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: 'blue', surface: 'tinted', context: group },
