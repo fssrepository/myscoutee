@@ -27,8 +27,9 @@ export class CommunityGroupConverter {
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
       leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
       surfaceTone: group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
-      mediaStart: contentModerationBadge(group.moderationStatus) ?? { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
+      mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },
+      mediaBottomStart: contentModerationBadge(group.moderationStatus),
       mediaEnd: { variant: 'badge', shape: 'circle', label: `${group.acceptedMembers}`, ariaLabel: 'open.members',
         interactive: true, pendingCount: group.pendingMembers },
       hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };

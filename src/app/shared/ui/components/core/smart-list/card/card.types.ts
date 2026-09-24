@@ -355,6 +355,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   leadingIcon?: InfoCardLeadingIconConfig | null;
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
+  mediaBottomStart?: InfoCardOverlayAction | null;
   mediaBottomEnd?: InfoCardOverlayAction | null;
   hasMenuOptions?: boolean;
   menuPosition?: 'top-right' | 'bottom-right';
