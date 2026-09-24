@@ -147,6 +147,7 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
+    if (this.workspace.switching()) return null;
     const revision = this.workspace.revision();
     const session = this.session.session();
     const current = () => revision === this.workspace.revision() && session === this.session.session();
