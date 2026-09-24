@@ -214,7 +214,8 @@ export class NotificationCenterPopupComponent {
           kind: 'menu', id: 'notification-workspace', menuKind: 'select',
           trigger: this.workspaceMenuTrigger(),
           items: this.groupWorkspaces.menuItems(this.store.workspace(), true).map(item => ({
-            ...item, context: { action: 'set-workspace' as const, workspace: item.id }
+            id: item.id, label: item.label, icon: item.icon, imageFallback: item.imageFallback, imageShape: item.imageShape,
+            palette: item.palette, kind: item.kind, active: item.active, checked: item.checked, showCheck: true, surface: item.surface, context: { action: 'set-workspace' as const, workspace: item.id }
           })), panelAlign: 'end'
         },
         {

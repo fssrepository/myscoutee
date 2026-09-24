@@ -87,8 +87,8 @@ export class CommunityGroupEditorComponent implements OnChanges {
           items: GROUP_CATEGORIES.map(id => ({ id, value: id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id], kind: 'radio', showCheck: true, active: this.form.category === id, checked: this.form.category === id, palette: GROUP_CATEGORY_PALETTE[id], surface: 'tinted' })) } }
       ] }, { id: 'features', title: this.t('groups.settings'), icon: 'tune', palette: 'green', controls: [
         { id: 'features', bind: 'features', kind: 'menu', layout: 'wide', config: { kind: 'inline', layout: 'row', closeOnSelect: false, items: [
-          { id: 'hideMembers', value: 'hideMembers', label: 'groups.hide.members', icon: 'visibility_off', kind: 'toggle', layout: 'big', palette: 'teal', active: this.form.features.includes('hideMembers'), checked: this.form.features.includes('hideMembers'), showToggleIndicator: true, disabled: this.readOnly },
-          { id: 'workspace', value: 'workspace', label: 'groups.workspace', icon: 'workspaces', kind: 'toggle', layout: 'big', palette: 'violet', active: this.form.features.includes('workspace'), checked: this.form.features.includes('workspace'), showToggleIndicator: true, disabled: this.readOnly }
+          { id: 'hideMembers', value: 'hideMembers', label: 'groups.hide.members', description: 'groups.hide.members.description', icon: 'visibility_off', kind: 'toggle', layout: 'big', palette: 'teal', active: this.form.features.includes('hideMembers'), checked: this.form.features.includes('hideMembers'), showToggleIndicator: true, disabled: this.readOnly },
+          { id: 'workspace', value: 'workspace', label: 'groups.workspace', description: 'groups.workspace.description', icon: 'workspaces', kind: 'toggle', layout: 'big', palette: 'violet', active: this.form.features.includes('workspace'), checked: this.form.features.includes('workspace'), showToggleIndicator: true, disabled: this.readOnly }
         ] } }
       ] }, { id: 'policy', title: this.t('groups.policy'), icon: 'policy', palette: 'violet', headerControl:
         { id: 'rules-enabled', bind: 'policy.enabled', kind: 'toggle', label: 'groups.visibility.rules', disabled: this.readOnly }, controls: [
@@ -101,6 +101,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
             icon: 'check', badgeTone: 'danger' })) } }
       ] }] };
     return { ...model, steps: model.steps.map(step => ({ ...step, controls: step.controls
+      .filter(() => step.id !== 'policy' || this.form.policy.enabled)
       .filter(control => control.id !== 'rules-table' || this.form.policy.enabled && required.length > 0)
       .map(control => ({ ...control, disabled: this.readOnly && control.id !== 'rules-open' })) })) };
   }

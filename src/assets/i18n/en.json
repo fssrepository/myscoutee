@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.172",
+  "version": "2026.09.24.en.174",
   "messages": {
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
@@ -3788,6 +3788,16 @@
     "groups.optional": "Member choice",
     "groups.participate": "Participate",
     "groups.organizer.only": "Organizer only",
-    "groups.error": "The action failed."
+    "groups.error": "The action failed.",
+    "groups.workspace.main": "Main profile",
+    "groups.workspace.select": "Choose workspace",
+    "groups.switch.failed": "Unable to switch workspace.",
+    "groups.confirm.join": "Request to join “{name}”?",
+    "groups.confirm.accept": "Accept the invitation to “{name}”?",
+    "groups.confirm.set-participant": "Participate in ratings in “{name}”?",
+    "groups.confirm.set-organizer-only": "Stop participating in ratings in “{name}” and continue as an administrator?",
+    "groups.name.too.long": "The group name can contain at most 20 characters.",
+    "groups.hide.members.description": "Only administrators are visible in the member list.",
+    "groups.workspace.description": "Separate group profiles, ratings and activities."
   }
 }

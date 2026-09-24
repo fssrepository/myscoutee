@@ -2,12 +2,17 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
-import type { ICommunityGroupsService, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../contracts/community-group.interface';
+import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class HttpCommunityGroupsService implements ICommunityGroupsService {
   private readonly http = inject(HttpClient);
   private readonly url = `${environment.apiBaseUrl ?? '/api'}/groups`;
+  async sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse> {
+    signal?.throwIfAborted();
+    const result = await firstValueFrom(this.http.post<GroupSyncResponse>(`${this.url}/sync`, { ...request, userId }));
+    signal?.throwIfAborted(); return result;
+  }
   workspaces(userId: string): Promise<GroupWorkspace[]> {
     return firstValueFrom(this.http.get<GroupWorkspace[]>(`${this.url}/workspaces`, { params: { userId } }));
   }

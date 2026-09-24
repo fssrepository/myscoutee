@@ -33,6 +33,7 @@ export type AppMenuPalette =
   | 'teal'
   | 'green'
   | 'mint'
+  | 'lime'
   | 'violet'
   | 'purple'
   | 'pink'

@@ -36,7 +36,18 @@ export class CommunityGroupsPopupComponent {
     snapMode: 'mandatory', scrollPaddingTop: '2.6rem', footerSpacerHeight: null,
     showStickyHeader: true, showFirstGroupMarker: false,
     trackBy: (_index, card) => card.id, groupBy: card => card.groupLabel ?? '',
-    cacheable: true, pollIntervalMs: 30000,
+    cacheable: { identity: card => card.id }, pollIntervalMs: 30000,
+    headerProgress: { enabled: true, placement: 'inline' },
+    sortable: { sortKey: card => [card.distanceMetersExact == null ? Number.MAX_SAFE_INTEGER : Math.ceil(card.distanceMetersExact / 5000), -Date.parse(card.dateIso ?? ''), card.id] },
+    pollDelta: {
+      revision: card => card.eagerDetail?.revision ?? JSON.stringify(card.eagerDetail),
+      position: card => card.id,
+      load: (query, snapshot, context) => defer(() => this.store.sync({
+        bucket: query.filters?.bucket ?? 'hosting', category: query.filters?.category,
+        limit: query.pageSize, knownItems: snapshot.knownItems.map(item => ({ id: item.id, revision: `${item.revision}` })),
+        tailId: snapshot.loadedTail?.id ?? null
+      }, context?.signal)).pipe(map(delta => ({ ...delta, upserts: delta.upserts.map(group => CommunityGroupConverter.card(group, key => this.i18n.translate(key))) })))
+    },
     menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(context.item.eagerDetail) : []
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityGroup>, GroupFilters> = (query, context) =>
@@ -49,7 +60,7 @@ export class CommunityGroupsPopupComponent {
       const { bucket, category } = this.query.filters;
       const admin = group.role === 'Admin' && group.membershipStatus === 'accepted';
       const matches = (!category || category === group.category) && (bucket === 'hosting' ? admin
-        : bucket === 'participation' ? !admin && !!group.membershipStatus : true);
+        : bucket === 'participation' ? !admin && !!group.membershipStatus : group.visibility !== 'invitation' || !!group.membershipStatus);
       if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
       else if (!this.list?.patchVisibleItem(item => item.id === group.id, () => card)) {
         this.list?.reinsertVisibleItem(card, { loadedRange: 'before-or-within' });

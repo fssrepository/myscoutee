@@ -34,7 +34,7 @@ export class LocalUsersRepository {
 
   queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): UserRecord[] {
     return this.queryUserRecordsFromTable(USERS_TABLE_NAME)
-      .filter(user => this.matchesSelectorRole(user, selectorRole))
+      .filter(user => !user.workspaceGroupId && this.matchesSelectorRole(user, selectorRole))
       .sort((left, right) => this.compareSelectableDemoUsers(left, right));
   }
 
@@ -82,6 +82,11 @@ export class LocalUsersRepository {
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, user.id);
+      const workspaceGroupId = usersTable.byId[user.id]?.workspaceGroupId ?? user.workspaceGroupId;
+      const policy = workspaceGroupId ? state.communityGroups.byId[workspaceGroupId]?.policy : null;
+      if (policy?.enabled && user.profileDetails) user = { ...user, profileDetails: user.profileDetails.map(section => ({
+        ...section, rows: section.rows.map(row => policy.requiredFields.includes(row.labelKey) ? { ...row, privacy: 'Public' } : row)
+      })) };
       return {
         ...state,
         [USERS_TABLE_NAME]: {

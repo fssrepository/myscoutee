@@ -206,7 +206,7 @@
                 </div>
               }
 
-                <div class="form-flow__controls">
+                <div class="form-flow__controls" [hidden]="step.controls.length === 0">
                 @for (control of step.controls; track control.id) {
                   @let validationError = controlValidationError(control);
                   <div

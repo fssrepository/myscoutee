@@ -9,7 +9,7 @@ import { CommunityGroupsService } from '../../../core/base/services/community-gr
 import { ActivityMembersService } from '../../../core/base/services/activity-members.service';
 import { UserProfileStore } from './user-profile.store';
 import { MemberMenuStore } from './member-menu.store';
-import type { CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters } from '../../../core/contracts/community-group.interface';
+import type { CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
@@ -34,6 +34,7 @@ export class CommunityGroupsStore {
   constructor() { effect(() => { if (this.openUserId() && this.openUserId() !== this.workspace.accountId(this.profile.activeUserId())) this.close(); }); }
   open(): void { this.error.set(''); this.openUserId.set(this.workspace.accountId(this.profile.getActiveUserId())); }
   close(): void { this.editor.set(null); this.openUserId.set(null); }
+  sync(request: GroupSyncRequest, signal?: AbortSignal) { return this.service.sync(this.openUserId() ?? '', request, signal); }
   async page(query: ListQuery<GroupFilters>, signal?: AbortSignal) {
     const userId = this.openUserId() ?? '';
     const page = await this.service.page(userId, query, signal);

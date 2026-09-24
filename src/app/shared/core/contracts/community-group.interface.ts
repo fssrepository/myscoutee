@@ -6,6 +6,7 @@ export type GroupVisibility = 'public' | 'private' | 'invitation';
 export type GroupBucket = 'hosting' | 'participation' | 'explore';
 export interface GroupPolicy { workspace: boolean; enabled: boolean; requiredFields: string[]; }
 export interface CommunityGroup {
+  revision?: string;
   id: string; ownerUserId: string; ownerName: string; ownerAvatarUrl: string | null;
   name: string; description: string; imageUrl: string | null; category: GroupCategory;
   visibility: GroupVisibility; hideMembers: boolean; policy: GroupPolicy;
@@ -24,7 +25,10 @@ export interface GroupWorkspace {
   groupId: string; profileId: string; name: string; role: string; activity: number; policy: GroupPolicy;
 }
 export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; }
+export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
+export interface GroupSyncResponse { upserts: CommunityGroup[]; removedIds: string[]; total: number; }
 export interface ICommunityGroupsService {
+  sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse>;
   workspaces(userId: string): Promise<GroupWorkspace[]>;
   selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection>;
   page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroup, GroupCounters>>;

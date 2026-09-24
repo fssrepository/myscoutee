@@ -1367,3 +1367,5 @@
 .form-flow__table-badge--danger {
   background: colors.$danger-background; border-color: colors.$danger-border; color: colors.$danger-foreground;
 }
+
+.form-flow__controls[hidden] { display: none; }

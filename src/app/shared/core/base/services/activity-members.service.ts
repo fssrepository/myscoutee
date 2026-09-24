@@ -33,6 +33,7 @@ import { ActivityStore } from '../../../ui/context/stores/activity.store';
   providedIn: 'root'
 })
 export class ActivityMembersService extends BaseRouteModeService {
+  private readonly groupChanges = inject(CommunityGroupChangesStore);
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
   private readonly localGroups = inject(LocalCommunityGroupsService);

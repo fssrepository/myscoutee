@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.172",
+  "version": "2026.09.24.hu.174",
   "messages": {
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
@@ -3788,6 +3788,16 @@
     "groups.optional": "A tag választja",
     "groups.participate": "Részvétel",
     "groups.organizer.only": "Csak szervezés",
-    "groups.error": "A művelet nem sikerült."
+    "groups.error": "A művelet nem sikerült.",
+    "groups.workspace.main": "Alapprofil",
+    "groups.workspace.select": "Munkatér kiválasztása",
+    "groups.switch.failed": "Nem sikerült munkateret váltani.",
+    "groups.confirm.join": "Jelentkezel a(z) „{name}” csoportba?",
+    "groups.confirm.accept": "Elfogadod a(z) „{name}” csoport meghívását?",
+    "groups.confirm.set-participant": "Részt veszel a(z) „{name}” csoport értékeléseiben?",
+    "groups.confirm.set-organizer-only": "Befejezed a részvételt a(z) „{name}” csoport értékeléseiben, és adminisztrátorként folytatod?",
+    "groups.name.too.long": "A csoportnév legfeljebb 20 karakter hosszú lehet.",
+    "groups.hide.members.description": "A taglistában csak az adminok láthatók.",
+    "groups.workspace.description": "Külön csoportprofilok, értékelések és tevékenységek."
   }
 }

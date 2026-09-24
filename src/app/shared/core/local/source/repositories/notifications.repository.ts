@@ -33,11 +33,19 @@ export class LocalNotificationsRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
+  private accountNotification(record: NotificationRecord): NotificationRecord {
+    const profile = this.memoryDb.read()[USERS_TABLE_NAME].byId[record.recipientUserId];
+    const copy = this.cloneRecord(record);
+    if (!profile?.accountUserId) return copy;
+    return { ...copy, recipientUserId: profile.accountUserId,
+      payload: { ...copy.payload, workspaceGroupId: profile.workspaceGroupId! } };
+  }
+
   append(records: readonly NotificationRecord[]): NotificationRecord[] {
     const currentTable = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
     const seenIds = new Set(Object.keys(currentTable.byId));
     const additions = records
-      .map(record => this.cloneRecord(record))
+      .map(record => this.accountNotification(record))
       .filter(record => {
         const id = record.id.trim();
         const recipientUserId = record.recipientUserId.trim();
@@ -89,7 +97,7 @@ export class LocalNotificationsRepository {
   }
 
   appendAggregated(record: NotificationRecord): NotificationRecord | null {
-    const normalized = this.cloneRecord(record);
+    const normalized = this.accountNotification(record);
     const recipientUserId = normalized.recipientUserId.trim();
     const aggregationGroup = `${normalized.payload?.['notification_aggregation_key'] ?? ''}`.trim();
     if (!recipientUserId || !aggregationGroup) {

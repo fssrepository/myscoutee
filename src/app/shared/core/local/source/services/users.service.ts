@@ -825,6 +825,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
 
     const activities = user.activities;
+    const accountId = this.usersRepository.queryUserById(user.id)?.accountUserId;
+    const notificationActivities = accountId ? this.usersRepository.queryUserById(accountId)?.activities : activities;
     const events = normalizeCounter(activities?.events);
     const invitations = normalizeCounter(activities?.invitations);
     const hosting = normalizeCounter(activities?.hosting);
@@ -850,7 +852,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       tickets,
       contacts: normalizeCounter(activities?.contacts),
       feedback,
-      notifications: normalizeCounter(activities?.notifications),
+      notifications: normalizeCounter(notificationActivities?.notifications),
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),

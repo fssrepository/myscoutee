@@ -1,5 +1,7 @@
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   ChangeDetectorRef,
+  computed,
   Component,
   HostListener,
   effect,
@@ -51,7 +53,8 @@ export class ProfileSettingsPopupsComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   protected readonly activePopup = this.profileStore.settingsPopup;
-  protected readonly activeUserId = this.userProfileStore.activeUserId;
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  protected readonly activeUserId = computed(() => this.workspace.accountId(this.userProfileStore.activeUserId()));
   protected readonly privacyConsentRequired = this.profileStore.privacyConsentRequired;
   protected settingsPrivacySaving = false;
   protected settingsPrivacySaveMessage = '';

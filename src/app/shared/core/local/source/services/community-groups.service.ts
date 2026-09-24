@@ -8,7 +8,7 @@ import { LocalActivityMembersRepository } from '../repositories/activity-members
 import { LocalUsersRepository } from '../repositories/users.repository';
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
-import type { ICommunityGroupsService, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
+import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
 import { GROUP_CATEGORIES } from '../../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../../contracts/list.interface';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
@@ -18,6 +18,16 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private readonly groups = inject(LocalCommunityGroupsRepository);
   private readonly members = inject(LocalActivityMembersRepository);
   private readonly users = inject(LocalUsersRepository);
+  async sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse> {
+    await this.groups.ready();
+    const page = await this.page(userId, { page: 0, pageSize: Math.max(1, this.groups.records().length), filters: request, sort: 'distance', direction: 'asc' }, signal);
+    const known = new Map(request.knownItems.map(item => [item.id, item.revision]));
+    const ids = new Set(page.items.map(group => group.id));
+    const tail = page.items.findIndex(group => group.id === request.tailId);
+    const window = tail < 0 ? known.size + Math.min(request.limit, 50) : tail + 1;
+    return { upserts: page.items.filter((group, index) => (index < window || known.has(group.id)) && JSON.stringify(group) !== known.get(group.id)),
+      removedIds: [...known.keys()].filter(id => !ids.has(id)), total: page.total ?? page.items.length };
+  }
   async workspaces(userId: string): Promise<GroupWorkspace[]> {
     await this.groups.ready();
     return this.groups.records().flatMap(group => {
@@ -39,7 +49,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private profileId(groupId: string, userId: string): string { return `group:${groupId}:${userId}`; }
   private admit(group: CommunityGroupRecord, accountId: string): void {
     const id = this.profileId(group.id, accountId);
-    if (!group.policy.workspace || this.users.queryUserById(id)) return;
+    if (!group.policy.workspace) return;
+    const existing = this.users.queryUserById(id);
+    if (existing) { this.users.upsertUser(existing); return; }
     const source = this.users.queryUserById(accountId); if (!source) throw new Error('Profile not found');
     const fields: UserRecord = {
       id, workspaceGroupId: group.id, accountUserId: accountId,

@@ -14,7 +14,7 @@ export const groupWorkspaceInterceptor: HttpInterceptorFn = (request, next) => {
   const community = request.params.get('ownerType') === 'community'
     || body?.ownerType === 'community' || body?.owner?.ownerType === 'community'
     || !!body?.owners?.length && body.owners.every(owner => owner.ownerType === 'community');
-  const accountRoute = path === '/auth/me/partner-invite/claim' || /^\/(groups|notifications|i18n|admin|operator)(\/|$)/.test(path)
+  const accountRoute = ['/auth/me/partner-invite/claim', '/auth/me/logout', '/auth/me/delete', '/auth/me/feedback'].includes(path) || /^\/(groups|notifications|i18n|admin|operator|privacy|help|terms|explanations)(\/|$)/.test(path)
     || path.startsWith('/auth/') && !path.startsWith('/auth/me');
   return next(community || accountRoute ? request : request.clone({ setHeaders: { 'X-MyScoutee-Group-Id': groupId } }));
 };

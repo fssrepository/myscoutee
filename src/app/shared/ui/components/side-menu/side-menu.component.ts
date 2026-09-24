@@ -664,6 +664,10 @@ export class SideMenuComponent implements OnDestroy {
     });
     return items;
   });
+  private readonly accountLocationMissing = computed(() => {
+    const user = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()));
+    return !!user && !this.isPrivilegedWorkspaceMode() && (!Number.isFinite(user.locationCoordinates?.latitude) || !Number.isFinite(user.locationCoordinates?.longitude));
+  });
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
@@ -672,16 +676,16 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
-        disabled: this.notificationCenterStore.permissionActionPending() || this.userProfileStore.activeUserLocationMissing(),
+        disabled: this.notificationCenterStore.permissionActionPending() || this.accountLocationMissing(),
         progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
-        icon: this.connectionOffline() ? 'cloud_off' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
-        palette: this.connectionOffline() ? 'offline' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        icon: this.connectionOffline() ? 'cloud_off' : this.accountLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: this.connectionOffline() ? 'offline' : this.accountLocationMissing() || notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        ) + (this.connectionOffline() ? ' — Offline' : this.userProfileStore.activeUserLocationMissing()
+        ) + (this.connectionOffline() ? ' — Offline' : this.accountLocationMissing()
           ? ' — ' + this.i18n.translate('game.location.required.title') : '')
       });
     }
@@ -1195,7 +1199,7 @@ export class SideMenuComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.userProfileStore.activeUserId().trim();
+      const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
         && (Boolean(session) || this.isAdminWorkspaceRoute());
@@ -2067,7 +2071,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private isActivePrivacyConsentRequired(): boolean {
     const requiredKey = this.profileStore.privacyConsentRequiredKey();
-    const activeUserId = this.userProfileStore.activeUserId().trim();
+    const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
     const revision = this.privacyPolicy.activeRevision();
     if (!requiredKey || !activeUserId || !revision) {
       return false;
@@ -2129,7 +2133,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openDeleteAccountConfirm(): void {
-    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
+    const activeUserName = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()))?.name?.trim() || 'this account';
     this.dialogStore.open({
       title: 'Delete account?',
       message: activeUserName,
@@ -2152,7 +2156,7 @@ export class SideMenuComponent implements OnDestroy {
           await this.sessionService.logout().finally(() => this.router.navigate(['/']));
           return;
         }
-        const activeUserId = this.userProfileStore.activeUserId().trim();
+        const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
           if (!result.submitted) {
@@ -2174,7 +2178,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openLogoutConfirm(): void {
-    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
+    const activeUserName = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()))?.name?.trim() || '';
     this.dialogStore.open({
       title: 'logout.question',
       message: activeUserName,
@@ -2187,7 +2191,7 @@ export class SideMenuComponent implements OnDestroy {
         this.profileStore.closeProfileEditor();
         this.closeImpressionsPopup();
         this.profileStore.closeContactsPopup();
-        const activeUserId = this.userProfileStore.activeUserId().trim();
+        const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);

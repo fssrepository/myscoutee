@@ -74,7 +74,7 @@ export function navigatorContentMenuModel(id: 'feed' | 'followed' | 'groups', co
     layout: 'row', density: 'compact', nodes: [{ id, items: [{
       id, label: id === 'feed' ? 'feed.title' : id === 'groups' ? 'groups.title' : 'event.following',
       icon: id === 'feed' ? 'photo_library' : id === 'groups' ? 'groups' : 'rss_feed', layout: 'pill',
-      palette: id === 'feed' ? 'orange' : id === 'groups' ? 'violet' : 'cyan', surface: 'tinted', counterTone: 'alert',
+      palette: id === 'feed' ? 'orange' : id === 'groups' ? 'lime' : 'cyan', surface: 'tinted', counterTone: 'alert',
       counter: count > 0 ? { value: count, max: 99 } : null
     }] }]
   };
