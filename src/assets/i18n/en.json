@@ -1,7 +1,8 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.167",
+  "version": "2026.09.24.en.169",
   "messages": {
+    "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",
     "allow.location": "Allow location",
@@ -2263,10 +2264,10 @@
     "event.tournament.registration.closed.message": "Tournament registration closed when the first stage started.",
     "event.editor.create": "Create Event",
     "event.editor.save.aria": "Save event",
-    "event.editor.publish.question": "Publish event?",
+    "event.editor.publish.question": "Do you want to publish this event?",
     "event.editor.publish.warning": "The last saved draft will be published and its details will remain locked until the event is unpublished.",
     "event.editor.publish.failure": "Unable to publish event.",
-    "event.editor.unpublish.question": "Unpublish event?",
+    "event.editor.unpublish.question": "Do you want to unpublish this event?",
     "event.editor.unpublish.warning": "Unpublishing hides the event and unlocks its details for editing.",
     "event.editor.unpublish.failure": "Unable to unpublish event.",
     "event.editor.image.aria": "Event image",

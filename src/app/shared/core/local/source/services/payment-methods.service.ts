@@ -1,3 +1,4 @@
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
@@ -21,6 +22,7 @@ import { SEED_PAYMENT_EXCHANGE_RATES } from '../../seed/payment-exchange-rates';
 @Injectable({ providedIn: 'root' })
 export class LocalPaymentMethodsService extends LocalRouteDelayService implements PaymentMethodDataService {
   private static readonly ROUTE = '/payment-methods';
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly artworkRepository = inject(LocalPaymentCardArtworkRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly deletedPaymentMethodIds = new Set<string>();
@@ -35,7 +37,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   private summary(userId: string, items: PaymentHistoryItemDto[]): import('../../../contracts/payment-method.interface').PaymentEuroSummaryDto {
     return LocalPaymentSummaryMapper.build(userId, items
-      .filter(item => item.status === 'captured' || item.status === 'approved')
+      .filter(item => item.status === 'captured' || item.status === 'approved' || item.status === 'refunded')
       .map(item => ({ currency: item.currency,
         outgoing: item.direction === 'expense' ? item.amount : 0,
         incoming: item.direction === 'income' ? item.amount : 0 })));
@@ -152,6 +154,22 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   async approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
+    const wasPending = this.affiliateRepository.paymentHistory(userId).some(item => item.id === paymentId && item.refundRequestStatus === 'pending');
+    const payerId = this.affiliateRepository.approveChangedTermsRefund(userId, paymentId);
+    if (payerId) {
+      if (wasPending) this.notificationsRepository.append([{
+        id: `payment-refund-approved:${paymentId}`, recipientUserId: payerId, kind: 'payment-refund-approved',
+        category: 'event' as const, title: 'Refund approved', message: 'Your refund request was approved.',
+        createdAtIso: new Date().toISOString(), readAtIso: null, senderUserId: userId,
+        sourceType: 'payment', sourceId: paymentId, actionPath: '/game',
+        payload: { paymentId, notification_title_key: 'notification.kind.payment-refund-approved.title',
+          notification_message_key: 'notification.kind.payment-refund-approved.message' }
+      }]);
+      await this.affiliateRepository.flushToIndexedDb();
+      const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
+      if (!recorded) throw new Error('Refund history was not recorded.');
+      return this.localMutation(userId, recorded);
+    }
     const item = this.seedIncomeHistory(userId).find(candidate => candidate.id === paymentId);
     if (!item || this.refundRequestStatusByPaymentId.get(paymentId) !== 'pending') {
       throw new Error('There is no pending refund request for this payment.');
@@ -264,7 +282,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     direction: PaymentHistoryItemDto['direction']
   ): Record<string, number> {
     return items.reduce<Record<string, number>>((totals, item) => {
-      if (item.direction !== direction || (item.status !== 'captured' && item.status !== 'approved')) return totals;
+      if (item.direction !== direction || (item.status !== 'captured' && item.status !== 'approved' && item.status !== 'refunded')) return totals;
       const currency = item.currency.trim().toUpperCase() || 'USD';
       totals[currency] = Math.round(((totals[currency] ?? 0) + (Number(item.amount) || 0)) * 100) / 100;
       return totals;
@@ -290,6 +308,9 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     const income = this.seedIncomeHistory(userId).map(candidate =>
       candidate.id === item.id ? item : this.withRefundState(candidate)
     );
+    const recorded = this.affiliateRepository.paymentHistory(userId);
+    expenses.push(...recorded.filter(row => row.direction === 'expense'));
+    income.push(...recorded.filter(row => row.direction === 'income'));
     return {
       item,
       euroSummary: this.summary(userId, [...expenses, ...income]),

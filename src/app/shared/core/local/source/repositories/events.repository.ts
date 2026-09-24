@@ -1219,6 +1219,7 @@ export class LocalEventsRepository {
 
   publishItem(userId: string, sourceId: string): void {
     this.updateItemState(userId, sourceId, {
+      cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false,
       status: 'A'
     });
   }

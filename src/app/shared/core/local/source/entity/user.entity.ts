@@ -98,7 +98,7 @@ export interface UserRecord {
   affiliateRegistrations?: { userId: string; registeredAtIso: string }[];
   affiliateReferrerUserId?: string;
   affiliateRevenue?: import('../../../contracts/integration.interface').AffiliateRevenueDto;
-  affiliatePayments?: Record<string, { ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean; sourceId?: string; recipientUserId?: string; createdAtIso?: string; eventRefundEligible?: boolean; refundOperations?: { id: string; amount: number; createdAtIso: string }[] }>;
+  affiliatePayments?: Record<string, { ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean; sourceId?: string; recipientUserId?: string; createdAtIso?: string; eventRefundEligible?: boolean; refundRequest?: { id: string; amount: number; target: number; status: 'pending' | 'approved'; requestedAtIso: string }; refundOperations?: { id: string; amount: number; createdAtIso: string }[] }>;
   devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;

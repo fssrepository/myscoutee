@@ -739,6 +739,7 @@ export class ActivitiesEventsController {
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
       activity: dto?.activity ?? row.menuBadgeCount ?? 0,
       cancelled: dto?.cancelled,
+      cancellationRefundsPending: dto?.cancellationRefundsPending,
       canCancelForFullRefund: dto?.canCancelForFullRefund,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? null
@@ -1160,7 +1161,7 @@ export class ActivitiesEventsController {
   public runActivityItemPublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Publish event?',
+      title: 'event.editor.publish.question',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Publish',
@@ -1175,7 +1176,7 @@ export class ActivitiesEventsController {
   public runActivityItemUnpublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Unpublish event?',
+      title: 'event.editor.unpublish.question',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Unpublish',
@@ -1250,6 +1251,8 @@ export class ActivitiesEventsController {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
       this.patchVisiblePublicationState(row, 'A');
+      const dto = this.activityEventDTOForRow(row);
+      if (dto) this.activitiesStore.emitActivityEventSync({ ...dto, cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false });
     }
 
     this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);

@@ -28,6 +28,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   sourceLink?: string | null;
   organizerFollowed?: boolean;
   cancelled?: boolean;
+  cancellationRefundsPending?: boolean;
   canCancelForFullRefund?: boolean;
 };
 
@@ -157,7 +158,7 @@ export class ActivityEventInfoCardMenuConverter {
         || actionId === 'view'
         || actionId === 'askOrganizer';
     }
-    if (subject.cancelled === true && ['publish', 'accept', 'continueBooking'].includes(actionId)) return false;
+    if (subject.cancelled === true && ['accept', 'continueBooking'].includes(actionId)) return false;
     switch (actionId) {
       case 'restore':
         return false;
@@ -167,6 +168,7 @@ export class ActivityEventInfoCardMenuConverter {
         return this.statusCode(subject.status) === 'UR'
           && this.isAdmin(subject, activeUserId);
       case 'publish':
+        if (subject.cancelled && subject.cancellationRefundsPending) return false;
         return this.isAdmin(subject, activeUserId)
           && this.isDraft(subject)
           && !this.isPendingReview(subject);

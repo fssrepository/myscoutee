@@ -66,7 +66,7 @@ export class LocalIntegrationRepository {
     const grossMinor = Math.max(0, Math.round(amount * 100));
     const refundMinor = Math.max(0, Math.min(grossMinor, Math.round(refunded * 100)));
     this.memoryDb.write(state => {
-      const table = state[USERS_TABLE_NAME];
+      const table = { ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId } };
       const payer = table.byId[userId];
       const previous = payer?.affiliatePayments?.[paymentId];
       const ownerId = previous?.ownerId ?? payer?.affiliateReferrerUserId;
@@ -79,12 +79,22 @@ export class LocalIntegrationRepository {
         recipientUserId: recipientUserId ?? previous?.recipientUserId,
         createdAtIso: previous?.createdAtIso ?? new Date().toISOString(),
         eventRefundEligible: refundMinor >= grossMinor ? false : previous?.eventRefundEligible,
+        refundRequest: previous?.refundRequest && refundMinor >= Math.round(previous.refundRequest.target * 100)
+          ? { ...previous.refundRequest, status: 'approved' as const } : previous?.refundRequest,
         refundOperations: refundDelta > 0 ? [...(previous?.refundOperations ?? []), {
           id: `refund:${paymentId}:${refundMinor}`, amount: Math.round(refundDelta * 100) / 100,
           createdAtIso: new Date().toISOString()
         }] : previous?.refundOperations
       };
       const nextPayer = { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: nextPayment } };
+      if (previous?.refundRequest?.status === 'pending' && nextPayment.refundRequest?.status === 'approved') {
+        const recipient = table.byId[nextPayment.recipientUserId ?? ''];
+        if (recipient) {
+          // Include this update in the same local transaction as the financial projection.
+          table.byId = { ...table.byId, [recipient.id]: { ...recipient, activities: { ...recipient.activities,
+            paymentRefundsPending: Math.max(0, (recipient.activities.paymentRefundsPending ?? 0) - 1) } } };
+        }
+      }
       if (!owner || owner.id === userId) return { ...state, [USERS_TABLE_NAME]: {
         ...table, byId: { ...table.byId, [userId]: nextPayer }
       } };
@@ -94,7 +104,7 @@ export class LocalIntegrationRepository {
       const refunds = (Math.round(totals.refunded * 100) + refundMinor - Math.round((previous?.refunded ?? 0) * 100)) / 100;
       return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
         [userId]: nextPayer,
-        [owner.id]: { ...owner, affiliateRevenue: {
+        [owner.id]: { ...table.byId[owner.id], affiliateRevenue: {
           currencies: { ...revenue.currencies, [currency]: { gross, refunded: refunds, net: Math.round((gross - refunds) * 100) / 100 } },
           purchases: revenue.purchases + Number(grossMinor > 0) - Number((previous?.gross ?? 0) > 0),
           eventBookings: revenue.eventBookings + Number(grossMinor > 0 && eventBooking) - Number((previous?.gross ?? 0) > 0 && previous?.eventBooking)
@@ -115,7 +125,12 @@ export class LocalIntegrationRepository {
           createdAtIso: payment.createdAtIso ?? '' },
         ...(payment.refundOperations ?? []).map(refund => ({ ...base, id: refund.id,
           direction: direction === 'expense' ? 'income' as const : 'expense' as const,
-          amount: refund.amount, status: 'refunded', auditKind: 'refund', createdAtIso: refund.createdAtIso }))];
+          amount: refund.amount, status: 'refunded', auditKind: 'refund', refundRequestStatus: 'approved' as const, createdAtIso: refund.createdAtIso })),
+        ...(payment.refundRequest?.status === 'pending' ? [{ ...base, id: payment.refundRequest.id,
+          direction: direction === 'expense' ? 'income' as const : 'expense' as const,
+          amount: payment.refundRequest.amount, status: 'refund_requested', auditKind: 'refund',
+          refundRequestStatus: 'pending' as const, canApproveRefund: payment.recipientUserId === userId,
+          createdAtIso: payment.refundRequest.requestedAtIso }] : [])];
     }));
   }
 
@@ -147,7 +162,43 @@ export class LocalIntegrationRepository {
         .filter(([, payment]) => payment.sourceId === sourceId && (!userId || adminRemoval || payment.eventRefundEligible))
         .map(([paymentId]) => paymentId));
     if (userId && !adminRemoval && affected.length === 0) throw new Error('No changed-terms cancellation is available.');
-    for (const paymentId of affected) this.refundPayment(paymentId);
+    for (const paymentId of affected) {
+      if (userId && !adminRemoval) this.requestChangedTermsRefund(userId, paymentId);
+      else this.refundPayment(paymentId);
+    }
+  }
+
+  private requestChangedTermsRefund(userId: string, paymentId: string): void {
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const payer = table.byId[userId];
+      const payment = payer?.affiliatePayments?.[paymentId];
+      if (!payment?.eventRefundEligible || payment.refunded >= payment.gross) throw new Error('No changed-terms cancellation is available.');
+      if (payment.refundRequest?.status === 'pending') return state;
+      const recipient = table.byId[payment.recipientUserId ?? ''];
+      if (!recipient || recipient.id === userId) throw new Error('This payment has no separate recipient.');
+      const refundRequest = { id: `refund:${paymentId}:${Math.round(payment.gross * 100)}`,
+        amount: Math.round((payment.gross - payment.refunded) * 100) / 100, target: payment.gross,
+        status: 'pending' as const, requestedAtIso: new Date().toISOString() };
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+        [userId]: { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: { ...payment, refundRequest } } },
+        [recipient.id]: { ...recipient, activities: { ...recipient.activities,
+          paymentRefundsPending: (recipient.activities.paymentRefundsPending ?? 0) + 1 } }
+      } } };
+    });
+  }
+
+  approveChangedTermsRefund(userId: string, refundId: string): string | null {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    for (const payerId of users.ids) {
+      for (const [paymentId, payment] of Object.entries(users.byId[payerId].affiliatePayments ?? {})) {
+        if (payment.refundRequest?.id !== refundId) continue;
+        if (payment.recipientUserId !== userId) throw new Error('Only the recipient can approve this refund.');
+        if (payment.refundRequest.status === 'pending') this.refundPayment(paymentId);
+        return payerId;
+      }
+    }
+    return null;
   }
 
   refundPayment(paymentId: string): void {

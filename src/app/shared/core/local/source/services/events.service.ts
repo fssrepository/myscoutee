@@ -990,7 +990,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!record) return null;
     const organizer = record.creatorUserId === userId || (record.adminIds ?? []).includes(userId);
     if (!organizer && !record.canCancelForFullRefund) throw new Error('No changed-terms cancellation is available.');
+    const previousRequests = new Set(this.affiliateRepository.paymentHistory(userId)
+      .filter(item => item.refundRequestStatus === 'pending').map(item => item.id));
     this.affiliateRepository.cancelEventPayments(sourceId, organizer ? undefined : userId);
+    if (!organizer) {
+      const requested = this.affiliateRepository.paymentHistory(userId).filter(item => item.sourceId === sourceId
+        && item.refundRequestStatus === 'pending' && !previousRequests.has(item.id));
+      this.notificationsRepository.append(requested.map(item => ({
+        id: `payment-refund-requested:${item.id}`, recipientUserId: item.recipientUserId!,
+        kind: 'payment-refund-requested', category: 'event' as const, title: 'Refund requested',
+        message: 'A participant requested a refund.', createdAtIso: item.createdAtIso, readAtIso: null,
+        senderUserId: userId, sourceType: 'payment', sourceId: item.id, actionPath: '/game',
+        payload: { paymentId: item.id, notification_title_key: 'notification.kind.payment-refund-requested.title',
+          notification_message_key: 'notification.kind.payment-refund-requested.message' }
+      })));
+    }
     if (organizer) {
       this.eventsRepository.cancelItem(userId, sourceId);
       this.assetTicketsRepository.synchronizeForEvent(sourceId);
@@ -1031,7 +1045,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     const beforeCounters = this.localEventCounterSnapshot(userId);
     const beforeRecord = this.eventsRepository.peekKnownItemById(userId, sourceId);
-    if (beforeRecord?.cancelled) throw new Error('event.cancelled');
+    if (beforeRecord?.cancelled) {
+      if (this.localEventStatus(beforeRecord) !== 'DR' || beforeRecord.cancellationRefundsPending) throw new Error('event.cancelled');
+      const previousMembers = this.activityMembersRepository.peekRecordsByOwner({ ownerType: 'event', ownerId: sourceId });
+      for (const member of previousMembers) {
+        if (member.role !== 'Admin') {
+          this.eventsRepository.leaveEvent(member.userId, sourceId, { removeMembershipOnly: true });
+          await this.eventCheckoutBasketsRepository.updateBasketState({ userId: member.userId, sourceId,
+            checkoutState: 'draft', resultState: 'deleted' });
+        }
+      }
+    }
     this.eventsRepository.publishItem(userId, sourceId);
     const published = this.eventsRepository.peekKnownItemById(userId, sourceId);
     if (published) {
