@@ -76,19 +76,21 @@ export class CommunityGroupsStore {
   async action(action: string, group: CommunityGroup): Promise<void> {
     if (action === 'view' || action === 'edit') { this.editor.set({ group, readOnly: action === 'view' }); return; }
     if (action === 'members') { this.members(group); return; }
-    const item = CommunityGroupConverter.menu(group).find(item => item.id === action);
+    const item = CommunityGroupConverter.menu(group, this.openUserId()).find(item => item.id === action);
     if (!item) return;
     this.dialogs.open({ title: String(item.label),
       message: this.i18n.translateParams(`groups.confirm.${action}`, { name: group.name }),
       cancelLabel: 'Cancel', confirmLabel: String(item.label), confirmPalette: item.palette,
-      failureMessage: 'groups.error', onConfirm: () => this.commitAction(action, group) });
+      failureMessage: 'groups.error',
+      input: action === 'report' ? { label: 'groups.report.details', maxLength: 2000 } : null,
+      onConfirm: details => action === 'report' ? this.service.report(this.openUserId() ?? '', group.id, details) : this.commitAction(action, group) });
   }
   private async commitAction(action: string, group: CommunityGroup): Promise<void> {
     if (this.busy()) return; this.busy.set(true); this.error.set('');
     const userId = this.openUserId() ?? '';
     try {
       if (action === 'join') this.changes.publish(userId, await this.service.join(userId, group.id));
-      else if (action === 'accept' || action === 'set-participant' || action === 'set-organizer-only') {
+      else if (action === 'accept') {
         await this.membersService.applyMemberAction({ ownerType: 'community', ownerId: group.id }, userId, action);
         void this.workspaces.refresh();
       }

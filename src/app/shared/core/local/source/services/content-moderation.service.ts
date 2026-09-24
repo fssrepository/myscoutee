@@ -7,6 +7,7 @@ import { LocalAssetsService } from './assets.service';
 import { LocalEventsService } from './events.service';
 import { LocalPhotoFeedRepository } from '../repositories/photo-feed.repository';
 import { LocalPhotoFeedMapper } from '../mappers/photo-feed.mapper';
+import { LocalCommunityGroupsService } from './community-groups.service';
 import { LocalAdminModerationService } from './admin-moderation.service';
 import { LocalRouteDelayService } from './route-delay.service';
 @Injectable({ providedIn: 'root' })
@@ -15,6 +16,7 @@ export class LocalContentModerationService extends LocalRouteDelayService {
   private readonly assets = inject(LocalAssetsService);
   private readonly events = inject(LocalEventsService);
   private readonly feed = inject(LocalPhotoFeedRepository);
+  private readonly groups = inject(LocalCommunityGroupsService);
   private readonly support = inject(LocalAdminModerationService);
   private async prepare() { await this.repository.whenReady(); await this.deliverMessages(); await this.waitForRouteDelay('/admin/content-moderation'); }
   async snapshot(_adminUserId: string) { await this.prepare(); return this.repository.snapshot(); }
@@ -43,6 +45,7 @@ export class LocalContentModerationService extends LocalRouteDelayService {
     if (!item) throw new Error('moderation.changed');
     let detail: unknown;
     if (item.category === 'asset') detail = await this.assets.loadOwnedAssetDetailById(item.ownerUserId, item.sourceId);
+    else if (item.category === 'group') detail = await this.groups.detail(item.ownerUserId, item.sourceId);
     else if (item.category === 'event') detail = await this.events.loadEventDetailById(item.ownerUserId, item.sourceId);
     else { const record = this.feed.find(item.sourceId); detail = record ? LocalPhotoFeedMapper.toDto(record, record.locationCoordinates) : null; }
     if (!detail) throw new Error('moderation.changed'); return detail as T;

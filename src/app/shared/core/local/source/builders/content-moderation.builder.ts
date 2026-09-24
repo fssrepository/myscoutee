@@ -5,6 +5,7 @@ import { ASSETS_TABLE_NAME } from '../entity/asset.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { PHOTO_FEED_TABLE_NAME } from '../entity/photo-feed.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
+import { COMMUNITY_GROUPS_TABLE_NAME } from '../entity/community-group.entity';
 import { MODERATION_STATUSES } from '../../../contracts/content-moderation.interface';
 
 export function changeModerationItem(table: ContentModerationTable, item: ContentModerationItem): ContentModerationTable {
@@ -22,7 +23,7 @@ export function changeModerationItem(table: ContentModerationTable, item: Conten
 export function maintainContentModeration(previous: AppMemorySchema, next: AppMemorySchema): AppMemorySchema {
   let moderation = next[CONTENT_MODERATION_TABLE_NAME];
   const decisionChanged = previous[CONTENT_MODERATION_TABLE_NAME] !== moderation;
-  const mappings = [[ASSETS_TABLE_NAME, 'asset'], [EVENTS_TABLE_NAME, 'event'], [PHOTO_FEED_TABLE_NAME, 'feed']] as const;
+  const mappings = [[ASSETS_TABLE_NAME, 'asset'], [EVENTS_TABLE_NAME, 'event'], [PHOTO_FEED_TABLE_NAME, 'feed'], [COMMUNITY_GROUPS_TABLE_NAME, 'group']] as const;
   let result = next;
   for (const [tableKey, category] of mappings) {
     if (!decisionChanged && previous[tableKey] === next[tableKey]) continue;
@@ -42,14 +43,16 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
           ? 'accepted' : 'under-review';
         const images = value['imageUrls'] as string[] | undefined;
         item = { id, category, sourceId, ownerUserId: String(value['creatorUserId'] ?? value['ownerUserId'] ?? value['userId'] ?? ''),
-          title: String(value['title'] ?? value['creatorName'] ?? ''), imageUrl: String(value['imageUrl'] ?? images?.[0] ?? ''),
+          title: String(value['title'] ?? value['name'] ?? value['creatorName'] ?? ''), imageUrl: String(value['imageUrl'] ?? images?.[0] ?? ''),
           submittedAtIso: new Date().toISOString(), status, version: 1, commandId: `submit:${id}`, reviewedBy: '', reviewedAtIso: '' };
         moderation = changeModerationItem(moderation, item);
       }
       if (!item) continue;
+      if (category === 'group' && value['moderationStatus'] === item.status) continue;
       const patch: Record<string, unknown> = { ...value, moderationStatus: item.status };
+      if (category === 'group') patch['version'] = Number(value['version'] ?? 0) + 1;
       if (category === 'feed') patch['deleted'] = !!item.deleted;
-      if (category !== 'feed') {
+      if (category !== 'feed' && category !== 'group') {
         if (item.status === 'accepted') {
           if (value['moderationPreviousStatus']) {
             if (value['status'] === 'B') patch['status'] = value['moderationPreviousStatus'];

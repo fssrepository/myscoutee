@@ -17,7 +17,6 @@ import { CommunityGroupEditorComponent } from './community-group-editor.componen
         (menuItemSelect)="select($event)"></app-smart-list>
       <ng-template #cardTemplate let-card let-openMenu="openMenu">
         <app-info-card [card]="card" [useSharedMenu]="true" (menuRequest)="openMenu($event)"
-          (cardClick)="store.action('view', card.eagerDetail)"
           (mediaStartClick)="profiles.openProfileView({userId: card.ownerUserId})"
           (mediaEndClick)="store.members(card.eagerDetail)"></app-info-card>
       </ng-template>
@@ -49,7 +48,7 @@ export class CommunityGroupsPopupComponent {
         tailId: snapshot.loadedTail?.id ?? null
       }, context?.signal)).pipe(map(delta => ({ ...delta, upserts: delta.upserts.map(group => CommunityGroupConverter.card(group, key => this.i18n.translate(key))) })))
     },
-    menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(context.item.eagerDetail) : []
+    menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(context.item.eagerDetail, this.store.openUserId()) : []
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityGroup>, GroupFilters> = (query, context) =>
     defer(() => this.store.page(query, context?.signal)).pipe(map(page => ({ ...page,
@@ -61,7 +60,8 @@ export class CommunityGroupsPopupComponent {
       const { bucket, category } = this.query.filters;
       const admin = group.role === 'Admin' && group.membershipStatus === 'accepted';
       const matches = (!category || category === group.category) && (bucket === 'hosting' ? admin
-        : bucket === 'participation' ? !admin && !!group.membershipStatus : group.visibility !== 'invitation' || !!group.membershipStatus);
+        : bucket === 'participation' ? !admin && !!group.membershipStatus
+        : (!group.moderationStatus || group.moderationStatus === 'accepted' || admin) && (group.visibility !== 'invitation' || !!group.membershipStatus));
       if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
       else if (!this.list?.patchVisibleItem(item => item.id === group.id, () => card)) {
         this.list?.reinsertVisibleItem(card, { loadedRange: 'before-or-within' });

@@ -34,4 +34,7 @@ export class HttpCommunityGroupsService implements ICommunityGroupsService {
   join(userId: string, groupId: string): Promise<CommunityGroup> {
     return firstValueFrom(this.http.post<CommunityGroup>(`${this.url}/join`, { userId, groupId }));
   }
+  report(userId: string, groupId: string, details: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(`${this.url}/report`, { userId, groupId, details }));
+  }
 }

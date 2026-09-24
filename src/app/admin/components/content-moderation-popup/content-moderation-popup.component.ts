@@ -18,15 +18,19 @@ import type { AssetDetailDTO } from '../../../shared/core/contracts/asset.interf
 import type { PhotoFeedPost } from '../../../shared/core/contracts/photo-feed.interface';
 import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import { MODERATION_STATUS_STYLE as STATUS_STYLE } from '../../../shared/ui/converters/content-moderation-presentation';
+import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
+import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community-groups.store';
+import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
 
-const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed'];
+const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed', 'group'];
 const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: AppMenuPalette }> = {
   all: { icon: 'apps', palette: 'slate' },
+  group: { icon: 'groups', palette: 'lime' },
   asset: { icon: 'inventory_2', palette: 'green' }, event: { icon: 'event', palette: 'blue' }, feed: { icon: 'photo_library', palette: 'orange' }
 };
 @Component({
   selector: 'app-content-moderation-popup', standalone: true,
-  imports: [FormsModule, PopupComponent, AppMenuComponent, SmartListComponent, SingleRowComponent, I18nPipe],
+  imports: [FormsModule, PopupComponent, AppMenuComponent, SmartListComponent, SingleRowComponent, I18nPipe, CommunityGroupEditorComponent],
   templateUrl: './content-moderation-popup.component.html', styleUrl: './content-moderation-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -41,6 +45,7 @@ export class ContentModerationPopupComponent {
   private readonly eventEditor = inject(EventEditorPopupStore);
   private readonly assetEditor = inject(AssetStore);
   private readonly assetPopup = inject(AssetPopupStore);
+  protected readonly groups = inject(CommunityGroupsStore);
   @ViewChild(SmartListComponent) private list?: SmartListComponent<ContentModerationItem>;
   protected category: ModerationCategoryFilter = 'all';
   protected status: ModerationStatus = 'under-review';
@@ -133,7 +138,8 @@ export class ContentModerationPopupComponent {
         const post = await this.service.detail<PhotoFeedPost>(this.admin?.id ?? '', item.id);
         this.gallery.open({ images: post.imageUrls, imageDetails: post.imageDetails, slotCount: 5, readOnly: true,
           title: item.title, uploadOwnerId: post.creatorUserId, uploadEntityId: post.id });
-      } else if (item.category === 'event') this.eventEditor.openView(await this.service.detail<ActivityEventDetailDTO>(this.admin?.id ?? '', item.id));
+      } else if (item.category === 'group') this.groups.editor.set({ group: await this.service.detail<CommunityGroup>(this.admin?.id ?? '', item.id), readOnly: true });
+      else if (item.category === 'event') this.eventEditor.openView(await this.service.detail<ActivityEventDetailDTO>(this.admin?.id ?? '', item.id));
       else {
         const asset = await this.service.detail<AssetDetailDTO>(this.admin?.id ?? '', item.id);
         this.assetEditor.openAssetEditorEdit({ cardId: asset.id, form: AssetCardBuilder.buildAssetFormFromCard(asset),

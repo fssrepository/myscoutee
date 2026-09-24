@@ -6,6 +6,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
@@ -18,6 +19,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private readonly groups = inject(LocalCommunityGroupsRepository);
   private readonly members = inject(LocalActivityMembersRepository);
   private readonly users = inject(LocalUsersRepository);
+  private readonly reports = inject(LocalAdminModerationRepository);
   async sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse> {
     await this.groups.ready();
     const page = await this.page(userId, { page: 0, pageSize: Math.max(1, this.groups.records().length), filters: request, sort: 'distance', direction: 'asc' }, signal);
@@ -85,7 +87,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       const admin = this.admin(own);
       if (bucket === 'hosting') return admin;
       if (bucket === 'participation') return !admin && !!own && ['accepted', 'pending'].includes(own.status);
-      return g.visibility !== 'invitation' || !!own && ['accepted', 'pending'].includes(own.status);
+      return (!g.moderationStatus || g.moderationStatus === 'accepted' || admin)
+        && (g.visibility !== 'invitation' || !!own && ['accepted', 'pending'].includes(own.status));
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
       .map(g => this.dto(userId, g)).sort((a, b) =>
         Math.ceil((a.distanceKm ?? Infinity) / 5) - Math.ceil((b.distanceKm ?? Infinity) / 5)
@@ -113,15 +116,29 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       name: request.name.trim(), description: request.description.trim(), imageUrl: request.imageUrl,
       category: request.category, visibility: request.visibility, hideMembers: request.hideMembers,
       policy: structuredClone(request.policy), createdAtIso: existing?.createdAtIso ?? now, updatedAtIso: now,
-      version: (existing?.version ?? -1) + 1
+      version: (existing?.version ?? -1) + 1, moderationStatus: existing?.moderationStatus
     };
     this.groups.save(group);
     if (!existing) this.writeMembers(group.id, [this.newMember(group, request.userId, 'Admin', 'accepted', null, request.userId)]);
     this.records(group.id).filter(m => m.status === 'accepted').forEach(m => this.admit(group, m.userId));
-    return this.dto(request.userId, group);
+    return this.dto(request.userId, this.groups.find(group.id)!);
+  }
+  async report(userId: string, groupId: string, details: string): Promise<void> {
+    await this.groups.ready();
+    const group = this.visible(userId, groupId); const reporter = this.users.queryUserById(userId);
+    details = details.trim();
+    if (!reporter || group.ownerUserId === userId) throw new Error('Forbidden');
+    if (details.length < 12 || details.length > 2000) throw new Error('groups.report.details');
+    await this.reports.insertReportIfAbsent({
+      id: `community-report:${[userId, groupId, details].map(encodeURIComponent).join(':')}`,
+      reporterUserId: userId, reporterName: reporter.name, reporterImageUrl: reporter.images?.[0] ?? null,
+      targetUserId: group.ownerUserId, handle: group.name, reason: 'groups.report', details,
+      sourceType: 'community', sourceId: groupId, sourceText: group.name, createdDate: new Date().toISOString()
+    });
   }
   async join(userId: string, groupId: string): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups'); const group = this.visible(userId, groupId);
+    if (group.moderationStatus && group.moderationStatus !== 'accepted') throw new Error('Forbidden');
     const own = this.member(groupId, userId);
     if (own && ['accepted', 'pending'].includes(own.status)) return this.dto(userId, group);
     if (group.visibility === 'invitation') throw new Error('Forbidden');
@@ -177,6 +194,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private visible(userId: string, id: string): CommunityGroupRecord {
     const group = this.groups.find(id); const own = this.member(id, userId);
     if (!group || group.visibility === 'invitation' && (!own || !['accepted', 'pending'].includes(own.status))) throw new Error('Group not found');
+    if (group.moderationStatus && group.moderationStatus !== 'accepted' && !own) throw new Error('Group not found');
     return group;
   }
   private records(id: string): ActivityMemberRecord[] {

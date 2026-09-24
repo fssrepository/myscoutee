@@ -16,4 +16,5 @@ export class CommunityGroupsService extends BaseRouteModeService implements ICom
   detail(userId: string, id: string) { return this.adapter.detail(userId, id); }
   save(request: SaveCommunityGroup) { return this.adapter.save(request); }
   join(userId: string, groupId: string) { return this.adapter.join(userId, groupId); }
+  report(userId: string, groupId: string, details: string) { return this.adapter.report(userId, groupId, details); }
 }

@@ -6,6 +6,7 @@ export type GroupVisibility = 'public' | 'private' | 'invitation';
 export type GroupBucket = 'hosting' | 'participation' | 'explore';
 export interface GroupPolicy { workspace: boolean; enabled: boolean; requiredFields: string[]; }
 export interface CommunityGroup {
+  moderationStatus?: import('./content-moderation.interface').ModerationStatus | null;
   revision?: string;
   id: string; ownerUserId: string; ownerName: string; ownerAvatarUrl: string | null;
   name: string; description: string; imageUrl: string | null; category: GroupCategory;
@@ -35,4 +36,5 @@ export interface ICommunityGroupsService {
   detail(userId: string, id: string): Promise<CommunityGroup>;
   save(request: SaveCommunityGroup): Promise<CommunityGroup>;
   join(userId: string, groupId: string): Promise<CommunityGroup>;
+  report(userId: string, groupId: string, details: string): Promise<void>;
 }

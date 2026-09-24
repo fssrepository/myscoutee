@@ -34,13 +34,13 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
     }
   `],
   template: `
-    <app-popup [model]="popupModel()" [zIndex]="1300">
+    <app-popup [model]="popupModel()" [zIndex]="zIndex">
       <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="store.busy()"
         [saving]="store.busy()" (action)="action($event)"></app-form-flow>
       @if (store.error()) { <p role="alert">{{ store.error() }}</p> }
     </app-popup>
     @if (policyDraft) {
-      <app-popup [model]="policyPopupModel()" [zIndex]="1340">
+      <app-popup [model]="policyPopupModel()" [zIndex]="zIndex + 40">
         <app-form-flow [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
       </app-popup>
     }
@@ -49,6 +49,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
 export class CommunityGroupEditorComponent implements OnChanges {
   @Input() group: CommunityGroup | null = null;
   @Input() readOnly = false;
+  @Input() zIndex = 1300;
   protected readonly store = inject(CommunityGroupsStore);
   private readonly i18n = inject(I18nService);
   protected form!: GroupForm;
