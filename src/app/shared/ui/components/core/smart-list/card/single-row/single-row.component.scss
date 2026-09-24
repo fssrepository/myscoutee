@@ -466,10 +466,33 @@
   right: 3rem;
 }
 
+.ui-single-row.notification-row .ui-single-row__main {
+  align-self: start;
+}
+
+.ui-single-row.notification-row .ui-single-row__headline {
+  min-height: 28px;
+}
+
+.ui-single-row.notification-row .ui-single-row__top-right {
+  top: 0.48rem;
+}
+
 .ui-single-row.notification-row .ui-single-row__subtitle {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
   overflow-wrap: anywhere;
   line-height: 1.4;
+}
+
+.ui-single-row.notification-row .ui-single-row__detail {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  min-height: 2.8em;
 }
