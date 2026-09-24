@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.25.en.181",
+  "version": "2026.09.25.en.182",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -1266,7 +1266,7 @@
     "landing.partners.header.label": "Independent operator network",
     "landing.partners.header.badge": "Planned model",
     "landing.partners.title": "For Partners",
-    "landing.partners.subtitle": "Four ways to participate. Every operator stays independent.",
+    "landing.partners.subtitle": "Six ways to participate. Every operator stays independent.",
     "landing.partners.aria": "For Partners role overview",
     "landing.partners.close.aria": "Close partner overview",
     "landing.partners.roles.aria": "Partner roles",
@@ -3807,6 +3807,9 @@
     "groups.report": "Report group",
     "groups.confirm.report": "Report the group “{name}”?",
     "groups.report.details": "Reason for reporting (at least 12 characters)",
-    "moderation.category.group": "Groups"
+    "moderation.category.group": "Groups",
+    "landing.partners.role.workplace.label": "Bring your team",
+    "landing.partners.role.workplace.title": "Private workplace community",
+    "landing.partners.role.workplace.description": "Bring colleagues together in your own invitation-only group. Shared activities, chats and feedback can support team building and workplace wellbeing."
   }
 }

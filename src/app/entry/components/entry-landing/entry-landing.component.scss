@@ -671,6 +671,11 @@
   --entry-partner-soft: #fff0f4;
 }
 
+.entry-partner-role[data-tone='teal'] {
+  --entry-partner-accent: #167887;
+  --entry-partner-soft: #eaf9fb;
+}
+
 .entry-partner-role-heading {
   display: flex;
   align-items: center;

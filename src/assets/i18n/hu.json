@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.25.hu.181",
+  "version": "2026.09.25.hu.182",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -1266,7 +1266,7 @@
     "landing.partners.header.label": "Független operátori hálózat",
     "landing.partners.header.badge": "Tervezett modell",
     "landing.partners.title": "Partnereknek",
-    "landing.partners.subtitle": "Négy részvételi forma. Minden operátor független marad.",
+    "landing.partners.subtitle": "Hat részvételi forma. Minden operátor független marad.",
     "landing.partners.aria": "Partneri szerepkörök áttekintése",
     "landing.partners.close.aria": "Partneri áttekintő bezárása",
     "landing.partners.roles.aria": "Partneri szerepkörök",
@@ -3807,6 +3807,9 @@
     "groups.report": "Csoport jelentése",
     "groups.confirm.report": "Jelented a(z) „{name}” csoportot?",
     "groups.report.details": "A jelentés indoka (legalább 12 karakter)",
-    "moderation.category.group": "Csoportok"
+    "moderation.category.group": "Csoportok",
+    "landing.partners.role.workplace.label": "Hozd a csapatod",
+    "landing.partners.role.workplace.title": "Zárt vállalati közösség",
+    "landing.partners.role.workplace.description": "Hozd össze munkatársaidat egy saját, meghívásos csoportban. Közös programok, csevegések és visszajelzések segíthetik a csapatépítést és a munkahelyi jóllétet."
   }
 }
