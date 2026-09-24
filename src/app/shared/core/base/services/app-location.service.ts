@@ -169,7 +169,7 @@ export class AppLocationService {
     const user = this.resolveTrackedUser(userId);
     if (!userId || !user || user.admin === true || user.profileStatus === 'onboarding'
       || !this.normalizeCoordinates(user.locationCoordinates)
-      || !this.isActiveFirebaseMemberSession(userId) || typeof navigator === 'undefined' || !navigator.permissions) {
+      || !this.isActiveMemberSession(userId) || typeof navigator === 'undefined' || !navigator.permissions) {
       return;
     }
     try {
@@ -177,7 +177,7 @@ export class AppLocationService {
       if (permission.state !== 'granted') return;
       const coordinates = await this.requestCurrentCoordinates();
       if (coordinates && this.userProfileStore.activeUserId().trim() === userId
-        && this.isActiveFirebaseMemberSession(userId)) {
+        && this.isActiveMemberSession(userId)) {
         this.primePersistedCoordinates(userId, user.locationCoordinates);
         this.handleStreamedCoordinates(userId, coordinates);
         this.ensureCoordinateWatch(userId);
@@ -218,7 +218,8 @@ export class AppLocationService {
     const userId = this.userProfileStore.activeUserId().trim();
     const user = this.resolveTrackedUser(userId);
     const normalized = this.normalizeCoordinates(coordinates);
-    if (!user || !normalized || !this.isActiveFirebaseMemberSession(userId)) return false;
+    if (!user || user.admin === true || !normalized || this.isLocalUserRouteEnabled()
+      || !this.isActiveMemberSession(userId)) return false;
     this.primePersistedCoordinates(userId, user.locationCoordinates);
     await this.persistCoordinates(userId, user, normalized);
     if (this.userProfileStore.activeUserId().trim() !== userId) return false;
@@ -292,10 +293,10 @@ export class AppLocationService {
 
     this.primePersistedCoordinates(userId, activeUser.locationCoordinates);
     this.storeCoordinates(userId, coordinates);
-    this.userProfileStore.setUserProfile({
-      ...activeUser,
-      locationCoordinates: coordinates
-    });
+    // HTTP profiles become visible only after the authoritative save succeeds.
+    if (this.isLocalUserRouteEnabled()) {
+      this.userProfileStore.setUserProfile({ ...activeUser, locationCoordinates: coordinates });
+    }
     this.queueLocationSyncForActiveUser(userId, activeUser, coordinates);
   }
 
@@ -408,7 +409,7 @@ export class AppLocationService {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
     if (
       this.isLocalUserRouteEnabled()
-      || !this.isActiveFirebaseMemberSession(userId)
+      || !this.isActiveMemberSession(userId)
       || !activeUser?.id?.trim()
       || activeUser.admin === true
       || !normalizedCoordinates
@@ -424,12 +425,13 @@ export class AppLocationService {
     void this.flushPendingLocationSync(userId, activeUser);
   }
 
-  private isActiveFirebaseMemberSession(userId: string): boolean {
+  private isActiveMemberSession(userId: string): boolean {
     const normalizedUserId = userId.trim();
     const session = this.sessionService.currentSession();
     return Boolean(
       normalizedUserId
-      && session?.kind === 'firebase'
+      && (session?.kind === 'firebase'
+        || (session?.kind === 'demo' && session.userId.trim() === normalizedUserId))
       && this.userProfileStore.activeUserId().trim() === normalizedUserId
     );
   }

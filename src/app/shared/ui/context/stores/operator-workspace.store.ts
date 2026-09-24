@@ -58,6 +58,7 @@ export type OperatorWorkspaceBusyAction =
   | 'save-privacy-contact'
   | 'save-social-links'
   | 'save-integration'
+  | 'save-exchange-rates'
   | 'register-payment'
   | 'register-firebase'
   | 'activate-firebase'
@@ -81,6 +82,7 @@ const CONFIGURATION_BUSY_ACTIONS = new Set<
   'save-privacy-contact',
   'save-social-links',
   'save-integration',
+  'save-exchange-rates',
   'register-payment',
   'register-firebase',
   'activate-firebase',
@@ -282,6 +284,7 @@ export class OperatorWorkspaceStore {
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
       || draft.payment.publicBaseUrl.trim()
         !== (configuration.payment.publicBaseUrl ?? '')
+      || (draft.payment.exchangeRateUrl ?? '').trim() !== (configuration.payment.exchangeRateUrl ?? '')
       || draft.payment.merchantAccount.trim()
         !== (configuration.payment.merchantAccount ?? '')
       || Boolean(draft.payment.credential.trim())
@@ -805,6 +808,7 @@ export class OperatorWorkspaceStore {
       | 'save-privacy-contact'
       | 'save-social-links'
       | 'save-integration'
+      | 'save-exchange-rates'
       | 'register-payment'
       | 'register-firebase',
     noticeKey = 'operator.configuration.saved'
@@ -1463,6 +1467,7 @@ export class OperatorWorkspaceStore {
         publicBaseUrl: configuration.integration?.publicBaseUrl ?? ''
       },
       payment: {
+        exchangeRateUrl: configuration.payment.exchangeRateUrl ?? '',
         providerId: configuration.payment.providerId,
         publicBaseUrl: configuration.payment.publicBaseUrl ?? '',
         merchantAccount: configuration.payment.merchantAccount ?? '',

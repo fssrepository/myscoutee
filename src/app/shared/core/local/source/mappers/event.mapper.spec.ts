@@ -34,6 +34,34 @@ describe('LocalActivityEventDetailsMapper empty child definitions', () => {
 });
 
 describe('LocalActivityEventsMapper slot-scoped main Event runtime', () => {
+  it('keeps a saved childless Event as MAIN_EVENT after serialization and replaces it with real children', () => {
+    const saved = LocalActivityEventDetailsMapper.toRecord(new ActivityEventDetailDTO().apply({
+      id: 'root', userId: 'owner', creatorUserId: 'owner', title: 'Saved Event',
+      startAtIso: '2099-03-10T12:00:00Z', endAtIso: '2099-03-10T15:00:00Z',
+      subEventsEnabled: false, subEventDefinitions: [], slotsEnabled: false,
+      capacityMax: 8, acceptedMembers: 2
+    }));
+    const reloaded = JSON.parse(JSON.stringify(saved));
+    const slots = LocalActivityEventsMapper.toSubEventsSlots('root', reloaded, {
+      userId: 'owner', eventId: 'root', order: 'upcoming', rangeStart: '2099-03-01', rangeEnd: '2099-03-01'
+    });
+    expect(slots).toHaveLength(1);
+    expect(slots[0]).toMatchObject({ id: 'main-event:root', parentEventId: 'root', slotSourceId: null });
+    expect(slots[0].subEventItems).toHaveLength(1);
+    expect(slots[0].subEventItems[0]).toMatchObject({
+      id: 'main-event:root', eventId: 'root', runtimeKind: 'MAIN_EVENT', name: 'Saved Event',
+      capacityMax: 8, membersAccepted: 2
+    });
+    for (const status of ['D', 'T', 'I']) {
+      expect(LocalActivityEventsMapper.toSubEventsSlots('root', { ...reloaded, status })).toEqual([]);
+    }
+    reloaded.subEventsEnabled = true;
+    reloaded.subEventDefinitions = [{ id: 'child', name: 'Programme', startOffsetMinutes: 0, durationMinutes: 60 }];
+    const changed = LocalActivityEventsMapper.toSubEventsSlots('root', reloaded);
+    expect(changed[0].subEventItems.map(item => item.id)).toEqual(['child']);
+    expect(changed[0].subEventItems.some(item => item.runtimeKind === 'MAIN_EVENT')).toBe(false);
+  });
+
   it('maps every Slot without Sub Event definitions to one MAIN_EVENT item', () => {
     const parent = LocalActivityEventDetailsMapper.toRecord(new ActivityEventDetailDTO().apply({
       id: 'event-1',

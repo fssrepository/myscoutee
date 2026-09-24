@@ -173,6 +173,31 @@ describe('LocalEventsRepository event membership pages', () => {
     expect(upcoming.find(item => item.id === 'ended-event')?.exploreSortKey?.[0]).toBe(1);
   });
 
+  it('projects changed-terms entitlement from the viewer payment without a viewer Event copy', () => {
+    seedUsers([user('owner', 'Owner'), user('payer', 'Payer'), user('other', 'Other')]);
+    seedEvents([eventRecord({ id: 'paid-event', userId: 'owner', creatorUserId: 'owner' })]);
+    const payment = { ownerId: 'owner', currency: 'EUR', gross: 100, refunded: 25,
+      eventBooking: true, sourceId: 'paid-event', eventRefundEligible: true };
+    memoryDb.write(state => ({ ...state, [USERS_TABLE_NAME]: {
+      ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId,
+        payer: { ...state[USERS_TABLE_NAME].byId['payer'], affiliatePayments: { payment } }
+      }
+    } }));
+    expect(repository.queryEventRecordById('payer', 'paid-event')?.canCancelForFullRefund).toBe(true);
+    expect(repository.peekKnownItemById('payer', 'paid-event')?.canCancelForFullRefund).toBe(true);
+    expect(repository.queryEventRecordById('owner', 'paid-event')?.canCancelForFullRefund).toBe(false);
+    expect(repository.queryEventRecordById('other', 'paid-event')?.canCancelForFullRefund).toBe(false);
+    expect(memoryDb.read()[EVENTS_TABLE_NAME].ids).toHaveLength(1);
+    memoryDb.write(state => ({ ...state, [USERS_TABLE_NAME]: {
+      ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId,
+        payer: { ...state[USERS_TABLE_NAME].byId['payer'], affiliatePayments: {
+          payment: { ...payment, refunded: 100 }
+        } }
+      }
+    } }));
+    expect(repository.queryEventRecordById('payer', 'paid-event')?.canCancelForFullRefund).toBe(false);
+  });
+
   function seedUsers(users: UserDto[]): void {
     memoryDb.write(state => ({
       ...state,

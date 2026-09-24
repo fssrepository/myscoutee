@@ -161,7 +161,31 @@ export class LocalEventsRepository {
   }
 
   queryCalendarItemsByUser(userId: string): ActivityEventRecord[] {
-    const records = this.queryUserRecords(userId);
+    const roots = this.queryUserRecords(userId);
+    const preferred = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
+    const parents = new Map(roots.filter(record => this.isSlotParentRecord(record)).map(record => [record.id, record]));
+    const storedById = new Map(preferred.map(record => [record.id, record]));
+    const slots = [...parents.values()].flatMap(parent => {
+      if (parent.status !== 'A' || parent.cancelled === true
+        || ['under-review', 'blocked', 'rejected'].includes(parent.moderationStatus ?? '')) return [];
+      return LocalActivityEventsMapper.toSubEventsSlots(parent.id, parent, {
+        userId, eventId: parent.id, order: 'upcoming',
+        rangeStart: AppUtils.toIsoDate(new Date(parent.startAtIso)),
+        rangeEnd: AppUtils.toIsoDate(new Date(parent.endAtIso))
+      })
+        .filter(slot => !!slot.slotSourceId)
+        .map(slot => ({
+          ...(storedById.get(slot.slotSourceId!) ?? parent),
+          id: slot.slotSourceId!,
+          startAtIso: slot.startAt!,
+          endAtIso: slot.endAt!,
+          slotsEnabled: false,
+          parentEventId: parent.id,
+          eventType: 'slot' as const,
+          organizerUserId: parent.organizerUserId ?? parent.creatorUserId
+        }));
+    });
+    const records = [...roots.filter(record => record.slotsEnabled !== true), ...slots];
     const accepted = this.acceptedParticipantOwnerIds('event', records.map(record => record.id), userId);
     return records.map(record => ({
       ...record,
@@ -1209,8 +1233,13 @@ export class LocalEventsRepository {
     });
   }
 
+  cancelItem(userId: string, sourceId: string): void {
+    this.updateItemState(userId, sourceId, { cancelled: true, cancellationRefundsPending: false });
+  }
+
   publishItem(userId: string, sourceId: string): void {
     this.updateItemState(userId, sourceId, {
+      cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false,
       status: 'A'
     });
   }
@@ -3070,7 +3099,11 @@ export class LocalEventsRepository {
   ): ActivityEventRecord {
     return {
       ...record,
-      watched: this.isWatchedByUser(record, viewerUserId)
+      watched: this.isWatchedByUser(record, viewerUserId),
+      canCancelForFullRefund: Object.values(
+        this.memoryDb.read()[USERS_TABLE_NAME].byId[viewerUserId.trim()]?.affiliatePayments ?? {}
+      ).some(payment => payment.sourceId === record.id
+        && payment.eventRefundEligible === true && payment.refunded < payment.gross)
     };
   }
 

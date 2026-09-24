@@ -1505,6 +1505,9 @@ export class EventExplorePopupComponent {
     if (!activeUserId) {
       return;
     }
+    for (const record of records) {
+      if (record.checkoutResultState === 'deleted') this.eventCheckoutDraftStore.clear(activeUserId, record.id);
+    }
     const recordsToRestore = records.filter(record =>
       (record.checkoutResultState === 'pending' || record.checkoutResultState === 'failed')
       && (() => {

@@ -8,6 +8,7 @@ import type {
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { LocalOperatorRegistryRepository } from '../repositories/operator-registry.repository';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalPaymentSummaryMapper } from '../mappers/payment-summary.mapper';
 
 const INTEGRATIONS_ROUTE = '/integrations';
 
@@ -21,6 +22,11 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
     const settings = this.repository.settings(this.requireUserId(), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
+    if (settings.affiliate?.revenue) {
+      const revenue = settings.affiliate.revenue;
+      revenue.euroSummary = LocalPaymentSummaryMapper.build(this.requireUserId(),
+        Object.entries(revenue.currencies).map(([currency, row]) => ({ currency, gross: row.gross, refunded: row.refunded })));
+    }
     await this.repository.flushToIndexedDb();
     return settings;
   }

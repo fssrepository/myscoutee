@@ -30,41 +30,6 @@ describe('Explicit location request', () => {
   });
 });
 
-describe('AppLocationService session-owned persistence', () => {
-  it('does not persist streamed coordinates for a demo session', () => {
-    const service = Object.create(AppLocationService.prototype) as {
-      pendingCoordinatesByUserId: Map<string, { latitude: number; longitude: number }>;
-      syncingUserIds: Set<string>;
-      sessionService: {
-        currentSession: () => { kind: 'demo'; userId: string };
-      };
-      isLocalUserRouteEnabled: ReturnType<typeof vi.fn>;
-      flushPendingLocationSync: ReturnType<typeof vi.fn>;
-      queueLocationSyncForActiveUser: (
-        userId: string,
-        activeUser: { id: string; admin: boolean },
-        coordinates: { latitude: number; longitude: number }
-      ) => void;
-    };
-    service.pendingCoordinatesByUserId = new Map();
-    service.syncingUserIds = new Set();
-    service.sessionService = {
-      currentSession: () => ({ kind: 'demo', userId: 'demo-member' })
-    };
-    service.isLocalUserRouteEnabled = vi.fn().mockReturnValue(false);
-    service.flushPendingLocationSync = vi.fn();
-
-    service.queueLocationSyncForActiveUser(
-      'demo-member',
-      { id: 'demo-member', admin: false },
-      { latitude: 48.8566, longitude: 2.3522 }
-    );
-
-    expect(service.pendingCoordinatesByUserId.size).toBe(0);
-    expect(service.flushPendingLocationSync).not.toHaveBeenCalled();
-  });
-});
-
 describe('Granted location background synchronization', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -100,8 +65,9 @@ describe('Granted location background synchronization', () => {
   it('automatically saves a first location delivered by the permitted background watch', async () => {
     const { service, save, profile } = fixture();
     service.handleStreamedCoordinates('member', { latitude: 47, longitude: 19 });
-    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
+    expect(profile().locationCoordinates).toBeUndefined();
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(service.dialogStore.dialog()).toBeNull();
   });
@@ -114,6 +80,18 @@ describe('Granted location background synchronization', () => {
     expect(profile().locationCoordinates).toBeUndefined();
     expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
     expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('persists permitted demo coordinates before exposing them to the live profile', async () => {
+    const { service, save, profile } = fixture();
+    service.sessionService.currentSession = () => ({ kind: 'demo', userId: 'member' });
+    let complete!: (user: unknown) => void;
+    save.mockReturnValue(new Promise(resolve => complete = resolve));
+    service.handleStreamedCoordinates('member', { latitude: 47, longitude: 19 });
+    expect(profile().locationCoordinates).toBeUndefined();
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    complete({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
+    await vi.waitFor(() => expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 }));
   });
 
   it('does not request coordinates or prompt when native permission is not granted', async () => {
@@ -131,10 +109,13 @@ describe('Granted location background synchronization', () => {
     expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'member', locationCoordinates: coordinates }));
     expect(profile().locationCoordinates).toEqual(coordinates);
-    expect(service.isActiveFirebaseMemberSession('another-profile')).toBe(false);
+    expect(service.isActiveMemberSession('another-profile')).toBe(false);
     service.sessionService.currentSession = () => ({ kind: 'demo', userId: 'member' });
+    expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
+    expect(save).toHaveBeenCalledTimes(2);
+    service.sessionService.currentSession = () => ({ kind: 'demo', userId: 'another-profile' });
     expect(await service.saveCurrentCoordinates(coordinates)).toBe(false);
-    expect(save).toHaveBeenCalledOnce();
+    expect(save).toHaveBeenCalledTimes(2);
   });
 
   it('keeps first coordinates absent until their server save succeeds without another native request', async () => {
@@ -197,7 +178,7 @@ describe('Granted location background synchronization', () => {
 
     const next = { latitude: 47.001, longitude: 19 };
     watchPosition.mock.calls[0][0]({ coords: next });
-    expect(profile().locationCoordinates).toEqual(next);
+    expect(profile().locationCoordinates).toEqual(original);
     expect(save).not.toHaveBeenCalled();
     service.runLocationSyncFlow('member', profile());
     await Promise.resolve();
@@ -219,18 +200,18 @@ describe('Granted location background synchronization', () => {
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
   });
 
-  it('updates the store immediately and saves automatically at five kilometres from the last server save', async () => {
+  it('publishes the saved location after moving five kilometres from the last server save', async () => {
     const { service, save, profile } = fixture();
     service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
     const near = { latitude: 47.044, longitude: 19 }; // 4.89 km
     service.handleStreamedCoordinates('member', near);
-    expect(profile().locationCoordinates).toEqual(near);
+    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
     expect(save).not.toHaveBeenCalled();
 
     const far = { latitude: 47.046, longitude: 19 }; // 5.11 km from server location
     service.handleStreamedCoordinates('member', far);
-    expect(profile().locationCoordinates).toEqual(far);
     await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
+    expect(profile().locationCoordinates).toEqual(far);
     expect(save).toHaveBeenCalledOnce();
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'member', locationCoordinates: far }));
     expect(service.dialogStore.dialog()).toBeNull();
@@ -249,7 +230,7 @@ describe('Granted location background synchronization', () => {
     service.handleStreamedCoordinates('member', candidate);
     await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
     expect(save).toHaveBeenCalledOnce();
-    expect(profile().locationCoordinates).toEqual(candidate);
+    expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 });
 
     service.runLocationSyncFlow('member', profile());
     service.handleStreamedCoordinates('member', candidate);

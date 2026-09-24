@@ -10,6 +10,7 @@ export interface IntegrationTokenDto {
 }
 
 export interface AffiliateRevenueDto {
+  euroSummary?: import('./payment-method.interface').PaymentEuroSummaryDto | null;
   currencies: Record<string, { gross: number; refunded: number; net: number }>;
   purchases: number;
   eventBookings: number;

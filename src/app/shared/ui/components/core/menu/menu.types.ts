@@ -188,6 +188,8 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   palette?: AppMenuPalette;
   surface?: AppMenuItemSurface;
   layout?: AppMenuItemLayout;
+  /** Use the existing icon action layout below the menu's mobile breakpoint. */
+  compactOnMobile?: boolean;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   counterTone?: 'default' | 'alert' | 'success';
   headerBadge?: AppMenuCounter | AppMenuCounterValue | null;

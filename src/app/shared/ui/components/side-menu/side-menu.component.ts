@@ -1,4 +1,5 @@
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
+import { AdminNotificationsService } from '../../../core/base/services/admin-notifications.service';
 import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
 import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
 import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
@@ -101,7 +102,9 @@ import {
   type ProfileBindings
 } from '../../context/stores/profile.store';
 import {
-  resolveSideMenuPresentation
+  resolveSideMenuPresentation,
+  navigatorContentMenuModel,
+  navigatorTableMenuModel
 } from './side-menu-presenters';
 import {
   DialogStore
@@ -238,6 +241,7 @@ type NavigatorHeaderActionMenuItemId =
 export class SideMenuComponent implements OnDestroy {
   protected readonly moderationStore = inject(ContentModerationStore);
   private readonly moderationService = inject(ContentModerationService);
+  private readonly adminNotificationsService = inject(AdminNotificationsService);
   protected readonly followingStore = inject(FollowingStore);
   protected openFollowedEvents(event: Event): void {
     event.stopPropagation();
@@ -287,6 +291,8 @@ export class SideMenuComponent implements OnDestroy {
       ? this.i18n.translate('mingle.tables')
       : this.i18n.translateParams('mingle.table.number', { number: tableNumber });
   });
+  protected readonly navigatorTableMenuModel = computed(() =>
+    navigatorTableMenuModel(this.mingleTableLabel(), this.mingleStore.attention()));
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
@@ -304,6 +310,10 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
   protected readonly photoFeedStore = inject(PhotoFeedStore);
+  protected readonly navigatorFeedMenuModel = computed(() =>
+    navigatorContentMenuModel('feed', this.photoFeedStore.count()));
+  protected readonly navigatorFollowedMenuModel = computed(() =>
+    navigatorContentMenuModel('followed', this.followingStore.state().eventCount));
   protected readonly imageGalleryStore = inject(ImageGalleryStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
@@ -1038,6 +1048,7 @@ export class SideMenuComponent implements OnDestroy {
   });
   constructor() {
     effect(() => this.moderationService.setWorkerActive(!!this.sessionService.session()));
+    effect(() => this.adminNotificationsService.setWorkerActive(!!this.sessionService.session()));
     effect(() => {
       const adminId = this.adminWorkspaceStore.dashboard()?.activeAdmin.id;
       this.moderationStore.clear();
@@ -2144,7 +2155,7 @@ export class SideMenuComponent implements OnDestroy {
   private openLogoutConfirm(): void {
     const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
     this.dialogStore.open({
-      title: 'Logout?',
+      title: 'logout.question',
       message: activeUserName,
       cancelLabel: 'Cancel',
       confirmLabel: 'Logout',

@@ -465,6 +465,7 @@ export class SeedDemoBootstrapService {
       let assetsByUserId: Map<string, AssetRecord[]> = new Map();
       const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;
 
+      await this.adminSeed.seedNotificationCenter();
       await this.runBootstrapStep('chats', async () => {
         this.chatsSeed.seedDefaults();
         await this.flushBootstrapTables([CHATS_TABLE_NAME, CHAT_MESSAGES_TABLE_NAME]);

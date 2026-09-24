@@ -1,3 +1,4 @@
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
@@ -15,15 +16,32 @@ import type {
 import { LocalPaymentCardArtworkRepository } from '../repositories/payment-card-artwork.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalPaymentSummaryMapper } from '../mappers/payment-summary.mapper';
+import { SEED_PAYMENT_EXCHANGE_RATES } from '../../seed/payment-exchange-rates';
 
 @Injectable({ providedIn: 'root' })
 export class LocalPaymentMethodsService extends LocalRouteDelayService implements PaymentMethodDataService {
   private static readonly ROUTE = '/payment-methods';
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly artworkRepository = inject(LocalPaymentCardArtworkRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly deletedPaymentMethodIds = new Set<string>();
   private readonly affiliateRepository = inject(LocalIntegrationRepository);
   private readonly refundRequestStatusByPaymentId = new Map<string, 'pending' | 'approved'>();
+
+  async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
+    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
+    if (!Object.hasOwn(SEED_PAYMENT_EXCHANGE_RATES, currency)) throw new Error('payment.currency.save.error');
+    globalThis.localStorage?.setItem(`myscoutee.summary-currency.${userId}`, currency);
+  }
+
+  private summary(userId: string, items: PaymentHistoryItemDto[]): import('../../../contracts/payment-method.interface').PaymentEuroSummaryDto {
+    return LocalPaymentSummaryMapper.build(userId, items
+      .filter(item => item.status === 'captured' || item.status === 'approved' || item.status === 'refunded')
+      .map(item => ({ currency: item.currency,
+        outgoing: item.direction === 'expense' ? item.amount : 0,
+        incoming: item.direction === 'income' ? item.amount : 0 })));
+  }
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
@@ -89,6 +107,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+      euroSummary: this.summary(userId, all),
       spendingTotals: this.paymentTotals(all, 'expense'),
       incomeTotals: {},
       pendingRefundCount: this.pendingRefundCount(userId)
@@ -99,6 +118,9 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
     const expenses = this.seedMethods(userId).flatMap(card => this.seedHistory(card)).map(item => this.withRefundState(item));
     const income = this.seedIncomeHistory(userId).map(item => this.withRefundState(item));
+    const recorded = this.affiliateRepository.paymentHistory(userId);
+    expenses.push(...recorded.filter(item => item.direction === 'expense'));
+    income.push(...recorded.filter(item => item.direction === 'income'));
     const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? 'all'}`.trim();
     const all = (direction === 'expenses' ? expenses : direction === 'income' ? income : [...expenses, ...income])
       .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
@@ -110,6 +132,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+      euroSummary: this.summary(userId, [...expenses, ...income]),
       spendingTotals: this.paymentTotals(expenses, 'expense'),
       incomeTotals: this.paymentTotals(income, 'income'),
       pendingRefundCount: this.pendingRefundCount(userId)
@@ -118,6 +141,12 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   async requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
+    if (this.affiliateRepository.requestPolicyRefund(userId, paymentId)) {
+      await this.affiliateRepository.flushToIndexedDb();
+      const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
+      if (!recorded) throw new Error('Refund history was not recorded.');
+      return this.localMutation(userId, recorded);
+    }
     const item = this.seedMethods(userId)
       .flatMap(card => this.seedHistory(card))
       .find(candidate => candidate.id === paymentId && candidate.direction === 'expense');
@@ -131,6 +160,22 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   async approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
+    const wasPending = this.affiliateRepository.paymentHistory(userId).some(item => item.id === paymentId && item.refundRequestStatus === 'pending');
+    const payerId = this.affiliateRepository.approveChangedTermsRefund(userId, paymentId);
+    if (payerId) {
+      if (wasPending) this.notificationsRepository.append([{
+        id: `payment-refund-approved:${paymentId}`, recipientUserId: payerId, kind: 'payment-refund-approved',
+        category: 'event' as const, title: 'Refund approved', message: 'Your refund request was approved.',
+        createdAtIso: new Date().toISOString(), readAtIso: null, senderUserId: userId,
+        sourceType: 'payment', sourceId: paymentId, actionPath: '/game',
+        payload: { paymentId, notification_title_key: 'notification.kind.payment-refund-approved.title',
+          notification_message_key: 'notification.kind.payment-refund-approved.message' }
+      }]);
+      await this.affiliateRepository.flushToIndexedDb();
+      const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
+      if (!recorded) throw new Error('Refund history was not recorded.');
+      return this.localMutation(userId, recorded);
+    }
     const item = this.seedIncomeHistory(userId).find(candidate => candidate.id === paymentId);
     if (!item || this.refundRequestStatusByPaymentId.get(paymentId) !== 'pending') {
       throw new Error('There is no pending refund request for this payment.');
@@ -243,7 +288,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     direction: PaymentHistoryItemDto['direction']
   ): Record<string, number> {
     return items.reduce<Record<string, number>>((totals, item) => {
-      if (item.direction !== direction || (item.status !== 'captured' && item.status !== 'approved')) return totals;
+      if (item.direction !== direction || (item.status !== 'captured' && item.status !== 'approved' && item.status !== 'refunded')) return totals;
       const currency = item.currency.trim().toUpperCase() || 'USD';
       totals[currency] = Math.round(((totals[currency] ?? 0) + (Number(item.amount) || 0)) * 100) / 100;
       return totals;
@@ -269,8 +314,13 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     const income = this.seedIncomeHistory(userId).map(candidate =>
       candidate.id === item.id ? item : this.withRefundState(candidate)
     );
+    const recorded = this.affiliateRepository.paymentHistory(userId);
+    expenses.push(...recorded.filter(row => row.direction === 'expense'));
+    income.push(...recorded.filter(row => row.direction === 'income'));
     return {
       item,
+      items: item.checkoutSessionId ? recorded.filter(row => row.checkoutSessionId === item.checkoutSessionId) : [item],
+      euroSummary: this.summary(userId, [...expenses, ...income]),
       spendingTotals: this.paymentTotals(expenses, 'expense'),
       incomeTotals: this.paymentTotals(income, 'income'),
       pendingRefundCount: this.pendingRefundCount(userId)

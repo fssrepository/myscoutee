@@ -110,6 +110,8 @@ type ActivityInfoCardActionId =
   | 'accept'
   | 'askOrganizer'
   | 'continueBooking'
+  | 'cancelEvent'
+  | 'cancelBooking'
   | 'deleteEvent'
   | 'editEvent'
   | 'leaveEvent'
@@ -455,6 +457,10 @@ export class ActivitiesEventsController {
       case 'accept':
         this.runActivityItemApproveAction(row);
         break;
+      case 'cancelEvent':
+      case 'cancelBooking':
+        this.runActivityCancellation(row, action.action);
+        break;
       case 'leaveEvent':
       case 'deleteEvent':
       case 'rejectInvitation':
@@ -732,6 +738,9 @@ export class ActivitiesEventsController {
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
       activity: dto?.activity ?? row.menuBadgeCount ?? 0,
+      cancelled: dto?.cancelled,
+      cancellationRefundsPending: dto?.cancellationRefundsPending,
+      canCancelForFullRefund: dto?.canCancelForFullRefund,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? null
     };
@@ -1107,6 +1116,32 @@ export class ActivitiesEventsController {
     });
   }
 
+  private runActivityCancellation(row: InfoCardData, action: CardMenuAction): void {
+    const organizer = action.id === 'cancelEvent';
+    this.dialogStore.open({
+      title: organizer ? 'event.cancel.confirm.title' : 'event.cancel.booking.confirm.title',
+      message: row.title,
+      cancelLabel: 'Back',
+      confirmLabel: organizer ? 'cancel.event' : 'cancel.booking.refund',
+      busyConfirmLabel: 'event.cancel.busy',
+      confirmTone: 'danger',
+      confirmPalette: 'pink',
+      failureMessage: 'event.cancel.failed',
+      onConfirm: async () => {
+        const result = await this.eventsService.cancelItem(this.activeUserId(), row.id);
+        if (!result?.changed) throw new Error('event.cancel.failed');
+        if (organizer) {
+          const dto = this.activityEventDTOForRow(row);
+          if (dto) this.activitiesStore.emitActivityEventSync({ ...dto, cancelled: true, cancellationRefundsPending: true });
+        } else {
+          this.activitiesStore.emitActivityEventRemoval(row.id);
+          this.signalActivityCounterDelta(this.activeUserId(), result.counterDelta ?? null);
+        }
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   public runActivityItemSecondaryAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     const isRejectInvitation = action?.id === 'rejectInvitation' || this.isActivityInvitationRow(row);
@@ -1126,7 +1161,7 @@ export class ActivitiesEventsController {
   public runActivityItemPublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Publish event?',
+      title: 'event.editor.publish.question',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Publish',
@@ -1141,7 +1176,7 @@ export class ActivitiesEventsController {
   public runActivityItemUnpublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Unpublish event?',
+      title: 'event.editor.unpublish.question',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Unpublish',
@@ -1216,6 +1251,8 @@ export class ActivitiesEventsController {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
       this.patchVisiblePublicationState(row, 'A');
+      const dto = this.activityEventDTOForRow(row);
+      if (dto) this.activitiesStore.emitActivityEventSync({ ...dto, cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false });
     }
 
     this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);

@@ -7,6 +7,8 @@ import type {
 } from '../../../contracts/integration.interface';
 import type { LocalIntegrationTokenRecord } from '../entity/integration.entity';
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
+import type { PricingCancellationPolicy } from '../../../contracts/pricing.interface';
+import type { PaymentRefundPreviewDto } from '../../../contracts/payment-method.interface';
 
 @Injectable({ providedIn: 'root' })
 export class LocalIntegrationRepository {
@@ -60,33 +62,202 @@ export class LocalIntegrationRepository {
     });
   }
 
-  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true): void {
+  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true, sourceId?: string, recipientUserId?: string, bookingStartAtIso?: string, cancellationPolicy?: PricingCancellationPolicy): void {
     currency = currency.trim().toUpperCase();
     if (!paymentId || !/^[A-Z]{3}$/.test(currency) || !Number.isFinite(amount) || !Number.isFinite(refunded)) return;
     const grossMinor = Math.max(0, Math.round(amount * 100));
-    const refundMinor = Math.max(0, Math.min(grossMinor, Math.round(refunded * 100)));
+    const requestedRefundMinor = Math.max(0, Math.min(grossMinor, Math.round(refunded * 100)));
     this.memoryDb.write(state => {
-      const table = state[USERS_TABLE_NAME];
+      const table = { ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId } };
       const payer = table.byId[userId];
       const previous = payer?.affiliatePayments?.[paymentId];
       const ownerId = previous?.ownerId ?? payer?.affiliateReferrerUserId;
       const owner = ownerId ? table.byId[ownerId] : null;
-      if (!payer || !owner || owner.id === userId || (previous && previous.currency !== currency)) return state;
+      if (!payer || (previous && (previous.currency !== currency || previous.gross !== grossMinor / 100))) return state;
+      const refundMinor = Math.max(requestedRefundMinor, Math.round((previous?.refunded ?? 0) * 100));
+      const refundDelta = refundMinor / 100 - (previous?.refunded ?? 0);
+      const nextPayment = {
+        ...previous, ownerId: owner?.id ?? '', currency, gross: grossMinor / 100,
+        refunded: refundMinor / 100, eventBooking, sourceId: sourceId ?? previous?.sourceId,
+        recipientUserId: recipientUserId ?? previous?.recipientUserId,
+        createdAtIso: previous?.createdAtIso ?? new Date().toISOString(),
+        bookingStartAtIso: previous ? previous.bookingStartAtIso : bookingStartAtIso,
+        cancellationPolicy: previous ? previous.cancellationPolicy : cancellationPolicy ? structuredClone(cancellationPolicy) : undefined,
+        eventRefundEligible: refundMinor >= grossMinor ? false : previous?.eventRefundEligible,
+        refundRequest: previous?.refundRequest && refundMinor >= Math.round(previous.refundRequest.target * 100)
+          ? { ...previous.refundRequest, status: 'approved' as const } : previous?.refundRequest,
+        refundOperations: refundDelta > 0 ? [...(previous?.refundOperations ?? []), {
+          id: `refund:${paymentId}:${refundMinor}`, amount: Math.round(refundDelta * 100) / 100,
+          createdAtIso: new Date().toISOString()
+        }] : previous?.refundOperations
+      };
+      const nextPayer = { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: nextPayment } };
+      if (previous?.refundRequest?.status === 'pending' && nextPayment.refundRequest?.status === 'approved') {
+        const recipient = table.byId[nextPayment.recipientUserId ?? ''];
+        if (recipient) {
+          // Include this update in the same local transaction as the financial projection.
+          table.byId = { ...table.byId, [recipient.id]: { ...recipient, activities: { ...recipient.activities,
+            paymentRefundsPending: Math.max(0, (recipient.activities.paymentRefundsPending ?? 0) - 1) } } };
+        }
+      }
+      if (!owner || owner.id === userId) return { ...state, [USERS_TABLE_NAME]: {
+        ...table, byId: { ...table.byId, [userId]: nextPayer }
+      } };
       const revenue = owner.affiliateRevenue ?? { currencies: {}, purchases: 0, eventBookings: 0 };
       const totals = revenue.currencies[currency] ?? { gross: 0, refunded: 0, net: 0 };
       const gross = (Math.round(totals.gross * 100) + grossMinor - Math.round((previous?.gross ?? 0) * 100)) / 100;
       const refunds = (Math.round(totals.refunded * 100) + refundMinor - Math.round((previous?.refunded ?? 0) * 100)) / 100;
       return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
-        [userId]: { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: {
-          ownerId: owner.id, currency, gross: grossMinor / 100, refunded: refundMinor / 100, eventBooking
-        } } },
-        [owner.id]: { ...owner, affiliateRevenue: {
+        [userId]: nextPayer,
+        [owner.id]: { ...table.byId[owner.id], affiliateRevenue: {
           currencies: { ...revenue.currencies, [currency]: { gross, refunded: refunds, net: Math.round((gross - refunds) * 100) / 100 } },
           purchases: revenue.purchases + Number(grossMinor > 0) - Number((previous?.gross ?? 0) > 0),
           eventBookings: revenue.eventBookings + Number(grossMinor > 0 && eventBooking) - Number((previous?.gross ?? 0) > 0 && previous?.eventBooking)
         } }
       } } };
     });
+  }
+
+  paymentHistory(userId: string): import('../../../contracts/payment-method.interface').PaymentHistoryItemDto[] {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    return users.ids.flatMap(payerId => Object.entries(users.byId[payerId].affiliatePayments ?? {}).flatMap(([id, payment]) => {
+      if (!payment.sourceId || (payerId !== userId && payment.recipientUserId !== userId)) return [];
+      const direction = payerId === userId ? 'expense' as const : 'income' as const;
+      const base = { sourceId: payment.sourceId, checkoutSessionId: id, provider: 'dummy', currency: payment.currency,
+        recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : 'joined',
+        canRequestRefund: false, canApproveRefund: false };
+      const refundPreview = this.refundPreview(payment);
+      return [{ ...base, id, direction, amount: payment.gross, status: 'approved', auditKind: 'payment',
+          refundPreview, canRequestRefund: payerId === userId && !payment.refundRequest
+            && payment.refunded === 0 && refundPreview.refundableAmount > 0,
+          createdAtIso: payment.createdAtIso ?? '' },
+        ...(payment.refundOperations ?? []).map(refund => ({ ...base, id: refund.id,
+          direction: direction === 'expense' ? 'income' as const : 'expense' as const,
+          amount: refund.amount, status: 'refunded', auditKind: 'refund', refundRequestStatus: 'approved' as const, createdAtIso: refund.createdAtIso })),
+        ...(payment.refundRequest?.status === 'pending' ? [{ ...base, id: payment.refundRequest.id,
+          direction: direction === 'expense' ? 'income' as const : 'expense' as const,
+          amount: payment.refundRequest.amount, status: 'refund_requested', auditKind: 'refund',
+          refundRequestStatus: 'pending' as const, canApproveRefund: payment.recipientUserId === userId,
+          createdAtIso: payment.refundRequest.requestedAtIso }] : [])];
+    }));
+  }
+
+  requestPolicyRefund(userId: string, paymentId: string): boolean {
+    const payment = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId]?.affiliatePayments?.[paymentId];
+    if (!payment) return false;
+    const preview = this.refundPreview(payment);
+    if (payment.refundRequest || payment.refunded > 0 || preview.refundableAmount <= 0) {
+      throw new Error('This payment can no longer be refunded.');
+    }
+    this.requestPaymentRefund(userId, paymentId, preview.refundableAmount);
+    return true;
+  }
+
+  private refundPreview(payment: NonNullable<UserRecord['affiliatePayments']>[string]): PaymentRefundPreviewDto {
+    const paid = payment.gross;
+    const startText = payment.bookingStartAtIso ?? '';
+    const start = new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(startText) ? startText : `${startText}Z`);
+    const eligible = (payment.cancellationPolicy?.enabled ? payment.cancellationPolicy.rules : [])
+      .map(rule => {
+        const deadline = new Date(start.getTime());
+        const offset = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+        if (rule.offsetUnit === 'months') {
+          const day = deadline.getUTCDate();
+          deadline.setUTCDate(1);
+          deadline.setUTCMonth(deadline.getUTCMonth() - offset);
+          const lastDay = new Date(Date.UTC(deadline.getUTCFullYear(), deadline.getUTCMonth() + 1, 0)).getUTCDate();
+          deadline.setUTCDate(Math.min(day, lastDay));
+        } else if (rule.offsetUnit === 'hours') deadline.setUTCHours(deadline.getUTCHours() - offset);
+        else deadline.setUTCDate(deadline.getUTCDate() - offset * (rule.offsetUnit === 'weeks' ? 7 : 1));
+        return { rule, deadline: deadline.getTime() };
+      }).filter(item => Number.isFinite(item.deadline) && Date.now() <= item.deadline)
+      .sort((left, right) => left.deadline - right.deadline)[0]?.rule;
+    const value = Math.max(0, Number(eligible?.refundValue) || 0);
+    const amount = !eligible || eligible.refundKind === 'none' ? 0
+      : eligible.refundKind === 'full' ? paid
+      : eligible.refundKind === 'fixed_amount' ? Math.min(paid, value)
+      : paid * Math.min(100, value) / 100;
+    const refundableAmount = Math.round(amount * 100) / 100;
+    return { paidAmount: paid, refundableAmount, retainedAmount: Math.round((paid - refundableAmount) * 100) / 100,
+      currency: payment.currency, status: refundableAmount <= 0 ? 'not_eligible' : refundableAmount >= paid ? 'full' : 'partial',
+      ruleId: eligible?.id, ruleOffsetUnit: eligible?.offsetUnit, ruleOffsetValue: eligible?.offsetValue,
+      refundKind: eligible?.refundKind, refundValue: eligible?.refundValue };
+  }
+
+  markEventTermsChanged(sourceId: string): string[] {
+    const affected: string[] = [];
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const byId = { ...table.byId };
+      for (const id of table.ids) {
+        const user = byId[id];
+        const payments = { ...user.affiliatePayments };
+        let changed = false;
+        for (const [key, payment] of Object.entries(payments)) {
+          if (payment.sourceId !== sourceId || payment.refunded >= payment.gross) continue;
+          payments[key] = { ...payment, eventRefundEligible: true };
+          changed = true;
+        }
+        if (changed) { affected.push(id); byId[id] = { ...user, affiliatePayments: payments }; }
+      }
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId } };
+    });
+    return affected;
+  }
+
+  cancelEventPayments(sourceId: string, userId?: string, adminRemoval = false): void {
+    const table = this.memoryDb.read()[USERS_TABLE_NAME];
+    const affected = table.ids.filter(id => !userId || id === userId).flatMap(id =>
+      Object.entries(table.byId[id].affiliatePayments ?? {})
+        .filter(([, payment]) => payment.sourceId === sourceId && (!userId || adminRemoval || payment.eventRefundEligible))
+        .map(([paymentId]) => paymentId));
+    if (userId && !adminRemoval && affected.length === 0) throw new Error('No changed-terms cancellation is available.');
+    for (const paymentId of affected) {
+      if (userId && !adminRemoval) this.requestChangedTermsRefund(userId, paymentId);
+      else this.refundPayment(paymentId);
+    }
+  }
+
+  private requestChangedTermsRefund(userId: string, paymentId: string): void {
+    const payment = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId]?.affiliatePayments?.[paymentId];
+    if (!payment?.eventRefundEligible || payment.refunded >= payment.gross) throw new Error('No changed-terms cancellation is available.');
+    this.requestPaymentRefund(userId, paymentId, payment.gross);
+  }
+
+  private requestPaymentRefund(userId: string, paymentId: string, target: number): void {
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const payer = table.byId[userId];
+      const payment = payer?.affiliatePayments?.[paymentId];
+      if (!payment || payment.refunded >= target) throw new Error('This payment can no longer be refunded.');
+      if (payment.refundRequest?.status === 'pending' && payment.refundRequest.target === target) return state;
+      const recipient = table.byId[payment.recipientUserId ?? ''];
+      if (!recipient || recipient.id === userId) throw new Error('This payment has no separate recipient.');
+      const refundRequest = { id: `refund:${paymentId}:${Math.round(target * 100)}`,
+        amount: Math.round((target - payment.refunded) * 100) / 100, target,
+        status: 'pending' as const, requestedAtIso: new Date().toISOString() };
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+        [userId]: { ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: { ...payment, refundRequest } } },
+        [recipient.id]: { ...recipient, activities: { ...recipient.activities,
+          paymentRefundsPending: (recipient.activities.paymentRefundsPending ?? 0)
+            + Number(payment.refundRequest?.status !== 'pending') } }
+      } } };
+    });
+  }
+
+  approveChangedTermsRefund(userId: string, refundId: string): string | null {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    for (const payerId of users.ids) {
+      for (const [paymentId, payment] of Object.entries(users.byId[payerId].affiliatePayments ?? {})) {
+        if (payment.refundRequest?.id !== refundId) continue;
+        if (payment.recipientUserId !== userId) throw new Error('Only the recipient can approve this refund.');
+        if (payment.refundRequest.status === 'pending') {
+          this.recordPayment(payerId, paymentId, payment.currency, payment.gross, payment.refundRequest.target, payment.eventBooking);
+        }
+        return payerId;
+      }
+    }
+    return null;
   }
 
   refundPayment(paymentId: string): void {

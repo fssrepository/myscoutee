@@ -24,8 +24,15 @@ export class ImageGalleryComponent implements OnChanges, OnDestroy {
   @Input() uploadEntityId = 'image';
   @Input() title = 'image.carousel.images';
   @Output() readonly imagesChange = new EventEmitter<string[]>();
+  protected coverImages: readonly string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['images']) {
+      const cover = this.images.slice(0, 1);
+      if (cover.length !== this.coverImages.length || cover[0] !== this.coverImages[0]) {
+        this.coverImages = cover;
+      }
+    }
     if (this.token && (changes['readOnly'] || changes['uploadEntityId'] || changes['uploadOwnerId'])) {
       this.store.close(this.token);
       this.token = undefined;

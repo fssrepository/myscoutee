@@ -10,6 +10,7 @@ import type {
 } from '../../../contracts/admin.interface';
 import { LocalAdminNotificationsRepository } from '../repositories/admin-notifications.repository';
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalEventsService } from './events.service';
 
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
 const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
@@ -42,6 +43,8 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
   private readonly repository = inject(LocalAdminNotificationsRepository);
   private readonly moderation = inject(LocalContentModerationRepository);
   private moderationRunning = false;
+  private checkoutPurgeRunning = false;
+  private readonly events = inject(LocalEventsService);
 
   async runContentApprovalTick(): Promise<void> {
     if (this.moderationRunning) return;
@@ -68,6 +71,42 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
       });
       await this.repository.writeStore({ ...current, rules, updatedDate: finishedAtIso });
     } finally { this.moderationRunning = false; }
+  }
+
+  async runCheckoutPurgeTick(): Promise<void> {
+    if (this.checkoutPurgeRunning) return;
+    const state = await this.readNotificationCenter();
+    const rule = state.rules.find(item => item.ruleKey === 'event-checkout-basket-purge');
+    if (!rule?.enabled || rule.timing?.mode !== 'interval') return;
+    const last = Date.parse(rule.runState.lastRunAtIso || '');
+    const interval = Math.max(1, Number(rule.timing.intervalSeconds) || Number(rule.timing.intervalMinutes) * 60 || 60) * 1000;
+    if (Number.isFinite(last) && last + interval > Date.now()) return;
+    await this.runCheckoutPurge(rule, 'checkout-basket-purge', 'scheduled');
+  }
+
+  private async runCheckoutPurge(
+    rule: AdminNotificationRule, runnerUser: string, trigger: 'manual' | 'scheduled'
+  ): Promise<AdminNotificationRunResult> {
+    if (this.checkoutPurgeRunning) return { ruleKey: rule.ruleKey, label: rule.label,
+      affectedCount: 0, status: 'skipped', detail: '', ranAtIso: new Date().toISOString() };
+    this.checkoutPurgeRunning = true;
+    const started = Date.now(), startedAtIso = new Date(started).toISOString();
+    let count = 0, status = 'completed', detail = '';
+    try {
+      try { count = await this.events.purgeExpiredCheckoutBaskets(started); }
+      catch (error) { status = 'failed'; detail = error instanceof Error ? error.message : String(error); }
+      const finishedAtIso = new Date().toISOString(), durationMillis = Date.now() - started;
+      const state = await this.readNotificationCenter();
+      const rules = state.rules.map(item => item.ruleKey !== rule.ruleKey ? item : {
+        ...item, runState: { ...item.runState, currentStatus: status, progressPercent: 100, progressDetail: detail,
+          startedAtIso, finishedAtIso, durationMillis, lastRunAtIso: finishedAtIso,
+          lastRunStatus: status, lastRunDetail: detail, lastRunCount: count, lastRunUser: runnerUser },
+        runHistory: [{ id: crypto.randomUUID(), trigger, runnerUser, startedAtIso, finishedAtIso,
+          durationMillis, processedCount: count, status, detail }, ...(item.runHistory ?? [])].slice(0, 12)
+      });
+      await this.repository.writeStore({ ...state, rules, updatedDate: finishedAtIso });
+      return { ruleKey: rule.ruleKey, label: rule.label, affectedCount: count, status, detail, ranAtIso: finishedAtIso };
+    } finally { this.checkoutPurgeRunning = false; }
   }
 
   async loadNotificationCenter(options?: LocalAdminNotificationDelayOptions): Promise<AdminNotificationCenterState> {
@@ -115,6 +154,12 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
     const state = await this.loadNotificationCenter({ skipDemoDelay: true });
     const nowIso = new Date().toISOString();
     const runnerUser = `${adminUserId ?? ''}`.trim() || 'demo-admin';
+    const selected = state.rules.find(rule => rule.ruleKey === normalizedRuleKey);
+    if (normalizedRuleKey === 'event-checkout-basket-purge' && selected?.manualRunEnabled) {
+      const result = await this.runCheckoutPurge(selected, runnerUser, 'manual');
+      await this.waitForRouteDelay(ADMIN_NOTIFICATION_RUN_ROUTE);
+      return result;
+    }
     const nextRules = state.rules.map(rule => {
       if (rule.ruleKey !== normalizedRuleKey) {
         return rule;
@@ -341,8 +386,6 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
         return 2;
       case 'event-counter-expiry':
         return 6;
-      case 'event-checkout-basket-purge':
-        return 2;
       case 'notification-outbox':
         return 12;
       case 'affinity-recompute':

@@ -224,6 +224,13 @@ export class AdminNotificationsSeedBuilder {
           startTime: '00:00'
         }),
         this.defaultNotificationRule({
+          ruleKey: 'payment-exchange-rates', label: 'admin.jobs.rule.payment.exchange.rates',
+          category: 'admin.jobs.category.scheduled', description: 'admin.jobs.rule.payment.exchange.rates.description',
+          actionKey: 'payments.exchange-rates', triggerKind: 'scheduled_process',
+          enabled: true, manualRunEnabled: true, adminManageable: true, priority: 259,
+          pushEnabled: false, emailEnabled: false, timingMode: 'interval', intervalMinutes: 1440, startTime: '00:00'
+        }),
+        this.defaultNotificationRule({
           ruleKey: 'account-deletion-warning',
           label: 'admin.jobs.rule.account.deletion.warning',
           category: 'admin.jobs.category.scheduled',
