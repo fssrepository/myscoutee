@@ -209,15 +209,19 @@ export class NotificationCenterPopupComponent {
       bodyLayout: 'fill',
       headerTone: 'accent',
       headerPalette: 'violet',
-      headerControls: [
+      toolbarMobileAlign: 'end',
+      toolbarControls: [
         {
           kind: 'menu', id: 'notification-workspace', menuKind: 'select',
+          align: 'end',
           trigger: this.workspaceMenuTrigger(),
           items: this.groupWorkspaces.menuItems(this.store.workspace(), true).map(item => ({
             id: item.id, label: item.label, icon: item.icon, imageFallback: item.imageFallback, imageShape: item.imageShape,
             palette: item.palette, kind: item.kind, active: item.active, checked: item.checked, showCheck: true, surface: item.surface, context: { action: 'set-workspace' as const, workspace: item.id }
           })), panelAlign: 'end'
-        },
+        }
+      ],
+      headerControls: [
         {
           kind: 'menu',
           id: 'notification-bucket',

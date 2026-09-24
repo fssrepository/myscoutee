@@ -193,8 +193,13 @@
   gap: 0.08rem;
 }
 
-.ui-single-row.notification-row.ui-single-row--with-top-right .ui-single-row__main {
-  padding-right: min(28%, 6.25rem);
+.ui-single-row.notification-row.ui-single-row--with-top-right :is(.ui-single-row__headline, .ui-single-row__subtitle, .ui-single-row__meta) {
+  padding-inline-end: min(28%, 6.25rem);
+}
+
+.ui-single-row.notification-row.ui-single-row--with-top-right .ui-single-row__detail {
+  // Reserve only the 32px menu trigger and its gap below the timestamp.
+  padding-inline-end: 2.5rem;
 }
 
 .ui-single-row__headline {
@@ -403,9 +408,7 @@
 
 @media (max-width: 760px) {
   .ui-single-row.notification-row.ui-single-row--with-top-right .ui-single-row__headline {
-    // The floating timestamp extends beyond the shared text-column reserve.
-    // Only shorten the title row; keep subtitle/detail width and row height.
-    padding-inline-end: 4rem;
+    padding-inline-end: calc(min(28%, 6.25rem) + 4rem);
   }
 
   .ui-single-row {
