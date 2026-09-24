@@ -57,6 +57,26 @@ describe('Demo bootstrap seeding', () => {
     TestBed.resetTestingModule();
   });
 
+  it('seeds background job configuration for a member and preserves it when admin opens', async () => {
+    const entries = new Map<string, unknown>();
+    vi.spyOn(memoryDb, 'readIndexedDbTableEntry').mockImplementation(async <T>(key: string) =>
+      structuredClone(entries.get(key) ?? null) as T | null);
+    vi.spyOn(memoryDb, 'writeIndexedDbTableEntry').mockImplementation(async (key, value) => {
+      entries.set(key, structuredClone(value));
+    });
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    await bootstrap.ensureDemoSelectorReady('member');
+    const state: any = await memoryDb.readIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules);
+    expect(state.rules.some((rule: any) => rule.ruleKey === 'event-checkout-basket-purge')).toBe(true);
+    const purge = state.rules.find((rule: any) => rule.ruleKey === 'event-checkout-basket-purge');
+    purge.enabled = false;
+    purge.runState.lastRunCount = 7;
+    await memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules, state);
+    await TestBed.inject(SeedAdminBootstrapRepository).seedDemoAdminStores();
+    const retained: any = await memoryDb.readIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules);
+    expect(retained).toEqual(state);
+  });
+
   it('keeps bulk event handoffs equivalent to per-user event queries', () => {
     const usersSeed = TestBed.inject(SeedUsersRepository);
     const eventsSeed = TestBed.inject(SeedEventsRepository);

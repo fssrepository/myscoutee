@@ -28,6 +28,14 @@ export interface SeedAdminMenuCounterState<TNotification = unknown, TMonitoring 
 export class SeedAdminStoreRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
+  async seedNotificationCenter<T>(create: () => T): Promise<T> {
+    const existing = await this.memoryDb.readIndexedDbTableEntry<T>(APP_INDEXED_DB_KEYS.adminNotificationRules);
+    if (existing) return existing;
+    const state = create();
+    await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules, state);
+    return state;
+  }
+
   async resetAndSeedAdminStores<
     TModeration,
     TNotification,
@@ -37,15 +45,15 @@ export class SeedAdminStoreRepository {
   >(
     stores: SeedAdminStores<TModeration, TNotification, TMonitoring, TStats, TParams>
   ): Promise<SeedAdminMenuCounterState<TNotification, TMonitoring>> {
+    const notificationCenter = await this.seedNotificationCenter(() => stores.notificationCenter);
     await Promise.all([
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration, stores.moderation),
-      this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules, stores.notificationCenter),
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminMonitoring, stores.monitoring),
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminStats, stores.stats),
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminParams, stores.params)
     ]);
     return {
-      notificationCenter: stores.notificationCenter,
+      notificationCenter,
       monitoring: stores.monitoring
     };
   }
