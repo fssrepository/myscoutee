@@ -1,3 +1,4 @@
+import type { AppMenuModel } from '../core/menu/menu.types';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
 import type { AppMenuPalette } from '../..';
@@ -66,4 +67,15 @@ function resolveMemberImpressionTitle(traitLabel: string): string {
   return label
     ? `${label} ${defaultTitle}`
     : defaultTitle;
+}
+
+export function navigatorContentMenuModel(id: 'feed' | 'followed', count: number): AppMenuModel {
+  return {
+    layout: 'row', density: 'compact', nodes: [{ id, items: [{
+      id, label: id === 'feed' ? 'feed.title' : 'event.following',
+      icon: id === 'feed' ? 'photo_library' : 'rss_feed', layout: 'pill',
+      palette: id === 'feed' ? 'orange' : 'cyan', surface: 'tinted', counterTone: 'alert',
+      counter: count > 0 ? { value: count, max: 99 } : null
+    }] }]
+  };
 }

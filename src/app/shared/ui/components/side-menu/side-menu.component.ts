@@ -102,7 +102,8 @@ import {
   type ProfileBindings
 } from '../../context/stores/profile.store';
 import {
-  resolveSideMenuPresentation
+  resolveSideMenuPresentation,
+  navigatorContentMenuModel
 } from './side-menu-presenters';
 import {
   DialogStore
@@ -306,21 +307,10 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
   protected readonly photoFeedStore = inject(PhotoFeedStore);
-  protected readonly navigatorFeedMenuModel = computed<AppMenuModel>(() => ({
-    layout: 'row', density: 'compact', items: [{
-      id: 'feed', label: 'feed.title', icon: 'photo_library', layout: 'pill',
-      palette: 'orange', surface: 'tinted', counterTone: 'alert',
-      counter: this.photoFeedStore.count() > 0 ? { value: this.photoFeedStore.count(), max: 99 } : null
-    }]
-  }));
-  protected readonly navigatorFollowedMenuModel = computed<AppMenuModel>(() => ({
-    layout: 'row', density: 'compact', items: [{
-      id: 'followed', label: 'event.following', icon: 'rss_feed', layout: 'pill',
-      palette: 'cyan', surface: 'tinted', counterTone: 'alert',
-      counter: this.followingStore.state().eventCount > 0
-        ? { value: this.followingStore.state().eventCount, max: 99 } : null
-    }]
-  }));
+  protected readonly navigatorFeedMenuModel = computed(() =>
+    navigatorContentMenuModel('feed', this.photoFeedStore.count()));
+  protected readonly navigatorFollowedMenuModel = computed(() =>
+    navigatorContentMenuModel('followed', this.followingStore.state().eventCount));
   protected readonly imageGalleryStore = inject(ImageGalleryStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
