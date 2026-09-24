@@ -191,14 +191,15 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse> {
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     try {
       const response = await this.routeDelay.withRequestTimeout(
         HttpUsersService.USER_PROFILE_EXT_ROUTE,
         this.http
           .get<ProfileExtByIdQueryResponse | null>(`${this.apiBaseUrl}${HttpUsersService.USER_PROFILE_EXT_ROUTE}`, {
-            params: normalizedUserId ? { userId: normalizedUserId } : {}
+            params: { ...(normalizedUserId ? { userId: normalizedUserId } : {}),
+              ...(groupId !== undefined ? { groupId: groupId ?? '' } : {}) }
           })
           .toPromise(),
         'User profile request timeout.',
@@ -206,6 +207,7 @@ export class HttpUsersService implements UserService {
       );
       const profileExt = response?.profileExt ?? null;
       if (!profileExt) {
+        if (groupId !== undefined) throw new Error('User profile not found.');
         if (this.requiresServerProfileAuthority()) {
           return { profileExt: null };
         }
@@ -213,6 +215,8 @@ export class HttpUsersService implements UserService {
         return cached ?? { profileExt: null };
       }
       return {
+        workspace: response?.workspace ?? null,
+        accountProfile: response?.accountProfile ?? null,
         profileExt,
         filterCount: Number.isFinite(response?.filterCount)
           ? Math.max(0, Math.trunc(Number(response?.filterCount)))
@@ -221,6 +225,7 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
       };
     } catch (error) {
+      if (groupId !== undefined) throw error;
       const status = (error as { status?: number } | null)?.status;
       const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
       if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))

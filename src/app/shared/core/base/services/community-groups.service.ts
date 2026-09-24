@@ -11,7 +11,6 @@ export class CommunityGroupsService extends BaseRouteModeService implements ICom
   private get adapter(): ICommunityGroupsService { return this.resolveRouteService('/groups', this.local, this.http); }
   sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal) { return this.adapter.sync(userId, request, signal); }
   workspaces(userId: string) { return this.adapter.workspaces(userId); }
-  selectWorkspace(userId: string, groupId: string | null) { return this.adapter.selectWorkspace(userId, groupId); }
   page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal) { return this.adapter.page(userId, query, signal); }
   detail(userId: string, id: string, signal?: AbortSignal) { return this.adapter.detail(userId, id, signal); }
   save(request: SaveCommunityGroup) { return this.adapter.save(request); }

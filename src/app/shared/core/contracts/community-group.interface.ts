@@ -34,13 +34,12 @@ export interface GroupWorkspace {
   moderationQueueRevision?: number;
   groupId: string; profileId: string; name: string; role: string; activity: number; policy: GroupPolicy;
 }
-export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; }
+export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; accountProfile?: UserDto | null; }
 export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
 export interface GroupSyncResponse { upserts: CommunityGroupSummary[]; removedIds: string[]; total: number; }
 export interface ICommunityGroupsService {
   sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse>;
   workspaces(userId: string): Promise<GroupWorkspace[]>;
-  selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection>;
   page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>>;
   detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup>;
   save(request: SaveCommunityGroup): Promise<CommunityGroup>;

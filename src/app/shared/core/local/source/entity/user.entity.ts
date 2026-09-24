@@ -92,6 +92,7 @@ export interface UserEventFeedbackCountersRecord {
 }
 
 export interface UserRecord {
+  activeWorkspaceGroupId?: string | null;
   workspaceGroupId?: string;
   accountUserId?: string;
   following?: import('../../../contracts/following.interface').FollowingState;

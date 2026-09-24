@@ -311,7 +311,7 @@ export class SideMenuComponent implements OnDestroy {
       imageFallback: workspace ? AppUtils.initialsFromText(workspace.name) : '',
       imageShape: 'circle',
       palette: workspace ? this.groupWorkspaces.palette(workspace.groupId) : 'green',
-      layout: 'pill', disabled: this.groupWorkspaces.context.switching() };
+      layout: 'pill', disabled: ['idle', 'loading'].includes(this.activeUserLoadState().status) };
   });
   protected readonly workspaceItems = computed(() => this.groupWorkspaces.menuItems(this.groupWorkspaces.context.active()?.groupId ?? 'main'));
   protected selectWorkspace(event: AppMenuItemSelectEvent): void {
@@ -539,7 +539,7 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly offlineAttentionDismissed = signal(false);
   protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
-  private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+  private readonly serverActionsUnavailable = computed(() => this.groupWorkspaces.context.switching() || !this.runtimeStore.isDataSourceAvailable()
     || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
@@ -1112,7 +1112,7 @@ export class SideMenuComponent implements OnDestroy {
     effect(() => {
       const userId = this.userProfileStore.activeUserId().trim();
       const url = this.notificationRouteUrl();
-      if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
+      if (userId && !this.groupWorkspaces.context.switching() && this.userProfileStore.activeUserProfile()?.id === userId) {
         void this.openNotificationRoute(url);
         void this.openPartnerInviteTarget(url, userId);
       }
@@ -1142,14 +1142,14 @@ export class SideMenuComponent implements OnDestroy {
         ? `firebase:${session.profile.id}`
         : session.kind === 'operator-bootstrap'
           ? `operator-bootstrap:${session.email}`
-          : (activeUserId ? `demo:${activeUserId}` : '');
+          : `demo:${session.userId}`;
 
       if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
         return;
       }
 
       this.hydrationRequestKeyRef.set(requestKey);
-      void this.hydrateUserAfterLogin(activeUserId || undefined);
+      void this.hydrateUserAfterLogin(this.sessionService.activeUserId() || undefined);
     });
 
     effect(() => {

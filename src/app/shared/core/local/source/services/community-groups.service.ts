@@ -43,13 +43,14 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
           policy: structuredClone(group.policy) }] : [];
     }).sort((a, b) => a.name.localeCompare(b.name) || a.groupId.localeCompare(b.groupId));
   }
-  async selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection> {
-    await this.waitForRouteDelay('/auth/me');
+  async resolveWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection> {
+    await this.groups.ready();
     const workspace = groupId ? (await this.workspaces(userId)).find(w => w.groupId === groupId) : null;
     if (groupId && !workspace) throw new Error('Forbidden');
     const profile = this.users.queryUserById(workspace?.profileId ?? userId);
     if (!profile) throw new Error('Profile not found');
-    return { workspace: workspace ?? null, profile: LocalUsersMapper.toDto(profile) };
+    return { workspace: workspace ?? null, profile: LocalUsersMapper.toDto(profile),
+      accountProfile: workspace ? LocalUsersMapper.toDto(this.users.queryUserById(userId)!) : null };
   }
   private profileId(groupId: string, userId: string): string { return `group:${groupId}:${userId}`; }
   private admit(group: CommunityGroupRecord, accountId: string): void {
@@ -194,6 +195,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     target.updatedAtIso = new Date().toISOString(); target.actionAtIso = target.updatedAtIso; target.updatedMs = Date.now();
     if (target.status === 'accepted') this.admit(group, targetId);
     this.writeMembers(id, rows.map(m => m.userId === targetId ? target : m));
+    if (target.status === 'deleted' && this.users.queryUserById(targetId)?.activeWorkspaceGroupId === id)
+      await this.users.selectWorkspace(targetId, null);
     return { members: self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
   }
   private visible(userId: string, id: string): CommunityGroupRecord {

@@ -83,12 +83,14 @@ export class CommunityGroupsStore {
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') return;
       const userId = this.openUserId() ?? '';
       try {
-        const { profile } = await this.service.selectWorkspace(userId, group.id);
+        const workspace = (await this.service.workspaces(userId)).find(item => item.groupId === group.id);
+        const profile = this.profile.getUserProfile(userId);
+        if (!workspace || !profile) throw new Error('groups.forbidden');
         const component = await import('../../../../admin/components/content-moderation-popup/content-moderation-popup.component');
         if (userId !== this.openUserId()) return;
         this.moderationComponent.set(component.ContentModerationPopupComponent);
         this.moderationContext.set({ groupId: group.id, name: group.name, actor: {
-          id: profile.id, name: profile.name, initials: profile.initials, email: '', headline: '', about: '', images: [...(profile.images ?? [])]
+          id: workspace.profileId, name: profile.name, initials: profile.initials, email: '', headline: '', about: '', images: [...(profile.images ?? [])]
         } });
       } catch (error) { this.error.set(this.message(error)); }
       return;

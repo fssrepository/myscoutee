@@ -1,3 +1,5 @@
+import { AppRuntimeStore } from './app-runtime.store';
+import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../../core/base/services/users.service';
 import { AppUtils } from '../../../app-utils';
 import { ContentModerationStore } from './content-moderation.store';
 import type { AppMenuItem, AppMenuPalette } from '../../components/core/menu';
@@ -16,6 +18,9 @@ import type { GroupWorkspace } from '../../../core/contracts/community-group.int
 export class GroupWorkspaceStore {
   readonly context = inject(GroupWorkspaceContextService);
   private readonly service = inject(CommunityGroupsService);
+  private readonly users = inject(UsersService);
+  private readonly runtime = inject(AppRuntimeStore);
+  private sessionKey = '';
   private readonly profile = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
   private readonly session = inject(SessionService);
@@ -66,7 +71,9 @@ export class GroupWorkspaceStore {
       const profileId = this.profile.activeUserId();
       const accountId = session ? this.session.activeUserId() : '';
       untracked(() => {
-        if (accountId !== this.context.accountUserId()) {
+        const key = session ? `${session.kind}:${accountId}` : '';
+        if (key !== this.sessionKey) {
+          this.sessionKey = key;
           this.generation++;
           this.moderation.clear();
           this.context.accountUserId.set(accountId);
@@ -77,7 +84,7 @@ export class GroupWorkspaceStore {
           this.poller.stop({ abort: true });
 
         }
-        if (accountId && profileId) this.poller.restart({ immediate: true });
+        if (this.context.accountUserId() && profileId) this.poller.restart({ immediate: true });
       });
     });
   }
@@ -102,9 +109,10 @@ export class GroupWorkspaceStore {
     if (!accountId) return;
     const generation = this.generation;
     const sequence = ++this.refreshSequence;
+    const revision = this.context.revision();
     const mutation = this.changes.change();
     const workspaces = await this.service.workspaces(accountId);
-    if (generation === this.generation && sequence === this.refreshSequence && mutation === this.changes.change()
+    if (revision === this.context.revision() && generation === this.generation && sequence === this.refreshSequence && mutation === this.changes.change()
         && accountId === this.context.accountUserId()) {
       this.workspaceSnapshots.set(workspaces);
       const active = this.context.active();
@@ -117,17 +125,15 @@ export class GroupWorkspaceStore {
   }
   async select(groupId: string | null): Promise<boolean> {
     if (this.context.switching()) return false;
-    if ((this.context.active()?.groupId ?? null) === groupId) return true;
+    if ((this.context.active()?.groupId ?? null) === groupId
+        && this.runtime.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success') return true;
     const generation = this.generation;
     this.error.set(''); this.context.switching.set(true);
     try {
-      const selected = await this.service.selectWorkspace(this.context.accountUserId(), groupId);
-      if (generation !== this.generation) return false;
-      // Retain the last local menu deltas when leaving a workspace until its next canonical poll.
       this.workspaceSnapshots.set(this.workspaces());
-      this.context.active.set(selected.workspace);
-      this.activities.clearUserCounterOverrides(selected.profile.id);
-      this.profile.setActiveUserProfile(selected.profile);
+      const selected = await this.users.loadProfileExtById(this.context.accountUserId(), undefined, groupId);
+      if (generation !== this.generation) return false;
+      if (!selected) { this.error.set('groups.switch.failed'); return false; }
       return true;
     } catch { if (generation === this.generation) this.error.set('groups.switch.failed'); return false; }
     finally { if (generation === this.generation) this.context.switching.set(false); }

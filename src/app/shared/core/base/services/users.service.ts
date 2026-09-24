@@ -1,3 +1,5 @@
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { SessionService } from './session.service';
 import { AffiliateReferralService } from './affiliate-referral.service';
 import {
   Injectable,
@@ -50,6 +52,8 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  private readonly session = inject(SessionService);
   private readonly affiliateReferral = inject(AffiliateReferralService);
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
@@ -143,6 +147,9 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
+    const revision = this.workspace.revision();
+    const session = this.session.session();
+    const current = () => revision === this.workspace.revision() && session === this.session.session();
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
@@ -156,6 +163,7 @@ export class UsersService extends BaseRouteModeService {
 
     try {
       const response = await this.userService.queryUserById(normalizedUserId || undefined, requestTimeoutMs);
+      if (!current()) return null;
 
       if (!response.user) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'User details not found.');
@@ -192,6 +200,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
       return response.user;
     } catch (error) {
+      if (!current()) return null;
       if (this.isTimeoutError(error, 'User details request timeout.')) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User details request timeout.');
         return null;
@@ -202,12 +211,18 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtDto | null> {
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtDto | null> {
+    const revision = this.workspace.revision() + 1;
+    this.workspace.revision.set(revision);
+    this.workspace.switching.set(true);
+    const session = this.session.session();
+    const current = () => revision === this.workspace.revision() && this.session.session() === session;
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
 
     if (this.isLocalRouteEnabled('/auth/me/profile-ext') && !normalizedUserId) {
+      this.workspace.switching.set(false);
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
@@ -215,7 +230,8 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs);
+      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId);
+      if (!current()) return null;
       const profileExt = response.profileExt;
       const user = profileExt?.profile ?? null;
 
@@ -225,14 +241,16 @@ export class UsersService extends BaseRouteModeService {
       }
 
       const resolvedUserId = user.id.trim() || normalizedUserId;
-      const previousActiveUserId = this.userProfileStore.getActiveUserId().trim();
       if (user.profileStatus === 'deleted') {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
         return profileExt;
       }
 
+      if (response.accountProfile) this.userProfileStore.setUserProfile(response.accountProfile);
+      this.workspace.accountUserId.set(response.accountProfile?.id ?? user.id);
+      this.workspace.active.set(response.workspace ?? null);
       this.userProfileStore.setProfileExt(profileExt);
-      if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
+      if (resolvedUserId) {
         this.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
@@ -255,6 +273,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
       return this.userProfileStore.getProfileExt(resolvedUserId) ?? profileExt;
     } catch (error) {
+      if (!current()) return null;
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User profile request timeout.');
         return null;
@@ -262,6 +281,8 @@ export class UsersService extends BaseRouteModeService {
 
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
       return null;
+    } finally {
+      if (current()) this.workspace.switching.set(false);
     }
   }
 

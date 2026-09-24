@@ -80,6 +80,31 @@ export class LocalUsersRepository {
     return user;
   }
 
+  async selectWorkspace(accountId: string, groupId: string | null): Promise<void> {
+    const previousGroupId = this.queryUserById(accountId)?.activeWorkspaceGroupId ?? null;
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const account = table.byId[accountId];
+      if (!account || account.workspaceGroupId) throw new Error('Account not found');
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+        [accountId]: { ...account, activeWorkspaceGroupId: groupId }
+      } } };
+    });
+    try {
+      await this.flushToIndexedDb();
+    } catch (error) {
+      this.memoryDb.write(state => {
+        const table = state[USERS_TABLE_NAME];
+        const account = table.byId[accountId];
+        if (!account || account.activeWorkspaceGroupId !== groupId) return state;
+        return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+          [accountId]: { ...account, activeWorkspaceGroupId: previousGroupId }
+        } } };
+      });
+      throw error;
+    }
+  }
+
   upsertUser(user: UserRecord): UserRecord {
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
@@ -104,6 +129,7 @@ export class LocalUsersRepository {
           byId: {
             ...usersTable.byId,
             [user.id]: { ...user,
+              activeWorkspaceGroupId: usersTable.byId[user.id]?.activeWorkspaceGroupId,
               workspaceGroupId: usersTable.byId[user.id]?.workspaceGroupId ?? user.workspaceGroupId,
               accountUserId: usersTable.byId[user.id]?.accountUserId ?? user.accountUserId, devices: usersTable.byId[user.id]?.devices,
               affiliateCode: usersTable.byId[user.id]?.affiliateCode,

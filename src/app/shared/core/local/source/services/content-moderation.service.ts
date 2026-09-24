@@ -30,7 +30,7 @@ export class LocalContentModerationService extends LocalRouteDelayService {
       const accountId = this.users.queryUserById(adminUserId)?.accountUserId ?? adminUserId;
       const group = await this.groups.detail(accountId, groupId);
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') throw new Error('groups.forbidden');
-      const { profile } = await this.groups.selectWorkspace(accountId, groupId);
+      const { profile } = await this.groups.resolveWorkspace(accountId, groupId);
       moderator = { id: profile.id, name: profile.name, initials: profile.initials, email: '', headline: '', about: '', images: [...(profile.images ?? [])] };
     }
     await this.deliverMessages();

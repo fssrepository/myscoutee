@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
-import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../contracts/community-group.interface';
+import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace } from '../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class HttpCommunityGroupsService implements ICommunityGroupsService {
@@ -15,9 +15,6 @@ export class HttpCommunityGroupsService implements ICommunityGroupsService {
   }
   workspaces(userId: string): Promise<GroupWorkspace[]> {
     return firstValueFrom(this.http.get<GroupWorkspace[]>(`${this.url}/workspaces`, { params: { userId } }));
-  }
-  selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection> {
-    return firstValueFrom(this.http.post<GroupWorkspaceSelection>(`${this.url}/workspaces/select`, { userId, groupId }));
   }
   async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>> {
     signal?.throwIfAborted();

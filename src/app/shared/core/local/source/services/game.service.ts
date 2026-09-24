@@ -28,8 +28,8 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   private static readonly HOME_FRESHNESS_HALF_LIFE_DAYS = 14;
   private readonly workspace = inject(GroupWorkspaceContextService);
   private workspaceUsers(): UserDto[] {
-    const groupId = this.workspace.active()?.groupId;
-    return this.usersRepository.queryAllUsers().filter(user => this.usersRepository.queryUserById(user.id)?.workspaceGroupId === groupId);
+    const groupId = this.usersRepository.queryUserById(this.workspace.accountUserId())?.activeWorkspaceGroupId ?? null;
+    return this.usersRepository.queryAllUsers().filter(user => this.usersRepository.queryUserById(user.id)?.workspaceGroupId == groupId);
   }
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
