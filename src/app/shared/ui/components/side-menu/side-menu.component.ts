@@ -307,11 +307,11 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly workspaceTrigger = computed<AppMenuTrigger>(() => {
     const workspace = this.groupWorkspaces.context.active();
     return { label: workspace?.name ?? 'groups.workspace.main', ariaLabel: 'groups.workspace.select',
-      icon: workspace ? '' : 'public', openIcon: workspace ? '' : 'public', rotateIcon: false,
+      icon: workspace ? '' : 'public', rotateIcon: false,
       imageFallback: workspace ? AppUtils.initialsFromText(workspace.name) : '',
       imageShape: 'circle',
       palette: workspace ? this.groupWorkspaces.palette(workspace.groupId) : 'green',
-      layout: 'icon', hideLabel: true, trailingIcon: '', disabled: this.groupWorkspaces.context.switching() };
+      layout: 'pill', disabled: this.groupWorkspaces.context.switching() };
   });
   protected readonly workspaceItems = computed(() => this.groupWorkspaces.menuItems(this.groupWorkspaces.context.active()?.groupId ?? 'main'));
   protected selectWorkspace(event: AppMenuItemSelectEvent): void {

@@ -105,6 +105,7 @@
   position: relative;
   display: inline-flex;
   min-width: 0;
+  max-width: 100%;
   overflow: visible;
 }
 
@@ -589,6 +590,7 @@
   justify-content: center;
   gap: 0.34rem;
   min-width: 2.25rem;
+  max-width: 100%;
   min-height: 2.25rem;
   border: 1px solid var(--app-menu-border);
   border-radius: 999px;
@@ -765,6 +767,7 @@
 }
 
 .app-menu__trigger .mat-icon {
+  flex-shrink: 0;
   width: 1.14rem;
   height: 1.14rem;
   font-size: 1.14rem;
@@ -829,6 +832,10 @@
   padding: 0;
   border-radius: 50%;
   font-size: 12px;
+}
+
+:host(.app-menu-host--compact) .app-menu__trigger--layout-pill:has(.app-menu__trigger-image--circle) {
+  padding-block: 0.25rem;
 }
 
 .app-menu__trigger-icon--symbol,
@@ -1761,7 +1768,7 @@
 }
 
 .app-menu__groups {
-  gap: 0.64rem;
+  gap: 1rem;
 }
 
 .app-menu__group {

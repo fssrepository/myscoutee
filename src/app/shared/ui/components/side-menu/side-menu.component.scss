@@ -194,15 +194,32 @@
   display: block;
   border-bottom: 1px solid rgba(23, 33, 54, 0.12);
   --app-header-card-radius: 0;
-  --app-header-card-padding-top: 1.25rem;
-  --app-header-card-text-padding-top: 1.15rem;
+  --app-header-card-padding: 0.8rem 0.66rem 0.9rem;
+  --app-header-card-padding-top: 3.75rem;
+  --app-header-card-text-padding-top: 0;
+  --app-header-card-text-gap: 0.45rem;
+  --app-header-card-text-flex: 1 1 0;
+  --app-header-card-content-gap: 0.6rem;
+}
+
+.navigator-workspace-selector {
+  max-width: min(8.75rem, 100%);
+}
+
+.navigator-header-toolbar {
+  position: absolute;
+  top: 0.88rem;
+  left: 0.66rem;
+  right: 0.58rem;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .navigator-header-actions {
-  position: absolute;
-  top: 0.88rem;
-  right: 0.58rem;
-  z-index: 7;
+  flex: 0 0 auto;
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 0.34rem;
@@ -240,7 +257,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.54rem;
+  gap: 1rem;
   padding: 0.86rem;
 }
 
@@ -319,4 +336,3 @@ app-event-supply-contributions-popup {
   min-height: 240px;
   color: #536a84;
 }
-

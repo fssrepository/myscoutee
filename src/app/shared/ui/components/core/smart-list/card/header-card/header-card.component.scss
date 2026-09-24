@@ -44,7 +44,7 @@
 .header-card__main {
   display: flex;
   align-items: center;
-  gap: 0.82rem;
+  gap: var(--app-header-card-content-gap, 0.82rem);
   min-width: 0;
 }
 
@@ -150,12 +150,13 @@
 }
 
 .header-card__text {
+  flex: var(--app-header-card-text-flex, 0 1 auto);
   min-width: 0;
   align-self: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--app-header-card-text-gap, 0.45rem);
   text-align: center;
   padding-top: var(--app-header-card-text-padding-top, 0);
 }
@@ -201,6 +202,7 @@
 }
 
 .header-card__meta .mat-icon {
+  flex: 0 0 16px;
   width: 16px;
   height: 16px;
   font-size: 16px;
@@ -248,10 +250,3 @@
 }
 
 .header-card__avatar-start { position: absolute; top: -4px; left: -4px; z-index: 9; }
-
-.header-card__avatar-end {
-  position: absolute;
-  bottom: var(--header-card-badge-overhang);
-  right: -4px;
-  z-index: 9;
-}

@@ -79,29 +79,31 @@
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
-        >
+        ></app-header-card>
+        @if (groupWorkspaces.error()) { <p role="alert">{{ groupWorkspaces.error() | i18n }}</p> }
+        <div class="navigator-header-toolbar">
           @if (!isAdminMode() && !isOperatorMode()) {
-            <app-menu avatarEnd class="navigator-workspace-selector" kind="select"
+            <app-menu class="navigator-workspace-selector" kind="select" panelAlign="start"
+              [model]="{ density: 'compact' }"
               [trigger]="workspaceTrigger()" [items]="workspaceItems()"
               (itemSelect)="selectWorkspace($event)"></app-menu>
           }
-        </app-header-card>
-        @if (groupWorkspaces.error()) { <p role="alert">{{ groupWorkspaces.error() | i18n }}</p> }
-        <div class="navigator-header-actions">
-          <app-menu
-            class="navigator-header-actions-menu"
-            kind="inline"
-            [model]="navigatorHeaderActionMenuModel()"
-            (itemSelect)="onNavigatorHeaderActionMenuSelect($event)"
-          ></app-menu>
-          <button
-            type="button"
-            class="user-menu-close-btn"
-            aria-label="Close menu"
-            (click)="$event.stopPropagation(); onCloseMenu()"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
+          <div class="navigator-header-actions">
+            <app-menu
+              class="navigator-header-actions-menu"
+              kind="inline"
+              [model]="navigatorHeaderActionMenuModel()"
+              (itemSelect)="onNavigatorHeaderActionMenuSelect($event)"
+            ></app-menu>
+            <button
+              type="button"
+              class="user-menu-close-btn"
+              aria-label="Close menu"
+              (click)="$event.stopPropagation(); onCloseMenu()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
         </div>
       </div>
       <div class="user-menu-content">
