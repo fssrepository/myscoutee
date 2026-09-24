@@ -546,10 +546,48 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
   }
 
+  async purgeExpiredCheckoutBaskets(now = Date.now()): Promise<number> {
+    const count = await this.eventCheckoutBasketsRepository.purgeExpiredReservations((userId, sourceId) => {
+      const member = this.activityMembersRepository.peekRecordsByOwner({ ownerType: 'event', ownerId: sourceId })
+        .find(item => item.userId === userId);
+      if (member?.status === 'pending') {
+        this.eventsRepository.leaveEvent(userId, sourceId, { removeMembershipOnly: true });
+        this.assetTicketsRepository.synchronizeForMemberChange(sourceId, userId);
+      }
+    }, now);
+    if (count) await this.eventsRepository.flushToIndexedDb();
+    return count;
+  }
+
+  private checkoutDeadline(userId: string, sourceId: string, slotIds: readonly (string | null | undefined)[]): string {
+    const selected = this.eventsRepository.queryEventRecordById(userId, sourceId);
+    const parent = selected?.parentEventId
+      ? this.eventsRepository.queryEventRecordById(userId, selected.parentEventId) : selected;
+    if (!parent) throw new Error('Checkout event was not found.');
+    const starts = [...new Set(slotIds.length ? slotIds : [''])].map(slotId => {
+      const slot = slotId ? parent.upcomingSlots?.find(item => item.id === slotId) : null;
+      const start = Date.parse(slot?.startAtIso ?? parent.startAtIso ?? '');
+      if (!Number.isFinite(start)) throw new Error('Checkout event start time is required.');
+      return start;
+    });
+    const leadHours = parent.pricing && parent.pricing.enabled !== false && parent.paymentDeadlineEnabled !== false
+      ? Math.max(0, parent.paymentDeadlineHours ?? 4) : 0;
+    return new Date(Math.min(...starts) - leadHours * 3600000).toISOString();
+  }
+
   private async saveCheckoutBasketRecord(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
     const record = LocalEventCheckoutBasketsMapper.toRecordFromRequest(request);
     if (!record) {
       return null;
+    }
+    if (record.items.some(item => item.kind === 'event' || item.kind === 'sub_event')) {
+      const deadline = this.checkoutDeadline(record.userId, record.sourceId,
+        record.items.map(item => item.slotSourceId ?? record.slotSourceId));
+      if (Date.parse(deadline) <= Date.now() && record.status !== 'pay') {
+        throw new Error('event.checkout.payment.deadline.passed');
+      }
+      record.items = record.items.map(item => ({ ...item, expiresAtIso: deadline }));
+      record.expiresAtIso = deadline;
     }
     return LocalEventCheckoutBasketsMapper.toDto(
       await this.eventCheckoutBasketsRepository.saveBasket(record)
@@ -624,6 +662,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         }), normalizedUserId, beforeCounters
       );
     }
+    const deadline = this.checkoutDeadline(normalizedUserId, normalizedSourceId,
+      requestedItems.map(item => item.slotSourceId ?? request.slotSourceId));
+    if (Date.parse(deadline) <= Date.now()) throw new Error('event.checkout.payment.deadline.passed');
     if (request.checkoutRequest) {
       await this.saveCheckoutBasketRecord({
         ...request.checkoutRequest,
@@ -942,7 +983,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     if (existingRecord?.status === 'DR' && this.paidEventTermsSignature(existingRecord) !== this.paidEventTermsSignature(savedRecord ?? record)) {
       const affected = this.affiliateRepository.markEventTermsChanged(record.id);
-      this.eventsRepository.markChangedTerms(record.id, affected);
       this.appendEventLifecycleNotifications(record.userId, record.id,
         { ...record, acceptedMemberUserIds: affected, pendingMemberUserIds: [], invitedMemberUserIds: [] },
         'event-paid-terms-changed', record.title, 'Event details changed.', 'warning',

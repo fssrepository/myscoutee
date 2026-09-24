@@ -1,4 +1,5 @@
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
+import { AdminNotificationsService } from '../../../core/base/services/admin-notifications.service';
 import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
 import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
 import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
@@ -238,6 +239,7 @@ type NavigatorHeaderActionMenuItemId =
 export class SideMenuComponent implements OnDestroy {
   protected readonly moderationStore = inject(ContentModerationStore);
   private readonly moderationService = inject(ContentModerationService);
+  private readonly adminNotificationsService = inject(AdminNotificationsService);
   protected readonly followingStore = inject(FollowingStore);
   protected openFollowedEvents(event: Event): void {
     event.stopPropagation();
@@ -1038,6 +1040,7 @@ export class SideMenuComponent implements OnDestroy {
   });
   constructor() {
     effect(() => this.moderationService.setWorkerActive(!!this.sessionService.session()));
+    effect(() => this.adminNotificationsService.setWorkerActive(!!this.sessionService.session()));
     effect(() => {
       const adminId = this.adminWorkspaceStore.dashboard()?.activeAdmin.id;
       this.moderationStore.clear();

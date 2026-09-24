@@ -123,7 +123,7 @@ export class LocalIntegrationRepository {
     return users.ids.flatMap(payerId => Object.entries(users.byId[payerId].affiliatePayments ?? {}).flatMap(([id, payment]) => {
       if (!payment.sourceId || (payerId !== userId && payment.recipientUserId !== userId)) return [];
       const direction = payerId === userId ? 'expense' as const : 'income' as const;
-      const base = { sourceId: payment.sourceId, provider: 'dummy', currency: payment.currency,
+      const base = { sourceId: payment.sourceId, checkoutSessionId: id, provider: 'dummy', currency: payment.currency,
         recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : 'joined',
         canRequestRefund: false, canApproveRefund: false };
       const refundPreview = this.refundPreview(payment);

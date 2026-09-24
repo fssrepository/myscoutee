@@ -155,8 +155,8 @@ export class LocalActivityEventsMapper {
     const direction = `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? -1 : 1;
     const nowMs = Date.now();
     const sources = this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
-      .filter(source => this.slotSourceMatchesOrder(source, query, nowMs))
-      .filter(source => this.slotSourceOverlapsRange(source, query))
+      .filter(source => (!source.slotSourceId && source.definitions.length === 0)
+        || (this.slotSourceMatchesOrder(source, query, nowMs) && this.slotSourceOverlapsRange(source, query)))
       .sort((left, right) => direction * (this.dateMs(left.startAt) - this.dateMs(right.startAt)));
     const groupCountsBySource = this.stageGroupCountsBySource(sources, parentRecord.capacityMax);
     return sources.map(source => this.toSubEventsSlot(
@@ -173,9 +173,7 @@ export class LocalActivityEventsMapper {
   ): SubEventsSlotDTO {
     const generatedItems = source.definitions.length > 0
       ? this.subEventItemsForSlot(source.startAt, source.definitions, groupCountsByStageId)
-      : source.slotSourceId
-        ? [this.slotMainEventItem(source, parentRecord)]
-        : [];
+      : [this.slotMainEventItem(source, parentRecord)];
     const storedItemsById = new Map(
       (parentRecord.subEvents ?? []).map(item => [`${item.id ?? ''}`.trim(), item])
     );
@@ -323,23 +321,23 @@ export class LocalActivityEventsMapper {
     if (templates.length > 0) {
       return this.templateSlotSources(parentEventId, parentRecord, templates, query);
     }
-    if (parentRecord.subEventsEnabled === false) {
+    const definitions = parentRecord.subEventsEnabled === false
+      ? []
+      : ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
+    if (definitions.length === 0 && (parentRecord.generated || ['D', 'T', 'I'].includes(parentRecord.status ?? ''))) {
       return [];
     }
-    const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
-    return definitions.length > 0
-      ? [{
-          id: `${parentEventId}:default`,
-          parentEventId,
-          slotSourceId: null,
-          slotTemplateId: null,
-          title: null,
-          timeframe: null,
-          startAt: `${parentRecord.startAtIso ?? ''}`.trim() || null,
-          endAt: `${parentRecord.endAtIso ?? ''}`.trim() || null,
-          definitions
-        }]
-      : [];
+    return [{
+      id: definitions.length > 0 ? `${parentEventId}:default` : `main-event:${parentEventId}`,
+      parentEventId,
+      slotSourceId: null,
+      slotTemplateId: null,
+      title: definitions.length > 0 ? null : parentRecord.title,
+      timeframe: definitions.length > 0 ? null : parentRecord.timeframe,
+      startAt: `${parentRecord.startAtIso ?? ''}`.trim() || null,
+      endAt: `${parentRecord.endAtIso ?? ''}`.trim() || null,
+      definitions
+    }];
   }
 
   private static recordSlotSource(parentEventId: string, record: ActivityEventRecord): SubEventsSlotSource {
@@ -663,7 +661,7 @@ export class LocalActivityEventsMapper {
     source: SubEventsSlotSource,
     parentRecord: ActivityEventRecord
   ): EventContracts.SubEventDTO {
-    const slotSourceId = `${source.slotSourceId ?? ''}`.trim();
+    const slotSourceId = `${source.slotSourceId ?? source.parentEventId}`.trim();
     const startAt = `${source.startAt ?? parentRecord.startAtIso ?? ''}`.trim();
     const endAt = `${source.endAt ?? parentRecord.endAtIso ?? startAt}`.trim() || startAt;
     const startMs = this.dateMs(startAt);

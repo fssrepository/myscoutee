@@ -1,6 +1,6 @@
 import { SummaryCurrencyPopupComponent } from '../summary-currency-popup/summary-currency-popup.component';
 import { PaymentEuroSummaryDto } from '../../../core/contracts/payment-method.interface';
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, untracked, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, viewChild, computed, effect, untracked, inject, signal } from '@angular/core';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { from } from 'rxjs';
 
@@ -87,6 +87,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly i18n = inject(I18nService);
 
+  private readonly historyList = viewChild<SmartListComponent<PaymentHistoryItemDto, PaymentListFilters>>('historyList');
   private readonly revisionRef = signal(0);
   private readonly canAddRef = signal(false);
   private readonly cardsOpenRef = signal(false);
@@ -167,6 +168,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     emptyDescription: 'payment.history.empty.description',
     listLayout: 'stack',
     snapMode: 'none',
+    cacheable: true,
+    sortable: { sortKey: item => [-Date.parse(item.createdAtIso), item.id] },
     groupBy: item => `${item.createdAtIso ?? ''}`.slice(0, 10),
     showFirstGroupMarker: true,
     headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
@@ -908,7 +911,17 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         paymentRefundsPending: pendingRefundCount
       }
     }));
-    this.revisionRef.update(value => value + 1);
+    const list = this.historyList();
+    const direction = this.historyDirectionRef();
+    for (const item of mutation.items ?? [mutation.item]) {
+      const matches = direction === 'all'
+        || (direction === 'expenses' ? item.direction === 'expense' : item.direction === 'income');
+      if (!matches) {
+        list?.removeVisibleItems(row => row.id === item.id);
+      } else if (!list?.patchVisibleItem(row => row.id === item.id, () => item)) {
+        list?.reinsertVisibleItem(item, { loadedRange: 'before-or-within' });
+      }
+    }
   }
 
   private mergePaymentTotals(

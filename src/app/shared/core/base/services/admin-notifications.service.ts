@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, inject } from '@angular/core';
 
 import type {
   AdminNotificationCenterState,
@@ -21,6 +21,7 @@ import {
 } from '../../local/source/services/admin-notifications.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
+import { RouteIntervalSchedulerService } from './route-interval-scheduler.service';
 
 const ADMIN_NOTIFICATION_ROUTE = '/admin/notifications';
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
@@ -55,6 +56,22 @@ export class AdminNotificationsService extends BaseRouteModeService {
   private readonly localService = inject(LocalAdminNotificationsService);
   private readonly httpService = inject(HttpAdminNotificationsService);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly scheduler = inject(RouteIntervalSchedulerService);
+  private stopWorker?: () => void;
+
+  constructor() {
+    super();
+    inject(DestroyRef).onDestroy(() => this.stopWorker?.());
+  }
+
+  setWorkerActive(active: boolean): void {
+    if (!active || !this.isLocalRouteEnabled(ADMIN_NOTIFICATION_ROUTE)) {
+      this.stopWorker?.(); this.stopWorker = undefined; return;
+    }
+    if (!this.stopWorker) this.stopWorker = this.scheduler.startInterval(ADMIN_NOTIFICATION_ROUTE,
+      () => this.localService.runCheckoutPurgeTick().catch(() => {}), { fallbackIntervalMs: 60000 });
+  }
+
 
   private get notificationService(): LocalAdminNotificationsService | HttpAdminNotificationsService {
     return this.resolveRouteService(ADMIN_NOTIFICATION_ROUTE, this.localService, this.httpService);

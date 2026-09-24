@@ -90,6 +90,7 @@ export interface PaymentHistoryPageDto extends PageResult<PaymentHistoryItemDto>
 }
 
 export interface PaymentHistoryMutationDto {
+  items?: PaymentHistoryItemDto[];
   euroSummary?: PaymentEuroSummaryDto | null;
   item: PaymentHistoryItemDto;
   spendingTotals: Record<string, number>;

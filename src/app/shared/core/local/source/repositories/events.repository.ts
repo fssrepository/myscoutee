@@ -1213,10 +1213,6 @@ export class LocalEventsRepository {
     this.updateItemState(userId, sourceId, { cancelled: true, cancellationRefundsPending: false });
   }
 
-  markChangedTerms(sourceId: string, userIds: readonly string[]): void {
-    for (const userId of userIds) this.updateItemState(userId, sourceId, { canCancelForFullRefund: true });
-  }
-
   publishItem(userId: string, sourceId: string): void {
     this.updateItemState(userId, sourceId, {
       cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false,
@@ -3079,7 +3075,11 @@ export class LocalEventsRepository {
   ): ActivityEventRecord {
     return {
       ...record,
-      watched: this.isWatchedByUser(record, viewerUserId)
+      watched: this.isWatchedByUser(record, viewerUserId),
+      canCancelForFullRefund: Object.values(
+        this.memoryDb.read()[USERS_TABLE_NAME].byId[viewerUserId.trim()]?.affiliatePayments ?? {}
+      ).some(payment => payment.sourceId === record.id
+        && payment.eventRefundEligible === true && payment.refunded < payment.gross)
     };
   }
 

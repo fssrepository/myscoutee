@@ -205,6 +205,30 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(basket);
   }
 
+  async purgeExpiredReservations(
+    expireMembership: (userId: string, sourceId: string) => void,
+    now = Date.now()
+  ): Promise<number> {
+    const table = await this.readTable();
+    let count = 0;
+    const updatedAtIso = new Date(now).toISOString();
+    for (const basket of Object.values(table.byKey)) {
+      const due = basket.items.filter(item =>
+        ['draft', 'confirmed', 'waiting', 'approval-pending', 'approved'].includes(item.status)
+        && this.isReservationResultState(item.resultState)
+        && Number.isFinite(Date.parse(item.expiresAtIso ?? ''))
+        && Date.parse(item.expiresAtIso!) <= now);
+      if (!due.length) continue;
+      expireMembership(basket.userId, basket.sourceId);
+      const dueItems = new Set(due);
+      basket.items = basket.items.map(item => dueItems.has(item)
+        ? { ...item, resultState: 'deleted', updatedAtIso } : item);
+      count += due.length;
+    }
+    if (count) await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.eventCheckoutBaskets, table);
+    return count;
+  }
+
   async clearBasket(userId: string, sourceId: string): Promise<void> {
     const key = this.recordKey(userId, sourceId);
     if (!key) {

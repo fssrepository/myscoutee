@@ -319,6 +319,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     income.push(...recorded.filter(row => row.direction === 'income'));
     return {
       item,
+      items: item.checkoutSessionId ? recorded.filter(row => row.checkoutSessionId === item.checkoutSessionId) : [item],
       euroSummary: this.summary(userId, [...expenses, ...income]),
       spendingTotals: this.paymentTotals(expenses, 'expense'),
       incomeTotals: this.paymentTotals(income, 'income'),

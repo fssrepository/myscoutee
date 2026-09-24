@@ -139,6 +139,7 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
     }
     return {
       item: { ...value.item },
+      items: (Array.isArray(value.items) ? value.items : [value.item]).map(item => ({ ...item })),
       euroSummary: value.euroSummary ?? null,
       spendingTotals: this.normalizeSpendingTotals(value.spendingTotals),
       incomeTotals: this.normalizeSpendingTotals(value.incomeTotals),
