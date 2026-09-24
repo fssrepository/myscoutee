@@ -593,6 +593,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       height: 'auto',
       mobilePresentation: 'compact',
       headerLayout: 'document',
+      backdropTone: 'dim',
       onClose: () => this.closeCountriesPopup()
     };
   }
@@ -633,6 +634,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       headerLayout: 'document',
       headerTone: 'accent',
       headerPalette: 'amber',
+      backdropTone: 'dim',
       onClose: () => this.closePreviewGuide()
     };
   }
