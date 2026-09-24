@@ -149,9 +149,10 @@ export class ProfileEditorComponent implements OnDestroy {
     label: 'calendar.sync',
     ariaLabel: 'calendar.export.help',
     layout: 'action' as const,
+    compactOnMobile: true,
     palette: 'teal' as const,
     disabled: this.calendarExport.downloading(),
-    progress: this.calendarExport.downloading() ? { state: 'loading' as const, shape: 'button' as const } : null
+    progress: this.calendarExport.downloading() ? { state: 'loading' as const } : null
   }] : []), {
     id: 'profile-api-integration',
     kind: 'action',
@@ -159,6 +160,7 @@ export class ProfileEditorComponent implements OnDestroy {
     label: this.activeUserIsAdmin() ? 'admin.api.title' : 'affiliate.title',
     ariaLabel: this.activeUserIsAdmin() ? 'admin.api.title' : 'affiliate.open',
     layout: 'action',
+    compactOnMobile: true,
     palette: this.activeUserIsAdmin() ? 'blue' : 'pink'
   }]);
 
