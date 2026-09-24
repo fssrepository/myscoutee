@@ -4,6 +4,6 @@
   [galleryImageCount]="images.length"
   [galleryCapacity]="slotCount"
   [uploadOwnerId]="uploadOwnerId" [uploadEntityId]="uploadEntityId"
-  [ngModel]="images.slice(0, 1)" (ngModelChange)="updateCover($event)"
+  [ngModel]="coverImages" (ngModelChange)="updateCover($event)"
   (expand)="openGallery()"
 ></app-image-carousel>

@@ -75,7 +75,11 @@ export class ActivityEventInfoCardConverter {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
       },
       mediaStart: this.mediaStart(dto),
-      mediaEnd: contentModerationBadge(dto.moderationStatus) ?? {
+      mediaEnd: dto.cancelled ? {
+        variant: 'badge', tone: 'orange', icon: 'event_busy',
+        label: dto.cancellationRefundsPending ? 'event.cancellation.processing' : 'event.cancelled',
+        ariaLabel: 'event.cancelled', interactive: false
+      } : contentModerationBadge(dto.moderationStatus) ?? {
         variant: 'badge',
         tone: trashView ? 'deleted' : this.mediaEndTone(status, dto, activeUserId),
         label: statusBadgeLabelKey || this.capacityLabel(dto),

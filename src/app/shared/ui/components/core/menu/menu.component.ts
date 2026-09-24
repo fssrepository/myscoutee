@@ -1525,6 +1525,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected itemVisualLayout(item: AppMenuItem<TId, TContext>): AppMenuItemLayout {
+    if (this.kind === 'inline' && item.compactOnMobile && this.isMobileViewport) {
+      return 'default';
+    }
     return item.layout ?? 'default';
   }
 

@@ -17,14 +17,15 @@
   gap: .4rem;
   min-width: 0;
   min-height: 1.9rem;
-  overflow-x: auto;
-  padding-bottom: .25rem;
-  scrollbar-width: thin;
-  scrollbar-color: #9baecb transparent;
+  overflow: visible;
   font-size: .82rem;
   font-weight: 900;
 }
 .payment-methods-popup__history-total { display: inline-flex; flex: 0 0 auto; align-items: center; min-height: 1.8rem; padding: .2rem .62rem; border: 1px solid currentColor; border-radius: 999px; white-space: nowrap; }
+.payment-methods-popup__history-total { cursor: pointer; transition: filter 160ms ease, box-shadow 160ms ease; }
+.payment-methods-popup__history-total:hover { filter: brightness(.96); box-shadow: 0 2px 6px rgba(31, 54, 88, .14); }
+.payment-methods-popup__history-total:active { filter: brightness(.9); box-shadow: inset 0 1px 3px rgba(31, 54, 88, .18); }
+.payment-methods-popup__history-total:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .payment-methods-popup__history-total:first-child { margin-inline-start: auto; }
 .payment-methods-popup__history-total--expense { color: #c4313c; background: #fff1f2; }
 .payment-methods-popup__history-total--income { color: #16845b; background: #edf9f3; }

@@ -676,6 +676,13 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
+  async cancelItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    const response = await this.http.post<EventParticipationActionResultDTO | null>(
+      `${this.apiBaseUrl}/activities/events/cancel`, { userId: userId.trim(), sourceId: sourceId.trim() }
+    ).toPromise();
+    return this.normalizeParticipationActionResult(response);
+  }
+
   async trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     const response = await this.http
       .post<EventParticipationActionResultDTO | null>(
@@ -1751,6 +1758,9 @@ export class HttpEventsService implements IEventsService {
         type: record.type ?? 'events',
         status: record.status,
         moderationStatus: record.moderationStatus,
+        cancelled: record.cancelled,
+        cancellationRefundsPending: record.cancellationRefundsPending,
+        canCancelForFullRefund: record.canCancelForFullRefund,
         adminIds: [...(record.adminIds ?? [])],
         avatar: `${record.avatar ?? ''}`.trim(),
         title: `${record.title ?? ''}`.trim(),

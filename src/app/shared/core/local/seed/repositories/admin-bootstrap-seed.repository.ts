@@ -91,6 +91,10 @@ export class SeedAdminBootstrapRepository {
     });
   }
 
+  async seedNotificationCenter(): Promise<void> {
+    await this.storeSeed.seedNotificationCenter(() => AdminNotificationsSeedBuilder.buildDefaultNotificationCenter());
+  }
+
   async seedDemoAdminMenuCounters(
     seedState: SeedAdminMenuCounterState<AdminNotificationCenterState, AdminMonitoringStateDto>
   ): Promise<void> {

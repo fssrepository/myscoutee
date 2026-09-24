@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DialogStore, type DialogState, type DialogTone } from '../../../context/stores/dialog.store';
+import { PopupPresenceStore } from '../../../context/stores/popup-presence.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -65,6 +66,11 @@ export class DialogComponent {
   @Input() zIndex: number | null = null;
 
   protected readonly dialogStore = inject(DialogStore);
+  private readonly popupPresenceStore = inject(PopupPresenceStore);
+
+  protected effectiveZIndex(): number {
+    return Math.max(this.zIndex ?? 20000, this.popupPresenceStore.topLayer() + 1);
+  }
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {

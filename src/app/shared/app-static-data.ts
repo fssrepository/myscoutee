@@ -2410,6 +2410,7 @@ function uniqueHelpImageUrls(imageUrls: readonly string[]): string[] {
 }
 
 function seededExplanationImageRef(contextKey: string, lang: string, sectionId: string): string {
+  // Each reference must have an SVG in assets/help-center/explanations (EN and HU).
   return `${SEEDED_EXPLANATION_IMAGE_REF_PREFIX}${contentLangForSeed(lang)}/${seededExplanationPathSegment(contextKey)}/${seededExplanationPathSegment(sectionId)}`;
 }
 

@@ -365,6 +365,10 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     );
   }
 
+  cancelItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
+    return this.eventsService.cancelItem(userId, sourceId);
+  }
+
   trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.trashItem(userId, sourceId);
   }

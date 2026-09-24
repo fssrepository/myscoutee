@@ -1,5 +1,5 @@
 @if (dialogState(); as state) {
-  <section class="dialog" [style.z-index]="zIndex ?? null">
+  <section class="dialog" [style.z-index]="effectiveZIndex()">
     <div class="dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
     <div class="dialog-panel" (click)="$event.stopPropagation()">
       <div class="dialog-header">

@@ -124,15 +124,16 @@
   @if (!adminMode && revenueOpen()) {
     <app-popup [model]="revenuePopupModel()" [zIndex]="2510">
       <section class="integration-settings-section affiliate-revenue-summary">
-        <p>{{ 'affiliate.revenue.description' | i18n }}</p>
         <dl>
           <div><dt>{{ 'affiliate.revenue.purchases' | i18n }}</dt><dd>{{ revenue().purchases }}</dd></div>
           <div><dt>{{ 'affiliate.revenue.bookings' | i18n }}</dt><dd>{{ revenue().eventBookings }}</dd></div>
-          @for (row of revenueCurrencies(); track row.currency) {
-            <div><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ row.currency }} {{ row.gross | number:'1.0-2' }}</dd></div>
-            <div><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ row.currency }} {{ row.refunded | number:'1.0-2' }}</dd></div>
-            <div class="affiliate-revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ row.currency }} {{ row.net | number:'1.0-2' }}</dd></div>
-          } @empty { <div><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>0</dd></div> }
+          @if (revenue().euroSummary; as eur) {
+            @if (eur.missingRates === 0) {
+              <div><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ eur.gross | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ eur.refunded | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div class="affiliate-revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ eur.net | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+            } @else { <p role="status">{{ 'payment.euro.pending' | i18n }}</p> }
+          } @else { <p role="status">{{ 'payment.euro.pending' | i18n }}</p> }
         </dl>
         <small>{{ 'affiliate.revenue.commission.pending' | i18n }}</small>
       </section>
@@ -155,4 +156,8 @@
       </section>
     </app-popup>
   }
+}
+
+@if (currencyPickerOpen() && revenue().euroSummary) {
+  <app-summary-currency-popup [summary]="revenue().euroSummary!" (closed)="currencyPickerOpen.set(false)"></app-summary-currency-popup>
 }

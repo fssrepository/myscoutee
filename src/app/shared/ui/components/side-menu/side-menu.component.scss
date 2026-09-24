@@ -195,42 +195,6 @@
   right: 0.75rem;
   bottom: 0.55rem;
   z-index: 7;
-
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    min-height: 32px;
-    padding: 0.35rem 0.65rem;
-    border: 1px solid #c4b5fd;
-    border-radius: 999px;
-    background: #ede9fe;
-    color: #5b21b6;
-    font: inherit;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  mat-icon { width: 18px; height: 18px; font-size: 18px; }
-}
-
-.navigator-mingle-table-action button {
-  position: relative;
-  border-color: rgba(178, 69, 98, 0.38);
-  background: linear-gradient(180deg, #fff1f4 0%, #ffe4eb 100%);
-  color: #8c2e49;
-}
-
-.navigator-mingle-table-action__attention {
-  position: absolute;
-  top: -0.2rem;
-  right: -0.2rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: #dc2626;
 }
 
 .navigator-menu-header-card {
@@ -373,33 +337,8 @@ app-event-supply-contributions-popup {
 .navigator-menu-header-card {
   --app-header-card-padding: 0.66rem 0.66rem 3.2rem;
 }
-.navigator-install-action .navigator-followed-action {
-  margin-left: auto;
-  position: relative;
-  border-color: rgba(45, 142, 154, 0.32);
-  background: linear-gradient(180deg, #eefdff 0%, #d9f4f9 100%);
-  color: #1f7280;
-
-  mat-icon { color: #2f8e9d; }
-}
-.navigator-followed-count {
-  position: absolute;
-  top: -0.4rem;
-  right: -0.35rem;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  padding: 0 0.22rem;
-  border-radius: 999px;
-  background: #dc3545;
-  color: #fff;
-  font-size: 0.65rem;
-  line-height: 1.15rem;
-  text-align: center;
-}
-
 .navigator-context-actions .navigator-mingle-table-action { grid-column: 1; grid-row: 1; justify-self: start; }
 .navigator-context-actions .navigator-feed-action {
   grid-column: 2; grid-row: 1; justify-self: center;
-  background: linear-gradient(180deg, #fff7ed, #ffedd5); border-color: #fed7aa; color: #9a4c13;
 }
 .navigator-context-actions .navigator-followed-action { grid-column: 3; grid-row: 1; justify-self: end; }

@@ -188,6 +188,9 @@ export class EventCheckoutPopupComponent {
     if (dialog.loading) {
       return;
     }
+    let queriedBasket = dialog.hasPreloadedCheckoutBasket
+      ? ActivityEventDetailDTO.cloneCheckoutBasket(dialog.preloadedCheckoutBasket)
+      : null;
     if (!dialog.readOnlySummary) {
       try {
         const context = await this.eventsService.loadInvitationContext(dialog.userId, dialog.record.id);
@@ -198,6 +201,9 @@ export class EventCheckoutPopupComponent {
           throw new Error('Unable to load event pricing.');
         }
         this.vipPricingOffer.set(context.vipPricingOffer ?? null);
+        if (!dialog.hasPreloadedCheckoutBasket) {
+          queriedBasket = context.checkoutBasket;
+        }
       } catch {
         if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
           return;
@@ -207,11 +213,17 @@ export class EventCheckoutPopupComponent {
         this.setCheckoutErrorMessage(dialog, null, 'Unable to load event pricing. Close and reopen checkout.');
         return;
       }
+    } else if (!dialog.hasPreloadedCheckoutBasket) {
+      try {
+        queriedBasket = await this.eventsService.loadCheckoutBasketByEvent(dialog.userId, dialog.record.id);
+      } catch {
+        queriedBasket = null;
+      }
     }
-    await this.loadRuntimeCheckoutBasket(dialog);
     if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
       return;
     }
+    this.applyRuntimeCheckoutBasket(dialog, queriedBasket);
     this.checkoutReviewBodyLoading.set(false);
     this.openCheckoutReviewEditorShell(dialog);
   }
@@ -2237,7 +2249,9 @@ export class EventCheckoutPopupComponent {
     }
     const label = this.continueLabel();
     this.confirmationDialogStore.open({
-      title: `${label}?`,
+      title: this.paymentStep
+        ? 'event.checkout.payment.confirm.title'
+        : label === 'Join' ? 'event.checkout.join.confirm.title' : `${label}?`,
       message: this.dialog()?.record.title ?? 'Checkout',
       warningMessage: this.checkoutConfirmWarningMessage(),
       cancelLabel: 'Back',
@@ -2308,7 +2322,7 @@ export class EventCheckoutPopupComponent {
       if (this.cashOnly()) {
         return 'event.editor.payment.cash.confirm.warning';
       }
-      return 'Payment will run for the selected basket item.';
+      return 'event.checkout.payment.confirm.message';
     }
     return 'The selected basket item will be joined.';
   }
@@ -2998,17 +3012,10 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = '';
   }
 
-  private async loadRuntimeCheckoutBasket(dialog: EventCheckoutDialogState): Promise<void> {
-    let queriedBasket: ActivityContracts.EventCheckoutBasket | null = null;
-    if (dialog.hasPreloadedCheckoutBasket) {
-      queriedBasket = ActivityEventDetailDTO.cloneCheckoutBasket(dialog.preloadedCheckoutBasket);
-    } else {
-      try {
-        queriedBasket = await this.eventsService.loadCheckoutBasketByEvent(dialog.userId, dialog.record.id);
-      } catch {
-        queriedBasket = null;
-      }
-    }
+  private applyRuntimeCheckoutBasket(
+    dialog: EventCheckoutDialogState,
+    queriedBasket: ActivityContracts.EventCheckoutBasket | null
+  ): void {
     const candidateBasket = queriedBasket ?? this.checkoutBasket;
     const basket = candidateBasket && this.shouldSuppressStoredWaitlistBasket(dialog, candidateBasket.items)
       ? null

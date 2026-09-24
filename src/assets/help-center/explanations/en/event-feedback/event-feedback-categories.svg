@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3eb"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#f0c5ab" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="180" y="150" width="600" height="52" rx="13" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="204" y="185" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Event feedback</text><rect x="180" y="210" width="600" height="52" rx="13" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="204" y="245" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Participant feedback</text>
+      <polygon points="320.0,334.0 329.7,356.6 354.2,358.9 335.7,375.1 341.2,399.1 320.0,386.6 298.8,399.1 304.3,375.1 285.8,358.9 310.3,356.6" fill="#d99b23"/><polygon points="480.0,334.0 489.7,356.6 514.2,358.9 495.7,375.1 501.2,399.1 480.0,386.6 458.8,399.1 464.3,375.1 445.8,358.9 470.3,356.6" fill="#d99b23"/><polygon points="640.0,334.0 649.7,356.6 674.2,358.9 655.7,375.1 661.2,399.1 640.0,386.6 618.8,399.1 624.3,375.1 605.8,358.9 630.3,356.6" fill="#d99b23"/>
+  </g>
+</svg>

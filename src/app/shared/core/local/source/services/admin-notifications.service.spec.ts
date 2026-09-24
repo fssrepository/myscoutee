@@ -5,6 +5,7 @@ import type { AdminNotificationCenterState, AdminNotificationRule } from '../../
 import { AdminNotificationsSeedBuilder } from '../../seed/builders/admin/admin-notifications-seed.builder';
 import { LocalAdminNotificationsRepository } from '../repositories/admin-notifications.repository';
 import { LocalAdminNotificationsService } from './admin-notifications.service';
+import { LocalEventsService } from './events.service';
 
 describe('LocalAdminNotificationsService', () => {
   const whenReady = vi.fn();
@@ -12,9 +13,11 @@ describe('LocalAdminNotificationsService', () => {
   const writeStore = vi.fn();
   const waitForRouteDelay = vi.fn();
   let stored: AdminNotificationCenterState;
+  const purgeExpiredCheckoutBaskets = vi.fn();
 
   beforeEach(() => {
     stored = AdminNotificationsSeedBuilder.buildDefaultNotificationCenter();
+    purgeExpiredCheckoutBaskets.mockReset().mockResolvedValue(3);
     whenReady.mockReset().mockResolvedValue(undefined);
     readStore.mockReset().mockImplementation(async () => stored);
     writeStore.mockReset().mockImplementation(async (next: AdminNotificationCenterState) => {
@@ -24,6 +27,7 @@ describe('LocalAdminNotificationsService', () => {
     TestBed.configureTestingModule({
       providers: [
         LocalAdminNotificationsService,
+        { provide: LocalEventsService, useValue: { purgeExpiredCheckoutBaskets } },
         {
           provide: LocalAdminNotificationsRepository,
           useValue: { whenReady, readStore, writeStore }
@@ -38,6 +42,32 @@ describe('LocalAdminNotificationsService', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
+  });
+
+  it('runs the actual checkout purge and records its count rather than a demo count', async () => {
+    const service = TestBed.inject(LocalAdminNotificationsService);
+    stored.rules.find(rule => rule.ruleKey === 'event-checkout-basket-purge')!.manualRunEnabled = true;
+    const result = await service.runNotificationRule('event-checkout-basket-purge', 'admin');
+    expect(purgeExpiredCheckoutBaskets).toHaveBeenCalledOnce();
+    expect(result.affectedCount).toBe(3);
+    expect(result.status).toBe('completed');
+    expect(stored.rules.find(rule => rule.ruleKey === result.ruleKey)?.runHistory?.[0].processedCount).toBe(3);
+  });
+
+  it('honors the saved purge schedule and does not report failures as success', async () => {
+    const service = TestBed.inject(LocalAdminNotificationsService);
+    const rule = stored.rules.find(item => item.ruleKey === 'event-checkout-basket-purge')!;
+    rule.enabled = true;
+    rule.timing = { ...rule.timing, mode: 'interval', intervalSeconds: 60 };
+    rule.runState.lastRunAtIso = new Date().toISOString();
+    await service.runCheckoutPurgeTick();
+    expect(purgeExpiredCheckoutBaskets).not.toHaveBeenCalled();
+    rule.runState.lastRunAtIso = '2000-01-01T00:00:00Z';
+    purgeExpiredCheckoutBaskets.mockRejectedValueOnce(new Error('Storage failed'));
+    await service.runCheckoutPurgeTick();
+    const saved = stored.rules.find(item => item.ruleKey === rule.ruleKey)!;
+    expect(saved.runState.lastRunStatus).toBe('failed');
+    expect(saved.runHistory?.[0].trigger).toBe('scheduled');
   });
 
   it('returns local bucket results and counts through the same contract as HTTP', async () => {
