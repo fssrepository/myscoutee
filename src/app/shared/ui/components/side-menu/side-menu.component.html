@@ -87,19 +87,14 @@
               </button>
             </div>
           }
-          <button type="button" class="navigator-feed-action" (click)="$event.stopPropagation(); photoFeedStore.open()">
-            <mat-icon>photo_library</mat-icon><span>{{ 'feed.title' | i18n }}</span>
-            @if (photoFeedStore.count() > 0) {
-              <span class="navigator-followed-count">{{ photoFeedStore.count() }}</span>
-            }
-          </button>
-          <button type="button" class="navigator-followed-action" (click)="openFollowedEvents($event)">
-            <mat-icon>rss_feed</mat-icon>
-            <span>{{ 'event.following' | i18n }}</span>
-            @if (followingStore.state().eventCount > 0) {
-              <span class="navigator-followed-count">{{ followingStore.state().eventCount }}</span>
-            }
-          </button>
+          <app-menu class="navigator-feed-action" kind="inline"
+            [model]="navigatorFeedMenuModel()"
+            (itemSelect)="$event.sourceEvent.stopPropagation(); photoFeedStore.open()"
+          ></app-menu>
+          <app-menu class="navigator-followed-action" kind="inline"
+            [model]="navigatorFollowedMenuModel()"
+            (itemSelect)="openFollowedEvents($event.sourceEvent)"
+          ></app-menu>
         </div>
         <app-header-card
           class="navigator-menu-header-card"
