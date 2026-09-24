@@ -1,4 +1,5 @@
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
+import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { renderCalendarExport } from '../../../common/calendar-export';
 import { LocalMingleRepository } from '../repositories/mingle.repository';
 import { Injectable, inject } from '@angular/core';
@@ -124,6 +125,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly affiliateRepository = inject(LocalIntegrationRepository);
+  private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly mingleRepository = inject(LocalMingleRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly chatsRepository = inject(LocalChatsRepository);
@@ -3082,8 +3084,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       paymentUrl: null
     };
     await this.saveCheckoutBasketRecord(this.withCheckoutBasketState(request, 'pay', session.id));
-    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount, 0, true, request.sourceId,
-      this.eventsRepository.peekKnownItemById(request.userId, request.sourceId)?.creatorUserId);
+    this.affiliateRepository.recordPayment(request.userId, session.id, session.currency, session.amount, 0, false, request.sourceId,
+      this.eventsRepository.peekKnownItemById(request.userId, request.sourceId)?.creatorUserId
+        ?? this.assetsRepository.peekAssetById(request.sourceId)?.ownerUserId);
     await this.affiliateRepository.flushToIndexedDb();
     return session;
   }
