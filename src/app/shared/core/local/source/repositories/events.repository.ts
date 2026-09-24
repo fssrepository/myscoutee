@@ -3051,6 +3051,8 @@ export class LocalEventsRepository {
   }
 
   private shouldIncludeExploreRecord(record: ActivityEventRecord, activeUserId: string, includeTracked = false): boolean {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME].byId;
+    if (users[record.creatorUserId]?.workspaceGroupId !== users[activeUserId]?.workspaceGroupId) return false;
     if (this.isTrashStatus(record) || (!includeTracked && this.isInvitationRecordForUser(record, activeUserId))) {
       return false;
     }

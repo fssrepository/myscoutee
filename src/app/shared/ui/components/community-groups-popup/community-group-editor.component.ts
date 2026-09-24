@@ -20,7 +20,9 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; features: str
       --image-single-slot-content-width: 100%;
       --image-single-slot-aspect-ratio: auto;
     }
+    .group-policy-fields { --form-flow-group-columns: repeat(2, minmax(0, 1fr)); }
     @media (max-width: 720px) {
+      .group-policy-fields { --form-flow-group-columns: minmax(0, 1fr); }
       :host { --form-flow-grouped-media-image-height: clamp(160px, 54vw, 260px); }
     }
   `],
@@ -32,7 +34,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; features: str
     </app-popup>
     @if (policyDraft) {
       <app-popup [model]="policyPopupModel()" [zIndex]="1340">
-        <app-form-flow [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
+        <app-form-flow class="group-policy-fields" [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
       </app-popup>
     }
   `
@@ -78,7 +80,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
     const model: FormFlowModel = { title: 'groups.title', layout: 'grouped', header: false, save: null, summary: { enabled: false }, allowMenuOverflow: true,
       steps: [{ id: 'basics', title: '', presentation: 'media', palette: 'blue', controls: [
         { id: 'image', bind: 'images', kind: 'image-carousel', config: { slotCount: 1, compact: true, autoSize: true, slotImageVariant: 'medium', uploadOwnerId: this.form.userId, uploadEntityId: this.form.id ?? 'group' } },
-        { id: 'name', bind: 'name', kind: 'text', label: this.t('name'), required: true, maxLength: 120 },
+        { id: 'name', bind: 'name', kind: 'text', label: this.t('name'), required: true, maxLength: 20 },
         { id: 'description', bind: 'description', kind: 'textarea', label: this.t('description'), rows: 3, maxLength: 4000 },
         { id: 'category', bind: 'category', kind: 'menu', config: { kind: 'select',
           trigger: { label: `groups.category.${this.form.category}`, icon: GROUP_CATEGORY_ICON[this.form.category], palette: GROUP_CATEGORY_PALETTE[this.form.category], layout: 'pill' },
@@ -89,27 +91,24 @@ export class CommunityGroupEditorComponent implements OnChanges {
           { id: 'workspace', value: 'workspace', label: 'groups.workspace', icon: 'workspaces', kind: 'toggle', layout: 'big', palette: 'violet', active: this.form.features.includes('workspace'), checked: this.form.features.includes('workspace'), showToggleIndicator: true, disabled: this.readOnly }
         ] } }
       ] }, { id: 'policy', title: this.t('groups.policy'), icon: 'policy', palette: 'violet', headerControl:
-        { id: 'rules-enabled', bind: 'rules', kind: 'menu', layout: 'wide', config: { kind: 'inline', items: [
-          { id: 'enabled', value: 'enabled', label: this.form.rules.includes('enabled') ? 'on' : 'off', ariaLabel: 'groups.visibility.rules', kind: 'toggle', layout: 'pill', showToggleIndicator: true,
-            palette: 'green', togglePalette: 'green', active: this.form.rules.includes('enabled'), checked: this.form.rules.includes('enabled'), disabled: this.readOnly }
-        ] } }, controls: [
+        { id: 'rules-enabled', bind: 'policy.enabled', kind: 'toggle', label: 'groups.visibility.rules', disabled: this.readOnly }, controls: [
         { id: 'rules-open', kind: 'menu', layout: 'wide', align: 'end', config: { kind: 'inline', items: [
           { id: 'rules-open', label: 'groups.visibility.rules', icon: 'tune', kind: 'action', layout: 'pill', palette: 'violet' }
         ] } },
         { id: 'rules-table', kind: 'table', layout: 'wide', config: { rows: APP_STATIC_DATA.profileDetailGroupTemplates.flatMap(g => g.rows)
-          .filter(row => this.form.rules.includes('enabled') && required.includes(row.labelKey))
+          .filter(row => this.form.policy.enabled && required.includes(row.labelKey))
           .map(row => ({ label: row.labelKey, value: 'groups.required',
-            icon: this.form.rules.includes('enabled') && required.includes(row.labelKey) ? 'check' : '' })) } }
+            icon: 'check', badgeTone: 'danger' })) } }
       ] }] };
     return { ...model, steps: model.steps.map(step => ({ ...step, controls: step.controls
-      .filter(control => control.id !== 'rules-table' || this.form.rules.includes('enabled') && required.length > 0)
+      .filter(control => control.id !== 'rules-table' || this.form.policy.enabled && required.length > 0)
       .map(control => ({ ...control, disabled: this.readOnly && control.id !== 'rules-open' })) })) };
   }
   protected action(event: FormFlowActionEvent): void {
     if (event.sourceEvent.id === 'rules-open') this.policyDraft = { fields: [...this.form.policy.requiredFields] };
   }
   protected policyPopupModel(): PopupModel {
-    return { title: 'groups.visibility.rules', size: 'small', height: 'auto', mobilePresentation: 'compact', backdropTone: 'dim',
+    return { title: 'groups.visibility.rules', size: 'default', height: 'auto', mobilePresentation: 'compact', backdropTone: 'dim',
       onClose: () => { this.policyDraft = null; }, headerControls: [{ id: 'done', kind: 'menu', menuKind: 'inline', items: [
         { id: 'done', icon: 'done', kind: 'action', palette: 'success', disabled: this.readOnly }
       ] }], onMenuSelect: () => { if (!this.readOnly && this.policyDraft) {
@@ -136,6 +135,6 @@ export class CommunityGroupEditorComponent implements OnChanges {
     if (this.readOnly || !this.form.name.trim()) return;
     void this.store.save({ ...this.form, imageUrl: this.form.images[0] ?? null,
       hideMembers: this.form.features.includes('hideMembers'), policy: { ...this.form.policy,
-        workspace: this.form.features.includes('workspace'), enabled: this.form.rules.includes('enabled') } });
+        workspace: this.form.features.includes('workspace'), enabled: this.form.policy.enabled } });
   }
 }

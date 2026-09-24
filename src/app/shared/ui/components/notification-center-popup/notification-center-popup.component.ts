@@ -1,3 +1,4 @@
+import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
 import { environment } from '../../../../../environments/environment';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
@@ -58,7 +59,8 @@ interface NotificationRowMenuContext extends Record<string, unknown> {
 
 type NotificationHeaderMenuContext =
   | { action: 'set-bucket'; bucket: NotificationBucket }
-  | { action: 'toggle-muted' };
+  | { action: 'toggle-muted' }
+  | { action: 'set-workspace'; workspace: string };
 
 @Component({
   selector: 'app-notification-center-popup',
@@ -73,6 +75,7 @@ type NotificationHeaderMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationCenterPopupComponent {
+  private readonly groupWorkspaces = inject(GroupWorkspaceStore);
   @ViewChild('notificationsSmartList')
   private notificationsSmartList?: SmartListComponent<NotificationDto, NotificationListFilters>;
 
@@ -93,7 +96,7 @@ export class NotificationCenterPopupComponent {
     pageSize: 20,
     sort: 'createdAt',
     direction: 'desc',
-    filters: { bucket: this.store.bucket() }
+    filters: { bucket: this.store.bucket(), workspace: this.store.workspace() }
   }));
 
   private readonly bucketMenuItems = computed<
@@ -173,6 +176,7 @@ export class NotificationCenterPopupComponent {
   ): NotificationSyncRequestDto {
     return {
       bucket: bucket === 'new' ? 'new' as const : 'all' as const,
+      workspace: this.store.workspace(),
       limit: Math.max(1, Math.trunc(Number(pageSize) || 20)),
       knownItems: snapshot.knownItems.map(item => ({
         id: item.id,
@@ -206,6 +210,13 @@ export class NotificationCenterPopupComponent {
       headerTone: 'accent',
       headerPalette: 'violet',
       headerControls: [
+        {
+          kind: 'menu', id: 'notification-workspace', menuKind: 'select',
+          trigger: this.workspaceMenuTrigger(),
+          items: this.groupWorkspaces.menuItems(this.store.workspace(), true).map(item => ({
+            ...item, context: { action: 'set-workspace' as const, workspace: item.id }
+          })), panelAlign: 'end'
+        },
         {
           kind: 'menu',
           id: 'notification-bucket',
@@ -296,6 +307,7 @@ export class NotificationCenterPopupComponent {
     const payload = notification.payload;
     const eventTitle = `${payload?.['eventTitle'] ?? notification.title ?? ''}`.trim() || 'Event';
     const invitation = actionId === 'openNotificationInvitation';
+    if (!await this.groupWorkspaces.select(`${payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
     this.store.close();
     try {
       await this.activitiesStore.ensureActivitiesPopupLoaded();
@@ -356,9 +368,18 @@ export class NotificationCenterPopupComponent {
     }
   }
 
+  private workspaceMenuTrigger(): AppMenuTrigger {
+    const item = this.groupWorkspaces.menuItems(this.store.workspace(), true).find(item => item.id === this.store.workspace());
+    return { label: item?.label, icon: item?.icon, imageFallback: item?.imageFallback, palette: item?.palette,
+      layout: 'pill', ariaLabel: 'groups.workspace.select' };
+  }
+
   private onHeaderMenuSelect(
     event: PopupMenuSelectEvent<NotificationHeaderMenuContext>
   ): void {
+    if (event.itemSelect.context?.action === 'set-workspace') {
+      this.store.workspace.set(event.itemSelect.context.workspace); return;
+    }
     if (event.itemSelect.context?.action === 'set-bucket') {
       const bucket = event.itemSelect.context.bucket;
       if (bucket !== this.store.bucket()) {

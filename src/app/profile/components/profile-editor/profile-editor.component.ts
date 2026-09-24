@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   CommonModule
 } from '@angular/common';
@@ -111,6 +112,7 @@ type ProfileEditorMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileEditorComponent implements OnDestroy {
+  private readonly groupWorkspace = inject(GroupWorkspaceContextService);
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
   @ViewChild(IntegrationSettingsPopupComponent) private integrationSettingsPopup?: IntegrationSettingsPopupComponent;
 
@@ -587,6 +589,7 @@ export class ProfileEditorComponent implements OnDestroy {
         profileSize: this.activeUserUsesCompactProfile() ? 'small' : 'big',
         imageEditor: 'external',
         privacy: {
+          lockedFields: this.groupWorkspace.active()?.policy.enabled ? this.groupWorkspace.active()?.policy.requiredFields : [],
           values: this.profileEditorPrivacyValues(),
           experience: {
             workspace: this.profileDetailRowByKey('profile.experience.workplace')?.privacy ?? 'Public',

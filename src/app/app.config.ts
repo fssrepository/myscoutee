@@ -1,3 +1,4 @@
+import { groupWorkspaceInterceptor } from './shared/core/http/group-workspace.interceptor';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
@@ -17,6 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([
       connectivityInterceptor,
       sessionModeInterceptor,
+      groupWorkspaceInterceptor,
       operatorBootstrapAuthInterceptor,
       firebaseAuthInterceptor,
       adminAccessInterceptor,

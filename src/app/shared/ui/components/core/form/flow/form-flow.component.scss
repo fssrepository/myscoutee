@@ -1,3 +1,4 @@
+@use '../../../../styles/contextual-colors' as colors;
 :host {
   display: block;
   min-width: 0;
@@ -271,6 +272,7 @@
 
 .form-flow--grouped .form-flow__track {
   display: grid;
+  grid-template-columns: var(--form-flow-group-columns, minmax(0, 1fr));
   gap: 12px;
   height: auto;
   min-height: 0;
@@ -1356,3 +1358,12 @@
 }
 
 .form-flow__control--align-end { display: flex; justify-content: flex-end; }
+
+.form-flow__table-badge {
+  min-height: 26px; border-radius: 999px; border: 1px solid;
+  display: inline-flex; align-items: center; gap: 0.22rem;
+  font-size: 0.72rem; font-weight: 800; padding: 0 0.56rem; white-space: nowrap;
+}
+.form-flow__table-badge--danger {
+  background: colors.$danger-background; border-color: colors.$danger-border; color: colors.$danger-foreground;
+}

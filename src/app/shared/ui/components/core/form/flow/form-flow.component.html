@@ -150,13 +150,19 @@
                   }
                   <h3 id="form-flow-step-{{ step.id }}">{{ step.title }}</h3>
                   @if (step.headerControl; as control) {
+                    @if (control.kind === 'toggle') {
+                      <app-on-off-toggle class="form-flow__group-header-menu" [enabled]="controlValue(control) === true"
+                        [disabled]="isControlDisabled(control)" [label]="control.label || ''"
+                        (enabledChange)="updateControlValue(control, $event)"></app-on-off-toggle>
+                    } @else {
                     <app-menu class="form-flow__group-header-menu"
                       [kind]="menuKind(control)" [layout]="menuLayout(control)"
-                      [trigger]="menuTrigger(control)" [items]="menuItems(control)"
+                      [trigger]="menuTrigger(control)" [items]="menuItems(control)" [model]="menuModel(control)"
                       [ngModel]="controlValue(control)" [disabled]="isControlDisabled(control)"
                       (ngModelChange)="updateControlValue(control, $event)"
                       (itemSelect)="emitControlAction(control, $event)"
                       [closeOnSelect]="menuCloseOnSelect(control)"></app-menu>
+                    }
                   }
                 </div>
               }
@@ -296,7 +302,7 @@
                         <tbody>
                           @for (row of tableRows(control); track row.label) {
                             <tr><th scope="row">{{ row.label | i18n }}</th>
-                              <td>@if (row.icon) { <mat-icon>{{ row.icon }}</mat-icon> }{{ row.value | i18n }}</td></tr>
+                              <td><span [class.form-flow__table-badge]="!!row.badgeTone" [class.form-flow__table-badge--danger]="row.badgeTone === 'danger'">@if (row.icon) { <mat-icon>{{ row.icon }}</mat-icon> }{{ row.value | i18n }}</span></td></tr>
                           }
                         </tbody>
                       </table>

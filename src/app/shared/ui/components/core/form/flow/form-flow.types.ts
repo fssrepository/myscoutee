@@ -27,6 +27,7 @@ export interface FormFlowDraft<TData> {
 
 export type FormFlowControlKind =
   | 'checkbox'
+  | 'toggle'
   | 'date'
   | 'image-carousel'
   | 'link'
@@ -104,7 +105,7 @@ export interface FormFlowPoliciesControlConfig {
 }
 
 export interface FormFlowTableControlConfig {
-  rows: readonly { label: string; value: string; icon?: string }[];
+  rows: readonly { label: string; value: string; icon?: string; badgeTone?: 'danger' }[];
 }
 
 export interface FormFlowControlSummaryConfig {

@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../base/services/group-workspace-context.service';
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
@@ -25,6 +26,11 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   private static readonly HOME_DISTANCE_SCORE = 120000;
   private static readonly HOME_FRESHNESS_SCORE = 120000;
   private static readonly HOME_FRESHNESS_HALF_LIFE_DAYS = 14;
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  private workspaceUsers(): UserDto[] {
+    const groupId = this.workspace.active()?.groupId;
+    return this.usersRepository.queryAllUsers().filter(user => this.usersRepository.queryUserById(user.id)?.workspaceGroupId === groupId);
+  }
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly ratesRepository = inject(LocalRatesRepository);
@@ -35,7 +41,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   }
 
   queryGameCardsUsersSnapshot(): UserDto[] {
-    return this.usersRepository.queryAllUsers()
+    return this.workspaceUsers()
       .filter(user => user.id.trim().length > 0)
       .filter(user => UserProfileState.isActivityRateVisibleProfile(user));
   }
@@ -62,7 +68,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     }
     const mode = request.mode ?? 'single';
     if (mode === 'outside-network' || mode === 'separated-friends' || mode === 'friends-in-common') {
-      const allUsers = this.usersRepository.queryAllUsers();
+      const allUsers = this.workspaceUsers();
       const usersById = new Map(allUsers.map(user => [user.id, user] as const));
       const ratedPairKeys = new Set(this.ratesRepository.queryRatedGameCardPairKeys(normalizedUserId));
       const ratedSingleUserIds = new Set(this.ratesRepository.queryRatedGameCardUserIds(normalizedUserId, 'single'));
@@ -313,7 +319,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   }
 
   private queryFriendsInCommonCandidateUserIds(activeUserId: string): Set<string> {
-    const allUsers = this.usersRepository.queryAllUsers();
+    const allUsers = this.workspaceUsers();
     const usersById = new Map(allUsers.map(user => [user.id, user] as const));
     return new Set(this.activityMembersRepository
       .queryGameSocialCards(activeUserId, 'friends-in-common')
@@ -324,13 +330,13 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
 
   private queryLatestHomeActivityMsByUserId(): ReadonlyMap<string, number> {
     const latestByUserId = new Map<string, number>();
-    for (const user of this.usersRepository.queryAllUsers()) {
+    for (const user of this.workspaceUsers()) {
       const score = this.statusFreshnessMs(user);
       if (score > 0) {
         latestByUserId.set(user.id, score);
       }
     }
-    for (const user of this.usersRepository.queryAllUsers()) {
+    for (const user of this.workspaceUsers()) {
       for (const rate of this.ratesRepository.queryUserRatesByUserId(user.id)) {
         const timestamp = Date.parse(rate.happenedAtIso?.trim() || rate.updatedAtIso || rate.createdAtIso || '');
         if (!Number.isFinite(timestamp) || timestamp <= 0) {

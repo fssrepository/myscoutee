@@ -147,11 +147,13 @@ export class LocalNotificationsRepository {
   } {
     const normalizedUserId = userId.trim();
     const bucket = query.filters?.bucket === 'new' ? 'new' : 'all';
+    const workspace = query.filters?.workspace;
     const table = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
     const records = (table.idsByRecipientUserId[normalizedUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is NotificationRecord => Boolean(record))
       .filter(record => bucket === 'all' || !record.readAtIso)
+      .filter(record => !workspace || workspace === 'all' || (workspace === 'main' ? !record.payload?.['workspaceGroupId'] : record.payload?.['workspaceGroupId'] === workspace))
       .sort((left, right) => this.compareRecords(left, right));
     const pageSize = Math.max(1, Math.min(100, Math.trunc(Number(query.pageSize) || 20)));
     const startIndex = this.resolveStartIndex(records, bucket, query.cursor);
@@ -324,11 +326,13 @@ export class LocalNotificationsRepository {
   } {
     const normalizedUserId = userId.trim();
     const bucket = request.bucket === 'new' ? 'new' : 'all';
+    const workspace = request.workspace;
     const table = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
     const records = (table.idsByRecipientUserId[normalizedUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is NotificationRecord => Boolean(record))
       .filter(record => bucket === 'all' || !record.readAtIso)
+      .filter(record => !workspace || workspace === 'all' || (workspace === 'main' ? !record.payload?.['workspaceGroupId'] : record.payload?.['workspaceGroupId'] === workspace))
       .sort((left, right) => this.compareRecords(left, right));
     const currentById = new Map(records.map(record => [record.id, record]));
     const knownRevisions = new Map(

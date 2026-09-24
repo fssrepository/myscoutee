@@ -1,3 +1,5 @@
+import { CommunityGroupChangesStore } from '../../../ui/context/stores/community-group-changes.store';
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
 import { LocalCommunityGroupsService } from '../../local/source/services/community-groups.service';
 import {
   Injectable,
@@ -34,8 +36,9 @@ export class ActivityMembersService extends BaseRouteModeService {
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
   private readonly localGroups = inject(LocalCommunityGroupsService);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private localCommunity(owner: ActivityMemberOwnerRef): boolean { return owner.ownerType === 'community' && this.isLocalRouteEnabled('/groups'); }
-  private groupActor(): string { return this.userProfileStore.getActiveUserId().trim(); }
+  private groupActor(): string { return this.workspace.accountId(this.userProfileStore.getActiveUserId()).trim(); }
   private readonly localActivityMembersService = inject(LocalActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -164,7 +167,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     capacityTotal?: number | null,
     options?: ActivityMembersQueryOptions
   ): Promise<void> {
-    const actorUserId = this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
+    const actorUserId = this.userProfileStore.activeUserId().trim() || this.workspace.accountId(this.userProfileStore.getActiveUserId()).trim();
     if (owner.ownerType === 'community') throw new Error('Use group membership commands');
     await this.activityMembersService.replaceMembersByOwner(
       owner,
@@ -198,8 +201,8 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (!['event', 'community'].includes(normalizedOwner.ownerType) || !normalizedOwner.ownerId) {
       return { members: [], invitedUserIds: [], rejections: [] };
     }
-    const actorUserId = this.userProfileStore.activeUserId().trim()
-      || this.userProfileStore.getActiveUserId().trim();
+    const profileId = this.userProfileStore.activeUserId().trim();
+    const actorUserId = normalizedOwner.ownerType === 'community' ? this.workspace.accountId(profileId) : profileId;
     const result = this.localCommunity(normalizedOwner)
       ? await this.localGroups.invite(actorUserId, normalizedOwner.ownerId, userIds)
       : await this.httpActivityMembersService.inviteEventMembers(
@@ -207,6 +210,7 @@ export class ActivityMembersService extends BaseRouteModeService {
       actorUserId,
       userIds
     );
+    if (result.group) this.groupChanges.publish(actorUserId, result.group);
     const members = this.presentMembers(result.members);
     this.emitActivityMembersSyncForOwner(normalizedOwner);
     return {
@@ -227,7 +231,8 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (!normalizedOwner.ownerId.trim()) {
       return [];
     }
-    const actorUserId = this.userProfileStore.activeUserId().trim();
+    const profileId = this.userProfileStore.activeUserId().trim();
+    const actorUserId = normalizedOwner.ownerType === 'community' ? this.workspace.accountId(profileId) : profileId;
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(actorUserId);
     const result = this.localCommunity(normalizedOwner)
       ? await this.localGroups.action(actorUserId, normalizedOwner.ownerId, targetUserId, action)
@@ -239,6 +244,7 @@ export class ActivityMembersService extends BaseRouteModeService {
       reason,
       options
     );
+    if (result.group) this.groupChanges.publish(actorUserId, result.group);
     const members = this.presentMembers(result.members);
     if (result.counterOverrides) {
       this.activityStore.applyCanonicalCounterOverrides(counterSyncToken, result.counterOverrides);

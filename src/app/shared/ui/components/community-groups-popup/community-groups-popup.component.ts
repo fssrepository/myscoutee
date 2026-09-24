@@ -46,7 +46,14 @@ export class CommunityGroupsPopupComponent {
     effect(() => {
       const group = this.store.changed(); if (!group) return;
       const card = CommunityGroupConverter.card(group, key => this.i18n.translate(key));
-      this.list?.reinsertVisibleItem(card, { loadedRange: 'any' });
+      const { bucket, category } = this.query.filters;
+      const admin = group.role === 'Admin' && group.membershipStatus === 'accepted';
+      const matches = (!category || category === group.category) && (bucket === 'hosting' ? admin
+        : bucket === 'participation' ? !admin && !!group.membershipStatus : true);
+      if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
+      else if (!this.list?.patchVisibleItem(item => item.id === group.id, () => card)) {
+        this.list?.reinsertVisibleItem(card, { loadedRange: 'before-or-within' });
+      }
     });
   }
   protected select(event: AppMenuItemSelectEvent): void { void this.store.action(event.id, event.context as CommunityGroup); }

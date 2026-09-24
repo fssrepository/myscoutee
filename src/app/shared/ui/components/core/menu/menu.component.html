@@ -5,6 +5,7 @@
       class="app-menu__trigger motion-static"
       [ngClass]="triggerPaletteClass()"
       [class.app-menu__trigger--open]="open"
+      [class.app-menu__trigger--static-icon]="trigger?.rotateIcon === false"
       [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
       [class.app-menu__trigger--collapsible]="trigger?.collapsible"
       [class.app-menu__trigger--placeholder]="usesDefaultSelectTriggerLabel()"
@@ -574,7 +575,7 @@
                 (click)="selectLinkItem(item, $event)"
                 >
                 @if (itemImageUrl(item) || itemImageFallback(item)) {
-                  <span class="app-menu__item-image">
+                  <span class="app-menu__item-image" [class.app-menu__item-image--circle]="item.imageShape === 'circle'">
                     @if (itemImageUrl(item); as imageUrl) {
                       <img
                         [src]="imageUrl"
@@ -657,7 +658,7 @@
                     (click)="selectItem(item, $event)"
                     >
                     @if (itemImageUrl(item) || itemImageFallback(item)) {
-                      <span class="app-menu__item-image">
+                      <span class="app-menu__item-image" [class.app-menu__item-image--circle]="item.imageShape === 'circle'">
                         @if (itemImageUrl(item); as imageUrl) {
                           <img
                             [src]="imageUrl"
@@ -745,7 +746,7 @@
                   (click)="selectItem(item, $event)"
                 >
                   @if (itemImageUrl(item) || itemImageFallback(item)) {
-                    <span class="app-menu__item-image">
+                    <span class="app-menu__item-image" [class.app-menu__item-image--circle]="item.imageShape === 'circle'">
                       @if (itemImageUrl(item); as imageUrl) {
                         <img
                           [src]="imageUrl"

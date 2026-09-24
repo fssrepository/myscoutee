@@ -1,3 +1,5 @@
+import { LocalUsersMapper } from '../mappers/user.mapper';
+import type { UserRecord } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../../app-utils';
 import { LocalRouteDelayService } from './route-delay.service';
@@ -6,7 +8,7 @@ import { LocalActivityMembersRepository } from '../repositories/activity-members
 import { LocalUsersRepository } from '../repositories/users.repository';
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
-import type { ICommunityGroupsService, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters } from '../../../contracts/community-group.interface';
+import type { ICommunityGroupsService, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
 import { GROUP_CATEGORIES } from '../../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../../contracts/list.interface';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
@@ -16,6 +18,53 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private readonly groups = inject(LocalCommunityGroupsRepository);
   private readonly members = inject(LocalActivityMembersRepository);
   private readonly users = inject(LocalUsersRepository);
+  async workspaces(userId: string): Promise<GroupWorkspace[]> {
+    await this.groups.ready();
+    return this.groups.records().flatMap(group => {
+      const member = this.member(group.id, userId);
+      const profile = this.users.queryUserById(this.profileId(group.id, userId));
+      return group.policy.workspace && member?.status === 'accepted' && profile
+        ? [{ groupId: group.id, profileId: profile.id, name: group.name, role: member.role,
+          activity: this.attention(profile), policy: structuredClone(group.policy) }] : [];
+    }).sort((a, b) => a.name.localeCompare(b.name) || a.groupId.localeCompare(b.groupId));
+  }
+  async selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection> {
+    await this.waitForRouteDelay('/auth/me');
+    const workspace = groupId ? (await this.workspaces(userId)).find(w => w.groupId === groupId) : null;
+    if (groupId && !workspace) throw new Error('Forbidden');
+    const profile = this.users.queryUserById(workspace?.profileId ?? userId);
+    if (!profile) throw new Error('Profile not found');
+    return { workspace: workspace ?? null, profile: LocalUsersMapper.toDto(profile) };
+  }
+  private profileId(groupId: string, userId: string): string { return `group:${groupId}:${userId}`; }
+  private admit(group: CommunityGroupRecord, accountId: string): void {
+    const id = this.profileId(group.id, accountId);
+    if (!group.policy.workspace || this.users.queryUserById(id)) return;
+    const source = this.users.queryUserById(accountId); if (!source) throw new Error('Profile not found');
+    const fields: UserRecord = {
+      id, workspaceGroupId: group.id, accountUserId: accountId,
+      name: source.name, age: source.age, birthday: source.birthday, city: source.city,
+      height: source.height, physique: source.physique, languages: [...source.languages],
+      horoscope: source.horoscope, initials: source.initials, gender: source.gender,
+      statusText: source.statusText, hostTier: '', traitLabel: '', completion: source.completion,
+      headline: source.headline, about: source.about, images: [...(source.images ?? [])],
+      locationCoordinates: source.locationCoordinates ? { ...source.locationCoordinates } : undefined,
+      partitionKey: source.partitionKey, profileFormVersion: source.profileFormVersion,
+      profileDetails: structuredClone(source.profileDetails ?? []), profileStatus: source.profileStatus,
+      status: source.status, activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }
+    };
+    if (group.policy.enabled) fields.profileDetails?.forEach(g => g.rows.forEach(row => {
+      if (group.policy.requiredFields.includes(row.labelKey)) row.privacy = 'Public';
+    }));
+    this.users.upsertUser(fields);
+  }
+  private attention(user: UserRecord | null): number {
+    if (!user) return 0;
+    const a = user.activities;
+    return [a.game, a.chats, a.event?.all ?? a.events, a.cars, a.accommodation, a.supplies,
+      a.tickets, a.contacts, a.feedback].reduce<number>((sum, count) => sum + Math.max(0, count ?? 0), 0)
+      + (user.impressions?.host?.unreadCount ? 1 : 0) + (user.impressions?.member?.unreadCount ? 1 : 0);
+  }
   async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroup, GroupCounters>> {
     await this.waitForRouteDelay('/groups'); await this.groups.ready(); signal?.throwIfAborted();
     const bucket = query.filters?.bucket ?? 'explore';
@@ -27,19 +76,21 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       return g.visibility !== 'invitation' || !!own && ['accepted', 'pending'].includes(own.status);
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
       .map(g => this.dto(userId, g)).sort((a, b) =>
-        Math.floor((a.distanceKm ?? Infinity) / 5) - Math.floor((b.distanceKm ?? Infinity) / 5)
+        Math.ceil((a.distanceKm ?? Infinity) / 5) - Math.ceil((b.distanceKm ?? Infinity) / 5)
         || b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id));
     const offset = Number(query.cursor ?? 0); if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
     const items = rows.slice(offset, offset + query.pageSize);
     return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
-      context: { hosting: 0, participation: 0 } };
+      context: (await this.workspaces(userId)).reduce((counts, w) => {
+        counts[w.role === 'Admin' ? 'hosting' : 'participation'] += w.activity; return counts;
+      }, { hosting: 0, participation: 0 }) };
   }
   async detail(userId: string, id: string): Promise<CommunityGroup> {
     await this.groups.ready(); return this.dto(userId, this.visible(userId, id));
   }
   async save(request: SaveCommunityGroup): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups'); await this.groups.ready();
-    if (!request.name.trim() || request.name.length > 120 || request.description.length > 4000
+    if (!request.name.trim() || [...request.name].length > 20 || request.description.length > 4000
       || !GROUP_CATEGORIES.includes(request.category) || !['public','private','invitation'].includes(request.visibility)) throw new Error('Invalid group');
     const existing = request.id ? this.visible(request.userId, request.id) : null;
     if (existing && !this.admin(this.member(existing.id, request.userId))) throw new Error('Forbidden');
@@ -54,6 +105,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     };
     this.groups.save(group);
     if (!existing) this.writeMembers(group.id, [this.newMember(group, request.userId, 'Admin', 'accepted', null, request.userId)]);
+    this.records(group.id).filter(m => m.status === 'accepted').forEach(m => this.admit(group, m.userId));
     return this.dto(request.userId, group);
   }
   async join(userId: string, groupId: string): Promise<CommunityGroup> {
@@ -84,7 +136,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     const rows = this.records(id);
     const invitedUserIds = [...new Set(userIds)].filter(uid => this.users.queryUserById(uid) && !rows.some(m => m.userId === uid));
     this.writeMembers(id, [...rows, ...invitedUserIds.map(uid => this.newMember(group, uid, 'Member', 'pending', 'invite', userId))]);
-    return { members: this.roster(userId, id), invitedUserIds, rejections: [] };
+    return { members: this.roster(userId, id), invitedUserIds, rejections: [], group: this.dto(userId, group) };
   }
   async action(userId: string, id: string, targetId: string, action: string): Promise<ActivityMemberActionResultDTO> {
     const group = this.visible(userId, id); const rows = this.records(id);
@@ -106,8 +158,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       default: throw new Error('Invalid action');
     }
     target.updatedAtIso = new Date().toISOString(); target.actionAtIso = target.updatedAtIso; target.updatedMs = Date.now();
+    if (target.status === 'accepted') this.admit(group, targetId);
     this.writeMembers(id, rows.map(m => m.userId === targetId ? target : m));
-    return { members: this.roster(userId, id), counterOverrides: null };
+    return { members: self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
   }
   private visible(userId: string, id: string): CommunityGroupRecord {
     const group = this.groups.find(id); const own = this.member(id, userId);
@@ -137,7 +190,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       requestKind: own?.requestKind === 'invite' ? 'invite' : own?.requestKind === 'join' ? 'join' : null, organizerOnly: own?.organizerOnly === true,
       acceptedMembers: rows.filter(m => m.status === 'accepted').length,
       pendingMembers: this.admin(own) ? rows.filter(m => m.status === 'pending').length : 0,
-      activity: 0, distanceKm };
+      activity: this.attention(this.users.queryUserById(this.profileId(group.id, userId))), distanceKm };
   }
   private newMember(group: CommunityGroupRecord, userId: string, role: 'Admin' | 'Member', status: 'accepted' | 'pending', requestKind: 'invite' | 'join' | null, inviter: string | null): ActivityMemberRecord {
     const user = this.users.queryUserById(userId); if (!user) throw new Error('User not found');

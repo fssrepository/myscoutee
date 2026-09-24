@@ -1,3 +1,5 @@
+import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
+import type { AppMenuPalette } from '../core/menu';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { CommunityGroupsPopupComponent } from '../community-groups-popup/community-groups-popup.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
@@ -300,6 +302,19 @@ export class SideMenuComponent implements OnDestroy {
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
   private readonly dialogStore = inject(DialogStore);
+  protected readonly groupWorkspaces = inject(GroupWorkspaceStore);
+  protected readonly workspaceTrigger = computed<AppMenuTrigger>(() => {
+    const workspace = this.groupWorkspaces.context.active();
+    return { label: workspace?.name ?? 'groups.workspace.main', ariaLabel: 'groups.workspace.select',
+      icon: workspace ? '' : 'public', openIcon: workspace ? '' : 'public', rotateIcon: false,
+      imageFallback: workspace ? AppUtils.initialsFromText(workspace.name) : '',
+      palette: workspace ? this.groupWorkspaces.palette(workspace.groupId) : 'green',
+      layout: 'icon', hideLabel: true, trailingIcon: '', disabled: this.groupWorkspaces.context.switching() };
+  });
+  protected readonly workspaceItems = computed(() => this.groupWorkspaces.menuItems(this.groupWorkspaces.context.active()?.groupId ?? 'main'));
+  protected selectWorkspace(event: AppMenuItemSelectEvent): void {
+    void this.groupWorkspaces.select(event.id === 'main' ? null : event.id);
+  }
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   protected readonly popupPresenceStore = inject(PopupPresenceStore);
   protected readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
@@ -445,7 +460,7 @@ export class SideMenuComponent implements OnDestroy {
     return status === 'error' || status === 'timeout' || this.userMenuLoadOverdueRef() || this.hasProfileSaveError();
   });
   protected readonly showAvatarLoadRing = computed(() =>
-    this.avatarVisible() && (!this.canToggleAvatarMenu() || this.isProfileSaving() || this.hasProfileSaveError())
+    this.avatarVisible() && (this.groupWorkspaces.context.switching() || !this.canToggleAvatarMenu() || this.isProfileSaving() || this.hasProfileSaveError())
   );
   protected readonly avatarBadgeCount = computed(() =>
     this.canToggleAvatarMenu() ? this.avatarState().badgeCount : 0
@@ -1163,9 +1178,9 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       void this.notificationCenterStore.initialize(
-        activeUserId,
-        Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
-        user.notificationPreferences?.muted === true
+        this.groupWorkspaces.context.accountId(activeUserId),
+        Math.max(0, Math.trunc(Number((this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(activeUserId)) ?? user).activities?.notifications) || 0)),
+        (this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(activeUserId)) ?? user).notificationPreferences?.muted === true
       );
     });
 
@@ -1651,7 +1666,7 @@ export class SideMenuComponent implements OnDestroy {
       showEdit: !this.serverActionsUnavailable(),
       editDisabled: admin ? this.serverActionsUnavailable() : this.serverActionsUnavailable() || this.isBlockedUser(user),
       editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
-      showRing: !admin && this.showProfileSaveRing(),
+      showRing: !admin && (this.showProfileSaveRing() || this.groupWorkspaces.context.switching()),
       ringState: this.hasProfileSaveError() ? 'error' : 'loading',
       ringTitle: admin ? null : this.profileSaveAvatarTitle()
     });
@@ -2461,7 +2476,10 @@ export class SideMenuComponent implements OnDestroy {
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);
-      if (this.userProfileStore.activeUserId() === userId) this.activitiesStore.openActivities('events', 'all');
+      if (this.userProfileStore.activeUserId() === userId) {
+        if (claim.groupId) { this.communityGroups.open(); await this.communityGroups.refresh(claim.groupId); }
+        else this.activitiesStore.openActivities('events', 'all');
+      }
     } catch {
       if (this.userProfileStore.activeUserId() === userId) this.dialogStore.open({
         title: 'event.partner.invite', message: 'event.partner.invite.failed', confirmLabel: 'OK'

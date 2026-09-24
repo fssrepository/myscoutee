@@ -1,3 +1,4 @@
+import { OnOffToggleComponent } from '../../on-off-toggle/on-off-toggle.component';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -77,6 +78,7 @@ interface FormFlowSelectedMenuItem {
   standalone: true,
   imports: [
     CommonModule,
+    OnOffToggleComponent,
     FormsModule,
     MatIconModule,
     AppMenuComponent,
@@ -495,7 +497,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.menuConfig(control).model ?? null;
   }
 
-  protected tableRows(control: FormFlowControlModel): readonly { label: string; value: string; icon?: string }[] {
+  protected tableRows(control: FormFlowControlModel): readonly { label: string; value: string; icon?: string; badgeTone?: 'danger' }[] {
     return (control.config as import('./form-flow.types').FormFlowTableControlConfig | null)?.rows ?? [];
   }
 

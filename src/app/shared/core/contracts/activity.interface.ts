@@ -1437,6 +1437,7 @@ export interface ActivityMembersSyncResultDTO {
 }
 
 export interface ActivityMemberActionResultDTO {
+  group?: import('./community-group.interface').CommunityGroup | null;
   members: ActivityMemberDTO[];
   counterOverrides: UserContracts.UserMenuCountersDto | null;
 }
@@ -1449,6 +1450,7 @@ export interface ActivityMemberInviteRejectionDTO {
 }
 
 export interface ActivityMembersInviteResultDTO {
+  group?: import('./community-group.interface').CommunityGroup | null;
   members: ActivityMemberDTO[];
   invitedUserIds: string[];
   rejections: ActivityMemberInviteRejectionDTO[];

@@ -228,6 +228,7 @@ export class HttpActivityMembersService {
     return {
       members: this.cloneEntries(members),
       invitedUserIds,
+      group: structuredResponse?.group ?? null,
       rejections
     };
   }
@@ -289,6 +290,7 @@ export class HttpActivityMembersService {
     }
     return {
       members: this.cloneEntries(members),
+      group: !Array.isArray(response) ? response?.group ?? null : null,
       counterOverrides: !Array.isArray(response) && response?.counterOverrides
         ? { ...response.counterOverrides }
         : null

@@ -76,12 +76,10 @@
     >
       <div class="navigator-menu-header">
         <div class="navigator-install-action navigator-context-actions">
-          @if (mingleStore.visible()) {
-            <app-menu class="navigator-mingle-table-action" kind="inline"
+          <app-menu class="navigator-mingle-table-action" [class.is-placeholder]="!mingleStore.visible()" [attr.inert]="!mingleStore.visible() ? '' : null" [attr.aria-hidden]="!mingleStore.visible()" kind="inline"
               [model]="navigatorTableMenuModel()"
               (itemSelect)="openCurrentMingleTable($event.sourceEvent)"
             ></app-menu>
-          }
           <app-menu class="navigator-feed-action" kind="inline"
             [model]="navigatorFeedMenuModel()"
             (itemSelect)="$event.sourceEvent.stopPropagation(); photoFeedStore.open()"
@@ -97,7 +95,14 @@
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
-        ></app-header-card>
+        >
+          @if (!isAdminMode() && !isOperatorMode()) {
+            <app-menu avatarStart class="navigator-workspace-selector" kind="select"
+              [trigger]="workspaceTrigger()" [items]="workspaceItems()"
+              (itemSelect)="selectWorkspace($event)"></app-menu>
+          }
+        </app-header-card>
+        @if (groupWorkspaces.error()) { <p role="alert">{{ groupWorkspaces.error() | i18n }}</p> }
         <div class="navigator-header-actions">
           <app-menu
             class="navigator-header-actions-menu"

@@ -330,17 +330,13 @@ app-event-supply-contributions-popup {
 .navigator-context-actions {
   left: .75rem;
   right: .75rem;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
   align-items: center;
-  justify-items: center;
+  justify-content: space-between;
   gap: .34rem;
-
-  .navigator-mingle-table-action { grid-column: 1; justify-self: start; }
-  .navigator-feed-action { grid-column: 2; }
-  .navigator-followed-action { grid-column: 3; }
-  .navigator-groups-action { grid-column: 4; justify-self: end; }
+  .is-placeholder { visibility: hidden; pointer-events: none; }
 }
 .navigator-menu-header-card {
   --app-header-card-padding: .66rem .66rem 3.2rem;
 }
+

@@ -91,6 +91,8 @@ export interface UserEventFeedbackCountersRecord {
 }
 
 export interface UserRecord {
+  workspaceGroupId?: string;
+  accountUserId?: string;
   following?: import('../../../contracts/following.interface').FollowingState;
   feedCounters?: import('../../../contracts/photo-feed.interface').PhotoFeedCounters;
   integrationTokens?: LocalIntegrationTokenRecord[];

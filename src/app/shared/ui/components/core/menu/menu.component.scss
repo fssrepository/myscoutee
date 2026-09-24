@@ -826,7 +826,7 @@
     filter 0.14s ease;
 }
 
-.app-menu__trigger--layout-icon.app-menu__trigger--open > .mat-icon:not(.app-menu__trigger-caret) {
+.app-menu__trigger--layout-icon.app-menu__trigger--open:not(.app-menu__trigger--static-icon) > .mat-icon:not(.app-menu__trigger-caret) {
   transform: rotate(90deg);
 }
 
@@ -3407,4 +3407,9 @@ a.app-menu__item {
 .app-menu__tabs-toggle[data-toggle-palette] {
   background: var(--app-menu-bg-strong);
   border-color: var(--app-menu-border);
+}
+
+.app-menu__panel--dropdown-list .app-menu__item-image.app-menu__item-image--circle,
+.app-menu__item-image.app-menu__item-image--circle {
+  width: 28px; height: 28px; border-radius: 50%; font-size: .72rem;
 }

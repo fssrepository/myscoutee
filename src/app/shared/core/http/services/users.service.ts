@@ -314,9 +314,9 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string; invitationAvailable: boolean }> {
-    const result = await this.http.post<{ eventId: string; invitationAvailable: boolean }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
-    if (!result?.eventId) throw new Error('Invitation could not be claimed.');
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }> {
+    const result = await this.http.post<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
+    if (!result?.eventId && !result?.groupId) throw new Error('Invitation could not be claimed.');
     return result;
   }
 
