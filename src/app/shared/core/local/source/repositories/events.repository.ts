@@ -161,7 +161,31 @@ export class LocalEventsRepository {
   }
 
   queryCalendarItemsByUser(userId: string): ActivityEventRecord[] {
-    const records = this.queryUserRecords(userId);
+    const roots = this.queryUserRecords(userId);
+    const preferred = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
+    const parents = new Map(roots.filter(record => this.isSlotParentRecord(record)).map(record => [record.id, record]));
+    const storedById = new Map(preferred.map(record => [record.id, record]));
+    const slots = [...parents.values()].flatMap(parent => {
+      if (parent.status !== 'A' || parent.cancelled === true
+        || ['under-review', 'blocked', 'rejected'].includes(parent.moderationStatus ?? '')) return [];
+      return LocalActivityEventsMapper.toSubEventsSlots(parent.id, parent, {
+        userId, eventId: parent.id, order: 'upcoming',
+        rangeStart: AppUtils.toIsoDate(new Date(parent.startAtIso)),
+        rangeEnd: AppUtils.toIsoDate(new Date(parent.endAtIso))
+      })
+        .filter(slot => !!slot.slotSourceId)
+        .map(slot => ({
+          ...(storedById.get(slot.slotSourceId!) ?? parent),
+          id: slot.slotSourceId!,
+          startAtIso: slot.startAt!,
+          endAtIso: slot.endAt!,
+          slotsEnabled: false,
+          parentEventId: parent.id,
+          eventType: 'slot' as const,
+          organizerUserId: parent.organizerUserId ?? parent.creatorUserId
+        }));
+    });
+    const records = [...roots.filter(record => record.slotsEnabled !== true), ...slots];
     const accepted = this.acceptedParticipantOwnerIds('event', records.map(record => record.id), userId);
     return records.map(record => ({
       ...record,
