@@ -89,7 +89,8 @@ export class CommunityGroupsPopupComponent {
         { id: 'category', kind: 'menu', align: 'start', menuKind: 'select',
           trigger: { label: category ? `groups.category.${category}` : 'groups.category.all',
             icon: category ? GROUP_CATEGORY_ICON[category] : 'category', palette: category ? GROUP_CATEGORY_PALETTE[category] : 'teal', layout: 'pill' },
-          items: [{ id: 'all', label: 'groups.category.all', icon: 'category', kind: 'radio', showCheck: true, checked: !category },
+          items: [{ id: 'all', label: 'groups.category.all', icon: 'category', palette: 'teal', surface: 'tinted',
+            kind: 'radio', showCheck: true, active: !category, checked: !category },
             ...GROUP_CATEGORIES.map(id => ({ id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id],
               kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const }))] }
       ], onMenuSelect: event => { const value = event.itemSelect.id;
