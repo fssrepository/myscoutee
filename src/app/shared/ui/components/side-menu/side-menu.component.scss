@@ -190,13 +190,6 @@
   position: relative;
 }
 
-.navigator-install-action {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.55rem;
-  z-index: 7;
-}
-
 .navigator-menu-header-card {
   display: block;
   border-bottom: 1px solid rgba(23, 33, 54, 0.12);
@@ -325,18 +318,5 @@ app-event-supply-contributions-popup {
   gap: 12px;
   min-height: 240px;
   color: #536a84;
-}
-
-.navigator-context-actions {
-  left: .75rem;
-  right: .75rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .34rem;
-  .is-placeholder { visibility: hidden; pointer-events: none; }
-}
-.navigator-menu-header-card {
-  --app-header-card-padding: .66rem .66rem 3.2rem;
 }
 

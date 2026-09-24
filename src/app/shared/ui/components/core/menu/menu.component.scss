@@ -822,6 +822,15 @@
   height: 1.18rem;
 }
 
+.app-menu__trigger .app-menu__trigger-image--circle,
+:host(.app-menu-host--compact) .app-menu__trigger .app-menu__trigger-image--circle {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
 .app-menu__trigger-icon--symbol,
 .app-menu__item-icon--symbol {
   font-family: "Noto Sans Symbols 2", "Noto Sans Symbols", "Segoe UI Symbol", sans-serif;
@@ -3426,5 +3435,17 @@ a.app-menu__item {
 
 .app-menu__panel--dropdown-list .app-menu__item-image.app-menu__item-image--circle,
 .app-menu__item-image.app-menu__item-image--circle {
-  width: 28px; height: 28px; border-radius: 50%; font-size: .72rem;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.app-menu__panel--dropdown-list:has(.app-menu__item-image--circle) .app-menu__item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
 }

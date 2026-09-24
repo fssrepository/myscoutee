@@ -248,3 +248,10 @@
 }
 
 .header-card__avatar-start { position: absolute; top: -4px; left: -4px; z-index: 9; }
+
+.header-card__avatar-end {
+  position: absolute;
+  bottom: var(--header-card-badge-overhang);
+  right: -4px;
+  z-index: 9;
+}

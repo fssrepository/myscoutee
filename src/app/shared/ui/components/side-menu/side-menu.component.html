@@ -75,29 +75,13 @@
       [class.is-covered]="isCoveredByAssetPopup()"
     >
       <div class="navigator-menu-header">
-        <div class="navigator-install-action navigator-context-actions">
-          <app-menu class="navigator-mingle-table-action" [class.is-placeholder]="!mingleStore.visible()" [attr.inert]="!mingleStore.visible() ? '' : null" [attr.aria-hidden]="!mingleStore.visible()" kind="inline"
-              [model]="navigatorTableMenuModel()"
-              (itemSelect)="openCurrentMingleTable($event.sourceEvent)"
-            ></app-menu>
-          <app-menu class="navigator-feed-action" kind="inline"
-            [model]="navigatorFeedMenuModel()"
-            (itemSelect)="$event.sourceEvent.stopPropagation(); photoFeedStore.open()"
-          ></app-menu>
-          <app-menu class="navigator-followed-action" kind="inline"
-            [model]="navigatorFollowedMenuModel()"
-            (itemSelect)="openFollowedEvents($event.sourceEvent)"
-          ></app-menu>
-          <app-menu class="navigator-groups-action" kind="inline" [model]="navigatorGroupsMenuModel()"
-            (itemSelect)="$event.sourceEvent.stopPropagation(); communityGroups.open()"></app-menu>
-        </div>
         <app-header-card
           class="navigator-menu-header-card"
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
         >
           @if (!isAdminMode() && !isOperatorMode()) {
-            <app-menu avatarStart class="navigator-workspace-selector" kind="select"
+            <app-menu avatarEnd class="navigator-workspace-selector" kind="select"
               [trigger]="workspaceTrigger()" [items]="workspaceItems()"
               (itemSelect)="selectWorkspace($event)"></app-menu>
           }
@@ -130,6 +114,13 @@
             (itemSelect)="onAdminNavigatorMenuSelect($event)"
           ></app-menu>
         } @else if (!isOperatorMode()) {
+          <app-menu
+            kind="inline"
+            layout="grid"
+            [style.--app-menu-grid-columns]="mingleStore.visible() ? 4 : 3"
+            [model]="navigatorCommunityMenuModel()"
+            (itemSelect)="onNavigatorCommunityMenuSelect($event)"
+          ></app-menu>
           <app-menu
             kind="inline"
             layout="grid"

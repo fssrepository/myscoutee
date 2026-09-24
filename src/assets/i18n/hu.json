@@ -1,7 +1,8 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.179",
+  "version": "2026.09.24.hu.180",
   "messages": {
+    "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
     "unavailable.here": "Itt nem elérhető",

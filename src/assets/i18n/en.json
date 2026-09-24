@@ -1,7 +1,8 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.179",
+  "version": "2026.09.24.en.180",
   "messages": {
+    "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
     "unavailable.here": "Unavailable here",

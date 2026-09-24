@@ -4,15 +4,17 @@ import { PopupComponent, PopupModel } from '../core/popup';
 import { SmartListComponent, InfoCardComponent, InfoCardData, SmartListConfig, SmartListLoadPage } from '../core/smart-list';
 import { AppMenuItemSelectEvent } from '../core/menu';
 import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nPipe } from '../../pipes/i18n.pipe';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
 import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
-  imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent],
+  imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
     <app-popup [model]="model()">
+      @if (store.error() && !store.editor()) { <p role="alert">{{ store.error() | i18n }}</p> }
       <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"
         (menuItemSelect)="select($event)"></app-smart-list>
       <ng-template #cardTemplate let-card let-openMenu="openMenu">
@@ -76,7 +78,7 @@ export class CommunityGroupsPopupComponent {
     return { title: 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
       toolbarMobileAlign: 'start', onClose: () => this.store.close(),
       headerActions: [{ id: 'create', icon: 'group_add', label: 'groups.create', palette: 'blue' }],
-      onAction: () => this.store.editor.set({ group: null, readOnly: false }),
+      onAction: () => { this.store.closeEditor(); this.store.error.set(''); this.store.editor.set({ group: null, readOnly: false }); },
       toolbarControls: [
         { id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
           trigger: { label: `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',

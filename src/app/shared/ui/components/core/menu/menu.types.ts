@@ -127,6 +127,7 @@ export type AppMenuValueMap<TId extends string = string> = Partial<Record<TId, A
 
 export interface AppMenuTrigger {
   rotateIcon?: boolean;
+  imageShape?: 'circle' | 'rectangle';
   id?: string;
   label?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;

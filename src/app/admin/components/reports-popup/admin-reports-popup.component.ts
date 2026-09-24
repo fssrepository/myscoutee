@@ -887,7 +887,7 @@ export class AdminReportsPopupComponent {
     if (sourceTone === 'asset') {
       return 'admin-report-tone-asset';
     }
-    return `admin-report-tone-${this.reportBadgeLabel(report)
+    return `admin-report-tone-${`${report.reason ?? ''}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'general'}`;
@@ -900,7 +900,7 @@ export class AdminReportsPopupComponent {
     if (report.sourceType === 'asset' || report.assetId) {
       return 'warning';
     }
-    const label = this.reportBadgeLabel(report).toLowerCase();
+    const label = `${report.reason ?? ''}`.toLowerCase();
     if (label.includes('harassment') || label.includes('abuse') || label.includes('safety')) {
       return 'danger';
     }

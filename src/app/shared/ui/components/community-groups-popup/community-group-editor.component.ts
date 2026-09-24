@@ -4,13 +4,14 @@ import { PopupComponent, PopupModel } from '../core/popup';
 import { FormFlowComponent, FormFlowModel, FormFlowActionEvent, FormFlowControlModel, FormFlowMenuControlConfig } from '../core/form/flow';
 import { AppMenuPalette } from '../core/menu';
 import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nPipe } from '../../pipes/i18n.pipe';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup } from '../../../core/contracts/community-group.interface';
 import { GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE, GROUP_VISIBILITY_STYLE } from '../../converters/community-group.converter';
 import { ProfileFormFlowConverter } from '../../converters/profile-form-flow.converter';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 interface GroupForm extends SaveCommunityGroup { images: string[]; }
-@Component({ selector: 'app-community-group-editor', standalone: true, imports: [FormsModule, PopupComponent, FormFlowComponent],
+@Component({ selector: 'app-community-group-editor', standalone: true, imports: [FormsModule, PopupComponent, FormFlowComponent, I18nPipe],
   host: { '[class.group-editor--readonly]': 'readOnly' },
   styles: [`
     :host {
@@ -42,7 +43,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
     <app-popup [model]="popupModel()" [zIndex]="zIndex">
       <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="loading || store.busy()" [loading]="loading"
         [saving]="store.busy()" (action)="action($event)"></app-form-flow>
-      @if (store.error()) { <p role="alert">{{ store.error() }}</p> }
+      @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
     </app-popup>
     @if (policyDraft) {
       <app-popup [model]="policyPopupModel()" [zIndex]="zIndex + 40">

@@ -309,6 +309,7 @@ export class SideMenuComponent implements OnDestroy {
     return { label: workspace?.name ?? 'groups.workspace.main', ariaLabel: 'groups.workspace.select',
       icon: workspace ? '' : 'public', openIcon: workspace ? '' : 'public', rotateIcon: false,
       imageFallback: workspace ? AppUtils.initialsFromText(workspace.name) : '',
+      imageShape: 'circle',
       palette: workspace ? this.groupWorkspaces.palette(workspace.groupId) : 'green',
       layout: 'icon', hideLabel: true, trailingIcon: '', disabled: this.groupWorkspaces.context.switching() };
   });
@@ -336,6 +337,15 @@ export class SideMenuComponent implements OnDestroy {
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));
   protected readonly navigatorFollowedMenuModel = computed(() =>
     navigatorContentMenuModel('followed', this.followingStore.state().eventCount));
+  protected readonly navigatorCommunityMenuModel = computed<AppMenuModel>(() => ({
+    nodes: [{
+      id: 'community', label: 'navigator.community', icon: 'diversity_2', palette: 'lime',
+      items: [
+        ...(this.mingleStore.visible() ? [this.navigatorTableMenuModel()] : []),
+        this.navigatorFeedMenuModel(), this.navigatorFollowedMenuModel(), this.navigatorGroupsMenuModel()
+      ].flatMap(model => model.nodes?.flatMap(node => node.items ?? []) ?? [])
+    }]
+  }));
   protected readonly imageGalleryStore = inject(ImageGalleryStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
@@ -1541,6 +1551,16 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'report-bugs':
         return;
+    }
+  }
+
+  protected onNavigatorCommunityMenuSelect(event: AppMenuItemSelectEvent): void {
+    event.sourceEvent.stopPropagation();
+    switch (event.id) {
+      case 'table': this.openCurrentMingleTable(event.sourceEvent); return;
+      case 'feed': this.photoFeedStore.open(); return;
+      case 'followed': this.openFollowedEvents(event.sourceEvent); return;
+      case 'groups': this.communityGroups.open(); return;
     }
   }
 

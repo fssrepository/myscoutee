@@ -29,7 +29,7 @@
         ></span>
       }
       @if (triggerImageUrl() || triggerImageFallback()) {
-        <span class="app-menu__trigger-image">
+        <span class="app-menu__trigger-image" [class.app-menu__trigger-image--circle]="trigger?.imageShape === 'circle'">
           @if (triggerImageUrl(); as imageUrl) {
             <img
               [src]="imageUrl"
