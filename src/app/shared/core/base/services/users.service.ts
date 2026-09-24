@@ -633,10 +633,11 @@ export class UsersService extends BaseRouteModeService {
     const chatSubEvent = normalizeWithFallback(counterOverrides.chat?.subEvent, fallbackActivities.chat?.subEvent);
     const chatGroup = normalizeWithFallback(counterOverrides.chat?.group, fallbackActivities.chat?.group);
     const chatService = normalizeWithFallback(counterOverrides.chat?.service, fallbackActivities.chat?.service);
+    const chatGroupSupport = normalizeWithFallback(counterOverrides.chat?.groupSupport, fallbackActivities.chat?.groupSupport);
     const chatAppSupport = normalizeWithFallback(counterOverrides.chat?.appSupport, fallbackActivities.chat?.appSupport);
     const supportCases = counterOverrides.chat?.supportCases ?? fallbackActivities.chat?.supportCases;
     if (chatAll !== undefined || chatEvent !== undefined || chatSubEvent !== undefined
-      || chatGroup !== undefined || chatService !== undefined || chatAppSupport !== undefined
+      || chatGroup !== undefined || chatService !== undefined || chatAppSupport !== undefined || chatGroupSupport !== undefined
     ) {
       patch.chat = {
         all: chatAll ?? 0,
@@ -645,6 +646,7 @@ export class UsersService extends BaseRouteModeService {
         group: chatGroup ?? 0,
         service: chatService ?? 0,
         appSupport: chatAppSupport ?? 0,
+        groupSupport: chatGroupSupport ?? 0,
         supportCases: {
           pending: normalizeWithFallback(supportCases?.pending, 0) ?? 0,
           warned: normalizeWithFallback(supportCases?.warned, 0) ?? 0,
@@ -752,6 +754,7 @@ export class UsersService extends BaseRouteModeService {
           group: Math.max(0, Math.trunc(Number(user.activities?.chat?.group) || 0)),
           service: Math.max(0, Math.trunc(Number(user.activities?.chat?.service) || 0)),
           appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0)),
+          groupSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.groupSupport) || 0)),
           supportCases: {
             pending: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.pending) || 0)),
             warned: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.warned) || 0)),

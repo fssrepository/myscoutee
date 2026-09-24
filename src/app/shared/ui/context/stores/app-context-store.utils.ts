@@ -173,6 +173,7 @@ export function cloneChatCounters(
     group: normalizeCounterValue(counters?.group),
     service: normalizeCounterValue(counters?.service),
     appSupport: normalizeCounterValue(counters?.appSupport),
+    groupSupport: normalizeCounterValue(counters?.groupSupport),
     supportCases: cloneSupportCaseCounters(counters?.supportCases)
   };
 }

@@ -554,7 +554,8 @@ export class SeedUserBuilder {
           subEvent: normalize(user.activities?.chat?.subEvent),
           group: normalize(user.activities?.chat?.group),
           service: normalize(user.activities?.chat?.service),
-          appSupport: normalize(user.activities?.chat?.appSupport)
+          appSupport: normalize(user.activities?.chat?.appSupport),
+          groupSupport: normalize(user.activities?.chat?.groupSupport)
         }
       }
     };

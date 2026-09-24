@@ -148,6 +148,7 @@ export interface UserChatCountersDto {
   group?: number;
   service?: number;
   appSupport?: number;
+  groupSupport?: number;
   supportCases?: UserSupportCaseCountersDto;
 }
 
@@ -167,6 +168,7 @@ export interface UserChatCounterDeltasDto {
   group?: number;
   service?: number;
   appSupport?: number;
+  groupSupport?: number;
 }
 
 export interface UserEventCountersDto {

@@ -6,6 +6,8 @@ export type GroupVisibility = 'public' | 'private' | 'invitation';
 export type GroupBucket = 'hosting' | 'participation' | 'explore';
 export interface GroupPolicy { workspace: boolean; enabled: boolean; requiredFields: string[]; }
 export interface CommunityGroup {
+  moderationPending?: number;
+  moderationQueueRevision?: number;
   moderationStatus?: import('./content-moderation.interface').ModerationStatus | null;
   revision?: string;
   id: string; ownerUserId: string; ownerName: string; ownerAvatarUrl: string | null;
@@ -28,6 +30,8 @@ export function communityGroupSummary(group: CommunityGroup | CommunityGroupSumm
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
 export interface GroupCounters { hosting: number; participation: number; }
 export interface GroupWorkspace {
+  moderationPending?: number;
+  moderationQueueRevision?: number;
   groupId: string; profileId: string; name: string; role: string; activity: number; policy: GroupPolicy;
 }
 export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; }

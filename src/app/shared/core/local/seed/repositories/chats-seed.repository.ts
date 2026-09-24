@@ -313,6 +313,7 @@ export class SeedChatsRepository {
       subEvent: normalize(user.activities.chat?.subEvent),
       group: normalize(user.activities.chat?.group),
       service: normalize(user.activities.chat?.service),
+      groupSupport: normalize(user.activities.chat?.groupSupport),
       appSupport: normalize(user.activities.chat?.appSupport)
     };
     for (const id of incoming.ids) {
@@ -358,6 +359,7 @@ export class SeedChatsRepository {
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'groupSupport': return 'groupSupport';
       case 'appSupport':
       case 'supportCase': return 'appSupport';
       default: return null;

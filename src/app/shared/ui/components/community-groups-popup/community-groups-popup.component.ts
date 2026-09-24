@@ -10,6 +10,7 @@ import { ProfileStore } from '../../context/stores/profile.store';
 import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
 import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
+import { ContentModerationStore } from '../../context/stores/content-moderation.store';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
@@ -32,6 +33,7 @@ export class CommunityGroupsPopupComponent {
   protected readonly store = inject(CommunityGroupsStore);
   protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);
+  private readonly moderation = inject(ContentModerationStore);
   @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroupSummary>, GroupFilters>;
   protected query: { filters: GroupFilters } = { filters: { bucket: this.store.initialBucket(), category: null } };
   protected readonly config: SmartListConfig<InfoCardData<CommunityGroupSummary>, GroupFilters> = {
@@ -50,17 +52,31 @@ export class CommunityGroupsPopupComponent {
         bucket: query.filters?.bucket ?? 'hosting', category: query.filters?.category,
         limit: query.pageSize, knownItems: snapshot.knownItems.map(item => ({ id: item.id, revision: `${item.revision}` })),
         tailId: snapshot.loadedTail?.id ?? null
-      }, context?.signal)).pipe(map(delta => ({ ...delta, upserts: delta.upserts.map(group => CommunityGroupConverter.card(group, key => this.i18n.translate(key))) })))
+      }, context?.signal)).pipe(map(delta => ({ ...delta, upserts: delta.upserts.map(group => this.card(group)) })))
     },
-    menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(context.item.eagerDetail, this.store.openUserId()) : []
+    menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(this.withModeration(context.item.eagerDetail), this.store.openUserId()) : []
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityGroupSummary>, GroupFilters> = (query, context) =>
     defer(() => this.store.page(query, context?.signal)).pipe(map(page => ({ ...page,
-      items: page.items.map(group => CommunityGroupConverter.card(group, key => this.i18n.translate(key))) })));
+      items: page.items.map(group => this.card(group)) })));
+  private withModeration(group: CommunityGroupSummary): CommunityGroupSummary {
+    if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') return group;
+    const attention = this.moderation.attention(group.id, group.moderationPending, group.moderationQueueRevision);
+    return { ...group, activity: Math.max(0, group.activity - (group.moderationPending ?? 0)) + attention.pending,
+      moderationPending: attention.pending, moderationQueueRevision: attention.revision };
+  }
+  private card(group: CommunityGroupSummary) {
+    return CommunityGroupConverter.card(this.withModeration(group), key => this.i18n.translate(key));
+  }
   constructor() {
     effect(() => {
+      for (const groupId of Object.keys(this.moderation.groupSnapshots())) {
+        this.list?.patchVisibleItem(card => card.id === groupId, card => card.eagerDetail ? this.card(card.eagerDetail) : card);
+      }
+    });
+    effect(() => {
       const group = this.store.changed(); if (!group) return;
-      const card = CommunityGroupConverter.card(group, key => this.i18n.translate(key));
+      const card = this.card(group);
       const { bucket, category } = this.query.filters;
       const admin = group.role === 'Admin' && group.membershipStatus === 'accepted';
       const matches = (!category || category === group.category) && (bucket === 'hosting' ? admin

@@ -11,6 +11,8 @@ import { LocalNotificationsRepository } from '../repositories/notifications.repo
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalUsersService } from './users.service';
+import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
+import { LocalUsersRepository } from '../repositories/users.repository';
 
 const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
 const ADMIN_MODERATION_BLOCK_ROUTE = '/admin/reports/block';
@@ -24,6 +26,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
   private readonly usersService = inject(LocalUsersService);
+  private readonly groups = inject(LocalCommunityGroupsRepository);
+  private readonly users = inject(LocalUsersRepository);
 
   async warnUser(
     userId: string,
@@ -201,9 +205,15 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     stableMessageId?: string
   ): Promise<AdminModerationUserPatch> {
     const reportedUser = this.supportSession.findUser(userId);
+    const workspaceGroupId = this.users.queryUserById(userId)?.workspaceGroupId;
+    const moderator = this.users.queryUserById(admin.id);
+    if (workspaceGroupId && moderator?.workspaceGroupId !== workspaceGroupId) {
+      throw new Error('Moderator and recipient must belong to the same workspace.');
+    }
     const now = new Date();
     const nowIso = now.toISOString();
-    const chatId = `c-support-admin-${userId}`;
+    const chatId = `${workspaceGroupId ? 'c-moderation-group-' : 'c-support-admin-'}${userId}`;
+    const chatTitle = workspaceGroupId ? (this.groups.find(workspaceGroupId)?.name ?? workspaceGroupId) : 'MyScoutee Support';
     const messageId = stableMessageId || `m-admin-${Date.now()}`;
     const adminAvatar = {
       id: admin.id,
@@ -213,15 +223,15 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     const userChat: ChatThreadRecord = {
       id: chatId,
       avatar: admin.initials,
-      title: 'MyScoutee Support',
+      title: chatTitle,
       lastMessage: text,
       lastSenderId: admin.id,
       memberIds: [userId, admin.id],
       unread: 1,
       dateIso: nowIso,
-      channelType: 'appSupport',
+      channelType: workspaceGroupId ? 'groupSupport' : 'appSupport',
       ownerUserId: userId,
-      supportCase: this.supportCase(status, admin, nowIso)
+      supportCase: workspaceGroupId ? undefined : this.supportCase(status, admin, nowIso)
     };
     const userMessage: ChatMessageDto = {
       id: messageId,
@@ -236,22 +246,22 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     const adminChat: ChatThreadRecord = {
       id: chatId,
       avatar: reportedUser?.initials || 'U',
-      title: `MyScoutee Support · ${reportedUser?.name || 'Reported user'}`,
+      title: `${chatTitle} · ${reportedUser?.name || 'Reported user'}`,
       lastMessage: text,
       lastSenderId: admin.id,
       memberIds: [userId, admin.id],
       unread: 0,
       dateIso: nowIso,
-      channelType: 'appSupport',
+      channelType: workspaceGroupId ? 'groupSupport' : 'appSupport',
       ownerUserId: admin.id,
-      supportCase: this.supportCase(status, admin, nowIso)
+      supportCase: workspaceGroupId ? undefined : this.supportCase(status, admin, nowIso)
     };
     const adminMessage: ChatMessageDto = {
       ...userMessage,
       mine: true,
       readBy: []
     };
-    await this.supportSession.upsertSupportChatMessage(userChat, userMessage, true);
+    if (userId !== admin.id) await this.supportSession.upsertSupportChatMessage(userChat, userMessage, true);
     await this.supportSession.upsertSupportChatMessage(adminChat, adminMessage, false);
     return {
       userId,

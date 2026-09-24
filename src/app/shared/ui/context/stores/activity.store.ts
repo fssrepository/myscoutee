@@ -75,6 +75,7 @@ export interface ActivityChatCounters {
   group: number;
   service: number;
   appSupport: number;
+  groupSupport: number;
   supportCases: ActivitySupportCaseCounters;
 }
 

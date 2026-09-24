@@ -897,6 +897,7 @@ export class HttpChatsService implements IChatsService {
       group: Math.max(0, Math.trunc(Number(counters?.group) || 0)),
       service: Math.max(0, Math.trunc(Number(counters?.service) || 0)),
       appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0)),
+      groupSupport: Math.max(0, Math.trunc(Number(counters?.groupSupport) || 0)),
       supportCases: {
         pending: Math.max(0, Math.trunc(Number(counters?.supportCases?.pending) || 0)),
         warned: Math.max(0, Math.trunc(Number(counters?.supportCases?.warned) || 0)),
@@ -958,7 +959,7 @@ export class HttpChatsService implements IChatsService {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'groupSupport'
       ? value
       : 'all';
   }

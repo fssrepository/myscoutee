@@ -37,7 +37,10 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       const profile = this.users.queryUserById(this.profileId(group.id, userId));
       return group.policy.workspace && member?.status === 'accepted' && profile
         ? [{ groupId: group.id, profileId: profile.id, name: group.name, role: member.role,
-          activity: this.attention(profile), policy: structuredClone(group.policy) }] : [];
+          activity: this.attention(profile) + (this.admin(member) ? group.moderationPending ?? 0 : 0),
+          moderationPending: this.admin(member) ? group.moderationPending ?? 0 : 0,
+          moderationQueueRevision: this.admin(member) ? group.moderationQueueRevision ?? 0 : 0,
+          policy: structuredClone(group.policy) }] : [];
     }).sort((a, b) => a.name.localeCompare(b.name) || a.groupId.localeCompare(b.groupId));
   }
   async selectWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection> {
@@ -117,7 +120,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       name: request.name.trim(), description: request.description.trim(), imageUrl: request.imageUrl,
       category: request.category, visibility: request.visibility, hideMembers: request.hideMembers,
       policy: structuredClone(request.policy), createdAtIso: existing?.createdAtIso ?? now, updatedAtIso: now,
-      version: (existing?.version ?? -1) + 1, moderationStatus: existing?.moderationStatus
+      version: (existing?.version ?? -1) + 1, moderationStatus: existing?.moderationStatus,
+      moderationPending: existing?.moderationPending, moderationQueueRevision: existing?.moderationQueueRevision
     };
     this.groups.save(group);
     if (!existing) this.writeMembers(group.id, [this.newMember(group, request.userId, 'Admin', 'accepted', null, request.userId)]);
@@ -221,7 +225,10 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       requestKind: own?.requestKind === 'invite' ? 'invite' : own?.requestKind === 'join' ? 'join' : null, organizerOnly: own?.organizerOnly === true,
       acceptedMembers: rows.filter(m => m.status === 'accepted').length,
       pendingMembers: this.admin(own) ? rows.filter(m => m.status === 'pending').length : 0,
-      activity: this.attention(this.users.queryUserById(this.profileId(group.id, userId))), distanceKm };
+      moderationPending: this.admin(own) ? group.moderationPending ?? 0 : 0,
+      moderationQueueRevision: this.admin(own) ? group.moderationQueueRevision ?? 0 : 0,
+      activity: this.attention(this.users.queryUserById(this.profileId(group.id, userId)))
+        + (this.admin(own) ? group.moderationPending ?? 0 : 0), distanceKm };
   }
   private newMember(group: CommunityGroupRecord, userId: string, role: 'Admin' | 'Member', status: 'accepted' | 'pending', requestKind: 'invite' | 'join' | null, inviter: string | null): ActivityMemberRecord {
     const user = this.users.queryUserById(userId); if (!user) throw new Error('User not found');

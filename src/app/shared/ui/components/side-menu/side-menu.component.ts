@@ -588,6 +588,7 @@ export class SideMenuComponent implements OnDestroy {
         group: activityOverrides.chat?.group ?? activeUser.activities?.chat?.group ?? 0,
         service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
         appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0,
+        groupSupport: activityOverrides.chat?.groupSupport ?? activeUser.activities?.chat?.groupSupport ?? 0,
         supportCases: cloneSupportCaseCounters(
           activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases
         )
@@ -1087,7 +1088,7 @@ export class SideMenuComponent implements OnDestroy {
     effect(() => this.adminNotificationsService.setWorkerActive(!!this.sessionService.session()));
     effect(() => {
       const adminId = this.adminWorkspaceStore.dashboard()?.activeAdmin.id;
-      this.moderationStore.clear();
+      this.moderationStore.clearGlobal();
       if (adminId) void this.moderationService.snapshot(adminId).then(snapshot => {
         if (this.adminWorkspaceStore.dashboard()?.activeAdmin.id === adminId) this.moderationStore.apply(snapshot);
       }).catch(() => {});

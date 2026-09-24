@@ -1,4 +1,5 @@
 import { AppUtils } from '../../../app-utils';
+import { ContentModerationStore } from './content-moderation.store';
 import type { AppMenuItem, AppMenuPalette } from '../../components/core/menu';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
@@ -18,16 +19,23 @@ export class GroupWorkspaceStore {
   private readonly profile = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
   private readonly session = inject(SessionService);
+  private readonly moderation = inject(ContentModerationStore);
   private generation = 0;
   private refreshSequence = 0;
   private readonly workspaceSnapshots = signal<readonly GroupWorkspace[]>([]);
   readonly workspaces = computed(() => {
     const active = this.context.active();
     const profile = this.profile.activeUserProfile();
-    return this.workspaceSnapshots().map(workspace => active?.groupId === workspace.groupId && profile?.id === workspace.profileId
-      ? { ...workspace, activity: profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id),
-          this.profile.getUserImpressionChangeFlags(profile.id)) }
-      : workspace);
+    return this.workspaceSnapshots().map(workspace => {
+      const previousPending = workspace.moderationPending ?? 0;
+      const attention = workspace.role === 'Admin'
+        ? this.moderation.attention(workspace.groupId, previousPending, workspace.moderationQueueRevision)
+        : { pending: 0, revision: 0 };
+      const activity = active?.groupId === workspace.groupId && profile?.id === workspace.profileId
+        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id))
+        : Math.max(0, workspace.activity - previousPending);
+      return { ...workspace, activity: activity + attention.pending, moderationPending: attention.pending, moderationQueueRevision: attention.revision };
+    });
   });
   readonly error = signal('');
   readonly counters = computed(() => this.workspaces().reduce((counts, workspace) => {
@@ -47,7 +55,8 @@ export class GroupWorkspaceStore {
       if (!change || change.accountId !== this.context.accountUserId()) return;
       untracked(() => {
         this.workspaceSnapshots.update(workspaces => workspaces.map(workspace => workspace.groupId === change.group.id
-          ? { ...workspace, name: change.group.name, activity: change.group.activity, role: change.group.role ?? '', policy: change.group.policy }
+          ? { ...workspace, name: change.group.name, activity: change.group.activity, role: change.group.role ?? '', policy: change.group.policy,
+              moderationPending: change.group.moderationPending, moderationQueueRevision: change.group.moderationQueueRevision }
           : workspace).filter(workspace => workspace.groupId !== change.group.id || change.group.membershipStatus === 'accepted' && change.group.policy.workspace));
       });
     });
@@ -59,6 +68,7 @@ export class GroupWorkspaceStore {
       untracked(() => {
         if (accountId !== this.context.accountUserId()) {
           this.generation++;
+          this.moderation.clear();
           this.context.accountUserId.set(accountId);
           this.context.active.set(null);
           this.context.switching.set(false);

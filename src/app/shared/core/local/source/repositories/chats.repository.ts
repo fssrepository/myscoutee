@@ -544,6 +544,7 @@ export class LocalChatsRepository {
       const currentUsersTable = currentState[USERS_TABLE_NAME];
       const currentUser = currentUsersTable.byId[ownerUserId] ?? null;
       const currentChatCounters = currentUser?.activities?.chat ?? {};
+      const chatCounterKey = this.chatCounterKey(chat.channelType);
       const nextUsersTable = currentUser && unreadDelta !== 0
         ? {
             ...currentUsersTable,
@@ -556,11 +557,12 @@ export class LocalChatsRepository {
                   chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + unreadDelta),
                   chat: {
                     all: this.normalizeCounter((currentChatCounters.all ?? currentUser.activities?.chats ?? 0) + unreadDelta),
-                    event: this.normalizeCounter(currentChatCounters.event),
-                    subEvent: this.normalizeCounter(currentChatCounters.subEvent),
-                    group: this.normalizeCounter(currentChatCounters.group),
-                    service: this.normalizeCounter(currentChatCounters.service),
-                    appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + unreadDelta)
+                    event: this.normalizeCounter((currentChatCounters.event ?? 0) + (chatCounterKey === 'event' ? unreadDelta : 0)),
+                    subEvent: this.normalizeCounter((currentChatCounters.subEvent ?? 0) + (chatCounterKey === 'subEvent' ? unreadDelta : 0)),
+                    group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
+                    service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
+                    appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
+                    groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
                   }
                 }
               }
@@ -743,7 +745,8 @@ export class LocalChatsRepository {
         subEvent: this.normalizeCounter((currentChatCounters.subEvent ?? 0) + (chatCounterKey === 'subEvent' ? unreadDelta : 0)),
         group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
         service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
-        appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0))
+        appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
+        groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
       };
       const nextUsersTable = currentUser && unreadDelta !== 0
         ? {
@@ -791,7 +794,7 @@ export class LocalChatsRepository {
   private applyStoredChatCounterDelta(
     table: AppMemorySchema[typeof USERS_TABLE_NAME],
     userId: string,
-    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport',
+    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'groupSupport',
     delta: number
   ): AppMemorySchema[typeof USERS_TABLE_NAME] {
     const currentUser = table.byId[userId] ?? null;
@@ -814,7 +817,8 @@ export class LocalChatsRepository {
               subEvent: this.normalizeCounter((currentChat.subEvent ?? 0) + (context === 'subEvent' ? delta : 0)),
               group: this.normalizeCounter((currentChat.group ?? 0) + (context === 'group' ? delta : 0)),
               service: this.normalizeCounter((currentChat.service ?? 0) + (context === 'service' ? delta : 0)),
-              appSupport: this.normalizeCounter((currentChat.appSupport ?? 0) + (context === 'appSupport' ? delta : 0))
+              appSupport: this.normalizeCounter((currentChat.appSupport ?? 0) + (context === 'appSupport' ? delta : 0)),
+              groupSupport: this.normalizeCounter((currentChat.groupSupport ?? 0) + (context === 'groupSupport' ? delta : 0))
             }
           }
         }
@@ -916,6 +920,7 @@ export class LocalChatsRepository {
   private activityChatContextFilterKey(
     record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
+    if (record.channelType === 'groupSupport') return 'groupSupport';
     if (record.channelType === 'appSupport' || record.channelType === 'supportCase') {
       return 'appSupport';
     }
@@ -941,7 +946,7 @@ export class LocalChatsRepository {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'groupSupport'
       ? value
       : 'all';
   }
@@ -1445,12 +1450,13 @@ export class LocalChatsRepository {
 
   private chatCounterKey(
     channelType: ContractTypes.ChatChannelType | null | undefined
-  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | null {
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'groupSupport' | null {
     switch (channelType) {
       case 'mainEvent': return 'event';
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'groupSupport': return 'groupSupport';
       case 'appSupport':
       case 'supportCase': return 'appSupport';
       default: return null;

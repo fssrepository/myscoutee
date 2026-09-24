@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ViewChild, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ViewChild, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { from } from 'rxjs';
@@ -44,6 +44,7 @@ export class ContentModerationPopupComponent {
   protected readonly adminMenu = inject(AdminMenuStore);
   protected readonly state = inject(ContentModerationStore);
   private readonly workspace = inject(AdminWorkspaceStore);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly service = inject(ContentModerationService);
   private readonly i18n = inject(I18nService);
   private readonly dialogs = inject(DialogStore);
@@ -61,6 +62,9 @@ export class ContentModerationPopupComponent {
   protected readonly error = signal(false);
   private settingsRevision = 0;
   private get admin() { return this.groupContext()?.actor ?? this.workspace.dashboard()?.activeAdmin; }
+  private currentScope(groupId: string | undefined, actorId: string | undefined): boolean {
+    return !this.destroyRef.destroyed && this.groupId === groupId && this.admin?.id === actorId;
+  }
   protected readonly config: SmartListConfig<ContentModerationItem> = {
     pageSize: 20, initialPageSize: 20, listLayout: 'stack', snapMode: 'none', emptyLabel: 'moderation.empty',
     pollIntervalMs: 10000,
@@ -74,19 +78,22 @@ export class ContentModerationPopupComponent {
   constructor() {
     effect(() => {
       if (this.isOpen()) {
+        this.settingsDraft.set(null); this.saving.set(false);
         if (this.groupId && this.category === 'group') this.category = 'all';
         this.query = { filters: { category: this.category, status: this.status } }; this.error.set(false);
       }
     });
   }
   private async load(query: Parameters<SmartListLoadPage<ContentModerationItem>>[0]) {
+    const groupId = this.groupId, actorId = this.admin?.id;
     const { category, status } = query.filters as { category: ModerationCategoryFilter; status: ModerationStatus };
     try {
-      const result = await this.service.page(this.admin?.id ?? '', category, status, query, this.groupId);
+      const result = await this.service.page(actorId ?? '', category, status, query, groupId);
+      if (!this.currentScope(groupId, actorId)) return result;
       this.error.set(false);
-      this.state.apply(result.snapshot, this.groupId); return result;
+      this.state.apply(result.snapshot, groupId); return result;
     } catch (error) {
-      this.error.set(true);
+      if (this.currentScope(groupId, actorId)) this.error.set(true);
       throw error;
     }
   }
@@ -123,14 +130,17 @@ export class ContentModerationPopupComponent {
     const status = event.id as ModerationStatus;
     if (!this.snapshot()?.settings.enabled || !item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
     const commandId = crypto.randomUUID();
+    const groupId = this.groupId, actor = this.admin;
     this.dialogs.open({ title: this.decisionLabel(item, status), message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
       confirmPalette: STATUS_STYLE[status].palette,
       input: ['rejected', 'blocked'].includes(status) ? { label: 'moderation.message', maxLength: 1000 } : null,
       onConfirm: async message => {
-        const result = await this.service.decide(item.id, { adminUserId: this.admin?.id ?? '', commandId,
-          expectedVersion: item.version, status, message }, this.admin, this.groupId);
-        this.state.apply(result.snapshot, this.groupId);
+        if (!this.currentScope(groupId, actor?.id)) throw new Error('moderation.changed');
+        const result = await this.service.decide(item.id, { adminUserId: actor?.id ?? '', commandId,
+          expectedVersion: item.version, status, message }, actor, groupId);
+        if (!this.currentScope(groupId, actor?.id)) return;
+        this.state.apply(result.snapshot, groupId);
         const saved = result.item;
         const matches = saved.status === this.status && (this.category === 'all' || saved.category === this.category);
         if (matches) this.list?.patchVisibleItem(row => row.id === saved.id, saved);
@@ -139,27 +149,33 @@ export class ContentModerationPopupComponent {
     });
   }
   protected async openItem(item: ContentModerationItem): Promise<void> {
+    const groupId = this.groupId, actorId = this.admin?.id;
     this.error.set(false);
     try {
+      const detail = await this.service.detail<PhotoFeedPost | CommunityGroup | ActivityEventDetailDTO | AssetDetailDTO>(actorId ?? '', item.id, groupId);
+      if (!this.currentScope(groupId, actorId)) return;
       if (item.category === 'feed') {
-        const post = await this.service.detail<PhotoFeedPost>(this.admin?.id ?? '', item.id, this.groupId);
+        const post = detail as PhotoFeedPost;
         this.gallery.open({ images: post.imageUrls, imageDetails: post.imageDetails, slotCount: 5, readOnly: true,
           title: item.title, uploadOwnerId: post.creatorUserId, uploadEntityId: post.id });
-      } else if (item.category === 'group') this.groups.editor.set({ group: await this.service.detail<CommunityGroup>(this.admin?.id ?? '', item.id, this.groupId), readOnly: true });
-      else if (item.category === 'event') this.eventEditor.openView(await this.service.detail<ActivityEventDetailDTO>(this.admin?.id ?? '', item.id, this.groupId));
+      } else if (item.category === 'group') this.groups.editor.set({ group: detail as CommunityGroup, readOnly: true });
+      else if (item.category === 'event') this.eventEditor.openView(detail as ActivityEventDetailDTO);
       else {
-        const asset = await this.service.detail<AssetDetailDTO>(this.admin?.id ?? '', item.id, this.groupId);
+        const asset = detail as AssetDetailDTO;
         this.assetEditor.openAssetEditorEdit({ cardId: asset.id, form: AssetCardBuilder.buildAssetFormFromCard(asset),
           visibility: AssetCardBuilder.visibilityFromCard(asset), readOnly: true, loading: false, parentZIndex: 2470 });
         await this.assetPopup.ensureAssetPopupLoaded();
       }
-    } catch { this.error.set(true); }
+    } catch { if (this.currentScope(groupId, actorId)) this.error.set(true); }
   }
   private async openSettings() {
+    const groupId = this.groupId, actorId = this.admin?.id;
     this.error.set(false);
-    try { const snapshot = await this.service.snapshot(this.admin?.id ?? '', this.groupId); this.state.apply(snapshot, this.groupId);
+    try { const snapshot = await this.service.snapshot(actorId ?? '', groupId);
+      if (!this.currentScope(groupId, actorId)) return;
+      this.state.apply(snapshot, groupId);
       this.settingsRevision = snapshot.revision; this.settingsDraft.set({ ...snapshot.settings, enabled: snapshot.settings.enabled === true, categories: [...snapshot.settings.categories] });
-    } catch { this.error.set(true); }
+    } catch { if (this.currentScope(groupId, actorId)) this.error.set(true); }
   }
   protected settingsModel(): PopupModel {
     return { title: 'moderation.settings', size: 'small', height: 'auto', bodyLayout: 'overflow',
@@ -202,11 +218,15 @@ export class ContentModerationPopupComponent {
   }
   private async saveSettings() {
     const settings = this.settingsDraft(); if (!settings || this.saving()) return;
+    const groupId = this.groupId, actorId = this.admin?.id;
     this.saving.set(true); this.error.set(false);
     try {
-      this.state.apply(await this.service.settings(this.admin?.id ?? '', this.settingsRevision, settings, this.groupId), this.groupId);
+      const snapshot = await this.service.settings(actorId ?? '', this.settingsRevision, settings, groupId);
+      if (!this.currentScope(groupId, actorId)) return;
+      this.state.apply(snapshot, groupId);
       this.settingsDraft.set(null);
     }
-    catch { this.error.set(true); } finally { this.saving.set(false); }
+    catch { if (this.currentScope(groupId, actorId)) this.error.set(true); }
+    finally { if (this.currentScope(groupId, actorId)) this.saving.set(false); }
   }
 }

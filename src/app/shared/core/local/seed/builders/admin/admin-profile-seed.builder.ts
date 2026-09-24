@@ -42,7 +42,8 @@ export class AdminProfileSeedBuilder {
           subEvent: 0,
           group: 0,
           service: 0,
-          appSupport: 1
+          appSupport: 1,
+          groupSupport: 1
         },
         adminJobs: 0,
         adminMetrics: 0

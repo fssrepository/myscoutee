@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.180",
+  "version": "2026.09.25.hu.181",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -90,6 +90,7 @@
     "anchor": "Viszonyítási pont",
     "any": "Bármelyik",
     "application.feedback": "Alkalmazás-visszajelzés",
+    "group.support": "Csoport support",
     "app.support": "Alkalmazástámogatás",
     "apply.filters": "Szűrők alkalmazása",
     "approval.required": "Jóváhagyás szükséges",

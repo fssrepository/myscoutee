@@ -348,6 +348,7 @@ export class SeedUsersRepository {
             group: 0,
             service: 0,
             appSupport: 0,
+            groupSupport: 0,
           },
           event: {
             all: 0,
@@ -409,7 +410,8 @@ export class SeedUsersRepository {
       subEvent: normalizeCounter(activities.chat?.subEvent),
       group: normalizeCounter(activities.chat?.group),
       service: normalizeCounter(activities.chat?.service),
-      appSupport: normalizeCounter(activities.chat?.appSupport)
+      appSupport: normalizeCounter(activities.chat?.appSupport),
+      groupSupport: normalizeCounter(activities.chat?.groupSupport)
     };
     const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
     const events = Number.isFinite(sources.eventsCount)
@@ -821,6 +823,7 @@ export class SeedUsersRepository {
       && normalizeCounter(leftChat?.group) === normalizeCounter(rightChat?.group)
       && normalizeCounter(leftChat?.service) === normalizeCounter(rightChat?.service)
       && normalizeCounter(leftChat?.appSupport) === normalizeCounter(rightChat?.appSupport)
+      && normalizeCounter(leftChat?.groupSupport) === normalizeCounter(rightChat?.groupSupport)
       && Boolean(left.activities.event) === Boolean(right.activities.event)
       && normalizeCounter(leftEvent?.all) === normalizeCounter(rightEvent?.all)
       && normalizeCounter(leftEvent?.active) === normalizeCounter(rightEvent?.active)

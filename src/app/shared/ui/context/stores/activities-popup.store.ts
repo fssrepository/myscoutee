@@ -598,6 +598,7 @@ export class ActivitiesPopupStore {
       group: this.normalizeEventChatCounter((currentContexts.group ?? 0) + (contextKey === 'group' ? unreadDelta : 0)),
       service: this.normalizeEventChatCounter((currentContexts.service ?? 0) + (contextKey === 'service' ? unreadDelta : 0)),
       appSupport: this.normalizeEventChatCounter((currentContexts.appSupport ?? 0) + (contextKey === 'appSupport' ? unreadDelta : 0)),
+      groupSupport: this.normalizeEventChatCounter((currentContexts.groupSupport ?? 0) + (contextKey === 'groupSupport' ? unreadDelta : 0)),
       supportCases: cloneSupportCaseCounters(currentContexts.supportCases)
     };
     const counterPatch = { chats: nextChatCounter, chat: nextContexts };
@@ -607,12 +608,13 @@ export class ActivitiesPopupStore {
 
   private chatContextCounterKey(
     channelType: EventChatRowPatch['channelType']
-  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | null {
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'groupSupport' | null {
     switch (channelType) {
       case 'mainEvent': return 'event';
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'groupSupport': return 'groupSupport';
       case 'appSupport':
       case 'supportCase': return 'appSupport';
       default: return null;

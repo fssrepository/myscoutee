@@ -72,6 +72,15 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
     }
     if (updated !== records) result = { ...result, [tableKey]: { ...table, byId: updated } } as AppMemorySchema;
   }
+  for (const [groupId, scope] of Object.entries(moderation.scopes ?? {})) {
+    if (scope === previous[CONTENT_MODERATION_TABLE_NAME].scopes?.[groupId]) continue;
+    const table = result[COMMUNITY_GROUPS_TABLE_NAME], group = table.byId[groupId];
+    if (!group || (group.moderationQueueRevision ?? -1) >= scope.revision) continue;
+    // Persist the committed counter in the same memory write as the decision/submission.
+    result = { ...result, [COMMUNITY_GROUPS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+      [groupId]: { ...group, moderationPending: scope.pendingCount, moderationQueueRevision: scope.revision, version: group.version + 1 }
+    } } };
+  }
   if (previous[PHOTO_FEED_TABLE_NAME] !== result[PHOTO_FEED_TABLE_NAME]) {
     const oldRows = previous[PHOTO_FEED_TABLE_NAME].byId;
     const rows = result[PHOTO_FEED_TABLE_NAME].byId;

@@ -71,6 +71,7 @@ export interface UserChatCountersRecord {
   group?: number;
   service?: number;
   appSupport?: number;
+  groupSupport?: number;
 }
 
 export interface UserAssetCountersRecord {

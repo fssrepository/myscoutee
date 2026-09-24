@@ -1971,6 +1971,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'green';
       case 'service':
         return 'slate';
+      case 'groupSupport':
+        return 'green';
       case 'appSupport':
         return 'blue';
       case 'all':
@@ -2120,7 +2122,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       subEvent: this.normalizeBadgeCounter(profile?.subEvent),
       group: this.normalizeBadgeCounter(profile?.group),
       service: this.normalizeBadgeCounter(profile?.service),
-      appSupport: this.normalizeBadgeCounter(profile?.appSupport)
+      appSupport: this.normalizeBadgeCounter(profile?.appSupport),
+      groupSupport: this.normalizeBadgeCounter(profile?.groupSupport)
     };
   }
 
@@ -2131,7 +2134,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       subEvent: 0,
       group: 0,
       service: 0,
-      appSupport: 0
+      appSupport: 0,
+      groupSupport: 0
     };
   }
 

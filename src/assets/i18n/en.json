@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.180",
+  "version": "2026.09.25.en.181",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -90,6 +90,7 @@
     "anchor": "Anchor",
     "any": "Any",
     "application.feedback": "Application feedback",
+    "group.support": "Group support",
     "app.support": "App support",
     "apply.filters": "Apply filters",
     "approval.required": "Approval Required",
