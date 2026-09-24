@@ -103,7 +103,8 @@ import {
 } from '../../context/stores/profile.store';
 import {
   resolveSideMenuPresentation,
-  navigatorContentMenuModel
+  navigatorContentMenuModel,
+  navigatorTableMenuModel
 } from './side-menu-presenters';
 import {
   DialogStore
@@ -290,6 +291,8 @@ export class SideMenuComponent implements OnDestroy {
       ? this.i18n.translate('mingle.tables')
       : this.i18n.translateParams('mingle.table.number', { number: tableNumber });
   });
+  protected readonly navigatorTableMenuModel = computed(() =>
+    navigatorTableMenuModel(this.mingleTableLabel(), this.mingleStore.attention()));
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);

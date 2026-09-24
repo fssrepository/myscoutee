@@ -79,3 +79,13 @@ export function navigatorContentMenuModel(id: 'feed' | 'followed', count: number
     }] }]
   };
 }
+
+export function navigatorTableMenuModel(label: string, attention: boolean): AppMenuModel {
+  return {
+    layout: 'row', density: 'compact', nodes: [{ id: 'table', items: [{
+      id: 'table', label, icon: 'table_restaurant', layout: 'pill',
+      palette: 'rose', surface: 'tinted', counterTone: 'alert',
+      counter: attention ? { value: '•' } : null
+    }] }]
+  };
+}

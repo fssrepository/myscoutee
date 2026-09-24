@@ -77,15 +77,10 @@
       <div class="navigator-menu-header">
         <div class="navigator-install-action navigator-context-actions">
           @if (mingleStore.visible()) {
-            <div class="navigator-mingle-table-action">
-              <button type="button" (click)="openCurrentMingleTable($event)">
-                <mat-icon>table_restaurant</mat-icon>
-                <span>{{ mingleTableLabel() }}</span>
-                @if (mingleStore.attention()) {
-                  <span class="navigator-mingle-table-action__attention" aria-label="New table assignment"></span>
-                }
-              </button>
-            </div>
+            <app-menu class="navigator-mingle-table-action" kind="inline"
+              [model]="navigatorTableMenuModel()"
+              (itemSelect)="openCurrentMingleTable($event.sourceEvent)"
+            ></app-menu>
           }
           <app-menu class="navigator-feed-action" kind="inline"
             [model]="navigatorFeedMenuModel()"

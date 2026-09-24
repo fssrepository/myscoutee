@@ -195,42 +195,6 @@
   right: 0.75rem;
   bottom: 0.55rem;
   z-index: 7;
-
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    min-height: 32px;
-    padding: 0.35rem 0.65rem;
-    border: 1px solid #c4b5fd;
-    border-radius: 999px;
-    background: #ede9fe;
-    color: #5b21b6;
-    font: inherit;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  mat-icon { width: 18px; height: 18px; font-size: 18px; }
-}
-
-.navigator-mingle-table-action button {
-  position: relative;
-  border-color: rgba(178, 69, 98, 0.38);
-  background: linear-gradient(180deg, #fff1f4 0%, #ffe4eb 100%);
-  color: #8c2e49;
-}
-
-.navigator-mingle-table-action__attention {
-  position: absolute;
-  top: -0.2rem;
-  right: -0.2rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: #dc2626;
 }
 
 .navigator-menu-header-card {
