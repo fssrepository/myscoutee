@@ -239,3 +239,8 @@
 }
 
 @if (communityGroups.openUserId()) { <app-community-groups-popup></app-community-groups-popup> }
+@if (communityGroups.moderationContext(); as moderationContext) {
+  @if (communityGroups.moderationComponent(); as moderationComponent) {
+    <ng-container *ngComponentOutlet="moderationComponent; inputs: { groupContext: moderationContext }"></ng-container>
+  }
+}

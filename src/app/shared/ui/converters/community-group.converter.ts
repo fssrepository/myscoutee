@@ -39,6 +39,7 @@ export class CommunityGroupConverter {
       { id: 'members', label: 'members', icon: 'groups', palette: 'violet', surface: 'tinted', context: group }];
     if (group.role === 'Admin' && group.membershipStatus === 'accepted') {
       items.push({ id: 'edit', label: 'edit', icon: 'edit', palette: 'teal', surface: 'tinted', context: group });
+      items.push({ id: 'moderation', label: 'moderation.title', icon: 'fact_check', palette: 'lime', surface: 'tinted', context: group });
     } else if (!group.membershipStatus && (!group.moderationStatus || group.moderationStatus === 'accepted')) {
       items.push({ id: 'join', label: 'groups.join', icon: 'person_add', palette: 'blue', surface: 'tinted', context: group });
     } else if (group.membershipStatus === 'pending' && group.requestKind === 'invite') {

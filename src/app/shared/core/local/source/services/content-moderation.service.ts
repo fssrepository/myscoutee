@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { AdminUserDto } from '../../../contracts/admin.interface';
+import { GROUP_MODERATION_CATEGORIES } from '../../../contracts/content-moderation.interface';
+import { LocalUsersRepository } from '../repositories/users.repository';
 import type { ContentModerationDecision, ContentModerationSettings, ModerationCategoryFilter, ModerationStatus } from '../../../contracts/content-moderation.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 import { LocalContentModerationRepository } from '../repositories/content-moderation.repository';
@@ -13,6 +15,7 @@ import { LocalAdminModerationService } from './admin-moderation.service';
 import { LocalRouteDelayService } from './route-delay.service';
 @Injectable({ providedIn: 'root' })
 export class LocalContentModerationService extends LocalRouteDelayService {
+  private readonly users = inject(LocalUsersRepository);
   private readonly repository = inject(LocalContentModerationRepository);
   private readonly assets = inject(LocalAssetsService);
   private readonly events = inject(LocalEventsService);
@@ -20,21 +23,43 @@ export class LocalContentModerationService extends LocalRouteDelayService {
   private readonly groups = inject(LocalCommunityGroupsService);
   private readonly groupRecords = inject(LocalCommunityGroupsRepository);
   private readonly support = inject(LocalAdminModerationService);
-  private async prepare() { await this.repository.whenReady(); await this.deliverMessages(); await this.waitForRouteDelay('/admin/content-moderation'); }
-  async snapshot(_adminUserId: string) { await this.prepare(); return this.repository.snapshot(); }
-  async page(_adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery) {
-    await this.prepare(); return this.repository.page(category, status, query);
-  }
-  async settings(_adminUserId: string, revision: number, settings: ContentModerationSettings) {
-    await this.prepare();
-    if (!Number.isInteger(settings.delayMinutes) || settings.delayMinutes < 0 || settings.delayMinutes > 43200) throw new Error('moderation.invalidSettings');
-    return this.repository.saveSettings(settings, revision);
-  }
-  async decide(id: string, request: ContentModerationDecision, admin?: AdminUserDto) {
-    await this.prepare();
-    await this.repository.decide(id, request, admin);
+  private async prepare(adminUserId: string, groupId?: string | null): Promise<AdminUserDto | undefined> {
+    await this.repository.whenReady();
+    let moderator: AdminUserDto | undefined;
+    if (groupId) {
+      const accountId = this.users.queryUserById(adminUserId)?.accountUserId ?? adminUserId;
+      const group = await this.groups.detail(accountId, groupId);
+      if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') throw new Error('groups.forbidden');
+      const { profile } = await this.groups.selectWorkspace(accountId, groupId);
+      moderator = { id: profile.id, name: profile.name, initials: profile.initials, email: '', headline: '', about: '', images: [...(profile.images ?? [])] };
+    }
     await this.deliverMessages();
-    return { snapshot: this.repository.snapshot(), item: this.repository.item(id)! };
+    await this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation');
+    return moderator;
+  }
+  private scopedItem(id: string, groupId?: string | null) {
+    const item = this.repository.item(id);
+    if (!item || item.deleted || (item.workspaceGroupId ?? null) !== (groupId ?? null)) throw new Error('moderation.changed');
+    return item;
+  }
+  async snapshot(adminUserId: string, groupId?: string | null) { await this.prepare(adminUserId, groupId); return this.repository.snapshot(groupId); }
+  async page(adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery, groupId?: string | null) {
+    await this.prepare(adminUserId, groupId);
+    if (groupId && category === 'group') throw new Error('moderation.changed');
+    return this.repository.page(category, status, query, groupId);
+  }
+  async settings(adminUserId: string, revision: number, settings: ContentModerationSettings, groupId?: string | null) {
+    await this.prepare(adminUserId, groupId);
+    if (groupId && settings.categories.some(category => !GROUP_MODERATION_CATEGORIES.includes(category))) throw new Error('moderation.invalidSettings');
+    if (!Number.isInteger(settings.delayMinutes) || settings.delayMinutes < 0 || settings.delayMinutes > 43200) throw new Error('moderation.invalidSettings');
+    return this.repository.saveSettings(settings, revision, groupId);
+  }
+  async decide(id: string, request: ContentModerationDecision, admin?: AdminUserDto, groupId?: string | null) {
+    const moderator = await this.prepare(request.adminUserId, groupId);
+    this.scopedItem(id, groupId);
+    await this.repository.decide(id, moderator ? { ...request, adminUserId: moderator.id } : request, moderator ?? admin);
+    await this.deliverMessages();
+    return { snapshot: this.repository.snapshot(groupId), item: this.repository.item(id)! };
   }
   private async deliverMessages() {
     for (const pending of this.repository.state().pendingMessages ?? []) {
@@ -42,13 +67,13 @@ export class LocalContentModerationService extends LocalRouteDelayService {
       await this.repository.acknowledgeMessage(pending.commandId);
     }
   }
-  async detail<T>(_adminUserId: string, id: string): Promise<T> {
-    if (id.startsWith('group:')) {
-      await this.prepare(); const group = this.groupRecords.find(id.slice(6));
+  async detail<T>(adminUserId: string, id: string, groupId?: string | null): Promise<T> {
+    await this.prepare(adminUserId, groupId);
+    if (!groupId && id.startsWith('group:')) { const group = this.groupRecords.find(id.slice(6));
       if (!group) throw new Error('moderation.changed');
       return await this.groups.detail(group.ownerUserId, group.id) as T;
     }
-    await this.prepare(); const item = this.repository.item(id);
+    const item = this.scopedItem(id, groupId);
     if (!item) throw new Error('moderation.changed');
     let detail: unknown;
     if (item.category === 'asset') detail = await this.assets.loadOwnedAssetDetailById(item.ownerUserId, item.sourceId);

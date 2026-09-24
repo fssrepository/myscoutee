@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, ViewChild, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ViewChild, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { from } from 'rxjs';
 import { AppMenuComponent, PopupComponent, SmartListComponent, SingleRowComponent, I18nPipe, type PopupModel, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type SmartListConfig, type SmartListLoadPage, type SingleRowData } from '../../../shared/ui';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
-import { MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
+import { MODERATION_CATEGORIES, GROUP_MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { ContentModerationStore } from '../../../shared/ui/context/stores/content-moderation.store';
@@ -20,6 +20,7 @@ import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/acti
 import { MODERATION_STATUS_STYLE as STATUS_STYLE } from '../../../shared/ui/converters/content-moderation-presentation';
 import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
 import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community-groups.store';
+import type { AdminUserDto } from '../../../shared/core/contracts/admin.interface';
 import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
 
 const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed', 'group'];
@@ -35,6 +36,11 @@ const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: 
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ContentModerationPopupComponent {
+  readonly groupContext = input<{ groupId: string; name: string; actor: AdminUserDto } | null>(null);
+  protected readonly snapshot = computed(() => this.state.forScope(this.groupContext()?.groupId));
+  protected readonly isOpen = computed(() => !!this.groupContext() || this.adminMenu.activePopup() === 'content-moderation');
+  private get groupId() { return this.groupContext()?.groupId; }
+  private get categories() { return this.groupId ? GROUP_MODERATION_CATEGORIES : MODERATION_CATEGORIES; }
   protected readonly adminMenu = inject(AdminMenuStore);
   protected readonly state = inject(ContentModerationStore);
   private readonly workspace = inject(AdminWorkspaceStore);
@@ -54,20 +60,21 @@ export class ContentModerationPopupComponent {
   protected readonly saving = signal(false);
   protected readonly error = signal(false);
   private settingsRevision = 0;
-  private get admin() { return this.workspace.dashboard()?.activeAdmin; }
+  private get admin() { return this.groupContext()?.actor ?? this.workspace.dashboard()?.activeAdmin; }
   protected readonly config: SmartListConfig<ContentModerationItem> = {
     pageSize: 20, initialPageSize: 20, listLayout: 'stack', snapMode: 'none', emptyLabel: 'moderation.empty',
     pollIntervalMs: 10000,
     groupBy: item => item.submittedAtIso.slice(0, 10), showStickyHeader: true,
     showFirstGroupMarker: false, showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     trackBy: (_index, item) => item.id,
-    menuItems: context => context.item && this.state.snapshot()?.settings.enabled ? MODERATION_STATUSES.filter(status => moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
+    menuItems: context => context.item && this.snapshot()?.settings.enabled ? MODERATION_STATUSES.filter(status => moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
       ...STATUS_STYLE[status], surface: 'tinted', disabled: status === context.item!.status, context: context.item })) : []
   };
   protected readonly loadPage: SmartListLoadPage<ContentModerationItem> = query => from(this.load(query));
   constructor() {
     effect(() => {
-      if (this.adminMenu.activePopup() === 'content-moderation') {
+      if (this.isOpen()) {
+        if (this.groupId && this.category === 'group') this.category = 'all';
         this.query = { filters: { category: this.category, status: this.status } }; this.error.set(false);
       }
     });
@@ -75,27 +82,27 @@ export class ContentModerationPopupComponent {
   private async load(query: Parameters<SmartListLoadPage<ContentModerationItem>>[0]) {
     const { category, status } = query.filters as { category: ModerationCategoryFilter; status: ModerationStatus };
     try {
-      const result = await this.service.page(this.admin?.id ?? '', category, status, query);
+      const result = await this.service.page(this.admin?.id ?? '', category, status, query, this.groupId);
       this.error.set(false);
-      this.state.apply(result.snapshot); return result;
+      this.state.apply(result.snapshot, this.groupId); return result;
     } catch (error) {
       this.error.set(true);
       throw error;
     }
   }
   protected model(): PopupModel {
-    return { title: 'moderation.title', size: 'wide', height: 'full', bodyLayout: 'fill', headerTone: 'accent',
+    return { title: this.groupContext() ? `${this.i18n.translate('moderation.title')} · ${this.groupContext()!.name}` : 'moderation.title', size: 'wide', height: 'full', bodyLayout: 'fill', headerTone: 'accent',
       headerActions: [{ id: 'settings', icon: 'settings', ariaLabel: 'moderation.settings', palette: 'blue' }],
       toolbarControls: [
         { kind: 'menu', id: 'status', align: 'start', menuKind: 'select', trigger: {
             label: `moderation.status.${this.status}`, ...STATUS_STYLE[this.status],
-            counter: { value: moderationCount(this.state.snapshot(), this.category, this.status), max: 9999 } },
+            counter: { value: moderationCount(this.snapshot(), this.category, this.status), max: 9999 } },
           items: MODERATION_STATUSES.map(id => ({ id: `status:${id}`, label: `moderation.status.${id}`, ...STATUS_STYLE[id], surface: 'tinted', active: id === this.status,
-            counter: { value: moderationCount(this.state.snapshot(), this.category, id), max: 9999 } })) },
+            counter: { value: moderationCount(this.snapshot(), this.category, id), max: 9999 } })) },
         { kind: 'menu', id: 'category', align: 'end', menuKind: 'select', trigger: { label: `moderation.category.${this.category}`, ...CATEGORY_STYLE[this.category] },
-          items: CATEGORY_FILTERS.map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', active: id === this.category,
-            counter: { value: moderationCount(this.state.snapshot(), id, this.status), max: 9999 } })) }
-      ], onClose: () => this.adminMenu.closePopup(), onAction: () => this.openSettings(),
+          items: CATEGORY_FILTERS.filter(category => !this.groupId || category !== 'group').map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', active: id === this.category,
+            counter: { value: moderationCount(this.snapshot(), id, this.status), max: 9999 } })) }
+      ], onClose: () => this.groupId ? this.groups.moderationContext.set(null) : this.adminMenu.closePopup(), onAction: () => this.openSettings(),
       onMenuSelect: event => {
         const id = String(event.itemSelect.id);
         if (id.startsWith('category:')) this.category = id.slice(9) as ModerationCategoryFilter;
@@ -106,7 +113,7 @@ export class ContentModerationPopupComponent {
   }
   protected row(item: ContentModerationItem): SingleRowData {
     return { id: item.id, title: item.title, subtitle: `moderation.category.${item.category}`, avatarUrl: item.imageUrl || null,
-      detail: item.submittedAtIso, menuActions: this.state.snapshot()?.settings.enabled ? ['moderation'] : [], menuPosition: 'top-right', surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
+      detail: item.submittedAtIso, menuActions: this.snapshot()?.settings.enabled ? ['moderation'] : [], menuPosition: 'top-right', surfaceTone: item.category === 'feed' ? 'warning' : item.category === 'asset' ? 'success' : 'info' };
   }
   private decisionLabel(item: ContentModerationItem, status: ModerationStatus): string {
     return item.status === 'blocked' && status === 'under-review' ? 'moderation.unblock' : `moderation.status.${status}`;
@@ -114,7 +121,7 @@ export class ContentModerationPopupComponent {
   protected decide(event: AppMenuItemSelectEvent): void {
     const item = event.context as ContentModerationItem;
     const status = event.id as ModerationStatus;
-    if (!this.state.snapshot()?.settings.enabled || !item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
+    if (!this.snapshot()?.settings.enabled || !item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
     const commandId = crypto.randomUUID();
     this.dialogs.open({ title: this.decisionLabel(item, status), message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
@@ -122,8 +129,8 @@ export class ContentModerationPopupComponent {
       input: ['rejected', 'blocked'].includes(status) ? { label: 'moderation.message', maxLength: 1000 } : null,
       onConfirm: async message => {
         const result = await this.service.decide(item.id, { adminUserId: this.admin?.id ?? '', commandId,
-          expectedVersion: item.version, status, message }, this.admin);
-        this.state.apply(result.snapshot);
+          expectedVersion: item.version, status, message }, this.admin, this.groupId);
+        this.state.apply(result.snapshot, this.groupId);
         const saved = result.item;
         const matches = saved.status === this.status && (this.category === 'all' || saved.category === this.category);
         if (matches) this.list?.patchVisibleItem(row => row.id === saved.id, saved);
@@ -135,13 +142,13 @@ export class ContentModerationPopupComponent {
     this.error.set(false);
     try {
       if (item.category === 'feed') {
-        const post = await this.service.detail<PhotoFeedPost>(this.admin?.id ?? '', item.id);
+        const post = await this.service.detail<PhotoFeedPost>(this.admin?.id ?? '', item.id, this.groupId);
         this.gallery.open({ images: post.imageUrls, imageDetails: post.imageDetails, slotCount: 5, readOnly: true,
           title: item.title, uploadOwnerId: post.creatorUserId, uploadEntityId: post.id });
-      } else if (item.category === 'group') this.groups.editor.set({ group: await this.service.detail<CommunityGroup>(this.admin?.id ?? '', item.id), readOnly: true });
-      else if (item.category === 'event') this.eventEditor.openView(await this.service.detail<ActivityEventDetailDTO>(this.admin?.id ?? '', item.id));
+      } else if (item.category === 'group') this.groups.editor.set({ group: await this.service.detail<CommunityGroup>(this.admin?.id ?? '', item.id, this.groupId), readOnly: true });
+      else if (item.category === 'event') this.eventEditor.openView(await this.service.detail<ActivityEventDetailDTO>(this.admin?.id ?? '', item.id, this.groupId));
       else {
-        const asset = await this.service.detail<AssetDetailDTO>(this.admin?.id ?? '', item.id);
+        const asset = await this.service.detail<AssetDetailDTO>(this.admin?.id ?? '', item.id, this.groupId);
         this.assetEditor.openAssetEditorEdit({ cardId: asset.id, form: AssetCardBuilder.buildAssetFormFromCard(asset),
           visibility: AssetCardBuilder.visibilityFromCard(asset), readOnly: true, loading: false, parentZIndex: 2470 });
         await this.assetPopup.ensureAssetPopupLoaded();
@@ -150,7 +157,7 @@ export class ContentModerationPopupComponent {
   }
   private async openSettings() {
     this.error.set(false);
-    try { const snapshot = await this.service.snapshot(this.admin?.id ?? ''); this.state.apply(snapshot);
+    try { const snapshot = await this.service.snapshot(this.admin?.id ?? '', this.groupId); this.state.apply(snapshot, this.groupId);
       this.settingsRevision = snapshot.revision; this.settingsDraft.set({ ...snapshot.settings, enabled: snapshot.settings.enabled === true, categories: [...snapshot.settings.categories] });
     } catch { this.error.set(true); }
   }
@@ -178,12 +185,12 @@ export class ContentModerationPopupComponent {
     }
   }
   protected categoryItems(): readonly AppMenuItem[] {
-    return MODERATION_CATEGORIES.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', kind: 'checkbox',
+    return this.categories.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', kind: 'checkbox',
       closeOnSelect: false, checked: this.settingsDraft()?.categories.includes(id), disabled: this.saving() || !this.settingsDraft()?.enabled }));
   }
   protected selectedCategoriesLabel(): string {
     const categories = this.settingsDraft()?.categories ?? [];
-    if (categories.length === MODERATION_CATEGORIES.length) return 'moderation.category.all';
+    if (categories.length === this.categories.length) return 'moderation.category.all';
     if (!categories.length) return 'select.option';
     return categories.map(id => this.i18n.translate(`moderation.category.${id}`)).join(', ');
   }
@@ -197,7 +204,7 @@ export class ContentModerationPopupComponent {
     const settings = this.settingsDraft(); if (!settings || this.saving()) return;
     this.saving.set(true); this.error.set(false);
     try {
-      this.state.apply(await this.service.settings(this.admin?.id ?? '', this.settingsRevision, settings));
+      this.state.apply(await this.service.settings(this.admin?.id ?? '', this.settingsRevision, settings, this.groupId), this.groupId);
       this.settingsDraft.set(null);
     }
     catch { this.error.set(true); } finally { this.saving.set(false); }

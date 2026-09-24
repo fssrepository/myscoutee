@@ -3,8 +3,14 @@ import type { ContentModerationSnapshot } from '../../../core/contracts/content-
 @Injectable({ providedIn: 'root' })
 export class ContentModerationStore {
   readonly snapshot = signal<ContentModerationSnapshot | null>(null);
-  apply(snapshot: ContentModerationSnapshot | null | undefined) {
+  private readonly groups = signal<Record<string, ContentModerationSnapshot>>({});
+  forScope(groupId?: string | null): ContentModerationSnapshot | null { return groupId ? this.groups()[groupId] ?? null : this.snapshot(); }
+  apply(snapshot: ContentModerationSnapshot | null | undefined, groupId?: string | null) {
+    if (groupId) {
+      if (snapshot && snapshot.revision >= (this.groups()[groupId]?.revision ?? -1)) this.groups.update(groups => ({ ...groups, [groupId]: snapshot }));
+      return;
+    }
     if (snapshot && snapshot.revision >= (this.snapshot()?.revision ?? -1)) this.snapshot.set(snapshot);
   }
-  clear() { this.snapshot.set(null); }
+  clear() { this.snapshot.set(null); this.groups.set({}); }
 }

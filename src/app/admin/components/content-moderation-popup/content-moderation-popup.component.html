@@ -1,4 +1,4 @@
-@if (adminMenu.activePopup() === 'content-moderation') {
+@if (isOpen()) {
   <app-popup [model]="model()" [zIndex]="2470">
     @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
     <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="rowTemplate" (menuItemSelect)="decide($event)"></app-smart-list>

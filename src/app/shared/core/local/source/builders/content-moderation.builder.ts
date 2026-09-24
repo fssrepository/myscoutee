@@ -1,6 +1,6 @@
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { moderationHasBeenPublic, type ContentModerationItem, type ModerationCategory } from '../../../contracts/content-moderation.interface';
-import { CONTENT_MODERATION_TABLE_NAME, type ContentModerationTable } from '../entity/content-moderation.entity';
+import { CONTENT_MODERATION_TABLE_NAME, contentModerationSnapshot, type ContentModerationTable } from '../entity/content-moderation.entity';
 import { ASSETS_TABLE_NAME } from '../entity/asset.entity';
 import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { PHOTO_FEED_TABLE_NAME } from '../entity/photo-feed.entity';
@@ -11,11 +11,13 @@ import { MODERATION_STATUSES } from '../../../contracts/content-moderation.inter
 export function changeModerationItem(table: ContentModerationTable, item: ContentModerationItem): ContentModerationTable {
   const previous = table.items[item.id];
   item = { ...item, publiclyVisibleOnce: moderationHasBeenPublic(item) || (!!previous && moderationHasBeenPublic(previous)) };
-  const counts = { ...table.counts, [item.category]: { ...(table.counts[item.category] ?? {}) } };
+  const scope = contentModerationSnapshot(table, item.workspaceGroupId);
+  const counts = { ...scope.counts, [item.category]: { ...(scope.counts[item.category] ?? {}) } };
   if (previous && !previous.deleted) counts[item.category][previous.status] = (counts[item.category][previous.status] ?? 0) - 1;
   if (!item.deleted) counts[item.category][item.status] = (counts[item.category][item.status] ?? 0) + 1;
-  return { ...table, revision: table.revision + 1, counts,
-    pendingCount: table.pendingCount + Number(!item.deleted && item.status === 'under-review') - Number(!!previous && !previous.deleted && previous.status === 'under-review'),
+  const updated = { ...scope, revision: scope.revision + 1, counts,
+    pendingCount: scope.pendingCount + Number(!item.deleted && item.status === 'under-review') - Number(!!previous && !previous.deleted && previous.status === 'under-review') };
+  return { ...table, ...(item.workspaceGroupId ? { scopes: { ...table.scopes, [item.workspaceGroupId]: updated } } : updated),
     items: { ...table.items, [item.id]: item } };
 }
 
@@ -38,11 +40,13 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
       const id = `${category}:${sourceId}`;
       let item = moderation.items[id];
       if (!item && old[key] !== value && !['T', 'D', 'I'].includes(String(value['status'] ?? 'A'))) {
-        const settings = moderation.settings;
+        const ownerUserId = String(value['creatorUserId'] ?? value['ownerUserId'] ?? value['userId'] ?? '');
+        const workspaceGroupId = category === 'group' ? null : next[USERS_TABLE_NAME].byId[ownerUserId]?.workspaceGroupId ?? null;
+        const settings = contentModerationSnapshot(moderation, workspaceGroupId).settings;
         const status = !settings.enabled || (settings.autoApprove && settings.delayMinutes === 0 && settings.categories.includes(category))
           ? 'accepted' : 'under-review';
         const images = value['imageUrls'] as string[] | undefined;
-        item = { id, category, sourceId, ownerUserId: String(value['creatorUserId'] ?? value['ownerUserId'] ?? value['userId'] ?? ''),
+        item = { id, category, sourceId, ownerUserId, workspaceGroupId,
           title: String(value['title'] ?? value['name'] ?? value['creatorName'] ?? ''), imageUrl: String(value['imageUrl'] ?? images?.[0] ?? ''),
           submittedAtIso: new Date().toISOString(), status, version: 1, commandId: `submit:${id}`, reviewedBy: '', reviewedAtIso: '' };
         moderation = changeModerationItem(moderation, item);

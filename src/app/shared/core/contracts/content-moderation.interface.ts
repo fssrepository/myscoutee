@@ -5,6 +5,7 @@ export type ModerationStatus = 'under-review' | 'accepted' | 'rejected' | 'block
 export interface ContentModerationSettings { enabled: boolean; autoApprove: boolean; delayMinutes: number; categories: ModerationCategory[]; }
 export interface ContentModerationItem {
   deleted?: boolean;
+  workspaceGroupId?: string | null;
   id: string; category: ModerationCategory; sourceId: string; ownerUserId: string; title: string; imageUrl: string;
   submittedAtIso: string; status: ModerationStatus; version: number; commandId: string; reviewedBy: string; reviewedAtIso: string;
   publiclyVisibleOnce?: boolean;
@@ -18,6 +19,7 @@ export interface ContentModerationDecision {
   adminUserId: string; commandId: string; expectedVersion: number; status: ModerationStatus; message: string;
 }
 export const MODERATION_CATEGORIES: readonly ModerationCategory[] = ['asset', 'event', 'feed', 'group'];
+export const GROUP_MODERATION_CATEGORIES: readonly ModerationCategory[] = ['asset', 'event', 'feed'];
 export const MODERATION_STATUSES: readonly ModerationStatus[] = ['under-review', 'accepted', 'rejected', 'blocked'];
 
 export function moderationHasBeenPublic(item: ContentModerationItem): boolean {

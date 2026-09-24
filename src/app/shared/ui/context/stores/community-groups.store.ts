@@ -4,7 +4,8 @@ import { DialogStore } from './dialog.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { CommunityGroupConverter } from '../../converters/community-group.converter';
 import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
-import { Injectable, inject, signal, effect, computed } from '@angular/core';
+import { Injectable, inject, signal, effect, computed, type Type } from '@angular/core';
+import type { AdminUserDto } from '../../../core/contracts/admin.interface';
 import { CommunityGroupsService } from '../../../core/base/services/community-groups.service';
 import { ActivityMembersService } from '../../../core/base/services/activity-members.service';
 import { UserProfileStore } from './user-profile.store';
@@ -23,6 +24,8 @@ export class CommunityGroupsStore {
   readonly openUserId = signal<string | null>(null);
   readonly initialBucket = signal<GroupBucket>('hosting');
   readonly editor = signal<{ group: CommunityGroup | null; readOnly: boolean; loading?: boolean } | null>(null);
+  readonly moderationComponent = signal<Type<unknown> | null>(null);
+  readonly moderationContext = signal<{ groupId: string; name: string; actor: AdminUserDto } | null>(null);
   private editorRequest: AbortController | null = null;
   private readonly changes = inject(CommunityGroupChangesStore);
   readonly changed = computed(() => {
@@ -49,7 +52,7 @@ export class CommunityGroupsStore {
     } catch (error) { this.error.set(this.message(error)); }
   }
   closeEditor(): void { this.editorRequest?.abort(); this.editorRequest = null; this.editor.set(null); }
-  close(): void { this.closeEditor(); this.openUserId.set(null); }
+  close(): void { this.closeEditor(); this.moderationContext.set(null); this.openUserId.set(null); }
   sync(request: GroupSyncRequest, signal?: AbortSignal) { return this.service.sync(this.openUserId() ?? '', request, signal); }
   async page(query: ListQuery<GroupFilters>, signal?: AbortSignal) {
     const userId = this.openUserId() ?? '';
@@ -76,6 +79,20 @@ export class CommunityGroupsStore {
     } catch (error) { this.error.set(this.message(error)); } finally { this.busy.set(false); }
   }
   async action(action: string, group: CommunityGroupSummary): Promise<void> {
+    if (action === 'moderation') {
+      if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') return;
+      const userId = this.openUserId() ?? '';
+      try {
+        const { profile } = await this.service.selectWorkspace(userId, group.id);
+        const component = await import('../../../../admin/components/content-moderation-popup/content-moderation-popup.component');
+        if (userId !== this.openUserId()) return;
+        this.moderationComponent.set(component.ContentModerationPopupComponent);
+        this.moderationContext.set({ groupId: group.id, name: group.name, actor: {
+          id: profile.id, name: profile.name, initials: profile.initials, email: '', headline: '', about: '', images: [...(profile.images ?? [])]
+        } });
+      } catch (error) { this.error.set(this.message(error)); }
+      return;
+    }
     if (action === 'view' || action === 'edit') {
       this.closeEditor(); this.error.set('');
       const controller = new AbortController(); this.editorRequest = controller;
