@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.25.en.182",
+  "version": "2026.09.25.en.183",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3810,6 +3810,9 @@
     "moderation.category.group": "Groups",
     "landing.partners.role.workplace.label": "Bring your team",
     "landing.partners.role.workplace.title": "Private workplace community",
-    "landing.partners.role.workplace.description": "Bring colleagues together in your own invitation-only group. Shared activities, chats and feedback can support team building and workplace wellbeing."
+    "landing.partners.role.workplace.description": "Bring colleagues together in your own invitation-only group. Shared activities, chats and feedback can support team building and workplace wellbeing.",
+    "landing.partners.api.title": "Connect your systems · API",
+    "landing.partners.api.description": "Use an API key linked to a user account to connect accommodation booking, internal company or other systems to MyScoutee. Create events, accommodation offers and group invitations.",
+    "landing.partners.api.link": "API client and documentation · GitHub"
   }
 }

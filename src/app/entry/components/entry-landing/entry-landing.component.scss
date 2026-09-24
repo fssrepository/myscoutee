@@ -712,6 +712,7 @@
 }
 
 .entry-partner-role h3,
+.entry-partners-api h3,
 .entry-partners-network h3,
 .entry-partner-exit h3,
 .entry-partner-economics h3 {
@@ -726,6 +727,7 @@
 }
 
 .entry-partner-role p,
+.entry-partners-api p,
 .entry-partners-network p,
 .entry-partner-exit p,
 .entry-partner-economics p {
@@ -736,6 +738,7 @@
   line-height: 1.42;
 }
 
+.entry-partners-api,
 .entry-partners-network,
 .entry-partner-exit,
 .entry-partner-economics {
@@ -757,6 +760,52 @@
 
 .entry-partners-section-heading p {
   margin-top: 0.2rem;
+}
+
+.entry-partners-api {
+  border-color: #d8bd59;
+  background: linear-gradient(120deg, #fff5cb, #fffcf0);
+}
+
+.entry-partners-api .entry-partners-section-icon {
+  --entry-partner-accent: #80610b;
+}
+
+.entry-partners-api-copy {
+  min-width: 0;
+}
+
+.entry-partners-api-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  margin-top: 0.62rem;
+  padding: 0.4rem 0.65rem;
+  box-sizing: border-box;
+  border: 1px solid #d8bd59;
+  border-radius: 999px;
+  background: #fffdf4;
+  color: #70530a;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.entry-partners-api-link:hover {
+  background: #fff0b3;
+}
+
+.entry-partners-api-link:focus-visible {
+  outline: 2px solid #80610b;
+  outline-offset: 3px;
+}
+
+.entry-partners-api-link .mat-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
 }
 
 .entry-partner-status-grid {

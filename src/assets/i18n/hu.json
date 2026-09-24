@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.25.hu.182",
+  "version": "2026.09.25.hu.183",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3810,6 +3810,9 @@
     "moderation.category.group": "Csoportok",
     "landing.partners.role.workplace.label": "Hozd a csapatod",
     "landing.partners.role.workplace.title": "Zárt vállalati közösség",
-    "landing.partners.role.workplace.description": "Hozd össze munkatársaidat egy saját, meghívásos csoportban. Közös programok, csevegések és visszajelzések segíthetik a csapatépítést és a munkahelyi jóllétet."
+    "landing.partners.role.workplace.description": "Hozd össze munkatársaidat egy saját, meghívásos csoportban. Közös programok, csevegések és visszajelzések segíthetik a csapatépítést és a munkahelyi jóllétet.",
+    "landing.partners.api.title": "Kapcsold össze a rendszereidet · API",
+    "landing.partners.api.description": "Felhasználóhoz kötött API-kulccsal szállásfoglaló, belső vállalati vagy más rendszereket kapcsolhatsz a MyScoutee-hoz. Eseményeket, szállásajánlatokat és csoportmeghívásokat hozhatsz létre.",
+    "landing.partners.api.link": "API-kliens és dokumentáció · GitHub"
   }
 }
