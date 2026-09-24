@@ -24,6 +24,8 @@ import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.e
 
 import { BootstrapProcessService, bootstrapProcessStep, type BootstrapProcessListener, type BootstrapProcessStage, type BootstrapProcessState } from '../../../base/services/bootstrap.service';
 import { SeedActivityMembersRepository } from '../repositories/activity-members-seed.repository';
+import { SeedCommunityGroupsRepository } from '../repositories/community-groups-seed.repository';
+import { COMMUNITY_GROUPS_TABLE_NAME } from '../../source/entity/community-group.entity';
 import { SeedActivityResourcesRepository } from '../repositories/activity-resources-seed.repository';
 import { SeedAssetsRepository } from '../repositories/assets-seed.repository';
 import { SeedChatsRepository } from '../repositories/chats-seed.repository';
@@ -58,6 +60,7 @@ export class SeedDemoBootstrapService {
   private readonly usersSeed = inject(SeedUsersRepository);
   private readonly notificationsSeed = inject(SeedNotificationsRepository);
   private readonly activityMembersSeed = inject(SeedActivityMembersRepository);
+  private readonly communityGroupsSeed = inject(SeedCommunityGroupsRepository);
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
   private readonly contactsSeed = inject(SeedContactsRepository);
@@ -504,6 +507,11 @@ export class SeedDemoBootstrapService {
       await this.runBootstrapStep('activityMembers', async () => {
         this.activityMembersSeed.seedDefaults(ownerUserIds(), assetsByUserId, seededUsers);
         await this.flushBootstrapTables([ACTIVITY_MEMBERS_TABLE_NAME, EVENTS_TABLE_NAME]);
+      });
+      await this.runBootstrapStep('communityGroups', async () => {
+        if (this.communityGroupsSeed.seedDefaults(seededUsers)) {
+          await this.flushBootstrapTables([COMMUNITY_GROUPS_TABLE_NAME, ACTIVITY_MEMBERS_TABLE_NAME, USERS_TABLE_NAME]);
+        }
       });
       await this.runBootstrapStep('activityResources', async () => {
         const sourceRecordsByUserId = this.registry.getEventsByUserId().size > 0

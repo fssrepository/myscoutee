@@ -329,7 +329,7 @@ export class SeedUsersRepository {
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     return users.ids
       .map(id => users.byId[id])
-      .filter((user): user is UserRecord => Boolean(user));
+      .filter((user): user is UserRecord => Boolean(user) && !user.workspaceGroupId);
   }
 
   private applySeededActivityCounts(user: UserRecord): UserRecord {

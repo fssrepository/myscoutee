@@ -87,8 +87,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       const admin = this.admin(own);
       if (bucket === 'hosting') return admin;
       if (bucket === 'participation') return !admin && !!own && ['accepted', 'pending'].includes(own.status);
-      return (!g.moderationStatus || g.moderationStatus === 'accepted' || admin)
-        && (g.visibility !== 'invitation' || !!own && ['accepted', 'pending'].includes(own.status));
+      return g.ownerUserId !== userId && !own && g.visibility !== 'invitation'
+        && (!g.moderationStatus || g.moderationStatus === 'accepted');
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
       .map(g => this.dto(userId, g)).sort((a, b) =>
         Math.ceil((a.distanceKm ?? Infinity) / 5) - Math.ceil((b.distanceKm ?? Infinity) / 5)
