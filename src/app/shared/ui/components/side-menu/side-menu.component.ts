@@ -2498,23 +2498,31 @@ export class SideMenuComponent implements OnDestroy {
     const tree = this.router.parseUrl(url);
     const token = `${tree.queryParams['partnerInvite'] ?? ''}`.trim();
     if (!token) return;
-    const key = `${userId}:${token}`;
+    const accountId = this.groupWorkspaces.context.accountId(userId);
+    const key = `${accountId}:${token}`;
     if (this.openingPartnerInvite === key) return;
     this.openingPartnerInvite = key;
     try {
-      const accountId = this.groupWorkspaces.context.accountId(userId);
       const claim = await this.usersService.claimPartnerInvite(accountId, token);
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      if (claim.invitationAvailable && claim.groupId) {
+        await this.groupWorkspaces.refresh(accountId);
+        if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+        if (!await this.groupWorkspaces.select(claim.groupId)) throw new Error('groups.switch.failed');
+        if (this.groupWorkspaces.context.accountUserId() !== accountId || this.router.url !== url) return;
+        delete tree.queryParams['partnerInvite'];
+        await this.router.navigateByUrl(tree, { replaceUrl: true });
+        return;
+      }
       delete tree.queryParams['partnerInvite'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);
       if (this.userProfileStore.activeUserId() === userId) {
-        if (claim.groupId) await this.communityGroups.openInvitation(claim.groupId);
-        else this.activitiesStore.openActivities('events', 'all');
+        this.activitiesStore.openActivities('events', 'all');
       }
     } catch {
-      if (this.userProfileStore.activeUserId() === userId) this.dialogStore.open({
+      if (this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()) === accountId) this.dialogStore.open({
         title: 'event.partner.invite', message: 'event.partner.invite.failed', confirmLabel: 'OK'
       });
     } finally {

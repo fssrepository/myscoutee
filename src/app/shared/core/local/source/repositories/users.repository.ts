@@ -12,6 +12,8 @@ import { hasOperatorRole } from '../../../common/user-role';
 
 
 import { LocalUsersMapper } from '../mappers/user.mapper';
+import { LocalUserFilterPreferencesMapper } from '../mappers/rate.mapper';
+import { defaultUserGameFilterPreferences } from '../../../contracts/activity.interface';
 import { LocalRatesRepository } from './rates.repository';
 
 @Injectable({
@@ -89,6 +91,15 @@ export class LocalUsersRepository {
       })) };
       return {
         ...state,
+        ...(!exists && !state[USER_FILTER_PREFERENCES_TABLE_NAME].byId[user.id] ? {
+          [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+            byId: {
+              ...state[USER_FILTER_PREFERENCES_TABLE_NAME].byId,
+              [user.id]: LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences(user.gender))
+            },
+            ids: [...state[USER_FILTER_PREFERENCES_TABLE_NAME].ids, user.id]
+          }
+        } : {}),
         [USERS_TABLE_NAME]: {
           byId: {
             ...usersTable.byId,

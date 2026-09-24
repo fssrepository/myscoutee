@@ -211,7 +211,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         ? (
             persistedFilterPreferences
               ? LocalUserFilterPreferencesMapper.toDto(persistedFilterPreferences)
-              : defaultUserGameFilterPreferences()
+              : defaultUserGameFilterPreferences(user.gender)
           )
         : null
     };
@@ -370,7 +370,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async savePageFilterPreferences(userId: string, pageKey: 'event-explore', filters: EventExploreFilterPreferences): Promise<void> {
-    const stored = this.usersRepository.queryUserFilterPreferences(userId) ?? LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences());
+    const stored = this.usersRepository.queryUserFilterPreferences(userId) ?? LocalUserFilterPreferencesMapper.toRecord(
+      defaultUserGameFilterPreferences(this.usersRepository.queryUserById(userId)?.gender)
+    );
     this.usersRepository.upsertUserFilterPreferences(userId, {
       ...stored, pageFilters: { ...stored.pageFilters, [pageKey]: { ...filters } }
     });

@@ -1551,7 +1551,7 @@ export interface UserGameFilterPreferencesDto {
   religions?: string[];
 }
 
-export function defaultUserGameFilterPreferences(): UserGameFilterPreferencesDto {
+export function defaultUserGameFilterPreferences(gender?: AppConstants.UserGender): UserGameFilterPreferencesDto {
   return {
     ageMin: 18,
     ageMax: 120,
@@ -1561,7 +1561,7 @@ export function defaultUserGameFilterPreferences(): UserGameFilterPreferencesDto
     values: [],
     physiques: [],
     languages: [],
-    genders: [],
+    genders: gender === 'man' ? ['woman'] : gender === 'woman' ? ['man'] : [],
     horoscopes: [],
     traitLabels: [],
     smoking: [],

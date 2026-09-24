@@ -166,7 +166,7 @@ export class SeedDemoBootstrapService {
       this.emitSessionReady(onProgress);
       return;
     }
-    const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
+    const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUsers([normalizedUserId]);
     const notificationsChanged = this.notificationsSeed.seedForUser(normalizedUserId);
     const alreadyReady = this.readyUserIds.has(normalizedUserId);
     let contextualChatsChanged = false;
@@ -486,7 +486,8 @@ export class SeedDemoBootstrapService {
           .map(user => user.id.trim())
           .filter(userId => userId.length > 0);
         this.registry.registerUsers(seededUsers);
-        await this.flushBootstrapTables([USERS_TABLE_NAME]);
+        this.usersSeed.seedDefaultUserFilterPreferencesForUsers(seededUserIds);
+        await this.flushBootstrapTables([USERS_TABLE_NAME, USER_FILTER_PREFERENCES_TABLE_NAME]);
       });
       await this.runBootstrapStep('contacts', async () => {
         this.contactsSeed.seedDefaultContacts(seededUsers);
