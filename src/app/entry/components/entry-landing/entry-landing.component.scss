@@ -267,6 +267,10 @@
   --app-menu-action-padding: 0.3rem 0.85rem;
 }
 
+:host ::ng-deep .entry-hero-cta-menu .app-menu__button-row {
+  justify-content: flex-start;
+}
+
 :host ::ng-deep .entry-hero-cta-menu .app-menu__button-row-label {
   white-space: normal;
   overflow: visible;
