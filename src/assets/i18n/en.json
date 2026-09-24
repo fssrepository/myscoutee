@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.170",
+  "version": "2026.09.24.en.172",
   "messages": {
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
@@ -3761,6 +3761,33 @@
     "notification.kind.event-paid-terms-changed.message": "The event you paid for has changed. You can keep your booking or cancel it from the event menu for a full refund.",
     "notification.kind.event-booking-cancelled.title": "Booking cancelled",
     "notification.kind.event-booking-cancelled.message": "Your booking has been cancelled and the remaining paid amount has been refunded.",
-    "event.checkout.join.confirm.title": "Would you like to join this event?"
+    "event.checkout.join.confirm.title": "Would you like to join this event?",
+    "groups.title": "Groups",
+    "groups.create": "Create group",
+    "groups.edit": "Group",
+    "groups.bucket.hosting": "Hosting",
+    "groups.bucket.participation": "Participation",
+    "groups.bucket.explore": "Explore",
+    "groups.category.all": "All categories",
+    "groups.category.friends": "Friends",
+    "groups.category.work": "Work and teams",
+    "groups.category.sport": "Sport",
+    "groups.category.learning": "Learning",
+    "groups.category.hobbies": "Hobbies",
+    "groups.category.neighbourhood": "Neighbourhood",
+    "groups.visibility.public": "Public",
+    "groups.visibility.private": "Private",
+    "groups.visibility.invitation": "Invitation only",
+    "groups.join": "Request to join",
+    "groups.settings": "Group settings",
+    "groups.policy": "Group policy",
+    "groups.hide.members": "Only administrators are visible",
+    "groups.workspace": "Separate workspace",
+    "groups.visibility.rules": "Profile visibility rules",
+    "groups.required": "Required",
+    "groups.optional": "Member choice",
+    "groups.participate": "Participate",
+    "groups.organizer.only": "Organizer only",
+    "groups.error": "The action failed."
   }
 }

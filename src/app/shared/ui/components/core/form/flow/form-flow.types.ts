@@ -39,6 +39,7 @@ export type FormFlowControlKind =
   | 'route'
   | 'section'
   | 'static'
+  | 'table'
   | 'text'
   | 'textarea';
 
@@ -68,6 +69,7 @@ export interface FormFlowImageCarouselControlConfig {
   slotCount?: number;
   compact?: boolean;
   autoSize?: boolean;
+  slotImageVariant?: 'small' | 'medium' | 'large';
   previewMode?: boolean;
   ariaLabel?: string;
   uploadOwnerId?: string;
@@ -99,6 +101,10 @@ export interface FormFlowRouteControlConfig {
 
 export interface FormFlowPoliciesControlConfig {
   model?: PoliciesInputConfig | null;
+}
+
+export interface FormFlowTableControlConfig {
+  rows: readonly { label: string; value: string; icon?: string }[];
 }
 
 export interface FormFlowControlSummaryConfig {
@@ -135,6 +141,7 @@ export interface FormFlowControlModel {
   kind: FormFlowControlKind;
   layout?: 'default' | 'half' | 'wide';
   rowSpan?: number;
+  align?: 'start' | 'end';
   label?: string;
   description?: string;
   validationError?: FormFlowControlValidationError;
@@ -156,6 +163,7 @@ export interface FormFlowControlModel {
     | FormFlowDateControlConfig
     | FormFlowLinkControlConfig
     | FormFlowLocationControlConfig
+    | FormFlowTableControlConfig
     | FormFlowPoliciesControlConfig
     | FormFlowPricingControlConfig
     | FormFlowRouteControlConfig
@@ -173,6 +181,7 @@ export interface FormFlowStepModel {
   presentation?: 'default' | 'media';
   palette?: string;
   header?: FormFlowHeaderModel | null;
+  headerControl?: FormFlowControlModel | null;
   controls: readonly FormFlowControlModel[];
 }
 

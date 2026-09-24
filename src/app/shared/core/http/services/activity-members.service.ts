@@ -180,7 +180,7 @@ export class HttpActivityMembersService {
   ): Promise<ActivityMembersInviteResultDTO> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedUserIds = [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
-    if (!normalizedOwner || normalizedOwner.ownerType !== 'event' || normalizedUserIds.length === 0) {
+    if (!normalizedOwner || !['event', 'community'].includes(normalizedOwner.ownerType) || normalizedUserIds.length === 0) {
       return {
         members: normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [],
         invitedUserIds: [],
@@ -302,7 +302,7 @@ export class HttpActivityMembersService {
   private normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {
     const ownerType = owner?.ownerType;
     const ownerId = owner?.ownerId?.trim() ?? '';
-    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group' && ownerType !== 'asset') || !ownerId) {
+    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group' && ownerType !== 'asset' && ownerType !== 'community') || !ownerId) {
       return null;
     }
     return {

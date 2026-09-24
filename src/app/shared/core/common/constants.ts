@@ -21,7 +21,7 @@ export type ActivityMemberRequestKind = typeof ACTIVITY_MEMBER_REQUEST_KINDS[num
 export const ACTIVITY_MEMBER_ROLES = ['Admin', 'Member', 'Manager'] as const;
 export type ActivityMemberRole = typeof ACTIVITY_MEMBER_ROLES[number];
 
-export const ACTIVITY_MEMBER_OWNER_TYPES = ['event', 'subEvent', 'group', 'asset'] as const;
+export const ACTIVITY_MEMBER_OWNER_TYPES = ['event', 'subEvent', 'group', 'asset', 'community'] as const;
 export type ActivityMemberOwnerType = typeof ACTIVITY_MEMBER_OWNER_TYPES[number];
 
 // Asset

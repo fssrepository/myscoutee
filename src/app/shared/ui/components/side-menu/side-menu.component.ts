@@ -1,3 +1,5 @@
+import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
+import { CommunityGroupsPopupComponent } from '../community-groups-popup/community-groups-popup.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
 import { AdminNotificationsService } from '../../../core/base/services/admin-notifications.service';
 import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
@@ -224,6 +226,7 @@ type NavigatorHeaderActionMenuItemId =
   imports: [
     ImageGalleryPopupComponent,
     PhotoFeedPopupComponent,
+    CommunityGroupsPopupComponent,
     CommonModule,
     MatIconModule,
     AppMenuComponent,
@@ -309,6 +312,9 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
+  protected readonly communityGroups = inject(CommunityGroupsStore);
+  protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
+    this.communityGroups.counters().hosting + this.communityGroups.counters().participation));
   protected readonly photoFeedStore = inject(PhotoFeedStore);
   protected readonly navigatorFeedMenuModel = computed(() =>
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));

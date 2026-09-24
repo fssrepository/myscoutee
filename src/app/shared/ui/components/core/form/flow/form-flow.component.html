@@ -137,6 +137,7 @@
               [class.form-flow__slide--plain]="step.chrome === 'none'"
               [class.form-flow__slide--media]="step.presentation === 'media'"
               [attr.data-step-id]="step.id"
+              [attr.data-palette]="step.palette ?? null"
               [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
               [attr.inert]="isPageActive(stepIndex) ? null : ''"
               [attr.aria-labelledby]="(step.title || step.header) ? 'form-flow-step-' + step.id : null"
@@ -148,6 +149,15 @@
                     <mat-icon>{{ step.icon }}</mat-icon>
                   }
                   <h3 id="form-flow-step-{{ step.id }}">{{ step.title }}</h3>
+                  @if (step.headerControl; as control) {
+                    <app-menu class="form-flow__group-header-menu"
+                      [kind]="menuKind(control)" [layout]="menuLayout(control)"
+                      [trigger]="menuTrigger(control)" [items]="menuItems(control)"
+                      [ngModel]="controlValue(control)" [disabled]="isControlDisabled(control)"
+                      (ngModelChange)="updateControlValue(control, $event)"
+                      (itemSelect)="emitControlAction(control, $event)"
+                      [closeOnSelect]="menuCloseOnSelect(control)"></app-menu>
+                  }
                 </div>
               }
               @if (step.header) {
@@ -196,6 +206,7 @@
                   <div
                     class="form-flow__control"
                     [attr.data-control-id]="control.id"
+                    [class.form-flow__control--align-end]="control.align === 'end'"
                     [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
                     [class.form-flow__control--half]="control.layout === 'half'"
                     [class.form-flow__control--with-accessory]="accessoryMenuConfig(control)"
@@ -228,6 +239,7 @@
                         [items]="menuItems(control)"
                         [panelMode]="menuPanelMode(control)"
                         [ngModel]="controlValue(control)"
+                        [disabled]="isControlDisabled(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                         (itemSelect)="emitControlAction(control, $event)"
                         [closeOnSelect]="menuCloseOnSelect(control)"
@@ -243,6 +255,7 @@
                         [slotCount]="image.slotCount ?? 8"
                         [compact]="image.compact === true"
                         [autoSize]="image.autoSize === true"
+                        [slotImageVariant]="image.slotImageVariant ?? 'small'"
                         [previewMode]="image.previewMode === true && !isMobileViewport"
                         [ariaLabel]="image.ariaLabel || control.label || 'Images'"
                         [uploadOwnerId]="image.uploadOwnerId || ''"
@@ -278,7 +291,16 @@
                         [ngModel]="controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></textarea>
-                    } @else if (control.kind === 'static' || control.kind === 'review') {
+                    } @else if (control.kind === 'table') {
+                      <table class="form-flow__table">
+                        <tbody>
+                          @for (row of tableRows(control); track row.label) {
+                            <tr><th scope="row">{{ row.label | i18n }}</th>
+                              <td>@if (row.icon) { <mat-icon>{{ row.icon }}</mat-icon> }{{ row.value | i18n }}</td></tr>
+                          }
+                        </tbody>
+                      </table>
+                    } @else if (control.kind === 'static'  || control.kind === 'review') {
                       <article class="form-flow__static">
                         @if (control.label) {
                           <h4>{{ control.label }}</h4>
@@ -314,6 +336,7 @@
                         [config]="pricingConfig(control)"
                         [readOnly]="isControlDisabled(control)"
                         [ngModel]="controlValue(control)"
+                        [disabled]="isControlDisabled(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-pricing-editor-input>
                     } @else if (control.kind === 'route') {
@@ -332,6 +355,7 @@
                         (enabledChange)="updatePoliciesEnabled(control, $event)"
                         [readOnly]="isControlDisabled(control)"
                         [ngModel]="controlValue(control)"
+                        [disabled]="isControlDisabled(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-policies-input>
                     } @else {

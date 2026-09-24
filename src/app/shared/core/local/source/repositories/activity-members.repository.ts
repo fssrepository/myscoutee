@@ -661,7 +661,7 @@ export class LocalActivityMembersRepository {
   normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {
     const ownerType = owner?.ownerType;
     const ownerId = owner?.ownerId?.trim() ?? '';
-    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group' && ownerType !== 'asset') || !ownerId) {
+    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group' && ownerType !== 'asset' && ownerType !== 'community') || !ownerId) {
       return null;
     }
     return {

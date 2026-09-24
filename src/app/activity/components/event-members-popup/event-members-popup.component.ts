@@ -188,6 +188,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   protected ownerId = '';
   protected title = 'Members';
   protected subtitle = 'Event';
+  private communityOwnerUserId = '';
   protected summaryLabel = '0 members';
   protected isSummaryVisible = false;
   protected pendingOnly = false;
@@ -300,6 +301,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           followedOrganizers: request.followedOrganizers,
+          ownerUserId: request.ownerUserId,
           ownerType: request.ownerType ?? 'event',
           parentOwnerId: request.parentOwnerId,
           parentOwnerType: request.parentOwnerType,
@@ -1111,6 +1113,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         return 'event';
       case 'subEvent':
         return 'view_agenda';
+      case 'community':
       case 'group':
         return 'groups';
       case 'asset':
@@ -1612,6 +1615,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private openMembersPopup(
     ownerId: string,
     options?: {
+      ownerUserId?: string;
       followedOrganizers?: boolean;
       subtitle?: string;
       canManage?: boolean;
@@ -1644,6 +1648,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (!normalizedOwnerId) {
       return;
     }
+    this.communityOwnerUserId = options?.ownerUserId ?? '';
     this.followedOrganizers = options?.followedOrganizers === true;
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
@@ -1753,7 +1758,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       }
 
       this.syncMembersSmartListQuery();
-      if (!this.followedOrganizers && !this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group') {
+      if (!this.followedOrganizers && !this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group' && options?.ownerType !== 'community') {
         void this.resolveOwnerPresentation(normalizedOwnerId, options);
       }
       this.cdr.markForCheck();
@@ -2143,6 +2148,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canDeleteMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.ownerRef?.ownerType === 'community' && entry.userId === this.communityOwnerUserId) return false;
     if (this.viewOnlyMode) {
       return false;
     }
@@ -2359,7 +2365,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         ? canManageScopedAssetMembers(activeUserId, members)
         : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers
-      || (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
+      || (this.ownerRef?.ownerType !== 'community') && (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
@@ -2669,7 +2675,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.ownerRef?.ownerType === 'subEvent') {
       return 'sub event';
     }
-    if (this.ownerRef?.ownerType === 'group') {
+    if (this.ownerRef?.ownerType === 'group' || this.ownerRef?.ownerType === 'community') {
       return 'group';
     }
     return 'event';

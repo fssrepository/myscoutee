@@ -90,6 +90,8 @@
             [model]="navigatorFollowedMenuModel()"
             (itemSelect)="openFollowedEvents($event.sourceEvent)"
           ></app-menu>
+          <app-menu class="navigator-groups-action" kind="inline" [model]="navigatorGroupsMenuModel()"
+            (itemSelect)="$event.sourceEvent.stopPropagation(); communityGroups.open()"></app-menu>
         </div>
         <app-header-card
           class="navigator-menu-header-card"
@@ -237,3 +239,5 @@
 @defer (when photoFeedStore.userId()) {
   @if (photoFeedStore.userId()) { <app-photo-feed-popup></app-photo-feed-popup> }
 }
+
+@if (communityGroups.openUserId()) { <app-community-groups-popup></app-community-groups-popup> }

@@ -47,7 +47,7 @@ export class ActivityInvitePopupStore {
     this.activityInvitePopupRef.set({
       updatedMs: Date.now(),
       ownerId: normalizedOwnerId,
-      ownerType: payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
+      ownerType: payload.ownerType === 'community' || payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
         ? payload.ownerType
         : 'event',
       parentOwner: payload.parentOwner?.ownerId?.trim()

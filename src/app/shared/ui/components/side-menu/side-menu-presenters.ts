@@ -69,12 +69,12 @@ function resolveMemberImpressionTitle(traitLabel: string): string {
     : defaultTitle;
 }
 
-export function navigatorContentMenuModel(id: 'feed' | 'followed', count: number): AppMenuModel {
+export function navigatorContentMenuModel(id: 'feed' | 'followed' | 'groups', count: number): AppMenuModel {
   return {
     layout: 'row', density: 'compact', nodes: [{ id, items: [{
-      id, label: id === 'feed' ? 'feed.title' : 'event.following',
-      icon: id === 'feed' ? 'photo_library' : 'rss_feed', layout: 'pill',
-      palette: id === 'feed' ? 'orange' : 'cyan', surface: 'tinted', counterTone: 'alert',
+      id, label: id === 'feed' ? 'feed.title' : id === 'groups' ? 'groups.title' : 'event.following',
+      icon: id === 'feed' ? 'photo_library' : id === 'groups' ? 'groups' : 'rss_feed', layout: 'pill',
+      palette: id === 'feed' ? 'orange' : id === 'groups' ? 'violet' : 'cyan', surface: 'tinted', counterTone: 'alert',
       counter: count > 0 ? { value: count, max: 99 } : null
     }] }]
   };

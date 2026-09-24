@@ -72,6 +72,7 @@ export type ActivitiesNavigationRequest =
       followedOrganizers?: boolean;
       mingleLive?: boolean;
       ownerId: string;
+      ownerUserId?: string;
       ownerType?: ActivityMemberOwnerType;
       parentOwnerId?: string;
       parentOwnerType?: ActivityMemberOwnerType;

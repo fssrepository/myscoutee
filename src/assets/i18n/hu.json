@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.170",
+  "version": "2026.09.24.hu.172",
   "messages": {
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
@@ -3761,6 +3761,33 @@
     "notification.kind.event-paid-terms-changed.message": "Megváltozott az esemény, amelyre fizettél. Megtarthatod a foglalásodat, vagy az esemény menüjéből teljes visszatérítéssel lemondhatod.",
     "notification.kind.event-booking-cancelled.title": "Foglalás lemondva",
     "notification.kind.event-booking-cancelled.message": "A foglalásodat lemondtuk, és a még vissza nem térített befizetésed visszajárt.",
-    "event.checkout.join.confirm.title": "Szeretnél csatlakozni ehhez az eseményhez?"
+    "event.checkout.join.confirm.title": "Szeretnél csatlakozni ehhez az eseményhez?",
+    "groups.title": "Csoportok",
+    "groups.create": "Csoport létrehozása",
+    "groups.edit": "Csoport",
+    "groups.bucket.hosting": "Szervezés",
+    "groups.bucket.participation": "Részvétel",
+    "groups.bucket.explore": "Felfedezés",
+    "groups.category.all": "Minden kategória",
+    "groups.category.friends": "Barátok",
+    "groups.category.work": "Munka és csapatok",
+    "groups.category.sport": "Sport",
+    "groups.category.learning": "Tanulás",
+    "groups.category.hobbies": "Hobbi",
+    "groups.category.neighbourhood": "Környék",
+    "groups.visibility.public": "Nyilvános",
+    "groups.visibility.private": "Privát",
+    "groups.visibility.invitation": "Csak meghívással",
+    "groups.join": "Jelentkezés",
+    "groups.settings": "Csoportbeállítások",
+    "groups.policy": "Csoportszabályok",
+    "groups.hide.members": "Csak az adminok láthatók",
+    "groups.workspace": "Önálló munkatér",
+    "groups.visibility.rules": "Profil-láthatósági szabályok",
+    "groups.required": "Kötelező",
+    "groups.optional": "A tag választja",
+    "groups.participate": "Részvétel",
+    "groups.organizer.only": "Csak szervezés",
+    "groups.error": "A művelet nem sikerült."
   }
 }

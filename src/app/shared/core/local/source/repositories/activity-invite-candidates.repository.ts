@@ -99,7 +99,8 @@ export class LocalActivityInviteCandidatesRepository {
       ownerType: query.owner.ownerType,
       ownerId
     })
-      .filter(record => record.status === 'pending' && record.userId.trim() !== activeUserId)
+      .filter(record => record.status === 'pending' && record.userId.trim() !== activeUserId
+        && (query.owner.ownerType !== 'community' || record.requestKind === 'invite'))
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso))
       .map(record => {
         const user = this.usersRepository.queryUserById(record.userId.trim());

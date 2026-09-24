@@ -462,3 +462,11 @@
 .ui-single-row--menu-top-right .ui-single-row__top-right {
   right: 3rem;
 }
+
+.ui-single-row.notification-row .ui-single-row__subtitle {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
