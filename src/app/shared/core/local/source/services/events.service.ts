@@ -609,6 +609,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ...(eventBeforeJoin?.pendingRequestMemberUserIds ?? [])
     ].some(memberUserId => memberUserId.trim() === normalizedUserId);
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    const previousBasket = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId);
+    const requestedItems = request.checkoutRequest?.basketItems ?? previousBasket?.items ?? [];
+    const alreadyPaid = alreadyAccepted && requestedItems.length > 0
+      && requestedItems.every(item => previousBasket?.items.some(paid =>
+        paid.status === 'pay' && paid.id === item.id && paid.amount === item.amount
+        && paid.currency === item.currency && paid.quantity === item.quantity));
+    if (alreadyPaid && eventBeforeJoin) {
+      return this.withLocalMutationCounterDelta(
+        LocalEventParticipationActionMapper.toResult(eventBeforeJoin, normalizedUserId, {
+          slotSourceId: previousBasket?.slotSourceId ?? null,
+          paymentSessionId: previousBasket?.checkoutSessionId ?? null,
+          pendingReason: null
+        }), normalizedUserId, beforeCounters
+      );
+    }
     if (request.checkoutRequest) {
       await this.saveCheckoutBasketRecord({
         ...request.checkoutRequest,
@@ -624,6 +639,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     const slotSourceId = basket.slotSourceId ?? request.slotSourceId ?? null;
+    const paymentAmount = Math.round(basket.items.filter(item => item.status !== 'pay')
+      .reduce((total, item) => total + item.amount * Math.max(1, Math.trunc(item.quantity || 1)), 0) * 100) / 100;
     const checkoutSessionId = `checkout-${Date.now()}`;
     const acceptedMembership = this.existingAcceptedCheckoutMembershipRecord(
       normalizedUserId,
@@ -659,6 +676,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       resultState: result?.membershipStatus === 'accepted' ? 'succeeded' : null,
       checkoutSessionId
     });
+    if (result?.membershipStatus === 'accepted' && paymentAmount > 0) {
+      this.affiliateRepository.recordPayment(
+        normalizedUserId,
+        checkoutSessionId,
+        basket.currency,
+        paymentAmount,
+        0,
+        true,
+        normalizedSourceId,
+        eventBeforeJoin?.creatorUserId,
+        eventBeforeJoin?.startAtIso,
+        eventBeforeJoin?.pricing?.cancellationPolicy
+      );
+    }
     if (resolvingInvitation && result) {
       this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
       if (result.membershipStatus === 'accepted' && record) {

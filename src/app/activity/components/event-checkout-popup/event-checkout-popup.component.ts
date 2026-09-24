@@ -2239,7 +2239,7 @@ export class EventCheckoutPopupComponent {
     this.confirmationDialogStore.open({
       title: this.paymentStep
         ? 'event.checkout.payment.confirm.title'
-        : `${label}?`,
+        : label === 'Join' ? 'event.checkout.join.confirm.title' : `${label}?`,
       message: this.dialog()?.record.title ?? 'Checkout',
       warningMessage: this.checkoutConfirmWarningMessage(),
       cancelLabel: 'Back',

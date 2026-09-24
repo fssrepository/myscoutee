@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.24.en.169",
+  "version": "2026.09.24.en.170",
   "messages": {
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
@@ -2073,7 +2073,7 @@
     "reports.can.only.be.started.from.a.member.card.of.an.event.you.both.attended": "Reports can only be started from a member card of an event you both attended.",
     "reports.can.only.be.started.from.an.event.organizer.or.a.member.card.tied.to.an.event": "Reports can only be started from an event organizer or a member card tied to an event.",
     "reports.can.only.be.submitted.for.an.event.organizer.or.a.member.you.shared.an.event.with": "Reports can only be submitted for an event organizer or a member you shared an event with.",
-    "logout.question": "Logout?",
+    "logout.question": "Are you sure you want to log out?",
     "min": "Min",
     "max": "Max",
     "date": "Date",
@@ -2150,7 +2150,7 @@
     "payment.history.refund.approve": "Approve refund",
     "payment.history.refund.approve.error": "The refund could not be approved.",
     "payment.history.refund.approve.message": "Approve this policy-based refund?",
-    "payment.history.refund.approve.title": "Approve refund?",
+    "payment.history.refund.approve.title": "Would you like to approve this refund request?",
     "payment.history.refund.approved": "Refund approved",
     "payment.history.refund.pending": "Refund requested",
     "payment.history.refund.request": "Request refund",
@@ -3760,6 +3760,7 @@
     "notification.kind.event-paid-terms-changed.title": "Your event has changed",
     "notification.kind.event-paid-terms-changed.message": "The event you paid for has changed. You can keep your booking or cancel it from the event menu for a full refund.",
     "notification.kind.event-booking-cancelled.title": "Booking cancelled",
-    "notification.kind.event-booking-cancelled.message": "Your booking has been cancelled and the remaining paid amount has been refunded."
+    "notification.kind.event-booking-cancelled.message": "Your booking has been cancelled and the remaining paid amount has been refunded.",
+    "event.checkout.join.confirm.title": "Would you like to join this event?"
   }
 }

@@ -10,6 +10,10 @@ export class PopupPresenceStore {
   private readonly activeLayers = new Map<symbol, number>();
 
   readonly visible = computed(() => this.activeTokensRef().size > 0);
+  readonly topLayer = computed(() => {
+    this.activeTokensRef();
+    return Math.max(0, ...this.activeLayers.values());
+  });
 
   register(requestedZIndex: number | null = null): symbol {
     const token = Symbol('app-popup');

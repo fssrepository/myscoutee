@@ -134,7 +134,8 @@ export class LocalEventCheckoutBasketsRepository {
   async updateBasketState(
     request: LocalEventCheckoutBasketStatePatchRecord
   ): Promise<LocalEventCheckoutBasketRecord | null> {
-    return this.updateBasketStateMatching(request, item => this.isDisplayItem(item));
+    return this.updateBasketStateMatching(request, item => this.isDisplayItem(item)
+      && (request.checkoutState !== 'pay' || item.status !== 'pay'));
   }
 
   async finalizeAcceptedReservation(

@@ -34,6 +34,7 @@ import {
   SeedUsersRatingsRepository,
   SeedUsersRepository
 } from '..';
+import { SeedActivityMembersRepository } from '../repositories/activity-members-seed.repository';
 import { SeedOperatorRegistryBuilder } from '../builders/operator-registry-seed.builder';
 import { LocalOperatorRegistryMapper } from '../../source/mappers/operator-registry.mapper';
 import { LocalOperatorRegistryRepository } from '../../source/repositories/operator-registry.repository';
@@ -641,6 +642,45 @@ describe('Demo bootstrap seeding', () => {
 
     expect(members.filter(member => member.status === 'accepted').length).toBe(brunchRotation!.acceptedMembers);
     expect(members.filter(member => member.status === 'pending').length).toBe(brunchRotation!.pendingMembers);
+  });
+
+  it('preserves saved event membership and deliberate empty lists when bootstrap runs again', async () => {
+    await TestBed.inject(SeedDemoBootstrapService).ensureDemoSelectorReady('member');
+    const state = memoryDb.read();
+    const sample = Object.values(state[EVENTS_TABLE_NAME].byId).find(record => record.type === 'events')!;
+    const sampleMember = Object.values(state[ACTIVITY_MEMBERS_TABLE_NAME].byId)[0];
+    const ownerKey = 'event:created-after-bootstrap';
+    const memberId = 'created-after-bootstrap:paid-member';
+    const member = { ...sampleMember, id: memberId, ownerId: 'created-after-bootstrap', ownerKey,
+      userId: 'u42', status: 'accepted' as const, role: 'Member' as const };
+    memoryDb.write(current => ({ ...current,
+      [EVENTS_TABLE_NAME]: { ...current[EVENTS_TABLE_NAME],
+        ids: [...current[EVENTS_TABLE_NAME].ids, 'created-after-bootstrap'],
+        byId: { ...current[EVENTS_TABLE_NAME].byId, 'created-after-bootstrap': {
+          ...sample, id: 'created-after-bootstrap', acceptedMembers: 1, pendingMembers: 0,
+          acceptedMemberUserIds: undefined, pendingMemberUserIds: undefined
+        } } },
+      [ACTIVITY_MEMBERS_TABLE_NAME]: { ...current[ACTIVITY_MEMBERS_TABLE_NAME],
+        ids: [...current[ACTIVITY_MEMBERS_TABLE_NAME].ids, memberId],
+        byId: { ...current[ACTIVITY_MEMBERS_TABLE_NAME].byId, [memberId]: member },
+        idsByOwnerKey: { ...current[ACTIVITY_MEMBERS_TABLE_NAME].idsByOwnerKey, [ownerKey]: [memberId] } }
+    }));
+    const reseed = () => TestBed.runInInjectionContext(() => new SeedActivityMembersRepository()).seedDefaults();
+    reseed();
+    expect(memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME].byId[memberId]).toEqual(member);
+    expect(memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME].idsByOwnerKey[ownerKey]).toEqual([memberId]);
+    memoryDb.write(current => {
+      const table = current[ACTIVITY_MEMBERS_TABLE_NAME];
+      const byId = { ...table.byId };
+      delete byId[memberId];
+      return { ...current, [ACTIVITY_MEMBERS_TABLE_NAME]: {
+        byId, ids: table.ids.filter(id => id !== memberId),
+        idsByOwnerKey: { ...table.idsByOwnerKey, [ownerKey]: [] }
+      } };
+    });
+    reseed();
+    expect(memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME].idsByOwnerKey[ownerKey]).toEqual([]);
+    expect(memoryDb.read()[EVENTS_TABLE_NAME].byId['created-after-bootstrap'].acceptedMembers).toBe(0);
   });
 
   it('distributes accepted parent members across seeded tournament groups', async () => {

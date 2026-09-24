@@ -86,9 +86,7 @@ export class SeedActivityMembersRepository {
 
     const usersById = new Map(users.map(user => [user.id, user] as const));
     const existingOwnerKeys = new Set(
-      Object.entries(currentTable.idsByOwnerKey)
-        .filter(([ownerKey, ids]) => ownerKey.length > 0 && ids.some(id => Boolean(currentTable.byId[id])))
-        .map(([ownerKey]) => ownerKey)
+      Object.keys(currentTable.idsByOwnerKey).filter(ownerKey => ownerKey.length > 0)
     );
     const desiredOwners = new Map<string, ActivityMemberRecord[]>();
     const preferredEvents = this.computePreferredEventRecords(eventsTable);
@@ -185,10 +183,9 @@ export class SeedActivityMembersRepository {
     let changed = false;
 
     for (const [ownerKey, records] of desiredOwners.entries()) {
-      const shouldReplace = ownerKey.startsWith('event:') || ownerKey.startsWith('group:')
-        ? this.ownerNeedsRefresh(currentTable, ownerKey, records)
-        : !existingOwnerKeys.has(ownerKey);
-      if (!shouldReplace) {
+      // Persisted membership is authoritative, including an intentionally empty list.
+      // Event member-ID projections are omitted from IndexedDB and cannot reseed it.
+      if (existingOwnerKeys.has(ownerKey)) {
         continue;
       }
       if (
@@ -226,29 +223,6 @@ export class SeedActivityMembersRepository {
       },
       changed
     };
-  }
-
-  private ownerNeedsRefresh(
-    currentTable: ActivityMembersRecordCollection,
-    ownerKey: string,
-    desiredRecords: readonly ActivityMemberRecord[]
-  ): boolean {
-    const currentRecords = (currentTable.idsByOwnerKey[ownerKey] ?? [])
-      .map(id => currentTable.byId[id])
-      .filter((record): record is ActivityMemberRecord => Boolean(record));
-    if (currentRecords.length === 0) {
-      return desiredRecords.length > 0;
-    }
-    return (
-      currentRecords.filter(record => record.status === 'accepted').length
-        !== desiredRecords.filter(record => record.status === 'accepted').length
-      || currentRecords.filter(record => record.status === 'pending').length
-        !== desiredRecords.filter(record => record.status === 'pending').length
-      || !this.sameUserIds(
-        currentRecords.map(record => record.userId),
-        desiredRecords.map(record => record.userId)
-      )
-    );
   }
 
   private buildSeededRecordsForEvent(
@@ -632,7 +606,7 @@ export class SeedActivityMembersRepository {
       const records = (membersTable.idsByOwnerKey[ownerKey] ?? [])
         .map(memberId => membersTable.byId[memberId])
         .filter((record): record is ActivityMemberRecord => Boolean(record));
-      if (records.length === 0) {
+      if (!Object.hasOwn(membersTable.idsByOwnerKey, ownerKey)) {
         continue;
       }
       const acceptedMembers = records.filter(record => record.status === 'accepted').length;

@@ -141,6 +141,12 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
 
   async requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
+    if (this.affiliateRepository.requestPolicyRefund(userId, paymentId)) {
+      await this.affiliateRepository.flushToIndexedDb();
+      const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
+      if (!recorded) throw new Error('Refund history was not recorded.');
+      return this.localMutation(userId, recorded);
+    }
     const item = this.seedMethods(userId)
       .flatMap(card => this.seedHistory(card))
       .find(candidate => candidate.id === paymentId && candidate.direction === 'expense');

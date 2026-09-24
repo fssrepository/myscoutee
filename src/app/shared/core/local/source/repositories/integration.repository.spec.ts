@@ -79,6 +79,45 @@ describe('Local affiliate summary', () => {
     injector.destroy();
   });
 
+  it('uses the captured 25% policy and requires approval before each separate partial and full refund', () => {
+    let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member'], byId: {
+      owner: { id: 'owner', activities: {} },
+      member: { id: 'member', affiliateReferrerUserId: 'owner', activities: {} }
+    } } };
+    const db = { read: () => state, write: (change: any) => { state = change(state); } };
+    const injector = createEnvironmentInjector([{ provide: LocalMemoryDb, useValue: db }], null as any);
+    let repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    const policy = { enabled: true, rules: [{ id: 'ordinary', offsetUnit: 'hours' as const,
+      offsetValue: 0, refundKind: 'percent' as const, refundValue: 25 }] };
+    repo.recordPayment('member', 'paid', 'EUR', 100, 0, true, 'event', 'owner', '2099-01-01T12:00:00Z', policy);
+    policy.rules[0].refundValue = 100;
+    expect(repo.paymentHistory('member')[0].refundPreview?.refundableAmount).toBe(25);
+    expect(repo.requestPolicyRefund('owner', 'paid')).toBe(false);
+    expect(repo.requestPolicyRefund('member', 'paid')).toBe(true);
+    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies.EUR.refunded).toBe(0);
+    const request = repo.paymentHistory('owner').find(row => row.canApproveRefund)!;
+    expect(request.amount).toBe(25);
+    state = JSON.parse(JSON.stringify(state));
+    repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    repo.approveChangedTermsRefund('owner', request.id);
+    repo.approveChangedTermsRefund('owner', request.id);
+    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies.EUR).toEqual({ gross: 100, refunded: 25, net: 75 });
+    expect(repo.paymentHistory('member')[0].canRequestRefund).toBe(false);
+    const first = structuredClone(state[USERS_TABLE_NAME].byId.member.affiliatePayments.paid.refundOperations[0]);
+    repo.recordPayment('member', 'paid', 'EUR', 100);
+    expect(state[USERS_TABLE_NAME].byId.member.affiliatePayments.paid.refunded).toBe(25);
+    repo.markEventTermsChanged('event');
+    repo.cancelEventPayments('event', 'member');
+    const remaining = repo.paymentHistory('owner').find(row => row.canApproveRefund)!;
+    expect(remaining.amount).toBe(75);
+    repo.approveChangedTermsRefund('owner', remaining.id);
+    const payment = state[USERS_TABLE_NAME].byId.member.affiliatePayments.paid;
+    expect(payment.refundOperations.map((row: any) => row.amount)).toEqual([25, 75]);
+    expect(payment.refundOperations[0]).toEqual(first);
+    expect(state[USERS_TABLE_NAME].byId.owner.activities.paymentRefundsPending).toBe(0);
+    injector.destroy();
+  });
+
   it('waits for approval of a changed-terms refund and preserves an earlier partial refund', () => {
     let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member', 'other'], byId: {
       owner: { id: 'owner', activities: { paymentRefundsPending: 0 } },

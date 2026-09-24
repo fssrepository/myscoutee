@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.24.hu.169",
+  "version": "2026.09.24.hu.170",
   "messages": {
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
@@ -2073,7 +2073,7 @@
     "reports.can.only.be.started.from.a.member.card.of.an.event.you.both.attended": "Jelentést csak olyan esemény tagkártyájáról indíthatsz, amelyen mindketten részt vettetek.",
     "reports.can.only.be.started.from.an.event.organizer.or.a.member.card.tied.to.an.event": "Jelentést csak egy esemény szervezőjéről vagy az eseményhez tartozó tagkártyáról indíthatsz.",
     "reports.can.only.be.submitted.for.an.event.organizer.or.a.member.you.shared.an.event.with": "Jelentést csak az esemény szervezőjéről vagy olyan tagról küldhetsz, akivel közös eseményen vettél részt.",
-    "logout.question": "Biztosan kilép?",
+    "logout.question": "Biztosan ki szeretnél jelentkezni?",
     "min": "Min.",
     "max": "Max.",
     "date": "Dátum",
@@ -2150,7 +2150,7 @@
     "payment.history.refund.approve": "Visszatérítés jóváhagyása",
     "payment.history.refund.approve.error": "A visszatérítés nem hagyható jóvá.",
     "payment.history.refund.approve.message": "Jóváhagyod a szabályzat szerinti visszatérítést?",
-    "payment.history.refund.approve.title": "Jóváhagyod a visszatérítést?",
+    "payment.history.refund.approve.title": "Jóváhagyod ezt a visszatérítési kérelmet?",
     "payment.history.refund.approved": "Visszatérítés jóváhagyva",
     "payment.history.refund.pending": "Visszatérítés kérve",
     "payment.history.refund.request": "Visszatérítés kérése",
@@ -3760,6 +3760,7 @@
     "notification.kind.event-paid-terms-changed.title": "Megváltozott az eseményed",
     "notification.kind.event-paid-terms-changed.message": "Megváltozott az esemény, amelyre fizettél. Megtarthatod a foglalásodat, vagy az esemény menüjéből teljes visszatérítéssel lemondhatod.",
     "notification.kind.event-booking-cancelled.title": "Foglalás lemondva",
-    "notification.kind.event-booking-cancelled.message": "A foglalásodat lemondtuk, és a még vissza nem térített befizetésed visszajárt."
+    "notification.kind.event-booking-cancelled.message": "A foglalásodat lemondtuk, és a még vissza nem térített befizetésed visszajárt.",
+    "event.checkout.join.confirm.title": "Szeretnél csatlakozni ehhez az eseményhez?"
   }
 }

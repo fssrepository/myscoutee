@@ -2144,7 +2144,7 @@ export class SideMenuComponent implements OnDestroy {
   private openLogoutConfirm(): void {
     const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
     this.dialogStore.open({
-      title: 'Logout?',
+      title: 'logout.question',
       message: activeUserName,
       cancelLabel: 'Cancel',
       confirmLabel: 'Logout',
