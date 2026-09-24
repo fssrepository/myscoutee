@@ -11,6 +11,7 @@ import { ProfileFormFlowConverter } from '../../converters/profile-form-flow.con
 import { APP_STATIC_DATA } from '../../../app-static-data';
 interface GroupForm extends SaveCommunityGroup { images: string[]; }
 @Component({ selector: 'app-community-group-editor', standalone: true, imports: [FormsModule, PopupComponent, FormFlowComponent],
+  host: { '[class.group-editor--readonly]': 'readOnly' },
   styles: [`
     :host {
       --form-flow-grouped-media-image-height: 100%;
@@ -20,9 +21,15 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
       --image-single-slot-content-width: 100%;
       --image-single-slot-aspect-ratio: auto;
     }
-    .group-policy-fields { --form-flow-group-columns: repeat(2, minmax(0, 1fr)); }
+    :host(.group-editor--readonly) {
+      --app-menu-disabled-opacity: 1;
+      --app-menu-disabled-filter: none;
+      --on-off-toggle-disabled-opacity: 1;
+      --on-off-toggle-disabled-filter: none;
+      --form-flow-disabled-background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%);
+      --form-flow-disabled-color: rgba(58, 76, 103, 0.9);
+    }
     @media (max-width: 720px) {
-      .group-policy-fields { --form-flow-group-columns: minmax(0, 1fr); }
       :host { --form-flow-grouped-media-image-height: clamp(160px, 54vw, 260px); }
     }
   `],
@@ -34,7 +41,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
     </app-popup>
     @if (policyDraft) {
       <app-popup [model]="policyPopupModel()" [zIndex]="1340">
-        <app-form-flow class="group-policy-fields" [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
+        <app-form-flow [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
       </app-popup>
     }
   `
@@ -46,8 +53,15 @@ export class CommunityGroupEditorComponent implements OnChanges {
   private readonly i18n = inject(I18nService);
   protected form!: GroupForm;
   protected policyDraft: { fields: string[] } | null = null;
-  private readonly profileFields = ProfileFormFlowConverter.convert(null, { layout: 'grouped', imageEditor: 'external', showHeader: false, showSave: false })
+  private readonly profileFields = ProfileFormFlowConverter.convert(null, { layout: 'grouped', imageEditor: 'external', showHeader: false, showSave: false, privacy: { values: {} } })
     .steps.flatMap(step => step.controls);
+  private profileControl(labelKey: string): FormFlowControlModel | undefined {
+    return this.profileFields.find(control => control.label === labelKey || control.bind === labelKey
+      || (JSON.stringify(control.accessory) ?? '').includes(`"${labelKey}"`));
+  }
+  private optionalPolicyField(labelKey: string): boolean {
+    return this.profileControl(labelKey)?.required !== true;
+  }
   ngOnChanges(): void {
     const g = this.group;
     this.form = { userId: this.store.openUserId() ?? '', id: g?.id, version: g?.version,
@@ -59,7 +73,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
   private validName(): boolean { return !!this.form.name.trim() && Array.from(this.form.name).length <= 20; }
   protected popupModel(): PopupModel {
     const visibility = this.form.visibility;
-    return { title: this.group ? 'groups.edit' : 'groups.create', size: 'wide', height: 'auto',
+    return { title: this.group ? 'groups.edit' : 'groups.create', size: 'wide', height: 'full', mobilePresentation: 'fullscreen',
       onClose: () => this.store.editor.set(null),
       headerControls: [{ id: 'visibility', kind: 'menu', menuKind: 'select',
         trigger: { label: `groups.visibility.${visibility}`, ...GROUP_VISIBILITY_STYLE[visibility], layout: 'pill', disabled: this.readOnly },
@@ -97,7 +111,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
             kind: 'action', layout: 'pill', compactOnMobile: true, palette: 'violet' }
         ] } },
         { id: 'rules-table', kind: 'table', layout: 'wide', config: { rows: APP_STATIC_DATA.profileDetailGroupTemplates.flatMap(g => g.rows)
-          .filter(row => this.form.policy.enabled && required.includes(row.labelKey))
+          .filter(row => this.form.policy.enabled && this.optionalPolicyField(row.labelKey) && required.includes(row.labelKey))
           .map(row => ({ label: row.labelKey, value: 'groups.required',
             icon: 'check', badgeTone: 'danger' })) } }
       ] }] };
@@ -107,7 +121,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
       .map(control => ({ ...control, disabled: this.readOnly && control.id !== 'rules-open' })) })) };
   }
   protected action(event: FormFlowActionEvent): void {
-    if (event.sourceEvent.id === 'rules-open') this.policyDraft = { fields: [...this.form.policy.requiredFields] };
+    if (event.sourceEvent.id === 'rules-open') this.policyDraft = { fields: this.form.policy.requiredFields.filter(key => this.optionalPolicyField(key)) };
     if (event.sourceEvent.id === 'hideMembers' && !this.readOnly) this.form = { ...this.form, hideMembers: !this.form.hideMembers };
   }
   protected policyPopupModel(): PopupModel {
@@ -122,16 +136,18 @@ export class CommunityGroupEditorComponent implements OnChanges {
     const palettes: AppMenuPalette[] = ['blue','green','orange','violet'];
     return { title: 'groups.visibility.rules', layout: 'grouped', header: false, save: null, summary: { enabled: false },
       steps: APP_STATIC_DATA.profileDetailGroupTemplates.map((group, index) => ({
-        id: `policy-${index}`, title: this.t(group.title), palette: palettes[index], controls: [{
-          id: `fields-${index}`, bind: 'fields', kind: 'menu', layout: 'wide', config: { kind: 'inline', layout: 'column', closeOnSelect: false,
-            items: group.rows.map(row => {
-              const control = this.profileFields.find(control => control.label === row.labelKey || (JSON.stringify(control.accessory) ?? '').includes(`"${row.labelKey}"`));
-              const trigger = (control?.config as FormFlowMenuControlConfig)?.trigger;
-              return { id: row.labelKey, value: row.labelKey, label: row.labelKey, icon: trigger?.icon ?? 'visibility',
+        id: `policy-${index}`, title: this.t(group.title), palette: palettes[index], controls: group.rows
+          .filter(row => this.optionalPolicyField(row.labelKey))
+          .map(row => {
+            const trigger = (this.profileControl(row.labelKey)?.config as FormFlowMenuControlConfig)?.trigger;
+            return { id: row.labelKey, bind: 'fields', kind: 'menu', layout: 'half', config: {
+              kind: 'inline', layout: 'row', closeOnSelect: false,
+              items: [{ id: row.labelKey, value: row.labelKey, label: row.labelKey, icon: trigger?.icon ?? 'visibility',
                 kind: 'toggle' as const, layout: 'pill' as const, palette: trigger?.palette ?? palettes[index],
-                checked: this.policyDraft?.fields.includes(row.labelKey) ?? false, disabled: this.readOnly, showCheck: true, showToggleIndicator: true };
-            })
-          } } as FormFlowControlModel]
+                checked: this.policyDraft?.fields.includes(row.labelKey) ?? false, disabled: this.readOnly,
+                showCheck: true, showToggleIndicator: true, closeOnSelect: false }]
+            } } as FormFlowControlModel;
+          })
       })) };
   }
   private save(): void {

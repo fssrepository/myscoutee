@@ -531,8 +531,8 @@
     }
 
     &:disabled {
-      background: #edf2f8;
-      color: #7b8da5;
+      background: var(--form-flow-disabled-background, #edf2f8);
+      color: var(--form-flow-disabled-color, #7b8da5);
     }
   }
 

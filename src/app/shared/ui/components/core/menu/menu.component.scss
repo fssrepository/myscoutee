@@ -653,8 +653,8 @@
 
 .app-menu__trigger:disabled {
   cursor: default;
-  opacity: 0.58;
-  filter: grayscale(0.2);
+  opacity: var(--app-menu-disabled-opacity, 0.58);
+  filter: var(--app-menu-disabled-filter, grayscale(0.2));
   box-shadow: none;
 }
 
@@ -1508,7 +1508,7 @@
 
 .app-menu__button-row-item:disabled {
   cursor: default;
-  opacity: 0.52;
+  opacity: var(--app-menu-disabled-opacity, 0.52);
   box-shadow: none;
   transform: none;
   pointer-events: none;
