@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a problem with MyScoutee.
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong?
+      description: Briefly describe what happened and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we reproduce it?
+      placeholder: |
+        1. Open ...
+        2. Tap or click ...
+        3. The problem appears.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: e.g. Android / Chrome, iPhone / Safari, Windows / Firefox
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot or recording
+      description: If useful, drag an image or video here.
