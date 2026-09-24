@@ -29,6 +29,13 @@ describe('Manual calendar snapshot', () => {
     expect(renderCalendarExport('viewer', records, now)).not.toContain('BEGIN:VEVENT');
     expect(renderCalendarExport('owner', [event({ currentUserMembershipStatus: 'none' })], now)).toContain('BEGIN:VEVENT');
   });
+  it('excludes cancelled and moderation-held events whose status remains active', () => {
+    expect(renderCalendarExport('owner', [event({ cancelled: true })], now)).not.toContain('BEGIN:VEVENT');
+    for (const moderationStatus of ['under-review', 'blocked', 'rejected']) {
+      expect(renderCalendarExport('viewer', [event({ moderationStatus })], now)).not.toContain('BEGIN:VEVENT');
+    }
+    expect(renderCalendarExport('viewer', [event({ moderationStatus: 'accepted' })], now)).toContain('BEGIN:VEVENT');
+  });
   it('escapes injected properties and preserves Unicode with RFC byte folding', () => {
     const output = renderCalendarExport('viewer', [event({ title: 'Á😀'.repeat(40) + ',;\\\r\nBEGIN:VEVENT\0' })], now);
     for (const line of output.split('\r\n')) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);

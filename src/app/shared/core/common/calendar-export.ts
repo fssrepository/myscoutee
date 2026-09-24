@@ -8,7 +8,9 @@ export function renderCalendarExport(actorId: string, records: readonly Activity
     const start = instant(event.startAtIso);
     const end = instant(event.endAtIso);
     const owner = event.creatorUserId === actorId || event.organizerUserId === actorId;
-    if (event.status !== 'A' || (!owner && event.currentUserMembershipStatus !== 'accepted')
+    if (event.status !== 'A' || event.cancelled === true
+      || ['under-review', 'blocked', 'rejected'].includes(event.moderationStatus ?? '')
+      || (!owner && event.currentUserMembershipStatus !== 'accepted')
       || !event.id?.trim() || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end <= now.getTime()) continue;
     if (!unique.has(event.id)) unique.set(event.id, event);
   }
