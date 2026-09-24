@@ -250,7 +250,7 @@
 }
 
 .app-menu__palette--blue {
-  --app-menu-bg: linear-gradient(180deg, #f2f7ff 0%, #e3efff 100%);
+  --app-menu-bg: #{colors.$blue-background};
   --app-menu-bg-hover: linear-gradient(180deg, #f7fbff 0%, #dcecff 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #4f87cf 0%, #3169ae 100%);
   --app-menu-action-bg: linear-gradient(135deg, #3f7bc8 0%, #7556d8 100%);
@@ -258,9 +258,9 @@
   --app-menu-action-fg: #fff;
   --app-menu-action-border: transparent;
   --app-menu-action-shadow: 0 12px 24px rgba(60, 92, 167, 0.24);
-  --app-menu-border: rgba(58, 115, 184, 0.32);
+  --app-menu-border: #{colors.$blue-border};
   --app-menu-fg: #2b5d98;
-  --app-menu-icon: #3f74b2;
+  --app-menu-icon: #{colors.$blue-icon};
   --app-menu-line: rgba(45, 94, 168, 0.34);
   --app-menu-shadow: rgba(34, 91, 160, 0.2);
 }
@@ -293,14 +293,14 @@
   --app-menu-bg-strong: linear-gradient(180deg, #3aa3a1 0%, #247f7b 100%);
   --app-menu-border: #{colors.$teal-border};
   --app-menu-fg: #{colors.$teal-foreground};
-  --app-menu-icon: #2b7d84;
+  --app-menu-icon: #{colors.$teal-icon};
   --app-menu-line: rgba(45, 120, 130, 0.32);
   --app-menu-shadow: rgba(31, 105, 112, 0.2);
 }
 
 .app-menu__palette--green,
 .app-menu__palette--success {
-  --app-menu-bg: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  --app-menu-bg: #{colors.$green-background};
   --app-menu-bg-hover: linear-gradient(180deg, #f5fcf9 0%, #d9efe4 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #3aa968 0%, #2f8d57 100%);
   --app-menu-action-bg: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
@@ -308,9 +308,9 @@
   --app-menu-action-fg: #236d51;
   --app-menu-action-border: rgba(37, 127, 95, 0.28);
   --app-menu-action-shadow: 0 5px 14px rgba(35, 118, 72, 0.14);
-  --app-menu-border: rgba(37, 127, 95, 0.28);
+  --app-menu-border: #{colors.$green-border};
   --app-menu-fg: #236d51;
-  --app-menu-icon: #2f8a54;
+  --app-menu-icon: #{colors.$green-icon};
   --app-menu-line: rgba(47, 143, 102, 0.34);
   --app-menu-shadow: rgba(35, 118, 72, 0.22);
 }
@@ -327,12 +327,12 @@
 }
 
 .app-menu__palette--violet {
-  --app-menu-bg: linear-gradient(180deg, #f3ecff 0%, #e9ddff 100%);
+  --app-menu-bg: #{colors.$violet-background};
   --app-menu-bg-hover: linear-gradient(180deg, #f9f5ff 0%, #e4d5ff 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #8a66d2 0%, #6948b1 100%);
-  --app-menu-border: rgba(122, 76, 196, 0.38);
+  --app-menu-border: #{colors.$violet-border};
   --app-menu-fg: #65459b;
-  --app-menu-icon: #7a4cc4;
+  --app-menu-icon: #{colors.$violet-icon};
   --app-menu-line: rgba(106, 69, 163, 0.34);
   --app-menu-shadow: rgba(92, 62, 150, 0.2);
 }
@@ -360,7 +360,7 @@
 }
 
 .app-menu__palette--pink {
-  --app-menu-bg: linear-gradient(180deg, #fff0f4 0%, #fde6ee 100%);
+  --app-menu-bg: #{colors.$pink-background};
   --app-menu-bg-hover: linear-gradient(180deg, #fff7fa 0%, #fbdde8 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #d76d8e 0%, #b84f72 100%);
   --app-menu-border: rgba(184, 92, 116, 0.4);
@@ -371,12 +371,12 @@
 }
 
 .app-menu__palette--rose {
-  --app-menu-bg: linear-gradient(180deg, #fff1f4 0%, #ffe4eb 100%);
+  --app-menu-bg: #{colors.$rose-background};
   --app-menu-bg-hover: linear-gradient(180deg, #fff8fa 0%, #ffdce7 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #cb5272 0%, #a83a58 100%);
-  --app-menu-border: rgba(178, 69, 98, 0.38);
+  --app-menu-border: #{colors.$rose-border};
   --app-menu-fg: #8c2e49;
-  --app-menu-icon: #b94462;
+  --app-menu-icon: #{colors.$rose-icon};
   --app-menu-line: rgba(178, 69, 98, 0.32);
   --app-menu-shadow: rgba(137, 45, 70, 0.22);
 }
@@ -399,7 +399,7 @@
   --app-menu-bg-strong: linear-gradient(180deg, #df8a42 0%, #bd672b 100%);
   --app-menu-border: #{colors.$orange-border};
   --app-menu-fg: #{colors.$orange-foreground};
-  --app-menu-icon: #d07d33;
+  --app-menu-icon: #{colors.$orange-icon};
   --app-menu-line: rgba(189, 101, 42, 0.34);
   --app-menu-shadow: rgba(157, 95, 24, 0.24);
 }

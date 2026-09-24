@@ -301,7 +301,7 @@
                       <table class="form-flow__table">
                         <tbody>
                           @for (row of tableRows(control); track row.label) {
-                            <tr><th scope="row">{{ row.label | i18n }}</th>
+                            <tr [attr.data-palette]="row.palette ?? null"><th scope="row">{{ row.label | i18n }}</th>
                               <td><span [class.form-flow__table-badge]="!!row.badgeTone" [class.form-flow__table-badge--danger]="row.badgeTone === 'danger'">@if (row.icon) { <mat-icon>{{ row.icon }}</mat-icon> }{{ row.value | i18n }}</span></td></tr>
                           }
                         </tbody>

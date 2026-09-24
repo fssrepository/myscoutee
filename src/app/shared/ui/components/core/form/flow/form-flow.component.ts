@@ -504,7 +504,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.menuConfig(control).model ?? null;
   }
 
-  protected tableRows(control: FormFlowControlModel): readonly { label: string; value: string; icon?: string; badgeTone?: 'danger' }[] {
+  protected tableRows(control: FormFlowControlModel): import('./form-flow.types').FormFlowTableControlConfig['rows'] {
     return (control.config as import('./form-flow.types').FormFlowTableControlConfig | null)?.rows ?? [];
   }
 

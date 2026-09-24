@@ -105,7 +105,7 @@ export interface FormFlowPoliciesControlConfig {
 }
 
 export interface FormFlowTableControlConfig {
-  rows: readonly { label: string; value: string; icon?: string; badgeTone?: 'danger' }[];
+  rows: readonly { label: string; value: string; icon?: string; badgeTone?: 'danger'; palette?: import('../../menu').AppMenuPalette }[];
 }
 
 export interface FormFlowControlSummaryConfig {

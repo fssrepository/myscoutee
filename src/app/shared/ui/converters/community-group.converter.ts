@@ -14,9 +14,9 @@ export const GROUP_VISIBILITY_STYLE: Record<GroupVisibility, { icon: string; pal
 export const GROUP_CATEGORY_ICON: Record<GroupCategory, string> = {
   friends: 'diversity_3', work: 'work', sport: 'sports', learning: 'school', hobbies: 'palette', neighbourhood: 'location_city'
 };
-export const GROUP_CATEGORY_PALETTE: Record<GroupCategory, AppMenuPalette> = {
+export const GROUP_CATEGORY_PALETTE = {
   friends: 'teal', work: 'blue', sport: 'orange', learning: 'violet', hobbies: 'rose', neighbourhood: 'green'
-};
+} as const satisfies Record<GroupCategory, AppMenuPalette>;
 export class CommunityGroupConverter {
   static card(group: CommunityGroupSummary, translate: (key: string) => string): InfoCardData<CommunityGroupSummary> {
     return { id: group.id, smartListKey: `community:${group.id}`, ownerId: group.ownerUserId, ownerUserId: group.ownerUserId,
@@ -25,7 +25,7 @@ export class CommunityGroupConverter {
       groupLabel: group.distanceKm == null ? translate('groups.title') : AppUtils.activityGroupLabel({ distanceMetersExact: group.distanceKm * 1000 }, 'distance', { dateUnavailable: '', weekPrefix: '' }),
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
-      leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category] },
+      leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
       surfaceTone: group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
       mediaStart: contentModerationBadge(group.moderationStatus) ?? { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },

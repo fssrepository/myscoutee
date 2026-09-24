@@ -371,8 +371,8 @@ export class NotificationCenterPopupComponent {
 
   private workspaceMenuTrigger(): AppMenuTrigger {
     const item = this.groupWorkspaces.menuItems(this.store.workspace(), true).find(item => item.id === this.store.workspace());
-    return { label: item?.label, icon: item?.icon, imageFallback: item?.imageFallback, palette: item?.palette,
-      layout: 'pill', ariaLabel: 'groups.workspace.select' };
+    return { label: item?.label, icon: item?.icon, imageFallback: item?.imageFallback, imageShape: item?.imageShape, palette: item?.palette,
+      layout: 'pill', rotateIcon: false, ariaLabel: 'groups.workspace.select' };
   }
 
   private onHeaderMenuSelect(

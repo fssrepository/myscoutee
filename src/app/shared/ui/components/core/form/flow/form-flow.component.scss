@@ -1363,6 +1363,21 @@
 
 .form-flow__control--align-end { display: flex; justify-content: flex-end; }
 
+@each $palette, $background in (
+  ('blue', colors.$blue-background),
+  ('teal', colors.$teal-background),
+  ('green', colors.$green-background),
+  ('violet', colors.$violet-background),
+  ('purple', colors.$purple-background),
+  ('rose', colors.$rose-background),
+  ('pink', colors.$pink-background),
+  ('orange', colors.$orange-background)
+) {
+  .form-flow__table tr[data-palette='#{$palette}'] {
+    background: linear-gradient(rgba(255, 255, 255, .4), rgba(255, 255, 255, .4)), $background;
+  }
+}
+
 .form-flow__table-badge {
   min-height: 26px; border-radius: 999px; border: 1px solid;
   display: inline-flex; align-items: center; gap: 0.22rem;

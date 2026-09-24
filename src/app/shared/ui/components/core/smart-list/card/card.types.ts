@@ -160,6 +160,7 @@ export interface PairCardData {
 
 export interface InfoCardLeadingIconConfig {
   icon: string;
+  palette?: Extract<AppMenuPalette, 'blue' | 'teal' | 'green' | 'violet' | 'rose' | 'orange'>;
   tone?: Extract<InfoCardOverlayTone, 'default' | 'stage' | 'public' | 'friends' | 'invitation'> | 'pending' | null;
 }
 

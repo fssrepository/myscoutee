@@ -286,6 +286,7 @@
     @if (card?.leadingIcon; as leadingIcon) {
       <span
         class="ui-info-card__leading"
+        [attr.data-palette]="leadingIcon.palette ?? null"
         [class.ui-info-card__leading--public]="leadingIcon.tone === 'public'"
         [class.ui-info-card__leading--stage]="leadingIcon.tone === 'stage'"
         [class.ui-info-card__leading--friends]="leadingIcon.tone === 'friends'"

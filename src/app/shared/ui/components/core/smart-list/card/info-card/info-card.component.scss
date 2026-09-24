@@ -483,6 +483,22 @@ button.asset-occupancy-badge:active::after,
   color: #b77b19;
 }
 
+@each $palette, $background, $border, $icon in (
+  ('blue', colors.$blue-background, colors.$blue-border, colors.$blue-icon),
+  ('teal', colors.$teal-background, colors.$teal-border, colors.$teal-icon),
+  ('green', colors.$green-background, colors.$green-border, colors.$green-icon),
+  ('violet', colors.$violet-background, colors.$violet-border, colors.$violet-icon),
+  ('rose', colors.$rose-background, colors.$rose-border, colors.$rose-icon),
+  ('orange', colors.$orange-background, colors.$orange-border, colors.$orange-icon)
+) {
+  .ui-info-card__leading[data-palette='#{$palette}'] {
+    background: $background;
+    border-color: $border;
+
+    .mat-icon { color: $icon; }
+  }
+}
+
 .ui-info-card__meta {
   min-width: 0;
   display: grid;

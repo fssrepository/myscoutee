@@ -70,6 +70,11 @@ export class CommunityGroupEditorComponent implements OnChanges {
   private optionalPolicyField(labelKey: string): boolean {
     return this.profileControl(labelKey)?.required !== true;
   }
+  private readonly policyPalettes: readonly AppMenuPalette[] = ['blue', 'green', 'orange', 'violet'];
+  private policyFieldPalette(labelKey: string, groupIndex: number): AppMenuPalette {
+    const trigger = (this.profileControl(labelKey)?.config as FormFlowMenuControlConfig)?.trigger;
+    return trigger?.palette ?? this.policyPalettes[groupIndex];
+  }
   ngOnChanges(): void {
     const g = this.group;
     this.form = { userId: this.store.openUserId() ?? '', id: g?.id, version: g?.version,
@@ -118,10 +123,10 @@ export class CommunityGroupEditorComponent implements OnChanges {
           { id: 'rules-open', label: 'groups.visibility.rules', ariaLabel: 'groups.visibility.rules', icon: 'tune',
             kind: 'action', layout: 'pill', compactOnMobile: true, palette: 'violet' }
         ] } },
-        { id: 'rules-table', kind: 'table', layout: 'wide', config: { rows: APP_STATIC_DATA.profileDetailGroupTemplates.flatMap(g => g.rows)
+        { id: 'rules-table', kind: 'table', layout: 'wide', config: { rows: APP_STATIC_DATA.profileDetailGroupTemplates.flatMap((g, index) => g.rows
           .filter(row => this.form.policy.enabled && this.optionalPolicyField(row.labelKey) && required.includes(row.labelKey))
           .map(row => ({ label: row.labelKey, value: 'groups.required',
-            icon: 'check', badgeTone: 'danger' })) } }
+            icon: 'check', badgeTone: 'danger', palette: this.policyFieldPalette(row.labelKey, index) }))) } }
       ] }] };
     return { ...model, steps: model.steps.map(step => ({ ...step, controls: step.controls
       .filter(() => step.id !== 'policy' || this.form.policy.enabled)
@@ -133,7 +138,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
     if (event.sourceEvent.id === 'hideMembers' && !this.readOnly) this.form = { ...this.form, hideMembers: !this.form.hideMembers };
   }
   protected policyPopupModel(): PopupModel {
-    return { title: 'groups.visibility.rules', size: 'default', height: 'auto', mobilePresentation: 'compact', backdropTone: 'dim',
+    return { title: 'groups.visibility.rules', size: 'wide', height: 'full', mobilePresentation: 'fullscreen', backdropTone: 'dim',
       onClose: () => { this.policyDraft = null; }, headerControls: [{ id: 'done', kind: 'menu', menuKind: 'inline', items: [
         { id: 'done', icon: 'done', kind: 'action', palette: 'success', disabled: this.readOnly }
       ] }], onMenuSelect: () => { if (!this.readOnly && this.policyDraft) {
@@ -141,17 +146,16 @@ export class CommunityGroupEditorComponent implements OnChanges {
       } } };
   }
   protected policyFlowModel(): FormFlowModel {
-    const palettes: AppMenuPalette[] = ['blue','green','orange','violet'];
     return { title: 'groups.visibility.rules', layout: 'grouped', deferPreparation: false, header: false, save: null, summary: { enabled: false },
       steps: APP_STATIC_DATA.profileDetailGroupTemplates.map((group, index) => ({
-        id: `policy-${index}`, title: this.t(group.title), palette: palettes[index], controls: group.rows
+        id: `policy-${index}`, title: this.t(group.title), palette: this.policyPalettes[index], controls: group.rows
           .filter(row => this.optionalPolicyField(row.labelKey))
           .map(row => {
             const trigger = (this.profileControl(row.labelKey)?.config as FormFlowMenuControlConfig)?.trigger;
             return { id: row.labelKey, bind: 'fields', kind: 'menu', layout: 'half', config: {
               kind: 'inline', layout: 'row', closeOnSelect: false,
               items: [{ id: row.labelKey, value: row.labelKey, label: row.labelKey, icon: trigger?.icon ?? 'visibility',
-                kind: 'toggle' as const, layout: 'pill' as const, palette: trigger?.palette ?? palettes[index],
+                kind: 'toggle' as const, layout: 'pill' as const, palette: this.policyFieldPalette(row.labelKey, index),
                 checked: this.policyDraft?.fields.includes(row.labelKey) ?? false, disabled: this.readOnly,
                 showCheck: true, showToggleIndicator: true, closeOnSelect: false }]
             } } as FormFlowControlModel;
