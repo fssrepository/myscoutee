@@ -1,3 +1,6 @@
+import { LocalIntegrationService } from '../../local/source/services/integration.service';
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { SessionService } from './session.service';
 import { AffiliateReferralService } from './affiliate-referral.service';
 import {
   Injectable,
@@ -50,6 +53,8 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  private readonly session = inject(SessionService);
   private readonly affiliateReferral = inject(AffiliateReferralService);
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
@@ -143,6 +148,10 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
+    if (this.workspace.switching()) return null;
+    const revision = this.workspace.revision();
+    const session = this.session.session();
+    const current = () => revision === this.workspace.revision() && session === this.session.session();
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
@@ -156,6 +165,7 @@ export class UsersService extends BaseRouteModeService {
 
     try {
       const response = await this.userService.queryUserById(normalizedUserId || undefined, requestTimeoutMs);
+      if (!current()) return null;
 
       if (!response.user) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'User details not found.');
@@ -192,6 +202,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
       return response.user;
     } catch (error) {
+      if (!current()) return null;
       if (this.isTimeoutError(error, 'User details request timeout.')) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User details request timeout.');
         return null;
@@ -202,12 +213,18 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtDto | null> {
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtDto | null> {
+    const revision = this.workspace.revision() + 1;
+    this.workspace.revision.set(revision);
+    this.workspace.switching.set(true);
+    const session = this.session.session();
+    const current = () => revision === this.workspace.revision() && this.session.session() === session;
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
 
     if (this.isLocalRouteEnabled('/auth/me/profile-ext') && !normalizedUserId) {
+      this.workspace.switching.set(false);
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
@@ -215,7 +232,8 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs);
+      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId);
+      if (!current()) return null;
       const profileExt = response.profileExt;
       const user = profileExt?.profile ?? null;
 
@@ -225,14 +243,16 @@ export class UsersService extends BaseRouteModeService {
       }
 
       const resolvedUserId = user.id.trim() || normalizedUserId;
-      const previousActiveUserId = this.userProfileStore.getActiveUserId().trim();
       if (user.profileStatus === 'deleted') {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
         return profileExt;
       }
 
+      if (response.accountProfile) this.userProfileStore.setUserProfile(response.accountProfile);
+      this.workspace.accountUserId.set(response.accountProfile?.id ?? user.id);
+      this.workspace.active.set(response.workspace ?? null);
       this.userProfileStore.setProfileExt(profileExt);
-      if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
+      if (resolvedUserId) {
         this.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
@@ -255,6 +275,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
       return this.userProfileStore.getProfileExt(resolvedUserId) ?? profileExt;
     } catch (error) {
+      if (!current()) return null;
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User profile request timeout.');
         return null;
@@ -262,11 +283,19 @@ export class UsersService extends BaseRouteModeService {
 
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
       return null;
+    } finally {
+      if (current()) this.workspace.switching.set(false);
     }
   }
 
-  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string; invitationAvailable: boolean }> {
-    // Partner invitation links refer to server-owned events even when browsing local demo data.
+  private readonly localInvites = inject(LocalIntegrationService);
+
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }> {
+    if (this.localModeEnabled) {
+      const local = await this.localInvites.claimExternalInvite(this.userProfileStore.activeUserId() || userId, token);
+      if (local) return local;
+    }
+    // API invitations remain server-owned even when the browser uses local demo data.
     return this.httpUsersService.claimPartnerInvite(userId, token);
   }
 
@@ -633,10 +662,11 @@ export class UsersService extends BaseRouteModeService {
     const chatSubEvent = normalizeWithFallback(counterOverrides.chat?.subEvent, fallbackActivities.chat?.subEvent);
     const chatGroup = normalizeWithFallback(counterOverrides.chat?.group, fallbackActivities.chat?.group);
     const chatService = normalizeWithFallback(counterOverrides.chat?.service, fallbackActivities.chat?.service);
+    const chatGroupSupport = normalizeWithFallback(counterOverrides.chat?.groupSupport, fallbackActivities.chat?.groupSupport);
     const chatAppSupport = normalizeWithFallback(counterOverrides.chat?.appSupport, fallbackActivities.chat?.appSupport);
     const supportCases = counterOverrides.chat?.supportCases ?? fallbackActivities.chat?.supportCases;
     if (chatAll !== undefined || chatEvent !== undefined || chatSubEvent !== undefined
-      || chatGroup !== undefined || chatService !== undefined || chatAppSupport !== undefined
+      || chatGroup !== undefined || chatService !== undefined || chatAppSupport !== undefined || chatGroupSupport !== undefined
     ) {
       patch.chat = {
         all: chatAll ?? 0,
@@ -645,6 +675,8 @@ export class UsersService extends BaseRouteModeService {
         group: chatGroup ?? 0,
         service: chatService ?? 0,
         appSupport: chatAppSupport ?? 0,
+        contacts: normalizeWithFallback(counterOverrides.chat?.contacts, fallbackActivities.chat?.contacts) ?? 0,
+        groupSupport: chatGroupSupport ?? 0,
         supportCases: {
           pending: normalizeWithFallback(supportCases?.pending, 0) ?? 0,
           warned: normalizeWithFallback(supportCases?.warned, 0) ?? 0,
@@ -752,6 +784,8 @@ export class UsersService extends BaseRouteModeService {
           group: Math.max(0, Math.trunc(Number(user.activities?.chat?.group) || 0)),
           service: Math.max(0, Math.trunc(Number(user.activities?.chat?.service) || 0)),
           appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0)),
+          contacts: Math.max(0, Math.trunc(Number(user.activities?.chat?.contacts) || 0)),
+          groupSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.groupSupport) || 0)),
           supportCases: {
             pending: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.pending) || 0)),
             warned: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.warned) || 0)),

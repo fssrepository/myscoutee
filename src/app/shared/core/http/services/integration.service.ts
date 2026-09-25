@@ -15,6 +15,10 @@ export class HttpIntegrationService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  externalInviteLink(request: import('../../contracts/integration.interface').ExternalInviteLinkRequest): Promise<{url: string}> {
+    return firstValueFrom(this.http.post<{url: string}>(`${this.apiBaseUrl}/auth/me/partner-invite/link`, request));
+  }
+
   loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     return firstValueFrom(this.http.get<IntegrationSettingsDto>(`${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/settings`));
   }

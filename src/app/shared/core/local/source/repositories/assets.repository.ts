@@ -1340,6 +1340,7 @@ export class LocalAssetsRepository {
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => !this.isSuppressedAssetStatus(record.status))
       .filter(record => record.ownerUserId !== activeUserId)
+      .filter(record => state[USERS_TABLE_NAME].byId[record.ownerUserId]?.workspaceGroupId === state[USERS_TABLE_NAME].byId[activeUserId]?.workspaceGroupId)
       .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && UserProfileState.isFriendOfActiveUser(record.ownerUserId, activeUserId)))

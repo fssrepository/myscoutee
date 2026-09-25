@@ -1,0 +1,16 @@
+name: Question or help
+description: Ask a question about using MyScoutee.
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: What do you need help with?
+      description: Tell us what you are trying to do and where you got stuck.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional details
+      description: If useful, add what you tried, your device/browser, or a screenshot.

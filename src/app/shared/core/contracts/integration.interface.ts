@@ -29,3 +29,8 @@ export interface IntegrationTokenCreatedDto {
   token: IntegrationTokenDto;
   value: string;
 }
+
+export interface ExternalInviteLinkRequest {
+  ownerType: 'event' | 'community' | 'asset'; entityId: string; userId: string;
+  assetType?: import('../common/constants').AssetType;
+}

@@ -12,6 +12,8 @@ import { hasOperatorRole } from '../../../common/user-role';
 
 
 import { LocalUsersMapper } from '../mappers/user.mapper';
+import { LocalUserFilterPreferencesMapper } from '../mappers/rate.mapper';
+import { defaultUserGameFilterPreferences } from '../../../contracts/activity.interface';
 import { LocalRatesRepository } from './rates.repository';
 
 @Injectable({
@@ -34,7 +36,7 @@ export class LocalUsersRepository {
 
   queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): UserRecord[] {
     return this.queryUserRecordsFromTable(USERS_TABLE_NAME)
-      .filter(user => this.matchesSelectorRole(user, selectorRole))
+      .filter(user => !user.workspaceGroupId && this.matchesSelectorRole(user, selectorRole))
       .sort((left, right) => this.compareSelectableDemoUsers(left, right));
   }
 
@@ -78,16 +80,58 @@ export class LocalUsersRepository {
     return user;
   }
 
+  async selectWorkspace(accountId: string, groupId: string | null): Promise<void> {
+    const previousGroupId = this.queryUserById(accountId)?.activeWorkspaceGroupId ?? null;
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const account = table.byId[accountId];
+      if (!account || account.workspaceGroupId) throw new Error('Account not found');
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+        [accountId]: { ...account, activeWorkspaceGroupId: groupId }
+      } } };
+    });
+    try {
+      await this.flushToIndexedDb();
+    } catch (error) {
+      this.memoryDb.write(state => {
+        const table = state[USERS_TABLE_NAME];
+        const account = table.byId[accountId];
+        if (!account || account.activeWorkspaceGroupId !== groupId) return state;
+        return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+          [accountId]: { ...account, activeWorkspaceGroupId: previousGroupId }
+        } } };
+      });
+      throw error;
+    }
+  }
+
   upsertUser(user: UserRecord): UserRecord {
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, user.id);
+      const workspaceGroupId = usersTable.byId[user.id]?.workspaceGroupId ?? user.workspaceGroupId;
+      const policy = workspaceGroupId ? state.communityGroups.byId[workspaceGroupId]?.policy : null;
+      if (policy?.enabled && user.profileDetails) user = { ...user, profileDetails: user.profileDetails.map(section => ({
+        ...section, rows: section.rows.map(row => policy.requiredFields.includes(row.labelKey) ? { ...row, privacy: 'Public' } : row)
+      })) };
       return {
         ...state,
+        ...(!exists && !state[USER_FILTER_PREFERENCES_TABLE_NAME].byId[user.id] ? {
+          [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+            byId: {
+              ...state[USER_FILTER_PREFERENCES_TABLE_NAME].byId,
+              [user.id]: LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences(user.gender))
+            },
+            ids: [...state[USER_FILTER_PREFERENCES_TABLE_NAME].ids, user.id]
+          }
+        } : {}),
         [USERS_TABLE_NAME]: {
           byId: {
             ...usersTable.byId,
-            [user.id]: { ...user, devices: usersTable.byId[user.id]?.devices,
+            [user.id]: { ...user,
+              activeWorkspaceGroupId: usersTable.byId[user.id]?.activeWorkspaceGroupId,
+              workspaceGroupId: usersTable.byId[user.id]?.workspaceGroupId ?? user.workspaceGroupId,
+              accountUserId: usersTable.byId[user.id]?.accountUserId ?? user.accountUserId, devices: usersTable.byId[user.id]?.devices,
               affiliateCode: usersTable.byId[user.id]?.affiliateCode,
               affiliateRegistrations: usersTable.byId[user.id]?.affiliateRegistrations,
               affiliateReferrerUserId: usersTable.byId[user.id]?.affiliateReferrerUserId,

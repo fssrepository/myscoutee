@@ -127,3 +127,8 @@
 <app-menu-outlet (itemSelect)="onReportActionsMenuSelect($event)"></app-menu-outlet>
 <app-admin-chat-review-popup></app-admin-chat-review-popup>
 <app-admin-item-preview-popup></app-admin-item-preview-popup>
+@defer (when admin.activePopup() === 'reports' && groups.editor()) {
+  @if (admin.activePopup() === 'reports' && groups.editor(); as editor) {
+    <app-community-group-editor [group]="editor.group" [readOnly]="true" [zIndex]="2700"></app-community-group-editor>
+  }
+}

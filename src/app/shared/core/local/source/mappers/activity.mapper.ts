@@ -278,6 +278,7 @@ export class LocalActivityMembersBuilder {
         return 'Event';
       case 'subEvent':
         return 'Sub event';
+      case 'community':
       case 'group':
         return 'Group';
       case 'asset':

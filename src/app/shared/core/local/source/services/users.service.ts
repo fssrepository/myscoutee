@@ -1,3 +1,4 @@
+import { LocalCommunityGroupsService } from './community-groups.service';
 import { LocalContentModerationRepository } from '../repositories/content-moderation.repository';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
@@ -59,6 +60,7 @@ import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
   providedIn: 'root'
 })
 export class LocalUsersService extends LocalRouteDelayService implements UserService {
+  private readonly groups = inject(LocalCommunityGroupsService);
   private readonly contentModeration = inject(LocalContentModerationRepository);
   private readonly integrationRepository = inject(LocalIntegrationRepository);
   private static readonly INELIGIBLE_REGION_MESSAGE = 'Unavailable in your country';
@@ -175,6 +177,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   async queryUserById(userId?: string, _requestTimeoutMs?: number): Promise<UserByIdQueryResponse> {
     await this.usersRepository.whenReady();
     await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
+    return this.readUserById(userId);
+  }
+
+  private async readUserById(userId?: string): Promise<UserByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     if (!normalizedUserId) {
       return {
@@ -211,16 +217,25 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         ? (
             persistedFilterPreferences
               ? LocalUserFilterPreferencesMapper.toDto(persistedFilterPreferences)
-              : defaultUserGameFilterPreferences()
+              : defaultUserGameFilterPreferences(user.gender)
           )
         : null
     };
   }
 
-  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse> {
-    const response = await this.queryUserById(userId);
+  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse> {
+    await this.usersRepository.whenReady();
+    await this.waitForRouteDelay(LocalUsersService.USER_PROFILE_EXT_ROUTE);
+    const requested = this.usersRepository.queryUserById(userId ?? '');
+    const accountId = requested?.accountUserId ?? userId ?? '';
+    const account = this.usersRepository.queryUserById(accountId);
+    if (!account) throw new Error('Account not found');
+    const selected = await this.groups.resolveWorkspace(accountId,
+      groupId === undefined ? account.activeWorkspaceGroupId ?? null : groupId);
+    const response = await this.readUserById(selected.profile.id);
     const user = response.user;
-    return {
+    const result: ProfileExtByIdQueryResponse = {
+      workspace: selected.workspace, accountProfile: selected.accountProfile,
       profileExt: user
         ? {
             profile: user,
@@ -233,6 +248,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       counterOverrides: response.counterOverrides,
       filterPreferences: response.filterPreferences
     };
+    if (!result.profileExt) throw new Error('Profile not found');
+    if (groupId !== undefined) await this.usersRepository.selectWorkspace(accountId, groupId);
+    return result;
   }
 
   async queryUserRealtimeLongPoll(
@@ -370,7 +388,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async savePageFilterPreferences(userId: string, pageKey: 'event-explore', filters: EventExploreFilterPreferences): Promise<void> {
-    const stored = this.usersRepository.queryUserFilterPreferences(userId) ?? LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences());
+    const stored = this.usersRepository.queryUserFilterPreferences(userId) ?? LocalUserFilterPreferencesMapper.toRecord(
+      defaultUserGameFilterPreferences(this.usersRepository.queryUserById(userId)?.gender)
+    );
     this.usersRepository.upsertUserFilterPreferences(userId, {
       ...stored, pageFilters: { ...stored.pageFilters, [pageKey]: { ...filters } }
     });
@@ -699,7 +719,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterPatch(
       current,
       patch,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
     );
   }
 
@@ -710,7 +730,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterDeltas(
       current,
       deltas,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
     );
   }
 
@@ -825,6 +845,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
 
     const activities = user.activities;
+    const accountId = this.usersRepository.queryUserById(user.id)?.accountUserId;
+    const notificationActivities = accountId ? this.usersRepository.queryUserById(accountId)?.activities : activities;
     const events = normalizeCounter(activities?.events);
     const invitations = normalizeCounter(activities?.invitations);
     const hosting = normalizeCounter(activities?.hosting);
@@ -850,7 +872,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       tickets,
       contacts: normalizeCounter(activities?.contacts),
       feedback,
-      notifications: normalizeCounter(activities?.notifications),
+      notifications: normalizeCounter(notificationActivities?.notifications),
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
@@ -858,7 +880,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         subEvent: normalizeCounter(chat?.subEvent),
         group: normalizeCounter(chat?.group),
         service: normalizeCounter(chat?.service),
-        appSupport: normalizeCounter(chat?.appSupport)
+        appSupport: normalizeCounter(chat?.appSupport),
+        contacts: normalizeCounter(chat?.contacts),
+        groupSupport: normalizeCounter(chat?.groupSupport)
       },
       event: {
         all: normalizeCounter(event?.all ?? events + invitations + hosting),

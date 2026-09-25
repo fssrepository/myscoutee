@@ -11,17 +11,8 @@
       }
     </div>
     @if (policiesToggleable() && !locked()) {
-    <button
-      type="button"
-      class="event-policies-toggle"
-      [class.is-on]="effectivePanelEnabled()"
-      [disabled]="locked()"
-      [attr.aria-pressed]="effectivePanelEnabled()"
-      (click)="togglePoliciesEnabled($event)"
-    >
-      <mat-icon>{{ effectivePanelEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-      <span>{{ effectivePanelEnabled() ? 'On' : 'Off' }}</span>
-    </button>
+    <app-on-off-toggle [enabled]="effectivePanelEnabled()" [disabled]="locked()" [label]="panelTitle()"
+      (enabledChange)="togglePoliciesEnabled()"></app-on-off-toggle>
     }
   </div>
   @if (effectivePanelEnabled()) {

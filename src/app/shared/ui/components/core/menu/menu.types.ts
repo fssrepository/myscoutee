@@ -33,6 +33,7 @@ export type AppMenuPalette =
   | 'teal'
   | 'green'
   | 'mint'
+  | 'lime'
   | 'violet'
   | 'purple'
   | 'pink'
@@ -125,6 +126,8 @@ export interface AppMenuCounter {
 export type AppMenuValueMap<TId extends string = string> = Partial<Record<TId, AppMenuCounter | AppMenuCounterValue | null | undefined>>;
 
 export interface AppMenuTrigger {
+  rotateIcon?: boolean;
+  imageShape?: 'circle' | 'rectangle';
   id?: string;
   label?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
@@ -171,6 +174,7 @@ export interface AppMenuImageStackItem {
 }
 
 export interface AppMenuItem<TId extends string = string, TContext = unknown> {
+  imageShape?: 'circle' | 'rectangle';
   id: TId;
   label?: AppMenuLiveValue<string | null | undefined>;
   description?: AppMenuLiveValue<string | null | undefined>;

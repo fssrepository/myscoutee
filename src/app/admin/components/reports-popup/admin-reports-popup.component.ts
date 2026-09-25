@@ -29,6 +29,10 @@ import {
   AppUtils
 } from '../../../shared/app-utils';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
+import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community-groups.store';
+import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
+import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
@@ -138,6 +142,7 @@ interface AdminReportActionsMenuContext {
   selector: 'app-admin-reports-popup',
   standalone: true,
   imports: [
+    CommunityGroupEditorComponent,
     CommonModule,
     MatIconModule,
     AppMenuOutletComponent,
@@ -155,6 +160,8 @@ interface AdminReportActionsMenuContext {
 })
 export class AdminReportsPopupComponent {
   protected readonly admin = inject(AdminMenuStore);
+  protected readonly groups = inject(CommunityGroupsStore);
+  private readonly contentModeration = inject(ContentModerationService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly workspace = inject(AdminWorkspaceStore);
@@ -496,6 +503,12 @@ export class AdminReportsPopupComponent {
   }
 
   protected reviewReport(report: AdminReportDto): void {
+    if (report.sourceType === 'community' && report.sourceId) {
+      void this.contentModeration.detail<CommunityGroup>(this.workspace.currentAdminUserId() ?? '', `group:${report.sourceId}`)
+        .then(group => this.groups.editor.set({ group, readOnly: true }))
+        .catch(() => this.dialogStore.openInfo('moderation.failed', { title: 'groups.report' }));
+      return;
+    }
     if (report.sourceType === 'chat' || report.chatId) {
       this.admin.openChatReview(report);
       return;
@@ -841,6 +854,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected reportSourceIcon(report: AdminReportDto): string {
+    if (report.sourceType === 'community') return 'groups';
     if (report.sourceType === 'chat' || report.chatId) {
       return 'forum';
     }
@@ -851,6 +865,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected reportSourceLabel(report: AdminReportDto): string {
+    if (report.sourceType === 'community') return report.sourceText || this.i18n.translate('groups.title');
     if (report.sourceType === 'chat' || report.chatId) {
       return report.chatTitle || 'Reported chat';
     }
@@ -861,7 +876,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected reportBadgeLabel(report: AdminReportDto): string {
-    return `${report.reason ?? ''}`.trim() || 'Report';
+    return this.i18n.translate(`${report.reason ?? ''}`.trim() || 'Report');
   }
 
   protected reportReasonToneClass(report: AdminReportDto): string {
@@ -872,7 +887,7 @@ export class AdminReportsPopupComponent {
     if (sourceTone === 'asset') {
       return 'admin-report-tone-asset';
     }
-    return `admin-report-tone-${this.reportBadgeLabel(report)
+    return `admin-report-tone-${`${report.reason ?? ''}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'general'}`;
@@ -885,7 +900,7 @@ export class AdminReportsPopupComponent {
     if (report.sourceType === 'asset' || report.assetId) {
       return 'warning';
     }
-    const label = this.reportBadgeLabel(report).toLowerCase();
+    const label = `${report.reason ?? ''}`.toLowerCase();
     if (label.includes('harassment') || label.includes('abuse') || label.includes('safety')) {
       return 'danger';
     }
@@ -966,6 +981,8 @@ export class AdminReportsPopupComponent {
 
   protected sourceTypeLabel(report: AdminReportDto): string {
     switch (`${report.sourceType ?? ''}`.trim()) {
+      case 'community':
+        return this.i18n.translate('groups.title');
       case 'chat':
         return 'Chat';
       case 'asset':
@@ -992,6 +1009,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected sourceCardTitle(report: AdminReportDto): string {
+    if (report.sourceType === 'community') return this.reportSourceLabel(report);
     if (report.sourceType === 'chat' || report.chatId) {
       return report.chatTitle || 'Reported chat message';
     }

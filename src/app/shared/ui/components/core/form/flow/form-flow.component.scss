@@ -1,3 +1,4 @@
+@use '../../../../styles/contextual-colors' as colors;
 :host {
   display: block;
   min-width: 0;
@@ -271,6 +272,7 @@
 
 .form-flow--grouped .form-flow__track {
   display: grid;
+  grid-template-columns: var(--form-flow-group-columns, minmax(0, 1fr));
   gap: 12px;
   height: auto;
   min-height: 0;
@@ -314,6 +316,10 @@
 
 .form-flow--grouped .form-flow__slide--plain > .form-flow__slide-inner {
   padding: 0;
+}
+
+.form-flow__group-header-menu {
+  margin-inline-start: auto;
 }
 
 .form-flow__group-header {
@@ -525,8 +531,8 @@
     }
 
     &:disabled {
-      background: #edf2f8;
-      color: #7b8da5;
+      background: var(--form-flow-disabled-background, #edf2f8);
+      color: var(--form-flow-disabled-color, #7b8da5);
     }
   }
 
@@ -659,7 +665,7 @@
   display: flex;
   grid-column: 1;
   grid-row: 1 / span var(--form-flow-control-row-span, 3);
-  align-self: start;
+  align-self: var(--form-flow-grouped-media-image-align, start);
   min-height: 0;
 }
 
@@ -670,6 +676,7 @@
 .form-flow--grouped .form-flow__slide--media .form-flow__control--image app-image-carousel {
   --image-single-slot-height: var(--form-flow-media-image-height);
   flex: 0 0 auto;
+  width: var(--form-flow-grouped-media-image-width, auto);
   height: var(--form-flow-media-image-height);
   min-height: 0;
   max-width: 100%;
@@ -1328,3 +1335,56 @@
     gap: 10px;
   }
 }
+
+.form-flow--grouped .form-flow__slide[data-palette="blue"] {
+  border-color: var(--form-flow-primary-panel-border); background: var(--form-flow-primary-panel-bg);
+}
+.form-flow--grouped .form-flow__slide[data-palette="green"] {
+  border-color: rgba(49, 124, 82, .28); background: linear-gradient(180deg, #eef8f3, #e4f2ea);
+}
+.form-flow--grouped .form-flow__slide[data-palette="violet"] {
+  border-color: rgba(98, 84, 163, .28); background: linear-gradient(180deg, #f4f1ff, #ebe6fb);
+}
+.form-flow--grouped .form-flow__slide[data-palette="orange"] {
+  border-color: rgba(160, 90, 51, .28); background: linear-gradient(180deg, #fff4ee, #f7e9df);
+}
+.form-flow__table {
+  width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px;
+  border: 1px solid #c8d7ec;
+  border-radius: 10px;
+  background: #f5f9ff;
+  overflow: hidden;
+  th, td { padding: .5rem .65rem; border-bottom: 1px solid rgba(21, 38, 62, .12); }
+  th { text-align: start; font-weight: 700; }
+  td { text-align: end; }
+  mat-icon { width: 16px; height: 16px; font-size: 16px; vertical-align: middle; margin-inline-end: .4rem; }
+  tr:last-child th, tr:last-child td { border-bottom: 0; }
+}
+
+.form-flow__control--align-end { display: flex; justify-content: flex-end; }
+
+@each $palette, $background in (
+  ('blue', colors.$blue-background),
+  ('teal', colors.$teal-background),
+  ('green', colors.$green-background),
+  ('violet', colors.$violet-background),
+  ('purple', colors.$purple-background),
+  ('rose', colors.$rose-background),
+  ('pink', colors.$pink-background),
+  ('orange', colors.$orange-background)
+) {
+  .form-flow__table tr[data-palette='#{$palette}'] {
+    background: linear-gradient(rgba(255, 255, 255, .4), rgba(255, 255, 255, .4)), $background;
+  }
+}
+
+.form-flow__table-badge {
+  min-height: 26px; border-radius: 999px; border: 1px solid;
+  display: inline-flex; align-items: center; gap: 0.22rem;
+  font-size: 0.72rem; font-weight: 800; padding: 0 0.56rem; white-space: nowrap;
+}
+.form-flow__table-badge--danger {
+  background: colors.$danger-background; border-color: colors.$danger-border; color: colors.$danger-foreground;
+}
+
+.form-flow__controls[hidden] { display: none; }

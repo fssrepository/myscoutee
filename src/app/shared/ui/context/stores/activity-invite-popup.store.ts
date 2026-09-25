@@ -15,6 +15,8 @@ export interface ActivityInvitePopupState {
   parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
   title?: string;
   initialCandidates?: readonly ActivityMemberDTO[];
+  selectionLimit?: number;
+  parentZIndex?: number;
   initialSelection?: readonly ActivityMemberDTO[];
   onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => ActivityMembersInviteResultDTO | void | Promise<ActivityMembersInviteResultDTO | void>;
   closeOwnerPopupOnClose?: boolean;
@@ -24,6 +26,16 @@ export interface ActivityInvitePopupState {
   providedIn: 'root'
 })
 export class ActivityInvitePopupStore {
+  readonly externalInvite = signal<{ ownerType: 'event' | 'community' | 'asset'; entityId: string; title: string; userId: string; assetType?: import('../../../core/common/constants').AssetType } | null>(null);
+  readonly externalInviteComponent = signal<Type<unknown> | null>(null);
+  async openExternalInvitePopup(ownerType: 'event' | 'community' | 'asset', entityId: string, title: string, userId: string, assetType?: import('../../../core/common/constants').AssetType): Promise<void> {
+    this.externalInvite.set({ ownerType, entityId, title, userId, assetType });
+    if (!this.externalInviteComponent()) {
+      const module = await import('../../components/external-invite-popup/external-invite-popup.component');
+      this.externalInviteComponent.set(module.ExternalInvitePopupComponent);
+    }
+  }
+
   private readonly activityInvitePopupRef = signal<ActivityInvitePopupState | null>(null);
   private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
 
@@ -36,6 +48,8 @@ export class ActivityInvitePopupStore {
     parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
     title?: string;
     initialCandidates?: readonly ActivityMemberDTO[];
+    selectionLimit?: number;
+    parentZIndex?: number;
     initialSelection?: readonly ActivityMemberDTO[];
     onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => ActivityMembersInviteResultDTO | void | Promise<ActivityMembersInviteResultDTO | void>;
     closeOwnerPopupOnClose?: boolean;
@@ -47,7 +61,7 @@ export class ActivityInvitePopupStore {
     this.activityInvitePopupRef.set({
       updatedMs: Date.now(),
       ownerId: normalizedOwnerId,
-      ownerType: payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
+      ownerType: payload.ownerType === 'community' || payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
         ? payload.ownerType
         : 'event',
       parentOwner: payload.parentOwner?.ownerId?.trim()
@@ -57,6 +71,8 @@ export class ActivityInvitePopupStore {
           }
         : null,
       title: payload.title?.trim() || undefined,
+      selectionLimit: payload.selectionLimit,
+      parentZIndex: payload.parentZIndex,
       initialCandidates: Array.isArray(payload.initialCandidates)
         ? payload.initialCandidates.map(candidate => ({ ...candidate }))
         : undefined,

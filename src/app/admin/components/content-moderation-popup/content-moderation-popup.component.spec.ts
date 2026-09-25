@@ -8,7 +8,8 @@ describe('Content moderation dual filters', () => {
   function popup() {
     const component = Object.create(ContentModerationPopupComponent.prototype);
     Object.assign(component, {
-      category: 'all', status: 'under-review',
+      category: 'all', status: 'under-review', groupContext: () => null, destroyRef: { destroyed: false },
+      snapshot: () => component.state.snapshot(), i18n: { translate: (key: string) => key },
       workspace: { dashboard: () => ({ activeAdmin: { id: 'admin' } }) },
       state: { apply: vi.fn(), snapshot: () => ({ settings: { enabled: true }, counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
       error: { set: vi.fn() }, dialogs: { open: vi.fn() }, service: { decide: vi.fn(), page: vi.fn() },
@@ -16,11 +17,11 @@ describe('Content moderation dual filters', () => {
     });
     return component;
   }
-  it('puts state on the left and All/Event/Asset/Feed on the right with intersecting stored counts', () => {
+  it('puts state on the left and All/Event/Asset/Feed/Group on the right with intersecting stored counts', () => {
     const component = popup();
     const [state, category] = component.model().toolbarControls;
     expect([state.id, state.align, category.id, category.align]).toEqual(['status', 'start', 'category', 'end']);
-    expect(category.items.map((item: { id: string }) => item.id)).toEqual(['category:all', 'category:event', 'category:asset', 'category:feed']);
+    expect(category.items.map((item: { id: string }) => item.id)).toEqual(['category:all', 'category:event', 'category:asset', 'category:feed', 'category:group']);
     expect(state.items[0].counter.value).toBe(5);
     component.category = 'feed';
     expect(component.model().toolbarControls[0].items[0].counter.value).toBe(2);
@@ -37,7 +38,7 @@ describe('Content moderation dual filters', () => {
     await confirm;
     expect(component.list.removeVisibleItems).toHaveBeenCalledOnce();
     expect(component.list.removeVisibleItems.mock.calls[0][0](original)).toBe(true);
-    expect(component.state.apply).toHaveBeenCalledWith({ revision: 2 });
+    expect(component.state.apply).toHaveBeenCalledWith({ revision: 2 }, undefined);
   });
   it('patches the canonical row when the current two filters still match and removes category mismatches', async () => {
     const component = popup();
@@ -72,7 +73,7 @@ describe('Content moderation dual filters', () => {
     component.service.page.mockResolvedValueOnce(page);
     await expect(component.load(query)).resolves.toEqual(page);
     expect(component.error.set).toHaveBeenLastCalledWith(false);
-    expect(component.state.apply).toHaveBeenCalledWith(page.snapshot);
+    expect(component.state.apply).toHaveBeenCalledWith(page.snapshot, undefined);
   });
   it('hides moderation actions and ignores stale menu events while moderation is off', () => {
     const component = popup();
@@ -102,4 +103,23 @@ describe('Content moderation dual filters', () => {
     expect(component.dialogs.open).toHaveBeenCalledOnce();
   });
 
+  it('retains Group in the app-admin dropdown but excludes it for group moderators', () => {
+    const component = popup();
+    component.groupContext = () => ({ groupId: 'A', name: 'Group A', actor: { id: 'moderator-A' } });
+    const category = component.model().toolbarControls[1];
+    expect(category.items.map((item: { id: string }) => item.id)).toEqual(['category:all', 'category:event', 'category:asset', 'category:feed']);
+  });
+  it('ignores a late page response after switching groups', async () => {
+    const component = popup();
+    let groupId = 'A';
+    component.groupContext = () => ({ groupId, name: groupId, actor: { id: `moderator-${groupId}` } });
+    let resolve!: (value: unknown) => void;
+    component.service.page.mockReturnValue(new Promise(done => resolve = done));
+    const request = component.load({ filters: { category: 'all', status: 'under-review' }, pageSize: 20 });
+    groupId = 'B';
+    resolve({ items: [original], total: 1, snapshot: { revision: 8 } });
+    await request;
+    expect(component.state.apply).not.toHaveBeenCalled();
+    expect(component.error.set).not.toHaveBeenCalled();
+  });
 });

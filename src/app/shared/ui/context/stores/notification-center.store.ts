@@ -51,6 +51,7 @@ export class NotificationCenterStore {
   readonly muted = this.mutedRef.asReadonly();
   readonly dragPosition = this.dragPositionRef.asReadonly();
   readonly bucket = this.bucketRef.asReadonly();
+  readonly workspace = signal('all');
   readonly attentionVisible = computed(() =>
     this.attentionRequestedRef()
     && this.unreadCountRef() > 0
@@ -334,6 +335,7 @@ export class NotificationCenterStore {
   }
 
   private resetState(): void {
+    this.workspace.set('all');
     this.generation += 1;
     this.pageContextRevision = 0;
     this.pageContextRequestSequence = 0;

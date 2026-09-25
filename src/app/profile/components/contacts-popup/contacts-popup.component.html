@@ -80,8 +80,15 @@
               <span>{{ contact.city || 'City not set yet' }}</span>
             </p>
 
-            @if (contact.methods.length > 0) {
+            @if (contact.userId || contact.methods.length > 0) {
               <div class="contact-method-chips">
+                @if (contact.userId) {
+                  <button type="button" class="contact-method-chip contact-method-chip-chat" [disabled]="openingContactChat()"
+                    (click)="openContactChat(contact, $event)" [attr.aria-label]="'chat.contacts.open' | i18n">
+                    <img src="assets/logo/heart.webp" alt="" width="20" height="20" />
+                    <span>MyScoutee</span>
+                  </button>
+                }
                 @for (method of visibleMethodChips(contact); track method.id) {
                   <button type="button" class="contact-method-chip" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
                     <mat-icon>{{ method.icon }}</mat-icon>

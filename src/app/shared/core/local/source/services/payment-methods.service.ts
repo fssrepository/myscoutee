@@ -6,6 +6,7 @@ import type { ListQuery } from '../../../contracts/list.interface';
 import type {
   PaymentHistoryItemDto,
   PaymentHistoryMutationDto,
+  CashReceiptRequestDto,
   PaymentHistoryPageDto,
   PaymentMethodDataService,
   PaymentMethodRegistrationDto,
@@ -41,6 +42,21 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       .map(item => ({ currency: item.currency,
         outgoing: item.direction === 'expense' ? item.amount : 0,
         incoming: item.direction === 'income' ? item.amount : 0 })));
+  }
+
+  async recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
+    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
+    const item = this.affiliateRepository.recordCashReceipt(userId, request);
+    this.notificationsRepository.append([{
+      id: `payment-cash-received:${item.id}`, recipientUserId: request.payerUserId, kind: 'payment-cash-received',
+      category: 'event', title: 'Cash receipt recorded', message: 'A member recorded receiving cash from you.',
+      createdAtIso: item.createdAtIso, readAtIso: null, senderUserId: userId,
+      sourceType: 'payment', sourceId: item.id, actionPath: '/game',
+      payload: { paymentId: item.id, notification_title_key: 'notification.kind.payment-cash-received.title',
+        notification_message_key: 'notification.kind.payment-cash-received.message' }
+    }]);
+    await this.affiliateRepository.flushToIndexedDb();
+    return this.localMutation(userId, item);
   }
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {

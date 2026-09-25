@@ -1,4 +1,4 @@
-@if (adminMenu.activePopup() === 'content-moderation') {
+@if (isOpen()) {
   <app-popup [model]="model()" [zIndex]="2470">
     @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
     <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="rowTemplate" (menuItemSelect)="decide($event)"></app-smart-list>
@@ -7,6 +7,11 @@
         (rowClick)="openItem(item)" (menuRequest)="openMenu($event)"></single-row>
     </ng-template>
   </app-popup>
+  @defer (when groups.editor()) {
+    @if (groups.editor(); as editor) {
+      <app-community-group-editor [group]="editor.group" [readOnly]="true" [zIndex]="2500"></app-community-group-editor>
+    }
+  }
 }
 @if (settingsDraft(); as draft) {
   <app-popup [model]="settingsModel()" [zIndex]="2480">

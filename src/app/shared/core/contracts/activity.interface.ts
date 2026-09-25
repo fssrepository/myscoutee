@@ -179,12 +179,16 @@ export interface IEventsService {
 }
 
 export interface IChatsService {
+  ensureContactChat(targetUserId: string): Promise<ChatContracts.ChatDTO>;
+  addContactChatMembers(chatId: string, userIds: readonly string[]): Promise<ChatContracts.ChatDTO>;
   queryChatById(chatId: string): Promise<ChatContracts.ChatDTO | null>;
   queryActivitiesChatPage(
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
+  queryChatSharedMessages(chat: ChatContracts.ChatDTO, kind: 'event' | 'asset'): Promise<ChatContracts.ChatMessageDto[]>;
+
   queryChatMessagesPage(
     chat: ChatContracts.ChatDTO,
     query: ListQuery
@@ -1437,6 +1441,7 @@ export interface ActivityMembersSyncResultDTO {
 }
 
 export interface ActivityMemberActionResultDTO {
+  group?: import('./community-group.interface').CommunityGroup | null;
   members: ActivityMemberDTO[];
   counterOverrides: UserContracts.UserMenuCountersDto | null;
 }
@@ -1449,6 +1454,7 @@ export interface ActivityMemberInviteRejectionDTO {
 }
 
 export interface ActivityMembersInviteResultDTO {
+  group?: import('./community-group.interface').CommunityGroup | null;
   members: ActivityMemberDTO[];
   invitedUserIds: string[];
   rejections: ActivityMemberInviteRejectionDTO[];
@@ -1549,7 +1555,7 @@ export interface UserGameFilterPreferencesDto {
   religions?: string[];
 }
 
-export function defaultUserGameFilterPreferences(): UserGameFilterPreferencesDto {
+export function defaultUserGameFilterPreferences(gender?: AppConstants.UserGender): UserGameFilterPreferencesDto {
   return {
     ageMin: 18,
     ageMax: 120,
@@ -1559,7 +1565,7 @@ export function defaultUserGameFilterPreferences(): UserGameFilterPreferencesDto
     values: [],
     physiques: [],
     languages: [],
-    genders: [],
+    genders: gender === 'man' ? ['woman'] : gender === 'woman' ? ['man'] : [],
     horoscopes: [],
     traitLabels: [],
     smoking: [],

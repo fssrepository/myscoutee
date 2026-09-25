@@ -1,3 +1,4 @@
+import type { CommunityGroupsMemorySchema } from '../source/entity/community-group.entity';
 import type { ContentModerationMemorySchema } from '../source/entity/content-moderation.entity';
 import type { PhotoFeedMemorySchema } from '../source/entity/photo-feed.entity';
 import type { MingleMemorySchema } from '../source/entity/mingle.entity';
@@ -18,7 +19,7 @@ import type { UserRatesMemorySchema } from '../source/entity/rate.entity';
 import type { ShareTokensMemorySchema } from '../source/entity/sharing.entity';
 import type { UsersMemorySchema } from '../source/entity/user.entity';
 
-export type AppMemorySchema = UsersMemorySchema
+export type AppMemorySchema = CommunityGroupsMemorySchema & UsersMemorySchema
   & UserRatesMemorySchema
   & AssetsMemorySchema
   & AssetRequestsMemorySchema

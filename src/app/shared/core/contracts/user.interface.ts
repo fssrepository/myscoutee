@@ -148,6 +148,8 @@ export interface UserChatCountersDto {
   group?: number;
   service?: number;
   appSupport?: number;
+  contacts?: number;
+  groupSupport?: number;
   supportCases?: UserSupportCaseCountersDto;
 }
 
@@ -167,6 +169,8 @@ export interface UserChatCounterDeltasDto {
   group?: number;
   service?: number;
   appSupport?: number;
+  contacts?: number;
+  groupSupport?: number;
 }
 
 export interface UserEventCountersDto {
@@ -363,6 +367,8 @@ export class ProfileExtDto {
 }
 
 export interface ProfileExtByIdQueryResponse {
+  workspace?: import('./community-group.interface').GroupWorkspace | null;
+  accountProfile?: UserDto | null;
   profileExt: ProfileExtDto | null;
   filterCount?: number;
   filterPreferences?: ActivityContracts.UserGameFilterPreferencesDto | null;
@@ -412,7 +418,7 @@ export interface UserService {
   queryAvailableDemoUsers(selectorRole?: UserSelectorRole): Promise<UserSelectorListItemDto[]>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
-  loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse>;
+  loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: ActivityContracts.UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;

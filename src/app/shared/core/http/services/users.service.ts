@@ -191,14 +191,15 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse> {
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     try {
       const response = await this.routeDelay.withRequestTimeout(
         HttpUsersService.USER_PROFILE_EXT_ROUTE,
         this.http
           .get<ProfileExtByIdQueryResponse | null>(`${this.apiBaseUrl}${HttpUsersService.USER_PROFILE_EXT_ROUTE}`, {
-            params: normalizedUserId ? { userId: normalizedUserId } : {}
+            params: { ...(normalizedUserId ? { userId: normalizedUserId } : {}),
+              ...(groupId !== undefined ? { groupId: groupId ?? '' } : {}) }
           })
           .toPromise(),
         'User profile request timeout.',
@@ -206,6 +207,7 @@ export class HttpUsersService implements UserService {
       );
       const profileExt = response?.profileExt ?? null;
       if (!profileExt) {
+        if (groupId !== undefined) throw new Error('User profile not found.');
         if (this.requiresServerProfileAuthority()) {
           return { profileExt: null };
         }
@@ -213,6 +215,8 @@ export class HttpUsersService implements UserService {
         return cached ?? { profileExt: null };
       }
       return {
+        workspace: response?.workspace ?? null,
+        accountProfile: response?.accountProfile ?? null,
         profileExt,
         filterCount: Number.isFinite(response?.filterCount)
           ? Math.max(0, Math.trunc(Number(response?.filterCount)))
@@ -221,6 +225,7 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
       };
     } catch (error) {
+      if (groupId !== undefined) throw error;
       const status = (error as { status?: number } | null)?.status;
       const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
       if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))
@@ -314,9 +319,9 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId: string; invitationAvailable: boolean }> {
-    const result = await this.http.post<{ eventId: string; invitationAvailable: boolean }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
-    if (!result?.eventId) throw new Error('Invitation could not be claimed.');
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }> {
+    const result = await this.http.post<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
+    if (!result?.eventId && !result?.groupId) throw new Error('Invitation could not be claimed.');
     return result;
   }
 
@@ -696,6 +701,8 @@ export class HttpUsersService implements UserService {
           group: 0,
           service: 0,
           appSupport: 0,
+          contacts: 0,
+          groupSupport: 0,
           supportCases: { pending: 0, warned: 0, picked: 0, solved: 0, blocked: 0, all: 0 }
         },
         event: {
@@ -757,6 +764,8 @@ export class HttpUsersService implements UserService {
         group: this.normalizeInitialCounterValue(overrides?.chat?.group, user.activities?.chat?.group),
         service: this.normalizeInitialCounterValue(overrides?.chat?.service, user.activities?.chat?.service),
         appSupport: this.normalizeInitialCounterValue(overrides?.chat?.appSupport, user.activities?.chat?.appSupport),
+        contacts: this.normalizeInitialCounterValue(overrides?.chat?.contacts, user.activities?.chat?.contacts),
+        groupSupport: this.normalizeInitialCounterValue(overrides?.chat?.groupSupport, user.activities?.chat?.groupSupport),
         supportCases: {
           pending: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.pending, user.activities?.chat?.supportCases?.pending),
           warned: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.warned, user.activities?.chat?.supportCases?.warned),

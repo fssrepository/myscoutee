@@ -123,7 +123,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     if (additions.length === 0) {
       return { members: currentMembers, invitedUserIds: [], rejections: [] };
     }
-    if (ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
+    if (ownerType === 'community' || ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
       return this.activityMembersService.inviteEventMembers(
         ownerRef,
         additions.map(candidate => candidate.userId)

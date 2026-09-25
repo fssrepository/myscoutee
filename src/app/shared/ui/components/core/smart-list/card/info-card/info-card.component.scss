@@ -483,6 +483,22 @@ button.asset-occupancy-badge:active::after,
   color: #b77b19;
 }
 
+@each $palette, $background, $border, $icon in (
+  ('blue', colors.$blue-background, colors.$blue-border, colors.$blue-icon),
+  ('teal', colors.$teal-background, colors.$teal-border, colors.$teal-icon),
+  ('green', colors.$green-background, colors.$green-border, colors.$green-icon),
+  ('violet', colors.$violet-background, colors.$violet-border, colors.$violet-icon),
+  ('rose', colors.$rose-background, colors.$rose-border, colors.$rose-icon),
+  ('orange', colors.$orange-background, colors.$orange-border, colors.$orange-icon)
+) {
+  .ui-info-card__leading[data-palette='#{$palette}'] {
+    background: $background;
+    border-color: $border;
+
+    .mat-icon { color: $icon; }
+  }
+}
+
 .ui-info-card__meta {
   min-width: 0;
   display: grid;
@@ -592,6 +608,11 @@ button.ui-info-card__overlay-action {
   bottom: 0.38rem;
 }
 
+.ui-info-card__overlay-action--bottom-start {
+  left: 0.38rem;
+  bottom: 0.38rem;
+}
+
 .ui-info-card__overlay-action--avatar {
   width: 26px;
   min-width: 26px;
@@ -684,9 +705,16 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__overlay-action--toggle {
+  box-sizing: border-box;
+  flex: 0 0 32px;
   min-width: 32px;
+  max-width: 32px;
   width: 32px;
   height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  padding: 0;
+  aspect-ratio: 1;
   border-radius: 999px;
   background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);
   color: #2c5d9e;
@@ -1110,6 +1138,8 @@ button.ui-info-card__overlay-action {
 .ui-info-card__actions {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
   align-items: center;
 }
 
@@ -1540,4 +1570,19 @@ button.asset-occupancy-badge:focus-visible {
   background: colors.$danger-background;
   border-color: colors.$danger-border;
   color: colors.$danger-foreground;
+}
+
+.ui-info-card__selection {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #b6cbea;
+  cursor: pointer;
+}
+.ui-info-card__selection:disabled { cursor: default; opacity: 0.65; }
+.ui-info-card__selection .mat-icon { width: 18px; height: 18px; font-size: 18px; line-height: 18px; }
+
+.ui-info-card__menu-action--share {
+  background: linear-gradient(180deg, #eefcfd 0%, #ddf2f5 100%);
+  border-color: #abd9df;
+  color: #216f7a;
 }

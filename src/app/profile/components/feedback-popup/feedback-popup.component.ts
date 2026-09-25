@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 
 import {
   Component,
@@ -41,6 +42,7 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
   private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly i18n = inject(I18nService);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly submitLoadState = this.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
@@ -222,7 +224,7 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
   }
 
   protected async submitFeedback(): Promise<void> {
-    const activeUserId = this.userProfileStore.activeUserId().trim();
+    const activeUserId = this.workspace.accountId(this.userProfileStore.activeUserId());
     const subject = this.feedbackForm.subject.trim();
     const details = this.feedbackForm.details.trim();
     if (!activeUserId || !subject || details.length < this.feedbackDetailsMinLength || this.isSubmitting()) {

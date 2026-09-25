@@ -175,7 +175,7 @@ export class AssetMemberPickerPopupComponent {
   }
 
   protected invitePopupZIndex(): number {
-    return 12480;
+    return Math.max(12480, (this.activityInviteStore.activityInvitePopup()?.parentZIndex ?? 0) + 100);
   }
 
   private invitePopupHeaderControls(): PopupControl<AssetMemberPickerMenuContext>[] {
@@ -232,7 +232,7 @@ export class AssetMemberPickerPopupComponent {
       this.localCandidates = Array.isArray(context.initialCandidates)
         ? context.initialCandidates.map(candidate => ({ ...candidate }))
         : [];
-      this.isLocalCandidateSource = this.localCandidates.length > 0;
+      this.isLocalCandidateSource = Array.isArray(context.initialCandidates);
       this.inviteSelectionHydrated = false;
       this.inviteApplyHandler = context.onApply ?? null;
       this.closeOwnerPopupOnClose = context.closeOwnerPopupOnClose === true;
@@ -439,7 +439,8 @@ export class AssetMemberPickerPopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    this.selectedUserIds = [...this.selectedUserIds, normalizedUserId];
+    const limit = this.activityInviteStore.activityInvitePopup()?.selectionLimit;
+    this.selectedUserIds = limit === 1 ? [normalizedUserId] : [...this.selectedUserIds, normalizedUserId];
     this.cdr.markForCheck();
   }
 

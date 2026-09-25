@@ -32,6 +32,7 @@ export interface NotificationDto {
 }
 
 export interface NotificationListFilters {
+  workspace?: string;
   bucket: NotificationBucket;
 }
 
@@ -66,6 +67,7 @@ export interface NotificationSyncBoundaryDto {
 }
 
 export interface NotificationSyncRequestDto {
+  workspace?: string;
   bucket: NotificationBucket;
   limit: number;
   knownItems: readonly NotificationSyncKnownItemDto[];

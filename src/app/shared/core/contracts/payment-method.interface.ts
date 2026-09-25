@@ -40,7 +40,17 @@ export interface PaymentMethodRegistrationDto {
   paymentMethod: SavedPaymentMethodDto | null;
 }
 
+export interface CashReceiptRequestDto {
+  requestId: string;
+  payerUserId: string;
+  amount: number;
+  currency: string;
+  note: string;
+}
+
 export interface PaymentHistoryItemDto {
+  note?: string | null;
+  counterpartyName?: string | null;
   id: string;
   sourceId: string;
   direction: 'expense' | 'income';
@@ -99,6 +109,7 @@ export interface PaymentHistoryMutationDto {
 }
 
 export interface PaymentMethodDataService {
+  recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto>;
   queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto>;
   beginRegistration(
     userId: string,

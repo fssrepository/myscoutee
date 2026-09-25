@@ -42,7 +42,7 @@ interface AppVersionPayload {
 
 type HowStepSlide = WarpImageCardData;
 
-type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green' | 'pink';
+type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green' | 'pink' | 'teal';
 
 interface PartnerRoleOverview {
   readonly id: string;
@@ -206,6 +206,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       descriptionKey: 'landing.partners.role.strategic.description',
       description: 'Contribute safety, privacy or graph expertise, product hardening, distribution or strategic funding.',
       tone: 'green'
+    },
+    {
+      id: 'workplace-community',
+      icon: 'corporate_fare',
+      labelKey: 'landing.partners.role.workplace.label',
+      titleKey: 'landing.partners.role.workplace.title',
+      descriptionKey: 'landing.partners.role.workplace.description',
+      tone: 'teal'
     }
   ];
 
@@ -585,6 +593,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       height: 'auto',
       mobilePresentation: 'compact',
       headerLayout: 'document',
+      backdropTone: 'dim',
       onClose: () => this.closeCountriesPopup()
     };
   }
@@ -625,6 +634,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       headerLayout: 'document',
       headerTone: 'accent',
       headerPalette: 'amber',
+      backdropTone: 'dim',
       onClose: () => this.closePreviewGuide()
     };
   }

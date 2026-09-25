@@ -22,7 +22,7 @@ export class LocalPhotoFeedRepository {
     return await this.db.readIndexedDbTableEntry<string[]>(`${APP_INDEXED_DB_KEYS.photoFeedViewsPrefix}:${userId}`) ?? [];
   }
   async markSeen(userId: string, ids: string[]): Promise<string[]> {
-    const allowed = ids.filter(id => { const row = this.find(id); return row && row.creatorUserId !== userId && !row.deleted && row.moderationStatus === 'accepted'; });
+    const allowed = ids.filter(id => { const row = this.find(id); return row && (this.user(row.creatorUserId)?.workspaceGroupId ?? null) === (this.user(userId)?.workspaceGroupId ?? null) && row.creatorUserId !== userId && !row.deleted && row.moderationStatus === 'accepted'; });
     await this.db.updateIndexedDbTableEntry<string[]>(`${APP_INDEXED_DB_KEYS.photoFeedViewsPrefix}:${userId}`,
       previous => [...new Set([...(previous ?? []), ...allowed])]);
     return [...new Set(ids)];
@@ -56,7 +56,7 @@ export class LocalPhotoFeedRepository {
     const status = query.filters?.status ?? 'public';
     if (status !== 'public' && status !== 'seen' && !MODERATION_STATUSES.includes(status)) throw new Error('Invalid feed status.');
     const discovery = status === 'public' || status === 'seen';
-    const items = table.ids.map(id => table.byId[id]).filter(record => !record.deleted && record.moderationStatus === (discovery ? 'accepted' : status)
+    const items = table.ids.map(id => table.byId[id]).filter(record => (this.user(record.creatorUserId)?.workspaceGroupId ?? null) === (this.user(viewer)?.workspaceGroupId ?? null) && !record.deleted && record.moderationStatus === (discovery ? 'accepted' : status)
       && (discovery ? record.creatorUserId !== viewer && seen.has(record.id) === (status === 'seen') : record.creatorUserId === viewer))
       .map(record => LocalPhotoFeedMapper.toDto(record, origin))
       .sort((a, b) => Math.floor(a.distanceKm / 5) - Math.floor(b.distanceKm / 5)

@@ -295,6 +295,8 @@ export class SingleRowComponent {
       case 'accent':
         return 'brown';
       case 'warning':
+      case 'share':
+        return 'teal';
       case 'review':
         return 'orange';
       case 'destructive':

@@ -730,7 +730,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         normalizedSourceId,
         eventBeforeJoin?.creatorUserId,
         eventBeforeJoin?.startAtIso,
-        eventBeforeJoin?.pricing?.cancellationPolicy
+        eventBeforeJoin?.pricing?.cancellationPolicy,
+        _provider ?? undefined
       );
     }
     if (resolvingInvitation && result) {

@@ -6,6 +6,7 @@ import { environment } from '../../../../../environments/environment';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import type { ListQuery } from '../../contracts/list.interface';
 import type {
+  CashReceiptRequestDto,
   PaymentHistoryPageDto,
   PaymentHistoryMutationDto,
   PaymentMethodDataService,
@@ -24,6 +25,13 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
   async selectSummaryCurrency(_userId: string, currency: string): Promise<void> {
     await this.routeDelay.waitForRouteDelay(HttpPaymentMethodsService.ROUTE);
     await this.withTimeout(this.http.post(`${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/summary-currency`, { currency }));
+  }
+
+  recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
+    return this.withTimeout(this.http.post<PaymentHistoryMutationDto>(
+      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history/cash`, request,
+      { params: new HttpParams().set('userId', userId) }
+    ));
   }
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {

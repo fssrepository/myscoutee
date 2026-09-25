@@ -29,6 +29,23 @@ describe('Local affiliate summary', () => {
     expect(LocalUsersMapper.cloneRecord(owner).affiliateRegistrations).toEqual(owner.affiliateRegistrations);
     injector.destroy();
   });
+  it('persists reusable external links with the inviter and does not expose their tokens in profile DTOs', () => {
+    let state: any = {[USERS_TABLE_NAME]: {ids: ['owner'], byId: {owner: {id: 'owner', languages: [], images: []}}}};
+    const db = {read: () => state, write: (change: any) => {state = change(state);}};
+    const injector = createEnvironmentInjector([{provide: LocalMemoryDb, useValue: db}], null as any);
+    const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    const first = repo.externalInvite('owner', 'community', 'group');
+    expect(repo.externalInvite('owner', 'community', 'group')).toEqual(first);
+    const parsed = new URL(first.url, 'https://example.test');
+    const token = parsed.searchParams.get('partnerInvite')!;
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(parsed.searchParams.get('affiliate')).toBe(state[USERS_TABLE_NAME].byId.owner.affiliateCode);
+    const restored = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    expect(restored.findExternalInvite(token)).toMatchObject({ownerUserId: 'owner', ownerType: 'community', entityId: 'group'});
+    expect(LocalUsersMapper.toDto(state[USERS_TABLE_NAME].byId.owner)).not.toHaveProperty('externalInvites');
+    injector.destroy();
+  });
+
   it('keeps admin keys separate from affiliate keys and does not create an admin referral', () => {
     let state: any = { [USERS_TABLE_NAME]: { ids: ['admin', 'member'], byId: {
       admin: { id: 'admin', admin: true }, member: { id: 'member', admin: false }
@@ -50,6 +67,28 @@ describe('Local affiliate summary', () => {
     injector.destroy();
   });
 
+  it('persists cash receipts for both members once without affiliate revenue', () => {
+    let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member', 'recipient'], byId: {
+      owner: { id: 'owner' }, member: { id: 'member', name: 'Payer', affiliateReferrerUserId: 'owner' },
+      recipient: { id: 'recipient', name: 'Recipient' }
+    } } };
+    const db = { read: () => state, write: (change: any) => { state = change(state); } };
+    const injector = createEnvironmentInjector([{ provide: LocalMemoryDb, useValue: db }], null as any);
+    const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    const request = { requestId: 'b5e0289c-1b09-47ca-8ba1-20cf5e2dcb02', payerUserId: 'member', amount: 20, currency: 'EUR', note: 'Lunch' };
+    repo.recordCashReceipt('recipient', request);
+    repo.recordCashReceipt('recipient', request);
+    expect(repo.paymentHistory('recipient')).toHaveLength(1);
+    expect(repo.paymentHistory('recipient')[0]).toMatchObject({ provider: 'cash', direction: 'income', amount: 20, note: 'Lunch', counterpartyName: 'Payer' });
+    expect(repo.paymentHistory('member')[0]).toMatchObject({ direction: 'expense', canRequestRefund: false, counterpartyName: 'Recipient' });
+    expect(repo.settings('owner', '/api').affiliate.revenue?.purchases ?? 0).toBe(0);
+    expect(() => repo.recordCashReceipt('recipient', { ...request, amount: 21 })).toThrow();
+    expect(() => repo.recordCashReceipt('recipient', { ...request, payerUserId: 'owner' })).toThrow();
+    const restored = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    expect(restored.paymentHistory('recipient')[0]?.note).toBe('Lunch');
+    injector.destroy();
+  });
+
   it('writes referral revenue once per payment, keeps currencies separate and subtracts completed refunds', () => {
     let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member'], byId: {
       owner: { id: 'owner' }, member: { id: 'member', affiliateReferrerUserId: 'owner' }
@@ -64,8 +103,8 @@ describe('Local affiliate summary', () => {
     let revenue = repo.settings('owner', '/api').affiliate.revenue!;
     expect(revenue.purchases).toBe(2);
     expect(revenue.eventBookings).toBe(1);
-    expect(revenue.currencies.EUR).toEqual({ gross: 100, refunded: 25, net: 75 });
-    expect(revenue.currencies.HUF.net).toBe(5000);
+    expect(revenue.currencies['EUR']).toEqual({ gross: 100, refunded: 25, net: 75 });
+    expect(revenue.currencies['HUF'].net).toBe(5000);
     expect(LocalUsersMapper.toDto(state[USERS_TABLE_NAME].byId.owner)).not.toHaveProperty('affiliateRevenue');
     expect(LocalUsersMapper.toDto(state[USERS_TABLE_NAME].byId.member)).not.toHaveProperty('affiliatePayments');
     expect(LocalUsersMapper.cloneRecord(state[USERS_TABLE_NAME].byId.owner).affiliateRevenue).toEqual(revenue);
@@ -74,7 +113,7 @@ describe('Local affiliate summary', () => {
     expect(repo.settings('owner', '/api').affiliate.revenue).toEqual(revenue);
     repo.refundPayment('one'); repo.refundPayment('one');
     revenue = repo.settings('owner', '/api').affiliate.revenue!;
-    expect(revenue.currencies.EUR).toEqual({ gross: 100, refunded: 100, net: 0 });
+    expect(revenue.currencies['EUR']).toEqual({ gross: 100, refunded: 100, net: 0 });
     expect(revenue.purchases).toBe(2);
     injector.destroy();
   });
@@ -94,14 +133,14 @@ describe('Local affiliate summary', () => {
     expect(repo.paymentHistory('member')[0].refundPreview?.refundableAmount).toBe(25);
     expect(repo.requestPolicyRefund('owner', 'paid')).toBe(false);
     expect(repo.requestPolicyRefund('member', 'paid')).toBe(true);
-    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies.EUR.refunded).toBe(0);
+    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies['EUR'].refunded).toBe(0);
     const request = repo.paymentHistory('owner').find(row => row.canApproveRefund)!;
     expect(request.amount).toBe(25);
     state = JSON.parse(JSON.stringify(state));
     repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
     repo.approveChangedTermsRefund('owner', request.id);
     repo.approveChangedTermsRefund('owner', request.id);
-    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies.EUR).toEqual({ gross: 100, refunded: 25, net: 75 });
+    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies['EUR']).toEqual({ gross: 100, refunded: 25, net: 75 });
     expect(repo.paymentHistory('member')[0].canRequestRefund).toBe(false);
     const first = structuredClone(state[USERS_TABLE_NAME].byId.member.affiliatePayments.paid.refundOperations[0]);
     repo.recordPayment('member', 'paid', 'EUR', 100);
@@ -134,7 +173,7 @@ describe('Local affiliate summary', () => {
     repo.cancelEventPayments('event', 'member');
     repo.cancelEventPayments('event', 'member');
     expect(state[USERS_TABLE_NAME].byId.owner.activities.paymentRefundsPending).toBe(1);
-    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies.EUR).toEqual({ gross: 100, refunded: 25, net: 75 });
+    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies['EUR']).toEqual({ gross: 100, refunded: 25, net: 75 });
     const request = repo.paymentHistory('owner').find(item => item.refundRequestStatus === 'pending')!;
     expect(request.amount).toBe(75);
     expect(request.canApproveRefund).toBe(true);
@@ -145,7 +184,7 @@ describe('Local affiliate summary', () => {
     repo.approveChangedTermsRefund('owner', request.id);
     repo.approveChangedTermsRefund('owner', request.id);
     expect(state[USERS_TABLE_NAME].byId.owner.activities.paymentRefundsPending).toBe(0);
-    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies.EUR).toEqual({ gross: 100, refunded: 100, net: 0 });
+    expect(repo.settings('owner', '/api').affiliate.revenue!.currencies['EUR']).toEqual({ gross: 100, refunded: 100, net: 0 });
     const payment = state[USERS_TABLE_NAME].byId.member.affiliatePayments.paid;
     expect(payment.refundOperations.map((row: any) => row.amount)).toEqual([25, 75]);
     expect(payment.refundOperations[0]).toEqual(firstRefund);
@@ -185,7 +224,7 @@ describe('Local affiliate summary', () => {
     const summary = repo.settings('owner', '/api').affiliate.revenue!;
     expect(summary.purchases).toBe(4);
     expect(summary.eventBookings).toBe(3);
-    expect(summary.currencies.EUR.net).toBe(singleMember ? 15 : 5);
+    expect(summary.currencies['EUR'].net).toBe(singleMember ? 15 : 5);
     injector.destroy();
   });
 

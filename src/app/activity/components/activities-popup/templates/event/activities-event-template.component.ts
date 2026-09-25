@@ -165,7 +165,6 @@ export class ActivitiesEventsController {
   private get memberMenuStore() { return this.host.memberMenuStore as MemberMenuStore; }
   private get eventSubeventsStore() { return this.host.eventSubeventsStore as EventSubeventsPopupStore; }
   private get profileStore() { return this.host.profileStore; }
-  private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
   private set activeHostingIds(value: ReadonlySet<string>) { this.host.activeHostingIds = value; }
   private get selectedActivityMembers() { return this.host.selectedActivityMembers as ActivityContracts.ActivityMemberDTO[]; }
@@ -769,25 +768,7 @@ export class ActivitiesEventsController {
     if (!entityId) {
       return;
     }
-    void this.shareTokensService.createToken({
-      kind: 'event',
-      entityId,
-      ownerUserId: this.activeUser.id.trim()
-    }).then((token: string) => {
-      if (!token) {
-        return;
-      }
-      this.dialogStore.open({
-        title: 'Share event',
-        message: token,
-        confirmLabel: 'Copy link',
-        cancelLabel: 'Cancel',
-        confirmTone: 'accent',
-        onConfirm: async () => {
-          await navigator.clipboard?.writeText(token);
-        }
-      });
-    });
+    void this.host.externalInvites.openExternalInvitePopup('event', entityId, row.title, this.activeUser.id.trim());
   }
 
   private resolveActivityShareEntityId(row: InfoCardData, card: InfoCardData | null = null): string {
@@ -1228,6 +1209,8 @@ export class ActivitiesEventsController {
       case 'accent':
         return 'brown';
       case 'warning':
+      case 'share':
+        return 'teal';
       case 'review':
         return 'orange';
       case 'destructive':

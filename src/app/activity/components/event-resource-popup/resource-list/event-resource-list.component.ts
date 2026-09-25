@@ -374,6 +374,8 @@ export class EventResourceListComponent implements DoCheck {
     switch (tone) {
       case 'accent':
         return 'green';
+      case 'share':
+        return 'teal';
       case 'review':
         return 'violet';
       case 'warning':
