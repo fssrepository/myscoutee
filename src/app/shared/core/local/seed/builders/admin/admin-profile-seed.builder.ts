@@ -43,6 +43,7 @@ export class AdminProfileSeedBuilder {
           group: 0,
           service: 0,
           appSupport: 1,
+          contacts: 0,
           groupSupport: 1
         },
         adminJobs: 0,

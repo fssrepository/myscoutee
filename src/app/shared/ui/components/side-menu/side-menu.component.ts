@@ -411,6 +411,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly isCoveredByAssetPopup = computed(() =>
     this.assetPopupStore.visible()
     || this.activityInviteStore.activityInvitePopup() !== null
+    || this.activityInviteStore.externalInvite() !== null
   );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
@@ -590,6 +591,7 @@ export class SideMenuComponent implements OnDestroy {
         group: activityOverrides.chat?.group ?? activeUser.activities?.chat?.group ?? 0,
         service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
         appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0,
+        contacts: activityOverrides.chat?.contacts ?? activeUser.activities?.chat?.contacts ?? 0,
         groupSupport: activityOverrides.chat?.groupSupport ?? activeUser.activities?.chat?.groupSupport ?? 0,
         supportCases: cloneSupportCaseCounters(
           activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases

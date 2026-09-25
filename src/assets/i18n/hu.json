@@ -3838,5 +3838,8 @@
   "invite.external.description": "Másold ki a linket: a meghívott ezen keresztül csatlakozhat a MyScoutee-hoz és megnyithatja ezt a tartalmat.",
   "invite.external.url": "Külső meghívólink",
   "invite.external.failed": "A link nem érhető el. Próbáld újra.",
-  "invite.external.copy.failed": "A másolás nem sikerült. Jelöld ki és másold ki a fenti linket."
+  "invite.external.copy.failed": "A másolás nem sikerült. Jelöld ki és másold ki a fenti linket.",
+  "chat.contacts": "Kapcsolatok",
+  "chat.contacts.open": "MyScoutee-csevegés",
+  "chat.contacts.error": "A kapcsolati chat nem nyitható meg vagy frissíthető. Próbáld újra."
 }

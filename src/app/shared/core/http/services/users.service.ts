@@ -701,6 +701,7 @@ export class HttpUsersService implements UserService {
           group: 0,
           service: 0,
           appSupport: 0,
+          contacts: 0,
           groupSupport: 0,
           supportCases: { pending: 0, warned: 0, picked: 0, solved: 0, blocked: 0, all: 0 }
         },
@@ -763,6 +764,7 @@ export class HttpUsersService implements UserService {
         group: this.normalizeInitialCounterValue(overrides?.chat?.group, user.activities?.chat?.group),
         service: this.normalizeInitialCounterValue(overrides?.chat?.service, user.activities?.chat?.service),
         appSupport: this.normalizeInitialCounterValue(overrides?.chat?.appSupport, user.activities?.chat?.appSupport),
+        contacts: this.normalizeInitialCounterValue(overrides?.chat?.contacts, user.activities?.chat?.contacts),
         groupSupport: this.normalizeInitialCounterValue(overrides?.chat?.groupSupport, user.activities?.chat?.groupSupport),
         supportCases: {
           pending: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.pending, user.activities?.chat?.supportCases?.pending),

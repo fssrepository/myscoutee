@@ -1,3 +1,5 @@
+import { ContactsService } from '../../../shared/core/base/services/contacts.service';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat-share.store';
 import {
   ChangeDetectionStrategy,
@@ -470,6 +472,10 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected readonly trackByChatReader = (_index: number, reader: ContractTypes.ChatReadAvatar): string => reader.id;
 
+  private readonly contactsService = inject(ContactsService);
+  private readonly contactInviteStore = inject(ActivityInvitePopupStore);
+  private contactInviteLoading = false;
+  private destroyed = false;
   private readonly chatShare = inject(ChatShareStore);
 
   constructor() {
@@ -571,6 +577,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.chatShare.cancelForChat(this.session()?.item.id ?? '');
     this.chatHeaderPollScheduler.destroy();
     this.clearChatComposeResizeObserver();
     this.clearChatThreadScrollDismissListener();
@@ -584,6 +592,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected close(): void {
+    this.chatShare.cancelForChat(this.session()?.item.id ?? '');
     this.chatHeaderPollScheduler.stop({ abort: true });
     this.headerPollSessionKey = null;
     this.chatThreadSmartList?.closeMenu();
@@ -897,8 +906,12 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!result.changed) {
       return;
     }
+    const refreshedContact = current.item.channelType === 'contact'
+      ? await this.chatsService.queryChatById(current.item.id) : null;
+    if (this.destroyed || this.session()?.openedAtIso !== current.openedAtIso || signal?.aborted) return;
     const synchronizedChat: ChatDTO = {
       ...current.item,
+      ...(refreshedContact ?? {}),
       ownerStatus: result.ownerStatus ?? current.item.ownerStatus ?? null,
       unread: result.unread,
       lastMessage: result.lastMessage,
@@ -1056,8 +1069,45 @@ export class EventChatPopupComponent implements OnDestroy {
       pendingMembers: 0,
       capacityTotal: memberCount,
       members: members.length > 0 ? members : undefined,
+      onInvite: session?.item.channelType === 'contact' ? () => { void this.openContactChatInvite(); } : undefined,
       lookup: lookup ? { ...lookup } : undefined
     });
+  }
+
+  private async openContactChatInvite(): Promise<void> {
+    const session = this.session();
+    if (!session || session.item.channelType !== 'contact' || this.contactInviteLoading) return;
+    const actorId = this.activeUserId();
+    const isCurrent = () => !this.destroyed && this.activeUserId() === actorId && this.session()?.openedAtIso === session.openedAtIso;
+    this.contactInviteLoading = true;
+    try {
+      const contacts = await this.contactsService.loadContacts(actorId);
+      if (!isCurrent()) return;
+      const now = new Date().toISOString();
+      const candidates: ContractTypes.ActivityMemberDTO[] = contacts
+        .filter(contact => contact.userId && contact.userId !== actorId && !this.session()!.item.memberIds.includes(contact.userId))
+        .map(contact => ({ id: contact.id, userId: contact.userId, name: contact.name, initials: contact.initials,
+          gender: contact.gender, city: contact.city, avatarUrl: contact.avatarUrl, role: 'Member', status: 'pending',
+          statusText: '', requestKind: 'invite', pendingSource: null, invitedByActiveUser: true,
+          metAtIso: now, actionAtIso: now, metWhere: '' }));
+      this.contactInviteStore.openActivityInvitePopup({
+        ownerId: session.item.id, title: session.item.title, parentZIndex: this.currentChatPopupZIndex() + 100, initialCandidates: candidates, initialSelection: [],
+        closeOwnerPopupOnClose: false,
+        onApply: async selected => {
+          if (!isCurrent()) throw new Error('Chat unavailable');
+          const chat = await this.chatsService.addContactChatMembers(session.item.id, selected.map(member => member.userId));
+          if (!isCurrent()) return;
+          this.patchCurrentEventChatHeader(header => ({ ...header, ...eventChatHeaderStateFromChat(chat), parentZIndex: header.parentZIndex }));
+          this.syncSelectedChatHeader(chat);
+          const control = this.chatHeaderMembersControl();
+          if (control) this.openChatHeaderControl(control);
+          this.cdr.markForCheck();
+        }
+      });
+      await this.contactInviteStore.ensureAssetMemberPickerPopupLoaded();
+    } catch {
+      if (isCurrent()) this.dialogStore.openInfo(this.i18n.translate('chat.contacts.error'));
+    } finally { this.contactInviteLoading = false; }
   }
 
   private chatMemberEntries(
@@ -2260,7 +2310,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || this.chatInitialLoadPending || this.chatShare.busy()) return;
     try {
       const chat = await this.ensureServiceChatBeforeFirstMessage(session.item);
-      if (this.session() !== session) return;
+      if (this.destroyed || this.session()?.openedAtIso !== session.openedAtIso) return;
       this.chatShare.open(chat, kind);
       if (kind === 'event') {
         this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
@@ -2282,7 +2332,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private async applyChatShares(request: ChatShareApplyRequest): Promise<void> {
     const actor = this.activeUserId();
     const requireCurrent = () => {
-      if (this.activeUserId() !== actor || this.session()?.item.id !== request.chat.id
+      if (this.destroyed || this.activeUserId() !== actor || this.session()?.item.id !== request.chat.id
           || this.chatShare.session()?.id !== request.id) throw new Error('Share session changed');
     };
     try {
@@ -5248,6 +5298,8 @@ export class EventChatPopupComponent implements OnDestroy {
     const channelType = `${chat.channelType ?? ''}`.trim();
     if (
       channelType === 'general'
+      || channelType === 'contact'
+      || channelType === 'groupSupport'
       || channelType === 'mainEvent'
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'

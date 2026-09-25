@@ -40,7 +40,6 @@ import {
   AssetsService,
   AssetTicketsService,
   ExplanationGuideService,
-  ShareTokensService
 } from '../../../shared/core';
 import {
   AssetEditorPopupComponent

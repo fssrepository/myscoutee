@@ -265,6 +265,7 @@ export class ActivityChatSingleRowConverter {
       || dto.channelType === 'optionalSubEvent'
       || dto.channelType === 'groupSubEvent'
       || dto.channelType === 'serviceEvent'
+      || dto.channelType === 'contact'
       || dto.channelType === 'groupSupport'
       || dto.channelType === 'appSupport'
     ) {
@@ -279,6 +280,7 @@ export class ActivityChatSingleRowConverter {
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'
       || channelType === 'serviceEvent'
+      || channelType === 'contact'
       || channelType === 'groupSupport'
       || channelType === 'appSupport'
       || channelType === 'supportCase'

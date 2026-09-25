@@ -3838,5 +3838,8 @@
   "invite.external.description": "Copy this link to invite someone to MyScoutee and open this item.",
   "invite.external.url": "External invitation link",
   "invite.external.failed": "The link is unavailable. Try again.",
-  "invite.external.copy.failed": "Copy failed. You can select and copy the link above."
+  "invite.external.copy.failed": "Copy failed. You can select and copy the link above.",
+  "chat.contacts": "Contacts",
+  "chat.contacts.open": "Chat in MyScoutee",
+  "chat.contacts.error": "The contact chat could not be opened or updated. Please try again."
 }

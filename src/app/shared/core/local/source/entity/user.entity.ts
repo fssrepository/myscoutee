@@ -71,6 +71,7 @@ export interface UserChatCountersRecord {
   group?: number;
   service?: number;
   appSupport?: number;
+  contacts?: number;
   groupSupport?: number;
 }
 

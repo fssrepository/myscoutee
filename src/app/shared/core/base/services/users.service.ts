@@ -292,7 +292,7 @@ export class UsersService extends BaseRouteModeService {
 
   async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }> {
     if (this.localModeEnabled) {
-      const local = await this.localInvites.claimExternalInvite(userId, token);
+      const local = await this.localInvites.claimExternalInvite(this.userProfileStore.activeUserId() || userId, token);
       if (local) return local;
     }
     // API invitations remain server-owned even when the browser uses local demo data.
@@ -675,6 +675,7 @@ export class UsersService extends BaseRouteModeService {
         group: chatGroup ?? 0,
         service: chatService ?? 0,
         appSupport: chatAppSupport ?? 0,
+        contacts: normalizeWithFallback(counterOverrides.chat?.contacts, fallbackActivities.chat?.contacts) ?? 0,
         groupSupport: chatGroupSupport ?? 0,
         supportCases: {
           pending: normalizeWithFallback(supportCases?.pending, 0) ?? 0,
@@ -783,6 +784,7 @@ export class UsersService extends BaseRouteModeService {
           group: Math.max(0, Math.trunc(Number(user.activities?.chat?.group) || 0)),
           service: Math.max(0, Math.trunc(Number(user.activities?.chat?.service) || 0)),
           appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0)),
+          contacts: Math.max(0, Math.trunc(Number(user.activities?.chat?.contacts) || 0)),
           groupSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.groupSupport) || 0)),
           supportCases: {
             pending: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.pending) || 0)),

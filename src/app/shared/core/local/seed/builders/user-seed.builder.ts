@@ -555,6 +555,7 @@ export class SeedUserBuilder {
           group: normalize(user.activities?.chat?.group),
           service: normalize(user.activities?.chat?.service),
           appSupport: normalize(user.activities?.chat?.appSupport),
+          contacts: normalize(user.activities?.chat?.contacts),
           groupSupport: normalize(user.activities?.chat?.groupSupport)
         }
       }

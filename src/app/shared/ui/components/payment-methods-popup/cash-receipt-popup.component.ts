@@ -1,8 +1,8 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ContactsService } from '../../../core/base/services/contacts.service';
+import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payment-methods.service';
-import type { StoredContact } from '../../../core/contracts/contact.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../core/contracts/payment-method.interface';
 import { PopupComponent, type PopupModel } from '../core/popup';
 import { FormFlowComponent, type FormFlowActionEvent, type FormFlowModel } from '../core/form/flow';
@@ -19,32 +19,20 @@ import { I18nPipe } from '../../pipes';
     </app-popup>
   `
 })
-export class CashReceiptPopupComponent implements OnInit {
+export class CashReceiptPopupComponent {
   @Input({ required: true }) userId = '';
   @Input() currency = 'EUR';
   @Output() readonly recorded = new EventEmitter<PaymentHistoryMutationDto>();
   @Output() readonly closed = new EventEmitter<void>();
-  private readonly contactsService = inject(ContactsService);
+  private readonly memberPicker = inject(ActivityInvitePopupStore);
   private readonly payments = inject(PaymentMethodsService);
-  protected readonly contacts = signal<StoredContact[]>([]);
-  protected readonly loading = signal(true);
+  protected readonly payer = signal<ActivityMemberDTO | null>(null);
+  protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected form: CashReceiptRequestDto = { requestId: crypto.randomUUID(), payerUserId: '', amount: 0, currency: 'EUR', note: '' };
 
-  ngOnInit(): void { this.form.currency = this.currency; void this.loadMembers(); }
-
-  private async loadMembers(): Promise<void> {
-    this.loading.set(true);
-    this.error.set('');
-    try {
-      const contacts = await this.contactsService.loadContacts(this.userId);
-      this.contacts.set([...new Map(contacts.filter(contact => contact.userId && contact.userId !== this.userId)
-        .map(contact => [contact.userId, contact])).values()]);
-      if (!this.contacts().length) this.error.set('payment.cash.members.empty');
-    } catch { this.error.set('payment.cash.members.failed'); }
-    finally { this.loading.set(false); }
-  }
+  ngOnInit(): void { this.form.currency = this.currency; }
 
   protected popupModel(): PopupModel {
     return { title: 'payment.cash.record', size: 'default', backdropTone: 'dim',
@@ -58,15 +46,12 @@ export class CashReceiptPopupComponent implements OnInit {
   }
 
   protected formModel(): FormFlowModel {
-    const selected = this.contacts().find(contact => contact.userId === this.form.payerUserId);
+    const selected = this.payer();
     return { title: 'payment.cash.record', header: false, layout: 'grouped', deferPreparation: false,
       save: null, summary: { enabled: false }, steps: [{ id: 'receipt', title: 'payment.cash.record', palette: 'green', controls: [
         { id: 'payer', kind: 'menu', label: 'payment.cash.from', required: true, config: {
-          kind: 'select', filterable: true, trigger: { label: selected?.name || 'payment.cash.select.member',
-            icon: 'person', imageUrl: selected?.avatarUrl, imageFallback: selected?.initials, palette: 'blue' },
-          items: this.contacts().map(contact => ({ id: contact.userId, label: contact.name, icon: 'person',
-            imageUrl: contact.avatarUrl, imageFallback: contact.initials, kind: 'radio',
-            active: contact.userId === this.form.payerUserId, palette: 'blue' })) } },
+          kind: 'inline', items: [{ id: 'select-payer', label: selected?.name || 'payment.cash.select.member',
+            icon: 'person', imageUrl: selected?.avatarUrl, imageFallback: selected?.initials, palette: 'blue' }] } },
         { id: 'amount', bind: 'amount', kind: 'number', label: 'payment.cash.amount', required: true, min: 0.01, max: 1_000_000_000, step: 0.01, layout: 'half' },
         { id: 'currency', bind: 'currency', kind: 'text', label: 'payment.cash.currency', required: true, maxLength: 3, layout: 'half' },
         { id: 'note', bind: 'note', kind: 'textarea', label: 'payment.cash.note', maxLength: 1000, rows: 3 }
@@ -74,7 +59,17 @@ export class CashReceiptPopupComponent implements OnInit {
   }
 
   protected selectMember(event: FormFlowActionEvent): void {
-    if (event.control.id === 'payer' && !this.busy()) this.form = { ...this.form, payerUserId: event.sourceEvent.id };
+    if (event.control.id !== 'payer' || this.busy()) return;
+    this.memberPicker.openActivityInvitePopup({
+      ownerId: this.userId, ownerType: 'asset', title: 'payment.cash.select.member', selectionLimit: 1,
+      parentZIndex: 22600, closeOwnerPopupOnClose: false,
+      onApply: selected => {
+        const member = selected[0];
+        if (!member || member.userId === this.userId) return;
+        this.payer.set(member); this.form = { ...this.form, payerUserId: member.userId };
+      }
+    });
+    void this.memberPicker.ensureAssetMemberPickerPopupLoaded();
   }
 
   private async save(): Promise<void> {

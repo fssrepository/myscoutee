@@ -332,6 +332,7 @@ export class AdminWorkspaceStore {
         group: this.nonNegativeInteger(user.activities.chat?.group),
         service: this.nonNegativeInteger(user.activities.chat?.service),
         appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport),
+        contacts: this.nonNegativeInteger(user.activities.chat?.contacts),
         groupSupport: this.nonNegativeInteger(user.activities.chat?.groupSupport),
         supportCases: {
           pending: this.nonNegativeInteger(user.activities.chat?.supportCases?.pending),
@@ -393,6 +394,7 @@ export class AdminWorkspaceStore {
               subEvent: 0,
               group: 0,
               service: 0,
+              contacts: 0,
               groupSupport: 0,
               appSupport: 0
             },

@@ -179,6 +179,8 @@ export interface IEventsService {
 }
 
 export interface IChatsService {
+  ensureContactChat(targetUserId: string): Promise<ChatContracts.ChatDTO>;
+  addContactChatMembers(chatId: string, userIds: readonly string[]): Promise<ChatContracts.ChatDTO>;
   queryChatById(chatId: string): Promise<ChatContracts.ChatDTO | null>;
   queryActivitiesChatPage(
     userId: string,

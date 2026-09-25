@@ -223,6 +223,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     members: readonly ActivityContracts.ActivityMemberDTO[],
     statusChange?: AssetMemberStatusChangeDTO
   ) => void) | null = null;
+  private contactInviteHandler: (() => void) | null = null;
   private takeOverAssetHandler: (() => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
@@ -323,7 +324,8 @@ export class EventMembersPopupComponent implements OnDestroy {
           initialMembers: request.members,
           lookup: request.lookup,
           onMembersChanged: request.onMembersChanged,
-          onTakeOverAsset: request.onTakeOverAsset
+          onTakeOverAsset: request.onTakeOverAsset,
+          onInvite: request.onInvite
         });
         return;
       }
@@ -497,6 +499,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
     this.takeOverAssetHandler = null;
+    this.contactInviteHandler = null;
     this.suppressedOwnerSyncId = null;
     this.requestedCanManageMembers = false;
     this.viewOnlyMode = false;
@@ -513,6 +516,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
+    if (this.contactInviteHandler) { this.contactInviteHandler(); return; }
     this.activityInviteStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
@@ -1642,12 +1646,14 @@ export class EventMembersPopupComponent implements OnDestroy {
         statusChange?: AssetMemberStatusChangeDTO
       ) => void;
       onTakeOverAsset?: () => void;
+      onInvite?: () => void;
     }
   ): void {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return;
     }
+    this.contactInviteHandler = options?.onInvite ?? null;
     this.communityOwnerUserId = options?.ownerUserId ?? '';
     this.followedOrganizers = options?.followedOrganizers === true;
     const ownerType = options?.ownerType ?? 'event';
@@ -2347,7 +2353,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private syncCanManageMembers(members: readonly ActivityContracts.ActivityMemberDTO[] = this.currentOwnerMembers()): void {
     if (this.viewOnlyMode) {
       this.canManageMembers = false;
-      this.canShowInviteButton = false;
+      this.canShowInviteButton = this.contactInviteHandler !== null;
       return;
     }
     const activeUserId = this.activeUserId();

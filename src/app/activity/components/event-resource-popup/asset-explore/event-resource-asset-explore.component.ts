@@ -118,7 +118,6 @@ import {
   PaymentAuthorizationService
 } from '../../../../shared/core/base/services/payment-authorization.service';
 import {
-  ShareTokensService
 } from '../../../../shared/core/base/services/share-tokens.service';
 import {
   UsersService

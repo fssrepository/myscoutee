@@ -98,6 +98,7 @@ export type ActivitiesNavigationRequest =
         statusChange?: AssetMemberStatusChangeDTO
       ) => void;
       onTakeOverAsset?: () => void;
+      onInvite?: () => void;
     }
   | { type: 'eventEditorMembers'; ownerId: string; title?: string; canManage?: boolean }
   | { type: 'eventEditorCreate'; target: EventEditorTarget }

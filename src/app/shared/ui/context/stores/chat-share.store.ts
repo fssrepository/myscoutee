@@ -165,6 +165,14 @@ export class ChatShareStore {
     }
   }
 
+  cancelForChat(chatId: string): void {
+    if (!chatId || this.session()?.chat.id !== chatId) return;
+    this.session.set(null);
+    this.applyRequest.set(null);
+    this.busy.set(false);
+    this.ready.set(false);
+  }
+
   close(kind: 'event' | 'asset'): void {
     if (!this.active(kind) || this.busy()) return;
     this.session.set(null);

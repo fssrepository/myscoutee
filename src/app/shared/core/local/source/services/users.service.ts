@@ -719,7 +719,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterPatch(
       current,
       patch,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'groupSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
     );
   }
 
@@ -730,7 +730,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterDeltas(
       current,
       deltas,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'groupSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
     );
   }
 
@@ -881,6 +881,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         group: normalizeCounter(chat?.group),
         service: normalizeCounter(chat?.service),
         appSupport: normalizeCounter(chat?.appSupport),
+        contacts: normalizeCounter(chat?.contacts),
         groupSupport: normalizeCounter(chat?.groupSupport)
       },
       event: {

@@ -268,6 +268,22 @@ export class HttpChatsService implements IChatsService {
   private shouldEmitReconnectEvent = false;
   private socketMessageSequence = 0;
 
+  async ensureContactChat(targetUserId: string): Promise<ChatDTO> {
+    return this.contactChatCommand('contact', { targetUserId });
+  }
+
+  async addContactChatMembers(chatId: string, userIds: readonly string[]): Promise<ChatDTO> {
+    return this.contactChatCommand(`${encodeURIComponent(chatId)}/members`, { userIds });
+  }
+
+  private async contactChatCommand(path: string, body: object): Promise<ChatDTO> {
+    const userId = this.activeUserId();
+    const response = await this.http.post<HttpChatDto>(`${this.apiBaseUrl}/activities/chats/${path}`, body,
+      { params: this.withUserId(new HttpParams(), userId) }).toPromise();
+    if (!response) throw new Error('Chat unavailable');
+    return this.cloneChatDTO(this.mapChatDTO(response, userId));
+  }
+
   async queryChatById(chatId: string): Promise<ChatDTO | null> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     const userId = this.activeUserId();
@@ -905,6 +921,7 @@ export class HttpChatsService implements IChatsService {
       group: Math.max(0, Math.trunc(Number(counters?.group) || 0)),
       service: Math.max(0, Math.trunc(Number(counters?.service) || 0)),
       appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0)),
+      contacts: Math.max(0, Math.trunc(Number(counters?.contacts) || 0)),
       groupSupport: Math.max(0, Math.trunc(Number(counters?.groupSupport) || 0)),
       supportCases: {
         pending: Math.max(0, Math.trunc(Number(counters?.supportCases?.pending) || 0)),
@@ -967,7 +984,7 @@ export class HttpChatsService implements IChatsService {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'groupSupport'
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport'
       ? value
       : 'all';
   }

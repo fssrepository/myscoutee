@@ -689,6 +689,7 @@ const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter;
   { key: 'subEvent', label: 'sub.event', icon: 'event_available' },
   { key: 'group', label: 'group', icon: 'groups' },
   { key: 'service', label: 'service', icon: 'support_agent' },
+  { key: 'contacts', label: 'chat.contacts', icon: 'contacts' },
   { key: 'groupSupport', label: 'group.support', icon: 'forum' },
   { key: 'appSupport', label: 'app.support', icon: 'admin_panel_settings' }
 ];

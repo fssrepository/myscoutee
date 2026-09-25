@@ -1,3 +1,7 @@
+import { ChatsService } from '../../../shared/core/base/services/chats.service';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   Component,
   HostListener,
@@ -186,13 +190,14 @@ const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
 
 type ContactsMenuContext =
   | { menu: 'contact-action'; action: 'run-method'; contactId: string; methodId: string }
-  | { menu: 'contact-action'; action: 'edit' | 'delete'; contactId: string }
+  | { menu: 'contact-action'; action: 'chat' | 'edit' | 'delete'; contactId: string }
   | { menu: 'method-type'; methodId: string; type: ContactMethodType };
 
 @Component({
   selector: 'app-contacts-popup',
   standalone: true,
   imports: [
+    I18nPipe,
     CommonModule,
     FormsModule,
     MatIconModule,
@@ -205,6 +210,10 @@ type ContactsMenuContext =
   styleUrl: './contacts-popup.component.scss'
 })
 export class ContactsPopupComponent implements OnDestroy {
+  private readonly chatsService = inject(ChatsService);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly i18n = inject(I18nService);
+  protected readonly openingContactChat = signal(false);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityInviteStore = inject(ActivityInvitePopupStore);
@@ -458,6 +467,22 @@ export class ContactsPopupComponent implements OnDestroy {
     this.editingContact.set(this.createFormValue(contact));
   }
 
+  protected async openContactChat(contact: ContactListItem, event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (this.openingContactChat() || !contact.userId) return;
+    const actorId = this.activeUserId();
+    this.openingContactChat.set(true);
+    try {
+      const [chat] = await Promise.all([
+        this.chatsService.ensureContactChat(contact.userId), this.activitiesStore.ensureEventChatPopupLoaded()
+      ]);
+      if (actorId !== this.activeUserId() || !this.profileStore.contactsPopupOpen()) return;
+      this.activitiesStore.openEventChat(eventChatPopupRequestFromChat(chat), eventChatHeaderStateFromChat(chat));
+    } catch {
+      if (actorId === this.activeUserId()) this.dialogStore.openInfo(this.i18n.translate('chat.contacts.error'));
+    } finally { this.openingContactChat.set(false); }
+  }
+
   protected viewContactProfile(contact: ContactListItem, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
@@ -613,6 +638,9 @@ export class ContactsPopupComponent implements OnDestroy {
       }
     }));
     return [
+      ...(contact.userId ? [{ id: `contact-${contact.id}-chat`, label: 'chat.contacts.open', icon: 'chat',
+        palette: 'teal' as const, disabled: this.openingContactChat(),
+        context: { menu: 'contact-action' as const, action: 'chat' as const, contactId: contact.id } }] : []),
       ...methodItems,
       ...(methodItems.length > 0 ? [{ id: `contact-${contact.id}-methods-divider`, kind: 'divider' as const }] : []),
       {
@@ -669,6 +697,7 @@ export class ContactsPopupComponent implements OnDestroy {
     if (!contact) {
       return;
     }
+    if (context.action === 'chat') { void this.openContactChat(contact, event.sourceEvent); return; }
     if (context.action === 'run-method') {
       const method = contact.methods.find(item => item.id === context.methodId);
       if (method) {

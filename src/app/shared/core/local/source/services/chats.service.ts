@@ -51,11 +51,29 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
 
+  async ensureContactChat(targetUserId: string): Promise<ChatDTO> {
+    const userId = this.userProfileStore.activeUserId().trim();
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    if (this.userProfileStore.activeUserId().trim() !== userId) throw new Error('Chat session changed');
+    const chat = this.chatsRepository.ensureContactChat(userId, targetUserId);
+    await this.chatsRepository.flushToIndexedDb();
+    return this.chatDtosWithMetrics([chat])[0];
+  }
+
+  async addContactChatMembers(chatId: string, userIds: readonly string[]): Promise<ChatDTO> {
+    const userId = this.userProfileStore.activeUserId().trim();
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    if (this.userProfileStore.activeUserId().trim() !== userId) throw new Error('Chat session changed');
+    const chat = this.chatsRepository.addContactChatMembers(userId, chatId, userIds);
+    await this.chatsRepository.flushToIndexedDb();
+    return this.chatDtosWithMetrics([chat])[0];
+  }
+
   async queryChatById(chatId: string): Promise<ChatDTO | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const userId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
     const record = this.chatsRepository.queryChatItemById(userId, chatId);
-    return record ? LocalChatThreadMapper.toDto(record) : null;
+    return record ? this.chatDtosWithMetrics([record])[0] : null;
   }
 
   async queryActivitiesChatPage(
@@ -140,6 +158,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       group: this.countValue(counters?.group),
       service: this.countValue(counters?.service),
       appSupport: this.countValue(counters?.appSupport),
+      contacts: this.countValue(counters?.contacts),
       groupSupport: this.countValue(counters?.groupSupport),
       supportCases: {
         pending: this.countValue(counters?.supportCases?.pending),
@@ -249,19 +268,25 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     clientId?: string,
     replyTo?: ContractTypes.ChatMessageDto['replyTo']
   ): Promise<ContractTypes.ChatMessageDto | null> {
+    const userId = this.userProfileStore.activeUserId().trim();
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    if (this.userProfileStore.activeUserId().trim() !== userId) throw new Error('Chat session changed');
     const trimmedText = AppUtils.convertAsciiEmojis(text.trim());
     if (!trimmedText && attachments.length === 0) {
       return null;
     }
+    const record = this.localChatForActiveUser(chat.id);
+    const user = this.usersRepository.queryUserById(userId);
+    if (!record || !user) throw new Error('Chat unavailable');
     const sentAt = new Date();
-    return this.chatsRepository.appendChatMessage(chat, {
-      id: `${clientId ?? `${chat.id}:${sentAt.getTime()}`}`,
-      sender: 'You',
+    const message = this.chatsRepository.appendChatMessage(record, {
+      id: `${clientId ?? crypto.randomUUID()}`,
+      sender: user.name,
       senderAvatar: {
-        id: 'self',
-        initials: 'ME',
-        gender: 'man'
+        id: userId,
+        initials: user.initials,
+        gender: user.gender,
+        imageUrl: user.images?.[0] ?? null
       },
       text: trimmedText,
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
@@ -272,6 +297,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       replyTo: replyTo ? { ...replyTo } : null,
       attachments: attachments.map(attachment => ({ ...attachment }))
     });
+    await this.chatsRepository.flushToIndexedDb();
+    return message;
   }
 
   async updateChatMessage(
@@ -279,14 +306,20 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
   ): Promise<ContractTypes.ChatMessageDto | null> {
+    const userId = this.userProfileStore.activeUserId().trim();
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    if (this.userProfileStore.activeUserId().trim() !== userId) throw new Error('Chat session changed');
     const normalizedMutation = typeof mutation.text === 'string'
       ? {
           ...mutation,
           text: AppUtils.convertAsciiEmojis(mutation.text.trim())
         }
       : mutation;
-    return this.chatsRepository.updateChatMessage(chat, messageId, normalizedMutation);
+    const record = this.localChatForActiveUser(chat.id);
+    if (!record) throw new Error('Chat unavailable');
+    const message = this.chatsRepository.updateChatMessage(record, messageId, normalizedMutation);
+    await this.chatsRepository.flushToIndexedDb();
+    return message;
   }
 
   async watchChatMessages(
@@ -649,6 +682,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       || record.channelType === 'optionalSubEvent'
       || record.channelType === 'groupSubEvent'
       || record.channelType === 'serviceEvent'
+      || record.channelType === 'contact'
       || record.channelType === 'groupSupport'
       || record.channelType === 'appSupport'
       || record.channelType === 'supportCase'

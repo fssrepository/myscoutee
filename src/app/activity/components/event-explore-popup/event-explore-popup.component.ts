@@ -46,7 +46,6 @@ import {
   ActivitiesService,
   EventsService,
   GameService,
-  ShareTokensService,
   UsersService,
   type UserDto
 } from '../../../shared/core';
@@ -169,7 +168,6 @@ export class EventExplorePopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
   private readonly externalInvites = inject(ActivityInvitePopupStore);
-  private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
   private readonly dialogStore = inject(DialogStore);

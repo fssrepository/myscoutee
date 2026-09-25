@@ -232,6 +232,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       group: this.count(current.chat?.group) + this.count(increments.chat?.group),
       service: this.count(current.chat?.service) + this.count(increments.chat?.service),
       appSupport: this.count(current.chat?.appSupport) + this.count(increments.chat?.appSupport),
+      contacts: this.count(current.chat?.contacts) + this.count(increments.chat?.contacts),
       groupSupport: this.count(current.chat?.groupSupport) + this.count(increments.chat?.groupSupport)
     };
     next.event = {
@@ -286,7 +287,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       current.chat,
       previousBase.chat,
       nextBase.chat,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'groupSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
     );
     next.event = this.rebaseNestedCounters(
       current.event,

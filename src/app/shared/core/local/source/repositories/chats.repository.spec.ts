@@ -1,3 +1,5 @@
+import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
+import type { StoredContact } from '../../../contracts/contact.interface';
 import { CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
@@ -23,6 +25,63 @@ describe('LocalChatsRepository chat pages', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
+  });
+
+  it('opens one eventless conversation for saved contacts and limits member invitations to that list', () => {
+    for (const id of ['contact-a', 'contact-b', 'contact-c', 'outsider']) seedUser(user(id));
+    const contacts = ['contact-b', 'contact-c'].map(id => ({ userId: id } as StoredContact));
+    memoryDb.write(state => ({ ...state, [CONTACTS_TABLE_NAME]: {
+      ownerUserIds: ['contact-a'], byOwnerUserId: { 'contact-a': contacts }
+    } }));
+    const direct = repository.ensureContactChat('contact-a', 'contact-b');
+    expect(direct.channelType).toBe('contact');
+    expect(direct.eventId).toBeUndefined();
+    expect(repository.queryChatItemById('contact-b', direct.id)?.memberIds).toEqual(['contact-a', 'contact-b']);
+    expect(repository.ensureContactChat('contact-a', 'contact-b').id).toBe(direct.id);
+    expect(() => repository.addContactChatMembers('contact-a', direct.id, ['outsider'])).toThrow();
+    expect(repository.queryChatItemById('outsider', direct.id)).toBeNull();
+    const updated = repository.addContactChatMembers('contact-a', direct.id, ['contact-c']);
+    expect(updated.memberIds).toEqual(['contact-a', 'contact-b', 'contact-c']);
+    expect(repository.queryChatItemById('contact-c', direct.id)?.memberIds).toEqual(updated.memberIds);
+    const page = repository.queryActivitiesChatPage('contact-a', pageRequest({ filters: {chatContextFilter: 'contacts'} }));
+    expect(page.items.map(item => item.id)).toEqual([direct.id]);
+  });
+
+  it('sends one persisted share to both contact members and deletes the old message in both copies', () => {
+    for (const id of ['share-a', 'share-b']) seedUser(user(id));
+    memoryDb.write(state => ({ ...state, [CONTACTS_TABLE_NAME]: {
+      ownerUserIds: ['share-a'], byOwnerUserId: { 'share-a': [{ userId: 'share-b' } as StoredContact] }
+    } }));
+    const direct = repository.ensureContactChat('share-a', 'share-b');
+    const before = memoryDb.read()[USERS_TABLE_NAME].byId['share-b'].activities.chats ?? 0;
+    const message: ContractTypes.ChatMessageDto = { id: 'shared-stable-id', clientId: 'shared-stable-id',
+      sender: 'Sender', senderAvatar: {id: 'share-a', initials: 'SA', gender: 'man'}, text: '',
+      time: '10:00', sentAtIso: '2026-09-25T10:00:00Z', mine: true, readBy: [],
+      attachments: [{ id: 'attachment', type: 'event', entityId: 'event', title: 'Shared event' }] };
+    repository.appendChatMessage(direct, message);
+    repository.appendChatMessage(direct, message);
+    const recipient = repository.queryChatItemById('share-b', direct.id)!;
+    expect(recipient.unread).toBe(1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['share-b'].activities.chats).toBe(before + 1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['share-b'].activities.chat?.contacts).toBe(1);
+    expect(repository.queryChatSharedMessages(direct, 'event').map(item => item.id)).toEqual([message.id]);
+    expect(repository.queryChatSharedMessages(recipient, 'event')).toEqual([]);
+    expect(repository.queryChatMessagesPage(recipient, pageRequest({})).items[0].mine).toBe(false);
+    expect(() => repository.updateChatMessage(recipient, message.id, {deleted: true})).toThrow();
+    repository.updateChatMessage(direct, message.id, {deleted: true});
+    expect(repository.queryChatSharedMessages(direct, 'event')).toEqual([]);
+    const deleted = repository.queryChatMessagesPage(recipient, pageRequest({})).items[0];
+    expect(deleted.deletedAtIso).toBeTruthy();
+    expect(deleted.deletedByUserId).toBe('share-a');
+  });
+
+  it('rejects a saved contact from a different workspace', () => {
+    seedUser(user('contact-a'));
+    seedUser({ ...user('contact-b'), workspaceGroupId: 'other' });
+    memoryDb.write(state => ({ ...state, [CONTACTS_TABLE_NAME]: {
+      ownerUserIds: ['contact-a'], byOwnerUserId: { 'contact-a': [{ userId: 'contact-b' } as StoredContact] }
+    } }));
+    expect(() => repository.ensureContactChat('contact-a', 'contact-b')).toThrow();
   });
 
   it('keeps moderation support-message retries from incrementing unread counters twice', () => {
@@ -212,9 +271,9 @@ describe('LocalChatsRepository chat pages', () => {
         lastMessage: 'Riley joined the event.',
         lastSenderId: 'system'
       });
-      expect(storedUser.activities.chats).toBe(1);
-      expect(storedUser.activities.chat?.all).toBe(1);
-      expect(storedUser.activities.chat?.event).toBe(1);
+      expect(storedUser.activities.chats).toBe((user(userId).activities.chats ?? 0) + 1);
+      expect(storedUser.activities.chat?.all).toBe((user(userId).activities.chat?.all ?? user(userId).activities.chats ?? 0) + 1);
+      expect(storedUser.activities.chat?.event).toBe((user(userId).activities.chat?.event ?? 0) + 1);
       expect(repository.queryChatMessagesPage(chatRecord!, pageRequest({ pageSize: 10 })).total).toBe(1);
     }
   });
@@ -288,7 +347,7 @@ describe('LocalChatsRepository chat pages', () => {
 
     const read = repository.markChatRead(chatRecord!, ownerUserId, [], true);
 
-    expect(read).toMatchObject({ messageIds: [], unread: 0 });
+    expect(read).toBeNull(); // No unread transition emits no read mutation.
     expect(repository.queryChatItemById(ownerUserId, 'c-context-main-event-publish-read-test')).toMatchObject({
       unread: 0,
       revision: initialRevision

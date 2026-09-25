@@ -1,3 +1,4 @@
+import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import type { ChatMessageRecord } from '../entity/chat.entity';
@@ -33,6 +34,74 @@ export class LocalChatsRepository {
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
     const record = table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
     return record ? LocalChatThreadMapper.cloneRecord(record) : null;
+  }
+
+  ensureContactChat(actorId: string, targetUserId: string): ChatThreadRecord {
+    const targetId = targetUserId.trim();
+    this.requireContactTargets(actorId, [targetId]);
+    const memberIds = [actorId, targetId].sort();
+    const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const id = `c-contact-${encoded}`;
+    this.writeContactChat(id, memberIds);
+    return this.queryChatItemById(actorId, id)!;
+  }
+
+  addContactChatMembers(actorId: string, chatId: string, userIds: readonly string[]): ChatThreadRecord {
+    const chat = this.queryChatItemById(actorId, chatId);
+    if (!chat || chat.channelType !== 'contact' || !chat.memberIds.includes(actorId)) throw new Error('Chat unavailable');
+    const added = [...new Set(userIds.map(id => id.trim()))].filter(id => !chat.memberIds.includes(id));
+    if (!added.length) return chat;
+    this.requireContactTargets(actorId, added);
+    this.writeContactChat(chat.id, [...chat.memberIds, ...added]);
+    return this.queryChatItemById(actorId, chat.id)!;
+  }
+
+  private requireContactTargets(actorId: string, userIds: readonly string[]): void {
+    const state = this.memoryDb.read();
+    const actor = state[USERS_TABLE_NAME].byId[actorId];
+    const contacts = state[CONTACTS_TABLE_NAME].byOwnerUserId[actorId] ?? [];
+    if (!actor || actor.deletedAtIso || !userIds.length || userIds.length > 100 || userIds.some(id => {
+      const user = state[USERS_TABLE_NAME].byId[id];
+      return !id || id === actorId || !user || !!user.deletedAtIso
+        || (user.workspaceGroupId ?? '') !== (actor.workspaceGroupId ?? '')
+        || !contacts.some(contact => contact.userId === id);
+    })) throw new Error('Contact unavailable');
+  }
+
+  private writeContactChat(id: string, memberIds: string[]): void {
+    this.memoryDb.write(state => {
+      const table = state[CHATS_TABLE_NAME];
+      const byId = { ...table.byId }; const ids = new Set(table.ids);
+      let messages = state[CHAT_MESSAGES_TABLE_NAME];
+      const existing = table.ids.map(key => table.byId[key]).find(chat => chat.id === id);
+      const participants = [...new Set([...(existing?.memberIds ?? []), ...memberIds])];
+      for (const ownerUserId of participants) {
+        const key = LocalChatThreadMapper.buildRecordKey(ownerUserId, id);
+        const current = byId[key];
+        const otherNames = participants.filter(userId => userId !== ownerUserId)
+          .map(userId => state[USERS_TABLE_NAME].byId[userId]?.name ?? '').filter(Boolean).join(', ');
+        byId[key] = {
+          ...(current ?? { id, ownerUserId, avatar: AppUtils.initialsFromText(otherNames), title: otherNames,
+            lastMessage: existing?.lastMessage ?? '', lastSenderId: existing?.lastSenderId ?? '', unread: 0,
+            dateIso: existing?.dateIso ?? new Date().toISOString(), channelType: 'contact' as const }),
+          memberIds: participants,
+          revision: current && participants.length !== current.memberIds.length ? this.nextChatRevision(current.revision) : current?.revision ?? 1
+        };
+        if (!current && existing) {
+          const historyKey = LocalChatMessageMapper.chatKey(existing.ownerUserId, id);
+          for (const messageId of state[CHAT_MESSAGES_TABLE_NAME].idsByChatKey[historyKey] ?? []) {
+            const original = state[CHAT_MESSAGES_TABLE_NAME].byId[messageId];
+            if (!original) continue;
+            const message = LocalChatMessageMapper.toDto(original);
+            messages = this.upsertMessageRecord(messages, LocalChatMessageMapper.toRecord(ownerUserId, id,
+              { ...message, mine: message.senderAvatar.id === ownerUserId }));
+          }
+        }
+        ids.add(key);
+      }
+      return { ...state, [CHATS_TABLE_NAME]: { ...table, ids: [...ids], byId }, [CHAT_MESSAGES_TABLE_NAME]: messages };
+    });
   }
 
   ensureServiceChat(chat: ChatRecord & { ownerUserId?: string | null }): ChatThreadRecord | null {
@@ -451,7 +520,7 @@ export class LocalChatsRepository {
     const key = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
     const records = (snapshot.idsByChatKey[key] ?? []).map(id => snapshot.byId[id])
       .filter((message): message is ChatMessageRecord => Boolean(message)
-        && message.senderAvatar.userId === record.ownerUserId && !message.deletedAtIso
+        && (message.senderAvatar.userId === record.ownerUserId || message.mine && message.senderAvatar.userId === 'self') && !message.deletedAtIso
         && message.attachments?.some(attachment => attachment.type === kind) === true);
     return LocalChatMessageMapper.toDtoList(records);
   }
@@ -495,42 +564,33 @@ export class LocalChatsRepository {
   }
 
   appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageDto | null {
-    const record = this.resolveChatRecord(chat);
-    if (!record) {
-      return null;
-    }
-    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
-    let savedMessageRecord: ChatMessageRecord | null = null;
-    this.memoryDb.write(currentState => {
-      const currentTable = currentState[CHATS_TABLE_NAME];
-      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
-      const existingRecord = currentTable.byId[recordKey];
-      if (!existingRecord) {
-        return currentState;
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    if (!record) return null;
+    let saved: ContractTypes.ChatMessageDto | null = null;
+    this.memoryDb.write(state => {
+      const table = state[CHATS_TABLE_NAME];
+      let messages = state[CHAT_MESSAGES_TABLE_NAME];
+      const previous = this.findMessageRecord(messages, record, message.id);
+      if (previous) { saved = LocalChatMessageMapper.toDto(previous); return state; }
+      const stored = this.withAppendTimeline(message, record, messages);
+      const byId = { ...table.byId };
+      let users = state[USERS_TABLE_NAME];
+      for (const key of table.ids) {
+        const owner = table.byId[key];
+        if (owner.id !== record.id) continue;
+        const mine = owner.ownerUserId === record.ownerUserId;
+        const copy = { ...stored, mine };
+        messages = this.upsertMessageRecord(messages, LocalChatMessageMapper.toRecord(owner.ownerUserId, owner.id, copy));
+        byId[key] = { ...owner, lastMessage: stored.text || this.chatAttachmentSummary(stored),
+          lastSenderId: stored.senderAvatar.id, dateIso: stored.sentAtIso,
+          unread: this.normalizeCounter(owner.unread) + (mine ? 0 : 1), revision: this.nextChatRevision(owner.revision) };
+        const context = this.chatCounterKey(owner.channelType);
+        if (!mine && context) users = this.applyStoredChatCounterDelta(users, owner.ownerUserId, context, 1);
       }
-      const storedMessage = this.withAppendTimeline(message, existingRecord, currentMessagesTable);
-      const messageRecord = LocalChatMessageMapper.toRecord(record.ownerUserId, record.id, storedMessage);
-      savedMessageRecord = messageRecord;
-      const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, messageRecord);
-      return {
-        ...currentState,
-        [CHATS_TABLE_NAME]: {
-          ...currentTable,
-          byId: {
-            ...currentTable.byId,
-            [recordKey]: {
-              ...existingRecord,
-              lastMessage: storedMessage.text || this.chatAttachmentSummary(storedMessage),
-              lastSenderId: storedMessage.senderAvatar.id,
-              dateIso: storedMessage.sentAtIso,
-              revision: this.nextChatRevision(existingRecord.revision)
-            }
-          }
-        },
-        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
-      };
+      saved = stored;
+      return { ...state, [CHATS_TABLE_NAME]: { ...table, byId }, [CHAT_MESSAGES_TABLE_NAME]: messages, [USERS_TABLE_NAME]: users };
     });
-    return savedMessageRecord ? LocalChatMessageMapper.toDto(savedMessageRecord) : null;
+    return saved;
   }
 
   upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatMessageDto, unreadForOwner: boolean): void {
@@ -568,12 +628,14 @@ export class LocalChatsRepository {
                   ...currentUser.activities,
                   chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + unreadDelta),
                   chat: {
+                    ...currentChatCounters,
                     all: this.normalizeCounter((currentChatCounters.all ?? currentUser.activities?.chats ?? 0) + unreadDelta),
                     event: this.normalizeCounter((currentChatCounters.event ?? 0) + (chatCounterKey === 'event' ? unreadDelta : 0)),
                     subEvent: this.normalizeCounter((currentChatCounters.subEvent ?? 0) + (chatCounterKey === 'subEvent' ? unreadDelta : 0)),
                     group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
                     service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
                     appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
+                    contacts: this.normalizeCounter((currentChatCounters.contacts ?? 0) + (chatCounterKey === 'contacts' ? unreadDelta : 0)),
                     groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
                   }
                 }
@@ -608,10 +670,11 @@ export class LocalChatsRepository {
     if (!record || !normalizedMessageId) {
       return null;
     }
-    const actorId = 'self';
-    const actorName = 'You';
-    const actorInitials = 'ME';
-    const actorGender: 'woman' | 'man' = 'man';
+    const actor = this.memoryDb.read()[USERS_TABLE_NAME].byId[record.ownerUserId];
+    const actorId = record.ownerUserId;
+    const actorName = actor?.name ?? actorId;
+    const actorInitials = actor?.initials ?? AppUtils.initialsFromText(actorName);
+    const actorGender: 'woman' | 'man' = actor?.gender === 'woman' ? 'woman' : 'man';
     const nowIso = new Date().toISOString();
     let updatedMessage: ContractTypes.ChatMessageDto | null = null;
     const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
@@ -626,6 +689,8 @@ export class LocalChatsRepository {
       if (!existingMessageRecord) {
         return currentState;
       }
+      if ((mutation.deleted || typeof mutation.text === 'string')
+          && !existingMessageRecord.mine && existingMessageRecord.senderAvatar.userId !== actorId) throw new Error('Forbidden');
       const nextMessage = this.applyMessageMutation(LocalChatMessageMapper.toDto(existingMessageRecord), mutation, {
         actorId,
         actorName,
@@ -634,27 +699,23 @@ export class LocalChatsRepository {
         nowIso
       });
       updatedMessage = nextMessage;
-      const nextMessageRecord = LocalChatMessageMapper.toRecord(existingRecord.ownerUserId, existingRecord.id, nextMessage);
-      const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, nextMessageRecord);
-      const latestRecord = this.latestChatMessageRecord(nextMessagesTable, existingRecord);
-      const latest = latestRecord ? LocalChatMessageMapper.toDto(latestRecord) : null;
-      return {
-        ...currentState,
-        [CHATS_TABLE_NAME]: {
-          ...currentTable,
-          byId: {
-            ...currentTable.byId,
-            [recordKey]: {
-              ...existingRecord,
-              lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : existingRecord.lastMessage,
-              lastSenderId: latest?.senderAvatar.id ?? existingRecord.lastSenderId,
-              dateIso: latest?.sentAtIso ?? existingRecord.dateIso,
-              revision: this.nextChatRevision(existingRecord.revision)
-            }
-          }
-        },
-        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
-      };
+      let nextMessagesTable = currentMessagesTable;
+      const byId = { ...currentTable.byId };
+      for (const key of currentTable.ids) {
+        const owner = currentTable.byId[key];
+        if (owner.id !== existingRecord.id) continue;
+        const previous = this.findMessageRecord(currentMessagesTable, owner, normalizedMessageId);
+        if (!previous) continue;
+        const copy = { ...nextMessage, mine: previous.mine };
+        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, LocalChatMessageMapper.toRecord(owner.ownerUserId, owner.id, copy));
+        const latestRecord = this.latestChatMessageRecord(nextMessagesTable, owner);
+        const latest = latestRecord ? LocalChatMessageMapper.toDto(latestRecord) : null;
+        byId[key] = { ...owner,
+          lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : owner.lastMessage,
+          lastSenderId: latest?.senderAvatar.id ?? owner.lastSenderId,
+          dateIso: latest?.sentAtIso ?? owner.dateIso, revision: this.nextChatRevision(owner.revision) };
+      }
+      return { ...currentState, [CHATS_TABLE_NAME]: { ...currentTable, byId }, [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable };
     });
     return updatedMessage;
   }
@@ -758,6 +819,7 @@ export class LocalChatsRepository {
         group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
         service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
         appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
+        contacts: this.normalizeCounter((currentChatCounters.contacts ?? 0) + (chatCounterKey === 'contacts' ? unreadDelta : 0)),
         groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
       };
       const nextUsersTable = currentUser && unreadDelta !== 0
@@ -806,7 +868,7 @@ export class LocalChatsRepository {
   private applyStoredChatCounterDelta(
     table: AppMemorySchema[typeof USERS_TABLE_NAME],
     userId: string,
-    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'groupSupport',
+    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport',
     delta: number
   ): AppMemorySchema[typeof USERS_TABLE_NAME] {
     const currentUser = table.byId[userId] ?? null;
@@ -824,12 +886,14 @@ export class LocalChatsRepository {
             ...currentUser.activities,
             chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + delta),
             chat: {
+              ...currentChat,
               all: this.normalizeCounter((currentChat.all ?? currentUser.activities?.chats ?? 0) + delta),
               event: this.normalizeCounter((currentChat.event ?? 0) + (context === 'event' ? delta : 0)),
               subEvent: this.normalizeCounter((currentChat.subEvent ?? 0) + (context === 'subEvent' ? delta : 0)),
               group: this.normalizeCounter((currentChat.group ?? 0) + (context === 'group' ? delta : 0)),
               service: this.normalizeCounter((currentChat.service ?? 0) + (context === 'service' ? delta : 0)),
               appSupport: this.normalizeCounter((currentChat.appSupport ?? 0) + (context === 'appSupport' ? delta : 0)),
+              contacts: this.normalizeCounter((currentChat.contacts ?? 0) + (context === 'contacts' ? delta : 0)),
               groupSupport: this.normalizeCounter((currentChat.groupSupport ?? 0) + (context === 'groupSupport' ? delta : 0))
             }
           }
@@ -932,6 +996,7 @@ export class LocalChatsRepository {
   private activityChatContextFilterKey(
     record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
+    if (record.channelType === 'contact') return 'contacts';
     if (record.channelType === 'groupSupport') return 'groupSupport';
     if (record.channelType === 'appSupport' || record.channelType === 'supportCase') {
       return 'appSupport';
@@ -958,7 +1023,7 @@ export class LocalChatsRepository {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'groupSupport'
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport'
       ? value
       : 'all';
   }
@@ -1462,12 +1527,13 @@ export class LocalChatsRepository {
 
   private chatCounterKey(
     channelType: ContractTypes.ChatChannelType | null | undefined
-  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'groupSupport' | null {
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | null {
     switch (channelType) {
       case 'mainEvent': return 'event';
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'contact': return 'contacts';
       case 'groupSupport': return 'groupSupport';
       case 'appSupport':
       case 'supportCase': return 'appSupport';
