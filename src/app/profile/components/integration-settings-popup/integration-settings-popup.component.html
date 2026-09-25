@@ -19,11 +19,7 @@
               [attr.aria-label]="('affiliate.registered' | i18n) + ': ' + config.affiliate.registered"
             >{{ config.affiliate.registered }}</span>
           </div>
-          <div class="integration-token-secret">
-            <input readonly [value]="affiliateUrl()" [attr.aria-label]="'affiliate.personal.link' | i18n" />
-            <app-menu kind="inline" layout="row" [model]="actionMenuModel"
-              [items]="copyAffiliateActions()" (itemSelect)="onTokenAction($event)"></app-menu>
-          </div>
+          <app-copy-link [value]="affiliateUrl()"></app-copy-link>
         </section>
         }
         <section class="integration-settings-section integration-endpoint">

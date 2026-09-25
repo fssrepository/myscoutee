@@ -75,6 +75,13 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     };
   }
 
+  async queryChatSharedMessages(chat: ChatDTO, kind: 'event' | 'asset'): Promise<ContractTypes.ChatMessageDto[]> {
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    const record = this.localChatForActiveUser(chat.id);
+    if (!record) throw new Error('Chat unavailable');
+    return this.chatsRepository.queryChatSharedMessages(record, kind);
+  }
+
   async queryChatMessagesPage(
     chat: ChatDTO,
     query: ListQuery

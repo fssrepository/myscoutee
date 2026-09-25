@@ -1,3 +1,4 @@
+import { LocalIntegrationService } from '../../local/source/services/integration.service';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
 import { SessionService } from './session.service';
 import { AffiliateReferralService } from './affiliate-referral.service';
@@ -287,8 +288,14 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
+  private readonly localInvites = inject(LocalIntegrationService);
+
   async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }> {
-    // Partner invitation links refer to server-owned events even when browsing local demo data.
+    if (this.localModeEnabled) {
+      const local = await this.localInvites.claimExternalInvite(userId, token);
+      if (local) return local;
+    }
+    // API invitations remain server-owned even when the browser uses local demo data.
     return this.httpUsersService.claimPartnerInvite(userId, token);
   }
 

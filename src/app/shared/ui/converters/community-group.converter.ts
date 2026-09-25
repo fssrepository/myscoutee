@@ -38,6 +38,7 @@ export class CommunityGroupConverter {
     const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: 'blue', surface: 'tinted', context: group },
       { id: 'members', label: 'members', icon: 'groups', palette: 'violet', surface: 'tinted', context: group }];
     if (group.role === 'Admin' && group.membershipStatus === 'accepted') {
+      items.push({ id: 'share', label: 'invite.external.title', icon: 'share', palette: 'teal', surface: 'tinted', context: group });
       items.push({ id: 'edit', label: 'edit', icon: 'edit', palette: 'teal', surface: 'tinted', context: group });
       items.push({ id: 'moderation', label: 'moderation.title', icon: 'fact_check', palette: 'lime', surface: 'tinted',
         counter: { value: group.moderationPending ?? 0, max: 99 }, context: group });

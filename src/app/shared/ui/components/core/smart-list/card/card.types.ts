@@ -79,7 +79,7 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
-export type CardMenuActionTone = 'default' | 'accent' | 'positive' | 'warning' | 'destructive' | 'review';
+export type CardMenuActionTone = 'share' | 'default' | 'accent' | 'positive' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
 export type InfoCardMediaMode = 'image' | 'title';
 export type InfoCardMediaTone = 'default' | 'neutral';
@@ -272,9 +272,9 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   restore: { label: 'restore', icon: 'restore_from_trash' },
   restoreFeedback: { label: 'restore.feedback', icon: 'restore' },
   route: { label: 'route', icon: 'route' },
-  share: { label: 'share', icon: 'ios_share' },
-  shareAsset: { label: 'share.asset', icon: 'ios_share' },
-  shareEvent: { label: 'share.event', icon: 'ios_share' },
+  share: { label: 'share', icon: 'share', tone: 'share' },
+  shareAsset: { label: 'share.asset', icon: 'share', tone: 'share' },
+  shareEvent: { label: 'share.event', icon: 'share', tone: 'share' },
   startFeedback: { label: 'start.feedback', icon: 'play_arrow' },
   supportBlock: { label: 'activities.support.case.action.block', icon: 'block', tone: 'destructive' },
   supportPick: { label: 'activities.support.case.action.pick', icon: 'person_add', tone: 'accent' },
@@ -357,6 +357,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   mediaEnd?: InfoCardOverlayAction | null;
   mediaBottomStart?: InfoCardOverlayAction | null;
   mediaBottomEnd?: InfoCardOverlayAction | null;
+  selection?: { selected: boolean; disabled?: boolean; ariaLabel: string } | null;
   hasMenuOptions?: boolean;
   menuPosition?: 'top-right' | 'bottom-right';
   menuActions?: readonly CardMenuActionId[];

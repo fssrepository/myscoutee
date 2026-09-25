@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import type { ListQuery } from '../../contracts/list.interface';
 import type {
+  CashReceiptRequestDto,
   PaymentHistoryPageDto,
   PaymentHistoryMutationDto,
   PaymentMethodRegistrationDto,
@@ -26,6 +27,10 @@ export class PaymentMethodsService extends BaseRouteModeService {
 
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled(PaymentMethodsService.ROUTE);
+  }
+
+  recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
+    return this.service.recordCashReceipt(userId, request);
   }
 
   queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {

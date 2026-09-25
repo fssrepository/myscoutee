@@ -1,3 +1,4 @@
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -161,7 +162,7 @@ export class AssetPopupComponent {
   private readonly activityStore = inject(ActivityStore);
   private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
-  private readonly shareTokensService = inject(ShareTokensService);
+  private readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
@@ -1318,23 +1319,7 @@ export class AssetPopupComponent {
   }
 
   private openOwnedAssetShareDialog(card: AppDTOs.AssetDTO): void {
-    void this.shareTokensService.createToken({
-      kind: 'asset',
-      entityId: card.id,
-      assetType: card.type,
-      ownerUserId: card.ownerUserId ?? null
-    }).then(token => {
-      this.dialogStore.open({
-        title: 'Share asset',
-        message: token,
-        confirmLabel: 'Copy link',
-        cancelLabel: 'Cancel',
-        confirmTone: 'accent',
-        onConfirm: async () => {
-          await navigator.clipboard?.writeText(token);
-        }
-      });
-    });
+    void this.externalInvites.openExternalInvitePopup('asset', card.id, card.title, this.userProfileStore.activeUserId(), card.type);
   }
 
   private toggleAssetAssignBasketCard(cardId: string, event?: Event): void {

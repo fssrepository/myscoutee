@@ -1,3 +1,6 @@
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { untracked } from '@angular/core';
+import { ChatShareStore } from '../../../shared/ui/context/stores/chat-share.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
@@ -165,6 +168,7 @@ export class EventExplorePopupComponent {
   private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
+  private readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
@@ -320,7 +324,15 @@ export class EventExplorePopupComponent {
     groupBy: (record, query) => this.buildEventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 
+  protected readonly chatShare = inject(ChatShareStore);
+
   constructor() {
+    effect(() => {
+      const completed = this.chatShare.completed();
+      if (completed?.kind === 'event' && completed.id === this.chatShare.session()?.id) {
+        untracked(() => this.closeEventExplore());
+      }
+    });
     effect(() => {
       const followedIds = this.followingStore.state().organizerIds;
       if (!this.isOpen || !this.eventExploreFilters().followedOnly || !this.eventExploreSmartList) return;
@@ -428,7 +440,8 @@ export class EventExplorePopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented) {
       return;
     }
-    if (this.filterPopup) return;
+    if (this.filterPopup || (this.chatShare.active('event') && this.chatShare.busy())) return;
+    this.chatShare.close('event');
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
     if (this.selectedMembersRecord) {
@@ -478,7 +491,8 @@ export class EventExplorePopupComponent {
           model: this.eventExploreCompactMenuModel,
           trigger: this.eventExploreViewMenuTrigger(),
           items: this.eventExploreViewMenuItems()
-        }
+        },
+        ...this.chatShare.controls<EventExploreMenuContext>('event')
       ],
       onAction: event => { if (event.action.id === 'event-explore-filters') this.openFilters(); },
       onClose: () => this.closeEventExplore(),
@@ -573,6 +587,7 @@ export class EventExplorePopupComponent {
   }
 
   protected onEventExploreMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (this.chatShare.handleMenu(event)) return;
     const context = event.context as EventExploreMenuContext | undefined;
     if (!context) {
       return;
@@ -677,6 +692,8 @@ export class EventExplorePopupComponent {
     switch (tone) {
       case 'accent':
         return 'green';
+      case 'share':
+        return 'teal';
       case 'review':
         return 'violet';
       case 'warning':
@@ -1559,7 +1576,12 @@ export class EventExplorePopupComponent {
       activeUserId: this.activeUserId,
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
-    return this.withEventExploreCheckoutMenuActions(card, record);
+    return { ...this.withEventExploreCheckoutMenuActions(card, record),
+      selection: this.chatShare.selection(this.shareItem(record)) };
+  }
+
+  protected shareItem(record: ActivityEventRecord) {
+    return { kind: 'event' as const, entityId: record.id, title: record.title, ownerUserId: this.activeUserId };
   }
 
   private withEventExploreCheckoutMenuActions(card: InfoCardData, record: ActivityEventRecord): InfoCardData {
@@ -1663,26 +1685,8 @@ export class EventExplorePopupComponent {
   }
 
   private runEventExploreShareAction(record: ActivityEventRecord): void {
-    void this.shareTokensService.createToken({
-      kind: 'event',
-      entityId: record.id,
-      ownerUserId: this.activeUserId.trim()
-    }).then(token => this.openShareLinkDialog('Share event', token));
+    void this.externalInvites.openExternalInvitePopup('event', record.id, record.title, this.activeUserId.trim());
   }
-
-  private openShareLinkDialog(title: string, shareToken: string): void {
-    this.dialogStore.open({
-      title,
-      message: shareToken,
-      confirmLabel: 'Copy link',
-      cancelLabel: 'Cancel',
-      confirmTone: 'accent',
-      onConfirm: async () => {
-        await navigator.clipboard?.writeText(shareToken);
-      }
-    });
-  }
-
 
   private openEventExplore(): void {
     if (this.isOpen) return;

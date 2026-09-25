@@ -314,8 +314,9 @@
       }
     </div>
 
-    @if (hasMenuActions()) {
+    @if (hasMenuActions() || card?.selection) {
       <div class="ui-info-card__actions" [class.ui-info-card__actions--bottom]="card?.menuPosition === 'bottom-right'">
+        @if (hasMenuActions()) {
         @if (useSharedMenuTrigger) {
           <app-menu-trigger
             kind="select"
@@ -343,6 +344,16 @@
               {{ card?.menuBadgeCount | counterBadge }}
             </span>
           }
+        }
+        }
+        @if (card?.selection; as selection) {
+          <button type="button" class="ui-info-card__selection ui-info-card__overlay-action--toggle"
+            [class.ui-info-card__overlay-action--tone-selected]="selection.selected"
+            [disabled]="selection.disabled" [attr.aria-pressed]="selection.selected"
+            [attr.aria-label]="selection.ariaLabel | i18n"
+            (click)="$event.stopPropagation(); selectionChange.emit()">
+            <mat-icon>{{ selection.selected ? 'check' : 'add' }}</mat-icon>
+          </button>
         }
         @if (menuOpen && !useSharedMenu && !useSharedMenuTrigger) {
           <div

@@ -1,3 +1,5 @@
+import { ActivityInvitePopupStore } from '../../../../shared/ui/context/stores/activity-invite-popup.store';
+import { ChatShareStore } from '../../../../shared/ui/context/stores/chat-share.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -273,7 +275,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetBorrowDraftStore = inject(AssetBorrowDraftStore);
   private readonly dialogStore = inject(DialogStore);
-  private readonly shareTokensService = inject(ShareTokensService);
+  private readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly profileStore = inject(ProfileStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
@@ -455,7 +457,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       .sort((left, right) => left.title.localeCompare(right.title) || left.cardId.localeCompare(right.cardId));
   });
 
+  protected readonly chatShare = inject(ChatShareStore);
+
   constructor() {
+    effect(() => {
+      const completed = this.chatShare.completed();
+      if (completed?.kind === 'asset' && completed.id === this.chatShare.session()?.id) {
+        untracked(() => this.closeExplorePopup());
+      }
+    });
     effect(() => {
       if (this.assetView()) {
         void this.resourcePopupStore.ensureEventResourceAssetViewLoaded();
@@ -505,7 +515,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           items: this.orderMenuItems(),
           panelAlign: 'end',
           mobileBreakpointPx: 900
-        }
+        },
+        ...this.chatShare.controls<AssetExploreMenuContext>('asset')
       ],
       toolbarControls: [
         {
@@ -656,14 +667,19 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected itemInfoCard(card: ResourceAssetDTO, options: { groupLabel?: string | null } = {}): InfoCardData {
-    return AssetInfoCardConverter.convert(this.toAssetDto(card), {
+    return { ...AssetInfoCardConverter.convert(this.toAssetDto(card), {
       variant: 'explore',
       groupLabel: options?.groupLabel ?? null,
       ownerAvatarUrl: this.ownerAvatarUrl(card),
       availabilityLabel: this.availabilityLabel(card),
       canBorrow: this.availableQuantity(card) > 0,
       canReportOwner: this.canReportOwner(card)
-    });
+    }), selection: this.chatShare.selection(this.shareItem(card)) };
+  }
+
+  protected shareItem(card: ResourceAssetDTO) {
+    const asset = this.toAssetDto(card);
+    return { kind: 'asset' as const, entityId: asset.id, title: asset.title, assetType: asset.type, ownerUserId: asset.ownerUserId };
   }
 
   protected openInfoCardMenu(card: ResourceAssetDTO, request: CardMenuRequestEvent<InfoCardData>): void {
@@ -700,6 +716,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected onMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (this.chatShare.handleMenu(event)) return;
     const context = event.context as AssetExploreMenuContext | undefined;
     if (!context) {
       return;
@@ -1017,6 +1034,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected closeExplorePopup(event?: Event): void {
+    if (this.chatShare.active('asset') && this.chatShare.busy()) return;
+    this.chatShare.close('asset');
     event?.stopPropagation();
     this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     if (this.resourcePopupStore.assetExploreOnlyRef()) {
@@ -3516,25 +3535,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private openShareDialog(card: ResourceAssetDTO): void {
-    void this.shareTokensService.createToken({
-      kind: 'asset',
-      entityId: card.id,
-      assetType: card.type,
-      ownerUserId: card.ownerUserId ?? null
-    }).then(token => this.openShareLinkDialog('Share asset', token));
-  }
-
-  private openShareLinkDialog(title: string, shareToken: string): void {
-    this.dialogStore.open({
-      title,
-      message: shareToken,
-      confirmLabel: 'Copy link',
-      cancelLabel: 'Cancel',
-      confirmTone: 'accent',
-      onConfirm: async () => {
-        await navigator.clipboard?.writeText(shareToken);
-      }
-    });
+    void this.externalInvites.openExternalInvitePopup('asset', card.id, card.title, this.activeUser().id, card.type);
   }
 
   private canReportOwner(card: ResourceAssetDTO): boolean {
@@ -3629,6 +3630,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     switch (tone) {
       case 'accent':
         return 'green';
+      case 'share':
+        return 'teal';
       case 'review':
         return 'violet';
       case 'warning':

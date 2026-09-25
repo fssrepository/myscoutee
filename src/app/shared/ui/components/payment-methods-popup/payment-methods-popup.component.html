@@ -89,3 +89,8 @@
 @if (currencyPickerOpen() && euroSummary(); as summary) {
   <app-summary-currency-popup [summary]="euroSummary()!" (closed)="currencyPickerOpen.set(false)"></app-summary-currency-popup>
 }
+
+@if (store.isOpen() && cashReceiptOpen()) {
+  <app-cash-receipt-popup [userId]="activeUserId()" [currency]="euroSummary()?.currency || 'EUR'"
+    (recorded)="applyPaymentHistoryMutation($event)" (closed)="cashReceiptOpen.set(false)"></app-cash-receipt-popup>
+}

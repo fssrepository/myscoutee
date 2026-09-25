@@ -25,6 +25,7 @@
         <app-info-card
           [card]="eventExploreInfoCard(record, groupLabel)"
           [useSharedMenu]="true"
+          (selectionChange)="chatShare.toggle(shareItem(record))"
           (mediaStartClick)="openHostImpressions(record)"
           (mediaEndClick)="openEventExploreMembers(record)"
           (menuAction)="onEventExploreCardMenuAction(record, $event)"

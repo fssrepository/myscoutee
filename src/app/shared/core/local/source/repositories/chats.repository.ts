@@ -444,6 +444,18 @@ export class LocalChatsRepository {
       }));
   }
 
+  queryChatSharedMessages(chat: ChatRecord, kind: 'event' | 'asset'): ContractTypes.ChatMessageDto[] {
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    if (!record) return [];
+    const snapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+    const key = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
+    const records = (snapshot.idsByChatKey[key] ?? []).map(id => snapshot.byId[id])
+      .filter((message): message is ChatMessageRecord => Boolean(message)
+        && message.senderAvatar.userId === record.ownerUserId && !message.deletedAtIso
+        && message.attachments?.some(attachment => attachment.type === kind) === true);
+    return LocalChatMessageMapper.toDtoList(records);
+  }
+
   queryChatMessagesPage(
     chat: ChatRecord,
     query: ListQuery

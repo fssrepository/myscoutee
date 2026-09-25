@@ -1,3 +1,4 @@
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -158,7 +159,7 @@ export class EventResourcePopupComponent {
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
   private readonly dialogStore = inject(DialogStore);
-  private readonly shareTokensService = inject(ShareTokensService);
+  private readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
   private readonly activityStore = inject(ActivityStore);
@@ -528,33 +529,7 @@ export class EventResourcePopupComponent {
   }
 
   private openResourceShareDialog(card: AppDTOs.SubEventResourceCardDTO): void {
-    const sourceAssetId = `${card.sourceAssetId ?? ''}`.trim();
-    if (!sourceAssetId || !AppConstants.isAssetType(card.type)) {
-      void this.shareTokensService.createToken({
-        kind: 'asset',
-        entityId: card.id,
-        assetType: card.type as AppConstants.AssetType
-      }).then(token => this.openShareLinkDialog('Share asset', token));
-      return;
-    }
-    void this.shareTokensService.createToken({
-      kind: 'asset',
-      entityId: sourceAssetId,
-      assetType: card.type
-    }).then(token => this.openShareLinkDialog('Share asset', token));
-  }
-
-  private openShareLinkDialog(title: string, shareToken: string): void {
-    this.dialogStore.open({
-      title,
-      message: shareToken,
-      confirmLabel: 'Copy link',
-      cancelLabel: 'Cancel',
-      confirmTone: 'accent',
-      onConfirm: async () => {
-        await navigator.clipboard?.writeText(shareToken);
-      }
-    });
+    void this.externalInvites.openExternalInvitePopup('asset', card.sourceAssetId?.trim() || card.id, card.title, this.activeUser().id, card.type as AppConstants.AssetType);
   }
 
   private async openResourceServiceChat(card: AppDTOs.SubEventResourceCardDTO, event: Event): Promise<void> {

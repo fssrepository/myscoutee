@@ -83,6 +83,7 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
   @Input() useSharedMenuTrigger = false;
   @Input() sharedMenuContext: Record<string, unknown> | null = null;
 
+  @Output() readonly selectionChange = new EventEmitter<void>();
   @Output() readonly cardClick = new EventEmitter<CardClickEvent<InfoCardData>>();
   @Output() readonly mediaStartClick = new EventEmitter<CardClickEvent<InfoCardData>>();
   @Output() readonly mediaEndClick = new EventEmitter<CardClickEvent<InfoCardData>>();
@@ -543,6 +544,8 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
       case 'accent':
         return 'brown';
       case 'warning':
+      case 'share':
+        return 'teal';
       case 'review':
         return 'orange';
       case 'destructive':

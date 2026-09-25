@@ -59,6 +59,10 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     };
   }
 
+  async queryChatSharedMessages(chat: ChatDTO, kind: 'event' | 'asset'): Promise<ContractTypes.ChatMessageDto[]> {
+    return this.chatsService.queryChatSharedMessages(chat, kind);
+  }
+
   async queryChatMessagesPage(
     chat: ChatDTO,
     query: ListQuery

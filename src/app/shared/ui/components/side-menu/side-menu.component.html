@@ -244,3 +244,7 @@
     <ng-container *ngComponentOutlet="moderationComponent; inputs: { groupContext: moderationContext }"></ng-container>
   }
 }
+
+@if (activityInviteStore.externalInvite() && activityInviteStore.externalInviteComponent(); as externalInviteComponent) {
+  <ng-container *ngComponentOutlet="externalInviteComponent"></ng-container>
+}

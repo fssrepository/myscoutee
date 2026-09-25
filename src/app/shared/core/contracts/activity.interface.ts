@@ -185,6 +185,8 @@ export interface IChatsService {
     query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
+  queryChatSharedMessages(chat: ChatContracts.ChatDTO, kind: 'event' | 'asset'): Promise<ChatContracts.ChatMessageDto[]>;
+
   queryChatMessagesPage(
     chat: ChatContracts.ChatDTO,
     query: ListQuery

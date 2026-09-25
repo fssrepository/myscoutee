@@ -224,6 +224,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.syncMobileView();
     this.queryParamSubscription = this.route.queryParamMap.subscribe(queryParams => {
       this.affiliateReferral.capture(queryParams.get('affiliate'));
+      const redirect = queryParams.get('redirect');
+      if (redirect?.startsWith('/') && !redirect.startsWith('//')) {
+        this.affiliateReferral.capture(this.router.parseUrl(redirect).queryParams['affiliate'] ?? null);
+      }
       this.autoOnboardingRequested = queryParams.get('onboarding') === '1';
       this.beginAutoOnboardingIfReady();
     });

@@ -46,6 +46,33 @@ export class LocalIntegrationRepository {
     };
   }
 
+  externalInvite(ownerUserId: string, ownerType: 'event' | 'community', entityId: string): {url: string} {
+    const settings = this.settings(ownerUserId, '/api/integrations/v1');
+    const owner = this.requireUser(ownerUserId);
+    let invite = owner.externalInvites?.find(item => item.ownerType === ownerType && item.entityId === entityId);
+    if (!invite) {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      invite = {ownerType, entityId, token: btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''), createdAtIso: new Date().toISOString()};
+      const next = invite;
+      this.memoryDb.write(state => ({...state, [USERS_TABLE_NAME]: {...state[USERS_TABLE_NAME], byId: {
+        ...state[USERS_TABLE_NAME].byId, [ownerUserId]: {...state[USERS_TABLE_NAME].byId[ownerUserId],
+          externalInvites: [...(state[USERS_TABLE_NAME].byId[ownerUserId].externalInvites ?? []), next]}
+      }}}));
+    }
+    return {url: `/game?${settings.affiliate.url.split('?')[1]}&partnerInvite=${invite.token}`};
+  }
+
+  findExternalInvite(token: string) {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    for (const id of users.ids) {
+      const owner = users.byId[id];
+      if (owner.deletedAtIso) continue;
+      const invite = owner.externalInvites?.find(item => item.token === token);
+      if (invite) return {...invite, ownerUserId: id};
+    }
+    return null;
+  }
+
   recordRegistration(userId: string, code: string | undefined): void {
     if (!code || !/^[a-f0-9-]{36}$/.test(code)) return;
     this.memoryDb.write(state => {
@@ -62,7 +89,7 @@ export class LocalIntegrationRepository {
     });
   }
 
-  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true, sourceId?: string, recipientUserId?: string, bookingStartAtIso?: string, cancellationPolicy?: PricingCancellationPolicy): void {
+  recordPayment(userId: string, paymentId: string, currency: string, amount: number, refunded = 0, eventBooking = true, sourceId?: string, recipientUserId?: string, bookingStartAtIso?: string, cancellationPolicy?: PricingCancellationPolicy, provider?: string): void {
     currency = currency.trim().toUpperCase();
     if (!paymentId || !/^[A-Z]{3}$/.test(currency) || !Number.isFinite(amount) || !Number.isFinite(refunded)) return;
     const grossMinor = Math.max(0, Math.round(amount * 100));
@@ -71,13 +98,14 @@ export class LocalIntegrationRepository {
       const table = { ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId } };
       const payer = table.byId[userId];
       const previous = payer?.affiliatePayments?.[paymentId];
-      const ownerId = previous?.ownerId ?? payer?.affiliateReferrerUserId;
+      const paymentProvider = previous?.provider ?? provider?.trim().toLowerCase() ?? 'dummy';
+      const ownerId = paymentProvider === 'cash' ? null : previous?.ownerId ?? payer?.affiliateReferrerUserId;
       const owner = ownerId ? table.byId[ownerId] : null;
       if (!payer || (previous && (previous.currency !== currency || previous.gross !== grossMinor / 100))) return state;
       const refundMinor = Math.max(requestedRefundMinor, Math.round((previous?.refunded ?? 0) * 100));
       const refundDelta = refundMinor / 100 - (previous?.refunded ?? 0);
       const nextPayment = {
-        ...previous, ownerId: owner?.id ?? '', currency, gross: grossMinor / 100,
+        ...previous, provider: paymentProvider, ownerId: owner?.id ?? '', currency, gross: grossMinor / 100,
         refunded: refundMinor / 100, eventBooking, sourceId: sourceId ?? previous?.sourceId,
         recipientUserId: recipientUserId ?? previous?.recipientUserId,
         createdAtIso: previous?.createdAtIso ?? new Date().toISOString(),
@@ -118,18 +146,54 @@ export class LocalIntegrationRepository {
     });
   }
 
+  recordCashReceipt(recipientId: string, request: import('../../../contracts/payment-method.interface').CashReceiptRequestDto): import('../../../contracts/payment-method.interface').PaymentHistoryItemDto {
+    if (!/^[a-f0-9-]{36}$/i.test(request.requestId) || !Number.isFinite(request.amount) || request.amount <= 0
+      || request.amount > 1_000_000_000 || Math.abs(request.amount * 100 - Math.round(request.amount * 100)) > 0.000001
+      || !/^[A-Z]{3}$/.test(request.currency) || request.note.length > 1000 || request.payerUserId === recipientId) {
+      throw new Error('Invalid cash receipt');
+    }
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    const payer = users.byId[request.payerUserId];
+    const recipient = users.byId[recipientId];
+    if (!payer || !recipient || payer.deletedAtIso || recipient.deletedAtIso
+      || (payer.workspaceGroupId ?? null) !== (recipient.workspaceGroupId ?? null)) throw new Error('Member unavailable');
+    const id = `cash:${recipientId}:${request.requestId}`;
+    const note = request.note.trim();
+    const previousPayer = users.ids.find(userId => users.byId[userId].affiliatePayments?.[id]);
+    if (previousPayer && previousPayer !== payer.id) throw new Error('Receipt request already used');
+    const previous = payer.affiliatePayments?.[id];
+    if (previous && (previous.recipientUserId !== recipientId || previous.gross !== request.amount
+      || previous.currency !== request.currency || previous.receiptNote !== note)) throw new Error('Receipt request already used');
+    if (!previous) {
+      this.recordPayment(payer.id, id, request.currency, request.amount, 0, false, id, recipientId, undefined, undefined, 'cash');
+      this.memoryDb.write(state => {
+        const table = state[USERS_TABLE_NAME];
+        const currentPayer = table.byId[payer.id];
+        const payment = currentPayer.affiliatePayments![id];
+        return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId, [payer.id]: {
+          ...currentPayer, affiliatePayments: { ...currentPayer.affiliatePayments, [id]: {
+            ...payment, manualCash: true, receiptNote: note, receiptPayerName: payer.name, receiptRecipientName: recipient.name
+          } }
+        } } } };
+      });
+    }
+    return this.paymentHistory(recipientId).find(item => item.id === id)!;
+  }
+
   paymentHistory(userId: string): import('../../../contracts/payment-method.interface').PaymentHistoryItemDto[] {
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     return users.ids.flatMap(payerId => Object.entries(users.byId[payerId].affiliatePayments ?? {}).flatMap(([id, payment]) => {
       if (!payment.sourceId || (payerId !== userId && payment.recipientUserId !== userId)) return [];
       const direction = payerId === userId ? 'expense' as const : 'income' as const;
-      const base = { sourceId: payment.sourceId, checkoutSessionId: id, provider: 'dummy', currency: payment.currency,
+      const base = { sourceId: payment.sourceId, checkoutSessionId: id, provider: payment.provider ?? 'dummy', currency: payment.currency,
         recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : 'joined',
         canRequestRefund: false, canApproveRefund: false };
-      const refundPreview = this.refundPreview(payment);
+      const refundPreview = payment.manualCash ? null : this.refundPreview(payment);
       return [{ ...base, id, direction, amount: payment.gross, status: 'approved', auditKind: 'payment',
+          fulfillmentKind: payment.manualCash ? 'cash-receipt' : null,
+          note: payment.receiptNote, counterpartyName: direction === 'income' ? payment.receiptPayerName : payment.receiptRecipientName,
           refundPreview, canRequestRefund: payerId === userId && !payment.refundRequest
-            && payment.refunded === 0 && refundPreview.refundableAmount > 0,
+            && payment.refunded === 0 && (refundPreview?.refundableAmount ?? 0) > 0,
           createdAtIso: payment.createdAtIso ?? '' },
         ...(payment.refundOperations ?? []).map(refund => ({ ...base, id: refund.id,
           direction: direction === 'expense' ? 'income' as const : 'expense' as const,
@@ -145,6 +209,7 @@ export class LocalIntegrationRepository {
   requestPolicyRefund(userId: string, paymentId: string): boolean {
     const payment = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId]?.affiliatePayments?.[paymentId];
     if (!payment) return false;
+    if (payment.manualCash) throw new Error('Cash receipts have no booking refund.');
     const preview = this.refundPreview(payment);
     if (payment.refundRequest || payment.refunded > 0 || preview.refundableAmount <= 0) {
       throw new Error('This payment can no longer be refunded.');

@@ -97,12 +97,13 @@ export interface UserRecord {
   accountUserId?: string;
   following?: import('../../../contracts/following.interface').FollowingState;
   feedCounters?: import('../../../contracts/photo-feed.interface').PhotoFeedCounters;
+  externalInvites?: {ownerType: 'event' | 'community'; entityId: string; token: string; createdAtIso: string}[];
   integrationTokens?: LocalIntegrationTokenRecord[];
   affiliateCode?: string;
   affiliateRegistrations?: { userId: string; registeredAtIso: string }[];
   affiliateReferrerUserId?: string;
   affiliateRevenue?: import('../../../contracts/integration.interface').AffiliateRevenueDto;
-  affiliatePayments?: Record<string, { ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean; sourceId?: string; recipientUserId?: string; createdAtIso?: string; bookingStartAtIso?: string; cancellationPolicy?: import('../../../contracts/pricing.interface').PricingCancellationPolicy; eventRefundEligible?: boolean; refundRequest?: { id: string; amount: number; target: number; status: 'pending' | 'approved'; requestedAtIso: string }; refundOperations?: { id: string; amount: number; createdAtIso: string }[] }>;
+  affiliatePayments?: Record<string, { receiptNote?: string; receiptPayerName?: string; receiptRecipientName?: string; manualCash?: boolean; provider?: string; ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean; sourceId?: string; recipientUserId?: string; createdAtIso?: string; bookingStartAtIso?: string; cancellationPolicy?: import('../../../contracts/pricing.interface').PricingCancellationPolicy; eventRefundEligible?: boolean; refundRequest?: { id: string; amount: number; target: number; status: 'pending' | 'approved'; requestedAtIso: string }; refundOperations?: { id: string; amount: number; createdAtIso: string }[] }>;
   devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;

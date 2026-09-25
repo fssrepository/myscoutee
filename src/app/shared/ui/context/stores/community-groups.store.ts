@@ -1,3 +1,4 @@
+import { ActivityInvitePopupStore } from './activity-invite-popup.store';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { GroupWorkspaceStore } from './group-workspace.store';
 import { DialogStore } from './dialog.store';
@@ -14,6 +15,7 @@ import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFi
 import type { ListQuery } from '../../../core/contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
+  private readonly invites = inject(ActivityInvitePopupStore);
   private readonly dialogs = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   private readonly workspace = inject(GroupWorkspaceContextService);
@@ -79,6 +81,10 @@ export class CommunityGroupsStore {
     } catch (error) { this.error.set(this.message(error)); } finally { this.busy.set(false); }
   }
   async action(action: string, group: CommunityGroupSummary): Promise<void> {
+    if (action === 'share') {
+      await this.invites.openExternalInvitePopup('community', group.id, group.name, this.openUserId() ?? '');
+      return;
+    }
     if (action === 'moderation') {
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') return;
       const userId = this.openUserId() ?? '';

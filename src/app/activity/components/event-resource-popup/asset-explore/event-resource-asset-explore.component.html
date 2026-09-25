@@ -2,6 +2,7 @@
   <app-info-card
     [card]="itemInfoCard(card, { groupLabel })"
     [useSharedMenu]="true"
+    (selectionChange)="chatShare.toggle(shareItem(card))"
     (mediaStartClick)="openOwnerImpressions(card)"
     (mediaEndClick)="openBorrowFromBadge(card)"
     (menuAction)="onCardMenuAction(card, $event)"

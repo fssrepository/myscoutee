@@ -1,3 +1,4 @@
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import {
   ChangeDetectionStrategy,
@@ -212,6 +213,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private static readonly ACTIVITY_LIST_POLL_INTERVAL_MS = 30000;
 
   // ── injected ──────────────────────────────────────────────────────────────
+  readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly followingStore = inject(FollowingStore);
   protected readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);

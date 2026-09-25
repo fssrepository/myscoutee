@@ -406,6 +406,14 @@ export class HttpChatsService implements IChatsService {
     };
   }
 
+  async queryChatSharedMessages(chat: ChatDTO, kind: 'event' | 'asset'): Promise<ContractTypes.ChatMessageDto[]> {
+    const response = await this.http.get<HttpChatMessageDto[]>(
+      `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/shared-messages`,
+      { params: this.activeUserParams().set('kind', kind) }
+    ).toPromise();
+    return (response ?? []).map((message, index) => this.mapChatMessage(message, chat.id, index));
+  }
+
   async queryChatMessagesPage(
     chat: ChatDTO,
     query: ListQuery

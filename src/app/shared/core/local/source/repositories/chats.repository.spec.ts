@@ -32,7 +32,7 @@ describe('LocalChatsRepository chat pages', () => {
     const message: ContractTypes.ChatMessageDto = {
       id: 'content-moderation:one-command', sender: 'Admin',
       senderAvatar: { id: 'admin', initials: 'AD', gender: 'system' },
-      text: 'Please review this photo.', time: '10:00', sentAtIso: thread.dateIso,
+      text: 'Please review this photo.', time: '10:00', sentAtIso: thread.dateIso!,
       mine: false, readBy: []
     };
     const before = memoryDb.read()[USERS_TABLE_NAME].byId[ownerId].activities.chats ?? 0;
@@ -294,6 +294,24 @@ describe('LocalChatsRepository chat pages', () => {
       revision: initialRevision
     });
     expect(memoryDb.read()[USERS_TABLE_NAME].byId[ownerUserId].activities.chats).toBe(originalChats);
+  });
+
+  it('finds only active own shares, including messages outside the visible page', () => {
+    const thread = chat('shared-history', 'user-1', 'general', '2026-09-25T10:00:00Z');
+    seedChats([thread]);
+    const message = (id: string, senderId: string, kind: 'event' | 'asset', deleted = false): ContractTypes.ChatMessageDto => ({
+      id, sender: senderId, senderAvatar: { id: senderId, initials: 'US', gender: 'man' },
+      text: '', time: '10:00', sentAtIso: '2026-09-25T10:00:00Z', mine: senderId === 'user-1', readBy: [],
+      deletedAtIso: deleted ? '2026-09-25T11:00:00Z' : null,
+      attachments: [{ id, type: kind, entityId: id, title: id }]
+    });
+    repository.appendChatMessage(thread, message('old-share', 'user-1', 'event'));
+    repository.appendChatMessage(thread, message('other-sender', 'user-2', 'event'));
+    repository.appendChatMessage(thread, message('deleted-share', 'user-1', 'event', true));
+    repository.appendChatMessage(thread, message('asset-share', 'user-1', 'asset'));
+    expect(repository.queryChatMessagesPage(thread, pageRequest({ pageSize: 1 })).items.map(item => item.id)).not.toContain('old-share');
+    expect(repository.queryChatSharedMessages(thread, 'event').map(item => item.id)).toEqual(['old-share']);
+    expect(repository.queryChatSharedMessages(thread, 'asset').map(item => item.id)).toEqual(['asset-share']);
   });
 
   it('advances the chat row revision when its message summary changes', () => {

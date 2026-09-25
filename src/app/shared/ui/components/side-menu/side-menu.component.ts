@@ -1,3 +1,4 @@
+import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
 import type { AppMenuPalette } from '../core/menu';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
@@ -268,6 +269,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
+  private readonly sharedLinks = inject(ShareTokensService);
   protected readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
@@ -1115,6 +1117,7 @@ export class SideMenuComponent implements OnDestroy {
       if (userId && !this.groupWorkspaces.context.switching() && this.userProfileStore.activeUserProfile()?.id === userId) {
         void this.openNotificationRoute(url);
         void this.openPartnerInviteTarget(url, userId);
+        void this.openSharedAssetTarget(url, userId);
       }
     });
 
@@ -2494,6 +2497,25 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
+  private openingSharedAsset = '';
+  private async openSharedAssetTarget(url: string, userId: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingSharedAsset === url) return;
+    const tree = this.router.parseUrl(url);
+    const token = `${tree.queryParams['sharedAsset'] ?? ''}`.trim();
+    if (!token) return;
+    this.openingSharedAsset = url;
+    try {
+      const item = await this.sharedLinks.resolveToken(token, userId);
+      if (this.router.url !== url || this.userProfileStore.activeUserId() !== userId) return;
+      if (!item || item.kind !== 'asset' || !AppConstants.isAssetType(item.assetType)) throw new Error('Unavailable');
+      delete tree.queryParams['sharedAsset']; delete tree.queryParams['affiliate'];
+      await this.router.navigateByUrl(tree, {replaceUrl: true});
+      this.memberMenuStore.requestActivitiesNavigation({type: 'assetExplore', assetId: item.entityId, assetType: item.assetType, viewOnly: true});
+    } catch {
+      if (this.router.url === url) this.dialogStore.open({title: 'invite.external.title', message: 'invite.external.failed', confirmLabel: 'OK'});
+    } finally { if (this.openingSharedAsset === url) this.openingSharedAsset = ''; }
+  }
+
   private async openPartnerInviteTarget(url: string, userId: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game') return;
     const tree = this.router.parseUrl(url);
@@ -2512,10 +2534,12 @@ export class SideMenuComponent implements OnDestroy {
         if (!await this.groupWorkspaces.select(claim.groupId)) throw new Error('groups.switch.failed');
         if (this.groupWorkspaces.context.accountUserId() !== accountId || this.router.url !== url) return;
         delete tree.queryParams['partnerInvite'];
+        delete tree.queryParams['affiliate'];
         await this.router.navigateByUrl(tree, { replaceUrl: true });
         return;
       }
       delete tree.queryParams['partnerInvite'];
+        delete tree.queryParams['affiliate'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);

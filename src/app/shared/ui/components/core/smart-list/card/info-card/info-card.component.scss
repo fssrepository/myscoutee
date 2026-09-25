@@ -705,9 +705,16 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__overlay-action--toggle {
+  box-sizing: border-box;
+  flex: 0 0 32px;
   min-width: 32px;
+  max-width: 32px;
   width: 32px;
   height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  padding: 0;
+  aspect-ratio: 1;
   border-radius: 999px;
   background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);
   color: #2c5d9e;
@@ -1131,6 +1138,8 @@ button.ui-info-card__overlay-action {
 .ui-info-card__actions {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
   align-items: center;
 }
 
@@ -1561,4 +1570,19 @@ button.asset-occupancy-badge:focus-visible {
   background: colors.$danger-background;
   border-color: colors.$danger-border;
   color: colors.$danger-foreground;
+}
+
+.ui-info-card__selection {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #b6cbea;
+  cursor: pointer;
+}
+.ui-info-card__selection:disabled { cursor: default; opacity: 0.65; }
+.ui-info-card__selection .mat-icon { width: 18px; height: 18px; font-size: 18px; line-height: 18px; }
+
+.ui-info-card__menu-action--share {
+  background: linear-gradient(180deg, #eefcfd 0%, #ddf2f5 100%);
+  border-color: #abd9df;
+  color: #216f7a;
 }

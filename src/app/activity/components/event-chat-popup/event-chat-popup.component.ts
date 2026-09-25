@@ -1,3 +1,4 @@
+import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat-share.store';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -9,7 +10,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import {
   CommonModule,
@@ -468,7 +470,18 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected readonly trackByChatReader = (_index: number, reader: ContractTypes.ChatReadAvatar): string => reader.id;
 
+  private readonly chatShare = inject(ChatShareStore);
+
   constructor() {
+    effect(() => {
+      const request = this.chatShare.applyRequest();
+      const session = this.session();
+      if (!request || session?.item.id !== request.chat.id) return;
+      untracked(() => {
+        const taken = this.chatShare.takeRequest(session.item.id);
+        if (taken) void this.applyChatShares(taken);
+      });
+    });
     effect(() => {
       if (!this.shouldHostChatResourcePopup()) {
         return;
@@ -2234,23 +2247,70 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareCurrentEvent(event?: Event): void {
     event?.stopPropagation();
-    this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+    void this.openChatSharePicker('event');
   }
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
-    const state = this.selectedChatNavigationState;
-    const resourceType = this.firstAvailableAssetType();
-    if (state?.subEvent) {
-      this.openSelectedChatSubEventResource(resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT, event, true);
-      return;
+    void this.openChatSharePicker('asset');
+  }
+
+  private async openChatSharePicker(kind: 'event' | 'asset'): Promise<void> {
+    const session = this.session();
+    if (!session || this.chatInitialLoadPending || this.chatShare.busy()) return;
+    try {
+      const chat = await this.ensureServiceChatBeforeFirstMessage(session.item);
+      if (this.session() !== session) return;
+      this.chatShare.open(chat, kind);
+      if (kind === 'event') {
+        this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+        return;
+      }
+      const state = this.selectedChatNavigationState;
+      const resourceType = this.firstAvailableAssetType() ?? AppConstants.ASSET_TYPE_TRANSPORT;
+      if (state?.subEvent) {
+        this.openSelectedChatSubEventResource(resourceType, undefined, true);
+      } else {
+        this.memberMenuStore.requestActivitiesNavigation({ type: 'assetExplore', assetType: resourceType,
+          startAtIso: state?.resourceStartAtIso ?? undefined, endAtIso: state?.resourceEndAtIso ?? undefined });
+      }
+    } catch {
+      this.dialogStore.openInfo(this.i18n.translate('chat.share.failed'), { title: this.i18n.translate('chat.share.title') });
     }
-    this.memberMenuStore.requestActivitiesNavigation({
-      type: 'assetExplore',
-      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT,
-      startAtIso: state?.resourceStartAtIso ?? undefined,
-      endAtIso: state?.resourceEndAtIso ?? undefined
-    });
+  }
+
+  private async applyChatShares(request: ChatShareApplyRequest): Promise<void> {
+    const actor = this.activeUserId();
+    const requireCurrent = () => {
+      if (this.activeUserId() !== actor || this.session()?.item.id !== request.chat.id
+          || this.chatShare.session()?.id !== request.id) throw new Error('Share session changed');
+    };
+    try {
+      for (const messageId of request.removals) {
+        requireCurrent();
+        const message = await this.chatsService.updateChatMessage(request.chat, messageId, { deleted: true });
+        if (!message) throw new Error('Share removal failed');
+        this.chatShare.removed(request, messageId);
+        if (this.session()?.item.id === request.chat.id) this.replaceExistingChatMessage(message);
+      }
+      for (const item of request.additions) {
+        requireCurrent();
+        const token = await this.shareTokensService.createToken({ kind: item.kind, entityId: item.entityId,
+          assetType: item.assetType, ownerUserId: item.ownerUserId });
+        const attachment = await this.resolveShareAttachmentFromText(token);
+        if (!attachment) throw new Error('Share token unavailable');
+        requireCurrent();
+        const message = await this.sendPersistedChatMessageWithAttachments(request.chat, '', [attachment],
+          `share:${request.id}:${item.kind}:${item.entityId}`);
+        if (!message) throw new Error('Share delivery failed');
+        this.chatShare.added(request, item, message);
+        if (this.session()?.item.id === request.chat.id) this.mergeIncomingChatMessage(message);
+      }
+      this.chatShare.finish(request, true);
+    } catch {
+      this.chatShare.finish(request, false);
+    }
+    this.cdr.markForCheck();
   }
 
   private async shareCurrentWorkspaceWithSupport(): Promise<void> {
