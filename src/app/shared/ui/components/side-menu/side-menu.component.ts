@@ -1,3 +1,8 @@
+import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
+import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
+import type { AppMenuPalette } from '../core/menu';
+import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
+import { CommunityGroupsPopupComponent } from '../community-groups-popup/community-groups-popup.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
 import { AdminNotificationsService } from '../../../core/base/services/admin-notifications.service';
 import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
@@ -8,6 +13,7 @@ import { ImageGalleryStore } from '../../context/stores/image-gallery.store';
 import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
+import { profileMenuBadgeCount } from '../../context/stores/app-context-store.utils';
 import {
   CommonModule
 } from '@angular/common';
@@ -224,6 +230,7 @@ type NavigatorHeaderActionMenuItemId =
   imports: [
     ImageGalleryPopupComponent,
     PhotoFeedPopupComponent,
+    CommunityGroupsPopupComponent,
     CommonModule,
     MatIconModule,
     AppMenuComponent,
@@ -262,6 +269,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
+  private readonly sharedLinks = inject(ShareTokensService);
   protected readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
@@ -297,6 +305,20 @@ export class SideMenuComponent implements OnDestroy {
   private readonly sessionService = inject(SessionService);
   private readonly chatsService = inject(ChatsService);
   private readonly dialogStore = inject(DialogStore);
+  protected readonly groupWorkspaces = inject(GroupWorkspaceStore);
+  protected readonly workspaceTrigger = computed<AppMenuTrigger>(() => {
+    const workspace = this.groupWorkspaces.context.active();
+    return { label: workspace?.name ?? 'groups.workspace.main', ariaLabel: 'groups.workspace.select',
+      icon: workspace ? '' : 'public', rotateIcon: false,
+      imageFallback: workspace ? AppUtils.initialsFromText(workspace.name) : '',
+      imageShape: 'circle',
+      palette: workspace ? this.groupWorkspaces.palette(workspace.groupId) : 'green',
+      layout: 'pill', disabled: ['idle', 'loading'].includes(this.activeUserLoadState().status) };
+  });
+  protected readonly workspaceItems = computed(() => this.groupWorkspaces.menuItems(this.groupWorkspaces.context.active()?.groupId ?? 'main'));
+  protected selectWorkspace(event: AppMenuItemSelectEvent): void {
+    void this.groupWorkspaces.select(event.id === 'main' ? null : event.id);
+  }
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
   protected readonly popupPresenceStore = inject(PopupPresenceStore);
   protected readonly paymentMethodsPopupStore = inject(PaymentMethodsPopupStore);
@@ -309,11 +331,23 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
+  protected readonly communityGroups = inject(CommunityGroupsStore);
+  protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
+    this.communityGroups.counters().hosting + this.communityGroups.counters().participation));
   protected readonly photoFeedStore = inject(PhotoFeedStore);
   protected readonly navigatorFeedMenuModel = computed(() =>
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));
   protected readonly navigatorFollowedMenuModel = computed(() =>
     navigatorContentMenuModel('followed', this.followingStore.state().eventCount));
+  protected readonly navigatorCommunityMenuModel = computed<AppMenuModel>(() => ({
+    nodes: [{
+      id: 'community', label: 'navigator.community', icon: 'diversity_2', palette: 'lime',
+      items: [
+        ...(this.mingleStore.visible() ? [this.navigatorTableMenuModel()] : []),
+        this.navigatorFeedMenuModel(), this.navigatorFollowedMenuModel(), this.navigatorGroupsMenuModel()
+      ].flatMap(model => model.nodes?.flatMap(node => node.items ?? []) ?? [])
+    }]
+  }));
   protected readonly imageGalleryStore = inject(ImageGalleryStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
@@ -377,6 +411,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly isCoveredByAssetPopup = computed(() =>
     this.assetPopupStore.visible()
     || this.activityInviteStore.activityInvitePopup() !== null
+    || this.activityInviteStore.externalInvite() !== null
   );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
@@ -439,7 +474,7 @@ export class SideMenuComponent implements OnDestroy {
     return status === 'error' || status === 'timeout' || this.userMenuLoadOverdueRef() || this.hasProfileSaveError();
   });
   protected readonly showAvatarLoadRing = computed(() =>
-    this.avatarVisible() && (!this.canToggleAvatarMenu() || this.isProfileSaving() || this.hasProfileSaveError())
+    this.avatarVisible() && (this.groupWorkspaces.context.switching() || !this.canToggleAvatarMenu() || this.isProfileSaving() || this.hasProfileSaveError())
   );
   protected readonly avatarBadgeCount = computed(() =>
     this.canToggleAvatarMenu() ? this.avatarState().badgeCount : 0
@@ -507,7 +542,7 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly offlineAttentionDismissed = signal(false);
   protected readonly connectionOffline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
-  private readonly serverActionsUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
+  private readonly serverActionsUnavailable = computed(() => this.groupWorkspaces.context.switching() || !this.runtimeStore.isDataSourceAvailable()
     || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
@@ -556,6 +591,8 @@ export class SideMenuComponent implements OnDestroy {
         group: activityOverrides.chat?.group ?? activeUser.activities?.chat?.group ?? 0,
         service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
         appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0,
+        contacts: activityOverrides.chat?.contacts ?? activeUser.activities?.chat?.contacts ?? 0,
+        groupSupport: activityOverrides.chat?.groupSupport ?? activeUser.activities?.chat?.groupSupport ?? 0,
         supportCases: cloneSupportCaseCounters(
           activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases
         )
@@ -643,6 +680,10 @@ export class SideMenuComponent implements OnDestroy {
     });
     return items;
   });
+  private readonly accountLocationMissing = computed(() => {
+    const user = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()));
+    return !!user && !this.isPrivilegedWorkspaceMode() && (!Number.isFinite(user.locationCoordinates?.latitude) || !Number.isFinite(user.locationCoordinates?.longitude));
+  });
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
@@ -651,16 +692,16 @@ export class SideMenuComponent implements OnDestroy {
       items.push({
         id: 'notifications',
         label: 'Notifications',
-        disabled: this.notificationCenterStore.permissionActionPending() || this.userProfileStore.activeUserLocationMissing(),
+        disabled: this.notificationCenterStore.permissionActionPending() || this.accountLocationMissing(),
         progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
-        icon: this.connectionOffline() ? 'cloud_off' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
-        palette: this.connectionOffline() ? 'offline' : this.userProfileStore.activeUserLocationMissing() || notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        icon: this.connectionOffline() ? 'cloud_off' : this.accountLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: this.connectionOffline() ? 'offline' : this.accountLocationMissing() || notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
           notificationsMuted
-        ) + (this.connectionOffline() ? ' — Offline' : this.userProfileStore.activeUserLocationMissing()
+        ) + (this.connectionOffline() ? ' — Offline' : this.accountLocationMissing()
           ? ' — ' + this.i18n.translate('game.location.required.title') : '')
       });
     }
@@ -1051,7 +1092,7 @@ export class SideMenuComponent implements OnDestroy {
     effect(() => this.adminNotificationsService.setWorkerActive(!!this.sessionService.session()));
     effect(() => {
       const adminId = this.adminWorkspaceStore.dashboard()?.activeAdmin.id;
-      this.moderationStore.clear();
+      this.moderationStore.clearGlobal();
       if (adminId) void this.moderationService.snapshot(adminId).then(snapshot => {
         if (this.adminWorkspaceStore.dashboard()?.activeAdmin.id === adminId) this.moderationStore.apply(snapshot);
       }).catch(() => {});
@@ -1075,10 +1116,10 @@ export class SideMenuComponent implements OnDestroy {
     effect(() => {
       const userId = this.userProfileStore.activeUserId().trim();
       const url = this.notificationRouteUrl();
-      if (userId && this.userProfileStore.activeUserProfile()?.id === userId) {
-        void this.openNotificationChatTarget(url, userId);
-        void this.openNotificationMingleTarget(url, userId);
+      if (userId && !this.groupWorkspaces.context.switching() && this.userProfileStore.activeUserProfile()?.id === userId) {
+        void this.openNotificationRoute(url);
         void this.openPartnerInviteTarget(url, userId);
+        void this.openSharedAssetTarget(url, userId);
       }
     });
 
@@ -1106,14 +1147,14 @@ export class SideMenuComponent implements OnDestroy {
         ? `firebase:${session.profile.id}`
         : session.kind === 'operator-bootstrap'
           ? `operator-bootstrap:${session.email}`
-          : (activeUserId ? `demo:${activeUserId}` : '');
+          : `demo:${session.userId}`;
 
       if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
         return;
       }
 
       this.hydrationRequestKeyRef.set(requestKey);
-      void this.hydrateUserAfterLogin(activeUserId || undefined);
+      void this.hydrateUserAfterLogin(this.sessionService.activeUserId() || undefined);
     });
 
     effect(() => {
@@ -1157,9 +1198,9 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       void this.notificationCenterStore.initialize(
-        activeUserId,
-        Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
-        user.notificationPreferences?.muted === true
+        this.groupWorkspaces.context.accountId(activeUserId),
+        Math.max(0, Math.trunc(Number((this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(activeUserId)) ?? user).activities?.notifications) || 0)),
+        (this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(activeUserId)) ?? user).notificationPreferences?.muted === true
       );
     });
 
@@ -1174,7 +1215,7 @@ export class SideMenuComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.userProfileStore.activeUserId().trim();
+      const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
         && (Boolean(session) || this.isAdminWorkspaceRoute());
@@ -1519,6 +1560,16 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
+  protected onNavigatorCommunityMenuSelect(event: AppMenuItemSelectEvent): void {
+    event.sourceEvent.stopPropagation();
+    switch (event.id) {
+      case 'table': this.openCurrentMingleTable(event.sourceEvent); return;
+      case 'feed': this.photoFeedStore.open(); return;
+      case 'followed': this.openFollowedEvents(event.sourceEvent); return;
+      case 'groups': this.communityGroups.open(); return;
+    }
+  }
+
   protected onNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorMenuShortcutId>): void {
     switch (event.id) {
       case 'impressions':
@@ -1645,7 +1696,7 @@ export class SideMenuComponent implements OnDestroy {
       showEdit: !this.serverActionsUnavailable(),
       editDisabled: admin ? this.serverActionsUnavailable() : this.serverActionsUnavailable() || this.isBlockedUser(user),
       editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
-      showRing: !admin && this.showProfileSaveRing(),
+      showRing: !admin && (this.showProfileSaveRing() || this.groupWorkspaces.context.switching()),
       ringState: this.hasProfileSaveError() ? 'error' : 'loading',
       ringTitle: admin ? null : this.profileSaveAvatarTitle()
     });
@@ -2046,7 +2097,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private isActivePrivacyConsentRequired(): boolean {
     const requiredKey = this.profileStore.privacyConsentRequiredKey();
-    const activeUserId = this.userProfileStore.activeUserId().trim();
+    const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
     const revision = this.privacyPolicy.activeRevision();
     if (!requiredKey || !activeUserId || !revision) {
       return false;
@@ -2108,7 +2159,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openDeleteAccountConfirm(): void {
-    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
+    const activeUserName = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()))?.name?.trim() || 'this account';
     this.dialogStore.open({
       title: 'Delete account?',
       message: activeUserName,
@@ -2131,7 +2182,7 @@ export class SideMenuComponent implements OnDestroy {
           await this.sessionService.logout().finally(() => this.router.navigate(['/']));
           return;
         }
-        const activeUserId = this.userProfileStore.activeUserId().trim();
+        const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
           if (!result.submitted) {
@@ -2153,7 +2204,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openLogoutConfirm(): void {
-    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
+    const activeUserName = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()))?.name?.trim() || '';
     this.dialogStore.open({
       title: 'logout.question',
       message: activeUserName,
@@ -2166,7 +2217,7 @@ export class SideMenuComponent implements OnDestroy {
         this.profileStore.closeProfileEditor();
         this.closeImpressionsPopup();
         this.profileStore.closeContactsPopup();
-        const activeUserId = this.userProfileStore.activeUserId().trim();
+        const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);
@@ -2344,19 +2395,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
     const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
-    return (
-      (impressionFlags.host ? 1 : 0) +
-      (impressionFlags.member ? 1 : 0) +
-      this.resolveActivityBadge(user, 'game') +
-      this.resolveActivityBadge(user, 'chats') +
-      (activityOverrides.event?.all ?? user.activities?.event?.all ?? 0) +
-      this.resolveActivityBadge(user, 'cars') +
-      this.resolveActivityBadge(user, 'accommodation') +
-      this.resolveActivityBadge(user, 'supplies') +
-      this.resolveActivityBadge(user, 'tickets') +
-      this.resolveActivityBadge(user, 'contacts') +
-      this.resolveActivityBadge(user, 'feedback')
-    );
+    return profileMenuBadgeCount(user, activityOverrides, impressionFlags);
   }
 
   private notificationLauncherAriaLabel(unreadCount: number, muted: boolean): string {
@@ -2370,7 +2409,7 @@ export class SideMenuComponent implements OnDestroy {
   private openNotificationCenter(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.userProfileStore.activeUserLocationMissing()) return;
+    if (this.accountLocationMissing()) return;
     this.closeSideMenu();
     this.notificationCenterStore.open();
   }
@@ -2412,6 +2451,25 @@ export class SideMenuComponent implements OnDestroy {
     this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
+  private openingNotificationRoute = '';
+  private async openNotificationRoute(url: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingNotificationRoute === url) return;
+    const params = this.router.parseUrl(url).queryParams;
+    if (!params['chatId'] && !params['mingleEventId']) return;
+    const accountId = this.groupWorkspaces.context.accountUserId();
+    this.openingNotificationRoute = url;
+    try {
+      const groupId = `${params['workspaceGroupId'] ?? ''}`.trim() || null;
+      if (!await this.groupWorkspaces.select(groupId) || this.router.url !== url
+          || this.groupWorkspaces.context.accountUserId() !== accountId) return;
+      const userId = this.userProfileStore.activeUserId();
+      await this.openNotificationChatTarget(url, userId);
+      await this.openNotificationMingleTarget(url, userId);
+    } finally {
+      if (this.openingNotificationRoute === url) this.openingNotificationRoute = '';
+    }
+  }
+
   private async openNotificationChatTarget(url: string, userId: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game') return;
     const tree = this.router.parseUrl(url);
@@ -2429,6 +2487,7 @@ export class SideMenuComponent implements OnDestroy {
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['chatId'];
       delete tree.queryParams['messageId'];
+      delete tree.queryParams['workspaceGroupId'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (this.userProfileStore.activeUserId() !== userId) return;
       this.activitiesStore.openEventChat(
@@ -2440,24 +2499,57 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
+  private openingSharedAsset = '';
+  private async openSharedAssetTarget(url: string, userId: string): Promise<void> {
+    if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingSharedAsset === url) return;
+    const tree = this.router.parseUrl(url);
+    const token = `${tree.queryParams['sharedAsset'] ?? ''}`.trim();
+    if (!token) return;
+    this.openingSharedAsset = url;
+    try {
+      const item = await this.sharedLinks.resolveToken(token, userId);
+      if (this.router.url !== url || this.userProfileStore.activeUserId() !== userId) return;
+      if (!item || item.kind !== 'asset' || !AppConstants.isAssetType(item.assetType)) throw new Error('Unavailable');
+      delete tree.queryParams['sharedAsset']; delete tree.queryParams['affiliate'];
+      await this.router.navigateByUrl(tree, {replaceUrl: true});
+      this.memberMenuStore.requestActivitiesNavigation({type: 'assetExplore', assetId: item.entityId, assetType: item.assetType, viewOnly: true});
+    } catch {
+      if (this.router.url === url) this.dialogStore.open({title: 'invite.external.title', message: 'invite.external.failed', confirmLabel: 'OK'});
+    } finally { if (this.openingSharedAsset === url) this.openingSharedAsset = ''; }
+  }
+
   private async openPartnerInviteTarget(url: string, userId: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game') return;
     const tree = this.router.parseUrl(url);
     const token = `${tree.queryParams['partnerInvite'] ?? ''}`.trim();
     if (!token) return;
-    const key = `${userId}:${token}`;
+    const accountId = this.groupWorkspaces.context.accountId(userId);
+    const key = `${accountId}:${token}`;
     if (this.openingPartnerInvite === key) return;
     this.openingPartnerInvite = key;
     try {
-      const claim = await this.usersService.claimPartnerInvite(userId, token);
+      const claim = await this.usersService.claimPartnerInvite(accountId, token);
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      if (claim.invitationAvailable && claim.groupId) {
+        await this.groupWorkspaces.refresh(accountId);
+        if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+        if (!await this.groupWorkspaces.select(claim.groupId)) throw new Error('groups.switch.failed');
+        if (this.groupWorkspaces.context.accountUserId() !== accountId || this.router.url !== url) return;
+        delete tree.queryParams['partnerInvite'];
+        delete tree.queryParams['affiliate'];
+        await this.router.navigateByUrl(tree, { replaceUrl: true });
+        return;
+      }
       delete tree.queryParams['partnerInvite'];
+        delete tree.queryParams['affiliate'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
       await this.usersService.loadUserById(userId);
-      if (this.userProfileStore.activeUserId() === userId) this.activitiesStore.openActivities('events', 'all');
+      if (this.userProfileStore.activeUserId() === userId) {
+        this.activitiesStore.openActivities('events', 'all');
+      }
     } catch {
-      if (this.userProfileStore.activeUserId() === userId) this.dialogStore.open({
+      if (this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()) === accountId) this.dialogStore.open({
         title: 'event.partner.invite', message: 'event.partner.invite.failed', confirmLabel: 'OK'
       });
     } finally {
@@ -2477,6 +2569,7 @@ export class SideMenuComponent implements OnDestroy {
       const opened = await this.mingleStore.openCurrentTable(eventId);
       if (!opened || this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
       delete tree.queryParams['mingleEventId'];
+      delete tree.queryParams['workspaceGroupId'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
     } finally {
       if (this.openingNotificationMingleTable === key) this.openingNotificationMingleTable = '';

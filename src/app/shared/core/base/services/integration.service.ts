@@ -1,3 +1,4 @@
+import { ShareTokensService } from './share-tokens.service';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -12,8 +13,25 @@ const INTEGRATIONS_ROUTE = '/integrations';
 
 @Injectable({ providedIn: 'root' })
 export class IntegrationService extends BaseRouteModeService {
+  private readonly shareTokens = inject(ShareTokensService);
   private readonly localService = inject(LocalIntegrationService);
   private readonly httpService = inject(HttpIntegrationService);
+
+  async externalInviteLink(request: import('../../contracts/integration.interface').ExternalInviteLinkRequest): Promise<{url: string}> {
+    if (request.ownerType === 'asset') {
+      const [settings, token] = await Promise.all([
+        this.loadSettings(), this.shareTokens.createToken({ kind: 'asset', entityId: request.entityId, assetType: request.assetType })
+      ]);
+      if (!token) throw new Error('Share link unavailable');
+      const url = new URL(this.absoluteBaseUrl(settings.affiliate.url));
+      url.pathname = '/game';
+      url.searchParams.set('sharedAsset', token);
+      return {url: url.toString()};
+    }
+    const link = await this.resolveRouteService(request.ownerType === 'community' ? '/groups' : '/activities/events',
+      this.localService, this.httpService).externalInviteLink(request);
+    return {url: this.absoluteBaseUrl(link.url)};
+  }
 
   loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     return this.service(admin).loadSettings(admin);

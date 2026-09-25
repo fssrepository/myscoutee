@@ -1,3 +1,4 @@
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import {
   ChangeDetectionStrategy,
@@ -140,7 +141,6 @@ import {
   EventsService,
   ExplanationGuideService,
   RatesService,
-  ShareTokensService,
   UsersService
 } from '../../../shared/core';
 import {
@@ -212,6 +212,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private static readonly ACTIVITY_LIST_POLL_INTERVAL_MS = 30000;
 
   // ── injected ──────────────────────────────────────────────────────────────
+  readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly followingStore = inject(FollowingStore);
   protected readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -224,7 +225,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly eventsService = inject(EventsService);
   protected readonly usersService = inject(UsersService);
-  protected readonly shareTokensService = inject(ShareTokensService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
@@ -1971,6 +1971,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'green';
       case 'service':
         return 'slate';
+      case 'contacts':
+        return 'teal';
+      case 'groupSupport':
+        return 'green';
       case 'appSupport':
         return 'blue';
       case 'all':
@@ -2120,7 +2124,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       subEvent: this.normalizeBadgeCounter(profile?.subEvent),
       group: this.normalizeBadgeCounter(profile?.group),
       service: this.normalizeBadgeCounter(profile?.service),
-      appSupport: this.normalizeBadgeCounter(profile?.appSupport)
+      appSupport: this.normalizeBadgeCounter(profile?.appSupport),
+      contacts: this.normalizeBadgeCounter(profile?.contacts),
+      groupSupport: this.normalizeBadgeCounter(profile?.groupSupport)
     };
   }
 
@@ -2131,7 +2137,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       subEvent: 0,
       group: 0,
       service: 0,
-      appSupport: 0
+      appSupport: 0,
+      contacts: 0,
+      groupSupport: 0
     };
   }
 

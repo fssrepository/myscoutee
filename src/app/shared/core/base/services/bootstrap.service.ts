@@ -15,6 +15,7 @@ export type BootstrapProcessStage =
   | 'assets'
   | 'activityMembers'
   | 'activityResources'
+  | 'communityGroups'
   | 'adminUsers'
   | 'operatorUsers'
   | 'adminWorkspaceData'
@@ -54,6 +55,7 @@ export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
   { stage: 'assets', percent: 64, label: 'Preparing owned assets' },
   { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
+  { stage: 'communityGroups', percent: 88, label: 'Preparing community groups' },
   { stage: 'activityResources', percent: 94, label: 'Preparing activity resources' },
   { stage: 'helpCenter', percent: 95, label: 'Preparing help content' },
   { stage: 'ideaPosts', percent: 96, label: 'Preparing article content' },

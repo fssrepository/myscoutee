@@ -1,3 +1,4 @@
+import { OnOffToggleComponent } from '../../on-off-toggle/on-off-toggle.component';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -77,6 +78,7 @@ interface FormFlowSelectedMenuItem {
   standalone: true,
   imports: [
     CommonModule,
+    OnOffToggleComponent,
     FormsModule,
     MatIconModule,
     AppMenuComponent,
@@ -150,6 +152,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   constructor() {
     afterNextRender(() => {
+      if (!this.preparing()) return;
       this.cancelPreparation = scheduleAfterPaint(() => {
         this.cancelPreparation = null;
         this.preparing.set(false);
@@ -160,6 +163,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
+      if (this.model?.deferPreparation === false) {
+        this.cancelPreparation?.(); this.cancelPreparation = null;
+        this.preparing.set(false);
+      }
       this.pageIndex = this.clampPageIndex(this.pageIndex);
       this.pendingPageIndex = null;
       this.queueViewportSync('auto');
@@ -428,6 +435,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     if (this.isControlDisabled(control)) {
       return;
     }
+    // An unbound menu launches an action; its selected item ID is not the form value.
+    if (control.kind === 'menu' && control.bind === undefined) return;
     const formattedValue = control.valueFormat === 'csv' ? this.csvStringValue(value) : value;
     const nextValue = control.kind === 'number'
       ? this.normalizeNumberControlValue(formattedValue)
@@ -493,6 +502,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected menuModel(control: FormFlowControlModel): AppMenuModel<string, unknown> | null {
     return this.menuConfig(control).model ?? null;
+  }
+
+  protected tableRows(control: FormFlowControlModel): import('./form-flow.types').FormFlowTableControlConfig['rows'] {
+    return (control.config as import('./form-flow.types').FormFlowTableControlConfig | null)?.rows ?? [];
   }
 
   protected menuItems(control: FormFlowControlModel): readonly AppMenuItem<string, unknown>[] {

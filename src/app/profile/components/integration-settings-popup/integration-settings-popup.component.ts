@@ -1,3 +1,4 @@
+import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/copy-link.component';
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
 import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
 import { CommonModule } from '@angular/common';
@@ -28,6 +29,7 @@ type IntegrationActionContext =
   selector: 'app-integration-settings-popup',
   standalone: true,
   imports: [
+    CopyLinkComponent,
     SummaryCurrencyPopupComponent,
     CommonModule,
     MatIconModule,
@@ -80,8 +82,6 @@ export class IntegrationSettingsPopupComponent {
   protected readonly baseUrl = computed(() => this.integrationService.absoluteBaseUrl(this.settings()?.baseUrl ?? ''));
   protected readonly affiliateUrl = computed(() =>
     this.integrationService.absoluteBaseUrl(this.settings()?.affiliate?.url ?? ''));
-  protected readonly copyAffiliateActions = computed(() =>
-    this.copyMenu('copy-affiliate-url', this.affiliateUrl(), 'affiliate.copy').items);
   protected readonly canGenerate = computed(() => {
     const settings = this.settings();
     return !!settings && settings.tokens.length < settings.maxActiveTokens && !this.mutating();

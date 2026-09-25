@@ -21,12 +21,12 @@ export class ContentModerationService extends BaseRouteModeService {
   }
   private readonly http = inject(HttpContentModerationService);
   private readonly local = inject(LocalContentModerationService);
-  private get source() { return this.resolveRouteService('/admin/content-moderation', this.local, this.http); }
-  snapshot(adminUserId: string) { return this.source.snapshot(adminUserId); }
-  page(adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery) { return this.source.page(adminUserId, category, status, query); }
-  settings(adminUserId: string, revision: number, settings: ContentModerationSettings) { return this.source.settings(adminUserId, revision, settings); }
-  decide(id: string, request: ContentModerationDecision, admin?: AdminUserDto) {
-    const source = this.source; return source instanceof LocalContentModerationService ? source.decide(id, request, admin) : source.decide(id, request);
+  private source(groupId?: string | null) { return this.resolveRouteService(groupId ? '/groups' : '/admin/content-moderation', this.local, this.http); }
+  snapshot(adminUserId: string, groupId?: string | null) { return this.source(groupId).snapshot(adminUserId, groupId); }
+  page(adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery, groupId?: string | null) { return this.source(groupId).page(adminUserId, category, status, query, groupId); }
+  settings(adminUserId: string, revision: number, settings: ContentModerationSettings, groupId?: string | null) { return this.source(groupId).settings(adminUserId, revision, settings, groupId); }
+  decide(id: string, request: ContentModerationDecision, admin?: AdminUserDto, groupId?: string | null) {
+    const source = this.source(groupId); return source instanceof LocalContentModerationService ? source.decide(id, request, admin, groupId) : source.decide(id, request, groupId);
   }
-  detail<T>(adminUserId: string, id: string) { return this.source.detail<T>(adminUserId, id); }
+  detail<T>(adminUserId: string, id: string, groupId?: string | null) { return this.source(groupId).detail<T>(adminUserId, id, groupId); }
 }

@@ -1,3 +1,4 @@
+import { CashReceiptPopupComponent } from './cash-receipt-popup.component';
 import { SummaryCurrencyPopupComponent } from '../summary-currency-popup/summary-currency-popup.component';
 import { PaymentEuroSummaryDto } from '../../../core/contracts/payment-method.interface';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, viewChild, computed, effect, untracked, inject, signal } from '@angular/core';
@@ -58,14 +59,14 @@ import { ChatPopupHeaderContextConverter } from '../../converters/chat-popup-hea
 
 interface PaymentListFilters { revision: number; direction?: PaymentHistoryDirection; }
 interface PaymentPopupMenuContext {
-  action: 'open-cards' | 'add-card' | 'confirm-card' | 'set-history-direction';
+  action: 'record-cash' | 'open-cards' | 'add-card' | 'confirm-card' | 'set-history-direction';
   direction?: PaymentHistoryDirection;
 }
 
 @Component({
   selector: 'app-payment-methods-popup',
   standalone: true,
-  imports: [SummaryCurrencyPopupComponent, PopupComponent, SmartListComponent, PaymentCardComponent, SingleRowComponent, I18nPipe],
+  imports: [CashReceiptPopupComponent,SummaryCurrencyPopupComponent, PopupComponent, SmartListComponent, PaymentCardComponent, SingleRowComponent, I18nPipe],
   templateUrl: './payment-methods-popup.component.html',
   styleUrl: './payment-methods-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -102,6 +103,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly registrationFrameOpenRef = signal(false);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
+  protected readonly cashReceiptOpen = signal(false);
   protected readonly currencyPickerOpen = signal(false);
   private readonly currencyRefresh = effect(() => {
     const revision = this.paymentMethods.summaryCurrencyRevision();
@@ -225,7 +227,10 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       bodyLayout: 'fill',
       headerTone: 'accent',
       headerPalette: 'blue',
-      headerControls: [this.historyFilterControl(), ...(this.deploymentConfiguration.paymentCardsAvailable() ? [this.headerActionControl({
+      headerControls: [this.historyFilterControl(), this.headerActionControl({
+        id: 'record-cash', icon: 'payments', label: 'payment.cash.record', ariaLabel: 'payment.cash.record',
+        palette: 'green', layout: 'pill', collapsible: true, action: 'custom', context: { action: 'record-cash' }
+      }), ...(this.deploymentConfiguration.paymentCardsAvailable() ? [this.headerActionControl({
         id: 'open-cards',
         collapsible: true,
         icon: 'credit_card',
@@ -372,15 +377,15 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       id: item.id,
       title: amount,
       surfaceTone: item.direction === 'income' ? 'success' : 'danger',
-      subtitle: item.sourceId || this.i18n.translate('payment'),
-      detail: Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
+      subtitle: item.counterpartyName || item.sourceId || this.i18n.translate('payment'),
+      detail: item.note || (Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
-      }),
+      })),
       icon: item.status === 'captured' ? 'check_circle' : refundAudit ? 'currency_exchange' : 'payments',
       avatarToneClass: `payment-history-avatar payment-history-avatar--${
         item.status === 'failed' ? 'failed' : item.direction
@@ -492,6 +497,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
     const action = event.itemSelect.context?.action;
+    if (action === 'record-cash') { this.cashReceiptOpen.set(true); return; }
     if (action === 'set-history-direction') {
       const direction = event.itemSelect.context?.direction;
       if (direction && direction !== this.historyDirectionRef()) {
@@ -625,6 +631,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   private closeAll(): void {
+    this.cashReceiptOpen.set(false);
     this.closeRegistration();
     this.cardsOpenRef.set(false);
     this.errorRef.set('');
@@ -705,7 +712,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     };
   }
 
-  private activeUserId(): string {
+  protected activeUserId(): string {
     const userId = this.userProfileStore.activeUserId().trim();
     if (!userId) throw new Error('payment.error.user.required');
     return userId;
@@ -809,6 +816,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   private paymentHistoryMenuActions(item: PaymentHistoryItemDto): string[] {
+    if (item.fulfillmentKind === 'cash-receipt') return [];
     if (item.auditKind === 'refund') {
       return item.canApproveRefund === true ? ['approveRefund'] : [];
     }
@@ -891,7 +899,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     });
   }
 
-  private applyPaymentHistoryMutation(mutation: AppDTOs.PaymentHistoryMutationDto): void {
+  protected applyPaymentHistoryMutation(mutation: AppDTOs.PaymentHistoryMutationDto): void {
     const userId = this.activeUserId();
     const pendingRefundCount = Math.max(0, Math.trunc(Number(mutation.pendingRefundCount) || 0));
     this.euroSummary.set(mutation.euroSummary ?? null);

@@ -36,6 +36,7 @@ export class HttpNotificationsService implements NotificationService {
   ): Promise<NotificationPageResultDto> {
     const bucket = query.filters?.bucket === 'new' ? 'new' : 'all';
     let params = new HttpParams()
+      .set('workspace', query.filters?.workspace ?? 'all')
       .set('bucket', bucket)
       .set('limit', `${Math.max(1, Math.min(100, Math.trunc(Number(query.pageSize) || 20)))}`);
     const normalizedUserId = userId.trim();

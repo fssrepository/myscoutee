@@ -50,6 +50,33 @@ describe('HttpUsersService demo authority boundary', () => {
     TestBed.resetTestingModule();
   });
 
+  it('sends workspace selection only on a full profile load and keeps absence distinct from base', async () => {
+    const profile = cachedUserResponse().user!;
+    get.mockReturnValue(of({ profileExt: { profile, experienceEntries: [] }, workspace: null }));
+    const service = TestBed.inject(HttpUsersService);
+
+    await service.loadProfileExtById('demo-user');
+    expect(get.mock.calls.at(-1)?.[1].params).toEqual({ userId: 'demo-user' });
+    await service.loadProfileExtById('demo-user', undefined, 'group-a');
+    expect(get.mock.calls.at(-1)?.[1].params).toEqual({ userId: 'demo-user', groupId: 'group-a' });
+    await service.loadProfileExtById('demo-user', undefined, null);
+    expect(get.mock.calls.at(-1)?.[1].params).toEqual({ userId: 'demo-user', groupId: '' });
+    expect(get.mock.calls.every(call => !call[1].headers?.['X-MyScoutee-Group-Id'])).toBe(true);
+  });
+
+  it('does not turn a failed workspace change into cached success and allows retry', async () => {
+    const profile = cachedUserResponse().user!;
+    readUser.mockReturnValue(cachedUserResponse());
+    get.mockReturnValueOnce(throwError(() => ({ status: 504 })))
+      .mockReturnValueOnce(of({ profileExt: { profile, experienceEntries: [] },
+        workspace: { groupId: 'group-a', profileId: profile.id } }));
+    const service = TestBed.inject(HttpUsersService);
+
+    await expect(service.loadProfileExtById('demo-user', undefined, 'group-a')).rejects.toEqual({ status: 504 });
+    expect(readUser).not.toHaveBeenCalled();
+    expect((await service.loadProfileExtById('demo-user', undefined, 'group-a')).workspace?.groupId).toBe('group-a');
+  });
+
   it('fails closed instead of authorizing a demo user from browser cache when Java is unavailable', async () => {
     get.mockReturnValue(throwError(() => new Error('network unavailable')));
     readUser.mockReturnValue(cachedUserResponse());

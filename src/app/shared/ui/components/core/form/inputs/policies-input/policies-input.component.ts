@@ -1,3 +1,4 @@
+import { OnOffToggleComponent } from '../../../on-off-toggle/on-off-toggle.component';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -77,6 +78,7 @@ export interface PoliciesInputConfig {
   standalone: true,
   imports: [
     CommonModule,
+    OnOffToggleComponent,
     MatIconModule,
     PopupComponent,
     SingleRowComponent,

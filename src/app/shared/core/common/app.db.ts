@@ -1,3 +1,4 @@
+import { COMMUNITY_GROUPS_TABLE_NAME } from '../local/source/entity/community-group.entity';
 import { CONTENT_MODERATION_TABLE_NAME, emptyContentModeration } from '../local/source/entity/content-moderation.entity';
 import { maintainContentModeration } from '../local/source/builders/content-moderation.builder';
 import { PHOTO_FEED_TABLE_NAME } from '../local/source/entity/photo-feed.entity';
@@ -57,6 +58,7 @@ interface NormalizedActivityRateRecordQuery {
 })
 export class AppMemoryDb {
   private static readonly SCHEMA_TABLE_KEYS = [
+    COMMUNITY_GROUPS_TABLE_NAME,
     USERS_TABLE_NAME,
     ASSETS_TABLE_NAME,
     ACTIVITY_MEMBERS_TABLE_NAME,
@@ -372,6 +374,7 @@ export class AppMemoryDb {
       },
       [CONTENT_MODERATION_TABLE_NAME]: emptyContentModeration(),
       [PHOTO_FEED_TABLE_NAME]: { byId: {}, ids: [] },
+      [COMMUNITY_GROUPS_TABLE_NAME]: { byId: {}, ids: [] },
       [IDEA_POSTS_TABLE_NAME]: {
         seeded: false,
         byId: {},
@@ -871,6 +874,7 @@ export class AppMemoryDb {
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const eventTicketsSource = source[EVENT_TICKETS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_TICKETS_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
+    const communityGroupsSource = source[COMMUNITY_GROUPS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_GROUPS_TABLE_NAME] | undefined;
     const photoFeedSource = source[PHOTO_FEED_TABLE_NAME] as Partial<AppMemorySchema[typeof PHOTO_FEED_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
     const notificationsSource = source[NOTIFICATIONS_TABLE_NAME] as Partial<AppMemorySchema[typeof NOTIFICATIONS_TABLE_NAME]> | undefined;
@@ -1036,6 +1040,7 @@ export class AppMemoryDb {
           : [...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentIds ?? [])]
       },
       [CONTENT_MODERATION_TABLE_NAME]: source[CONTENT_MODERATION_TABLE_NAME] ?? fallback[CONTENT_MODERATION_TABLE_NAME],
+      [COMMUNITY_GROUPS_TABLE_NAME]: { byId: { ...(communityGroupsSource?.byId ?? {}) }, ids: [...(communityGroupsSource?.ids ?? [])] },
       [PHOTO_FEED_TABLE_NAME]: {
         byId: { ...(photoFeedSource?.byId ?? fallback[PHOTO_FEED_TABLE_NAME].byId) },
         ids: [...(photoFeedSource?.ids ?? fallback[PHOTO_FEED_TABLE_NAME].ids)]

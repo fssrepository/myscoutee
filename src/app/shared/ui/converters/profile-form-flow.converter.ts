@@ -21,6 +21,7 @@ import { formFlowCompletionPercent } from '../components/core/form/flow/form-flo
 import type { UiConverter } from './converter.types';
 
 export interface ProfileFormFlowPrivacyOptions {
+  lockedFields?: readonly string[];
   values?: Record<string, DetailPrivacy | undefined>;
   experience?: Partial<Record<'workspace' | 'school', DetailPrivacy | undefined>>;
 }
@@ -682,7 +683,8 @@ export class ProfileFormFlowConverter {
     if (!privacy?.values) {
       return null;
     }
-    const current = privacy.values[key] ?? this.defaultPrivacy(key);
+    const locked = privacy.lockedFields?.includes(key) === true;
+    const current = locked ? 'Public' : privacy.values[key] ?? this.defaultPrivacy(key);
     return {
       menu: {
         kind: 'select',
@@ -696,7 +698,7 @@ export class ProfileFormFlowConverter {
           hideLabel: true,
           layout: 'icon',
           palette: this.privacyPalette(current),
-          ariaLabel: 'profile.visibility.change.aria'
+          ariaLabel: 'profile.visibility.change.aria', disabled: locked
         },
         items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
           id: `${this.idToken(key)}-privacy-${this.idToken(option)}`,
@@ -704,6 +706,7 @@ export class ProfileFormFlowConverter {
           icon: this.privacyIcon(option),
           kind: 'radio',
           active: option === current,
+          disabled: locked,
           palette: this.privacyPalette(option),
           surface: 'tinted',
           context: { menu: 'privacy', key, value: option } satisfies ProfileFormFlowMenuContext
@@ -719,7 +722,8 @@ export class ProfileFormFlowConverter {
     if (!privacy?.experience) {
       return null;
     }
-    const current = privacy.experience[type] ?? 'Public';
+    const locked = privacy.lockedFields?.includes(type === 'workspace' ? 'profile.experience.workplace' : 'profile.experience.school') === true;
+    const current = locked ? 'Public' : privacy.experience[type] ?? 'Public';
     return {
       menu: {
         kind: 'select',
@@ -733,7 +737,7 @@ export class ProfileFormFlowConverter {
           hideLabel: true,
           layout: 'icon',
           palette: this.privacyPalette(current),
-          ariaLabel: 'profile.visibility.change.aria'
+          ariaLabel: 'profile.visibility.change.aria', disabled: locked
         },
         items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
           id: `experience-${type}-privacy-${this.idToken(option)}`,
@@ -741,6 +745,7 @@ export class ProfileFormFlowConverter {
           icon: this.privacyIcon(option),
           kind: 'radio',
           active: option === current,
+          disabled: locked,
           palette: this.privacyPalette(option),
           surface: 'tinted',
           context: { menu: 'experiencePrivacy', type, value: option } satisfies ProfileFormFlowMenuContext

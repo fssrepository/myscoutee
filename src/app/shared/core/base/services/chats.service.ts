@@ -37,6 +37,14 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
   }
 
+  async ensureContactChat(targetUserId: string): Promise<ChatDTO> {
+    return this.chatsService.ensureContactChat(targetUserId);
+  }
+
+  async addContactChatMembers(chatId: string, userIds: readonly string[]): Promise<ChatDTO> {
+    return this.chatsService.addContactChatMembers(chatId, userIds);
+  }
+
   async queryChatById(chatId: string): Promise<ChatDTO | null> {
     return this.chatsService.queryChatById(chatId);
   }
@@ -57,6 +65,10 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
           }
         : undefined
     };
+  }
+
+  async queryChatSharedMessages(chat: ChatDTO, kind: 'event' | 'asset'): Promise<ContractTypes.ChatMessageDto[]> {
+    return this.chatsService.queryChatSharedMessages(chat, kind);
   }
 
   async queryChatMessagesPage(

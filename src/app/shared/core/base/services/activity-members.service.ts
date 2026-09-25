@@ -1,3 +1,6 @@
+import { CommunityGroupChangesStore } from '../../../ui/context/stores/community-group-changes.store';
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { LocalCommunityGroupsService } from '../../local/source/services/community-groups.service';
 import {
   Injectable,
   inject
@@ -30,8 +33,13 @@ import { ActivityStore } from '../../../ui/context/stores/activity.store';
   providedIn: 'root'
 })
 export class ActivityMembersService extends BaseRouteModeService {
+  private readonly groupChanges = inject(CommunityGroupChangesStore);
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
+  private readonly localGroups = inject(LocalCommunityGroupsService);
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  private localCommunity(owner: ActivityMemberOwnerRef): boolean { return owner.ownerType === 'community' && this.isLocalRouteEnabled('/groups'); }
+  private groupActor(): string { return this.workspace.accountId(this.userProfileStore.getActiveUserId()).trim(); }
   private readonly localActivityMembersService = inject(LocalActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -53,6 +61,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberDTO[] {
+    if (this.localCommunity(owner)) return this.localGroups.roster(this.groupActor(), owner.ownerId);
     return this.presentMembers(this.activityMembersService.peekMembersByOwner(owner));
   }
 
@@ -68,6 +77,10 @@ export class ActivityMembersService extends BaseRouteModeService {
     owner: ActivityMemberOwnerRef,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    if (this.localCommunity(owner)) {
+      await this.waitForMembersRouteDelay();
+      return this.localGroups.roster(this.groupActor(), owner.ownerId, options?.pendingOnly);
+    }
     return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner, options));
   }
 
@@ -89,6 +102,14 @@ export class ActivityMembersService extends BaseRouteModeService {
     options?: ActivityMembersQueryOptions,
     signal?: AbortSignal
   ): Promise<ActivityMembersSyncResultDTO> {
+    if (this.localCommunity(owner)) {
+      signal?.throwIfAborted();
+      const rows = await this.queryMembersByOwner(owner, options); signal?.throwIfAborted();
+      const revisions = new Map(knownItems.map(item => [item.id, item.revision]));
+      const ids = new Set(rows.map(item => item.id));
+      return { upserts: rows.filter(row => row.revision !== revisions.get(row.id)),
+        removedIds: knownItems.filter(item => !ids.has(item.id)).map(item => item.id), total: rows.length };
+    }
     const result = await this.activityMembersService.syncMembersByOwner(
       owner,
       knownItems,
@@ -107,6 +128,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
+    if (this.localCommunity(owner)) return this.localGroups.summary(this.groupActor(), owner.ownerId);
     return this.activityMembersService.peekSummaryByOwner(owner);
   }
 
@@ -119,7 +141,10 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummaryDto[]> {
-    return this.activityMembersService.querySummariesByOwners(owners);
+    const local = owners.filter(owner => this.localCommunity(owner));
+    const others = owners.filter(owner => !this.localCommunity(owner));
+    return [...local.map(owner => this.localGroups.summary(this.groupActor(), owner.ownerId)),
+      ...(others.length ? await this.activityMembersService.querySummariesByOwners(others) : [])];
   }
 
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummaryDto | null> {
@@ -133,6 +158,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
     await this.activityMembersService.queryMembersByOwner(owner);
+    if (this.localCommunity(owner)) return this.localGroups.summary(this.groupActor(), owner.ownerId);
     return this.activityMembersService.peekSummaryByOwner(owner);
   }
 
@@ -142,7 +168,8 @@ export class ActivityMembersService extends BaseRouteModeService {
     capacityTotal?: number | null,
     options?: ActivityMembersQueryOptions
   ): Promise<void> {
-    const actorUserId = this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
+    const actorUserId = this.userProfileStore.activeUserId().trim() || this.workspace.accountId(this.userProfileStore.getActiveUserId()).trim();
+    if (owner.ownerType === 'community') throw new Error('Use group membership commands');
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
@@ -172,16 +199,19 @@ export class ActivityMembersService extends BaseRouteModeService {
     userIds: readonly string[]
   ): Promise<ActivityMembersInviteResultDTO> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
-    if (normalizedOwner.ownerType !== 'event' || !normalizedOwner.ownerId) {
+    if (!['event', 'community'].includes(normalizedOwner.ownerType) || !normalizedOwner.ownerId) {
       return { members: [], invitedUserIds: [], rejections: [] };
     }
-    const actorUserId = this.userProfileStore.activeUserId().trim()
-      || this.userProfileStore.getActiveUserId().trim();
-    const result = await this.httpActivityMembersService.inviteEventMembers(
+    const profileId = this.userProfileStore.activeUserId().trim();
+    const actorUserId = normalizedOwner.ownerType === 'community' ? this.workspace.accountId(profileId) : profileId;
+    const result = this.localCommunity(normalizedOwner)
+      ? await this.localGroups.invite(actorUserId, normalizedOwner.ownerId, userIds)
+      : await this.httpActivityMembersService.inviteEventMembers(
       normalizedOwner,
       actorUserId,
       userIds
     );
+    if (result.group) this.groupChanges.publish(actorUserId, result.group);
     const members = this.presentMembers(result.members);
     this.emitActivityMembersSyncForOwner(normalizedOwner);
     return {
@@ -202,9 +232,12 @@ export class ActivityMembersService extends BaseRouteModeService {
     if (!normalizedOwner.ownerId.trim()) {
       return [];
     }
-    const actorUserId = this.userProfileStore.activeUserId().trim();
+    const profileId = this.userProfileStore.activeUserId().trim();
+    const actorUserId = normalizedOwner.ownerType === 'community' ? this.workspace.accountId(profileId) : profileId;
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(actorUserId);
-    const result = await this.activityMembersService.applyMemberAction(
+    const result = this.localCommunity(normalizedOwner)
+      ? await this.localGroups.action(actorUserId, normalizedOwner.ownerId, targetUserId, action)
+      : await this.activityMembersService.applyMemberAction(
       normalizedOwner,
       actorUserId,
       targetUserId,
@@ -212,6 +245,7 @@ export class ActivityMembersService extends BaseRouteModeService {
       reason,
       options
     );
+    if (result.group) this.groupChanges.publish(actorUserId, result.group);
     const members = this.presentMembers(result.members);
     if (result.counterOverrides) {
       this.activityStore.applyCanonicalCounterOverrides(counterSyncToken, result.counterOverrides);

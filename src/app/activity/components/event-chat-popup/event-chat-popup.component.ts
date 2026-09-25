@@ -1,3 +1,6 @@
+import { ContactsService } from '../../../shared/core/base/services/contacts.service';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat-share.store';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -9,7 +12,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import {
   CommonModule,
@@ -468,7 +472,22 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected readonly trackByChatReader = (_index: number, reader: ContractTypes.ChatReadAvatar): string => reader.id;
 
+  private readonly contactsService = inject(ContactsService);
+  private readonly contactInviteStore = inject(ActivityInvitePopupStore);
+  private contactInviteLoading = false;
+  private destroyed = false;
+  private readonly chatShare = inject(ChatShareStore);
+
   constructor() {
+    effect(() => {
+      const request = this.chatShare.applyRequest();
+      const session = this.session();
+      if (!request || session?.item.id !== request.chat.id) return;
+      untracked(() => {
+        const taken = this.chatShare.takeRequest(session.item.id);
+        if (taken) void this.applyChatShares(taken);
+      });
+    });
     effect(() => {
       if (!this.shouldHostChatResourcePopup()) {
         return;
@@ -558,6 +577,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.chatShare.cancelForChat(this.session()?.item.id ?? '');
     this.chatHeaderPollScheduler.destroy();
     this.clearChatComposeResizeObserver();
     this.clearChatThreadScrollDismissListener();
@@ -571,6 +592,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected close(): void {
+    this.chatShare.cancelForChat(this.session()?.item.id ?? '');
     this.chatHeaderPollScheduler.stop({ abort: true });
     this.headerPollSessionKey = null;
     this.chatThreadSmartList?.closeMenu();
@@ -884,8 +906,12 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!result.changed) {
       return;
     }
+    const refreshedContact = current.item.channelType === 'contact'
+      ? await this.chatsService.queryChatById(current.item.id) : null;
+    if (this.destroyed || this.session()?.openedAtIso !== current.openedAtIso || signal?.aborted) return;
     const synchronizedChat: ChatDTO = {
       ...current.item,
+      ...(refreshedContact ?? {}),
       ownerStatus: result.ownerStatus ?? current.item.ownerStatus ?? null,
       unread: result.unread,
       lastMessage: result.lastMessage,
@@ -913,6 +939,10 @@ export class EventChatPopupComponent implements OnDestroy {
       headerRevision: synchronizedChat.revision ?? result.revision
     });
     this.syncSelectedChatHeader(synchronizedChat);
+    if (refreshedContact) {
+      this.memberMenuStore.syncChatMembers(synchronizedChat.id, this.activeUserId(),
+        this.chatMemberEntries(synchronizedChat, current.openedAtIso));
+    }
     this.cdr.markForCheck();
   }
 
@@ -1037,14 +1067,51 @@ export class EventChatPopupComponent implements OnDestroy {
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
+      parentZIndex: this.currentChatPopupZIndex(),
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
       viewOnly: true,
       acceptedMembers: memberCount,
       pendingMembers: 0,
       capacityTotal: memberCount,
       members: members.length > 0 ? members : undefined,
+      onInvite: session?.item.channelType === 'contact' ? () => { void this.openContactChatInvite(); } : undefined,
       lookup: lookup ? { ...lookup } : undefined
     });
+  }
+
+  private async openContactChatInvite(): Promise<void> {
+    const session = this.session();
+    if (!session || session.item.channelType !== 'contact' || this.contactInviteLoading) return;
+    const actorId = this.activeUserId();
+    const isCurrent = () => !this.destroyed && this.activeUserId() === actorId && this.session()?.openedAtIso === session.openedAtIso;
+    this.contactInviteLoading = true;
+    try {
+      const contacts = await this.contactsService.loadContacts(actorId);
+      if (!isCurrent()) return;
+      const now = new Date().toISOString();
+      const candidates: ContractTypes.ActivityMemberDTO[] = contacts
+        .filter(contact => contact.userId && contact.userId !== actorId && !this.session()!.item.memberIds.includes(contact.userId))
+        .map(contact => ({ id: contact.id, userId: contact.userId, name: contact.name, initials: contact.initials,
+          gender: contact.gender, city: contact.city, avatarUrl: contact.avatarUrl, role: 'Member', status: 'pending',
+          statusText: '', requestKind: 'invite', pendingSource: null, invitedByActiveUser: true,
+          metAtIso: now, actionAtIso: now, metWhere: '' }));
+      this.contactInviteStore.openActivityInvitePopup({
+        ownerId: session.item.id, title: session.item.title, parentZIndex: this.currentChatPopupZIndex() + 100, initialCandidates: candidates, initialSelection: [],
+        closeOwnerPopupOnClose: false,
+        onApply: async selected => {
+          if (!isCurrent()) throw new Error('Chat unavailable');
+          const chat = await this.chatsService.addContactChatMembers(session.item.id, selected.map(member => member.userId));
+          if (!isCurrent()) return;
+          this.patchCurrentEventChatHeader(header => ({ ...header, ...eventChatHeaderStateFromChat(chat), parentZIndex: header.parentZIndex }));
+          this.syncSelectedChatHeader(chat);
+          this.memberMenuStore.syncChatMembers(chat.id, actorId, this.chatMemberEntries(chat, session.openedAtIso));
+          this.cdr.markForCheck();
+        }
+      });
+      await this.contactInviteStore.ensureAssetMemberPickerPopupLoaded();
+    } catch {
+      if (isCurrent()) this.dialogStore.openInfo(this.i18n.translate('chat.contacts.error'));
+    } finally { this.contactInviteLoading = false; }
   }
 
   private chatMemberEntries(
@@ -2234,23 +2301,70 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareCurrentEvent(event?: Event): void {
     event?.stopPropagation();
-    this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+    void this.openChatSharePicker('event');
   }
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
-    const state = this.selectedChatNavigationState;
-    const resourceType = this.firstAvailableAssetType();
-    if (state?.subEvent) {
-      this.openSelectedChatSubEventResource(resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT, event, true);
-      return;
+    void this.openChatSharePicker('asset');
+  }
+
+  private async openChatSharePicker(kind: 'event' | 'asset'): Promise<void> {
+    const session = this.session();
+    if (!session || this.chatInitialLoadPending || this.chatShare.busy()) return;
+    try {
+      const chat = await this.ensureServiceChatBeforeFirstMessage(session.item);
+      if (this.destroyed || this.session()?.openedAtIso !== session.openedAtIso) return;
+      this.chatShare.open(chat, kind, this.currentChatPopupZIndex());
+      if (kind === 'event') {
+        this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+        return;
+      }
+      const state = this.selectedChatNavigationState;
+      const resourceType = this.firstAvailableAssetType() ?? AppConstants.ASSET_TYPE_TRANSPORT;
+      if (state?.subEvent) {
+        this.openSelectedChatSubEventResource(resourceType, undefined, true);
+      } else {
+        this.memberMenuStore.requestActivitiesNavigation({ type: 'assetExplore', assetType: resourceType,
+          startAtIso: state?.resourceStartAtIso ?? undefined, endAtIso: state?.resourceEndAtIso ?? undefined });
+      }
+    } catch {
+      this.dialogStore.openInfo(this.i18n.translate('chat.share.failed'), { title: this.i18n.translate('chat.share.title') });
     }
-    this.memberMenuStore.requestActivitiesNavigation({
-      type: 'assetExplore',
-      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT,
-      startAtIso: state?.resourceStartAtIso ?? undefined,
-      endAtIso: state?.resourceEndAtIso ?? undefined
-    });
+  }
+
+  private async applyChatShares(request: ChatShareApplyRequest): Promise<void> {
+    const actor = this.activeUserId();
+    const requireCurrent = () => {
+      if (this.destroyed || this.activeUserId() !== actor || this.session()?.item.id !== request.chat.id
+          || this.chatShare.session()?.id !== request.id) throw new Error('Share session changed');
+    };
+    try {
+      for (const messageId of request.removals) {
+        requireCurrent();
+        const message = await this.chatsService.updateChatMessage(request.chat, messageId, { deleted: true });
+        if (!message) throw new Error('Share removal failed');
+        this.chatShare.removed(request, messageId);
+        if (this.session()?.item.id === request.chat.id) this.replaceExistingChatMessage(message);
+      }
+      for (const item of request.additions) {
+        requireCurrent();
+        const token = await this.shareTokensService.createToken({ kind: item.kind, entityId: item.entityId,
+          assetType: item.assetType, ownerUserId: item.ownerUserId });
+        const attachment = await this.resolveShareAttachmentFromText(token);
+        if (!attachment) throw new Error('Share token unavailable');
+        requireCurrent();
+        const message = await this.sendPersistedChatMessageWithAttachments(request.chat, '', [attachment],
+          `share:${request.id}:${item.kind}:${item.entityId}`);
+        if (!message) throw new Error('Share delivery failed');
+        this.chatShare.added(request, item, message);
+        if (this.session()?.item.id === request.chat.id) this.mergeIncomingChatMessage(message);
+      }
+      this.chatShare.finish(request, true);
+    } catch {
+      this.chatShare.finish(request, false);
+    }
+    this.cdr.markForCheck();
   }
 
   private async shareCurrentWorkspaceWithSupport(): Promise<void> {
@@ -5188,6 +5302,8 @@ export class EventChatPopupComponent implements OnDestroy {
     const channelType = `${chat.channelType ?? ''}`.trim();
     if (
       channelType === 'general'
+      || channelType === 'contact'
+      || channelType === 'groupSupport'
       || channelType === 'mainEvent'
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'

@@ -151,36 +151,28 @@ export class SeedUsersRepository {
     }));
   }
 
-  seedDefaultUserFilterPreferencesForUser(userId: string): boolean {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return false;
-    }
+  seedDefaultUserFilterPreferencesForUsers(userIds: readonly string[]): boolean {
     const state = this.memoryDb.read();
-    const user = state[USERS_TABLE_NAME].byId[normalizedUserId];
     const filterTable = state[USER_FILTER_PREFERENCES_TABLE_NAME];
-    if (!user || Object.prototype.hasOwnProperty.call(filterTable.byId, normalizedUserId)) {
+    const missingUsers = [...new Set(userIds.map(id => id.trim()))]
+      .filter(id => id && !Object.prototype.hasOwnProperty.call(filterTable.byId, id))
+      .map(id => state[USERS_TABLE_NAME].byId[id])
+      .filter((user): user is UserRecord => !!user);
+    if (missingUsers.length === 0) {
       return false;
     }
-
-    this.memoryDb.write(current => {
-      const currentFilterTable = current[USER_FILTER_PREFERENCES_TABLE_NAME];
-      if (Object.prototype.hasOwnProperty.call(currentFilterTable.byId, normalizedUserId)) {
-        return current;
+    this.memoryDb.write(current => ({
+      ...current,
+      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+        byId: {
+          ...filterTable.byId,
+          ...Object.fromEntries(missingUsers.map(user => [user.id,
+            LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences(user.gender))
+          ]))
+        },
+        ids: [...filterTable.ids, ...missingUsers.map(user => user.id)]
       }
-      return {
-        ...current,
-        [USER_FILTER_PREFERENCES_TABLE_NAME]: {
-          byId: {
-            ...currentFilterTable.byId,
-            [normalizedUserId]: LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences())
-          },
-          ids: currentFilterTable.ids.includes(normalizedUserId)
-            ? [...currentFilterTable.ids]
-            : [...currentFilterTable.ids, normalizedUserId]
-        }
-      };
-    });
+    }));
     return true;
   }
 
@@ -329,7 +321,7 @@ export class SeedUsersRepository {
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     return users.ids
       .map(id => users.byId[id])
-      .filter((user): user is UserRecord => Boolean(user));
+      .filter((user): user is UserRecord => Boolean(user) && !user.workspaceGroupId);
   }
 
   private applySeededActivityCounts(user: UserRecord): UserRecord {
@@ -356,6 +348,8 @@ export class SeedUsersRepository {
             group: 0,
             service: 0,
             appSupport: 0,
+            contacts: 0,
+            groupSupport: 0,
           },
           event: {
             all: 0,
@@ -417,7 +411,9 @@ export class SeedUsersRepository {
       subEvent: normalizeCounter(activities.chat?.subEvent),
       group: normalizeCounter(activities.chat?.group),
       service: normalizeCounter(activities.chat?.service),
-      appSupport: normalizeCounter(activities.chat?.appSupport)
+      appSupport: normalizeCounter(activities.chat?.appSupport),
+      contacts: normalizeCounter(activities.chat?.contacts),
+      groupSupport: normalizeCounter(activities.chat?.groupSupport)
     };
     const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
     const events = Number.isFinite(sources.eventsCount)
@@ -829,6 +825,8 @@ export class SeedUsersRepository {
       && normalizeCounter(leftChat?.group) === normalizeCounter(rightChat?.group)
       && normalizeCounter(leftChat?.service) === normalizeCounter(rightChat?.service)
       && normalizeCounter(leftChat?.appSupport) === normalizeCounter(rightChat?.appSupport)
+      && normalizeCounter(leftChat?.contacts) === normalizeCounter(rightChat?.contacts)
+      && normalizeCounter(leftChat?.groupSupport) === normalizeCounter(rightChat?.groupSupport)
       && Boolean(left.activities.event) === Boolean(right.activities.event)
       && normalizeCounter(leftEvent?.all) === normalizeCounter(rightEvent?.all)
       && normalizeCounter(leftEvent?.active) === normalizeCounter(rightEvent?.active)
