@@ -46,4 +46,22 @@ describe('Event member popup mode isolation', () => {
     component.canManageMembers = true;
     expect(actionIds()).toContain('pending-only');
   });
+
+  it('updates contact members in the current list without reloading or resetting the filter', () => {
+    const component = popup();
+    const first = { id: 'first', status: 'accepted' };
+    const second = { id: 'second', status: 'accepted' };
+    const replaceVisibleItems = vi.fn();
+    const reload = vi.fn();
+    Object.assign(component, { membersListReady: true, ownerId: 'contact-chat', lookupRef: { type: 'chat' },
+      pendingOnly: false, selectedMembersVisible: [first],
+      membersSmartList: { itemsSnapshot: () => [first], replaceVisibleItems, reload } });
+    component.syncVisibleMembers([first], [first, second]);
+    expect(replaceVisibleItems).toHaveBeenLastCalledWith([first, second], { total: 2 });
+    component.pendingOnly = true;
+    component.syncVisibleMembers([first], [first, second]);
+    expect(replaceVisibleItems).toHaveBeenLastCalledWith([], { total: 0 });
+    expect(component.pendingOnly).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+  });
 });

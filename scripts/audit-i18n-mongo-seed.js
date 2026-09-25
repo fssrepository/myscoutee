@@ -157,6 +157,11 @@ function validateSourceBundle(filePath, expectedLanguage, bundle) {
     issues.push(`${file}: bundle must be a JSON object`);
     return false;
   }
+  for (const key of Object.keys(bundle)) {
+    if (!['lang', 'version', 'messages'].includes(key)) {
+      issues.push(`${file}: unexpected root key ${formatValue(key)}; translations belong in messages`);
+    }
+  }
   if (bundle.lang !== expectedLanguage) {
     issues.push(
       `${file}: lang must be ${formatValue(expectedLanguage)}, got ${formatValue(bundle.lang)}`

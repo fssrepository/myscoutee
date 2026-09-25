@@ -499,7 +499,8 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExplorePopupZIndex(): number {
-    return 2400;
+    const share = this.chatShare.session();
+    return Math.max(2400, share?.kind === 'event' ? share.parentZIndex + 100 : 0);
   }
 
   protected closeEventExplore(): void {

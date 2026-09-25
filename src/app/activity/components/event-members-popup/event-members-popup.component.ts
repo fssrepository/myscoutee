@@ -224,6 +224,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     statusChange?: AssetMemberStatusChangeDTO
   ) => void) | null = null;
   private contactInviteHandler: (() => void) | null = null;
+  private navigationParentZIndex: number | null = null;
   private takeOverAssetHandler: (() => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
@@ -301,6 +302,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       this.setMingleLive(request.type === 'members' && request.mingleLive === true);
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
+          parentZIndex: request.parentZIndex,
           followedOrganizers: request.followedOrganizers,
           ownerUserId: request.ownerUserId,
           ownerType: request.ownerType ?? 'event',
@@ -344,6 +346,12 @@ export class EventMembersPopupComponent implements OnDestroy {
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSync(sync);
     });
+    effect(() => {
+      const sync = this.memberMenuStore.chatMembersSync();
+      if (!sync || !this.isOpen || this.lookupRef?.type !== 'chat'
+        || this.ownerId !== sync.chatId || this.activeUserId() !== sync.userId) return;
+      this.applyCommittedMembers(sync.members, this.currentOwnerMembers());
+    });
   }
 
   ngOnDestroy(): void {
@@ -358,7 +366,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   protected membersPopupZIndex(): number {
     if (this.followedOrganizers) return 10120;
-    const parentZIndex = Math.trunc(Number(this.parentZIndex) || 0);
+    const parentZIndex = Math.trunc(Number(this.navigationParentZIndex ?? this.parentZIndex) || 0);
     if (parentZIndex <= 0) {
       return EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX;
     }
@@ -1619,6 +1627,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private openMembersPopup(
     ownerId: string,
     options?: {
+      parentZIndex?: number;
       ownerUserId?: string;
       followedOrganizers?: boolean;
       subtitle?: string;
@@ -1654,6 +1663,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       return;
     }
     this.contactInviteHandler = options?.onInvite ?? null;
+    this.navigationParentZIndex = options?.parentZIndex ?? null;
     this.communityOwnerUserId = options?.ownerUserId ?? '';
     this.followedOrganizers = options?.followedOrganizers === true;
     const ownerType = options?.ownerType ?? 'event';
@@ -2043,13 +2053,13 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (!this.membersListReady || !this.membersSmartList) {
       return;
     }
-    if (this.pendingOnly && this.ownerId) {
+    if (this.pendingOnly && this.ownerId && this.lookupRef?.type !== 'chat') {
       this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
       this.membersSmartList.reload();
       return;
     }
-    const previousFilteredMembers = [...previousMembers];
-    const nextFilteredMembers = [...nextMembers];
+    const previousFilteredMembers = previousMembers.filter(member => !this.pendingOnly || member.status === 'pending');
+    const nextFilteredMembers = nextMembers.filter(member => !this.pendingOnly || member.status === 'pending');
     const visibleCount = Math.max(this.selectedMembersVisible.length, this.membersSmartList.itemsSnapshot().length);
     const allMembersWereVisible = visibleCount >= previousFilteredMembers.length;
     let nextVisibleCount = Math.min(nextFilteredMembers.length, visibleCount);

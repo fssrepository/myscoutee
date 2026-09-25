@@ -22,7 +22,7 @@ export interface ChatShareApplyRequest {
 @Injectable({ providedIn: 'root' })
 export class ChatShareStore {
   private readonly chats = inject(ChatsService);
-  readonly session = signal<{ id: string; chat: ChatDTO; kind: 'event' | 'asset' } | null>(null);
+  readonly session = signal<{ id: string; chat: ChatDTO; kind: 'event' | 'asset'; parentZIndex: number } | null>(null);
   readonly selected = signal<ReadonlyMap<string, ChatShareItem>>(new Map());
   readonly loading = signal(false);
   readonly busy = signal(false);
@@ -37,8 +37,8 @@ export class ChatShareStore {
     return selected.size !== shared.size || [...selected.keys()].some(key => !shared.has(key));
   });
 
-  open(chat: ChatDTO, kind: 'event' | 'asset'): void {
-    this.session.set({ id: crypto.randomUUID(), chat, kind });
+  open(chat: ChatDTO, kind: 'event' | 'asset', parentZIndex = 0): void {
+    this.session.set({ id: crypto.randomUUID(), chat, kind, parentZIndex });
     this.selected.set(new Map());
     this.shared.set(new Map());
     this.ready.set(false);

@@ -72,6 +72,7 @@ export type ActivitiesNavigationRequest =
       followedOrganizers?: boolean;
       mingleLive?: boolean;
       ownerId: string;
+      parentZIndex?: number;
       ownerUserId?: string;
       ownerType?: ActivityMemberOwnerType;
       parentOwnerId?: string;
@@ -112,11 +113,21 @@ export class MemberMenuStore {
   private readonly navigatorAssetRequestRef = signal<NavigatorAssetRequest | null>(null);
   private readonly navigatorEventFeedbackRequestRef = signal<NavigatorEventFeedbackRequest | null>(null);
   private readonly activitiesNavigationRequestRef = signal<ActivitiesNavigationRequest | null>(null);
+  private readonly chatMembersSyncRef = signal<{
+    chatId: string;
+    userId: string;
+    members: readonly ActivityMemberDTO[];
+  } | null>(null);
 
   readonly navigatorActivitiesRequest = this.navigatorActivitiesRequestRef.asReadonly();
   readonly navigatorAssetRequest = this.navigatorAssetRequestRef.asReadonly();
   readonly navigatorEventFeedbackRequest = this.navigatorEventFeedbackRequestRef.asReadonly();
   readonly activitiesNavigationRequest = this.activitiesNavigationRequestRef.asReadonly();
+  readonly chatMembersSync = this.chatMembersSyncRef.asReadonly();
+
+  syncChatMembers(chatId: string, userId: string, members: readonly ActivityMemberDTO[]): void {
+    this.chatMembersSyncRef.set({ chatId, userId, members });
+  }
 
   openNavigatorActivitiesRequest(
     primaryFilter: 'rates' | 'chats' | 'events',

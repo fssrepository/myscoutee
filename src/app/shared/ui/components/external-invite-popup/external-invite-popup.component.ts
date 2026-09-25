@@ -15,7 +15,7 @@ import { I18nPipe } from '../../pipes/i18n.pipe';
           <strong>{{ target.title }}</strong>
           <p>{{ 'invite.external.description' | i18n }}</p>
           <app-copy-link [value]="url()" label="invite.external.url" [disabled]="loading()"></app-copy-link>
-          @if (loading()) { <p role="status">{{ 'Loading' | i18n }}</p> }
+          @if (loading()) { <p role="status">{{ 'loading' | i18n }}</p> }
           @if (error()) { <p role="alert">{{ 'invite.external.failed' | i18n }}</p> }
         </section>
       </app-popup>

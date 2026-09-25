@@ -490,7 +490,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected assetExplorePopupZIndex(): number {
-    return this.parentZIndex + 100;
+    const share = this.chatShare.session();
+    return Math.max(this.parentZIndex, share?.kind === 'asset' ? share.parentZIndex : 0) + 100;
   }
 
   protected assetExplorePopupModel(explore: AssetExplorePopupViewState): PopupModel<AssetExploreMenuContext> {

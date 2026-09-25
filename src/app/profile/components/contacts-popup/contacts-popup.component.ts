@@ -477,7 +477,10 @@ export class ContactsPopupComponent implements OnDestroy {
         this.chatsService.ensureContactChat(contact.userId), this.activitiesStore.ensureEventChatPopupLoaded()
       ]);
       if (actorId !== this.activeUserId() || !this.profileStore.contactsPopupOpen()) return;
-      this.activitiesStore.openEventChat(eventChatPopupRequestFromChat(chat), eventChatHeaderStateFromChat(chat));
+      this.activitiesStore.openStackedEventChat(
+        { ...eventChatPopupRequestFromChat(chat), parentZIndex: this.contactsPopupZIndex() },
+        eventChatHeaderStateFromChat(chat)
+      );
     } catch {
       if (actorId === this.activeUserId()) this.dialogStore.openInfo(this.i18n.translate('chat.contacts.error'));
     } finally { this.openingContactChat.set(false); }

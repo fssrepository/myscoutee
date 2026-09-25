@@ -48,9 +48,11 @@ describe('LocalChatsRepository chat pages', () => {
   });
 
   it('sends one persisted share to both contact members and deletes the old message in both copies', () => {
-    for (const id of ['share-a', 'share-b']) seedUser(user(id));
+    for (const id of ['share-a', 'share-b', 'share-c']) seedUser(user(id));
     memoryDb.write(state => ({ ...state, [CONTACTS_TABLE_NAME]: {
-      ownerUserIds: ['share-a'], byOwnerUserId: { 'share-a': [{ userId: 'share-b' } as StoredContact] }
+      ownerUserIds: ['share-a'], byOwnerUserId: {
+        'share-a': ['share-b', 'share-c'].map(userId => ({ userId } as StoredContact))
+      }
     } }));
     const direct = repository.ensureContactChat('share-a', 'share-b');
     const before = memoryDb.read()[USERS_TABLE_NAME].byId['share-b'].activities.chats ?? 0;
@@ -73,6 +75,12 @@ describe('LocalChatsRepository chat pages', () => {
     const deleted = repository.queryChatMessagesPage(recipient, pageRequest({})).items[0];
     expect(deleted.deletedAtIso).toBeTruthy();
     expect(deleted.deletedByUserId).toBe('share-a');
+    // A new contact sees the existing deleted history without a fabricated unread count.
+    repository.addContactChatMembers('share-a', direct.id, ['share-c']);
+    const invited = repository.queryChatItemById('share-c', direct.id)!;
+    expect(invited.unread).toBe(0);
+    expect(repository.queryChatMessagesPage(invited, pageRequest({})).items[0].deletedAtIso).toBe(deleted.deletedAtIso);
+    expect(repository.queryChatMessagesPage(invited, pageRequest({})).items[0].mine).toBe(false);
   });
 
   it('rejects a saved contact from a different workspace', () => {

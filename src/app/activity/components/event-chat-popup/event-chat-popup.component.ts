@@ -939,6 +939,10 @@ export class EventChatPopupComponent implements OnDestroy {
       headerRevision: synchronizedChat.revision ?? result.revision
     });
     this.syncSelectedChatHeader(synchronizedChat);
+    if (refreshedContact) {
+      this.memberMenuStore.syncChatMembers(synchronizedChat.id, this.activeUserId(),
+        this.chatMemberEntries(synchronizedChat, current.openedAtIso));
+    }
     this.cdr.markForCheck();
   }
 
@@ -1063,6 +1067,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
+      parentZIndex: this.currentChatPopupZIndex(),
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
       viewOnly: true,
       acceptedMembers: memberCount,
@@ -1099,8 +1104,7 @@ export class EventChatPopupComponent implements OnDestroy {
           if (!isCurrent()) return;
           this.patchCurrentEventChatHeader(header => ({ ...header, ...eventChatHeaderStateFromChat(chat), parentZIndex: header.parentZIndex }));
           this.syncSelectedChatHeader(chat);
-          const control = this.chatHeaderMembersControl();
-          if (control) this.openChatHeaderControl(control);
+          this.memberMenuStore.syncChatMembers(chat.id, actorId, this.chatMemberEntries(chat, session.openedAtIso));
           this.cdr.markForCheck();
         }
       });
@@ -2311,7 +2315,7 @@ export class EventChatPopupComponent implements OnDestroy {
     try {
       const chat = await this.ensureServiceChatBeforeFirstMessage(session.item);
       if (this.destroyed || this.session()?.openedAtIso !== session.openedAtIso) return;
-      this.chatShare.open(chat, kind);
+      this.chatShare.open(chat, kind, this.currentChatPopupZIndex());
       if (kind === 'event') {
         this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
         return;
