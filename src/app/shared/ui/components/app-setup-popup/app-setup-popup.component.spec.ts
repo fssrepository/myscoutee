@@ -4,6 +4,8 @@ import { AppSetupStore } from '../../context/stores/app-setup.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { AppSetupPopupComponent } from './app-setup-popup.component';
+import { SessionService } from '../../../core/base/services/session.service';
+import { DialogStore } from '../../context/stores/dialog.store';
 
 
 describe('Setup permission help', () => {
@@ -22,6 +24,7 @@ describe('Setup permission help', () => {
     };
     TestBed.configureTestingModule({ imports: [AppSetupPopupComponent], providers: [
       { provide: AppSetupStore, useValue: store },
+      { provide: SessionService, useValue: { currentSession: () => null } },
       { provide: I18nService, useValue: { revision: () => 0, translate: (value: string) => value } }
     ] });
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
@@ -45,5 +48,47 @@ describe('Setup permission help', () => {
     expect(store.isOpen()).toBe(true);
     expect(close).not.toHaveBeenCalled();
     expect(allow).not.toHaveBeenCalled();
+  });
+});
+
+describe('Setup automatic installation offer', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  function setup(session: unknown) {
+    const currentSession = signal(session);
+    const store = {
+      isOpen: signal(false),
+      open: vi.fn(),
+      pwa: { installPromptVisible: signal(false) }
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: AppSetupStore, useValue: store },
+      { provide: SessionService, useValue: { currentSession } },
+      { provide: DialogStore, useValue: { dialog: signal(null) } },
+      { provide: PopupPresenceStore, useValue: { visible: signal(false) } },
+      { provide: I18nService, useValue: { revision: () => 0 } }
+    ] });
+    TestBed.runInInjectionContext(() => new AppSetupPopupComponent());
+    TestBed.tick();
+    return { store, currentSession };
+  }
+
+  it.each(['demo', 'firebase', 'operator-bootstrap'])('does not open automatically for a %s session before or after profile loading', kind => {
+    const { store } = setup({ kind });
+    store.pwa.installPromptVisible.set(true);
+    TestBed.tick();
+    expect(store.open).not.toHaveBeenCalled();
+    // A caller may still explicitly open Settings or an entry permission gate.
+    store.isOpen.set(true);
+    TestBed.tick();
+    expect(store.isOpen()).toBe(true);
+    expect(store.open).not.toHaveBeenCalled();
+  });
+
+  it('retains the automatic installation offer while signed out', () => {
+    const { store } = setup(null);
+    store.pwa.installPromptVisible.set(true);
+    TestBed.tick();
+    expect(store.open).toHaveBeenCalledOnce();
   });
 });

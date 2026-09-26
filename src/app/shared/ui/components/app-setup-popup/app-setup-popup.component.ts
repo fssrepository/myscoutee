@@ -8,6 +8,7 @@ import { AppMenuComponent, type AppMenuItem, type AppMenuModel, type AppMenuItem
 import { I18nPipe } from '../../pipes';
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
 import { I18nService } from '../../../core/base/services/i18n.service';
+import { SessionService } from '../../../core/base/services/session.service';
 
 @Component({
   selector: 'app-setup-popup',
@@ -17,6 +18,7 @@ import { I18nService } from '../../../core/base/services/i18n.service';
 })
 export class AppSetupPopupComponent {
   readonly store = inject(AppSetupStore);
+  private readonly session = inject(SessionService);
   private readonly dialogs = inject(DialogStore);
   private readonly presence = inject(PopupPresenceStore);
   private readonly i18n = inject(I18nService);
@@ -82,7 +84,9 @@ export class AppSetupPopupComponent {
   constructor() {
     effect(() => {
       if (!this.store.isOpen()) this.helpOpen.set(false);
-      if (this.store.pwa.installPromptVisible() && !this.store.isOpen()
+      // An installable browser must not interrupt an authenticated session,
+      // including the interval before its profile has finished loading.
+      if (!this.session.currentSession() && this.store.pwa.installPromptVisible() && !this.store.isOpen()
         && !this.dialogs.dialog() && !this.presence.visible()) this.store.open();
     });
   }
