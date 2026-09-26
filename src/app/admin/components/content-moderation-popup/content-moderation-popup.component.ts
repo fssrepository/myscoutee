@@ -71,8 +71,8 @@ export class ContentModerationPopupComponent {
     groupBy: item => item.submittedAtIso.slice(0, 10), showStickyHeader: true,
     showFirstGroupMarker: false, showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     trackBy: (_index, item) => item.id,
-    menuItems: context => context.item && this.snapshot()?.settings.enabled ? MODERATION_STATUSES.filter(status => moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
-      ...STATUS_STYLE[status], surface: 'tinted', disabled: status === context.item!.status, context: context.item })) : []
+    menuItems: context => context.item && this.snapshot()?.settings.enabled ? MODERATION_STATUSES.filter(status => status !== context.item!.status && moderationDecisionAllowed(context.item!, status)).map(status => ({ id: status, label: this.decisionLabel(context.item!, status),
+      ...STATUS_STYLE[status], surface: 'tinted', context: context.item })) : []
   };
   protected readonly loadPage: SmartListLoadPage<ContentModerationItem> = query => from(this.load(query));
   constructor() {
@@ -134,7 +134,7 @@ export class ContentModerationPopupComponent {
     this.dialogs.open({ title: `${this.decisionLabel(item, status)}.question`, message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
       confirmPalette: STATUS_STYLE[status].palette,
-      input: ['rejected', 'blocked'].includes(status) ? { label: 'moderation.message', maxLength: 1000 } : null,
+      input: ['rejected', 'blocked'].includes(status) ? { label: groupId ? 'moderation.group.message' : 'moderation.message', maxLength: 1000 } : null,
       onConfirm: async message => {
         if (!this.currentScope(groupId, actor?.id)) throw new Error('moderation.changed');
         const result = await this.service.decide(item.id, { adminUserId: actor?.id ?? '', commandId,
@@ -201,7 +201,7 @@ export class ContentModerationPopupComponent {
     }
   }
   protected categoryItems(): readonly AppMenuItem[] {
-    return this.categories.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', kind: 'checkbox',
+    return this.categories.map(id => ({ id, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', kind: 'toggle',
       closeOnSelect: false, checked: this.settingsDraft()?.categories.includes(id), disabled: this.saving() || !this.settingsDraft()?.enabled }));
   }
   protected selectedCategoriesLabel(): string {

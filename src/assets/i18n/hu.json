@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.197",
+  "version": "2026.09.26.hu.198",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3649,6 +3649,7 @@
     "moderation.status.accepted": "Elfogadva",
     "moderation.status.rejected": "Elutasítva",
     "moderation.status.blocked": "Letiltva",
+    "moderation.group.message": "Opcionális üzenet a tulajdonosnak a csoporttámogatási chaten",
     "moderation.message": "Opcionális üzenet a tulajdonosnak az alkalmazástámogatási chaten",
     "moderation.autoApprove": "Automatikus jóváhagyás",
     "moderation.delayMinutes": "Késleltetés (perc)",

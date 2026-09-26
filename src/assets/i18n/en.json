@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.197",
+  "version": "2026.09.26.en.198",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3649,6 +3649,7 @@
     "moderation.status.accepted": "Accepted",
     "moderation.status.rejected": "Rejected",
     "moderation.status.blocked": "Blocked",
+    "moderation.group.message": "Optional message to the owner via Group support",
     "moderation.message": "Optional message to the owner via App Support",
     "moderation.autoApprove": "Auto approve",
     "moderation.delayMinutes": "Delay (minutes)",
