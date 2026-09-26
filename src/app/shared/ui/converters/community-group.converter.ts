@@ -40,12 +40,11 @@ export class CommunityGroupConverter {
       mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },
       mediaBottomStart: contentModerationBadge(group.moderationStatus),
-      mediaEnd: { variant: 'badge', shape: membersVisible ? 'circle' : undefined, label: `${group.acceptedMembers}`,
+      mediaEnd: { variant: 'badge', layout: 'badge-with-leading-accessory', label: `${group.acceptedMembers}`,
         ariaLabel: membersVisible ? 'open.members' : 'groups.member.list',
         interactive: membersVisible, disabled: !membersVisible,
         tone: membersVisible ? 'default' : 'inactive',
-        layout: membersVisible ? undefined : 'badge-with-leading-accessory',
-        leadingAccessory: membersVisible ? undefined : { icon: 'visibility_off', tone: 'negative' },
+        leadingAccessory: { icon: membersVisible ? 'groups' : 'visibility_off', tone: membersVisible ? 'positive' : 'negative' },
         pendingCount: membersVisible ? group.membersActivity ?? group.pendingMembers : 0 },
       hasMenuOptions: true, menuBadgeCount, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
