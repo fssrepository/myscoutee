@@ -28,7 +28,7 @@ export class AppSetupPopupComponent {
     title: 'app.setup.title', size: 'small', height: 'auto',
     mobilePresentation: 'compact', headerTone: 'accent', headerPalette: 'violet',
     showClose: true, closeOnBackdrop: false, backdropTone: 'dim',
-    headerActions: [{ id: 'help', icon: 'help_outline', palette: 'blue',
+    headerActions: [{ id: 'help', icon: 'question_mark', palette: 'blue',
       ariaLabel: this.i18n.translate('app.setup.help.title') }],
     onAction: () => this.helpOpen.set(true)
   }));
