@@ -415,18 +415,25 @@ export class EventMembersPopupComponent implements OnDestroy {
         }] : []),
         ...(!this.followedOrganizers && (!this.mingleLive || this.canManageMembers) ? [{
           id: 'pending-only',
+          kind: 'menu' as const,
+          menuKind: 'inline' as const,
           align: 'end' as const,
-          icon: 'pending_actions',
-          label: 'Pending only',
-          ariaLabel: this.pendingOnly ? 'Show all members' : 'Show pending members only',
-          palette: 'rose' as const,
-          active: this.pendingOnly,
-          counter: this.pendingCount > 0 ? this.pendingCount : null,
-          compactOnMobile: false
+          closeOnSelect: false,
+          items: [{
+            id: 'pending-only', kind: 'toggle' as const, layout: 'pill' as const,
+            icon: 'pending_actions', label: 'Pending only',
+            ariaLabel: this.pendingOnly ? 'Show all members' : 'Show pending members only',
+            palette: 'rose' as const, checked: this.pendingOnly,
+            showToggleIndicator: true, closeOnSelect: false,
+            counter: this.pendingCount > 0 ? this.pendingCount : null, counterTone: 'alert' as const
+          }]
         }] : [])
       ],
       onClose: event => this.closeMembersPopup(event),
-      onAction: event => this.onMembersPopupAction(event)
+      onAction: event => this.onMembersPopupAction(event),
+      onMenuSelect: event => {
+        if (event.itemSelect.id === 'pending-only') this.togglePendingOnly(event.itemSelect.sourceEvent);
+      }
     };
   }
 
@@ -434,9 +441,6 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (event.action.id === 'invite') {
       this.handleInvite(event.sourceEvent);
       return;
-    }
-    if (event.action.id === 'pending-only') {
-      this.togglePendingOnly(event.sourceEvent);
     }
   }
 
