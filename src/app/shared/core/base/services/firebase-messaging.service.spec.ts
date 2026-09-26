@@ -65,6 +65,7 @@ describe('Notification preference and background registration', () => {
       } },
       { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
+        trackingEnabled: signal(true), setTrackingEnabled: vi.fn(),
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
         saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
         syncGrantedLocationForActiveUser: vi.fn().mockResolvedValue(undefined)
@@ -415,6 +416,19 @@ describe('Notification preference and background registration', () => {
     fixture.destroy();
   });
 
+  it('can disable app location tracking while native permission remains granted and does not erase saved coordinates', async () => {
+    const location = TestBed.inject(AppLocationService);
+    expect(setup.locationGranted()).toBe(true);
+    setup.toggleLocation();
+    expect(setup.locationSelected()).toBe(false);
+    await setup.allow();
+    expect(location.setTrackingEnabled).toHaveBeenCalledWith(false);
+    expect(location.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(location.saveCurrentCoordinates).not.toHaveBeenCalled();
+    await setup.refreshPermissions();
+    expect(setup.locationSelected()).toBe(false);
+  });
+
   it('starts the ring only after both native decisions and keeps it while acquiring coordinates', async () => {
     let allowNotifications!: (permission: NotificationPermission) => void;
     const notification = { permission: 'default', requestPermission: vi.fn(() =>
@@ -428,6 +442,7 @@ describe('Notification preference and background registration', () => {
       .mockReturnValue(new Promise(resolve => { finish = resolve; }));
     vi.mocked(getToken).mockResolvedValue('new-token');
     void setup.requestForLogin(vi.fn().mockResolvedValue(true));
+    setup.locationSelected.set(true);
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
     const saving = setup.allow();

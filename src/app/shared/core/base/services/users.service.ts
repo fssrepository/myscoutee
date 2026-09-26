@@ -1,5 +1,6 @@
 import { LocalIntegrationService } from '../../local/source/services/integration.service';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { AppLocationService } from './app-location.service';
 import { SessionService } from './session.service';
 import { AffiliateReferralService } from './affiliate-referral.service';
 import {
@@ -55,6 +56,7 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 export class UsersService extends BaseRouteModeService {
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly session = inject(SessionService);
+  private readonly location = inject(AppLocationService);
   private readonly affiliateReferral = inject(AffiliateReferralService);
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
@@ -150,8 +152,8 @@ export class UsersService extends BaseRouteModeService {
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     if (this.workspace.switching()) return null;
     const revision = this.workspace.revision();
-    const session = this.session.session();
-    const current = () => revision === this.workspace.revision() && session === this.session.session();
+    const session = this.session.identity();
+    const current = () => revision === this.workspace.revision() && session === this.session.identity();
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
@@ -217,8 +219,8 @@ export class UsersService extends BaseRouteModeService {
     const revision = this.workspace.revision() + 1;
     this.workspace.revision.set(revision);
     this.workspace.switching.set(true);
-    const session = this.session.session();
-    const current = () => revision === this.workspace.revision() && this.session.session() === session;
+    const session = this.session.identity();
+    const current = () => revision === this.workspace.revision() && this.session.identity() === session;
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
@@ -230,9 +232,11 @@ export class UsersService extends BaseRouteModeService {
     }
 
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
+    const accountId = this.session.activeUserId();
+    const location = this.location.pendingLoginCoordinates(accountId);
 
     try {
-      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId);
+      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId, location ?? undefined);
       if (!current()) return null;
       const profileExt = response.profileExt;
       const user = profileExt?.profile ?? null;
@@ -248,6 +252,7 @@ export class UsersService extends BaseRouteModeService {
         return profileExt;
       }
 
+      if (location) this.location.confirmLoginCoordinates(accountId, location);
       if (response.accountProfile) this.userProfileStore.setUserProfile(response.accountProfile);
       this.workspace.accountUserId.set(response.accountProfile?.id ?? user.id);
       this.workspace.active.set(response.workspace ?? null);
@@ -284,7 +289,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
       return null;
     } finally {
-      if (current()) this.workspace.switching.set(false);
+      if (revision === this.workspace.revision()) this.workspace.switching.set(false);
     }
   }
 

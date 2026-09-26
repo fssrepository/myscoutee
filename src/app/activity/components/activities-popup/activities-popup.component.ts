@@ -1399,6 +1399,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       controls.push({
         kind: 'menu',
         id: 'rate',
+        title: 'rates',
         trigger: this.activitiesRateMenuTrigger(),
         model: this.activitiesRateMenuModel()
       });

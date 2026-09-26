@@ -65,6 +65,7 @@ export const APP_STORAGE_KEYS = {
   demoCountryCode: scopedStorageKey('countryCode', 'demo'),
   entryConsent: scopedStorageKey('entry.gdpr-consent.v1'),
   entryConsentAudit: scopedStorageKey('entry.gdpr-consent-audit.v1'),
+  locationTrackingEnabled: scopedStorageKey('location.tracking-enabled.v1'),
   entryLoginLocationEligibility: scopedStorageKey('entry.login-location-eligibility.v1'),
   assetBorrowDrafts: scopedStorageKey('asset.borrow.drafts.v1'),
   eventCheckoutDrafts: scopedStorageKey('event.checkout.drafts.v1'),

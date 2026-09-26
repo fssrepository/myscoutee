@@ -27,7 +27,7 @@
         </div>
         <div class="moderation-settings__categories">
           <label id="moderation-categories-label">{{ 'moderation.categories' | i18n }}</label>
-          <app-menu kind="select" [trigger]="{ label: selectedCategoriesLabel(), ariaLabel: 'moderation.categories', icon: 'category', palette: 'blue', layout: 'field', disabled: saving() || !draft.enabled }"
+          <app-menu kind="select" title="moderation.categories" [trigger]="{ label: selectedCategoriesLabel(), ariaLabel: 'moderation.categories', icon: 'category', palette: 'blue', layout: 'field', disabled: saving() || !draft.enabled }"
             [items]="categoryItems()" (itemSelect)="toggleCategory($event)"></app-menu>
         </div>
       </fieldset>

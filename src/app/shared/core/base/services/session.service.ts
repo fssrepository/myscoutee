@@ -79,6 +79,16 @@ export class SessionService {
     }
     return '';
   });
+  // Avatar previews and token restoration may replace the object within one session.
+  readonly identity = computed(() => {
+    const session = this.sessionRef();
+    if (!session) return null;
+    return session.kind === 'operator-bootstrap'
+      ? JSON.stringify([session.kind, session.email, session.expiresAt])
+      : JSON.stringify([session.kind, session.kind === 'firebase' ? session.profile.id : session.userId,
+          session.sessionId, session.kind === 'demo' ? session.supportContext : undefined]);
+  });
+
   get authMode(): AuthMode {
     return this.authModeRef();
   }

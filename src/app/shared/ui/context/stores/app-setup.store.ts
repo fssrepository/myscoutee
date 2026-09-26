@@ -18,6 +18,7 @@ export class AppSetupStore implements OnDestroy {
   readonly isOpen = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
+  private readonly locationEdited = signal(false);
   private readonly notificationsEdited = signal(false);
   readonly locationGranted = signal(false);
   readonly locationPermission = signal<PermissionState | null>(null);
@@ -46,6 +47,13 @@ export class AppSetupStore implements OnDestroy {
     });
   }
 
+  toggleLocation(): void {
+    if (this.actionPending()) return;
+    this.clearSaveFeedback();
+    this.locationEdited.set(true);
+    this.locationSelected.update(value => !value);
+  }
+
   toggleNotifications(): void {
     if (this.notificationConfigurationPending() || !this.messaging.notificationsConfigured) return;
     this.clearSaveFeedback();
@@ -61,6 +69,7 @@ export class AppSetupStore implements OnDestroy {
     this.error.set('');
     this.locationGranted.set(false);
     this.locationPermission.set(null);
+    this.locationEdited.set(false);
     this.locationSelected.set(false);
     this.messaging.refreshNotificationPermission();
     this.notificationsEdited.set(false);
@@ -102,7 +111,7 @@ export class AppSetupStore implements OnDestroy {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
         if (this.locationRequestPending && permission.state === 'granted') this.busy.set(true);
-        if (permission.state === 'granted') this.locationSelected.set(true);
+        if (!this.locationEdited()) this.locationSelected.set(permission.state === 'granted' && this.location.trackingEnabled());
       };
       permission.onchange = update;
       update();
@@ -127,7 +136,7 @@ export class AppSetupStore implements OnDestroy {
   async allow(): Promise<void> {
     if (!this.isOpen() || this.nativePending() || this.allowDisabled()) return;
     this.clearSaveFeedback();
-    if (!this.loggedIn() && !this.locationSelected()) {
+    if ((!this.loggedIn() || this.checkLocation) && !this.locationSelected()) {
       this.error.set(this.i18n.translate('entry.permissions.location.required'));
       return;
     }
@@ -150,6 +159,7 @@ export class AppSetupStore implements OnDestroy {
         ? this.locationSelected() && (!this.locationGranted() || this.locationMissing())
         : !this.locationGranted());
       if (!needsLocation) {
+        this.location.setTrackingEnabled(this.locationSelected());
         this.nativePending.set(false);
         this.busy.set(true);
         if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
@@ -180,13 +190,14 @@ export class AppSetupStore implements OnDestroy {
       this.nativePending.set(false);
       if (this.checkLocation || this.notificationsSelected()) this.busy.set(true);
       if (this.checkLocation && !await this.checkLocation(coordinates)) return;
-      if (this.loggedIn()) {
+      if (this.loggedIn() && !this.checkLocation) {
         this.busy.set(true);
         if (!await this.location.saveCurrentCoordinates(coordinates)) {
           throw new Error(this.i18n.translate('entry.permissions.location.unavailable'));
         }
       }
       if (generation !== this.generation) return;
+      this.location.setTrackingEnabled(this.locationSelected());
       // Registration follows native decisions, never a second permission prompt.
       if (this.notificationsSelected() !== this.messaging.deviceNotificationsEnabled()) {
         await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());

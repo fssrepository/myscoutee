@@ -156,6 +156,7 @@
                         (enabledChange)="updateControlValue(control, $event)"></app-on-off-toggle>
                     } @else {
                     <app-menu class="form-flow__group-header-menu"
+                      [title]="menuTitle(control)"
                       [kind]="menuKind(control)" [layout]="menuLayout(control)"
                       [trigger]="menuTrigger(control)" [items]="menuItems(control)" [model]="menuModel(control)"
                       [ngModel]="controlValue(control)" [disabled]="isControlDisabled(control)"

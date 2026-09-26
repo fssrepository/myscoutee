@@ -319,24 +319,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     await this.synchronizeDeploymentAuthMode();
-    if (
-      !options.bypassConsumerEligibility
-      && this.isLoginBlockedByLandingBundle()
-    ) {
-      this.openBundledLoginUnavailableInfo();
-      return;
-    }
-    if (
-      !options.bypassConsumerEligibility
-      && this.authMode === 'firebase'
-      && (this.isLoginLocationRequiredByLandingBundle()
-        || this.firebaseMessagingService.entryPermissionPending)
-    ) {
-      const allowed = await this.ensureHttpLoginAccessAllowed();
-      if (!allowed) {
-        return;
-      }
-    }
     if (!this.ensureEntryConsent()) {
       return;
     }
@@ -869,6 +851,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     loadedUser?: UserDto
   ): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
+    const sessionIdentity = this.sessionService.identity();
     const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
     let user: UserDto | null = loadedUser ?? null;
     if (!loadedUser) {
@@ -878,8 +861,20 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         user = null;
       }
     }
-    if (gateToken !== this.postSessionGateToken) {
+    if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) {
       return;
+    }
+    if (session.kind === 'firebase' && !this.isAdminUser(user) && !this.isOperatorUser(user)) {
+      const coordinates = user?.locationCoordinates;
+      const hasLocation = coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude);
+      if (!hasLocation && !this.appLocationService.pendingLoginCoordinates(session.profile.id)) {
+        this.locationEligibilityResolvedFromCoordinates = false;
+        if (!await this.ensureHttpLoginAccessAllowed()) return;
+        if (gateToken !== this.postSessionGateToken || this.sessionService.activeUserId() !== session.profile.id) return;
+      } else if (hasLocation && this.firebaseMessagingService.entryPermissionPending) {
+        if (!await this.appSetupStore.requestForLogin()) return;
+        if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
+      }
     }
     if (!user && session.kind === 'firebase') {
       this.openOnboardingGate(
@@ -1108,6 +1103,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private requestLocationAccessFromDialog(): Promise<boolean> {
+    const accountId = this.sessionService.activeUserId();
     return this.appSetupStore.requestForLogin(async coordinates => {
       let result: UserLocationEligibilityResponseDto;
       try {
@@ -1120,6 +1116,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       if (!result.eligible) {
         throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
       }
+      if (accountId !== this.sessionService.activeUserId()) return false;
+      this.appLocationService.stageLoginCoordinates(accountId, coordinates);
       return true;
     });
   }
@@ -1465,7 +1463,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     const loginEnabled = this.authMode === 'firebase';
     this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
     this.entryAuthUnavailableLabel = 'Unavailable here';
-    this.resolveBrowserLocationAccessIfNeeded();
+    // Location is checked after authentication, once the saved profile is known.
     this.changeDetectorRef.markForCheck();
   }
 
@@ -1513,6 +1511,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
+    const accountId = this.sessionService.activeUserId();
     try {
       const permissionState = await this.queryGeolocationPermissionState();
       if (
@@ -1542,6 +1541,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
       this.ngZone.run(() => {
         this.syncLandingLoginAvailability(result, 'coordinates');
+        if (result.eligible && accountId === this.sessionService.activeUserId()) this.appLocationService.stageLoginCoordinates(accountId, coordinates);
         this.changeDetectorRef.markForCheck();
       });
     } catch {

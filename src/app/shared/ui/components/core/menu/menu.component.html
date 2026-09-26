@@ -241,10 +241,17 @@
       role="menu"
       (click)="$event.stopPropagation()"
       >
-      @if (resolvedTitle) {
-        <div class="app-menu__title">{{ resolvedTitle | i18n }}
-          @if (!showBranchBack && selectionLimitLabel) {
-            <span class="app-menu__selection-limit">{{ selectionLimitLabel }}</span>
+      @if (resolvedTitle || (showMobileClose && !showBranchBack)) {
+        <div class="app-menu__heading">
+          <div class="app-menu__title">{{ resolvedTitle | i18n }}
+            @if (!showBranchBack && selectionLimitLabel) {
+              <span class="app-menu__selection-limit">{{ selectionLimitLabel }}</span>
+            }
+          </div>
+          @if (showMobileClose) {
+            <button type="button" class="popup-close" [attr.aria-label]="'close' | i18n" (click)="closeFromBackdrop($event)">
+              <mat-icon>close</mat-icon>
+            </button>
           }
         </div>
       }
@@ -498,6 +505,11 @@
                   <span class="app-menu__selection-limit">{{ selectionLimitLabel }}</span>
                 }
               </span>
+              @if (showMobileClose && !resolvedTitle) {
+                <button type="button" class="popup-close app-menu__branch-close" [attr.aria-label]="'close' | i18n" (click)="closeFromBackdrop($event)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
               @for (action of branchHeaderActions(branch); track trackByItemId($index, action)) {
                 <button
                   type="button"

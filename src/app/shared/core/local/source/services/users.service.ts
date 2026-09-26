@@ -223,7 +223,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
   }
 
-  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse> {
+  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number, groupId?: string | null, location?: LocationCoordinates): Promise<ProfileExtByIdQueryResponse> {
     await this.usersRepository.whenReady();
     await this.waitForRouteDelay(LocalUsersService.USER_PROFILE_EXT_ROUTE);
     const requested = this.usersRepository.queryUserById(userId ?? '');
@@ -232,6 +232,15 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!account) throw new Error('Account not found');
     const selected = await this.groups.resolveWorkspace(accountId,
       groupId === undefined ? account.activeWorkspaceGroupId ?? null : groupId);
+    if (location) {
+      this.usersRepository.upsertUser({ ...account, locationCoordinates: location });
+      if (selected.profile.id !== accountId) {
+        const profile = this.usersRepository.queryUserById(selected.profile.id)!;
+        this.usersRepository.upsertUser({ ...profile, locationCoordinates: location });
+      }
+      await this.usersRepository.flushToIndexedDb();
+      if (selected.accountProfile) selected.accountProfile.locationCoordinates = location;
+    }
     const response = await this.readUserById(selected.profile.id);
     const user = response.user;
     const result: ProfileExtByIdQueryResponse = {

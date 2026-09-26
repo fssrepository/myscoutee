@@ -77,6 +77,17 @@ describe('HttpUsersService demo authority boundary', () => {
     expect((await service.loadProfileExtById('demo-user', undefined, 'group-a')).workspace?.groupId).toBe('group-a');
   });
 
+  it('sends initial coordinates as profile-load parameters and never acknowledges them from offline cache', async () => {
+    const service = TestBed.inject(HttpUsersService);
+    get.mockReturnValueOnce(throwError(() => ({ status: 503 })))
+      .mockReturnValueOnce(of({ profileExt: { profile: cachedUserResponse().user!, experienceEntries: [] } }));
+    const coordinates = { latitude: 47, longitude: 19 };
+    await expect(service.loadProfileExtById('demo-user', undefined, undefined, coordinates)).rejects.toEqual({ status: 503 });
+    expect(readUser).not.toHaveBeenCalled();
+    await service.loadProfileExtById('demo-user', undefined, undefined, coordinates);
+    expect(get.mock.calls.at(-1)?.[1]).toEqual({ params: { userId: 'demo-user', ...coordinates } });
+  });
+
   it('fails closed instead of authorizing a demo user from browser cache when Java is unavailable', async () => {
     get.mockReturnValue(throwError(() => new Error('network unavailable')));
     readUser.mockReturnValue(cachedUserResponse());

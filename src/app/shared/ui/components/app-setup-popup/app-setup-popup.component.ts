@@ -49,7 +49,7 @@ export class AppSetupPopupComponent {
       palette: 'blue',
       togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() || this.store.locationGranted() },
+      showToggleIndicator: true, disabled: this.store.actionPending() },
     { id: 'notifications', kind: 'toggle', layout: 'pill', icon: 'notifications',
       label: 'app.setup.notifications',
       palette: 'violet',
@@ -94,8 +94,8 @@ export class AppSetupPopupComponent {
 
   toggle(event: AppMenuItemSelectEvent): void {
     if (this.store.actionPending()) return;
-    if (event.id === 'location' && !this.store.locationGranted()) {
-      this.store.locationSelected.update(value => !value);
+    if (event.id === 'location') {
+      this.store.toggleLocation();
     } else if (event.id === 'notifications') {
       this.store.toggleNotifications();
     }

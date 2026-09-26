@@ -3,6 +3,8 @@ import { EntryPageComponent } from './entry-page.component';
 describe('EntryPageComponent browser connection transitions', () => {
   function entry() {
     return Object.assign(Object.create(EntryPageComponent.prototype), {
+      sessionService: { activeUserId: () => 'member', identity: () => 'session-a' },
+      appLocationService: { stageLoginCoordinates: vi.fn() },
       landingContentRequestToken: 1,
       grantedLocationEligibilityRequestToken: 1,
       entryContentLoadPromise: null,
@@ -142,6 +144,8 @@ describe('EntryPageComponent operator authentication gate', () => {
 describe('EntryPageComponent browser location permission gate', () => {
   function grantedPermissionsEntry() {
     return Object.assign(Object.create(EntryPageComponent.prototype), {
+      sessionService: { activeUserId: () => 'member', identity: () => 'session-a' },
+      appLocationService: { stageLoginCoordinates: vi.fn() },
       locationEligibilityResolvedFromCoordinates: false,
       landingLoginAvailability: null,
       grantedLocationEligibilityRequestToken: 1,
@@ -242,6 +246,7 @@ describe('EntryPageComponent browser location permission gate', () => {
       requestCurrentLocation: ReturnType<typeof vi.fn>;
       resolveBrowserLocationAccess: (requestToken: number) => Promise<void>;
     };
+    Object.assign(component, { sessionService: { activeUserId: () => 'member', identity: () => 'session-a' } });
     component.grantedLocationEligibilityRequestToken = 7;
     component.queryGeolocationPermissionState = vi.fn().mockResolvedValue('prompt');
     component.requestCurrentLocation = vi.fn();
@@ -400,5 +405,46 @@ describe('EntryPageComponent demo session routing', () => {
     expect(navigateByUrl).toHaveBeenCalledWith('/operator');
     expect(complete).toHaveBeenCalledOnce();
     expect(fail).not.toHaveBeenCalled();
+  });
+});
+
+describe('Authenticated entry location', () => {
+  function entry(locationCoordinates?: { latitude: number; longitude: number }) {
+    return Object.assign(Object.create(EntryPageComponent.prototype), {
+      postSessionGateToken: 0,
+      firebaseMessagingService: { entryPermissionPending: false },
+      usersService: { loadUserById: vi.fn().mockResolvedValue({ id: 'member', locationCoordinates }) },
+      sessionService: { activeUserId: () => 'member', identity: () => 'session-a' },
+      appLocationService: { pendingLoginCoordinates: vi.fn().mockReturnValue(null) },
+      ensureHttpLoginAccessAllowed: vi.fn().mockResolvedValue(true),
+      requiresProfileOnboarding: () => false, closeOnboardingGate: vi.fn(),
+      router: { navigateByUrl: vi.fn().mockResolvedValue(true) }
+    });
+  }
+  const session = { kind: 'firebase', sessionId: 'session-a', profile: { id: 'member' } };
+  it('enters on the first attempt using stored server coordinates without probing browser permission', async () => {
+    const component = entry({ latitude: 47, longitude: 19 });
+    await component.runPostSessionGate(session, '/game');
+    expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
+    expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
+  });
+  it('retains notification setup with a saved location without asking for new coordinates', async () => {
+    const component = entry({ latitude: 47, longitude: 19 });
+    component.firebaseMessagingService.entryPermissionPending = true;
+    const requestForLogin = vi.fn().mockResolvedValue(true);
+    Object.assign(component, { appSetupStore: { requestForLogin } });
+    await component.runPostSessionGate(session, '/game');
+    expect(requestForLogin).toHaveBeenCalledOnce();
+    expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
+    expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
+  });
+  it('asks for initial coordinates only if both server and pending browser values are absent', async () => {
+    const component = entry();
+    await component.runPostSessionGate(session, '/game');
+    expect(component.ensureHttpLoginAccessAllowed).toHaveBeenCalledOnce();
+    component.ensureHttpLoginAccessAllowed.mockClear();
+    component.appLocationService.pendingLoginCoordinates.mockReturnValue({ latitude: 47, longitude: 19 });
+    await component.runPostSessionGate(session, '/game');
+    expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
   });
 });

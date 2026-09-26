@@ -1,3 +1,4 @@
+@use '../../../styles/popup' as popup;
 @use '../../../styles/contextual-colors' as colors;
 
 :host {
@@ -3460,4 +3461,20 @@ a.app-menu__item {
   justify-content: center;
   width: 28px;
   height: 28px;
+}
+
+// Use the same close control as other popups; keep it in the menu heading.
+@include popup.popup-close-button();
+.app-menu__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.app-menu__heading > .app-menu__title {
+  flex: 1;
+  min-width: 0;
+}
+.app-menu__branch-close {
+  order: 1;
+  margin-left: auto;
 }

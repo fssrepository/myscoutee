@@ -668,8 +668,20 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.isInlineRowLayout ? this.activeBranchPath.length > 1 : true;
   }
 
+  protected get showMobileClose(): boolean {
+    if (this.resolvedLayout !== 'mobile' || this.usesInlinePanel || this.isBottomPanelMode
+      || this.panelMode === 'anchored') return false;
+    const items = this.visibleListItems;
+    if (items.some(item => item.kind === 'rate')) return false;
+    return !!this.resolvedTitle || this.showBranchBack || this.currentTabbedModelLayout
+      || !this.closeOnSelect || items.some(item => item.closeOnSelect === false || item.kind === 'toggle');
+  }
+
   protected get resolvedTitle(): string {
-    return `${this.resolveLiveValue(this.title) ?? ''}`.trim();
+    const title = `${this.resolveLiveValue(this.title) ?? ''}`.trim();
+    if (title || this.resolvedLayout !== 'mobile' || this.showBranchBack || !this.activeBranch) return title;
+    // Reuse the branch label or accessible name inside the sheet, without widening its trigger.
+    return this.itemLabel(this.activeBranch) || this.itemAriaLabel(this.activeBranch) || '';
   }
 
   protected get selectionLimitLabel(): string {
