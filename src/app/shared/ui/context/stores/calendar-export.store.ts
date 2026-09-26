@@ -23,6 +23,10 @@ export class CalendarExportStore {
     try {
       const content = await this.events.exportCalendar(abort.signal);
       if (abort.signal.aborted || this.profile.activeUserId() !== actorId) return;
+      if (!content) {
+        this.dialogs.openNotice('calendar.export.empty', { title: 'calendar.sync' });
+        return;
+      }
       if (!content.startsWith('BEGIN:VCALENDAR\r\n') || !content.endsWith('END:VCALENDAR\r\n')) {
         throw new Error('Invalid calendar response');
       }

@@ -7,6 +7,7 @@ import type {
 } from '../../../contracts/notification.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import {
   NOTIFICATIONS_TABLE_NAME,
@@ -43,7 +44,8 @@ export class LocalNotificationsRepository {
     const copy = this.cloneRecord(record);
     if (!profile?.accountUserId) return copy;
     return { ...copy, recipientUserId: profile.accountUserId,
-      payload: { ...copy.payload, workspaceGroupId: profile.workspaceGroupId! } };
+      payload: { ...copy.payload, workspaceGroupId: profile.workspaceGroupId!,
+        workspaceGroupName: this.memoryDb.read().communityGroups.byId[profile.workspaceGroupId!]?.name ?? profile.workspaceGroupId! } };
   }
 
   append(records: readonly NotificationRecord[]): NotificationRecord[] {
@@ -92,11 +94,11 @@ export class LocalNotificationsRepository {
           this.unreadCountFromTable(nextNotificationsTable, userId)
         );
       });
-      return {
+      return this.withCommunityUpdateDeltas({
         ...state,
         [NOTIFICATIONS_TABLE_NAME]: nextNotificationsTable,
         [USERS_TABLE_NAME]: nextUsersTable
-      };
+      }, additions, 1);
     });
     return additions.map(record => this.cloneRecord(record));
   }
@@ -187,6 +189,11 @@ export class LocalNotificationsRepository {
     };
   }
 
+  isUnread(userId: string, notificationId: string): boolean {
+    const record = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME].byId[notificationId];
+    return !!record && record.recipientUserId === this.accountId(userId) && !record.readAtIso;
+  }
+
   markRead(userId: string, notificationId: string): NotificationRecord | null {
     const normalizedUserId = this.accountId(userId);
     const normalizedNotificationId = notificationId.trim();
@@ -211,7 +218,7 @@ export class LocalNotificationsRepository {
         table,
         normalizedUserId
       ) - 1);
-      return {
+      return this.withCommunityUpdateDeltas({
         ...state,
         [NOTIFICATIONS_TABLE_NAME]: {
           ...table,
@@ -225,7 +232,7 @@ export class LocalNotificationsRepository {
           normalizedUserId,
           unreadCount
         )
-      };
+      }, [nextRecord], -1);
     });
     return this.cloneRecord(nextRecord);
   }
@@ -274,7 +281,7 @@ export class LocalNotificationsRepository {
         0,
         this.unreadCountFromTable(currentTable, normalizedUserId) - matchingIds.length
       );
-      return {
+      return this.withCommunityUpdateDeltas({
         ...state,
         [NOTIFICATIONS_TABLE_NAME]: {
           ...currentTable,
@@ -285,7 +292,7 @@ export class LocalNotificationsRepository {
           normalizedUserId,
           unreadCount
         )
-      };
+      }, matchingIds.map(id => table.byId[id]), -1);
     });
     return matchingIds.length;
   }
@@ -389,6 +396,24 @@ export class LocalNotificationsRepository {
       unreadCount: this.unreadCount(normalizedUserId),
       muted: table.mutedByUserId[normalizedUserId] === true
     };
+  }
+
+  private withCommunityUpdateDeltas(state: ReturnType<LocalMemoryDb['read']>,
+    records: readonly NotificationRecord[], delta: number): ReturnType<LocalMemoryDb['read']> {
+    const deltas = new Map<string, number>();
+    for (const record of records) if (record.sourceType === 'community' && record.payload?.['communityAttention'] === 'members') {
+      const key = JSON.stringify([record.sourceId, record.recipientUserId]);
+      deltas.set(key, (deltas.get(key) ?? 0) + delta);
+    }
+    if (!deltas.size) return state;
+    const members = state[ACTIVITY_MEMBERS_TABLE_NAME];
+    const byId = { ...members.byId };
+    for (const member of Object.values(byId)) {
+      if (member.ownerType !== 'community') continue;
+      const change = deltas.get(JSON.stringify([member.ownerId, member.userId]));
+      if (change) byId[member.id] = { ...member, communityUpdates: Math.max(0, (member.communityUpdates ?? 0) + change) };
+    }
+    return { ...state, [ACTIVITY_MEMBERS_TABLE_NAME]: { ...members, byId } };
   }
 
   private unreadCountFromTable(

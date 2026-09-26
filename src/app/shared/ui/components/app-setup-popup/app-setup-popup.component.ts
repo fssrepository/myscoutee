@@ -1,4 +1,5 @@
-import { Component, HostListener, computed, effect, inject } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
 import { DialogStore } from '../../context/stores/dialog.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
@@ -6,30 +7,51 @@ import { PopupComponent, type PopupModel } from '../core/popup';
 import { AppMenuComponent, type AppMenuItem, type AppMenuModel, type AppMenuItemSelectEvent } from '../core/menu';
 import { I18nPipe } from '../../pipes';
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
+import { I18nService } from '../../../core/base/services/i18n.service';
+import { SessionService } from '../../../core/base/services/session.service';
 
 @Component({
   selector: 'app-setup-popup',
-  imports: [PopupComponent, AppMenuComponent, I18nPipe],
+  imports: [PopupComponent, AppMenuComponent, I18nPipe, MatIconModule],
   templateUrl: './app-setup-popup.component.html',
   styleUrl: './app-setup-popup.component.scss'
 })
 export class AppSetupPopupComponent {
   readonly store = inject(AppSetupStore);
+  private readonly session = inject(SessionService);
   private readonly dialogs = inject(DialogStore);
   private readonly presence = inject(PopupPresenceStore);
+  private readonly i18n = inject(I18nService);
+  readonly helpOpen = signal(false);
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
-  readonly model: PopupModel = {
+  readonly model = computed<PopupModel>(() => ({
     title: 'app.setup.title', size: 'small', height: 'auto',
     mobilePresentation: 'compact', headerTone: 'accent', headerPalette: 'violet',
-    showClose: true, closeOnBackdrop: false, backdropTone: 'dim'
+    showClose: true, closeOnBackdrop: false, backdropTone: 'dim',
+    headerActions: [{ id: 'help', icon: 'help_outline', palette: 'blue',
+      ariaLabel: this.i18n.translate('app.setup.help.title') }],
+    onAction: () => this.helpOpen.set(true)
+  }));
+  readonly helpModel: PopupModel = {
+    title: 'app.setup.help.title', size: 'default', height: 'auto',
+    headerTone: 'accent', headerPalette: 'blue', showClose: true,
+    backdropTone: 'dim'
   };
+  readonly helpSections = [
+    { id: 'location', icon: 'location_on', tone: 'blue' },
+    { id: 'notifications', icon: 'notifications', tone: 'violet' },
+    { id: 'install', icon: 'install_mobile', tone: 'green' },
+    { id: 'blocked', icon: 'block', tone: 'rose' },
+    { id: 'android', icon: 'android', tone: 'teal' },
+    { id: 'ios', icon: 'phone_iphone', tone: 'orange' }
+  ] as const;
   readonly toggles = computed<AppMenuItem[]>(() => [
     { id: 'location', kind: 'toggle', layout: 'pill', icon: 'location_on',
       label: 'app.setup.location',
       palette: 'blue',
       togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() || this.store.locationGranted() },
+      showToggleIndicator: true, disabled: this.store.actionPending() },
     { id: 'notifications', kind: 'toggle', layout: 'pill', icon: 'notifications',
       label: 'app.setup.notifications',
       palette: 'violet',
@@ -61,7 +83,10 @@ export class AppSetupPopupComponent {
 
   constructor() {
     effect(() => {
-      if (this.store.pwa.installPromptVisible() && !this.store.isOpen()
+      if (!this.store.isOpen()) this.helpOpen.set(false);
+      // An installable browser must not interrupt an authenticated session,
+      // including the interval before its profile has finished loading.
+      if (!this.session.currentSession() && this.store.pwa.installPromptVisible() && !this.store.isOpen()
         && !this.dialogs.dialog() && !this.presence.visible()) this.store.open();
     });
   }
@@ -73,8 +98,8 @@ export class AppSetupPopupComponent {
 
   toggle(event: AppMenuItemSelectEvent): void {
     if (this.store.actionPending()) return;
-    if (event.id === 'location' && !this.store.locationGranted()) {
-      this.store.locationSelected.update(value => !value);
+    if (event.id === 'location') {
+      this.store.toggleLocation();
     } else if (event.id === 'notifications') {
       this.store.toggleNotifications();
     }

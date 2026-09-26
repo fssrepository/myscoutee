@@ -67,6 +67,7 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
     }
     await this.repository.whenReady();
     await this.waitForRouteDelay(LocalNotificationsService.ROUTE, signal);
+    const wasUnread = this.repository.isUnread(normalizedUserId, normalizedNotificationId);
     const notification = this.repository.markRead(normalizedUserId, normalizedNotificationId);
     if (!notification) {
       throw new Error('Notification was not found.');
@@ -76,6 +77,7 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
     await this.repository.flushToIndexedDb();
     return {
       notification: LocalNotificationMapper.toDto(notification),
+      communityActivityDelta: wasUnread && notification.sourceType === 'community' && notification.payload?.['communityAttention'] === 'members' ? -1 : 0,
       unreadCount
     };
   }

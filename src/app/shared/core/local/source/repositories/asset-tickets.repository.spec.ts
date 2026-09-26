@@ -68,6 +68,19 @@ describe('LocalAssetTicketsRepository physical ticket lifecycle', () => {
     expect(memoryDb.read()[USERS_TABLE_NAME].byId['holder-1'].activities.asset?.tickets).toBe(1);
   });
 
+  it('aggregates group-profile tickets into the account list and write-side counter', async () => {
+    memoryDb.write(state => ({...state, [USERS_TABLE_NAME]: {...state[USERS_TABLE_NAME],
+      byId: {...state[USERS_TABLE_NAME].byId,
+        'holder-1': {...state[USERS_TABLE_NAME].byId['holder-1'], accountUserId: 'other-1', workspaceGroupId: 'group-a'}
+      }
+    }}));
+    repository.synchronizeForEvent('event-1');
+    const page = await repository.queryTicketPage({userId: 'other-1', page: 0, pageSize: 20, order: 'upcoming'});
+    expect(page.items.map(item => item.id)).toEqual(['event-1']);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.tickets).toBe(1);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId['other-1'].activities.asset?.tickets).toBe(1);
+  });
+
   it('atomically checks in an accepted holder once and rejects reuse', () => {
     const ticket = activeTickets()[0];
     const request = {

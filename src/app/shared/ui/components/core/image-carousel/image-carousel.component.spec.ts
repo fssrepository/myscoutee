@@ -105,6 +105,34 @@ describe('ImageCarouselComponent media variants', () => {
     expect(expand).toHaveBeenCalledOnce();
   });
 
+  it('read-only editor selects every stored image and exposes details without mutation controls', () => {
+    const fixture = TestBed.createComponent(ImageCarouselComponent);
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.componentRef.setInput('previewMode', true);
+    fixture.componentRef.setInput('imageDetails', {
+      'a.jpg': { location: 'Park', caption: 'First photo' },
+      'b.jpg': { location: 'Hall', caption: 'Second photo' }
+    });
+    fixture.componentInstance.writeValue(['a.jpg', 'b.jpg']);
+    fixture.detectChanges();
+    const slots = fixture.nativeElement.querySelectorAll('.image-carousel__slot');
+    expect(slots.length).toBe(2);
+    slots[1].querySelector('.image-carousel__slot-hit').click();
+    fixture.detectChanges();
+    expect(slots[1].classList.contains('is-selected')).toBe(true);
+    expect(fixture.nativeElement.querySelector('input[type="file"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.image-carousel__slot-action--remove')).toBeNull();
+    const c = fixture.componentInstance as any;
+    slots[1].querySelector('.image-carousel__slot-action--details').click();
+    expect(c.detailsDraft.caption).toBe('Second photo');
+    expect(c.detailsPopupModel().headerActions).toEqual([]);
+    c.updateCaption('Changed');
+    expect(c.detailsDraft.caption).toBe('Second photo');
+    const changed = vi.fn(); c.imageDetailsChange.subscribe(changed);
+    c.saveDetails();
+    expect(changed).not.toHaveBeenCalled();
+  });
+
   it('edits details in a draft, cancels without change, and emits only on the tick action', () => {
     const fixture = TestBed.createComponent(ImageCarouselComponent);
     const c = fixture.componentInstance as any;

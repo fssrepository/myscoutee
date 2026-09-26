@@ -1,3 +1,5 @@
+import { LocalUsersRepository } from './users.repository';
+import { LocalContactsRepository } from './contacts.repository';
 import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
@@ -20,6 +22,8 @@ import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 })
 export class LocalChatsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly contacts = inject(LocalContactsRepository);
+  private readonly users = inject(LocalUsersRepository);
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
@@ -32,13 +36,19 @@ export class LocalChatsRepository {
       return null;
     }
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
-    const record = table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
+    const accountId = this.users.accountId(normalizedUserId);
+    const contact = accountId !== normalizedUserId
+      ? table.byId[LocalChatThreadMapper.buildRecordKey(accountId, normalizedChatId)] : null;
+    const record = contact?.channelType === 'contact' && contact.memberIds.includes(accountId)
+      ? contact : table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
     return record ? LocalChatThreadMapper.cloneRecord(record) : null;
   }
 
   ensureContactChat(actorId: string, targetUserId: string): ChatThreadRecord {
+    actorId = this.users.accountId(actorId);
     const targetId = targetUserId.trim();
-    this.requireContactTargets(actorId, [targetId]);
+    this.requireContactTargets(actorId, [targetId], true);
+    this.requireDirectChatConsent(actorId, targetId);
     const memberIds = [actorId, targetId].sort();
     const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -48,6 +58,7 @@ export class LocalChatsRepository {
   }
 
   addContactChatMembers(actorId: string, chatId: string, userIds: readonly string[]): ChatThreadRecord {
+    actorId = this.users.accountId(actorId);
     const chat = this.queryChatItemById(actorId, chatId);
     if (!chat || chat.channelType !== 'contact' || !chat.memberIds.includes(actorId)) throw new Error('Chat unavailable');
     const added = [...new Set(userIds.map(id => id.trim()))].filter(id => !chat.memberIds.includes(id));
@@ -57,7 +68,7 @@ export class LocalChatsRepository {
     return this.queryChatItemById(actorId, chat.id)!;
   }
 
-  private requireContactTargets(actorId: string, userIds: readonly string[]): void {
+  private requireContactTargets(actorId: string, userIds: readonly string[], allowApprovedPair = false): void {
     const state = this.memoryDb.read();
     const actor = state[USERS_TABLE_NAME].byId[actorId];
     const contacts = state[CONTACTS_TABLE_NAME].byOwnerUserId[actorId] ?? [];
@@ -65,8 +76,12 @@ export class LocalChatsRepository {
       const user = state[USERS_TABLE_NAME].byId[id];
       return !id || id === actorId || !user || !!user.deletedAtIso
         || (user.workspaceGroupId ?? '') !== (actor.workspaceGroupId ?? '')
-        || !contacts.some(contact => contact.userId === id);
+        || (!contacts.some(contact => contact.userId === id) && !(allowApprovedPair && this.contacts.isChatApproved(actorId, id)));
     })) throw new Error('Contact unavailable');
+  }
+
+  requireDirectChatConsent(actor: string, peer: string): void {
+    if (!this.contacts.isChatApproved(actor, peer)) throw new Error('Direct chat access requires approval.');
   }
 
   private writeContactChat(id: string, memberIds: string[]): void {
@@ -566,6 +581,9 @@ export class LocalChatsRepository {
   appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageDto | null {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     if (!record) return null;
+    if (record.channelType === 'contact' && record.memberIds.length === 2) {
+      for (const peer of record.memberIds) if (peer !== record.ownerUserId) this.requireDirectChatConsent(record.ownerUserId, peer);
+    }
     let saved: ContractTypes.ChatMessageDto | null = null;
     this.memoryDb.write(state => {
       const table = state[CHATS_TABLE_NAME];

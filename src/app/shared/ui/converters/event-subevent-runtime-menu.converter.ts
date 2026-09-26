@@ -225,7 +225,7 @@ export class EventSubeventRuntimeMenuConverter {
     if (!current && roundNumber === 1) {
       return [this.mingleActionItem(item, parentEventId, 0, {
         action: 'mingle-start', backendAction: 'start', label: 'mingle.action.start', icon: 'play_circle',
-        palette: 'success', title: 'mingle.action.start', description: 'mingle.action.start.description',
+        palette: 'success', title: 'mingle.action.start.question', description: 'mingle.action.start.description',
         confirmLabel: 'mingle.action.start.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
@@ -245,12 +245,12 @@ export class EventSubeventRuntimeMenuConverter {
         }),
         this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
           action: 'mingle-next', backendAction: 'next', label: 'mingle.action.end', icon: 'skip_next',
-          palette: 'blue', title: 'mingle.action.end', description: 'mingle.action.end.description',
+          palette: 'blue', title: 'mingle.action.end.question', description: 'mingle.action.end.description',
           confirmLabel: 'mingle.action.end', busyLabel: 'mingle.action.ending', destructive: false
         }),
         this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
           action: 'mingle-complete', backendAction: 'complete', label: 'mingle.action.complete', icon: 'stop_circle',
-          palette: 'danger', title: 'mingle.action.complete', description: 'mingle.action.complete.description',
+          palette: 'danger', title: 'mingle.action.complete.question', description: 'mingle.action.complete.description',
           confirmLabel: 'mingle.action.complete.confirm', busyLabel: 'mingle.action.completing', destructive: true
         })
       ];
@@ -265,14 +265,14 @@ export class EventSubeventRuntimeMenuConverter {
     if (current.status === 'BREAK' && roundNumber === currentRound + 1) {
       return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
         action: 'mingle-next', backendAction: 'next', label: 'mingle.action.next.now', icon: 'skip_next',
-        palette: 'success', title: 'mingle.action.next', description: 'mingle.action.next.description',
+        palette: 'success', title: 'mingle.action.next.question', description: 'mingle.action.next.description',
         confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
     if (current.status === 'COMPLETED' && roundNumber === currentRound + 1) {
       return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
         action: 'mingle-start', backendAction: 'start', label: 'mingle.action.next', icon: 'play_circle',
-        palette: 'success', title: 'mingle.action.next', description: 'mingle.action.next.restart.description',
+        palette: 'success', title: 'mingle.action.next.question', description: 'mingle.action.next.restart.description',
         confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
       })];
     }
@@ -357,7 +357,7 @@ export class EventSubeventRuntimeMenuConverter {
         palette: 'success',
         nextStatus: 'A',
         reason: 'tournament-started',
-        title: 'Start Stage',
+        title: 'confirmation.start.stage',
         description: `Start ${stageLabel}? This locks admission and assigns first-stage rooms.`,
         confirmLabel: 'Start',
         busyLabel: 'Starting...',
@@ -373,7 +373,7 @@ export class EventSubeventRuntimeMenuConverter {
         palette: 'blue',
         nextStatus: 'SR',
         reason: 'stage-closed',
-        title: 'Close Stage',
+        title: 'confirmation.close.stage',
         description: `Close ${stageLabel} and move it under score review?`,
         confirmLabel: 'Close Stage',
         busyLabel: 'Closing...',
@@ -389,7 +389,7 @@ export class EventSubeventRuntimeMenuConverter {
         palette: 'success',
         nextStatus: 'F',
         reason: 'stage-finalized',
-        title: 'Finalize Stage',
+        title: 'confirmation.finalize.stage',
         description: `Finalize ${stageLabel}?`,
         confirmLabel: 'Finalize',
         busyLabel: 'Finalizing...',
@@ -405,7 +405,7 @@ export class EventSubeventRuntimeMenuConverter {
         palette: 'amber',
         nextStatus: 'SR',
         reason: 'scores-reopened',
-        title: 'Reopen Scores',
+        title: 'confirmation.reopen.scores',
         description: `Reopen scores for ${stageLabel}?`,
         confirmLabel: 'Reopen',
         busyLabel: 'Reopening...',
@@ -421,7 +421,7 @@ export class EventSubeventRuntimeMenuConverter {
         palette: 'warning',
         nextStatus: 'S',
         reason: 'manual-suspension',
-        title: 'Suspend Stage',
+        title: 'confirmation.suspend.stage',
         description: `Suspend ${stageLabel}?`,
         confirmLabel: 'Suspend',
         busyLabel: 'Suspending...',
@@ -440,7 +440,7 @@ export class EventSubeventRuntimeMenuConverter {
         palette: 'blue',
         nextStatus: resumeNextStatus,
         reason: 'manual-resume',
-        title: 'Resume Stage',
+        title: 'confirmation.resume.stage',
         description: `Resume ${stageLabel}?`,
         confirmLabel: 'Resume',
         busyLabel: 'Resuming...',

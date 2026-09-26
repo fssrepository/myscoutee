@@ -276,14 +276,14 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       return null;
     }
     const record = this.localChatForActiveUser(chat.id);
-    const user = this.usersRepository.queryUserById(userId);
+    const user = record ? this.usersRepository.queryUserById(record.ownerUserId) : null;
     if (!record || !user) throw new Error('Chat unavailable');
     const sentAt = new Date();
     const message = this.chatsRepository.appendChatMessage(record, {
       id: `${clientId ?? crypto.randomUUID()}`,
       sender: user.name,
       senderAvatar: {
-        id: userId,
+        id: user.id,
         initials: user.initials,
         gender: user.gender,
         imageUrl: user.images?.[0] ?? null
@@ -350,7 +350,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     messages: readonly ContractTypes.ChatMessageDto[],
     wholeChannel: boolean
   ): Promise<ContractTypes.ChatReadReceipt | null> {
-    const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const activeUserId = this.localChatForActiveUser(chat.id)?.ownerUserId;
     const messageIds = messages
       .filter(message =>
         !message.mine
@@ -366,8 +366,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     messageIds: readonly string[],
     wholeChannel = false
   ): Promise<ContractTypes.ChatReadReceipt | null> {
-    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim()
-      || this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const ownerUserId = this.localChatForActiveUser(chat.id)?.ownerUserId;
     const chatId = `${chat.id ?? ''}`.trim();
     const ownerId = `${chat.ownerId ?? ''}`.trim();
     if (!ownerUserId || (!chatId && !ownerId)) {

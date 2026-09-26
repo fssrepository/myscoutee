@@ -52,7 +52,7 @@ export class LocalAssetsRepository {
   private readonly usersRepository = inject(LocalUsersRepository);
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     if (!normalizedUserId) {
       return [];
     }
@@ -141,20 +141,21 @@ export class LocalAssetsRepository {
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     for (const userId of normalizedUserIds) {
-      const records = (table.idsByOwnerUserId[userId] ?? [])
+      const accountId = this.usersRepository.accountId(userId);
+      const records = (table.idsByOwnerUserId[accountId] ?? [])
         .map(id => table.byId[id])
         .filter((record): record is AssetRecord => Boolean(record))
         .filter(record => !this.isSuppressedAssetStatus(record.status))
         .sort((left, right) => right.updatedMs - left.updatedMs);
       const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, records);
-      const assets = records.map(record => this.toAssetDto(record, userId, metricsByAssetId.get(record.id)));
+      const assets = records.map(record => this.toAssetDto(record, accountId, metricsByAssetId.get(record.id)));
       assetsByUserId.set(userId, assets);
     }
     return assetsByUserId;
   }
 
   async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     if (!normalizedUserId) {
       return [];
     }
@@ -166,7 +167,7 @@ export class LocalAssetsRepository {
   }
 
   peekOwnedAssetDetailById(userId: string, assetId: string): AppDTOs.AssetDetailDTO | null {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
@@ -189,7 +190,7 @@ export class LocalAssetsRepository {
   }
 
   async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
-    const normalizedUserId = query.userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(query.userId);
     if (!normalizedUserId) {
       return [];
     }
@@ -200,7 +201,7 @@ export class LocalAssetsRepository {
   }
 
   queryVisibleAssetRecordsPage(query: AppDTOs.AssetExplorePageQueryDTO): AssetExploreRecordPageResult {
-    const normalizedUserId = query.userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(query.userId);
     if (!normalizedUserId) {
       return {
         items: [],
@@ -237,7 +238,7 @@ export class LocalAssetsRepository {
   }
 
   queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): AppDTOs.AssetExplorePageResultDTO {
-    const normalizedUserId = query.userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(query.userId);
     const result = this.queryVisibleAssetRecordsPage(query);
     if (!normalizedUserId || result.items.length === 0) {
       return {
@@ -256,7 +257,7 @@ export class LocalAssetsRepository {
   }
 
   peekVisibleAssetById(userId: string, type: AppConstants.AssetType, assetId: string): AppDTOs.AssetDTO | null {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
@@ -266,7 +267,7 @@ export class LocalAssetsRepository {
   }
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedDetail = LocalAssetsMapper.normalizeDetail(asset);
     const incomingRecord = normalizedDetail
       ? LocalAssetsMapper.toAssetRecord(normalizedDetail, normalizedUserId)
@@ -282,6 +283,8 @@ export class LocalAssetsRepository {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
       const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
       const existing = table.byId[incomingRecord.id];
+      incomingRecord.ownerUserId = existing?.ownerUserId ?? normalizedUserId;
+      incomingRecord.ownerName = state[USERS_TABLE_NAME].byId[incomingRecord.ownerUserId]?.name ?? existing?.ownerName;
       const nextRecord = this.withResolvedAssetRelevance(this.mergeAssetRecord(existing, incomingRecord, nowMs, 'detail'));
       const nextTable = this.upsertRecordCollection(table, nextRecord);
       saved = nextRecord;
@@ -723,7 +726,7 @@ export class LocalAssetsRepository {
     userId: string,
     assets: readonly AppDTOs.AssetDTO[]
   ): Promise<AppDTOs.AssetDTO[]> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     if (!normalizedUserId) {
       return [];
     }
@@ -777,7 +780,7 @@ export class LocalAssetsRepository {
   }
 
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return;
@@ -804,7 +807,7 @@ export class LocalAssetsRepository {
   }
 
   async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
@@ -870,7 +873,7 @@ export class LocalAssetsRepository {
   }
 
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
@@ -912,7 +915,7 @@ export class LocalAssetsRepository {
     assetId: string,
     targetUserId: string
   ): Promise<AppDTOs.AssetDTO | null> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
@@ -954,7 +957,7 @@ export class LocalAssetsRepository {
   }
 
   async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const normalizedAssetId = assetId.trim();
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedUserId || !normalizedAssetId || !normalizedTargetUserId) {
@@ -1172,7 +1175,7 @@ export class LocalAssetsRepository {
   }
 
   private resolveAssetRoleDemoUser(userId: string, asset: AssetRecord): UserDto {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     const users = this.queryUsers();
     const match = users.find(user => user.id === normalizedUserId);
     if (match) {
@@ -1215,7 +1218,7 @@ export class LocalAssetsRepository {
   }
 
   private canTakeOverAsset(record: AssetRecord, userId: string): boolean {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     if (
       LocalAssetsMapper.normalizeAssetStatus(record.status) !== 'UR'
       || !record.ownerReleasedAtIso
@@ -1243,7 +1246,7 @@ export class LocalAssetsRepository {
   }
 
   private canManageAssetMembers(record: AssetRecord, userId: string): boolean {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId) || LocalAssetsMapper.normalizeAssetStatus(record.status) === 'T') {
       return false;
     }
@@ -1273,7 +1276,7 @@ export class LocalAssetsRepository {
   }
 
   private isAcceptedAssetManager(assetId: string, userId: string): boolean {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     return this.assetMemberRecords(assetId)
       .some(record => record.userId === normalizedUserId
         && record.status === 'accepted'
@@ -1306,6 +1309,7 @@ export class LocalAssetsRepository {
   }
 
   private readOwnerAssets(ownerUserId: string): AppDTOs.AssetDTO[] {
+    ownerUserId = this.usersRepository.accountId(ownerUserId);
     const state = this.memoryDb.read();
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
@@ -1340,7 +1344,6 @@ export class LocalAssetsRepository {
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => !this.isSuppressedAssetStatus(record.status))
       .filter(record => record.ownerUserId !== activeUserId)
-      .filter(record => state[USERS_TABLE_NAME].byId[record.ownerUserId]?.workspaceGroupId === state[USERS_TABLE_NAME].byId[activeUserId]?.workspaceGroupId)
       .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && UserProfileState.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
@@ -1642,7 +1645,7 @@ export class LocalAssetsRepository {
   }
 
   private queryUserAffinity(userId: string): number {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
     if (!normalizedUserId) {
       return 0;
     }

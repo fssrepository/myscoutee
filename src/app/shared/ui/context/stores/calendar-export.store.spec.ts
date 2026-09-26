@@ -7,8 +7,6 @@ import { UserProfileStore } from './user-profile.store';
 import { DialogStore } from './dialog.store';
 import { CalendarExportStore } from './calendar-export.store';
 
-vi.mock('../../../core/base/services/events.service', () => ({ EventsService: class {} }));
-vi.mock('./user-profile.store', () => ({ UserProfileStore: class {} }));
 
 describe('Calendar download request lifecycle', () => {
   let injector: EnvironmentInjector;
@@ -16,6 +14,7 @@ describe('Calendar download request lifecycle', () => {
   const actor = signal('viewer');
   const exportCalendar = vi.fn();
   const openInfo = vi.fn();
+  const openNotice = vi.fn();
   const click = vi.fn(), remove = vi.fn(), appendChild = vi.fn();
   const anchor = { href: '', download: '', click, remove };
   const content = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n';
@@ -27,7 +26,7 @@ describe('Calendar download request lifecycle', () => {
     injector = createEnvironmentInjector([
       { provide: EventsService, useValue: { exportCalendar } },
       { provide: UserProfileStore, useValue: { activeUserId: actor } },
-      { provide: DialogStore, useValue: { openInfo } },
+      { provide: DialogStore, useValue: { openInfo, openNotice } },
       { provide: DOCUMENT, useValue: { body: { appendChild }, createElement: () => anchor } }
     ], null as unknown as EnvironmentInjector);
     store = runInInjectionContext(injector, () => new CalendarExportStore());
@@ -51,6 +50,14 @@ describe('Calendar download request lifecycle', () => {
     exportCalendar.mockImplementationOnce(() => new Promise<string>(resolve => { finish = resolve; }));
     const pending = store.download(); actor.set('other'); finish(content); await pending;
     expect(click).not.toHaveBeenCalled(); expect(store.downloading()).toBe(false);
+  });
+  it.each(['', null])('shows the empty-calendar explanation for %s without downloading a broken file', async content => {
+    exportCalendar.mockResolvedValueOnce(content);
+    await store.download();
+    expect(openNotice).toHaveBeenCalledWith('calendar.export.empty', { title: 'calendar.sync' });
+    expect(click).not.toHaveBeenCalled();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(store.downloading()).toBe(false);
   });
   it('rejects an HTML response and permits retry after a failed request', async () => {
     exportCalendar.mockResolvedValueOnce('<html>Login</html>').mockResolvedValueOnce(content);

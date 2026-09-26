@@ -156,6 +156,7 @@
                         (enabledChange)="updateControlValue(control, $event)"></app-on-off-toggle>
                     } @else {
                     <app-menu class="form-flow__group-header-menu"
+                      [title]="menuTitle(control)"
                       [kind]="menuKind(control)" [layout]="menuLayout(control)"
                       [trigger]="menuTrigger(control)" [items]="menuItems(control)" [model]="menuModel(control)"
                       [ngModel]="controlValue(control)" [disabled]="isControlDisabled(control)"
@@ -206,7 +207,7 @@
                 </div>
               }
 
-                <div class="form-flow__controls" [hidden]="step.controls.length === 0">
+                <div class="form-flow__controls" [class.form-flow__controls--mobile-wrap]="step.wrapControlsOnMobile" [hidden]="step.controls.length === 0">
                 @for (control of step.controls; track control.id) {
                   @let validationError = controlValidationError(control);
                   <div

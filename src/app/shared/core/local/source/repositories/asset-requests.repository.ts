@@ -1,3 +1,4 @@
+import { LocalUsersRepository } from './users.repository';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
@@ -20,9 +21,21 @@ import {
 })
 export class LocalAssetRequestsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly users = inject(LocalUsersRepository);
+
+  withWorkspaceLabels(page: import('../../../contracts/asset.interface').AssetOccupancyPageResultDTO) {
+    const state = this.memoryDb.read();
+    const eventGroups = new Map(Object.values(state.events.byId).map(event =>
+      [event.id, state.users.byId[event.creatorUserId]?.workspaceGroupId]));
+    return { ...page, items: page.items.map(row => {
+      const groupId = row.eventId ? eventGroups.get(row.eventId) : undefined;
+      return { ...row, workspaceGroupId: groupId ?? undefined,
+        workspaceGroupName: groupId ? state.communityGroups.byId[groupId]?.name : undefined };
+    }) };
+  }
 
   queryRecordsByOwner(ownerUserId: string, assetId: string): AssetRequestRecord[] {
-    const normalizedOwnerUserId = ownerUserId.trim();
+    const normalizedOwnerUserId = this.users.accountId(ownerUserId);
     const normalizedAssetId = assetId.trim();
     if (!normalizedOwnerUserId || !normalizedAssetId) {
       return [];

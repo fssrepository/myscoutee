@@ -655,6 +655,13 @@ export class LocalEventsRepository {
     if (!record) {
       return null;
     }
+    if (userId.trim()) {
+      const users = this.memoryDb.read()[USERS_TABLE_NAME].byId;
+      const viewer = users[userId.trim()];
+      if (!viewer || users[record.creatorUserId]?.workspaceGroupId !== viewer.workspaceGroupId) {
+        return null;
+      }
+    }
     const viewerCoordinates = this.queryUserLocationCoordinates(userId);
     return this.withResolvedDistance(
       this.withCurrentUserWatchState(this.withResolvedSlotContext(record, table), userId),

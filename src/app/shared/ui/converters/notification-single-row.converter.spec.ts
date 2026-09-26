@@ -6,6 +6,13 @@ import { NotificationSingleRowConverter } from './notification-single-row.conver
 describe('NotificationSingleRowConverter badges', () => {
   const converter = new NotificationSingleRowConverter();
 
+  it('opens Contacts for requests and decisions without requiring an event', () => {
+    for (const kind of ['contact-chat-requested', 'contact-chat-approved', 'contact-chat-rejected']) {
+      expect(NotificationSingleRowConverter.targetActionId(notification({ kind, category: 'chat', sourceType: 'contact' })))
+        .toBe('openNotificationContacts');
+    }
+  });
+
   it('does not repeat unread state as a New badge on each row', () => {
     const row = converter.convert(notification());
 

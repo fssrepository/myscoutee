@@ -276,6 +276,6 @@
 
 @media (max-width: 760px) {
   .event-slots-open-btn-inline {
-    width: 100%;
+    width: var(--policies-open-button-mobile-width, 100%);
   }
 }

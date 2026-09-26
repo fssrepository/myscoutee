@@ -14,7 +14,8 @@ describe('AppMenuComponent delayed drag', () => {
           provide: I18nService,
           useValue: {
             revision: () => 0,
-            translate: (value: string | null | undefined) => value ?? ''
+            translate: (value: string | null | undefined) => value ?? '',
+            translateParams: (_key: string, values: { count: number }) => `(max. ${values.count} db)`
           }
         }
       ]
@@ -25,6 +26,86 @@ describe('AppMenuComponent delayed drag', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     TestBed.resetTestingModule();
+  });
+
+  it('closes a mobile titled menu through the shared X without changing a selection', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'select');
+    fixture.componentRef.setInput('panelMode', 'sheet');
+    fixture.componentRef.setInput('title', 'Téma');
+    fixture.componentRef.setInput('items', [{ id: 'a', label: 'A', kind: 'toggle', closeOnSelect: false }]);
+    fixture.componentInstance.open = true;
+    const selected = vi.fn();
+    fixture.componentInstance.itemSelect.subscribe(selected);
+    fixture.detectChanges();
+    const close = fixture.nativeElement.querySelector('.app-menu__heading .popup-close') as HTMLButtonElement;
+    expect(close).not.toBeNull();
+    close.click();
+    expect(fixture.componentInstance.open).toBe(false);
+    expect(selected).not.toHaveBeenCalled();
+  });
+
+  it('keeps the title on desktop without introducing an X', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'select');
+    fixture.componentRef.setInput('panelMode', 'anchored');
+    fixture.componentRef.setInput('title', 'Categories');
+    fixture.componentRef.setInput('closeOnSelect', false);
+    fixture.componentRef.setInput('items', [{ id: 'a', label: 'A', kind: 'checkbox' }]);
+    fixture.componentInstance.open = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-menu__title').textContent.trim()).toBe('Categories');
+    expect(fixture.nativeElement.querySelector('.popup-close')).toBeNull();
+  });
+
+  it('uses the accessible basket name as the mobile heading without widening its icon button', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'inline');
+    fixture.componentRef.setInput('panelMode', 'sheet');
+    fixture.componentRef.setInput('items', [{ id: 'basket', kind: 'branch', icon: 'shopping_basket',
+      ariaLabel: 'Open selected members', items: [{ id: 'one', label: 'One', closeOnSelect: false }] }]);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.app-menu__button-row-item') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-menu__title').textContent.trim()).toBe('Open selected members');
+    expect(fixture.nativeElement.querySelector('.app-menu__heading .popup-close')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-menu__button-row-item--labelled')).toBeNull();
+  });
+
+  it('provides an X for an untitled persistent mobile menu but leaves special anchored menus alone', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'select');
+    fixture.componentRef.setInput('panelMode', 'sheet');
+    fixture.componentRef.setInput('closeOnSelect', false);
+    fixture.componentRef.setInput('items', [{ id: 'a', label: 'A', kind: 'toggle' }]);
+    fixture.componentInstance.open = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.popup-close')).not.toBeNull();
+    fixture.componentRef.setInput('panelMode', 'anchored');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.popup-close')).toBeNull();
+    fixture.componentRef.setInput('panelMode', 'sheet');
+    fixture.componentRef.setInput('items', [{ id: 'rate', kind: 'rate' }]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.popup-close')).toBeNull();
+  });
+
+  it('adds only the configured selection maximum to the common menu heading', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'select');
+    fixture.componentRef.setInput('title', 'Téma');
+    fixture.componentRef.setInput('items', [{ id: 'a', label: 'A', kind: 'toggle' }]);
+    fixture.componentRef.setInput('model', { maxSelected: 3 });
+    fixture.componentInstance.open = true;
+    fixture.detectChanges();
+    const heading = () => (fixture.nativeElement as HTMLElement).querySelector('.app-menu__title')?.textContent?.replace(/\s+/g, ' ').trim();
+    expect(heading()).toBe('Téma (max. 3 db)');
+    fixture.componentRef.setInput('model', { maxSelected: 1 });
+    fixture.detectChanges();
+    expect(heading()).toBe('Téma (max. 1 db)');
+    fixture.componentRef.setInput('model', { maxSelected: null });
+    fixture.detectChanges();
+    expect(heading()).toBe('Téma');
   });
 
   it('fits labelled action buttons to content by default and fills only when configured', () => {

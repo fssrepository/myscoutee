@@ -1,3 +1,6 @@
+import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
+import { ProfileStore } from '../../context/stores/profile.store';
+import { ContactChatAccessStore } from '../../context/stores/contact-chat-access.store';
 import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
 import { environment } from '../../../../../environments/environment';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
@@ -75,6 +78,9 @@ type NotificationHeaderMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationCenterPopupComponent {
+  private readonly contactProfile = inject(ProfileStore);
+  private readonly contactChatAccess = inject(ContactChatAccessStore);
+  private readonly communityGroups = inject(CommunityGroupsStore);
   private readonly groupWorkspaces = inject(GroupWorkspaceStore);
   @ViewChild('notificationsSmartList')
   private notificationsSmartList?: SmartListComponent<NotificationDto, NotificationListFilters>;
@@ -305,6 +311,20 @@ export class NotificationCenterPopupComponent {
     notification: NotificationDto,
     actionId: string
   ): Promise<void> {
+    if (actionId === 'openNotificationGroup') {
+      this.store.close();
+      await this.communityGroups.openInvitation(notification.sourceId!);
+      await this.markRead(notification);
+      return;
+    }
+    if (actionId === 'openNotificationContacts') {
+      if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
+      await this.contactProfile.ensureContactsPopupLoaded();
+      this.contactChatAccess.requestsOnly.set(notification.kind === 'contact-chat-requested');
+      this.contactProfile.openContactsPopup();
+      await this.markRead(notification);
+      return;
+    }
     const eventId = NotificationSingleRowConverter.eventId(notification);
     if (!eventId) {
       return;

@@ -1,3 +1,4 @@
+import { OverlayNavigationStore } from '../../../context/stores/overlay-navigation.store';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -88,6 +89,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
   private static readonly DRAG_ACTIVATION_MOVE_TOLERANCE_PX = 6;
 
+  private readonly overlayNavigation = inject(OverlayNavigationStore);
+  private navigationToken: symbol | null = null;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly i18n = inject(I18nService);
@@ -178,11 +181,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   ngDoCheck(): void {
+    this.syncNavigation();
     this.syncCounterPulseState();
     this.syncOpenPanelState();
   }
 
   ngOnDestroy(): void {
+    this.clearNavigation();
     for (const timerId of this.counterPulseTimerByKey.values()) {
       clearTimeout(timerId);
     }
@@ -668,8 +673,27 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.isInlineRowLayout ? this.activeBranchPath.length > 1 : true;
   }
 
+  protected get showMobileClose(): boolean {
+    if (this.resolvedLayout !== 'mobile' || this.usesInlinePanel || this.isBottomPanelMode
+      || this.panelMode === 'anchored') return false;
+    const items = this.visibleListItems;
+    if (items.some(item => item.kind === 'rate')) return false;
+    return !!this.resolvedTitle || this.showBranchBack || this.currentTabbedModelLayout
+      || !this.closeOnSelect || items.some(item => item.closeOnSelect === false || item.kind === 'toggle');
+  }
+
   protected get resolvedTitle(): string {
-    return `${this.resolveLiveValue(this.title) ?? ''}`.trim();
+    const title = `${this.resolveLiveValue(this.title) ?? ''}`.trim();
+    if (title || this.resolvedLayout !== 'mobile' || this.showBranchBack || !this.activeBranch) return title;
+    // Reuse the branch label or accessible name inside the sheet, without widening its trigger.
+    return this.itemLabel(this.activeBranch) || this.itemAriaLabel(this.activeBranch) || '';
+  }
+
+  protected get selectionLimitLabel(): string {
+    const max = this.currentModelMaxSelected();
+    if (max === null) return '';
+    this.i18n.revision();
+    return this.i18n.translateParams('menu.selection.maximum', { count: max });
   }
 
   protected triggerLabel(): string {
@@ -1947,7 +1971,26 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.restoreSelectedBranchPath();
       this.syncActiveTabsGroup();
     }
+    this.syncNavigation();
     this.openChange.emit(open);
+  }
+
+  private syncNavigation(): void {
+    const transient = this.open && !this.usesInlinePanel && !this.isBottomPanelMode;
+    if (transient && !this.navigationToken) {
+      this.navigationToken = this.overlayNavigation.register(() => {
+        this.setOpen(false);
+        this.changeDetectorRef.markForCheck();
+      });
+    } else if (!transient) {
+      this.clearNavigation();
+    }
+  }
+
+  private clearNavigation(): void {
+    if (!this.navigationToken) return;
+    this.overlayNavigation.unregister(this.navigationToken);
+    this.navigationToken = null;
   }
 
   private restoreSelectedBranchPath(): void {

@@ -558,7 +558,7 @@ export class AssetAvailabilityPopupComponent {
       title: this.i18n.translate(
         accepting
           ? 'asset.requests.confirm.accept.title'
-          : promoting ? 'asset.requests.promote.to.manager' : revoking ? 'Visszavonás' : 'asset.requests.confirm.reject.title'
+          : promoting ? 'asset.requests.promote.question' : revoking ? 'asset.requests.revoke.question' : 'asset.requests.confirm.reject.title'
       ),
       message: promoting || revoking
         ? `${this.i18n.translate(promoting ? 'asset.requests.promote.to.manager' : 'Visszavonás')} — ${requester} · ${asset}`

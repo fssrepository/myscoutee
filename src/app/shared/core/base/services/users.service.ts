@@ -1,5 +1,6 @@
 import { LocalIntegrationService } from '../../local/source/services/integration.service';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { AppLocationService } from './app-location.service';
 import { SessionService } from './session.service';
 import { AffiliateReferralService } from './affiliate-referral.service';
 import {
@@ -39,6 +40,7 @@ import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
 import { RouteDelayService } from './route-delay.service';
 import { OfflineCacheService } from './offline-cache.service';
+import { UserRealtimeUiConverter } from '../../../ui/converters/user-realtime-ui.converter';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -55,6 +57,7 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 export class UsersService extends BaseRouteModeService {
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly session = inject(SessionService);
+  private readonly location = inject(AppLocationService);
   private readonly affiliateReferral = inject(AffiliateReferralService);
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
@@ -150,8 +153,8 @@ export class UsersService extends BaseRouteModeService {
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     if (this.workspace.switching()) return null;
     const revision = this.workspace.revision();
-    const session = this.session.session();
-    const current = () => revision === this.workspace.revision() && session === this.session.session();
+    const session = this.session.identity();
+    const current = () => revision === this.workspace.revision() && session === this.session.identity();
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
@@ -217,8 +220,8 @@ export class UsersService extends BaseRouteModeService {
     const revision = this.workspace.revision() + 1;
     this.workspace.revision.set(revision);
     this.workspace.switching.set(true);
-    const session = this.session.session();
-    const current = () => revision === this.workspace.revision() && this.session.session() === session;
+    const session = this.session.identity();
+    const current = () => revision === this.workspace.revision() && this.session.identity() === session;
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
     const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
@@ -230,9 +233,11 @@ export class UsersService extends BaseRouteModeService {
     }
 
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
+    const accountId = this.session.activeUserId();
+    const location = this.location.pendingLoginCoordinates(accountId);
 
     try {
-      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId);
+      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId, location ?? undefined);
       if (!current()) return null;
       const profileExt = response.profileExt;
       const user = profileExt?.profile ?? null;
@@ -248,6 +253,7 @@ export class UsersService extends BaseRouteModeService {
         return profileExt;
       }
 
+      if (location) this.location.confirmLoginCoordinates(accountId, location);
       if (response.accountProfile) this.userProfileStore.setUserProfile(response.accountProfile);
       this.workspace.accountUserId.set(response.accountProfile?.id ?? user.id);
       this.workspace.active.set(response.workspace ?? null);
@@ -284,7 +290,7 @@ export class UsersService extends BaseRouteModeService {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
       return null;
     } finally {
-      if (current()) this.workspace.switching.set(false);
+      if (revision === this.workspace.revision()) this.workspace.switching.set(false);
     }
   }
 
@@ -487,8 +493,16 @@ export class UsersService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return null;
     }
+    const accountId = this.workspace.accountUserId();
+    const accountToken = accountId && accountId !== normalizedUserId
+      ? this.activityStore.captureUserCounterSyncToken(accountId) : null;
     try {
       const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
+      if (snapshot?.accountCounters && accountToken && snapshot.userId === normalizedUserId
+          && this.workspace.accountUserId() === accountId && this.userProfileStore.activeUserId() === normalizedUserId) {
+        this.activityStore.applyRealtimeCounterOverrides(accountToken,
+          UserRealtimeUiConverter.toCounterPatch({ counters: snapshot.accountCounters }));
+      }
       if (snapshot?.offlineTicketSnapshot) {
         this.offlineCache.writeTicketPage(normalizedUserId, 'upcoming', snapshot.offlineTicketSnapshot);
       }
@@ -777,6 +791,7 @@ export class UsersService extends BaseRouteModeService {
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
         notifications: Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
         paymentRefundsPending: Math.max(0, Math.trunc(Number(user.activities?.paymentRefundsPending) || 0)),
+        contactRequestsPending: Math.max(0, Math.trunc(Number(user.activities?.contactRequestsPending) || 0)),
         chat: {
           all: Math.max(0, Math.trunc(Number(user.activities?.chat?.all) || 0)),
           event: Math.max(0, Math.trunc(Number(user.activities?.chat?.event) || 0)),

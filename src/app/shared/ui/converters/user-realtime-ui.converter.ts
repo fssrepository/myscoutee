@@ -47,7 +47,7 @@ export class UserRealtimeUiConverter {
     };
   }
 
-  static toCounterPatch(snapshot: UserRealtimeLongPollResponseDto): Partial<ActivityCounters> {
+  static toCounterPatch(snapshot: Pick<UserRealtimeLongPollResponseDto, 'counters'>): Partial<ActivityCounters> {
     const { impressionsHostChanged: _hostChanged, impressionsMemberChanged: _memberChanged, ...counters } = snapshot.counters;
     return { ...counters } as Partial<ActivityCounters>;
   }

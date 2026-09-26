@@ -467,7 +467,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       badgeToneClass: row => this.calendarBadgeToneClass(row)
     },
     emptyLabel: () => this.activitiesEmptyLabel,
-    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '5 km' : 'No items'),
+    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '0 km' : 'No items'),
     showGroupMarker: ({ groupIndex, scrollable }) => {
       if (groupIndex > 0) {
         return true;
@@ -620,7 +620,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const label = followed ? 'event.following.follow' : 'event.following.unfollow';
     this.activitiesSmartList?.closeMenu();
     this.dialogStore.open({
-      title: label, message: this.activityEventDTOFromVisibleSource(row)?.creatorName,
+      title: `${label}.question`, message: this.activityEventDTOFromVisibleSource(row)?.creatorName,
       confirmLabel: label, cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
       onConfirm: async () => {
         await this.followingStore.change(organizerId, followed);
@@ -1399,6 +1399,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       controls.push({
         kind: 'menu',
         id: 'rate',
+        title: 'rates',
         trigger: this.activitiesRateMenuTrigger(),
         model: this.activitiesRateMenuModel()
       });

@@ -186,6 +186,11 @@
   background: linear-gradient(180deg, #f7fffb 0%, #e8f8ef 100%);
 }
 
+.demo-user-item.demo-user-item-location {
+  border-color: rgba(181, 116, 28, 0.35);
+  background: linear-gradient(180deg, #fffcf6 0%, #fff1d9 100%);
+}
+
 .demo-user-item .user-avatar,
 .demo-user-item .demo-user-name,
 .demo-user-item .demo-user-meta {
@@ -287,6 +292,11 @@
 
 .demo-user-item-new .demo-user-status-pill {
   background: #268261;
+  color: #fff;
+}
+
+.demo-user-item-location .demo-user-status-pill {
+  background: #9b6014;
   color: #fff;
 }
 

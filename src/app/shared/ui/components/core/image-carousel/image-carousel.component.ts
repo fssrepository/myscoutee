@@ -71,7 +71,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
 
   protected openDetails(url: string, event: Event): void {
     event.stopPropagation();
-    if (this.isDisabled() || !this.detailsEditable) return;
+    if (this.disabled || this.controlDisabled || (this.readOnly ? !this.previewMode : !this.detailsEditable)) return;
     this.detailsDraft = { url, location: this.imageDetails[url]?.location ?? '', caption: this.imageDetails[url]?.caption ?? '',
       event: this.imageDetails[url]?.event };
   }
@@ -81,7 +81,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
       title: 'image.details.title', size: 'small', mobilePresentation: 'compact',
       backdropTone: 'dim',
       onClose: () => this.detailsDraft = null,
-      headerActions: [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id ? 'danger' : 'success',
+      headerActions: this.readOnly ? [] : [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id ? 'danger' : 'success',
         disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240
           || (this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id) }],
       onAction: () => this.saveDetails()
@@ -89,7 +89,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   }
 
   protected updateCaption(value: string): void {
-    if (this.detailsDraft) this.detailsDraft.caption = value.replace(/\s+/g, ' ').slice(0, this.captionMaxLength);
+    if (this.detailsDraft && !this.isDisabled()) this.detailsDraft.caption = value.replace(/\s+/g, ' ').slice(0, this.captionMaxLength);
   }
 
   protected saveDetails(): void {
@@ -106,7 +106,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
 
   protected eventItems(): readonly AppMenuItem[] {
     return [{ id: 'event', icon: 'event', label: this.detailsDraft?.event?.title || 'feed.event.select',
-      palette: this.detailsDraft?.event?.id ? 'blue' : 'danger', surface: 'tinted', layout: 'action' }];
+      palette: this.detailsDraft?.event?.id ? 'blue' : 'danger', surface: 'tinted', layout: 'action', disabled: this.readOnly }];
   }
 
   protected async selectDetailsEvent(): Promise<void> {
@@ -311,6 +311,11 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
 
   protected isSelected(slotIndex: number): boolean {
     return this.normalizedSelectedSlotIndex() === this.clampSlotIndex(slotIndex);
+  }
+
+  protected selectReadOnlySlot(slotIndex: number, event: Event): void {
+    event.stopPropagation();
+    if (this.readOnly && this.previewMode) this.emitSlotSelection(slotIndex);
   }
 
   protected selectedPreviewUrl(slots: readonly (string | null)[]): string | null {
@@ -577,8 +582,11 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
   protected slotsPerPage(): number {
     if (this.slideshow || this.normalizedSlotCount() === 1) return 1;
     const viewportWidth = this.readViewportWidth();
-    if (viewportWidth <= 760) {
+    if (viewportWidth <= 520) {
       return 1;
+    }
+    if (viewportWidth <= 760) {
+      return 2;
     }
     if (viewportWidth <= 980) {
       return 3;
@@ -680,10 +688,11 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
       return 0;
     }
     const currentLeft = viewport.scrollLeft;
+    const maxLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
     let closestIndex = 0;
     let closestDistance = Number.POSITIVE_INFINITY;
     pages.forEach((page, index) => {
-      const distance = Math.abs(page.offsetLeft - currentLeft);
+      const distance = Math.abs(Math.min(page.offsetLeft, maxLeft) - currentLeft);
       if (distance < closestDistance) {
         closestDistance = distance;
         closestIndex = index;
@@ -698,7 +707,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
       return -1;
     }
     const targetIndex = Math.max(0, Math.min(pages.length - 1, pageIndex));
-    return Math.max(0, pages[targetIndex]?.offsetLeft ?? 0);
+    return Math.max(0, Math.min(pages[targetIndex]?.offsetLeft ?? 0, viewport.scrollWidth - viewport.clientWidth));
   }
 
   private resetViewportScroll(): void {

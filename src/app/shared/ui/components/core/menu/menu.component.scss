@@ -1,3 +1,4 @@
+@use '../../../styles/popup' as popup;
 @use '../../../styles/contextual-colors' as colors;
 
 :host {
@@ -1735,6 +1736,11 @@
   max-width: none;
 }
 
+.app-menu__selection-limit {
+  white-space: nowrap;
+  text-transform: none;
+}
+
 .app-menu__title {
   padding: 0.34rem 0.42rem 0.18rem;
   color: rgba(25, 45, 70, 0.7);
@@ -2968,6 +2974,7 @@ a.app-menu__item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   min-width: var(--app-menu-counter-min-width, 1.22rem);
   height: var(--app-menu-counter-height, 1.22rem);
   box-sizing: border-box;
@@ -2977,6 +2984,8 @@ a.app-menu__item {
   color: #fff;
   font-size: 0.68rem;
   font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   line-height: 1;
   box-shadow: 0 5px 10px rgba(163, 36, 48, 0.24);
   white-space: nowrap;
@@ -3016,7 +3025,7 @@ a.app-menu__item {
 
 .app-menu__panel--dropdown-list .app-menu__counter {
   margin-left: auto;
-  min-width: 34px;
+  min-width: 20px;
   height: 20px;
   border-radius: 999px;
   padding: 0 0.38rem;
@@ -3051,9 +3060,9 @@ a.app-menu__item {
 
 .app-menu__panel--dropdown-list .app-menu__item-header > .app-menu__counter {
   margin-left: 0.34rem;
-  min-width: auto;
-  height: 18px;
-  padding: 0 0.4rem;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item--disabled .app-menu__item-header > .app-menu__counter {
@@ -3455,4 +3464,20 @@ a.app-menu__item {
   justify-content: center;
   width: 28px;
   height: 28px;
+}
+
+// Use the same close control as other popups; keep it in the menu heading.
+@include popup.popup-close-button();
+.app-menu__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.app-menu__heading > .app-menu__title {
+  flex: 1;
+  min-width: 0;
+}
+.app-menu__branch-close {
+  order: 1;
+  margin-left: auto;
 }

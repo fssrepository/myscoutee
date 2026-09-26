@@ -89,9 +89,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
-    return LocalUsersMapper.toSelectorListItemList(
+    const users = LocalUsersMapper.toSelectorListItemList(
       this.usersRepository.queryAvailableDemoUsers(selectorRole)
     );
+    return users.map(user => ({
+      ...user,
+      locationRequired: selectorRole === 'member'
+        && !this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(user.locationCoordinates)
+    }));
   }
 
   async prepareUserSession(
@@ -223,15 +228,31 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
   }
 
-  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse> {
+  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number, groupId?: string | null, location?: LocationCoordinates): Promise<ProfileExtByIdQueryResponse> {
     await this.usersRepository.whenReady();
     await this.waitForRouteDelay(LocalUsersService.USER_PROFILE_EXT_ROUTE);
     const requested = this.usersRepository.queryUserById(userId ?? '');
     const accountId = requested?.accountUserId ?? userId ?? '';
     const account = this.usersRepository.queryUserById(accountId);
     if (!account) throw new Error('Account not found');
+    if (location && !(await this.checkLocationEligibility(location)).eligible) {
+      if (!account.locationCoordinates) {
+        throw new Error(LocalUsersService.INELIGIBLE_REGION_MESSAGE);
+      }
+      // A failed pending sample does not prevent loading the last accepted profile.
+      location = undefined;
+    }
     const selected = await this.groups.resolveWorkspace(accountId,
       groupId === undefined ? account.activeWorkspaceGroupId ?? null : groupId);
+    if (location) {
+      this.usersRepository.upsertUser({ ...account, locationCoordinates: location });
+      if (selected.profile.id !== accountId) {
+        const profile = this.usersRepository.queryUserById(selected.profile.id)!;
+        this.usersRepository.upsertUser({ ...profile, locationCoordinates: location });
+      }
+      await this.usersRepository.flushToIndexedDb();
+      if (selected.accountProfile) selected.accountProfile.locationCoordinates = location;
+    }
     const response = await this.readUserById(selected.profile.id);
     const user = response.user;
     const result: ProfileExtByIdQueryResponse = {
@@ -301,8 +322,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       pageSize: LocalUsersService.OFFLINE_TICKET_SNAPSHOT_PAGE_SIZE,
       order: 'upcoming'
     });
+    const account = currentUser?.accountUserId ? this.usersRepository.queryUserById(currentUser.accountUserId) : null;
     return {
       ...snapshot,
+      accountCounters: account
+        ? this.buildInitialMenuCounterOverrides(LocalUsersMapper.toDto(account))
+        : null,
       locationCoordinates: currentUser ? LocalUsersMapper.toDto(currentUser).locationCoordinates ?? null : undefined,
       offlineTicketSnapshot
     };
@@ -410,6 +435,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!user?.id?.trim()) {
       return null;
     }
+    await this.validateLocationForSave(user.locationCoordinates);
     const savedUser = this.upsertUser(user);
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
@@ -464,6 +490,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     }
     await this.usersRepository.whenReady();
     const existing = this.usersRepository.queryUserById(profile.id);
+    await this.validateLocationForSave(profile.locationCoordinates);
     const savedUser = this.upsertUser(profile);
     if (!existing) this.integrationRepository.recordRegistration(savedUser.id, request.affiliateCode);
     this.profileExperiencesRepository.replaceUserExperienceRecords(
@@ -618,6 +645,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
   }
 
+  private async validateLocationForSave(coordinates?: LocationCoordinates | null): Promise<void> {
+    if (coordinates && !(await this.checkLocationEligibility(coordinates)).eligible) {
+      throw new Error(LocalUsersService.INELIGIBLE_REGION_MESSAGE);
+    }
+  }
+
   private upsertUser(user: UserDto): UserDto {
     const normalizedUser = LocalUsersMapper.toRecord(user);
     const savedUser = this.usersRepository.upsertUser(normalizedUser);
@@ -643,6 +676,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'feedback',
       'notifications',
       'paymentRefundsPending',
+      'contactRequestsPending',
       'adminJobs',
       'adminMetrics'
     ];
@@ -687,6 +721,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'feedback',
       'notifications',
       'paymentRefundsPending',
+      'contactRequestsPending',
       'adminJobs',
       'adminMetrics'
     ];
@@ -851,13 +886,13 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const invitations = normalizeCounter(activities?.invitations);
     const hosting = normalizeCounter(activities?.hosting);
     const feedback = normalizeCounter(activities?.feedback);
-    const cars = normalizeCounter(activities?.cars);
-    const accommodation = normalizeCounter(activities?.accommodation);
-    const supplies = normalizeCounter(activities?.supplies);
-    const tickets = normalizeCounter(activities?.tickets);
+    const cars = normalizeCounter(notificationActivities?.cars);
+    const accommodation = normalizeCounter(notificationActivities?.accommodation);
+    const supplies = normalizeCounter(notificationActivities?.supplies);
+    const tickets = normalizeCounter(notificationActivities?.tickets);
     const chat = activities?.chat;
     const event = activities?.event;
-    const asset = activities?.asset;
+    const asset = notificationActivities?.asset;
     const eventFeedback = activities?.eventFeedback;
 
     return {
@@ -870,10 +905,11 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       accommodation,
       supplies,
       tickets,
-      contacts: normalizeCounter(activities?.contacts),
+      contacts: normalizeCounter(notificationActivities?.contacts),
       feedback,
       notifications: normalizeCounter(notificationActivities?.notifications),
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
+      contactRequestsPending: normalizeCounter(notificationActivities?.contactRequestsPending),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
         event: normalizeCounter(chat?.event),
@@ -938,6 +974,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         feedback: counters.feedback ?? user.activities.feedback,
         notifications: counters.notifications ?? user.activities.notifications,
         paymentRefundsPending: counters.paymentRefundsPending ?? user.activities.paymentRefundsPending,
+        contactRequestsPending: counters.contactRequestsPending ?? user.activities.contactRequestsPending,
         chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,

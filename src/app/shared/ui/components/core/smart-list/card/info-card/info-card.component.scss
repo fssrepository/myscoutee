@@ -1130,6 +1130,10 @@ button.ui-info-card__overlay-action {
   color: #fff;
   font-size: 10px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: normal;
   display: inline-flex;
   align-items: center;
   justify-content: center;

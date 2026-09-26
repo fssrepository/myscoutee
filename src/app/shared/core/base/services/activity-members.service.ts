@@ -224,7 +224,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'revoke-admin' | 'take-over' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {

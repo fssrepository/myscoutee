@@ -45,7 +45,7 @@ function setup(surface: string, followed = false) {
 describe.each(['Explore', 'Activities', 'Members', 'Feed'])('%s following confirmation', surface => {
   it('does not persist on open or cancel', () => {
     const { host, dialogStore } = setup(surface);
-    expect(dialogStore.dialog()?.title).toBe('event.following.unfollow');
+    expect(dialogStore.dialog()?.title).toBe('event.following.unfollow.question');
     dialogStore.cancel();
     expect(host.followingStore.change).not.toHaveBeenCalled();
   });
@@ -72,7 +72,7 @@ describe.each(['Explore', 'Activities', 'Members', 'Feed'])('%s following confir
 
 it.each(['Explore', 'Activities', 'Feed'])('%s follow also waits for confirmation', async surface => {
   const { dialogStore, host, finish } = setup(surface, true);
-  expect(dialogStore.dialog()?.title).toBe('event.following.follow');
+  expect(dialogStore.dialog()?.title).toBe('event.following.follow.question');
   expect(host.followingStore.change).not.toHaveBeenCalled();
   const saving = dialogStore.confirm();
   expect(host.followingStore.change).toHaveBeenCalledWith('organizer', true);

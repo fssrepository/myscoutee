@@ -8,6 +8,7 @@ export interface ImageGalleryRequest {
   onDetailsChange?: (details: ImageDetailsMap) => void;
   slotCount: number;
   readOnly: boolean;
+  presentation?: 'editor' | 'slideshow';
   title: string;
   uploadOwnerId: string;
   uploadEntityId: string;

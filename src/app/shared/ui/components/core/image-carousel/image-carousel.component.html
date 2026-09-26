@@ -50,7 +50,9 @@
     >
       <div class="image-carousel__strip" [style.transform]="carouselTransform()">
         @for (page of slotPages; track $index) {
-          <div class="image-carousel__page">
+          <div class="image-carousel__page"
+            [style.--image-page-slots]="page.length"
+            [style.--image-page-share]="page.length / slotsPerPage()">
             @for (slotIndex of page; track slotIndex) {
               @let imageUrl = slots[slotIndex];
               <article
@@ -82,6 +84,11 @@
                     <app-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-indicator>
                   </span>
                 } @else if (imageUrl) {
+                  @if (readOnly && previewMode) {
+                    <button type="button" class="image-carousel__slot-action image-carousel__slot-action--details"
+                      (click)="openDetails(imageUrl, $event)" [attr.aria-label]="'image.details.title' | i18n"
+                      [title]="'image.details.title' | i18n"><mat-icon>info</mat-icon></button>
+                  }
                   @if (!isDisabled()) {
                     @if (detailsEditable) {
                       <button type="button" class="image-carousel__slot-action image-carousel__slot-action--details"
@@ -133,6 +140,11 @@
                   [attr.aria-label]="((imageUrl ? 'replace.image.slot' : 'upload.image.slot') | i18n) + ' ' + (slotIndex + 1)"
                   [title]="(imageUrl ? 'replace.image' : 'upload.image') | i18n"
                 ></button>
+                } @else if (readOnly && previewMode && imageUrl) {
+                  <button type="button" class="image-carousel__slot-hit"
+                    [attr.aria-label]="('image.carousel.images' | i18n) + ' ' + (slotIndex + 1)"
+                    [attr.aria-pressed]="isSelected(slotIndex)"
+                    (click)="selectReadOnlySlot(slotIndex, $event)"></button>
                 }
               </article>
             }
@@ -175,19 +187,23 @@
 @if (detailsDraft; as draft) {
   <app-popup [model]="detailsPopupModel()">
     <div class="image-carousel__details-form">
-      @if (detailsConfig.eventRequired) {
+      @if (detailsConfig.eventRequired || draft.event) {
         <div class="image-carousel__event-field">
           <span>{{ 'feed.event.label' | i18n }} <span class="required-star">*</span></span>
           <app-menu [items]="eventItems()" (itemSelect)="selectDetailsEvent()"></app-menu>
+          @if (readOnly && draft.event) {
+            <p>{{ 'organizer' | i18n }}: {{ draft.event.organizerName }}</p>
+          }
         </div>
-      } @else {
-        <app-location-input [(ngModel)]="draft.location" [config]="{ label: ('location' | i18n) }"></app-location-input>
+      }
+      @if (!detailsConfig.eventRequired || readOnly) {
+        <app-location-input [(ngModel)]="draft.location" [readOnly]="readOnly" [config]="{ label: ('location' | i18n) }"></app-location-input>
       }
       <label class="image-carousel__caption-label" for="gallery-caption">
         <span>{{ 'image.details.caption' | i18n }}</span>
-        <small>{{ captionMaxLength - draft.caption.length }}</small>
+        @if (!readOnly) { <small>{{ captionMaxLength - draft.caption.length }}</small> }
       </label>
-      <textarea id="gallery-caption" rows="2" [maxLength]="captionMaxLength"
+      <textarea id="gallery-caption" rows="2" [maxLength]="captionMaxLength" [readOnly]="readOnly"
         [ngModel]="draft.caption" (ngModelChange)="updateCaption($event)"></textarea>
     </div>
   </app-popup>

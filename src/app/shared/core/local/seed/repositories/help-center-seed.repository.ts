@@ -41,11 +41,14 @@ export class SeedHelpCenterRepository {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey);
     const existingRevisions = this.revisionsForKind(table, kind, language, context);
-    if (existingRevisions.length > 0) {
+    const revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(kind, language, context), kind);
+    const upgradeSystemHelp = kind === 'help' && existingRevisions.length > 0
+      && existingRevisions.every(value => value.version < revision.version
+        && value.createdByUserId === 'system' && value.updatedByUserId === 'system');
+    if (existingRevisions.length > 0 && !upgradeSystemHelp) {
       return this.ensureActiveRevision(table, kind, language, context, existingRevisions);
     }
 
-    const revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(kind, language, context), kind);
     const revisionContextKey = this.revisionContextKey(revision);
     const audit = this.auditEntry({
       action: 'seed',
@@ -69,6 +72,9 @@ export class SeedHelpCenterRepository {
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
+            ...Object.fromEntries(upgradeSystemHelp
+              ? existingRevisions.map(value => [value.id, LocalHelpCenterMapper.toRecord({ ...value, active: false })])
+              : []),
             [revision.id]: LocalHelpCenterMapper.toRecord(revision)
           },
           revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
