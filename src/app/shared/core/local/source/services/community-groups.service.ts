@@ -40,7 +40,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       return member && ['accepted', 'pending'].includes(member.status)
         ? [{ groupId: group.id, profileId: profile?.id ?? null, name: group.name, role: member.role, category: group.category,
           membershipStatus: member.status as 'accepted' | 'pending', membersActivity: this.membersActivity(group, member),
-          activity: this.attention(profile) + this.membersActivity(group, member) + (this.admin(member) ? group.moderationPending ?? 0 : 0),
+          activity: (member.status === 'accepted' ? this.attention(profile) : 0) + this.membersActivity(group, member) + (this.admin(member) ? group.moderationPending ?? 0 : 0),
           moderationPending: this.admin(member) ? group.moderationPending ?? 0 : 0,
           moderationQueueRevision: this.admin(member) ? group.moderationQueueRevision ?? 0 : 0,
           policy: structuredClone(group.policy) }] : [];
@@ -208,6 +208,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         if (!self || !this.admin(target)) throw new Error('Forbidden'); target.organizerOnly = action === 'set-organizer-only'; break;
       default: throw new Error('Invalid action');
     }
+    if (stored.status === target.status && stored.role === target.role
+      && !['set-organizer-only', 'set-participant'].includes(action))
+      return { members: this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
     target.communityAction = action; target.communityActor = userId;
     target.updatedAtIso = new Date().toISOString(); target.actionAtIso = target.updatedAtIso; target.updatedMs = Date.now();
     if (target.status === 'accepted') this.admit(group, targetId);
@@ -283,7 +286,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       membersActivity: this.membersActivity(group, own),
       moderationPending: this.admin(own) ? group.moderationPending ?? 0 : 0,
       moderationQueueRevision: this.admin(own) ? group.moderationQueueRevision ?? 0 : 0,
-      activity: this.attention(this.users.queryUserById(this.profileId(group.id, userId)))
+      activity: (own?.status === 'accepted' ? this.attention(this.users.queryUserById(this.profileId(group.id, userId))) : 0)
         + this.membersActivity(group, own) + (this.admin(own) ? group.moderationPending ?? 0 : 0), distanceKm };
   }
   private newMember(group: CommunityGroupRecord, userId: string, role: 'Admin' | 'Member', status: 'accepted' | 'pending', requestKind: 'invite' | 'join' | null, inviter: string | null): ActivityMemberRecord {

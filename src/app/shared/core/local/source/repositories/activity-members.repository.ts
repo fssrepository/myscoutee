@@ -796,10 +796,12 @@ export class LocalActivityMembersRepository {
       }
 
       const group = normalizedOwner.ownerType === 'community' ? state.communityGroups.byId[normalizedOwner.ownerId] : null;
+      const pendingDelta = group ? normalizedRecords.filter(member => member.status === 'pending').length
+        - (table.idsByOwnerKey[ownerKey] ?? []).filter(id => table.byId[id]?.status === 'pending').length : 0;
       return {
         ...state,
-        ...(group ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
-          [group.id]: { ...group, pendingMembers: normalizedRecords.filter(member => member.status === 'pending').length, version: group.version + 1 }
+        ...(group && pendingDelta ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
+          [group.id]: { ...group, pendingMembers: Math.max(0, (group.pendingMembers ?? 0) + pendingDelta), version: group.version + 1 }
         } } } : {}),
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextById,

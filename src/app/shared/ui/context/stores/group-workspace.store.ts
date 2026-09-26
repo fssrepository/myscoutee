@@ -33,10 +33,10 @@ export class GroupWorkspaceStore {
     const profile = this.profile.activeUserProfile();
     return this.workspaceSnapshots().map(workspace => {
       const previousPending = workspace.moderationPending ?? 0;
-      const attention = workspace.role === 'Admin'
+      const attention = workspace.role === 'Admin' && workspace.membershipStatus === 'accepted'
         ? this.moderation.attention(workspace.groupId, previousPending, workspace.moderationQueueRevision)
         : { pending: 0, revision: 0 };
-      const activity = active?.groupId === workspace.groupId && profile?.id === workspace.profileId
+      const activity = workspace.membershipStatus === 'accepted' && active?.groupId === workspace.groupId && profile?.id === workspace.profileId
         ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id)) + (workspace.membersActivity ?? 0)
         : Math.max(0, workspace.activity - previousPending);
       return { ...workspace, activity: activity + attention.pending, moderationPending: attention.pending, moderationQueueRevision: attention.revision };

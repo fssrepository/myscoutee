@@ -94,13 +94,12 @@ export class LocalNotificationsRepository {
           this.unreadCountFromTable(nextNotificationsTable, userId)
         );
       });
-      return {
+      return this.withCommunityUpdateDeltas({
         ...state,
         [NOTIFICATIONS_TABLE_NAME]: nextNotificationsTable,
         [USERS_TABLE_NAME]: nextUsersTable
-      };
+      }, additions, 1);
     });
-    this.refreshCommunityUpdates(additions);
     return additions.map(record => this.cloneRecord(record));
   }
 
@@ -219,7 +218,7 @@ export class LocalNotificationsRepository {
         table,
         normalizedUserId
       ) - 1);
-      return {
+      return this.withCommunityUpdateDeltas({
         ...state,
         [NOTIFICATIONS_TABLE_NAME]: {
           ...table,
@@ -233,9 +232,8 @@ export class LocalNotificationsRepository {
           normalizedUserId,
           unreadCount
         )
-      };
+      }, [nextRecord], -1);
     });
-    this.refreshCommunityUpdates([nextRecord]);
     return this.cloneRecord(nextRecord);
   }
 
@@ -283,7 +281,7 @@ export class LocalNotificationsRepository {
         0,
         this.unreadCountFromTable(currentTable, normalizedUserId) - matchingIds.length
       );
-      return {
+      return this.withCommunityUpdateDeltas({
         ...state,
         [NOTIFICATIONS_TABLE_NAME]: {
           ...currentTable,
@@ -294,9 +292,8 @@ export class LocalNotificationsRepository {
           normalizedUserId,
           unreadCount
         )
-      };
+      }, matchingIds.map(id => table.byId[id]), -1);
     });
-    this.refreshCommunityUpdates(matchingIds.map(id => table.byId[id]));
     return matchingIds.length;
   }
 
@@ -401,26 +398,22 @@ export class LocalNotificationsRepository {
     };
   }
 
-  private refreshCommunityUpdates(records: readonly NotificationRecord[]): void {
-    const identities = new Map(records.filter(record => record.sourceType === 'community'
-      && record.payload?.['communityAttention'] === 'members')
-      .map(record => [`${record.recipientUserId}:${record.sourceId}`, record]));
-    if (!identities.size) return;
-    this.memoryDb.write(state => {
-      const members = state[ACTIVITY_MEMBERS_TABLE_NAME];
-      const byId = { ...members.byId };
-      const notifications = state[NOTIFICATIONS_TABLE_NAME];
-      for (const record of identities.values()) {
-        const member = Object.values(byId).find(member => member.ownerType === 'community'
-          && member.ownerId === record.sourceId && member.userId === record.recipientUserId);
-        if (!member) continue;
-        const count = (notifications.idsByRecipientUserId[record.recipientUserId] ?? [])
-          .map(id => notifications.byId[id]).filter(item => !item.readAtIso && item.sourceType === 'community'
-            && item.sourceId === record.sourceId && item.payload?.['communityAttention'] === 'members').length;
-        byId[member.id] = { ...member, communityUpdates: count };
-      }
-      return { ...state, [ACTIVITY_MEMBERS_TABLE_NAME]: { ...members, byId } };
-    });
+  private withCommunityUpdateDeltas(state: ReturnType<LocalMemoryDb['read']>,
+    records: readonly NotificationRecord[], delta: number): ReturnType<LocalMemoryDb['read']> {
+    const deltas = new Map<string, number>();
+    for (const record of records) if (record.sourceType === 'community' && record.payload?.['communityAttention'] === 'members') {
+      const key = JSON.stringify([record.sourceId, record.recipientUserId]);
+      deltas.set(key, (deltas.get(key) ?? 0) + delta);
+    }
+    if (!deltas.size) return state;
+    const members = state[ACTIVITY_MEMBERS_TABLE_NAME];
+    const byId = { ...members.byId };
+    for (const member of Object.values(byId)) {
+      if (member.ownerType !== 'community') continue;
+      const change = deltas.get(JSON.stringify([member.ownerId, member.userId]));
+      if (change) byId[member.id] = { ...member, communityUpdates: Math.max(0, (member.communityUpdates ?? 0) + change) };
+    }
+    return { ...state, [ACTIVITY_MEMBERS_TABLE_NAME]: { ...members, byId } };
   }
 
   private unreadCountFromTable(

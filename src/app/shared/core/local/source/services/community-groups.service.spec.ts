@@ -1,0 +1,129 @@
+import { TestBed } from '@angular/core/testing';
+import { LocalMemoryDb } from '../../../common/app.db';
+import { RouteDelayService } from '../../../base/services/route-delay.service';
+import { LocalCommunityGroupsService } from './community-groups.service';
+import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../entity/notification.entity';
+import { USERS_TABLE_NAME } from '../entity/user.entity';
+import { EVENTS_TABLE_NAME } from '../entity/event.entity';
+import type { UserRecord } from '../entity/user.entity';
+
+type State = ReturnType<LocalMemoryDb['read']>;
+
+describe('Community membership writes and recipient attention', () => {
+  let state: State;
+  let service: LocalCommunityGroupsService;
+  let notifications: LocalNotificationsRepository;
+  const owner = { ownerType: 'community', ownerId: 'group' } as const;
+  const notices = () => Object.values(state[NOTIFICATIONS_TABLE_NAME].byId);
+  const member = (userId: string) => state[ACTIVITY_MEMBERS_TABLE_NAME].byId[`community:group:${userId}`];
+
+  beforeEach(() => {
+    const users = Object.fromEntries(['admin', 'member', 'guest'].map(id => [id, {
+      id, name: id, initials: id[0], gender: 'man', city: '', languages: [], activities: {}, images: []
+    } as unknown as UserRecord]));
+    state = {
+      communityGroups: { ids: ['group'], byId: { group: {
+        id: 'group', name: 'Group', ownerUserId: 'admin', description: '', category: 'friends',
+        visibility: 'public', hideMembers: false, version: 0, pendingMembers: 0,
+        policy: { workspace: false, enabled: false, requiredFields: [] }, createdAtIso: '2026-09-26', updatedAtIso: '2026-09-26'
+      } } },
+      [USERS_TABLE_NAME]: { ids: Object.keys(users), byId: users },
+      [EVENTS_TABLE_NAME]: { ids: [], byId: {} },
+      [ACTIVITY_MEMBERS_TABLE_NAME]: { ids: [], byId: {}, idsByOwnerKey: {} },
+      [NOTIFICATIONS_TABLE_NAME]: { ids: [], byId: {}, idsByRecipientUserId: {}, mutedByUserId: {}, seededUserIds: [] }
+    } as unknown as State;
+    TestBed.configureTestingModule({ providers: [
+      { provide: LocalMemoryDb, useValue: {
+        read: () => state,
+        write: (update: (current: State) => State) => { state = update(state); },
+        whenReady: async () => undefined
+      } },
+      { provide: LocalUsersRepository, useValue: { queryUserById: (id: string) => state[USERS_TABLE_NAME].byId[id] ?? null } },
+      { provide: LocalAdminModerationRepository, useValue: {} },
+      { provide: RouteDelayService, useValue: { waitForRouteDelay: async () => undefined } }
+    ] });
+    service = TestBed.inject(LocalCommunityGroupsService);
+    notifications = TestBed.inject(LocalNotificationsRepository);
+    const repository = TestBed.inject(LocalActivityMembersRepository);
+    // Use the same record creator and repository write as ordinary commands.
+    const group = state.communityGroups.byId['group'];
+    repository.replaceRecordsByOwner(owner, [
+      service['newMember'](group, 'admin', 'Admin', 'accepted', null, 'admin'),
+      service['newMember'](group, 'member', 'Member', 'accepted', null, 'admin')
+    ]);
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('moves a join into Participation and counts the pending operation only for the administrator', async () => {
+    const joined = await service.join('guest', 'group');
+    expect(joined.membershipStatus).toBe('pending');
+    expect(state.communityGroups.byId['group'].pendingMembers).toBe(1);
+    const query = { page: 0, pageSize: 10, filters: { bucket: 'explore' as const } };
+    expect((await service.page('guest', query)).items).toHaveLength(0);
+    expect((await service.page('guest', { ...query, filters: { bucket: 'participation' } })).items).toHaveLength(1);
+    expect((await service.detail('admin', 'group')).membersActivity).toBe(1);
+    expect((await service.detail('member', 'group')).membersActivity).toBe(0);
+    await service.join('guest', 'group');
+    expect(notices().map(row => row.recipientUserId)).toEqual(['admin']);
+    expect(state.communityGroups.byId['group'].pendingMembers).toBe(1);
+  });
+
+  it('notifies the affected members on acceptance, excludes the actor and does not duplicate a retry', async () => {
+    await service.join('guest', 'group');
+    await service.action('admin', 'group', 'guest', 'accept');
+    await service.action('admin', 'group', 'guest', 'accept');
+    expect(state.communityGroups.byId['group'].pendingMembers).toBe(0);
+    expect(notices().filter(row => row.kind === 'community-member-joined').map(row => row.recipientUserId).sort())
+      .toEqual(['guest', 'member']);
+    expect(member('admin').communityUpdates ?? 0).toBe(0);
+    expect(member('member').communityUpdates).toBe(1);
+    expect(member('guest').communityUpdates).toBe(1);
+    const notice = notices().find(row => row.recipientUserId === 'member')!;
+    expect(notifications.markRead('admin', notice.id)).toBeNull();
+    notifications.markRead('member', notice.id);
+    notifications.markRead('member', notice.id);
+    expect((await service.detail('member', 'group')).membersActivity).toBe(0);
+    expect((await service.detail('guest', 'group')).membersActivity).toBe(1);
+  });
+
+  it('keeps hidden member changes private while notifying the newly accepted recipient', async () => {
+    state.communityGroups.byId['group'].hideMembers = true;
+    await service.join('guest', 'group');
+    await service.action('admin', 'group', 'guest', 'accept');
+    expect(notices().filter(row => row.kind === 'community-member-joined').map(row => row.recipientUserId)).toEqual(['guest']);
+    expect((await service.detail('member', 'group')).membersActivity).toBe(0);
+  });
+
+  it('adds two operation deltas in one group and reading one leaves the other counted', async () => {
+    await service.join('guest', 'group');
+    await service.action('admin', 'group', 'guest', 'accept');
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    expect((await service.detail('member', 'group')).membersActivity).toBe(2);
+    const joined = notices().find(row => row.recipientUserId === 'member' && row.kind === 'community-member-joined')!;
+    notifications.markRead('member', joined.id);
+    expect((await service.detail('member', 'group')).membersActivity).toBe(1);
+    expect(member('guest').communityUpdates).toBe(1);
+  });
+
+  it('counts a pending invitation for its recipient without making the workspace selectable', async () => {
+    state[USERS_TABLE_NAME].byId['group:group:guest'] = {
+      ...state[USERS_TABLE_NAME].byId['guest'], id: 'group:group:guest', activities: { game: 7 }
+    } as UserRecord;
+    expect((await service.detail('guest', 'group')).activity).toBe(0);
+    await service.invite('admin', 'group', ['guest']);
+    await service.invite('admin', 'group', ['guest']);
+    const rows = await service.workspaces('guest');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ membershipStatus: 'pending', membersActivity: 1, activity: 1 });
+    await expect(service.resolveWorkspace('guest', 'group')).rejects.toThrow('Forbidden');
+    expect(notices().map(row => row.recipientUserId)).toEqual(['guest']);
+    expect(state.communityGroups.byId['group'].pendingMembers).toBe(1);
+  });
+});
