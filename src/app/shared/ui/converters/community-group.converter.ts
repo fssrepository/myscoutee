@@ -50,16 +50,18 @@ export class CommunityGroupConverter {
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
     const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: ActivityEventInfoCardMenuConverter.actionPalette('view', CARD_MENU_ACTIONS['view'].tone), surface: 'tinted', context: group }];
-    if (group.role === 'Admin' && group.membershipStatus === 'accepted') {
+    if (group.lifecycleStatus !== 'under-review' && group.role === 'Admin' && group.membershipStatus === 'accepted') {
       items.push({ id: 'share', label: 'invite.external.title', icon: 'share', palette: 'teal', surface: 'tinted', context: group });
       items.push({ id: 'edit', label: 'edit', icon: 'edit', palette: ActivityEventInfoCardMenuConverter.actionPalette('edit', CARD_MENU_ACTIONS['edit'].tone), surface: 'tinted', context: group });
       items.push({ id: 'moderation', label: 'moderation.title', icon: 'fact_check', palette: 'lime', surface: 'tinted',
         counter: { value: group.moderationPending ?? 0, max: 99 }, counterTone: 'alert', context: group });
-    } else if (!group.membershipStatus && (!group.moderationStatus || group.moderationStatus === 'accepted')) {
+    } else if (group.lifecycleStatus !== 'under-review' && !group.membershipStatus && (!group.moderationStatus || group.moderationStatus === 'accepted')) {
       items.push({ id: 'join', label: 'groups.join', icon: 'person_add', palette: 'blue', surface: 'tinted', context: group });
     } else if (group.membershipStatus === 'pending' && group.requestKind === 'invite') {
       items.push({ id: 'accept', label: 'accept', icon: 'done', palette: ActivityEventInfoCardMenuConverter.actionPalette('accept', CARD_MENU_ACTIONS['accept'].tone), surface: 'tinted', context: group });
     }
+    if (group.canTakeOver) items.push({ id: 'take-over', label: 'groups.takeover', icon: 'verified_user', palette: 'warning', surface: 'tinted', context: group });
+    if (group.membershipStatus === 'accepted') items.push({ id: 'remove', label: 'groups.leave', icon: 'logout', palette: 'danger', surface: 'tinted', context: group });
     if (userId && userId !== group.ownerUserId) items.push({ id: 'report', label: 'groups.report', icon: 'flag', palette: ActivityEventInfoCardMenuConverter.actionPalette('reportOrganizer', CARD_MENU_ACTIONS['reportOrganizer'].tone), surface: 'tinted', context: group });
     return items;
   }

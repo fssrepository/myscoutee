@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.196",
+  "version": "2026.09.26.hu.197",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3988,6 +3988,22 @@
     "confirmation.remove.named.asset": "Eltávolítod a(z) „{name}” eszközt erről az eseményről?",
     "groups.bucket.pending": "Függő csoportok",
     "groups.explore": "Csoportok felfedezése",
-    "groups.actions": "Csoportműveletek"
+    "groups.actions": "Csoportműveletek",
+    "home.filters": "Szűrők",
+    "groups.open": "Csoport megnyitása",
+    "groups.admin.revoke": "Adminjog visszavonása",
+    "groups.admin.revoke.title": "Visszavonod a tag adminjogát?",
+    "groups.admin.revoke.message": "{name} a csoport tagja marad, de nem kezelheti tovább a csoportot.",
+    "groups.admin.promote.message": "{name} kezelheti ezt a csoportot, és további csoportadminokat nevezhet ki.",
+    "groups.takeover": "Átvétel",
+    "groups.leave": "Kilépés a csoportból",
+    "groups.confirm.take-over.title": "Átveszed a csoport felelősségét?",
+    "groups.confirm.take-over": "Te leszel a(z) „{name}” csoport felelős adminja.",
+    "groups.confirm.remove.title": "Kilépsz ebből a csoportból?",
+    "groups.confirm.remove": "Kilépsz a(z) „{name}” csoportból? Ha te vagy a felelős, másik admin vagy elfogadott tag veheti át. Az utolsó tag távozásával a csoport törlődik.",
+    "notification.kind.community-owner-left.title": "A csoport új felelős adminra vár",
+    "notification.kind.community-owner-left.message": "Átveheted a(z) {workspaceGroupName} csoport felelősségét.",
+    "notification.kind.community-takeover.title": "Megváltozott a csoport felelőse",
+    "notification.kind.community-takeover.message": "Egy admin átvette a(z) {workspaceGroupName} csoport felelősségét."
   }
 }

@@ -20,6 +20,8 @@ export interface GroupPolicy {
   policies?: import('./event.interface').EventPolicyDTO[];
 }
 export interface CommunityGroup {
+  lifecycleStatus?: 'active' | 'under-review' | 'deleted' | null;
+  canTakeOver?: boolean;
   membersActivity?: number;
   moderationPending?: number;
   moderationQueueRevision?: number;

@@ -185,7 +185,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'revoke-admin' | 'take-over' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberActionResultDTO> {
@@ -210,7 +210,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'revoke-admin' | 'take-over' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
@@ -821,7 +821,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   }
 
   private eventMembershipSystemMessage(
-    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'revoke-admin' | 'take-over' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     previousMember: ActivityMemberDTO,
     nextMember: ActivityMemberDTO | null,
     actorUserId: string

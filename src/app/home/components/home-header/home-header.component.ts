@@ -9,9 +9,9 @@ import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../shared/ui/com
 export const HOME_HEADER_LOADING_ITEMS: readonly AppMenuItem<string, never>[] = [
   { id: 'home-mode', label: 'Preferences', icon: 'person', kind: 'select-trigger',
     layout: 'pill', palette: 'blue', disabled: true, ariaLabel: 'Select game mode' },
-  { id: 'home-filter', icon: 'filter_alt', kind: 'action', palette: 'filter',
+  { id: 'home-filter', label: 'home.filters', layout: 'pill', icon: 'filter_alt', kind: 'action', palette: 'filter',
     disabled: true, ariaLabel: 'Open profile filters' },
-  { id: 'home-history', icon: 'history', kind: 'action', palette: 'gold',
+  { id: 'home-history', label: 'ratings', layout: 'pill', icon: 'history', kind: 'action', palette: 'gold',
     disabled: true, ariaLabel: 'Open game history' }
 ];
 

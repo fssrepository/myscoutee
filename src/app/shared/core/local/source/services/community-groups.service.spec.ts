@@ -60,6 +60,73 @@ describe('Community membership writes and recipient attention', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('records the granting Admin and denies revocation by another Admin', async () => {
+    await service.invite('admin', 'group', ['guest']);
+    await service.action('guest', 'group', 'guest', 'accept');
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    await service.action('member', 'group', 'guest', 'promote-admin');
+    expect(member('member').managerGrantedByUserId).toBe('admin');
+    expect(member('guest').managerGrantedByUserId).toBe('member');
+    const before = notices().length;
+    await expect(service.action('admin', 'group', 'guest', 'revoke-admin')).rejects.toThrow('Forbidden');
+    expect(notices()).toHaveLength(before);
+    expect(member('guest').role).toBe('Admin');
+    await service.action('member', 'group', 'guest', 'revoke-admin');
+    expect(member('guest').role).toBe('Member');
+    expect(member('guest').status).toBe('accepted');
+    expect(member('guest').managerGrantedByUserId).toBeNull();
+    const committed = notices().length;
+    await service.action('member', 'group', 'guest', 'revoke-admin');
+    expect(notices()).toHaveLength(committed);
+  });
+
+  it('invites existing Admins to take over, then keeps responsibility and member counts on retry', async () => {
+    await service.invite('admin', 'group', ['guest']);
+    await service.action('guest', 'group', 'guest', 'accept');
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    const released = await service.action('admin', 'group', 'admin', 'remove');
+    expect(released.group?.lifecycleStatus).toBe('under-review');
+    expect(notices().filter(n => n.kind === 'community-member-removed')).toHaveLength(0);
+    expect(notices().filter(n => n.kind === 'community-owner-left').map(n => n.recipientUserId)).toEqual(['member']);
+    expect((await service.detail('guest', 'group')).canTakeOver).toBe(false);
+    await expect(service.action('guest', 'group', 'guest', 'take-over')).rejects.toThrow('Forbidden');
+    const taken = await service.action('member', 'group', 'member', 'take-over');
+    expect(taken.group?.ownerUserId).toBe('member');
+    expect(taken.group?.lifecycleStatus).toBe('active');
+    expect(taken.group?.acceptedMembers).toBe(2);
+    const count = notices().length;
+    await service.action('member', 'group', 'member', 'take-over');
+    expect(notices()).toHaveLength(count);
+    expect(notices().filter(n => n.kind === 'community-takeover')).toHaveLength(0);
+    await expect(service.action('admin', 'group', 'guest', 'promote-admin')).rejects.toThrow();
+  });
+
+  it('offers the no-Admin fallback only to accepted members and returns the old creator as Member', async () => {
+    await service.invite('admin', 'group', ['guest']);
+    await service.action('admin', 'group', 'admin', 'remove');
+    expect(notices().filter(n => n.kind === 'community-owner-left').map(n => n.recipientUserId)).toEqual(['member']);
+    expect((await service.detail('guest', 'group')).canTakeOver).toBe(false);
+    await service.action('member', 'group', 'member', 'take-over');
+    expect(member('member').role).toBe('Admin');
+    await service.invite('member', 'group', ['admin']);
+    await service.action('admin', 'group', 'admin', 'accept');
+    expect(member('admin').role).toBe('Member');
+    expect((await service.detail('admin', 'group')).role).toBe('Member');
+  });
+
+  it('deletes the last-member group from lists, workspaces and direct reads and tolerates retry', async () => {
+    await service.action('member', 'group', 'member', 'remove');
+    const result = await service.action('admin', 'group', 'admin', 'remove');
+    expect(result.group?.lifecycleStatus).toBe('deleted');
+    expect(await service.workspaces('admin')).toEqual([]);
+    await expect(service.detail('admin', 'group')).rejects.toThrow('Group not found');
+    expect((await service.page('guest', { page: 0, pageSize: 20, filters: { bucket: 'explore' } })).items).toEqual([]);
+    const count = notices().length;
+    const retry = await service.action('admin', 'group', 'admin', 'remove');
+    expect(retry.group?.lifecycleStatus).toBe('deleted');
+    expect(notices()).toHaveLength(count);
+  });
+
   it('persists the textual policies independently of profile visibility rules, including clearing them', async () => {
     const original = await service.detail('admin', 'group');
     const policies = [{ id: 'rule-1', title: 'Respect privacy', description: 'Do not share private group messages.', required: true }];

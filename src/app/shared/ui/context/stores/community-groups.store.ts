@@ -55,8 +55,9 @@ export class CommunityGroupsStore {
     try {
       const group = await this.service.detail(userId, groupId);
       if (userId !== this.openUserId()) return;
+      this.initialBucket.set(group.role === 'Admin' ? 'hosting' : group.membershipStatus === 'pending' ? 'invitations' : 'participation');
       this.changes.publish(userId, group);
-      this.members(group);
+      if (!group.canTakeOver) this.members(group);
     } catch (error) { this.error.set(this.message(error)); }
   }
   closeEditor(): void { this.editorRequest?.abort(); this.editorRequest = null; this.editor.set(null); }
@@ -81,9 +82,10 @@ export class CommunityGroupsStore {
   members(group: CommunityGroupSummary): void {
     if (!canPreviewGroupMembers(group)) return;
     this.memberMenu.requestActivitiesNavigation({ type: 'members', ownerType: 'community', ownerId: group.id, ownerUserId: group.ownerUserId,
+      communityUnderReview: group.lifecycleStatus === 'under-review',
       subtitle: group.name, canManage: group.role === 'Admin' && group.membershipStatus === 'accepted',
       acceptedMembers: group.acceptedMembers, pendingMembers: group.pendingMembers, capacityTotal: group.acceptedMembers,
-      onMembersChanged: () => { void this.refresh(group.id); } });
+      onMembersChanged: members => { if (!members.some(m => m.userId === this.openUserId() && m.status === 'accepted')) void this.workspaces.refresh(); else void this.refresh(group.id); } });
   }
   async refresh(id: string): Promise<void> {
     const userId = this.openUserId(); if (!userId) return;
@@ -146,7 +148,7 @@ export class CommunityGroupsStore {
     const userId = this.openUserId() ?? '';
     try {
       if (action === 'join') this.changes.publish(userId, await this.service.join(userId, group.id));
-      else if (action === 'accept') {
+      else if (action === 'accept' || action === 'remove' || action === 'take-over') {
         await this.membersService.applyMemberAction({ ownerType: 'community', ownerId: group.id }, userId, action);
         void this.workspaces.refresh();
       }

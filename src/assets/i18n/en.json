@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.196",
+  "version": "2026.09.26.en.197",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3988,6 +3988,22 @@
     "confirmation.remove.named.asset": "Would you like to remove “{name}” from this event?",
     "groups.bucket.pending": "Pending groups",
     "groups.explore": "Explore groups",
-    "groups.actions": "Open group actions"
+    "groups.actions": "Open group actions",
+    "home.filters": "Filters",
+    "groups.open": "Open group",
+    "groups.admin.revoke": "Revoke admin",
+    "groups.admin.revoke.title": "Revoke this member’s admin role?",
+    "groups.admin.revoke.message": "{name} will remain a group member but will no longer administer the group.",
+    "groups.admin.promote.message": "{name} will be able to administer this group and appoint other group admins.",
+    "groups.takeover": "Take Over",
+    "groups.leave": "Leave group",
+    "groups.confirm.take-over.title": "Take over responsibility for this group?",
+    "groups.confirm.take-over": "You will become the responsible admin of “{name}”.",
+    "groups.confirm.remove.title": "Leave this group?",
+    "groups.confirm.remove": "Leave “{name}”? If you are responsible for the group, another admin or accepted member can take over. The group is deleted when its last member leaves.",
+    "notification.kind.community-owner-left.title": "Group needs a new administrator",
+    "notification.kind.community-owner-left.message": "You can take over responsibility for {workspaceGroupName}.",
+    "notification.kind.community-takeover.title": "Group responsibility changed",
+    "notification.kind.community-takeover.message": "An administrator took over responsibility for {workspaceGroupName}."
   }
 }

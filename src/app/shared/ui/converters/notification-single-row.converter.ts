@@ -125,6 +125,7 @@ export class NotificationSingleRowConverter implements UiConverter<
   }
 
   static targetActionId(notification: NotificationDto): string | null {
+    if (notification.sourceType === 'community' && notification.sourceId) return 'openNotificationGroup';
     if (notification.kind.startsWith('contact-chat-')) return 'openNotificationContacts';
     const eventId = this.eventId(notification);
     if (!eventId) {

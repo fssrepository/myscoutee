@@ -94,8 +94,8 @@ export class CommunityGroupsPopupComponent implements OnInit {
       const group = this.store.changed(); if (!group) return;
       const card = this.card(group);
       const { bucket, category } = this.query.filters;
-      const matches = (!category || category === group.category) && groupMembershipBucket(group) === bucket
-        && (bucket !== 'explore' || group.ownerUserId !== this.store.openUserId() && group.visibility !== 'invitation'
+      const matches = group.lifecycleStatus !== 'deleted' && (!category || category === group.category) && groupMembershipBucket(group) === bucket
+        && (bucket !== 'explore' || group.lifecycleStatus !== 'under-review' && group.ownerUserId !== this.store.openUserId() && group.visibility !== 'invitation'
           && (!group.moderationStatus || group.moderationStatus === 'accepted'));
       if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
       else if (!this.list?.patchVisibleItem(item => item.id === group.id, () => card)) {
