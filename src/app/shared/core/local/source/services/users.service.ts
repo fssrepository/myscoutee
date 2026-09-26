@@ -862,13 +862,13 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const invitations = normalizeCounter(activities?.invitations);
     const hosting = normalizeCounter(activities?.hosting);
     const feedback = normalizeCounter(activities?.feedback);
-    const cars = normalizeCounter(activities?.cars);
-    const accommodation = normalizeCounter(activities?.accommodation);
-    const supplies = normalizeCounter(activities?.supplies);
-    const tickets = normalizeCounter(activities?.tickets);
+    const cars = normalizeCounter(notificationActivities?.cars);
+    const accommodation = normalizeCounter(notificationActivities?.accommodation);
+    const supplies = normalizeCounter(notificationActivities?.supplies);
+    const tickets = normalizeCounter(notificationActivities?.tickets);
     const chat = activities?.chat;
     const event = activities?.event;
-    const asset = activities?.asset;
+    const asset = notificationActivities?.asset;
     const eventFeedback = activities?.eventFeedback;
 
     return {
@@ -881,11 +881,11 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       accommodation,
       supplies,
       tickets,
-      contacts: normalizeCounter(activities?.contacts),
+      contacts: normalizeCounter(notificationActivities?.contacts),
       feedback,
       notifications: normalizeCounter(notificationActivities?.notifications),
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
-      contactRequestsPending: normalizeCounter(activities?.contactRequestsPending),
+      contactRequestsPending: normalizeCounter(notificationActivities?.contactRequestsPending),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
         event: normalizeCounter(chat?.event),

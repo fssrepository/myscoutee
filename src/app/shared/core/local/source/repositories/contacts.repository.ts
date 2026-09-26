@@ -8,6 +8,7 @@ import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { LocalNotificationsRepository } from './notifications.repository';
 import { AppUtils } from '../../../../app-utils';
 import { LocalContactsMapper } from '../mappers';
+import { LocalUsersRepository } from './users.repository';
 
 @Injectable({
   providedIn: 'root'
@@ -15,13 +16,14 @@ import { LocalContactsMapper } from '../mappers';
 export class LocalContactsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly notifications = inject(LocalNotificationsRepository);
+  private readonly users = inject(LocalUsersRepository);
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
   }
 
   queryContactRecordsByUser(userId: string): StoredContact[] {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.users.accountId(userId);
     if (!normalizedUserId) {
       return [];
     }
@@ -33,7 +35,7 @@ export class LocalContactsRepository {
     userId: string,
     contacts: readonly StoredContact[]
   ): StoredContact[] {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.users.accountId(userId);
     if (!normalizedUserId) {
       return [];
     }

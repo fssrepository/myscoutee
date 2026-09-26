@@ -43,7 +43,8 @@ export class LocalNotificationsRepository {
     const copy = this.cloneRecord(record);
     if (!profile?.accountUserId) return copy;
     return { ...copy, recipientUserId: profile.accountUserId,
-      payload: { ...copy.payload, workspaceGroupId: profile.workspaceGroupId! } };
+      payload: { ...copy.payload, workspaceGroupId: profile.workspaceGroupId!,
+        workspaceGroupName: this.memoryDb.read().communityGroups.byId[profile.workspaceGroupId!]?.name ?? profile.workspaceGroupId! } };
   }
 
   append(records: readonly NotificationRecord[]): NotificationRecord[] {

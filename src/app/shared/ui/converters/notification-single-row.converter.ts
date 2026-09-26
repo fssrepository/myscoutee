@@ -66,6 +66,12 @@ export class NotificationSingleRowConverter implements UiConverter<
       surfaceTone: this.surfaceTone(notification, read),
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
+        ...(notification.payload?.['workspaceGroupId'] ? [{
+          label: notification.payload['workspaceGroupName'] || notification.payload['workspaceGroupId'],
+          icon: 'groups',
+          tone: 'accent' as const,
+          position: 'inline' as const
+        }] : []),
         ...(statusBadgeLabel ? [{
           label: statusBadgeLabel,
           ariaLabel: statusBadgeLabel,

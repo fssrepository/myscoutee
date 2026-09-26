@@ -113,7 +113,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
       'Asset availability request aborted.'
     );
     const page = this.assetRequestsRepository.queryAssetAvailabilityRecordPage(query);
-    return LocalAssetsMapper.toAssetAvailabilityDtoPage(page);
+    return this.assetRequestsRepository.withWorkspaceLabels(LocalAssetsMapper.toAssetAvailabilityDtoPage(page));
   }
 
   async loadStatByAssetId(query: {

@@ -1,7 +1,8 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { AssetDto } from '../../../core/contracts';
 import { PricingBuilder } from '../../../core/base/builders';
+import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 import type { AppMenuItem } from '../../components/core/menu';
@@ -100,6 +101,7 @@ export interface AssetEditorCheckoutState {
   providedIn: 'root'
 })
 export class AssetStore {
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly assetCardsRef = signal<AppDTOs.AssetDTO[]>([]);
   private assetMutationVersion = 0;
   private visibleListContextKey = '';
@@ -233,7 +235,7 @@ export class AssetStore {
   }
 
   setActiveOwnerUserId(userId: string): boolean {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.workspace.accountId(userId.trim());
     if (normalizedUserId === this.activeOwnerUserIdRef()) {
       return false;
     }
@@ -242,7 +244,7 @@ export class AssetStore {
   }
 
   isActiveOwnerUser(userId: string): boolean {
-    return this.activeOwnerUserIdRef() === userId.trim();
+    return this.activeOwnerUserIdRef() === this.workspace.accountId(userId.trim());
   }
 
   openAssetPopup(filter: AppConstants.AssetFilterType): void {

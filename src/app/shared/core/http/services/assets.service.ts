@@ -891,6 +891,8 @@ export class HttpAssetsService {
     return {
       id,
       assetId,
+      workspaceGroupId: row?.workspaceGroupId,
+      workspaceGroupName: row?.workspaceGroupName,
       ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
       userId: `${row?.userId ?? ''}`.trim(),
       isManager: row?.isManager === true || (row?.menuActions ?? []).includes('revokeManager'),

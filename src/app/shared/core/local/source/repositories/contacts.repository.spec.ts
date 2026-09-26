@@ -35,6 +35,18 @@ describe('Contact chat permission writes', () => {
   const notices = () => Object.values(db.read()[NOTIFICATIONS_TABLE_NAME].byId);
   const pending = (id: string) => db.read()[USERS_TABLE_NAME].byId[id].activities.contactRequestsPending ?? 0;
 
+  it('resolves contact reads and edits to the account in the repository', () => {
+    db.write(state => ({...state, [USERS_TABLE_NAME]: {...state[USERS_TABLE_NAME],
+      ids: [...state[USERS_TABLE_NAME].ids, 'a-group'],
+      byId: {...state[USERS_TABLE_NAME].byId, 'a-group': {...state[USERS_TABLE_NAME].byId['a'],
+        id: 'a-group', accountUserId: 'a', workspaceGroupId: 'group'}}
+    }}));
+    expect(contacts.queryContactRecordsByUser('a-group')).toEqual(contacts.queryContactRecordsByUser('a'));
+    contacts.replaceContactRecordsForUser('a-group', [saved('b'), saved('c')]);
+    expect(contacts.queryContactRecordsByUser('a').map(c => c.userId)).toEqual(['b', 'c']);
+    expect(db.read()[CONTACTS_TABLE_NAME].byOwnerUserId['a-group']).toBeUndefined();
+  });
+
   it('saving a contact grants no chat access; request notifies only the recipient once', () => {
     expect(() => chats.ensureContactChat('a', 'b')).toThrow();
     const requested = contacts.changeChatAccess('a', 'b', 'request');

@@ -1,4 +1,5 @@
 import { Injectable, signal, untracked } from '@angular/core';
+import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 
 import {
   EventFeedbackDetailDto,
@@ -204,12 +205,20 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
 export interface ActivityCounterSyncToken {
   userId: string;
   revision: number;
+  accountUserId?: string;
+  accountRevision?: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class ActivityStore {
+  private static readonly ACCOUNT_COUNTER_KEYS = new Set<keyof ActivityCounters>([
+    'cars', 'accommodation', 'supplies', 'tickets', 'contacts', 'contactRequestsPending', 'asset'
+  ]);
+
+  constructor(private readonly workspace: GroupWorkspaceContextService) {}
+
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly counterRevisionByUserId: Record<string, number> = {};
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
@@ -234,7 +243,7 @@ export class ActivityStore {
     if (!normalizedUserId) {
       return null;
     }
-    const value = this._counterOverridesByUserId()[normalizedUserId]?.[key];
+    const value = this.getUserCounterOverrides(normalizedUserId)[key];
     if (!Number.isFinite(value)) {
       return null;
     }
@@ -246,11 +255,16 @@ export class ActivityStore {
     if (!normalizedUserId) {
       return {};
     }
-    const overrides = this._counterOverridesByUserId()[normalizedUserId];
-    if (!overrides) {
-      return {};
+    const state = this._counterOverridesByUserId();
+    const overrides = { ...state[normalizedUserId] };
+    const accountId = this.workspace.accountId(normalizedUserId);
+    if (accountId !== normalizedUserId) {
+      const account = state[accountId] ?? {};
+      for (const key of ActivityStore.ACCOUNT_COUNTER_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(account, key)) Object.assign(overrides, { [key]: account[key] });
+      }
     }
-    return { ...overrides };
+    return overrides;
   }
 
   setUserCounterOverride(userId: string, key: ActivityCounterKey, value: number): void {
@@ -267,6 +281,10 @@ export class ActivityStore {
       return;
     }
     this.bumpCounterRevision(normalizedUserId);
+    const accountId = this.workspace.accountId(normalizedUserId);
+    if (accountId !== normalizedUserId && Object.keys(normalizedPatch).some(key => ActivityStore.ACCOUNT_COUNTER_KEYS.has(key as keyof ActivityCounters))) {
+      this.bumpCounterRevision(accountId);
+    }
     this.writeCounterOverrides(normalizedUserId, normalizedPatch);
   }
 
@@ -274,7 +292,9 @@ export class ActivityStore {
     const normalizedUserId = userId.trim();
     return {
       userId: normalizedUserId,
-      revision: this.counterRevisionByUserId[normalizedUserId] ?? 0
+      revision: this.counterRevisionByUserId[normalizedUserId] ?? 0,
+      accountUserId: this.workspace.accountId(normalizedUserId),
+      accountRevision: this.counterRevisionByUserId[this.workspace.accountId(normalizedUserId)] ?? 0
     };
   }
 
@@ -286,6 +306,8 @@ export class ActivityStore {
     if (
       !normalizedUserId
       || token.revision !== (this.counterRevisionByUserId[normalizedUserId] ?? 0)
+      || (token.accountUserId !== undefined && (token.accountUserId !== this.workspace.accountId(normalizedUserId)
+        || token.accountRevision !== (this.counterRevisionByUserId[token.accountUserId] ?? 0)))
     ) {
       return false;
     }
@@ -354,12 +376,20 @@ export class ActivityStore {
     userId: string,
     patch: Partial<ActivityCounters>
   ): void {
+    const accountId = this.workspace.accountId(userId);
+    const accountPatch: Partial<ActivityCounters> = {};
+    const profilePatch = { ...patch };
+    if (accountId !== userId) {
+      for (const key of ActivityStore.ACCOUNT_COUNTER_KEYS) {
+        if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+        Object.assign(accountPatch, { [key]: patch[key] });
+        delete profilePatch[key];
+      }
+    }
     this._counterOverridesByUserId.update(state => ({
       ...state,
-      [userId]: {
-        ...(state[userId] ?? {}),
-        ...patch
-      }
+      [userId]: { ...state[userId], ...profilePatch },
+      ...(Object.keys(accountPatch).length ? { [accountId]: { ...state[accountId], ...accountPatch } } : {})
     }));
   }
 
@@ -378,7 +408,7 @@ export class ActivityStore {
       return;
     }
     const normalizedCount = normalizeCounterValue(count);
-    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
     const event = cloneEventCounters(currentOverrides.event ?? baseCounters?.event);
     const patch: Partial<ActivityCounters> = { event };
 
@@ -511,7 +541,7 @@ export class ActivityStore {
       return;
     }
     const normalizedCount = normalizeCounterValue(count);
-    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
     const asset = cloneAssetCounters(currentOverrides.asset ?? baseCounters?.asset);
     asset.tickets = normalizedCount;
     this.patchUserCounterOverrides(normalizedUserId, {
@@ -531,7 +561,7 @@ export class ActivityStore {
       return;
     }
     const normalizedCount = normalizeCounterValue(count);
-    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
     const asset = cloneAssetCounters(currentOverrides.asset ?? baseCounters?.asset);
     const patch: Partial<ActivityCounters> = { asset };
 
@@ -562,7 +592,7 @@ export class ActivityStore {
     if (!normalizedUserId || !delta) {
       return;
     }
-    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
     const normalizedPatch: Partial<ActivityCounters> = {};
     const normalizedPatchRecord = normalizedPatch as Record<string, number>;
     const overrideRecord = currentOverrides as Record<string, unknown>;
@@ -651,6 +681,11 @@ export class ActivityStore {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
+    }
+    const accountId = this.workspace.accountId(normalizedUserId);
+    if (accountId !== normalizedUserId && keys?.length) {
+      const accountKeys = keys.filter(key => ActivityStore.ACCOUNT_COUNTER_KEYS.has(key));
+      if (accountKeys.length) this.clearUserCounterOverrides(accountId, accountKeys);
     }
     const current = this._counterOverridesByUserId()[normalizedUserId];
     if (!current) {

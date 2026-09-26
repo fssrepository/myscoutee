@@ -35,7 +35,10 @@ export class AssetAvailabilitySingleRowConverter {
       avatarUrl: row.avatarUrl ?? null,
       avatarToneClass: `user-color-${row.gender}`,
       surfaceTone: row.isManager ? 'accent' : this.surfaceTone(row),
-      badges,
+      badges: [...badges, ...(row.workspaceGroupId ? [{
+        label: row.workspaceGroupName || row.workspaceGroupId,
+        icon: 'groups', tone: 'accent' as const, position: 'inline' as const
+      }] : [])],
       metaRows: schedule && row.detail ? [schedule] : [],
       menuActions: row.menuActions ?? [],
       eagerDetail: row

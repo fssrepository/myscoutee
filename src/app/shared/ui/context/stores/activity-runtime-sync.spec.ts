@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActivityStore } from './activity.store';
@@ -10,7 +11,7 @@ import {
 describe('activity runtime counter signals', () => {
   it('emits signed parent activity deltas with a monotonic revision', () => {
     vi.spyOn(Date, 'now').mockReturnValue(100);
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.emitActivityEventRuntimeSync({
       eventId: 'event-1',
@@ -46,7 +47,7 @@ describe('activity runtime counter signals', () => {
 
   it('keeps member and resource revisions monotonic for same-millisecond writes', () => {
     vi.spyOn(Date, 'now').mockReturnValue(150);
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.emitActivityMembersSync({
       id: 'event-1:stage-1:group-1',
@@ -83,7 +84,7 @@ describe('activity runtime counter signals', () => {
 
   it('emits the successful resource-member save delta without recounting members', () => {
     vi.spyOn(Date, 'now').mockReturnValue(175);
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.emitActivityResourceMemberDeltaSync({
       ownerId: 'event-1',
@@ -120,7 +121,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('broadcasts every removed resource metric in one authoritative signal', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.emitActivityResourceMemberDeltaSync({
       ownerId: 'event-1',
@@ -148,7 +149,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('carries a lean member status transition with its signed counter deltas', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.emitActivityMembersSync({
       id: 'asset-1',
@@ -185,7 +186,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('retains the authoritative assignment-removal result with the canonical zero-member snapshot', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.emitActivityMembersSync({
       id: 'asset-1',
@@ -223,7 +224,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('caches resource member transitions without broadcasting a member-popup sync', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
     const pendingLeave = {
       assetId: 'asset-1',
       eventId: 'event-1',
@@ -271,7 +272,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('replaces a stale resource-member transition count with a canonical member snapshot', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.cacheActivityMemberStatusChange({
       assetId: 'asset-1',
@@ -308,7 +309,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('applies identical pending deltas from distinct borrow requests', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
     const first = store.cacheActivityMemberStatusChange({
       assetId: 'asset-1',
       requestId: 'borrow-1',
