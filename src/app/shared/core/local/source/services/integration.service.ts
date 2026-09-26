@@ -1,3 +1,4 @@
+import type { McpSettingsDto, McpClientRequest, McpClientCreatedDto, McpAuthorizationRequest, McpAuthorizationContext } from '../../../contracts/integration.interface';
 import { LocalEventsService } from './events.service';
 import { LocalCommunityGroupsService } from './community-groups.service';
 import { LocalActivityMembersService } from './activity-members.service';
@@ -98,6 +99,24 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     if (!event || !(event.adminIds?.includes(actor) || event.creatorUserId === actor || event.acceptedMemberUserIds?.includes(actor) || this.events.queryExploreItems(actor, true).some(item => item.id === entityId))) throw new Error('Forbidden');
     return event;
   }
+
+  async mcpSettings(): Promise<McpSettingsDto> {
+    await this.repository.whenReady();
+    return this.repository.mcpSettings(this.requireUserId(), new URL('/mcp/private', await this.publicBaseUrl()).toString());
+  }
+  async createMcpClient(input: McpClientRequest): Promise<McpClientCreatedDto> {
+    await this.repository.whenReady();
+    const result = this.repository.createMcpClient(this.requireUserId(), input);
+    await this.repository.flushToIndexedDb();
+    return result;
+  }
+  async revokeMcpClient(id: string): Promise<void> {
+    await this.repository.whenReady();
+    this.repository.revokeMcpClient(this.requireUserId(), id);
+    await this.repository.flushToIndexedDb();
+  }
+  mcpAuthorization(_input: McpAuthorizationRequest): Promise<McpAuthorizationContext> { return Promise.reject(new Error('mcp.local.only')); }
+  mcpConsent(_input: McpAuthorizationRequest, _approve: boolean): Promise<{url: string}> { return Promise.reject(new Error('mcp.local.only')); }
 
   async loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     await this.repository.whenReady();

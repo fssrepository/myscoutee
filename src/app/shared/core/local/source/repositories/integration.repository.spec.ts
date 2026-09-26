@@ -243,3 +243,33 @@ describe('Local affiliate summary', () => {
     injector.destroy();
   });
 });
+
+describe('Local MCP connections', () => {
+  it('persists profile-owned slots, separates API scopes, hides secrets on reload and releases revoked slots', () => {
+    let state: any = {[USERS_TABLE_NAME]: {ids: ['owner', 'other'], byId: {owner: {id: 'owner'}, other: {id: 'other'}}}};
+    const db = {read: () => state, write: (change: any) => {state = change(state);}};
+    const injector = createEnvironmentInjector([{provide: LocalMemoryDb, useValue: db}], null as any);
+    const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    const input = {name: 'Claude', redirectUri: 'https://claude.example/callback'};
+    const first = repo.createMcpClient('owner', input);
+    expect(first.secret).toMatch(/^msc_/);
+    repo.createToken('owner', 'API', 90);
+    const restored = runInInjectionContext(injector, () => new LocalIntegrationRepository());
+    expect(restored.mcpSettings('owner', '/mcp/private')).toMatchObject({remoteEnabled: false, clients: [first.client]});
+    expect(JSON.stringify(restored.mcpSettings('owner', '/mcp/private'))).not.toContain(first.secret);
+    expect(restored.mcpSettings('other', '/mcp/private').clients).toHaveLength(0);
+    expect(restored.settings('owner', '/api').tokens).toHaveLength(1);
+    restored.revokeMcpClient('other', first.client.token.id);
+    restored.revokeToken('owner', first.client.token.id);
+    expect(restored.mcpSettings('owner', '/mcp/private').clients).toHaveLength(1);
+    restored.createMcpClient('owner', input); restored.createMcpClient('owner', input);
+    expect(() => restored.createMcpClient('owner', input)).toThrow();
+    restored.revokeMcpClient('owner', first.client.token.id);
+    expect(restored.mcpSettings('owner', '/mcp/private').clients).toHaveLength(2);
+    expect(() => restored.createMcpClient('owner', input)).not.toThrow();
+    for (const redirectUri of ['http://remote.example/cb', 'https://a/cb#frag', 'https://user@a/cb', 'https://a/*']) {
+      expect(() => restored.createMcpClient('other', {name:'Bad', redirectUri})).toThrow();
+    }
+    injector.destroy();
+  });
+});

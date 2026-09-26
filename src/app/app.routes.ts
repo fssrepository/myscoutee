@@ -227,6 +227,7 @@ export const routes: Routes = [
     path: '',
     canActivate: [restrictedAreaGuard],
     children: [
+      { path: 'mcp/authorize', loadComponent: () => import('./profile/components/integration-settings-popup/mcp-authorization.component').then(m => m.McpAuthorizationComponent) },
       { path: 'home', redirectTo: 'game', pathMatch: 'full' },
       {
         path: 'game',

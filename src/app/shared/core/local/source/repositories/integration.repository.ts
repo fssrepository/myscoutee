@@ -1,3 +1,4 @@
+import type { McpSettingsDto, McpClientRequest, McpClientCreatedDto } from '../../../contracts/integration.interface';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
@@ -336,14 +337,30 @@ export class LocalIntegrationRepository {
     }
   }
 
+  mcpSettings(userId: string, resource: string): McpSettingsDto {
+    return {resource, maxClients: LocalIntegrationRepository.MAX_ACTIVE_TOKENS, remoteEnabled: false,
+      clients: this.activeTokens(this.requireUser(userId), false, 'mcp').map(({value: _secret, redirectUri, ...token}) =>
+        ({token, redirectUri: redirectUri ?? ''}))};
+  }
+  createMcpClient(userId: string, input: McpClientRequest): McpClientCreatedDto {
+    let uri: URL;
+    try { uri = new URL(input.redirectUri); } catch { throw new Error('mcp.failed'); }
+    if (!input.name.trim() || input.name.length > 80 || input.redirectUri.length > 2048 || uri.username || uri.password
+      || uri.hash || uri.search || input.redirectUri.includes('*') || !(uri.protocol === 'https:'
+        || (uri.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(uri.hostname)))) throw new Error('mcp.failed');
+    const created = this.createToken(userId, input.name, 90, false, 'mcp', input.redirectUri);
+    return {client: {token: created.token, redirectUri: input.redirectUri}, secret: created.value};
+  }
+  revokeMcpClient(userId: string, id: string): void { this.revokeToken(userId, id, false, 'mcp'); }
+
   createToken(
     userId: string,
     name: string,
-    expiresInDays: number, admin = false
+    expiresInDays: number, admin = false, scope?: 'mcp', redirectUri?: string
   ): IntegrationTokenCreatedDto {
     const user = this.requireUser(userId);
     if (admin && !user.admin) throw new Error('admin.api.denied');
-    const activeTokens = this.activeTokens(user, admin);
+    const activeTokens = this.activeTokens(user, admin, scope);
     if (activeTokens.length >= LocalIntegrationRepository.MAX_ACTIVE_TOKENS) {
       throw new Error('integration.token.limit.reached');
     }
@@ -356,7 +373,7 @@ export class LocalIntegrationRepository {
     const id = this.uuid();
     const value = `msc_${id.replaceAll('-', '')}_${this.uuid().replaceAll('-', '')}`;
     const record: LocalIntegrationTokenRecord = {
-      id, scope: admin ? 'admin-client' : 'integration',
+      id, scope: scope ?? (admin ? 'admin-client' : 'integration'), redirectUri,
       name: normalizedName,
       prefix: value.slice(0, 12),
       value,
@@ -367,24 +384,24 @@ export class LocalIntegrationRepository {
       lastUsedAt: null
     };
     this.writeTokens(user.id, [...(user.integrationTokens ?? []), record]);
-    const { value: _storedValue, ...token } = record;
+    const { value: _storedValue, redirectUri: _redirectUri, ...token } = record;
     return { token, value };
   }
 
-  revokeToken(userId: string, tokenId: string, admin = false): void {
+  revokeToken(userId: string, tokenId: string, admin = false, scope?: 'mcp'): void {
     const user = this.requireUser(userId);
     if (admin && !user.admin) throw new Error('admin.api.denied');
     const normalizedId = tokenId.trim();
     this.writeTokens(
       user.id,
-      (user.integrationTokens ?? []).filter(token => token.id !== normalizedId || (token.scope ?? 'integration') !== (admin ? 'admin-client' : 'integration'))
+      (user.integrationTokens ?? []).filter(token => token.id !== normalizedId || (token.scope ?? 'integration') !== (scope ?? (admin ? 'admin-client' : 'integration')))
     );
   }
 
-  private activeTokens(user: UserRecord, admin = false): LocalIntegrationTokenRecord[] {
+  private activeTokens(user: UserRecord, admin = false, scope?: 'mcp'): LocalIntegrationTokenRecord[] {
     const now = Date.now();
     return (user.integrationTokens ?? [])
-      .filter(token => Date.parse(token.expiresAt) > now && (token.scope ?? 'integration') === (admin ? 'admin-client' : 'integration'))
+      .filter(token => Date.parse(token.expiresAt) > now && (token.scope ?? 'integration') === (scope ?? (admin ? 'admin-client' : 'integration')))
       .map(token => ({ ...token }));
   }
 

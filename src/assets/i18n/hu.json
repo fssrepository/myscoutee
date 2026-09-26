@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.186",
+  "version": "2026.09.26.hu.187",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3876,6 +3876,27 @@
     "notification.kind.contact-chat-approved.message": "Elfogadták a közvetlen chatkérelmedet. Most már beszélgethettek.",
     "notification.kind.contact-chat-rejected.title": "Elutasított chatkérelem",
     "notification.kind.contact-chat-rejected.message": "Elutasították a közvetlen chatkérelmedet.",
-    "menu.selection.maximum": "(max. {count} db)"
+    "menu.selection.maximum": "(max. {count} db)",
+    "mcp.connections": "AI / MCP-kapcsolatok",
+    "mcp.create": "Új kapcsolat",
+    "mcp.setup": "Hozz létre külön kapcsolatot az AI-kliensekhez. A kliens beállításaiban add meg az MCP-címet, a kliensazonosítót és a titkot, majd jelentkezz be és engedélyezd a hozzáférést. A kapcsolatok 90 nap után lejárnak.",
+    "mcp.local.only": "Demó módban ezek a beállítások helyben tárolódnak. A távoli AI-kapcsolathoz működő HTTPS-telepítés szükséges.",
+    "mcp.url": "MCP-cím",
+    "mcp.client.id": "Kliensazonosító",
+    "mcp.callback": "Visszahívási cím",
+    "mcp.last.used": "Utoljára használva:",
+    "mcp.secret": "Kliens titka",
+    "mcp.empty": "Nincs aktív MCP-kapcsolat.",
+    "mcp.name": "Név (pl. Claude)",
+    "mcp.callback.help": "Másold be az AI-kliens által megadott pontos visszahívási címet. HTTPS szükséges, kivéve a helyben futó klienseknél.",
+    "mcp.revoke": "Kapcsolat visszavonása",
+    "mcp.revoke.message": "Visszavonod az AI-kliens hozzáférését? A meglévő hozzáférési és megújítási tokenjei is érvénytelenné válnak.",
+    "mcp.failed": "A művelet nem sikerült. Ellenőrizd az adatokat, majd próbáld újra.",
+    "mcp.profile": "Profil",
+    "mcp.base.profile": "Alapprofil",
+    "mcp.consent.message": "Ez a kapcsolat a profil és csoport számára engedélyezett API-műveleteket használhatja. Másik profilra nem válthat. A hozzáférést a Profil → API és integrációk alatt vonhatod vissza.",
+    "mcp.authorization.failed": "Ez az engedélykérés érvénytelen, vagy másik fiókhoz tartozik. A megfelelő fiókkal indíts új csatlakozást az AI-kliensből.",
+    "mcp.authorize": "AI-kapcsolat engedélyezése",
+    "mcp.approve": "Hozzáférés engedélyezése"
   }
 }

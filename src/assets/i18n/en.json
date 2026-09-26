@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.186",
+  "version": "2026.09.26.en.187",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3876,6 +3876,27 @@
     "notification.kind.contact-chat-approved.message": "Your direct chat request was approved. You can now chat.",
     "notification.kind.contact-chat-rejected.title": "Chat request rejected",
     "notification.kind.contact-chat-rejected.message": "Your direct chat request was rejected.",
-    "menu.selection.maximum": "(max. {count})"
+    "menu.selection.maximum": "(max. {count})",
+    "mcp.connections": "AI / MCP connections",
+    "mcp.create": "New connection",
+    "mcp.setup": "Create one connection per AI client. Add its MCP URL, client ID and secret in the client settings, then sign in and approve access. Connections expire after 90 days.",
+    "mcp.local.only": "These settings are saved locally in demo mode. Remote AI connections require a live HTTPS installation.",
+    "mcp.url": "MCP URL",
+    "mcp.client.id": "Client ID",
+    "mcp.callback": "Callback URL",
+    "mcp.last.used": "Last used:",
+    "mcp.secret": "Client secret",
+    "mcp.empty": "No active MCP connections.",
+    "mcp.name": "Name (e.g. Claude)",
+    "mcp.callback.help": "Copy the exact callback URL shown by your AI client. HTTPS is required, except for local loopback clients.",
+    "mcp.revoke": "Revoke connection",
+    "mcp.revoke.message": "Revoke this AI client’s access? Existing access and refresh tokens will stop working.",
+    "mcp.failed": "The operation failed. Check the details and retry.",
+    "mcp.profile": "Profile",
+    "mcp.base.profile": "Base profile",
+    "mcp.consent.message": "This connection can use the API operations allowed for this profile and group. It cannot switch profiles. You can revoke access under Profile → API & integrations.",
+    "mcp.authorization.failed": "This authorization request is invalid or belongs to another account. Reconnect from your AI client using the correct account.",
+    "mcp.authorize": "Authorize AI connection",
+    "mcp.approve": "Allow access"
   }
 }
