@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ContactsService } from '../../../core/base/services/contacts.service';
 import type { ContactChatAccess, ContactChatAccessAction, ContactChatAccessSnapshot, StoredContact } from '../../../core/contracts/contact.interface';
@@ -9,17 +10,19 @@ import { ProfileStore } from './profile.store';
 export class ContactChatAccessStore {
   private readonly service = inject(ContactsService);
   private readonly user = inject(UserProfileStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  readonly accountUserId = computed(() => this.workspace.accountId(this.user.activeUserId()));
   private readonly activities = inject(ActivityStore);
   private readonly profile = inject(ProfileStore);
   private readonly recordsRef = signal<ContactChatAccess[]>([]);
   readonly records = this.recordsRef.asReadonly();
   readonly contacts = signal<StoredContact[] | null>(null);
-  readonly contactCount = computed(() => this.activities.getUserCounterOverride(this.user.activeUserId(), 'contacts')
+  readonly contactCount = computed(() => this.activities.getUserCounterOverride(this.accountUserId(), 'contacts')
     ?? this.user.activeUserProfile()?.activities.contacts ?? 0);
   readonly busy = signal(false);
   readonly error = signal(false);
   readonly requestsOnly = signal(false);
-  readonly pendingCount = computed(() => this.activities.getUserCounterOverride(this.user.activeUserId(), 'contactRequestsPending')
+  readonly pendingCount = computed(() => this.activities.getUserCounterOverride(this.accountUserId(), 'contactRequestsPending')
     ?? this.user.activeUserProfile()?.activities.contactRequestsPending ?? 0);
   private actor = '';
   private generation = 0;
@@ -28,7 +31,7 @@ export class ContactChatAccessStore {
 
   constructor() {
     effect(() => {
-      const actor = this.user.activeUserId();
+      const actor = this.accountUserId();
       const open = this.profile.contactsPopupOpen();
       const counters = this.activities.getUserCounterOverrides(actor);
       const notifications = counters.notifications ?? this.user.activeUserProfile()?.activities.notifications ?? 0;
@@ -38,33 +41,33 @@ export class ContactChatAccessStore {
         if (key === this.refreshKey) return;
         this.refreshKey = key;
         if (open && actor && !this.busy()) void this.load().catch(() => {
-          if (actor === this.user.activeUserId()) this.error.set(true);
+          if (actor === this.accountUserId()) this.error.set(true);
         });
       });
     });
   }
 
   load(): Promise<void> {
-    this.ensureActor(this.user.activeUserId());
+    this.ensureActor(this.accountUserId());
     if (this.loading) return this.loading;
-    const actor = this.user.activeUserId(), generation = ++this.generation;
+    const actor = this.accountUserId(), generation = ++this.generation;
     this.error.set(false);
     const request = this.service.loadChatAccess().then(snapshot => {
-      if (actor === this.user.activeUserId() && generation === this.generation) this.apply(snapshot, actor);
+      if (actor === this.accountUserId() && generation === this.generation) this.apply(snapshot, actor);
     }).finally(() => { if (this.loading === request) this.loading = null; });
     this.loading = request;
     return request;
   }
 
   async change(contact: ContactChatAccess | undefined, peerId: string, action: ContactChatAccessAction): Promise<void> {
-    this.ensureActor(this.user.activeUserId());
+    this.ensureActor(this.accountUserId());
     if (this.busy()) return;
-    const actor = this.user.activeUserId(), generation = ++this.generation;
+    const actor = this.accountUserId(), generation = ++this.generation;
     this.busy.set(true); this.error.set(false);
     try {
       const snapshot = await this.service.changeChatAccess(peerId, action, contact?.version);
-      if (actor === this.user.activeUserId() && generation === this.generation) this.apply(snapshot, actor);
-    } finally { if (actor === this.user.activeUserId() && generation === this.generation) this.busy.set(false); }
+      if (actor === this.accountUserId() && generation === this.generation) this.apply(snapshot, actor);
+    } finally { if (actor === this.accountUserId() && generation === this.generation) this.busy.set(false); }
   }
 
   private ensureActor(actor: string): void {
@@ -79,7 +82,7 @@ export class ContactChatAccessStore {
   }
 
   replaceContacts(contacts: StoredContact[]): void {
-    const actor = this.user.activeUserId();
+    const actor = this.accountUserId();
     this.ensureActor(actor);
     // A read started before this saved edit cannot restore the older contact list.
     if (!this.busy()) this.generation++;

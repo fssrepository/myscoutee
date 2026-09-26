@@ -50,6 +50,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     const subEvent = event?.subEvents?.find(item => item.id.trim() === subEventId);
     if (!event
       || event.status !== 'A'
+      || !this.eventsRepository.queryAcceptedEventOwnerIdsByUser([event.id], userId).has(event.id)
       || !subEvent
       || !subEvent.startAt?.trim()
       || !subEvent.endAt?.trim()) {

@@ -2148,7 +2148,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         runtimeKind: context.subEvent.runtimeKind,
         eventId: context.subEvent.eventId
       }).eventId;
-      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id, {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(this.activeUser().id, card.id, {
         eventId,
         subEventId: context.subEvent.id
       });

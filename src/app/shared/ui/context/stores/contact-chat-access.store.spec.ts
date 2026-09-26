@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ContactChatAccessStore } from './contact-chat-access.store';
@@ -40,6 +41,23 @@ describe('Contact chat live store', () => {
     expect(store.pendingCount()).toBe(1);
     expect(service.loadChatAccess).not.toHaveBeenCalled();
   });
+  it('keeps a pending contact update valid when the selected group changes within the account', async () => {
+    const workspace = TestBed.inject(GroupWorkspaceContextService);
+    workspace.accountUserId.set('recipient');
+    workspace.active.set({profileId: 'recipient-group', groupId: 'group'} as any);
+    actor.set('recipient-group'); TestBed.tick();
+    expect(store.accountUserId()).toBe('recipient');
+    let complete!: (snapshot: ContactChatAccessSnapshot) => void;
+    service.changeChatAccess.mockReturnValue(new Promise(resolve => complete = resolve));
+    const change = store.change(undefined, 'peer', 'approve');
+    workspace.active.set(null); actor.set('recipient'); TestBed.tick();
+    complete({records: [], contacts: [], pendingCount: 0});
+    await change;
+    expect(store.pendingCount()).toBe(0);
+    expect(store.busy()).toBe(false);
+    expect(service.loadChatAccess).not.toHaveBeenCalled();
+  });
+
   it('retains state on error and permits retry', async () => {
     service.changeChatAccess.mockRejectedValueOnce(new Error('unavailable'));
     await expect(store.change(undefined, 'peer', 'request')).rejects.toThrow('unavailable');

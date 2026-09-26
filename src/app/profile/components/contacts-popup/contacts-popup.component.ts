@@ -1260,7 +1260,7 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.userProfileStore.activeUserId().trim();
+    return this.chatAccess.accountUserId().trim();
   }
 
   private randomId(prefix: string): string {

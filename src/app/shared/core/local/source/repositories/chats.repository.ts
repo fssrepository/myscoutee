@@ -1,3 +1,4 @@
+import { LocalUsersRepository } from './users.repository';
 import { LocalContactsRepository } from './contacts.repository';
 import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
@@ -22,6 +23,7 @@ import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 export class LocalChatsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly contacts = inject(LocalContactsRepository);
+  private readonly users = inject(LocalUsersRepository);
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
@@ -34,11 +36,16 @@ export class LocalChatsRepository {
       return null;
     }
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
-    const record = table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
+    const accountId = this.users.accountId(normalizedUserId);
+    const contact = accountId !== normalizedUserId
+      ? table.byId[LocalChatThreadMapper.buildRecordKey(accountId, normalizedChatId)] : null;
+    const record = contact?.channelType === 'contact' && contact.memberIds.includes(accountId)
+      ? contact : table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
     return record ? LocalChatThreadMapper.cloneRecord(record) : null;
   }
 
   ensureContactChat(actorId: string, targetUserId: string): ChatThreadRecord {
+    actorId = this.users.accountId(actorId);
     const targetId = targetUserId.trim();
     this.requireContactTargets(actorId, [targetId], true);
     this.requireDirectChatConsent(actorId, targetId);
@@ -51,6 +58,7 @@ export class LocalChatsRepository {
   }
 
   addContactChatMembers(actorId: string, chatId: string, userIds: readonly string[]): ChatThreadRecord {
+    actorId = this.users.accountId(actorId);
     const chat = this.queryChatItemById(actorId, chatId);
     if (!chat || chat.channelType !== 'contact' || !chat.memberIds.includes(actorId)) throw new Error('Chat unavailable');
     const added = [...new Set(userIds.map(id => id.trim()))].filter(id => !chat.memberIds.includes(id));

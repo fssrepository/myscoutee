@@ -1,3 +1,5 @@
+import { LocalAssetsService } from '../services/assets.service';
+import { LocalActivityMembersRepository } from './activity-members.repository';
 import { TestBed } from '@angular/core/testing';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
@@ -63,6 +65,30 @@ describe('Workspace explore boundaries', () => {
     expect(db.read()[ASSETS_TABLE_NAME].idsByOwnerUserId['viewer']).toContain('new-asset');
     expect(db.read()[ASSETS_TABLE_NAME].idsByOwnerUserId['viewer-a']).toBeUndefined();
     expect(assets.peekOwnedAssetsByUser('viewer-b').map(a => a.id)).toContain('new-asset');
+  });
+
+  it('opens a borrow window only for the event group participant, while inventory remains account-wide', async () => {
+    const eventId = 'event-host-a';
+    db.write(state => ({...state, [EVENTS_TABLE_NAME]: {...state[EVENTS_TABLE_NAME], byId: {
+      ...state[EVENTS_TABLE_NAME].byId, [eventId]: {...state[EVENTS_TABLE_NAME].byId[eventId],
+        subEvents: [{id: 'sub-1', startAt: '2035-04-18T19:00:00Z', endAt: '2035-04-18T22:00:00Z'}] as any}
+    }}}));
+    const assets = TestBed.inject(LocalAssetsRepository);
+    const events = TestBed.inject(LocalEventsRepository);
+    const service: LocalAssetsService = Object.assign(Object.create(LocalAssetsService.prototype), {
+      assetsRepository: assets, eventsRepository: events, waitForRouteDelay: async () => {}
+    });
+    const scope = {eventId, subEventId: 'sub-1'};
+    expect(await service.loadOwnedAssetDetailById('viewer-a', 'public', scope)).toBeNull();
+    TestBed.inject(LocalActivityMembersRepository).replaceRecordsByOwner({ownerType: 'event', ownerId: eventId}, [{
+      id: 'member-a', userId: 'viewer-a', role: 'Member', status: 'accepted', name: 'Viewer A',
+      initials: 'VA', gender: 'man', ownerType: 'event', ownerId: eventId,
+      metAtIso: '2035-04-18T18:00:00Z', actionAtIso: '2035-04-18T18:00:00Z'
+    } as any]);
+    expect((await service.loadOwnedAssetDetailById('viewer-a', 'public', scope))?.borrowWindow?.eventId).toBe(eventId);
+    expect(await service.loadOwnedAssetDetailById('viewer-b', 'public', scope)).toBeNull();
+    expect(await service.loadOwnedAssetDetailById('viewer', 'public', scope)).toBeNull();
+    expect(await service.loadOwnedAssetDetailById('viewer-b', 'public')).not.toBeNull();
   });
 
   it('limits event discovery to the selected profile and never includes the unjoined group', () => {

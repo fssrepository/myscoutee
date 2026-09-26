@@ -24,7 +24,7 @@ export class AssetTicketInfoCardConverter {
       groupLabel: options.groupLabel ?? null,
       title: row.title,
       imageUrl: this.ticketImageUrl(row),
-      metaRows: [this.ticketMetaLine(row), ...(row.workspaceGroupId ? [row.workspaceGroupName || row.workspaceGroupId] : [])],
+      metaRows: [this.ticketMetaLine(row)],
       description: row.subtitle,
       surfaceTone: row.usedAtIso ? 'published' : 'default',
       leadingIcon: {

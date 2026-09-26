@@ -141,13 +141,14 @@ export class LocalAssetsRepository {
     const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     for (const userId of normalizedUserIds) {
-      const records = (table.idsByOwnerUserId[this.usersRepository.accountId(userId)] ?? [])
+      const accountId = this.usersRepository.accountId(userId);
+      const records = (table.idsByOwnerUserId[accountId] ?? [])
         .map(id => table.byId[id])
         .filter((record): record is AssetRecord => Boolean(record))
         .filter(record => !this.isSuppressedAssetStatus(record.status))
         .sort((left, right) => right.updatedMs - left.updatedMs);
       const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, records);
-      const assets = records.map(record => this.toAssetDto(record, userId, metricsByAssetId.get(record.id)));
+      const assets = records.map(record => this.toAssetDto(record, accountId, metricsByAssetId.get(record.id)));
       assetsByUserId.set(userId, assets);
     }
     return assetsByUserId;
