@@ -207,8 +207,8 @@
       </div>
     </footer>
   </div>
-  @if (appVersionLabel) {
-    <span class="entry-version-label">{{ appVersionLabel }}</span>
+  @if (appVersionLabel()) {
+    <span class="entry-version-label">{{ appVersionLabel() }}</span>
   }
 </section>
 

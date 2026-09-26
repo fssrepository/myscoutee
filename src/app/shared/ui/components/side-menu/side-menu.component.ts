@@ -621,6 +621,7 @@ export class SideMenuComponent implements OnDestroy {
         id: 'permissions',
         label: 'install.app',
         icon: 'install_desktop',
+        counter: this.pwaService.appVersionLabel(),
         ariaLabel: 'install.app'
       });
     }

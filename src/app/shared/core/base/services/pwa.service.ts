@@ -16,6 +16,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface AppVersionPayload {
+  version?: unknown;
+  gitSha?: unknown;
   buildId?: unknown;
 }
 
@@ -38,6 +40,8 @@ export class PwaService {
   private installCompleted = false;
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
   private readonly registrationRef = signal<ServiceWorkerRegistration | null>(null);
+  private readonly appVersionLabelRef = signal('');
+  readonly appVersionLabel = this.appVersionLabelRef.asReadonly();
   private initialized = false;
   private updateCheckInFlight: Promise<void> | null = null;
   private onBeforeInstallPrompt = (event: Event) => {
@@ -75,6 +79,7 @@ export class PwaService {
       return;
     }
     this.initialized = true;
+    void this.loadAppVersionLabel();
     window.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
     window.addEventListener('appinstalled', this.onAppInstalled);
 
@@ -86,6 +91,35 @@ export class PwaService {
     if (this.isStandalone()) {
       await this.requestNotificationRegistrationForActiveUser();
     }
+  }
+
+  private async loadAppVersionLabel(): Promise<void> {
+    if (typeof fetch !== 'function' || typeof document === 'undefined') {
+      return;
+    }
+    try {
+      const response = await fetch(new URL(PwaService.APP_VERSION_URL, document.baseURI).toString(), {
+        cache: 'no-store'
+      });
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json() as AppVersionPayload;
+      const version = this.normalizeAppVersion(payload.version)
+        || this.normalizeAppVersion(payload.buildId)
+        || this.normalizeAppVersion(payload.gitSha);
+      if (version) {
+        this.appVersionLabelRef.set(version.startsWith('v') ? version : `v${version}`);
+      }
+    } catch {
+      // The local dev server may not have a stamped version file yet.
+    }
+  }
+
+  private normalizeAppVersion(value: unknown): string {
+    return typeof value === 'string'
+      ? value.trim().replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 48)
+      : '';
   }
 
   isStandalone(): boolean {

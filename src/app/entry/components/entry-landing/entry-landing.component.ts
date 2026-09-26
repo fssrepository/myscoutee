@@ -12,6 +12,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { PwaService } from '../../../shared/core/base/services/pwa.service';
 import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
@@ -33,12 +34,6 @@ import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 type EntryHeroCtaId = 'explore' | 'join';
-
-interface AppVersionPayload {
-  readonly version?: unknown;
-  readonly buildId?: unknown;
-  readonly gitSha?: unknown;
-}
 
 type HowStepSlide = WarpImageCardData;
 
@@ -265,7 +260,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
-  protected appVersionLabel = '';
+  protected readonly appVersionLabel = inject(PwaService).appVersionLabel;
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
   private readonly articlesReadySignal = new BehaviorSubject<number>(0);
   private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;
@@ -353,7 +348,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnInit(): void {
     this.updateFeaturedIdeaSmartListFilters();
-    void this.loadAppVersionLabel();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -479,36 +473,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     } else if (event.id === 'join') {
       this.requestHeaderAuth();
     }
-  }
-
-  private async loadAppVersionLabel(): Promise<void> {
-    if (typeof fetch !== 'function' || typeof document === 'undefined') {
-      return;
-    }
-    try {
-      const response = await fetch(new URL('app-version.json', document.baseURI).toString(), {
-        cache: 'no-store'
-      });
-      if (!response.ok) {
-        return;
-      }
-      const payload = await response.json() as AppVersionPayload;
-      const version = this.normalizeAppVersion(payload.version)
-        || this.normalizeAppVersion(payload.buildId)
-        || this.normalizeAppVersion(payload.gitSha);
-      if (version) {
-        this.appVersionLabel = version.startsWith('v') ? version : `v${version}`;
-        this.cdr.markForCheck();
-      }
-    } catch {
-      // The local dev server may not have a stamped version file yet.
-    }
-  }
-
-  private normalizeAppVersion(value: unknown): string {
-    return typeof value === 'string'
-      ? value.trim().replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 48)
-      : '';
   }
 
   protected requestDemo(): void {
