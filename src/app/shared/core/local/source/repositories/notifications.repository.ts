@@ -7,6 +7,7 @@ import type {
 } from '../../../contracts/notification.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import {
   NOTIFICATIONS_TABLE_NAME,
@@ -99,6 +100,7 @@ export class LocalNotificationsRepository {
         [USERS_TABLE_NAME]: nextUsersTable
       };
     });
+    this.refreshCommunityUpdates(additions);
     return additions.map(record => this.cloneRecord(record));
   }
 
@@ -188,6 +190,11 @@ export class LocalNotificationsRepository {
     };
   }
 
+  isUnread(userId: string, notificationId: string): boolean {
+    const record = this.memoryDb.read()[NOTIFICATIONS_TABLE_NAME].byId[notificationId];
+    return !!record && record.recipientUserId === this.accountId(userId) && !record.readAtIso;
+  }
+
   markRead(userId: string, notificationId: string): NotificationRecord | null {
     const normalizedUserId = this.accountId(userId);
     const normalizedNotificationId = notificationId.trim();
@@ -228,6 +235,7 @@ export class LocalNotificationsRepository {
         )
       };
     });
+    this.refreshCommunityUpdates([nextRecord]);
     return this.cloneRecord(nextRecord);
   }
 
@@ -288,6 +296,7 @@ export class LocalNotificationsRepository {
         )
       };
     });
+    this.refreshCommunityUpdates(matchingIds.map(id => table.byId[id]));
     return matchingIds.length;
   }
 
@@ -390,6 +399,28 @@ export class LocalNotificationsRepository {
       unreadCount: this.unreadCount(normalizedUserId),
       muted: table.mutedByUserId[normalizedUserId] === true
     };
+  }
+
+  private refreshCommunityUpdates(records: readonly NotificationRecord[]): void {
+    const identities = new Map(records.filter(record => record.sourceType === 'community'
+      && record.payload?.['communityAttention'] === 'members')
+      .map(record => [`${record.recipientUserId}:${record.sourceId}`, record]));
+    if (!identities.size) return;
+    this.memoryDb.write(state => {
+      const members = state[ACTIVITY_MEMBERS_TABLE_NAME];
+      const byId = { ...members.byId };
+      const notifications = state[NOTIFICATIONS_TABLE_NAME];
+      for (const record of identities.values()) {
+        const member = Object.values(byId).find(member => member.ownerType === 'community'
+          && member.ownerId === record.sourceId && member.userId === record.recipientUserId);
+        if (!member) continue;
+        const count = (notifications.idsByRecipientUserId[record.recipientUserId] ?? [])
+          .map(id => notifications.byId[id]).filter(item => !item.readAtIso && item.sourceType === 'community'
+            && item.sourceId === record.sourceId && item.payload?.['communityAttention'] === 'members').length;
+        byId[member.id] = { ...member, communityUpdates: count };
+      }
+      return { ...state, [ACTIVITY_MEMBERS_TABLE_NAME]: { ...members, byId } };
+    });
   }
 
   private unreadCountFromTable(

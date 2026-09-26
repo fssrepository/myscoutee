@@ -2466,10 +2466,19 @@ export class SideMenuComponent implements OnDestroy {
   private async openNotificationRoute(url: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingNotificationRoute === url) return;
     const params = this.router.parseUrl(url).queryParams;
-    if (!params['chatId'] && !params['mingleEventId']) return;
+    if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId']) return;
     const accountId = this.groupWorkspaces.context.accountUserId();
     this.openingNotificationRoute = url;
     try {
+      if (params['communityGroupId']) {
+        await this.communityGroups.openInvitation(`${params['communityGroupId']}`);
+        if (this.router.url === url) {
+          const tree = this.router.parseUrl(url);
+          delete tree.queryParams['communityGroupId']; delete tree.queryParams['workspaceGroupId'];
+          await this.router.navigateByUrl(tree, { replaceUrl: true });
+        }
+        return;
+      }
       const groupId = `${params['workspaceGroupId'] ?? ''}`.trim() || null;
       if (!await this.groupWorkspaces.select(groupId) || this.router.url !== url
           || this.groupWorkspaces.context.accountUserId() !== accountId) return;

@@ -2974,6 +2974,7 @@ a.app-menu__item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   min-width: var(--app-menu-counter-min-width, 1.22rem);
   height: var(--app-menu-counter-height, 1.22rem);
   box-sizing: border-box;
@@ -2983,6 +2984,8 @@ a.app-menu__item {
   color: #fff;
   font-size: 0.68rem;
   font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   line-height: 1;
   box-shadow: 0 5px 10px rgba(163, 36, 48, 0.24);
   white-space: nowrap;
@@ -3022,7 +3025,7 @@ a.app-menu__item {
 
 .app-menu__panel--dropdown-list .app-menu__counter {
   margin-left: auto;
-  min-width: 34px;
+  min-width: 20px;
   height: 20px;
   border-radius: 999px;
   padding: 0 0.38rem;
@@ -3057,9 +3060,9 @@ a.app-menu__item {
 
 .app-menu__panel--dropdown-list .app-menu__item-header > .app-menu__counter {
   margin-left: 0.34rem;
-  min-width: auto;
-  height: 18px;
-  padding: 0 0.4rem;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item--disabled .app-menu__item-header > .app-menu__counter {

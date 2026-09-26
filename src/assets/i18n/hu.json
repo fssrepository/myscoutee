@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.188",
+  "version": "2026.09.26.hu.189",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3898,6 +3898,11 @@
     "mcp.authorization.failed": "Ez az engedélykérés érvénytelen, vagy másik fiókhoz tartozik. A megfelelő fiókkal indíts új csatlakozást az AI-kliensből.",
     "mcp.authorize": "AI-kapcsolat engedélyezése",
     "mcp.approve": "Hozzáférés engedélyezése",
-    "demo.selector.status.location": "Helyadat kell"
+    "demo.selector.status.location": "Helyadat kell",
+    "notification.kind.community-invite.message": "Meghívást kaptál ebbe a csoportba.",
+    "notification.kind.community-join-requested.message": "Új csatlakozási kérelem érkezett.",
+    "notification.kind.community-member-joined.message": "A csoporttagságot jóváhagyták. A taglista megváltozott.",
+    "notification.kind.community-member-removed.message": "Egy csoporttagság megszűnt.",
+    "notification.kind.community-role-changed.message": "Megváltozott a csoportbeli szerepköröd."
   }
 }

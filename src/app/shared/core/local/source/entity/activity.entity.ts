@@ -18,6 +18,7 @@ export const ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME = APP_INDEXED_DB_KEYS.activity
 export const ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME = APP_INDEXED_DB_KEYS.activitySubEventStageRuntime;
 
 export interface ActivityMemberRecord {
+  communityUpdates?: number;
   id: string;
   userId: string;
   name: string;

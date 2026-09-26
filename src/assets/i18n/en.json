@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.188",
+  "version": "2026.09.26.en.189",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3898,6 +3898,11 @@
     "mcp.authorization.failed": "This authorization request is invalid or belongs to another account. Reconnect from your AI client using the correct account.",
     "mcp.authorize": "Authorize AI connection",
     "mcp.approve": "Allow access",
-    "demo.selector.status.location": "Location needed"
+    "demo.selector.status.location": "Location needed",
+    "notification.kind.community-invite.message": "You have been invited to this group.",
+    "notification.kind.community-join-requested.message": "A member requested to join this group.",
+    "notification.kind.community-member-joined.message": "Group membership was approved. The member list has changed.",
+    "notification.kind.community-member-removed.message": "A group membership ended.",
+    "notification.kind.community-role-changed.message": "Your group role has changed."
   }
 }

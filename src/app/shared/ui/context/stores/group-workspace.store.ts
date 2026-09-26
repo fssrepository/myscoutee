@@ -12,7 +12,7 @@ import { UserProfileStore } from './user-profile.store';
 import { ActivityStore } from './activity.store';
 import { profileMenuBadgeCount } from './app-context-store.utils';
 import { UiTaskScheduler, UiPollCoordinator } from '../../scheduler';
-import type { GroupWorkspace } from '../../../core/contracts/community-group.interface';
+import type { GroupCategory, GroupBucket, GroupWorkspace } from '../../../core/contracts/community-group.interface';
 
 @Injectable({ providedIn: 'root' })
 export class GroupWorkspaceStore {
@@ -28,7 +28,7 @@ export class GroupWorkspaceStore {
   private generation = 0;
   private refreshSequence = 0;
   private readonly workspaceSnapshots = signal<readonly GroupWorkspace[]>([]);
-  readonly workspaces = computed(() => {
+  private readonly attentionRows = computed(() => {
     const active = this.context.active();
     const profile = this.profile.activeUserProfile();
     return this.workspaceSnapshots().map(workspace => {
@@ -37,14 +37,15 @@ export class GroupWorkspaceStore {
         ? this.moderation.attention(workspace.groupId, previousPending, workspace.moderationQueueRevision)
         : { pending: 0, revision: 0 };
       const activity = active?.groupId === workspace.groupId && profile?.id === workspace.profileId
-        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id))
+        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id)) + (workspace.membersActivity ?? 0)
         : Math.max(0, workspace.activity - previousPending);
       return { ...workspace, activity: activity + attention.pending, moderationPending: attention.pending, moderationQueueRevision: attention.revision };
     });
   });
+  readonly workspaces = computed(() => this.attentionRows().filter(workspace => workspace.membershipStatus === 'accepted' && workspace.policy.workspace && !!workspace.profileId));
   readonly error = signal('');
-  readonly counters = computed(() => this.workspaces().reduce((counts, workspace) => {
-    counts[workspace.role === 'Admin' ? 'hosting' : 'participation'] += workspace.activity;
+  readonly counters = computed(() => this.attentionRows().reduce((counts, workspace) => {
+    counts[workspace.role === 'Admin' && workspace.membershipStatus === 'accepted' ? 'hosting' : 'participation'] += workspace.activity;
     return counts;
   }, { hosting: 0, participation: 0 }));
   private readonly poller = new UiTaskScheduler({
@@ -56,13 +57,27 @@ export class GroupWorkspaceStore {
   private readonly changes = inject(CommunityGroupChangesStore);
   constructor() {
     effect(() => {
+      const change = this.changes.attentionDelta();
+      if (!change || change.accountId !== this.context.accountUserId()) return;
+      untracked(() => this.workspaceSnapshots.update(rows => rows.map(row => row.groupId === change.groupId
+        ? { ...row, activity: Math.max(0, row.activity + change.delta), membersActivity: Math.max(0, (row.membersActivity ?? 0) + change.delta) } : row)));
+    });
+    effect(() => {
       const change = this.changes.change();
       if (!change || change.accountId !== this.context.accountUserId()) return;
       untracked(() => {
-        this.workspaceSnapshots.update(workspaces => workspaces.map(workspace => workspace.groupId === change.group.id
-          ? { ...workspace, name: change.group.name, activity: change.group.activity, role: change.group.role ?? '', policy: change.group.policy,
-              moderationPending: change.group.moderationPending, moderationQueueRevision: change.group.moderationQueueRevision }
-          : workspace).filter(workspace => workspace.groupId !== change.group.id || change.group.membershipStatus === 'accepted' && change.group.policy.workspace));
+        this.workspaceSnapshots.update(workspaces => {
+          const previous = workspaces.find(workspace => workspace.groupId === change.group.id);
+          const remaining = workspaces.filter(workspace => workspace.groupId !== change.group.id);
+          if (!change.group.membershipStatus) return remaining;
+          return [...remaining, {
+            ...previous, groupId: change.group.id, profileId: previous?.profileId ?? null,
+            name: change.group.name, activity: change.group.activity, role: change.group.role ?? '',
+            category: change.group.category, membershipStatus: change.group.membershipStatus,
+            policy: change.group.policy, membersActivity: change.group.membersActivity,
+            moderationPending: change.group.moderationPending, moderationQueueRevision: change.group.moderationQueueRevision
+          }];
+        });
       });
     });
     inject(DestroyRef).onDestroy(() => this.poller.destroy());
@@ -88,6 +103,12 @@ export class GroupWorkspaceStore {
       });
     });
   }
+  categoryCount(bucket: GroupBucket, category: GroupCategory | null | undefined): number {
+    if (bucket === 'explore') return 0;
+    return this.attentionRows().filter(workspace => (!category || workspace.category === category)
+      && (workspace.role === 'Admin' && workspace.membershipStatus === 'accepted' ? 'hosting' : 'participation') === bucket)
+      .reduce((sum, workspace) => sum + workspace.activity, 0);
+  }
   palette(id: string): AppMenuPalette {
     const palettes: AppMenuPalette[] = ['violet', 'orange', 'blue', 'rose', 'cyan', 'gold'];
     const ids = this.workspaces().map(w => w.groupId).sort();
@@ -99,7 +120,8 @@ export class GroupWorkspaceStore {
       { id: 'main', label: 'groups.workspace.main', icon: 'public', palette: 'green' },
       ...this.workspaces().map(workspace => ({
         id: workspace.groupId, label: workspace.name, imageFallback: AppUtils.initialsFromText(workspace.name),
-        imageShape: 'circle' as const, palette: this.palette(workspace.groupId), counter: includeAll ? null : workspace.activity || null
+        imageShape: 'circle' as const, palette: this.palette(workspace.groupId), counter: includeAll ? null : workspace.activity || null,
+        counterTone: 'alert' as const
       }))
     ];
     return items.map(item => ({ ...item, kind: 'radio', checked: selected === item.id, active: selected === item.id,
@@ -110,14 +132,14 @@ export class GroupWorkspaceStore {
     const generation = this.generation;
     const sequence = ++this.refreshSequence;
     const revision = this.context.revision();
-    const mutation = this.changes.change();
+    const mutation = this.changes.revision();
     const workspaces = await this.service.workspaces(accountId);
-    if (revision === this.context.revision() && generation === this.generation && sequence === this.refreshSequence && mutation === this.changes.change()
+    if (revision === this.context.revision() && generation === this.generation && sequence === this.refreshSequence && mutation === this.changes.revision()
         && accountId === this.context.accountUserId()) {
       this.workspaceSnapshots.set(workspaces);
       const active = this.context.active();
       if (active) {
-        const updated = workspaces.find(w => w.groupId === active.groupId);
+        const updated = workspaces.find(w => w.groupId === active.groupId && w.membershipStatus === 'accepted' && w.policy.workspace && w.profileId);
         if (updated) this.context.active.set(updated);
         else await this.select(null);
       }
@@ -130,7 +152,7 @@ export class GroupWorkspaceStore {
     const generation = this.generation;
     this.error.set(''); this.context.switching.set(true);
     try {
-      this.workspaceSnapshots.set(this.workspaces());
+      this.workspaceSnapshots.set(this.attentionRows());
       const selected = await this.users.loadProfileExtById(this.context.accountUserId(), undefined, groupId);
       if (generation !== this.generation) return false;
       if (!selected) { this.error.set('groups.switch.failed'); return false; }

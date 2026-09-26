@@ -70,6 +70,14 @@ export class CommunityGroupsPopupComponent {
   }
   constructor() {
     effect(() => {
+      const change = this.store.attentionDelta();
+      if (!change || change.accountId !== this.store.openUserId()) return;
+      this.list?.patchVisibleItem(card => card.id === change.groupId, card => card.eagerDetail ? this.card({
+        ...card.eagerDetail, activity: Math.max(0, card.eagerDetail.activity + change.delta),
+        membersActivity: Math.max(0, (card.eagerDetail.membersActivity ?? 0) + change.delta)
+      }) : card);
+    });
+    effect(() => {
       for (const groupId of Object.keys(this.moderation.groupSnapshots())) {
         this.list?.patchVisibleItem(card => card.id === groupId, card => card.eagerDetail ? this.card(card.eagerDetail) : card);
       }
@@ -99,17 +107,20 @@ export class CommunityGroupsPopupComponent {
       toolbarControls: [
         { id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
           trigger: { label: `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
-            counter: bucket === 'explore' ? null : this.store.counters()[bucket] },
+            counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
           items: (['hosting','participation','explore'] as GroupBucket[]).map(id => ({ id, label: `groups.bucket.${id}`,
             ...GROUP_BUCKET_STYLE[id], kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
-            counter: id === 'explore' ? null : this.store.counters()[id] })) },
+            counter: id === 'explore' ? 0 : this.store.counters()[id], counterTone: 'alert' })) },
         { id: 'category', kind: 'menu', align: 'start', menuKind: 'select',
           trigger: { label: category ? `groups.category.${category}` : 'groups.category.all',
-            icon: category ? GROUP_CATEGORY_ICON[category] : 'category', palette: category ? GROUP_CATEGORY_PALETTE[category] : 'teal', layout: 'pill' },
+            icon: category ? GROUP_CATEGORY_ICON[category] : 'category', palette: category ? GROUP_CATEGORY_PALETTE[category] : 'teal', layout: 'pill',
+            counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, category) },
           items: [{ id: 'all', label: 'groups.category.all', icon: 'category', palette: 'teal', surface: 'tinted',
-            kind: 'radio', showCheck: true, active: !category, checked: !category },
+            kind: 'radio', showCheck: true, active: !category, checked: !category,
+            counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket), counterTone: 'alert' },
             ...GROUP_CATEGORIES.map(id => ({ id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id],
-              kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const }))] }
+              kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const,
+              counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, id), counterTone: 'alert' as const }))] }
       ], onMenuSelect: event => { const value = event.itemSelect.id;
         this.query = { filters: event.control.id === 'bucket'
           ? { ...this.query.filters, bucket: value as GroupBucket }

@@ -11,7 +11,7 @@ import { CommunityGroupsService } from '../../../core/base/services/community-gr
 import { ActivityMembersService } from '../../../core/base/services/activity-members.service';
 import { UserProfileStore } from './user-profile.store';
 import { MemberMenuStore } from './member-menu.store';
-import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
+import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupCategory, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
@@ -30,12 +30,14 @@ export class CommunityGroupsStore {
   readonly moderationContext = signal<{ groupId: string; name: string; actor: AdminUserDto } | null>(null);
   private editorRequest: AbortController | null = null;
   private readonly changes = inject(CommunityGroupChangesStore);
+  readonly attentionDelta = this.changes.attentionDelta;
   readonly changed = computed(() => {
     const change = this.changes.change();
     return change?.accountId === this.openUserId() ? change.group : null;
   });
   private readonly workspaces = inject(GroupWorkspaceStore);
   readonly counters = this.workspaces.counters;
+  categoryCount(bucket: GroupBucket, category?: GroupCategory | null): number { return this.workspaces.categoryCount(bucket, category); }
   readonly busy = signal(false);
   readonly error = signal('');
   constructor() { effect(() => { if (this.openUserId() && this.openUserId() !== this.workspace.accountId(this.profile.activeUserId())) this.close(); }); }
@@ -91,7 +93,7 @@ export class CommunityGroupsStore {
       try {
         const workspace = (await this.service.workspaces(userId)).find(item => item.groupId === group.id);
         const profile = this.profile.getUserProfile(userId);
-        if (!workspace || !profile) throw new Error('groups.forbidden');
+        if (!workspace?.profileId || !profile) throw new Error('groups.forbidden');
         const component = await import('../../../../admin/components/content-moderation-popup/content-moderation-popup.component');
         if (userId !== this.openUserId()) return;
         this.moderationComponent.set(component.ContentModerationPopupComponent);

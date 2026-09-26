@@ -11,6 +11,7 @@ import type {
 import type { ListQuery } from '../../../core/contracts/list.interface';
 import { NotificationsService } from '../../../core/base/services/notifications.service';
 import type { AppMenuDragPosition } from '../../components/core/menu';
+import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { ActivityStore } from './activity.store';
 import { UserProfileStore } from './user-profile.store';
 
@@ -207,6 +208,8 @@ export class NotificationCenterStore {
     return page;
   }
 
+  private readonly groupChanges = inject(CommunityGroupChangesStore);
+
   async markRead(notificationId: string, signal?: AbortSignal): Promise<NotificationDto> {
     const userId = this.activeUserIdRef();
     const normalizedNotificationId = notificationId.trim();
@@ -227,6 +230,8 @@ export class NotificationCenterStore {
       );
       if (generation === this.generation && userId === this.activeUserIdRef()) {
         this.syncUnreadCount(result.unreadCount);
+        if (result.communityActivityDelta && result.notification.sourceId)
+          this.groupChanges.signalAttentionDelta(userId, result.notification.sourceId, result.communityActivityDelta);
       }
       return result.notification;
     } finally {
