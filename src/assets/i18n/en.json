@@ -3894,7 +3894,7 @@
     "mcp.failed": "The operation failed. Check the details and retry.",
     "mcp.profile": "Profile",
     "mcp.base.profile": "Base profile",
-    "mcp.consent.message": "This connection can use the API operations allowed for this profile and group. It cannot switch profiles. You can revoke access under Profile → API & integrations.",
+    "mcp.consent.message": "This connection can use the API operations allowed for this profile and group. It cannot switch profiles. You can revoke access under Profile editor → Affiliate → Client keys.",
     "mcp.authorization.failed": "This authorization request is invalid or belongs to another account. Reconnect from your AI client using the correct account.",
     "mcp.authorize": "Authorize AI connection",
     "mcp.approve": "Allow access"

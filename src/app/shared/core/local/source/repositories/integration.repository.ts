@@ -346,7 +346,7 @@ export class LocalIntegrationRepository {
     let uri: URL;
     try { uri = new URL(input.redirectUri); } catch { throw new Error('mcp.failed'); }
     if (!input.name.trim() || input.name.length > 80 || input.redirectUri.length > 2048 || uri.username || uri.password
-      || uri.hash || uri.search || input.redirectUri.includes('*') || !(uri.protocol === 'https:'
+      || input.redirectUri !== input.redirectUri.trim() || input.redirectUri.includes('#') || input.redirectUri.includes('*') || !(uri.protocol === 'https:'
         || (uri.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(uri.hostname)))) throw new Error('mcp.failed');
     const created = this.createToken(userId, input.name, 90, false, 'mcp', input.redirectUri);
     return {client: {token: created.token, redirectUri: input.redirectUri}, secret: created.value};

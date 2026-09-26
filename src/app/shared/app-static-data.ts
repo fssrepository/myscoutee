@@ -1078,7 +1078,7 @@ const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
     "icon": "api",
     "title": "API and AI assistance",
     "blurb": "Use the existing profile permissions for integrations.",
-    "contentHtml": "<ul><li>You can connect an MCP-compatible AI assistant to MyScoutee. Anonymous mode reads this help; personal operations require your API credentials.</li><li>In MyScoutee, open your profile editor → Affiliate → Client keys to create or revoke an integration key. In your AI client’s MCP settings, configure the MyScoutee adapter with the API URL, that key and its stable client ID. Never paste the key into chat.</li><li>The local adapter supports personal API operations. The remote HTTP connection currently provides help only; personal remote access and the in-app MCP connection controls are not available yet.</li><li>The AI has no extra permissions: every personal operation passes through the existing API checks for the key’s profile, group and resource ownership. Expired or revoked keys and forbidden operations are rejected.</li><li>Asset creation requires a base-profile key. Event operations follow the key’s profile and group permissions. A different client needs its own key.</li><li>For setup instructions, see the <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repository</a>.</li><li>To upload events and participants into another group, use a connection configured with a key issued by that group profile. Naming a group or switching groups in the app does not change the API key’s authority.</li><li>The connected AI discovers available operations and profile/group context from the API. Unavailable operations are omitted; write calls are not used to probe permissions. Event ownership and lifecycle conditions still apply.</li></ul>"
+    "contentHtml": "<ul><li>You can connect an MCP-compatible AI assistant to MyScoutee. Anonymous mode reads this help; personal operations require your API credentials.</li><li>In MyScoutee, open your profile editor → Affiliate → Client keys to create or revoke an integration key. In your AI client’s MCP settings, configure the MyScoutee adapter with the API URL, that key and its stable client ID. Never paste the key into chat.</li><li>For remote ChatGPT or Claude access, open AI / MCP connections below the client-key list. Create a connection using the exact callback URL displayed by the AI client. Copy the MCP URL, client ID and one-time secret into that client’s advanced connection settings, then sign in and approve access. The anonymous /mcp endpoint still provides help without login; /mcp/private requires approval.</li><li>The AI has no extra permissions: every personal operation passes through the existing API checks for the key’s profile, group and resource ownership. Expired or revoked keys and forbidden operations are rejected.</li><li>Asset creation requires a base-profile key. Event operations follow the key’s profile and group permissions. Create a separate connection for each AI client. MCP connections expire after 90 days; revocation also invalidates their access and refresh tokens. Local/demo mode saves the settings but cannot connect a remote AI client.</li><li>For setup instructions, see the <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repository</a>.</li><li>To upload events and participants into another group, use a connection configured with a key issued by that group profile. Naming a group or switching groups in the app does not change the API key’s authority.</li><li>The connected AI discovers available operations and profile/group context from the API. Unavailable operations are omitted; write calls are not used to probe permissions. Event ownership and lifecycle conditions still apply.</li></ul>"
   },
   {
     "id": "profiles",
@@ -1330,7 +1330,7 @@ const HELP_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
     "icon": "api",
     "title": "API és AI-segítség",
     "blurb": "Az integrációk a meglévő profiljogosultságokat használják.",
-    "contentHtml": "<ul><li>A MyScoutee-hoz MCP-képes AI-asszisztenst is csatlakoztathatsz. Az anonim mód ezt a súgót olvassa; személyes műveletekhez saját API-hozzáférés kell.</li><li>A MyScoutee-ban a profilszerkesztő → Affiliate → Klienskulcsok résznél hozhatsz létre vagy vonhatsz vissza integrációs kulcsot. Az AI-kliens MCP-beállításainál add meg a MyScoutee adapter API-címét, a kulcsot és a hozzá tartozó állandó kliensazonosítót. A kulcsot ne másold csevegésbe.</li><li>A helyi adapter személyes API-műveleteket is támogat. A távoli HTTP-kapcsolat jelenleg csak súgót ad; a személyes távoli hozzáférés és az alkalmazáson belüli MCP-kapcsoló még nem érhető el.</li><li>Az AI nem kap többletjogosultságot: minden személyes műveletnél a meglévő API ellenőrzi a kulcshoz tartozó profilt, csoportot és tulajdonosi jogosultságot. A lejárt vagy visszavont kulcsot és a tiltott műveletet elutasítja.</li><li>Eszköz létrehozásához alapprofilhoz tartozó kulcs kell. Az eseményműveletek a kulcs profiljának és csoportjának jogosultságait követik. Másik klienshez külön kulcs szükséges.</li><li>A beállítás lépéseit a <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repóban</a> találod.</li><li>Másik csoportba történő esemény- és résztvevőfeltöltéshez annak csoportprofiljához kiadott kulccsal beállított kapcsolatot használj. A csoport nevének megadása vagy az alkalmazás csoportváltója nem váltja át az API-kulcs jogosultságát.</li><li>A csatlakoztatott AI az API-tól lekért műveletlistából és profil-/csoportadatból tájékozódik. Csak az elérhető műveleteket kínálja; a jogosultságokat nem próbafeltöltésekkel teszteli. Az adott esemény tulajdonosi és állapotfeltételei továbbra is érvényesek.</li></ul>"
+    "contentHtml": "<ul><li>A MyScoutee-hoz MCP-képes AI-asszisztenst is csatlakoztathatsz. Az anonim mód ezt a súgót olvassa; személyes műveletekhez saját API-hozzáférés kell.</li><li>A MyScoutee-ban a profilszerkesztő → Affiliate → Klienskulcsok résznél hozhatsz létre vagy vonhatsz vissza integrációs kulcsot. Az AI-kliens MCP-beállításainál add meg a MyScoutee adapter API-címét, a kulcsot és a hozzá tartozó állandó kliensazonosítót. A kulcsot ne másold csevegésbe.</li><li>Távoli ChatGPT- vagy Claude-hozzáféréshez nyisd meg a klienskulcsok alatti AI / MCP-kapcsolatok listát. Az AI-kliens által megadott pontos visszahívási címmel hozz létre kapcsolatot. Másold az MCP-címet, a kliensazonosítót és az egyszer látható titkot a kliens haladó kapcsolati beállításaiba, majd jelentkezz be és engedélyezd a hozzáférést. Az anonim /mcp továbbra is belépés nélkül ad súgót; a /mcp/private jóváhagyást kér.</li><li>Az AI nem kap többletjogosultságot: minden személyes műveletnél a meglévő API ellenőrzi a kulcshoz tartozó profilt, csoportot és tulajdonosi jogosultságot. A lejárt vagy visszavont kulcsot és a tiltott műveletet elutasítja.</li><li>Eszköz létrehozásához alapprofilhoz tartozó kulcs kell. Az eseményműveletek a kulcs profiljának és csoportjának jogosultságait követik. Minden AI-klienshez külön kapcsolatot hozz létre. Az MCP-kapcsolat 90 nap után lejár; visszavonásakor a hozzáférési és megújítási tokenjei is érvénytelenné válnak. A local/demó mód tárolja a beállításokat, de távoli AI-klienst nem kapcsol össze.</li><li>A beállítás lépéseit a <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repóban</a> találod.</li><li>Másik csoportba történő esemény- és résztvevőfeltöltéshez annak csoportprofiljához kiadott kulccsal beállított kapcsolatot használj. A csoport nevének megadása vagy az alkalmazás csoportváltója nem váltja át az API-kulcs jogosultságát.</li><li>A csatlakoztatott AI az API-tól lekért műveletlistából és profil-/csoportadatból tájékozódik. Csak az elérhető műveleteket kínálja; a jogosultságokat nem próbafeltöltésekkel teszteli. Az adott esemény tulajdonosi és állapotfeltételei továbbra is érvényesek.</li></ul>"
   },
   {
     "id": "profiles",
@@ -1560,13 +1560,13 @@ const TERMS_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
 const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevisionDto = {
   "lang": "en",
   "languageLabel": "English",
-  "version": 2,
+  "version": 3,
   "title": "MyScoutee help",
   "summary": "A practical guide by topic",
   "description": "Profiles, communities, events, chats and tools: find the relevant topic and follow the steps.",
   "headerColor": "amber",
   "active": true,
-  "id": "help-default-v2",
+  "id": "help-default-v3",
   "documentKind": "help",
   "createdAtIso": "2026-09-26T00:00:00.000Z",
   "createdByUserId": "system",
@@ -1578,13 +1578,13 @@ const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevisionDto = {
 const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   "lang": "hu",
   "languageLabel": "Magyar",
-  "version": 2,
+  "version": 3,
   "title": "MyScoutee súgó",
   "summary": "Gyakorlati útmutató témánként",
   "description": "Profilok, közösségek, események, beszélgetések és eszközök: válassz témát, és kövesd a lépéseket.",
   "headerColor": "amber",
   "active": true,
-  "id": "help-default-hu-v2",
+  "id": "help-default-hu-v3",
   "documentKind": "help",
   "createdAtIso": "2026-09-26T00:00:00.000Z",
   "createdByUserId": "system",

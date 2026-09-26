@@ -3894,7 +3894,7 @@
     "mcp.failed": "A művelet nem sikerült. Ellenőrizd az adatokat, majd próbáld újra.",
     "mcp.profile": "Profil",
     "mcp.base.profile": "Alapprofil",
-    "mcp.consent.message": "Ez a kapcsolat a profil és csoport számára engedélyezett API-műveleteket használhatja. Másik profilra nem válthat. A hozzáférést a Profil → API és integrációk alatt vonhatod vissza.",
+    "mcp.consent.message": "Ez a kapcsolat a profil és csoport számára engedélyezett API-műveleteket használhatja. Másik profilra nem válthat. A hozzáférést a Profilszerkesztő → Affiliate → Klienskulcsok alatt vonhatod vissza.",
     "mcp.authorization.failed": "Ez az engedélykérés érvénytelen, vagy másik fiókhoz tartozik. A megfelelő fiókkal indíts új csatlakozást az AI-kliensből.",
     "mcp.authorize": "AI-kapcsolat engedélyezése",
     "mcp.approve": "Hozzáférés engedélyezése"

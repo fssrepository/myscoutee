@@ -24,17 +24,20 @@ import type { McpClientRequest } from '../../../shared/core/contracts/integratio
       @if (store.settings(); as config) {
         <small>{{ 'mcp.setup' | i18n }}</small>
         @if (!config.remoteEnabled) { <p>{{ 'mcp.local.only' | i18n }}</p> }
+        <small>{{ 'mcp.url' | i18n }}</small>
         <app-copy-link [value]="config.resource" label="mcp.url"></app-copy-link>
         <div class="integration-token-list">
           @for (client of config.clients; track client.token.id) {
             <article class="integration-token-row">
               <div class="integration-token-main">
                 <strong>{{ client.token.name }}</strong>
+                <small>{{ 'mcp.client.id' | i18n }}</small>
                 <app-copy-link [value]="client.token.id" label="mcp.client.id"></app-copy-link>
                 <small>{{ 'mcp.callback' | i18n }}: {{ client.redirectUri }}</small>
                 <small>{{ 'integration.token.expires' | i18n }} {{ client.token.expiresAt | date:'mediumDate' }}</small>
                 @if (client.token.lastUsedAt) { <small>{{ 'mcp.last.used' | i18n }} {{ client.token.lastUsedAt | date:'short' }}</small> }
                 @if (store.secretClientId() === client.token.id && store.secret()) {
+                  <small>{{ 'mcp.secret' | i18n }}</small>
                   <app-copy-link [value]="store.secret()" label="mcp.secret"></app-copy-link>
                   <small>{{ 'integration.token.copy.now' | i18n }}</small>
                 }
