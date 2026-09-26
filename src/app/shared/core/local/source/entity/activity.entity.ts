@@ -19,6 +19,8 @@ export const ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME = APP_INDEXED_DB_KEYS.a
 
 export interface ActivityMemberRecord {
   communityUpdates?: number;
+  communityAction?: string;
+  communityActor?: string;
   id: string;
   userId: string;
   name: string;

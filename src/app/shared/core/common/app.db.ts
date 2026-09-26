@@ -418,7 +418,7 @@ export class AppMemoryDb {
         return fallback;
       }
       const parsed = JSON.parse(raw) as unknown;
-      return this.normalizeState(parsed, fallback);
+      return this.initializeCommunityCounters(this.normalizeState(parsed, fallback));
     } catch {
       return fallback;
     }
@@ -533,7 +533,7 @@ export class AppMemoryDb {
       return null;
     }
 
-    return this.normalizeState(partialState, this.createEmptyState());
+    return this.initializeCommunityCounters(this.normalizeState(partialState, this.createEmptyState()));
   }
 
   private async persistToIndexedDb(state: AppMemorySchema, force = false): Promise<void> {
@@ -855,6 +855,19 @@ export class AppMemoryDb {
       distanceMeters: this.userRateDistanceValue(record),
       relevanceScore: this.userRateRelevanceScore(record)
     } satisfies ActivityRateCursorPayload);
+  }
+
+  /** Storage upgrade only. Ordinary writes maintain these counters in the member repository. */
+  private initializeCommunityCounters(state: AppMemorySchema): AppMemorySchema {
+    const missing = state.communityGroups.ids.filter(id => state.communityGroups.byId[id].pendingMembers === undefined);
+    if (!missing.length) return state;
+    const pending = new Map(missing.map(id => [id, 0]));
+    for (const member of Object.values(state[ACTIVITY_MEMBERS_TABLE_NAME].byId))
+      if (member.ownerType === 'community' && member.status === 'pending' && pending.has(member.ownerId))
+        pending.set(member.ownerId, pending.get(member.ownerId)! + 1);
+    const byId = { ...state.communityGroups.byId };
+    for (const id of missing) byId[id] = { ...byId[id], pendingMembers: pending.get(id)! };
+    return { ...state, communityGroups: { ...state.communityGroups, byId } };
   }
 
   private normalizeState(value: unknown, fallback = this.createEmptyState()): AppMemorySchema {

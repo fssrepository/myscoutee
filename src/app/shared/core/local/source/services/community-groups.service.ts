@@ -149,7 +149,11 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     await this.waitForRouteDelay('/groups'); const group = this.visible(userId, groupId);
     if (group.moderationStatus && group.moderationStatus !== 'accepted') throw new Error('Forbidden');
     const own = this.member(groupId, userId);
-    if (own && ['accepted', 'pending'].includes(own.status)) return this.dto(userId, group);
+    if (own && ['accepted', 'pending'].includes(own.status)) {
+      if (own.status === 'pending' && own.requestKind === 'join')
+        this.notifyMembers(group, 'join-requested', userId, own, this.records(groupId).filter(member => this.admin(member)).map(member => member.userId), false);
+      return this.dto(userId, group);
+    }
     if (group.visibility === 'invitation') throw new Error('Forbidden');
     const requested = this.newMember(group, userId, 'Member', 'pending', 'join', null);
     this.writeMembers(groupId, [...this.records(groupId).filter(m => m.userId !== userId), requested]);
@@ -176,7 +180,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     const rows = this.records(id);
     const invitedUserIds = [...new Set(userIds)].filter(uid => this.users.queryUserById(uid) && !rows.some(m => m.userId === uid));
     this.writeMembers(id, [...rows, ...invitedUserIds.map(uid => this.newMember(group, uid, 'Member', 'pending', 'invite', userId))]);
-    for (const member of this.records(id)) if (invitedUserIds.includes(member.userId))
+    for (const member of this.records(id)) if (userIds.includes(member.userId) && member.status === 'pending'
+      && member.requestKind === 'invite' && member.invitedByUserId === userId)
       this.notifyMembers(group, 'invite', userId, member, [member.userId], false);
     return { members: this.roster(userId, id), invitedUserIds, rejections: [], group: this.dto(userId, group) };
   }
@@ -185,6 +190,10 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     const stored = rows.find(m => m.userId === targetId); if (!stored) throw new Error('Member not found');
     const target = { ...stored }; const self = userId === targetId;
     const admin = this.admin(this.member(id, userId)); const owner = group.ownerUserId === targetId;
+    if (target.communityAction === action && target.communityActor === userId && (self || admin)) {
+      this.notifyMemberTransition(group, userId, target, action);
+      return { members: self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
+    }
     switch (action) {
       case 'accept':
         if (target.status !== 'pending' || !(target.requestKind === 'invite' ? self : admin && !self)) throw new Error('Forbidden');
@@ -199,22 +208,26 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         if (!self || !this.admin(target)) throw new Error('Forbidden'); target.organizerOnly = action === 'set-organizer-only'; break;
       default: throw new Error('Invalid action');
     }
+    target.communityAction = action; target.communityActor = userId;
     target.updatedAtIso = new Date().toISOString(); target.actionAtIso = target.updatedAtIso; target.updatedMs = Date.now();
     if (target.status === 'accepted') this.admit(group, targetId);
     this.writeMembers(id, rows.map(m => m.userId === targetId ? target : m));
     if (target.status === 'deleted' && this.users.queryUserById(targetId)?.activeWorkspaceGroupId === id)
       await this.users.selectWorkspace(targetId, null);
+    this.notifyMemberTransition(group, userId, target, action);
+    return { members: self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
+  }
+  private notifyMemberTransition(group: CommunityGroupRecord, userId: string, target: ActivityMemberRecord, action: string): void {
     if (action === 'accept') {
-      const recipients = this.records(id).filter(member => member.status === 'accepted'
-        && (!group.hideMembers || this.admin(member) || member.userId === targetId)).map(member => member.userId);
+      const recipients = this.records(group.id).filter(member => member.status === 'accepted'
+        && (!group.hideMembers || this.admin(member) || member.userId === target.userId)).map(member => member.userId);
       this.notifyMembers(group, 'member-joined', userId, target, recipients, true);
     } else if (action === 'remove') {
       this.notifyMembers(group, 'member-removed', userId, target,
-        [targetId, ...this.records(id).filter(member => this.admin(member)).map(member => member.userId)], true);
-    } else if (stored.role !== target.role) {
-      this.notifyMembers(group, 'role-changed', userId, target, [targetId], true);
+        [target.userId, ...this.records(group.id).filter(member => this.admin(member)).map(member => member.userId)], true);
+    } else if (['promote-admin', 'step-down-admin'].includes(action)) {
+      this.notifyMembers(group, 'role-changed', userId, target, [target.userId], true);
     }
-    return { members: self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
   }
   private notifyMembers(group: CommunityGroupRecord, action: string, actorId: string, subject: ActivityMemberRecord,
     recipientIds: readonly string[], attention: boolean): void {
@@ -243,8 +256,6 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private admin(member: ActivityMemberRecord | undefined): boolean { return member?.status === 'accepted' && member.role === 'Admin'; }
   private writeMembers(id: string, rows: ActivityMemberRecord[]): void {
     this.members.replaceRecordsByOwner({ ownerType: 'community', ownerId: id }, rows);
-    const group = this.groups.find(id);
-    if (group) this.groups.save({ ...group, pendingMembers: rows.filter(member => member.status === 'pending').length, version: group.version + 1 });
   }
   private membersActivity(group: CommunityGroupRecord, own?: ActivityMemberRecord): number {
     if (!own) return 0;

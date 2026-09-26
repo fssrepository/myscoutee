@@ -57,7 +57,14 @@ export class CommunityGroupsStore {
   }
   closeEditor(): void { this.editorRequest?.abort(); this.editorRequest = null; this.editor.set(null); }
   close(): void { this.closeEditor(); this.moderationContext.set(null); this.openUserId.set(null); }
-  sync(request: GroupSyncRequest, signal?: AbortSignal) { return this.service.sync(this.openUserId() ?? '', request, signal); }
+  async sync(request: GroupSyncRequest, signal?: AbortSignal) {
+    const accountId = this.openUserId() ?? '';
+    const revision = this.changes.revision();
+    const result = await this.service.sync(accountId, request, signal);
+    if (accountId !== this.openUserId() || revision !== this.changes.revision())
+      throw new DOMException('Group changed while polling', 'AbortError');
+    return result;
+  }
   async page(query: ListQuery<GroupFilters>, signal?: AbortSignal) {
     const userId = this.openUserId() ?? '';
     const page = await this.service.page(userId, query, signal);

@@ -795,8 +795,12 @@ export class LocalActivityMembersRepository {
         nextIdsByOwnerKey[ownerKey] = ownerBucket;
       }
 
+      const group = normalizedOwner.ownerType === 'community' ? state.communityGroups.byId[normalizedOwner.ownerId] : null;
       return {
         ...state,
+        ...(group ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
+          [group.id]: { ...group, pendingMembers: normalizedRecords.filter(member => member.status === 'pending').length, version: group.version + 1 }
+        } } } : {}),
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextById,
           ids: nextIds,
