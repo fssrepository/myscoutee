@@ -114,6 +114,29 @@ describe('Community membership writes and recipient attention', () => {
     expect((await service.detail('admin', 'group')).role).toBe('Member');
   });
 
+  it('lets an ordinary member leave without releasing the group or generating takeover notices on retry', async () => {
+    const left = await service.action('member', 'group', 'member', 'remove');
+    expect(left.group?.ownerUserId).toBe('admin');
+    expect(left.group?.lifecycleStatus).not.toBe('under-review');
+    expect(left.group?.acceptedMembers).toBe(1);
+    expect(await service.workspaces('member')).toEqual([]);
+    expect(notices().filter(n => n.kind === 'community-owner-left')).toHaveLength(0);
+    const count = notices().length;
+    await service.action('member', 'group', 'member', 'remove');
+    expect(notices()).toHaveLength(count);
+  });
+
+  it('does not turn an earlier member departure retry into a new responsibility-release notice', async () => {
+    await service.invite('admin', 'group', ['guest']);
+    await service.action('guest', 'group', 'guest', 'accept');
+    await service.action('guest', 'group', 'guest', 'remove');
+    await service.action('admin', 'group', 'admin', 'remove');
+    const before = notices().length;
+    await service.action('guest', 'group', 'guest', 'remove');
+    expect(notices()).toHaveLength(before);
+    expect(notices().filter(n => n.kind === 'community-owner-left').map(n => n.recipientUserId)).toEqual(['member']);
+  });
+
   it('deletes the last-member group from lists, workspaces and direct reads and tolerates retry', async () => {
     await service.action('member', 'group', 'member', 'remove');
     const result = await service.action('admin', 'group', 'admin', 'remove');

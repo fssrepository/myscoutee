@@ -199,7 +199,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     if (target.communityAction === action && target.communityActor === userId && (self || admin)) {
       this.notifyMemberTransition(group, userId, target, action);
       if (action === 'take-over') this.notifyMembers(group, 'takeover', userId, target, group.takeoverCandidates ?? [], true);
-      if (group.lifecycleStatus === 'under-review') this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
+      if (group.lifecycleStatus === 'under-review' && group.ownerReleasedAtIso === target.actionAtIso)
+        this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
       return { members: group.lifecycleStatus === 'deleted' || self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
     }
     this.visible(userId, id);
@@ -244,7 +245,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     }
     this.groups.save({ ...group, updatedAtIso: target.actionAtIso!, version: group.version + 1 });
     this.writeMembers(id, next);
-    if (group.lifecycleStatus === 'under-review' && (owner || stored.role === 'Admin'))
+    if (group.lifecycleStatus === 'under-review' && group.ownerReleasedAtIso === target.actionAtIso)
       this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
     if (action === 'take-over') this.notifyMembers(group, 'takeover', userId, target, group.takeoverCandidates ?? [], true);
     if (target.status === 'deleted' && this.users.queryUserById(targetId)?.activeWorkspaceGroupId === id)

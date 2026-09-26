@@ -78,6 +78,11 @@ export class CommunityGroupsPopupComponent implements OnInit {
   }
   constructor() {
     effect(() => {
+      const bucket = this.store.initialBucket();
+      if (!this.explore && this.query.filters.bucket !== bucket)
+        this.query = { filters: { bucket, category: null } };
+    });
+    effect(() => {
       const change = this.store.attentionDelta();
       if (!change || change.accountId !== this.store.openUserId()) return;
       this.list?.patchVisibleItem(card => card.id === change.groupId, card => card.eagerDetail ? this.card({

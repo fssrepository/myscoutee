@@ -36,7 +36,7 @@ export class CommunityGroupConverter {
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
       leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
-      surfaceTone: group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
+      surfaceTone: group.lifecycleStatus === 'under-review' ? 'review' : group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
       mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },
       mediaBottomStart: contentModerationBadge(group.moderationStatus),

@@ -25,7 +25,7 @@ export const HOME_HEADER_LOADING_ITEMS: readonly AppMenuItem<string, never>[] = 
       </a>
       @if (showControls) {
         <div class="game-actions">
-          <app-menu class="game-header-menu" kind="inline" layout="row"
+          <app-menu class="game-header-menu" kind="inline" layout="row" [model]="{ density: 'compact' }"
             [items]="items" (itemSelect)="itemSelect.emit($event)"></app-menu>
         </div>
       }

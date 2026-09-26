@@ -711,7 +711,7 @@ export class HomeComponent implements OnDestroy {
         }))
       },
       {
-        id: 'home-filter', label: 'home.filters', layout: 'pill',
+        id: 'home-filter', label: 'home.filters', layout: 'pill', counterTone: 'alert',
         icon: 'filter_alt',
         kind: 'action',
         palette: 'filter',
@@ -721,7 +721,7 @@ export class HomeComponent implements OnDestroy {
         context: { action: 'filter' }
       },
       {
-        id: 'home-history', label: 'ratings', layout: 'pill',
+        id: 'home-history', label: 'ratings', layout: 'pill', counterTone: 'alert',
         icon: 'history',
         kind: 'action',
         palette: 'gold',
