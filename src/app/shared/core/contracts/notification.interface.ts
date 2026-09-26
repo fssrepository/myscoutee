@@ -52,6 +52,7 @@ export interface NotificationPageResponseDto {
 }
 
 export interface NotificationReadResponseDto {
+  communityActivityDelta?: number;
   notification: NotificationDto;
   unreadCount: number;
 }

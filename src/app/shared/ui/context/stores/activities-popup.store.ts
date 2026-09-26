@@ -581,8 +581,10 @@ export class ActivitiesPopupStore {
     if (!Number.isFinite(unreadDelta) || unreadDelta === 0) {
       return;
     }
-    const activeUser = this.userProfileStore.activeUserProfile();
-    const activeUserId = `${activeUser?.id ?? ''}`.trim();
+    const header = [this._eventChatHeader(), this._stackedEventChatHeader()]
+      .find(item => item?.chatId === patch.chatId);
+    const activeUserId = header?.ownerUserId?.trim() || this.userProfileStore.activeUserId().trim();
+    const activeUser = this.userProfileStore.getUserProfile(activeUserId);
     if (!activeUserId) {
       return;
     }

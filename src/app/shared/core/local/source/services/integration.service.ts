@@ -1,3 +1,4 @@
+import type { McpSettingsDto, McpClientRequest, McpClientCreatedDto, McpAuthorizationRequest, McpAuthorizationContext } from '../../../contracts/integration.interface';
 import { LocalEventsService } from './events.service';
 import { LocalCommunityGroupsService } from './community-groups.service';
 import { LocalActivityMembersService } from './activity-members.service';
@@ -7,6 +8,7 @@ import { partitionEventInvitesByCapacity } from '../../../base/services/activity
 import type { ActivityMemberDTO } from '../../../contracts/activity.interface';
 import { Injectable, inject } from '@angular/core';
 
+import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
 import { SessionService } from '../../../base/services/session.service';
 import type {
   IntegrationSettingsDto,
@@ -29,6 +31,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
   private readonly repository = inject(LocalIntegrationRepository);
   private readonly operatorRepository = inject(LocalOperatorRegistryRepository);
   private readonly session = inject(SessionService);
+  private readonly profile = inject(UserProfileStore);
 
   async externalInviteLink(request: import('../../../contracts/integration.interface').ExternalInviteLinkRequest): Promise<{url: string}> {
     await this.repository.whenReady();
@@ -97,13 +100,31 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     return event;
   }
 
+  async mcpSettings(): Promise<McpSettingsDto> {
+    await this.repository.whenReady();
+    return this.repository.mcpSettings(this.requireUserId(), new URL('/mcp/private', await this.publicBaseUrl()).toString());
+  }
+  async createMcpClient(input: McpClientRequest): Promise<McpClientCreatedDto> {
+    await this.repository.whenReady();
+    const result = this.repository.createMcpClient(this.requireUserId(), input);
+    await this.repository.flushToIndexedDb();
+    return result;
+  }
+  async revokeMcpClient(id: string): Promise<void> {
+    await this.repository.whenReady();
+    this.repository.revokeMcpClient(this.requireUserId(), id);
+    await this.repository.flushToIndexedDb();
+  }
+  mcpAuthorization(_input: McpAuthorizationRequest): Promise<McpAuthorizationContext> { return Promise.reject(new Error('mcp.local.only')); }
+  mcpConsent(_input: McpAuthorizationRequest, _approve: boolean): Promise<{url: string}> { return Promise.reject(new Error('mcp.local.only')); }
+
   async loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
-    const settings = this.repository.settings(this.requireUserId(), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
+    const settings = this.repository.settings(this.requireUserId(admin), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
     if (settings.affiliate?.revenue) {
       const revenue = settings.affiliate.revenue;
-      revenue.euroSummary = LocalPaymentSummaryMapper.build(this.requireUserId(),
+      revenue.euroSummary = LocalPaymentSummaryMapper.build(this.requireUserId(admin),
         Object.entries(revenue.currencies).map(([currency, row]) => ({ currency, gross: row.gross, refunded: row.refunded })));
     }
     await this.repository.flushToIndexedDb();
@@ -117,7 +138,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`);
     const created = this.repository.createToken(
-      this.requireUserId(),
+      this.requireUserId(admin),
       name,
       expiresInDays, admin
     );
@@ -128,12 +149,12 @@ export class LocalIntegrationService extends LocalRouteDelayService {
   async revokeToken(tokenId: string, admin = false): Promise<void> {
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`);
-    this.repository.revokeToken(this.requireUserId(), tokenId, admin);
+    this.repository.revokeToken(this.requireUserId(admin), tokenId, admin);
     await this.repository.flushToIndexedDb();
   }
 
-  private requireUserId(): string {
-    const userId = this.session.activeUserId().trim();
+  private requireUserId(admin = false): string {
+    const userId = (admin ? this.session.activeUserId() : this.profile.activeUserId()).trim();
     if (!userId) {
       throw new Error('integration.user.missing');
     }

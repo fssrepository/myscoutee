@@ -720,6 +720,7 @@ export class EventChatPopupComponent implements OnDestroy {
       ? [this.chatHeaderHistoryControl()]
       : [];
     if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
+      || this.session()?.item.channelType === 'groupSupport'
       || this.isServiceChat()
       || this.isBlockedSupportChat()) {
       return supportHistoryControls;
@@ -899,7 +900,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.activityStore.signalUserChatCounterSnapshot(
-      this.activeUserId(),
+      this.userProfileStore.activeUserId(),
       result.chats,
       result.chatCounters
     );
@@ -3303,7 +3304,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!token) {
       return null;
     }
-    const resolved = await this.shareTokensService.resolveToken(token, this.activeUserId());
+    const resolved = await this.shareTokensService.resolveToken(token, this.userProfileStore.activeUserId());
     if (!resolved) {
       this.dialogStore.openInfo('This share token is expired or no longer available.', {
         title: 'Share link'
@@ -4526,7 +4527,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.userProfileStore.activeUserId().trim();
+    return this.session()?.item.ownerUserId?.trim() || this.userProfileStore.activeUserId().trim();
   }
 
   private applyLoadedChatReadReceipt(

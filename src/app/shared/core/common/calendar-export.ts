@@ -14,6 +14,7 @@ export function renderCalendarExport(actorId: string, records: readonly Activity
       || !event.id?.trim() || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end <= now.getTime()) continue;
     if (!unique.has(event.id)) unique.set(event.id, event);
   }
+  if (unique.size === 0) return '';
   for (const event of [...unique.values()].sort((a, b) => instant(a.startAtIso) - instant(b.startAtIso))) {
     const uid = btoa(Array.from(new TextEncoder().encode(`myscoutee:event:${event.id}`), byte => String.fromCharCode(byte)).join(''))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

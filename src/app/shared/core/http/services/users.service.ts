@@ -191,7 +191,7 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse> {
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null, location?: LocationCoordinates): Promise<ProfileExtByIdQueryResponse> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     try {
       const response = await this.routeDelay.withRequestTimeout(
@@ -199,7 +199,8 @@ export class HttpUsersService implements UserService {
         this.http
           .get<ProfileExtByIdQueryResponse | null>(`${this.apiBaseUrl}${HttpUsersService.USER_PROFILE_EXT_ROUTE}`, {
             params: { ...(normalizedUserId ? { userId: normalizedUserId } : {}),
-              ...(groupId !== undefined ? { groupId: groupId ?? '' } : {}) }
+              ...(groupId !== undefined ? { groupId: groupId ?? '' } : {}),
+              ...(location ? { latitude: location.latitude, longitude: location.longitude } : {}) }
           })
           .toPromise(),
         'User profile request timeout.',
@@ -207,7 +208,7 @@ export class HttpUsersService implements UserService {
       );
       const profileExt = response?.profileExt ?? null;
       if (!profileExt) {
-        if (groupId !== undefined) throw new Error('User profile not found.');
+        if (groupId !== undefined || location) throw new Error('User profile not found.');
         if (this.requiresServerProfileAuthority()) {
           return { profileExt: null };
         }
@@ -225,7 +226,7 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
       };
     } catch (error) {
-      if (groupId !== undefined) throw error;
+      if (groupId !== undefined || location) throw error;
       const status = (error as { status?: number } | null)?.status;
       const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
       if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))
@@ -253,6 +254,7 @@ export class HttpUsersService implements UserService {
     }
     try {
       type HttpLongPollResponse = {
+        accountCounters?: UserMenuCountersDto | null;
         contentModeration?: UserRealtimeLongPollResponseDto['contentModeration'];
         following?: UserRealtimeLongPollResponseDto['following'];
         feedCounters?: UserRealtimeLongPollResponseDto['feedCounters'];
@@ -294,6 +296,7 @@ export class HttpUsersService implements UserService {
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),
         counters: response.counters,
+        accountCounters: response.accountCounters,
         impressions: response.impressions,
         offlineTicketSnapshot: response.offlineTicketSnapshot
           ? {
@@ -694,6 +697,7 @@ export class HttpUsersService implements UserService {
         feedback: 0,
         notifications: 0,
         paymentRefundsPending: 0,
+        contactRequestsPending: 0,
         chat: {
           all: 0,
           event: 0,
@@ -756,6 +760,10 @@ export class HttpUsersService implements UserService {
       paymentRefundsPending: this.normalizeInitialCounterValue(
         overrides?.paymentRefundsPending,
         user.activities?.paymentRefundsPending
+      ),
+      contactRequestsPending: this.normalizeInitialCounterValue(
+        overrides?.contactRequestsPending,
+        user.activities?.contactRequestsPending
       ),
       chat: {
         all: this.normalizeInitialCounterValue(overrides?.chat?.all, user.activities?.chat?.all),
@@ -874,6 +882,8 @@ export class HttpUsersService implements UserService {
     const normalizedGender = `${user.gender ?? ''}`.trim().toLowerCase() === 'man' ? 'man' : 'woman';
     return {
       id,
+      locationCoordinates: user.locationCoordinates ?? null,
+      locationRequired: user.locationRequired === true,
       name: `${user.name ?? ''}`.trim(),
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),

@@ -2251,7 +2251,11 @@ export class EventCheckoutPopupComponent {
     this.confirmationDialogStore.open({
       title: this.paymentStep
         ? 'event.checkout.payment.confirm.title'
-        : label === 'Join' ? 'event.checkout.join.confirm.title' : `${label}?`,
+        : label === 'Join' ? 'event.checkout.join.confirm.title'
+        : label.toLowerCase() === 'update' ? 'event.checkout.update.confirm.title'
+        : this.checkoutActionPendingReason() === 'waitlist' ? 'event.checkout.waitlist.confirm.title'
+        : this.checkoutActionPendingReason() === 'approval' ? 'event.checkout.request.confirm.title'
+        : 'event.checkout.continue.confirm.title',
       message: this.dialog()?.record.title ?? 'Checkout',
       warningMessage: this.checkoutConfirmWarningMessage(),
       cancelLabel: 'Back',

@@ -755,12 +755,13 @@ export class LocalAssetsMapper {
 export class LocalAssetTicketsMapper {
   static toTicketDTOs(
     records: readonly { ticket: EventTicketRecord; event: ActivityContracts.ActivityEventRecord }[],
-    creatorsByUserId: Readonly<Record<string, UserRecord>> = {}
+    creatorsByUserId: Readonly<Record<string, UserRecord>> = {},
+    groupsById: Readonly<Record<string, { name: string }>> = {}
   ): AssetContracts.AssetTicketDTO[] {
     return this.cloneDTOs(records
       .filter(({ ticket }) => ticket.status === 'A')
       .map(({ ticket, event }) => this.toTicketDTO(
-        ticket, LocalActivityEventsMapper.toDto(event), creatorsByUserId[event.creatorUserId ?? '']
+        ticket, LocalActivityEventsMapper.toDto(event), creatorsByUserId[event.creatorUserId ?? ''], groupsById
       )));
   }
 
@@ -789,12 +790,15 @@ export class LocalAssetTicketsMapper {
   private static toTicketDTO(
     ticket: EventTicketRecord,
     dto: ActivityContracts.ActivityEventDTO,
-    creator?: UserRecord
+    creator?: UserRecord,
+    groupsById: Readonly<Record<string, { name: string }>> = {}
   ): AssetContracts.AssetTicketDTO {
     const creatorName = creator?.name?.trim() || dto.creatorName;
     const creatorAvatarUrl = AppUtils.firstImageUrl(creator?.images);
     return {
       id: dto.id,
+      workspaceGroupId: creator?.workspaceGroupId,
+      workspaceGroupName: creator?.workspaceGroupId ? groupsById[creator.workspaceGroupId]?.name : undefined,
       revision: [
         ticket.id,
         ticket.code,

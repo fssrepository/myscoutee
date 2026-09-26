@@ -1,3 +1,4 @@
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
 import { LocalUsersMapper } from '../mappers/user.mapper';
 import type { UserRecord } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
@@ -10,19 +11,20 @@ import { LocalAdminModerationRepository } from '../repositories/admin-moderation
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
-import { GROUP_CATEGORIES, communityGroupSummary, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
+import { GROUP_CATEGORIES, communityGroupSummary, groupSort, groupMembershipBucket, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../../contracts/list.interface';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
 
 @Injectable({ providedIn: 'root' })
 export class LocalCommunityGroupsService extends LocalRouteDelayService implements ICommunityGroupsService {
+  private readonly notifications = inject(LocalNotificationsRepository);
   private readonly groups = inject(LocalCommunityGroupsRepository);
   private readonly members = inject(LocalActivityMembersRepository);
   private readonly users = inject(LocalUsersRepository);
   private readonly reports = inject(LocalAdminModerationRepository);
   async sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse> {
     await this.groups.ready();
-    const page = await this.page(userId, { page: 0, pageSize: Math.max(1, this.groups.records().length), filters: request, sort: 'distance', direction: 'asc' }, signal);
+    const page = await this.page(userId, { page: 0, pageSize: Math.max(1, this.groups.records().length), filters: request, sort: request.sort }, signal);
     const known = new Map(request.knownItems.map(item => [item.id, item.revision]));
     const ids = new Set(page.items.map(group => group.id));
     const tail = page.items.findIndex(group => group.id === request.tailId);
@@ -32,12 +34,13 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   }
   async workspaces(userId: string): Promise<GroupWorkspace[]> {
     await this.groups.ready();
-    return this.groups.records().flatMap(group => {
+    return this.groups.records().filter(g => g.lifecycleStatus !== 'deleted').flatMap(group => {
       const member = this.member(group.id, userId);
       const profile = this.users.queryUserById(this.profileId(group.id, userId));
-      return group.policy.workspace && member?.status === 'accepted' && profile
-        ? [{ groupId: group.id, profileId: profile.id, name: group.name, role: member.role,
-          activity: this.attention(profile) + (this.admin(member) ? group.moderationPending ?? 0 : 0),
+      return member && ['accepted', 'pending'].includes(member.status)
+        ? [{ groupId: group.id, profileId: profile?.id ?? null, name: group.name, role: member.role, category: group.category,
+          membershipStatus: member.status as 'accepted' | 'pending', requestKind: member.requestKind === 'invite' ? 'invite' as const : member.requestKind === 'join' ? 'join' as const : null, membersActivity: this.membersActivity(group, member),
+          activity: (member.status === 'accepted' ? this.attention(profile) : 0) + this.membersActivity(group, member) + (this.admin(member) ? group.moderationPending ?? 0 : 0),
           moderationPending: this.admin(member) ? group.moderationPending ?? 0 : 0,
           moderationQueueRevision: this.admin(member) ? group.moderationQueueRevision ?? 0 : 0,
           policy: structuredClone(group.policy) }] : [];
@@ -45,7 +48,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   }
   async resolveWorkspace(userId: string, groupId: string | null): Promise<GroupWorkspaceSelection> {
     await this.groups.ready();
-    const workspace = groupId ? (await this.workspaces(userId)).find(w => w.groupId === groupId) : null;
+    const workspace = groupId ? (await this.workspaces(userId)).find(w => w.groupId === groupId && w.membershipStatus === 'accepted' && w.policy.workspace && w.profileId) : null;
     if (groupId && !workspace) throw new Error('Forbidden');
     const profile = this.users.queryUserById(workspace?.profileId ?? userId);
     if (!profile) throw new Error('Profile not found');
@@ -79,30 +82,34 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private attention(user: UserRecord | null): number {
     if (!user) return 0;
     const a = user.activities;
-    return [a.game, a.chats, a.event?.all ?? a.events, a.cars, a.accommodation, a.supplies,
-      a.tickets, a.contacts, a.feedback].reduce<number>((sum, count) => sum + Math.max(0, count ?? 0), 0)
+    return [a.game, a.chats, a.event?.all ?? 0, a.feedback, a.paymentRefundsPending]
+      .reduce<number>((sum, count) => sum + Math.max(0, count ?? 0), 0)
       + (user.impressions?.host?.unreadCount ? 1 : 0) + (user.impressions?.member?.unreadCount ? 1 : 0);
   }
   async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>> {
     await this.waitForRouteDelay('/groups'); await this.groups.ready(); signal?.throwIfAborted();
     const bucket = query.filters?.bucket ?? 'explore';
-    const rows = this.groups.records().filter(g => {
+    const rows = this.groups.records().filter(g => g.lifecycleStatus !== 'deleted').filter(g => {
       const own = this.member(g.id, userId);
       const admin = this.admin(own);
       if (bucket === 'hosting') return admin;
-      if (bucket === 'participation') return !admin && !!own && ['accepted', 'pending'].includes(own.status);
-      return g.ownerUserId !== userId && !own && g.visibility !== 'invitation'
+      if (bucket === 'invitations') return own?.status === 'pending' && own.requestKind === 'invite';
+      if (bucket === 'pending') return own?.status === 'pending' && own.requestKind !== 'invite';
+      if (bucket === 'participation') return !admin && own?.status === 'accepted';
+      return g.lifecycleStatus !== 'under-review' && !own && g.visibility !== 'invitation'
         && (!g.moderationStatus || g.moderationStatus === 'accepted');
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
       .map(g => this.dto(userId, g)).sort((a, b) =>
-        Math.ceil((a.distanceKm ?? Infinity) / 5) - Math.ceil((b.distanceKm ?? Infinity) / 5)
-        || b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id));
+        (groupSort(bucket, query.sort) === 'distance'
+          ? (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
+          : b.updatedAtIso.localeCompare(a.updatedAtIso)) || a.id.localeCompare(b.id));
     const offset = Number(query.cursor ?? 0); if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
     const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
     return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
       context: (await this.workspaces(userId)).reduce((counts, w) => {
-        counts[w.role === 'Admin' ? 'hosting' : 'participation'] += w.activity; return counts;
-      }, { hosting: 0, participation: 0 }) };
+        const membershipBucket = groupMembershipBucket(w);
+        if (membershipBucket !== 'explore') counts[membershipBucket] += w.activity; return counts;
+      }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }) };
   }
   async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups', signal); await this.groups.ready(); signal?.throwIfAborted();
@@ -113,7 +120,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     if (!request.name.trim() || [...request.name].length > 20 || request.description.length > 4000
       || !GROUP_CATEGORIES.includes(request.category) || !['public','private','invitation'].includes(request.visibility)) throw new Error('Invalid group');
     const existing = request.id ? this.visible(request.userId, request.id) : null;
-    if (existing && !this.admin(this.member(existing.id, request.userId))) throw new Error('Forbidden');
+    if (existing && (existing.lifecycleStatus === 'under-review' || !this.admin(this.member(existing.id, request.userId)))) throw new Error('Forbidden');
     if (existing && existing.version !== request.version) throw new Error('Group changed');
     const now = new Date().toISOString();
     const group: CommunityGroupRecord = {
@@ -121,8 +128,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       name: request.name.trim(), description: request.description.trim(), imageUrl: request.imageUrl,
       category: request.category, visibility: request.visibility, hideMembers: request.hideMembers,
       policy: structuredClone(request.policy), createdAtIso: existing?.createdAtIso ?? now, updatedAtIso: now,
-      version: (existing?.version ?? -1) + 1, moderationStatus: existing?.moderationStatus,
-      moderationPending: existing?.moderationPending, moderationQueueRevision: existing?.moderationQueueRevision
+      version: (existing?.version ?? -1) + 1, pendingMembers: existing?.pendingMembers ?? 0, moderationStatus: existing?.moderationStatus,
+      moderationPending: existing?.moderationPending, moderationQueueRevision: existing?.moderationQueueRevision,
+      lifecycleStatus: existing?.lifecycleStatus, ownerReleasedAtIso: existing?.ownerReleasedAtIso, takeoverCandidates: existing?.takeoverCandidates
     };
     this.groups.save(group);
     if (!existing) this.writeMembers(group.id, [this.newMember(group, request.userId, 'Admin', 'accepted', null, request.userId)]);
@@ -144,11 +152,17 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   }
   async join(userId: string, groupId: string): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups'); const group = this.visible(userId, groupId);
-    if (group.moderationStatus && group.moderationStatus !== 'accepted') throw new Error('Forbidden');
+    if (group.lifecycleStatus === 'under-review' || group.moderationStatus && group.moderationStatus !== 'accepted') throw new Error('Forbidden');
     const own = this.member(groupId, userId);
-    if (own && ['accepted', 'pending'].includes(own.status)) return this.dto(userId, group);
+    if (own && ['accepted', 'pending'].includes(own.status)) {
+      if (own.status === 'pending' && own.requestKind === 'join')
+        this.notifyMembers(group, 'join-requested', userId, own, this.records(groupId).filter(member => this.admin(member)).map(member => member.userId), false);
+      return this.dto(userId, group);
+    }
     if (group.visibility === 'invitation') throw new Error('Forbidden');
-    this.writeMembers(groupId, [...this.records(groupId).filter(m => m.userId !== userId), this.newMember(group, userId, 'Member', 'pending', 'join', null)]);
+    const requested = this.newMember(group, userId, 'Member', 'pending', 'join', null);
+    this.writeMembers(groupId, [...this.records(groupId).filter(m => m.userId !== userId), requested]);
+    this.notifyMembers(group, 'join-requested', userId, requested, this.records(groupId).filter(member => this.admin(member)).map(member => member.userId), false);
     return this.dto(userId, group);
   }
   roster(userId: string, id: string, pendingOnly = false): ActivityMemberDTO[] {
@@ -167,41 +181,108 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   }
   async invite(userId: string, id: string, userIds: readonly string[]): Promise<ActivityMembersInviteResultDTO> {
     const group = this.visible(userId, id);
-    if (!this.admin(this.member(id, userId)) || userIds.length > 200) throw new Error('Forbidden');
+    if (group.lifecycleStatus === 'under-review' || !this.admin(this.member(id, userId)) || userIds.length > 200) throw new Error('Forbidden');
     const rows = this.records(id);
     const invitedUserIds = [...new Set(userIds)].filter(uid => this.users.queryUserById(uid) && !rows.some(m => m.userId === uid));
     this.writeMembers(id, [...rows, ...invitedUserIds.map(uid => this.newMember(group, uid, 'Member', 'pending', 'invite', userId))]);
+    for (const member of this.records(id)) if (userIds.includes(member.userId) && member.status === 'pending'
+      && member.requestKind === 'invite' && member.invitedByUserId === userId)
+      this.notifyMembers(group, 'invite', userId, member, [member.userId], false);
     return { members: this.roster(userId, id), invitedUserIds, rejections: [], group: this.dto(userId, group) };
   }
   async action(userId: string, id: string, targetId: string, action: string): Promise<ActivityMemberActionResultDTO> {
-    const group = this.visible(userId, id); const rows = this.records(id);
+    let group = this.groups.find(id); if (!group) throw new Error('Group not found');
+    const rows = this.members.peekRecordsByOwner({ ownerType: 'community', ownerId: id }, true);
     const stored = rows.find(m => m.userId === targetId); if (!stored) throw new Error('Member not found');
     const target = { ...stored }; const self = userId === targetId;
     const admin = this.admin(this.member(id, userId)); const owner = group.ownerUserId === targetId;
+    if (target.communityAction === action && target.communityActor === userId && (self || admin)) {
+      this.notifyMemberTransition(group, userId, target, action);
+      if (action === 'take-over') this.notifyMembers(group, 'takeover', userId, target, group.takeoverCandidates ?? [], true);
+      if (group.lifecycleStatus === 'under-review' && group.ownerReleasedAtIso === target.actionAtIso)
+        this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
+      return { members: group.lifecycleStatus === 'deleted' || self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
+    }
+    this.visible(userId, id);
+    if (group.lifecycleStatus === 'under-review' && !['take-over', 'remove'].includes(action)) throw new Error('Forbidden');
     switch (action) {
       case 'accept':
         if (target.status !== 'pending' || !(target.requestKind === 'invite' ? self : admin && !self)) throw new Error('Forbidden');
         target.status = 'accepted'; target.requestKind = null; target.pendingSource = null; break;
       case 'remove':
-        if (owner || !(self || admin)) throw new Error('Forbidden'); target.status = 'deleted'; break;
+        if (!(self || admin && !owner && !this.admin(target))) throw new Error('Forbidden'); target.status = 'deleted'; target.managerGrantedByUserId = null; break;
       case 'promote-admin':
-        if (!admin || target.status !== 'accepted') throw new Error('Forbidden'); target.role = 'Admin'; break;
+        if (!admin || self || target.status !== 'accepted' || this.admin(target)) throw new Error('Forbidden'); target.role = 'Admin'; target.managerGrantedByUserId = userId; break;
       case 'step-down-admin':
-        if (owner || !self || !this.admin(target)) throw new Error('Forbidden'); target.role = 'Member'; target.organizerOnly = false; break;
+        if (!self || !this.admin(target)) throw new Error('Forbidden'); target.role = 'Member'; target.organizerOnly = false; target.managerGrantedByUserId = null; break;
+      case 'revoke-admin':
+        if (!admin || self || owner || !this.admin(target) || target.managerGrantedByUserId !== userId) throw new Error('Forbidden');
+        target.role = 'Member'; target.organizerOnly = false; target.managerGrantedByUserId = null; break;
+      case 'take-over':
+        if (!self || !this.canTakeOver(group, rows, target)) throw new Error('Forbidden');
+        group = { ...group, ownerUserId: userId, lifecycleStatus: 'active' };
+        target.role = 'Admin'; target.managerGrantedByUserId = null; break;
       case 'set-organizer-only': case 'set-participant':
         if (!self || !this.admin(target)) throw new Error('Forbidden'); target.organizerOnly = action === 'set-organizer-only'; break;
       default: throw new Error('Invalid action');
     }
+    if (stored.status === target.status && stored.role === target.role
+      && !['set-organizer-only', 'set-participant', 'take-over'].includes(action))
+      return { members: this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
+    target.communityAction = action; target.communityActor = userId;
     target.updatedAtIso = new Date().toISOString(); target.actionAtIso = target.updatedAtIso; target.updatedMs = Date.now();
-    if (target.status === 'accepted') this.admit(group, targetId);
-    this.writeMembers(id, rows.map(m => m.userId === targetId ? target : m));
+    if (action === 'accept') this.admit(group, targetId);
+    const next = rows.map(m => m.userId === targetId ? target : m);
+    const remaining = next.filter(m => m.status === 'accepted' || m.status === 'pending');
+    if (!remaining.length) group = { ...group, lifecycleStatus: 'deleted', takeoverCandidates: [] };
+    else if ((owner && ['remove', 'step-down-admin'].includes(action)) || !remaining.some(m => this.admin(m))) {
+      if (group.lifecycleStatus !== 'under-review') {
+        const accepted = remaining.filter(m => m.status === 'accepted' && m.userId !== userId);
+        const admins = accepted.filter(m => this.admin(m));
+        group = { ...group, lifecycleStatus: 'under-review', ownerReleasedAtIso: target.actionAtIso,
+          takeoverCandidates: (admins.length ? admins : accepted).map(m => m.userId) };
+      }
+    }
+    this.groups.save({ ...group, updatedAtIso: target.actionAtIso!, version: group.version + 1 });
+    this.writeMembers(id, next);
+    if (group.lifecycleStatus === 'under-review' && group.ownerReleasedAtIso === target.actionAtIso)
+      this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
+    if (action === 'take-over') this.notifyMembers(group, 'takeover', userId, target, group.takeoverCandidates ?? [], true);
     if (target.status === 'deleted' && this.users.queryUserById(targetId)?.activeWorkspaceGroupId === id)
       await this.users.selectWorkspace(targetId, null);
-    return { members: self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
+    this.notifyMemberTransition(group, userId, target, action);
+    return { members: group.lifecycleStatus === 'deleted' || self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
+  }
+  private notifyMemberTransition(group: CommunityGroupRecord, userId: string, target: ActivityMemberRecord, action: string): void {
+    if (action === 'accept') {
+      const recipients = this.records(group.id).filter(member => member.status === 'accepted'
+        && (!group.hideMembers || this.admin(member) || member.userId === target.userId)).map(member => member.userId);
+      this.notifyMembers(group, 'member-joined', userId, target, recipients, true);
+    } else if (action === 'remove') {
+      if (group.ownerReleasedAtIso === target.actionAtIso) return;
+      this.notifyMembers(group, 'member-removed', userId, target,
+        [target.userId, ...this.records(group.id).filter(member => this.admin(member)).map(member => member.userId)], true);
+    } else if (['promote-admin', 'revoke-admin', 'step-down-admin'].includes(action)) {
+      this.notifyMembers(group, 'role-changed', userId, target, [target.userId], true);
+    }
+  }
+  private notifyMembers(group: CommunityGroupRecord, action: string, actorId: string, subject: ActivityMemberRecord,
+    recipientIds: readonly string[], attention: boolean): void {
+    const sender = this.users.queryUserById(actorId);
+    const kind = `community-${action}`;
+    this.notifications.append([...new Set(recipientIds)].filter(id => id !== actorId).map(recipientUserId => ({
+      id: `${kind}:${subject.id}:${subject.actionAtIso}:${recipientUserId}`, recipientUserId, kind, category: 'user',
+      title: group.name, message: group.name, createdAtIso: subject.actionAtIso ?? new Date().toISOString(),
+      senderUserId: actorId, senderName: sender?.name, senderAvatarUrl: sender?.images?.[0],
+      sourceType: 'community', sourceId: group.id, actionPath: `/game?communityGroupId=${encodeURIComponent(group.id)}`,
+      payload: { workspaceGroupId: group.id, workspaceGroupName: group.name, communityGroupId: group.id,
+        memberUserId: subject.userId, notification_message_key: `notification.kind.${kind}.message`,
+        ...(attention ? { communityAttention: 'members' } : {}) }
+    })));
   }
   private visible(userId: string, id: string): CommunityGroupRecord {
     const group = this.groups.find(id); const own = this.member(id, userId);
-    if (!group || group.visibility === 'invitation' && (!own || !['accepted', 'pending'].includes(own.status))) throw new Error('Group not found');
+    if (!group || group.lifecycleStatus === 'deleted' || group.lifecycleStatus === 'under-review' && !own || group.visibility === 'invitation' && (!own || !['accepted', 'pending'].includes(own.status))) throw new Error('Group not found');
     if (group.moderationStatus && group.moderationStatus !== 'accepted' && !own) throw new Error('Group not found');
     return group;
   }
@@ -210,8 +291,23 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   }
   private member(id: string, userId: string): ActivityMemberRecord | undefined { return this.records(id).find(m => m.userId === userId); }
   private admin(member: ActivityMemberRecord | undefined): boolean { return member?.status === 'accepted' && member.role === 'Admin'; }
-  private writeMembers(id: string, rows: ActivityMemberRecord[]): void { this.members.replaceRecordsByOwner({ ownerType: 'community', ownerId: id }, rows); }
+  private writeMembers(id: string, rows: ActivityMemberRecord[]): void {
+    this.members.replaceRecordsByOwner({ ownerType: 'community', ownerId: id }, rows);
+  }
+  private membersActivity(group: CommunityGroupRecord, own?: ActivityMemberRecord): number {
+    if (!own) return 0;
+    return Math.max(0, own.communityUpdates ?? 0) + this.pendingMembers(group, own);
+  }
+  private pendingMembers(group: CommunityGroupRecord, own?: ActivityMemberRecord): number {
+    return this.admin(own) ? group.pendingMembers ?? 0
+      : own?.status === 'pending' && own.requestKind === 'invite' ? 1 : 0;
+  }
+  private canTakeOver(group: CommunityGroupRecord, rows: ActivityMemberRecord[], own?: ActivityMemberRecord): boolean {
+    return group.lifecycleStatus === 'under-review' && own?.status === 'accepted'
+      && (own.role === 'Admin' || !rows.some(m => this.admin(m)));
+  }
   private dto(userId: string, group: CommunityGroupRecord): CommunityGroup {
+    group = this.groups.find(group.id) ?? group;
     const rows = this.records(group.id); const own = rows.find(m => m.userId === userId);
     const owner = this.users.queryUserById(group.ownerUserId); const viewer = this.users.queryUserById(userId);
     const a = owner?.locationCoordinates; const b = viewer?.locationCoordinates;
@@ -222,16 +318,17 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         * Math.cos(b.latitude * rad) * Math.sin((b.longitude - a.longitude) * rad / 2) ** 2;
       distanceKm = Math.round(12742 * Math.asin(Math.sqrt(Math.min(1, h))) * 10) / 10;
     }
-    return { ...group, ownerName: owner?.name ?? '', ownerAvatarUrl: owner?.images?.[0] ?? null,
+    return { ...group, canTakeOver: this.canTakeOver(group, rows, own), ownerName: owner?.name ?? '', ownerAvatarUrl: owner?.images?.[0] ?? null,
       role: own?.role === 'Admin' ? 'Admin' : own ? 'Member' : null,
       membershipStatus: own?.status === 'accepted' ? 'accepted' : own ? 'pending' : null,
       requestKind: own?.requestKind === 'invite' ? 'invite' : own?.requestKind === 'join' ? 'join' : null, organizerOnly: own?.organizerOnly === true,
       acceptedMembers: rows.filter(m => m.status === 'accepted').length,
-      pendingMembers: this.admin(own) ? rows.filter(m => m.status === 'pending').length : 0,
+      pendingMembers: this.pendingMembers(group, own),
+      membersActivity: this.membersActivity(group, own),
       moderationPending: this.admin(own) ? group.moderationPending ?? 0 : 0,
       moderationQueueRevision: this.admin(own) ? group.moderationQueueRevision ?? 0 : 0,
-      activity: this.attention(this.users.queryUserById(this.profileId(group.id, userId)))
-        + (this.admin(own) ? group.moderationPending ?? 0 : 0), distanceKm };
+      activity: (own?.status === 'accepted' ? this.attention(this.users.queryUserById(this.profileId(group.id, userId))) : 0)
+        + this.membersActivity(group, own) + (this.admin(own) ? group.moderationPending ?? 0 : 0), distanceKm };
   }
   private newMember(group: CommunityGroupRecord, userId: string, role: 'Admin' | 'Member', status: 'accepted' | 'pending', requestKind: 'invite' | 'join' | null, inviter: string | null): ActivityMemberRecord {
     const user = this.users.queryUserById(userId); if (!user) throw new Error('User not found');

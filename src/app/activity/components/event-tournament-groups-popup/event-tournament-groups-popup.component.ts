@@ -1384,7 +1384,7 @@ export class EventTournamentGroupsPopupComponent {
       return;
     }
     this.dialogStore.open({
-      title: 'Delete Group',
+      title: 'confirmation.delete.tournament.group',
       message: `Delete ${group.name}?`,
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',

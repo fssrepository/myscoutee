@@ -1,3 +1,4 @@
+import type { McpSettingsDto, McpClientRequest, McpClientCreatedDto, McpAuthorizationRequest, McpAuthorizationContext } from '../../contracts/integration.interface';
 import { ShareTokensService } from './share-tokens.service';
 import { Injectable, inject } from '@angular/core';
 
@@ -32,6 +33,12 @@ export class IntegrationService extends BaseRouteModeService {
       this.localService, this.httpService).externalInviteLink(request);
     return {url: this.absoluteBaseUrl(link.url)};
   }
+
+  mcpSettings(): Promise<McpSettingsDto> { return this.service(false).mcpSettings(); }
+  createMcpClient(input: McpClientRequest): Promise<McpClientCreatedDto> { return this.service(false).createMcpClient(input); }
+  revokeMcpClient(id: string): Promise<void> { return this.service(false).revokeMcpClient(id); }
+  mcpAuthorization(input: McpAuthorizationRequest): Promise<McpAuthorizationContext> { return this.service(false).mcpAuthorization(input); }
+  mcpConsent(input: McpAuthorizationRequest, approve: boolean): Promise<{url: string}> { return this.service(false).mcpConsent(input, approve); }
 
   loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     return this.service(admin).loadSettings(admin);

@@ -1,3 +1,4 @@
+import type { ContactChatAccessAction, ContactChatAccessSnapshot } from '../../../contracts/contact.interface';
 import { Injectable, inject } from '@angular/core';
 
 import type { StoredContact } from '../../../contracts/contact.interface';
@@ -19,6 +20,28 @@ export class LocalContactsService extends LocalRouteDelayService {
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly sessionService = inject(SessionService);
+
+  async loadChatAccess(): Promise<ContactChatAccessSnapshot> {
+    const actor = this.sessionService.activeUserId();
+    await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
+    if (!actor || actor !== this.sessionService.activeUserId()) throw new Error('Contact session changed.');
+    return this.chatAccessSnapshot(actor);
+  }
+
+  async changeChatAccess(userId: string, action: ContactChatAccessAction, version?: number): Promise<ContactChatAccessSnapshot> {
+    const actor = this.sessionService.activeUserId();
+    await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
+    if (!actor || actor !== this.sessionService.activeUserId()) throw new Error('Contact session changed.');
+    this.contactsRepository.changeChatAccess(actor, userId, action, version);
+    await this.contactsRepository.flushToIndexedDb();
+    return this.chatAccessSnapshot(actor);
+  }
+
+  private chatAccessSnapshot(actor: string): ContactChatAccessSnapshot {
+    return { records: this.contactsRepository.queryChatAccess(actor),
+      contacts: this.contactsRepository.queryContactRecordsByUser(actor),
+      pendingCount: this.usersRepository.queryUserById(actor)?.activities.contactRequestsPending ?? 0 };
+  }
 
   async loadContacts(userId: string): Promise<StoredContact[]> {
     await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);

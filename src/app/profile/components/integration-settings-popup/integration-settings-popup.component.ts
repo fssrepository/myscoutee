@@ -1,3 +1,4 @@
+import { McpConnectionsComponent } from './mcp-connections.component';
 import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/copy-link.component';
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
 import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
@@ -29,6 +30,7 @@ type IntegrationActionContext =
   selector: 'app-integration-settings-popup',
   standalone: true,
   imports: [
+    McpConnectionsComponent,
     CopyLinkComponent,
     SummaryCurrencyPopupComponent,
     CommonModule,

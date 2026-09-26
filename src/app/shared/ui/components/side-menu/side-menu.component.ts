@@ -1,3 +1,4 @@
+import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
 import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
 import type { AppMenuPalette } from '../core/menu';
@@ -13,7 +14,6 @@ import { ImageGalleryStore } from '../../context/stores/image-gallery.store';
 import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { profileMenuBadgeCount } from '../../context/stores/app-context-store.utils';
 import {
   CommonModule
 } from '@angular/common';
@@ -333,7 +333,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly assetStore = inject(AssetStore);
   protected readonly communityGroups = inject(CommunityGroupsStore);
   protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
-    this.communityGroups.counters().hosting + this.communityGroups.counters().participation));
+    this.communityGroups.counters().hosting + this.communityGroups.counters().participation + this.communityGroups.counters().pending + this.communityGroups.counters().invitations));
   protected readonly photoFeedStore = inject(PhotoFeedStore);
   protected readonly navigatorFeedMenuModel = computed(() =>
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));
@@ -581,6 +581,7 @@ export class SideMenuComponent implements OnDestroy {
       supplies: activityOverrides.supplies ?? activeUser.activities?.supplies ?? 0,
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
+      contactRequestsPending: activityOverrides.contactRequestsPending ?? activeUser.activities?.contactRequestsPending ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
       paymentRefundsPending: activityOverrides.paymentRefundsPending ?? activeUser.activities?.paymentRefundsPending ?? 0,
@@ -619,6 +620,7 @@ export class SideMenuComponent implements OnDestroy {
         id: 'permissions',
         label: 'install.app',
         icon: 'install_desktop',
+        counter: this.pwaService.appVersionLabel(),
         ariaLabel: 'install.app'
       });
     }
@@ -759,7 +761,7 @@ export class SideMenuComponent implements OnDestroy {
       accommodation: user.activities.accommodation,
       supplies: user.activities.supplies,
       tickets: user.activities.tickets,
-      contacts: user.activities.contacts
+      contacts: user.activities.contactRequestsPending ?? 0
     };
   });
   protected readonly adminNavigatorMenuValues = computed<AppMenuValueMap<NavigatorAdminMenuShortcutId>>(() => {
@@ -935,6 +937,8 @@ export class SideMenuComponent implements OnDestroy {
             },
             {
               id: 'contacts',
+              counter: user.activities.contactRequestsPending || undefined,
+              counterTone: 'alert',
               label: 'Contacts',
               icon: 'contacts',
               palette: 'teal',
@@ -1088,6 +1092,12 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    const overlayNavigation = inject(OverlayNavigationStore);
+    effect(onCleanup => {
+      if (!this.isMenuOpen()) return;
+      const token = overlayNavigation.register(() => this.closeSideMenu());
+      onCleanup(() => overlayNavigation.unregister(token));
+    });
     effect(() => this.moderationService.setWorkerActive(!!this.sessionService.session()));
     effect(() => this.adminNotificationsService.setWorkerActive(!!this.sessionService.session()));
     effect(() => {
@@ -2393,9 +2403,7 @@ export class SideMenuComponent implements OnDestroy {
         adminMetrics: this.resolveActivityBadge(user, 'adminMetrics')
       });
     }
-    const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
-    const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
-    return profileMenuBadgeCount(user, activityOverrides, impressionFlags);
+    return this.groupWorkspaces.avatarBadgeCount();
   }
 
   private notificationLauncherAriaLabel(unreadCount: number, muted: boolean): string {
@@ -2455,10 +2463,19 @@ export class SideMenuComponent implements OnDestroy {
   private async openNotificationRoute(url: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingNotificationRoute === url) return;
     const params = this.router.parseUrl(url).queryParams;
-    if (!params['chatId'] && !params['mingleEventId']) return;
+    if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId']) return;
     const accountId = this.groupWorkspaces.context.accountUserId();
     this.openingNotificationRoute = url;
     try {
+      if (params['communityGroupId']) {
+        await this.communityGroups.openInvitation(`${params['communityGroupId']}`);
+        if (this.router.url === url) {
+          const tree = this.router.parseUrl(url);
+          delete tree.queryParams['communityGroupId']; delete tree.queryParams['workspaceGroupId'];
+          await this.router.navigateByUrl(tree, { replaceUrl: true });
+        }
+        return;
+      }
       const groupId = `${params['workspaceGroupId'] ?? ''}`.trim() || null;
       if (!await this.groupWorkspaces.select(groupId) || this.router.url !== url
           || this.groupWorkspaces.context.accountUserId() !== accountId) return;

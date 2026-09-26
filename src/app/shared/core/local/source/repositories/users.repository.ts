@@ -80,6 +80,11 @@ export class LocalUsersRepository {
     return user;
   }
 
+  accountId(userId: string): string {
+    const id = userId.trim();
+    return this.queryUserById(id)?.accountUserId ?? id;
+  }
+
   async selectWorkspace(accountId: string, groupId: string | null): Promise<void> {
     const previousGroupId = this.queryUserById(accountId)?.activeWorkspaceGroupId ?? null;
     this.memoryDb.write(state => {

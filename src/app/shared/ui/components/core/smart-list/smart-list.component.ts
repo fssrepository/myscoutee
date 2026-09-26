@@ -1146,6 +1146,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return `${Math.max(1, Math.trunc(Number(value)))}`;
   }
 
+  protected resolvedMinColumnWidth(): string | null {
+    return this.resolveConfigValue(this.config.minColumnWidth, null);
+  }
+
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
     const baseSnapMode = this.resolveConfigValue(this.config.snapMode, 'none');
     const snapMode = this.shouldUseHorizontalMobileStepper() ? 'mandatory' : baseSnapMode;

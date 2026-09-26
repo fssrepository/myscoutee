@@ -3,9 +3,26 @@ import type { ListQuery, PageResult } from './list.interface';
 export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbies', 'neighbourhood'] as const;
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
 export type GroupVisibility = 'public' | 'private' | 'invitation';
-export type GroupBucket = 'hosting' | 'participation' | 'explore';
-export interface GroupPolicy { workspace: boolean; enabled: boolean; requiredFields: string[]; }
+export type GroupBucket = 'hosting' | 'participation' | 'pending' | 'invitations' | 'explore';
+export function groupMembershipBucket(group: { role?: string | null; membershipStatus?: string | null; requestKind?: string | null }): GroupBucket {
+  if (group.membershipStatus === 'accepted' && group.role === 'Admin') return 'hosting';
+  if (group.membershipStatus === 'pending' && group.requestKind === 'invite') return 'invitations';
+  if (group.membershipStatus === 'pending') return 'pending';
+  return group.membershipStatus === 'accepted' ? 'participation' : 'explore';
+}
+export type GroupSort = 'distance' | 'updated';
+export function groupSort(bucket: GroupBucket, sort?: string | null): GroupSort {
+  return sort === 'distance' || sort === 'updated' ? sort : bucket === 'explore' ? 'distance' : 'updated';
+}
+export interface GroupPolicy {
+  workspace: boolean; enabled: boolean; requiredFields: string[];
+  policiesEnabled?: boolean;
+  policies?: import('./event.interface').EventPolicyDTO[];
+}
 export interface CommunityGroup {
+  lifecycleStatus?: 'active' | 'under-review' | 'deleted' | null;
+  canTakeOver?: boolean;
+  membersActivity?: number;
   moderationPending?: number;
   moderationQueueRevision?: number;
   moderationStatus?: import('./content-moderation.interface').ModerationStatus | null;
@@ -23,19 +40,25 @@ export interface SaveCommunityGroup {
   category: GroupCategory; visibility: GroupVisibility; hideMembers: boolean; policy: GroupPolicy; version?: number;
 }
 export type CommunityGroupSummary = Omit<CommunityGroup, 'description' | 'policy'>;
+export function canPreviewGroupMembers(group: CommunityGroupSummary): boolean {
+  return !group.hideMembers || (group.role === 'Admin' && group.membershipStatus === 'accepted');
+}
 export function communityGroupSummary(group: CommunityGroup | CommunityGroupSummary): CommunityGroupSummary {
   const { description, policy, ...summary } = group as CommunityGroup;
   return summary;
 }
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
-export interface GroupCounters { hosting: number; participation: number; }
+export interface GroupCounters { hosting: number; participation: number; pending: number; invitations: number; }
 export interface GroupWorkspace {
+  membersActivity?: number;
   moderationPending?: number;
   moderationQueueRevision?: number;
-  groupId: string; profileId: string; name: string; role: string; activity: number; policy: GroupPolicy;
+  category?: GroupCategory; membershipStatus?: 'accepted' | 'pending';
+  requestKind?: 'invite' | 'join' | null;
+  groupId: string; profileId: string | null; name: string; role: string; activity: number; policy: GroupPolicy;
 }
 export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; accountProfile?: UserDto | null; }
-export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
+export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; sort?: GroupSort; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
 export interface GroupSyncResponse { upserts: CommunityGroupSummary[]; removedIds: string[]; total: number; }
 export interface ICommunityGroupsService {
   sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse>;

@@ -158,6 +158,7 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
   });
 
   it('uses the shared activity signal for the completed 30-second Ticket poll result', () => {
+    activeUserProfile.set({ id: 'owner-1', activities: { tickets: 1 } } as UserDto);
     const popupStore = TestBed.inject(AssetPopupStore);
     const component = TestBed.runInInjectionContext(() => new AssetPopupComponent());
 
@@ -180,7 +181,7 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
     expect(signalUserTicketBucketCount).toHaveBeenCalledWith(
       'owner-1',
       2,
-      expect.any(Object)
+      activeUserProfile()!.activities
     );
   });
 

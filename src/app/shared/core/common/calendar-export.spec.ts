@@ -11,6 +11,10 @@ const event = (overrides: Partial<ActivityEventDTO> = {}): ActivityEventDTO => (
 const uid = (text: string) => text.split('\r\n').find(line => line.startsWith('UID:'));
 
 describe('Manual calendar snapshot', () => {
+  it('returns no content when there are no exportable events', () => {
+    expect(renderCalendarExport('viewer', [], now)).toBe('');
+    expect(renderCalendarExport('viewer', [event({ status: 'DR' })], now)).toBe('');
+  });
   it('deduplicates and preserves UID on changed times; exports UTC and an event-start reminder', () => {
     const initial = renderCalendarExport('viewer', [event(), event()], now);
     expect(initial.match(/BEGIN:VEVENT/g)).toHaveLength(1);

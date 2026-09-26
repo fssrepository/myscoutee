@@ -1,3 +1,4 @@
+import type { ContactChatAccessAction, ContactChatAccessSnapshot } from '../../contracts/contact.interface';
 import { Injectable, inject } from '@angular/core';
 
 import type { ProfileViewData } from '../../contracts/profile.interface';
@@ -19,6 +20,14 @@ export class ContactsService extends BaseRouteModeService {
       this.localContactsService,
       this.httpContactsService
     );
+  }
+
+  loadChatAccess(): Promise<ContactChatAccessSnapshot> {
+    return this.contactsService.loadChatAccess();
+  }
+
+  changeChatAccess(userId: string, action: ContactChatAccessAction, version?: number): Promise<ContactChatAccessSnapshot> {
+    return this.contactsService.changeChatAccess(userId, action, version);
   }
 
   loadContacts(userId: string): Promise<ContactContracts.StoredContact[]> {

@@ -104,7 +104,8 @@ export class SeedCommunityGroupsBuilder {
         imageUrl: definition.imageSlot ? `https://picsum.photos/id/${49 + definition.imageSlot}/1200/700` : null,
         category: definition.category, visibility: definition.visibility, hideMembers: definition.hideMembers,
         policy: { workspace: true, enabled: definition.requiredFields.length > 0, requiredFields: [...definition.requiredFields] },
-        createdAtIso: date, updatedAtIso: date, version: 0, moderationStatus: 'accepted'
+        createdAtIso: date, updatedAtIso: date, version: 0, moderationStatus: 'accepted',
+        pendingMembers: definition.members.filter(member => member.status === 'pending').length
       };
       groups.push(group);
       const roster: readonly SeedMember[] = [{ name: definition.owner, status: 'accepted', role: 'Admin' }, ...definition.members];

@@ -13,14 +13,15 @@ import { ImageGalleryStore } from '../../../context/stores/image-gallery.store';
     @for (gallery of store.request() ? [store.request()!] : []; track gallery.token) {
       <app-popup [model]="popupModel()">
         @if (store.error()) { <p class="gallery-error" role="alert">{{ 'image.gallery.saveFailed' | i18n }}</p> }
-        <div class="gallery-content" [class.gallery-content--readonly]="gallery.readOnly">
+        <div class="gallery-content" [class.gallery-content--readonly]="gallery.readOnly && gallery.presentation !== 'editor'">
           <app-image-carousel
             [disabled]="store.saving()" (uploadingChange)="store.setUploading(gallery.token, $event)"
             [imageDetails]="gallery.imageDetails ?? {}" [detailsEditable]="!gallery.readOnly"
             [detailsConfig]="gallery.detailsConfig ?? {}"
             (imageDetailsChange)="store.updateDetails(gallery.token, $event)"
             [slotCount]="gallery.slotCount" [highlightFirst]="!gallery.readOnly"
-            [previewMode]="!gallery.readOnly" [readOnly]="gallery.readOnly" [slideshow]="gallery.readOnly"
+            [previewMode]="!gallery.readOnly || gallery.presentation === 'editor'" [readOnly]="gallery.readOnly"
+            [slideshow]="gallery.readOnly && gallery.presentation !== 'editor'"
             [slotImageVariant]="gallery.readOnly ? 'large' : 'small'" mediaFit="contain" imagePosition="center"
             [ariaLabel]="gallery.title" [uploadOwnerId]="gallery.uploadOwnerId" [uploadEntityId]="gallery.uploadEntityId"
             [ngModel]="gallery.images" (ngModelChange)="store.updateImages(gallery.token, $event)"

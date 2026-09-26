@@ -54,6 +54,8 @@ export interface ContactMethodItem extends ContactMethodDraft {
 }
 
 export interface ContactListItem {
+  chatAccess?: ContactChatAccess;
+  saved?: boolean;
   id: string;
   userId: string;
   name: string;
@@ -83,6 +85,25 @@ export interface ContactFormValue {
 }
 
 export interface ContactListFilters {
+  requestsOnly?: boolean;
   search?: string;
   refreshToken?: number;
+}
+
+export type ContactChatAccessStatus = 'pending' | 'approved' | 'rejected';
+export type ContactChatAccessAction = 'request' | 'approve' | 'reject';
+export interface ContactChatAccess {
+  id: string;
+  requestedBy: string;
+  status: ContactChatAccessStatus;
+  requestedAtIso: string;
+  decidedAtIso: string | null;
+  version: number;
+  contact: StoredContact;
+}
+
+export interface ContactChatAccessSnapshot {
+  records: ContactChatAccess[];
+  pendingCount: number;
+  contacts: StoredContact[];
 }

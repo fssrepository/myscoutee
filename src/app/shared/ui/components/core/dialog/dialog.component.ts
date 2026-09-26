@@ -1,5 +1,6 @@
+import { OverlayNavigationStore } from '../../../context/stores/overlay-navigation.store';
 
-import { Component, HostListener, Input, inject } from '@angular/core';
+import { Component, DoCheck, HostListener, Input, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -60,7 +61,29 @@ type RenderedDialogState = {
   templateUrl: './dialog.component.html',
   styleUrl: './dialog.component.scss'
 })
-export class DialogComponent {
+export class DialogComponent implements DoCheck, OnDestroy {
+  private readonly overlayNavigation = inject(OverlayNavigationStore);
+  private navigationToken: symbol | null = null;
+
+  ngDoCheck(): void {
+    if (this.dialogState() && !this.navigationToken) {
+      this.navigationToken = this.overlayNavigation.register(() => {
+        const dialog = this.dialogState();
+        if (dialog && !dialog.busy && (dialog.showClose || dialog.allowEscapeClose)) this.cancel();
+      });
+    } else if (!this.dialogState()) {
+      this.clearNavigation();
+    }
+  }
+
+  ngOnDestroy(): void { this.clearNavigation(); }
+
+  private clearNavigation(): void {
+    if (!this.navigationToken) return;
+    this.overlayNavigation.unregister(this.navigationToken);
+    this.navigationToken = null;
+  }
+
   @Input() useStore = true;
   @Input() dialog: DialogLocalConfig | null = null;
   @Input() zIndex: number | null = null;

@@ -23,3 +23,33 @@ app-menu { max-width: 100%; }
   --app-menu-row-item-width: 14rem;
   --app-menu-row-item-justify: space-between;
 }
+
+.app-setup-help {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.25rem;
+  color: #28415f;
+  line-height: 1.45;
+}
+.app-setup-help-card {
+  --help-accent: #315fcf;
+  --help-soft: #eef5ff;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--help-accent) 34%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(155deg, var(--help-soft), #fff 76%);
+
+  &[data-tone='violet'] { --help-accent: #7247db; --help-soft: #f4efff; }
+  &[data-tone='green'] { --help-accent: #176b47; --help-soft: #ecfaf2; }
+  &[data-tone='rose'] { --help-accent: #b85072; --help-soft: #fff0f4; }
+  &[data-tone='teal'] { --help-accent: #167887; --help-soft: #eaf9fb; }
+  &[data-tone='orange'] { --help-accent: #a94808; --help-soft: #fff3e8; }
+
+  h3 { display: flex; align-items: center; gap: 0.5rem; color: var(--help-accent); margin-bottom: 0.5rem; }
+  mat-icon { flex: 0 0 auto; }
+}
+@media (max-width: 600px) {
+  .app-setup-help { grid-template-columns: minmax(0, 1fr); }
+}

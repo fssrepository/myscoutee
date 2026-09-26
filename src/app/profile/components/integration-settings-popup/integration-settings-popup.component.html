@@ -114,6 +114,7 @@
             <p class="integration-empty-state">{{ 'integration.token.empty' | i18n }}</p>
           }
         </section>
+        @if (!adminMode) { <app-mcp-connections></app-mcp-connections> }
       }
     </div>
   </app-popup>

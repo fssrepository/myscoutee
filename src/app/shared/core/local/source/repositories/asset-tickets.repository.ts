@@ -39,7 +39,7 @@ export class LocalAssetTicketsRepository {
   async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
     return LocalAssetTicketsMapper.pageRows(
       LocalAssetTicketsMapper.toTicketDTOs(
-        this.visibleTicketRecordsByUser(query.userId), this.memoryDb.read()[USERS_TABLE_NAME].byId
+        this.visibleTicketRecordsByUser(query.userId), this.memoryDb.read()[USERS_TABLE_NAME].byId, this.memoryDb.read().communityGroups.byId
       ),
       query
     );
@@ -48,7 +48,7 @@ export class LocalAssetTicketsRepository {
   syncTickets(request: AssetContracts.AssetTicketSyncRequestDTO): AssetContracts.AssetTicketSyncResultDTO {
     const rows = LocalAssetTicketsMapper.pageRows(
       LocalAssetTicketsMapper.toTicketDTOs(
-        this.visibleTicketRecordsByUser(request.userId), this.memoryDb.read()[USERS_TABLE_NAME].byId
+        this.visibleTicketRecordsByUser(request.userId), this.memoryDb.read()[USERS_TABLE_NAME].byId, this.memoryDb.read().communityGroups.byId
       ),
       {
         userId: request.userId,
@@ -248,7 +248,7 @@ export class LocalAssetTicketsRepository {
     const usedAtIso = new Date().toISOString();
     const usedTicket = this.persistTicketCheckIn(ticket.id, actorUserId, usedAtIso);
     const ticketRow = LocalAssetTicketsMapper.toTicketDTOs(
-      [{ ticket: usedTicket, event }], this.memoryDb.read()[USERS_TABLE_NAME].byId
+      [{ ticket: usedTicket, event }], this.memoryDb.read()[USERS_TABLE_NAME].byId, this.memoryDb.read().communityGroups.byId
     )[0];
     if (!ticketRow) {
       return this.invalid('revoked');
@@ -263,7 +263,9 @@ export class LocalAssetTicketsRepository {
   private visibleTicketRecordsByUser(
     userId: string
   ): Array<{ ticket: EventTicketRecord; event: ActivityEventRecord }> {
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = this.usersRepository.accountId(userId);
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    const holders = new Set(users.ids.filter(id => id === normalizedUserId || users.byId[id]?.accountUserId === normalizedUserId));
     if (!normalizedUserId) {
       return [];
     }
@@ -272,13 +274,13 @@ export class LocalAssetTicketsRepository {
       .map(id => table.byId[id])
       .filter((ticket): ticket is EventTicketRecord => Boolean(ticket)
         && ticket.status === 'A'
-        && ticket.holderUserId === normalizedUserId)
-      .map(ticket => ({ ticket, event: this.resolveEventRecord(ticket.eventId, normalizedUserId) }))
+        && holders.has(ticket.holderUserId))
+      .map(ticket => ({ ticket, event: this.resolveEventRecord(ticket.eventId, ticket.holderUserId) }))
       .filter((pair): pair is { ticket: EventTicketRecord; event: ActivityEventRecord } => Boolean(pair.event))
-      .filter(({ event }) => this.isPublished(event)
+      .filter(({ event, ticket }) => this.isPublished(event)
         && !event.trashedAtIso
         && event.ticketing === true
-        && this.eligibleHolderUserIds(event).has(normalizedUserId));
+        && this.eligibleHolderUserIds(event).has(ticket.holderUserId));
   }
 
   private ticketByScanCode(code: string): EventTicketRecord | null {
@@ -515,14 +517,19 @@ export class LocalAssetTicketsRepository {
     const nextUsersById = { ...usersTable.byId };
     let changed = false;
 
+    const counterUserIds = new Set(affectedUserIds);
     for (const userId of affectedUserIds) {
+      const accountId = usersTable.byId[userId]?.accountUserId;
+      if (accountId) counterUserIds.add(accountId);
+    }
+    for (const userId of counterUserIds) {
       const user = usersTable.byId[userId];
       if (!user) {
         continue;
       }
       const ticketCount = table.ids
         .map(id => table.byId[id])
-        .filter(ticket => ticket?.status === 'A' && ticket.holderUserId === userId)
+        .filter(ticket => ticket?.status === 'A' && (ticket.holderUserId === userId || usersTable.byId[ticket.holderUserId]?.accountUserId === userId))
         .filter(ticket => eventsTable.ids.some(recordId => {
           const event = eventsTable.byId[recordId];
           return event?.id === ticket.eventId

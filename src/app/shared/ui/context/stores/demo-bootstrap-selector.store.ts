@@ -18,7 +18,8 @@ export interface DemoBootstrapSelectorState {
   users?: readonly UserSelectorListItemDto[];
   onSelect: (
     userId: string,
-    mode: DemoBootstrapSelectorMode
+    mode: DemoBootstrapSelectorMode,
+    user?: UserSelectorListItemDto
   ) => boolean | string | void | Promise<boolean | string | void>;
   onNewProfile?: () => boolean | Promise<boolean>;
   onClose?: () => void;
@@ -43,7 +44,8 @@ export class DemoBootstrapSelectorStore {
     users?: readonly UserSelectorListItemDto[];
     onSelect: (
       userId: string,
-      mode: DemoBootstrapSelectorMode
+      mode: DemoBootstrapSelectorMode,
+      user?: UserSelectorListItemDto
     ) => boolean | string | void | Promise<boolean | string | void>;
     onNewProfile?: () => boolean | Promise<boolean>;
     onClose?: () => void;
@@ -59,8 +61,8 @@ export class DemoBootstrapSelectorStore {
       subtitle: payload.subtitle?.trim() || undefined,
       autoSelectUserId: payload.autoSelectUserId?.trim() || undefined,
       users: payload.users?.map(user => ({ ...user })),
-      onSelect: async (userId, selectedMode) => {
-        const result = await payload.onSelect(userId, selectedMode);
+      onSelect: async (userId, selectedMode, user) => {
+        const result = await payload.onSelect(userId, selectedMode, user);
         if (result !== false && typeof result !== 'string') {
           this.closeDemoBootstrapSelector();
         }

@@ -512,7 +512,7 @@ export class ProfileFormFlowConverter {
         label: 'birthday',
         bind: 'profile.birthday',
         required: true,
-        placeholder: 'dd/mm/yyyy',
+        placeholder: 'YYYY/MM/DD',
         config: {
           model: {
             updateOn: 'blur',
@@ -974,7 +974,8 @@ export class ProfileFormFlowConverter {
   ): AppMenuItem<string, ProfileFormFlowMenuContext> {
     return {
       id: `${this.idToken(field)}-${this.idToken(value)}`,
-      label: value,
+      label: field === 'profile.details.children'
+        ? APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()] ?? value : value,
       icon,
       kind: 'radio',
       value,

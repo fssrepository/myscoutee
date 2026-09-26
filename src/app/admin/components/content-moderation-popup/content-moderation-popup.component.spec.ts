@@ -86,7 +86,7 @@ describe('Content moderation dual filters', () => {
   it('unblocks through confirmation into the Under review bucket', () => {
     const component = popup();
     component.decide({ id: 'under-review', context: { ...original, status: 'blocked' } });
-    expect(component.dialogs.open.mock.calls[0][0].title).toBe('moderation.unblock');
+    expect(component.dialogs.open.mock.calls[0][0].title).toBe('moderation.unblock.question');
     expect(component.service.decide).not.toHaveBeenCalled();
   });
   it('offers rejection for unapproved content and blocking only after public approval', () => {

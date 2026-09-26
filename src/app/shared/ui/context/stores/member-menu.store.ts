@@ -74,6 +74,7 @@ export type ActivitiesNavigationRequest =
       ownerId: string;
       parentZIndex?: number;
       ownerUserId?: string;
+      communityUnderReview?: boolean;
       ownerType?: ActivityMemberOwnerType;
       parentOwnerId?: string;
       parentOwnerType?: ActivityMemberOwnerType;

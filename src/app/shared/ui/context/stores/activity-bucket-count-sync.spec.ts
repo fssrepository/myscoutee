@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import { describe, expect, it } from 'vitest';
 
 import { ActivityStore, type ActivityCounters } from './activity.store';
@@ -20,7 +21,7 @@ describe('activity bucket count signal', () => {
   };
 
   it('uses one shared counter signal for My Events and preserves the other buckets', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.signalUserEventBucketCount('user-1', 'my-events', 5, baseCounters);
 
@@ -39,7 +40,7 @@ describe('activity bucket count signal', () => {
   });
 
   it('publishes every event bucket through the same signal and mirrors menu-backed buckets', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.signalUserEventBucketCount('user-1', 'active-events', 3, baseCounters);
     store.signalUserEventBucketCount('user-1', 'invitations', 6, baseCounters);
@@ -60,7 +61,7 @@ describe('activity bucket count signal', () => {
   });
 
   it('applies the full stored event snapshot so an Active poll also reconciles inclusive All', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.signalUserEventBucketCount('user-1', 'active-events', 0, baseCounters);
     expect(store.getUserCounterOverrides('user-1').event?.all).toBe(7);
@@ -93,7 +94,7 @@ describe('activity bucket count signal', () => {
   });
 
   it('publishes the Ticket list count through the shared menu and asset signal', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
 
     store.signalUserTicketBucketCount('user-1', 3, {
       tickets: 1,
@@ -120,7 +121,7 @@ describe('activity bucket count signal', () => {
   });
 
   it('publishes owned Asset counts as idempotent absolute values on both counter shapes', () => {
-    const store = new ActivityStore();
+    const store = new ActivityStore(new GroupWorkspaceContextService());
     const assetBaseCounters: Partial<ActivityCounters> = {
       cars: 1,
       accommodation: 2,

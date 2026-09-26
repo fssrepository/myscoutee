@@ -111,6 +111,7 @@ export interface UserMenuCountersDto {
   feedback?: number;
   notifications?: number;
   paymentRefundsPending?: number;
+  contactRequestsPending?: number;
   chat?: UserChatCountersDto;
   event?: UserEventCountersDto;
   asset?: UserAssetCountersDto;
@@ -133,6 +134,7 @@ export interface UserMenuCounterDeltasDto {
   feedback?: number;
   notifications?: number;
   paymentRefundsPending?: number;
+  contactRequestsPending?: number;
   chat?: UserChatCounterDeltasDto;
   event?: UserEventCounterDeltasDto;
   asset?: UserAssetCounterDeltasDto;
@@ -246,6 +248,7 @@ export interface UserNotificationDeviceDto {
 }
 
 export interface UserRealtimeLongPollResponseDto {
+  accountCounters?: UserMenuCountersDto | null;
   contentModeration?: import('./content-moderation.interface').ContentModerationSnapshot | null;
   following?: import('./following.interface').FollowingState;
   feedCounters?: import('./photo-feed.interface').PhotoFeedCounters;
@@ -272,6 +275,8 @@ export interface UserLocationEligibilityResponseDto {
 
 export interface UserSelectorListItemDto {
   id: string;
+  locationCoordinates?: LocationCoordinates | null;
+  locationRequired?: boolean;
   name: string;
   city: string;
   initials: string;
@@ -333,6 +338,7 @@ export class UserDto {
     feedback?: number;
     notifications?: number;
     paymentRefundsPending?: number;
+    contactRequestsPending?: number;
     chat?: UserChatCountersDto;
     event?: UserEventCountersDto;
     asset?: UserAssetCountersDto;
@@ -418,7 +424,7 @@ export interface UserService {
   queryAvailableDemoUsers(selectorRole?: UserSelectorRole): Promise<UserSelectorListItemDto[]>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
-  loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtByIdQueryResponse>;
+  loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null, location?: LocationCoordinates): Promise<ProfileExtByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: ActivityContracts.UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;

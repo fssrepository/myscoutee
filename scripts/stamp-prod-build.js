@@ -11,7 +11,7 @@ const serviceWorkerPath = path.join(outputDir, 'app-sw.js');
 const versionPath = path.join(outputDir, 'app-version.json');
 
 const explicitBuildId = (process.env.MYSCOUTEE_UI_BUILD_ID || process.env.BUILD_ID || '').trim();
-const appVersion = sanitizeVersion((process.env.MYSCOUTEE_VERSION || packageVersion() || '1.0.0').trim());
+const appVersion = sanitizeVersion((process.env.MYSCOUTEE_VERSION || packageVersion() || '1.3.0').trim());
 const gitSha = explicitBuildId ? '' : runOptional('git', ['rev-parse', '--short=12', 'HEAD']);
 const builtAt = new Date().toISOString();
 const timestamp = builtAt.replace(/[-:.TZ]/g, '').slice(0, 14);
@@ -100,7 +100,7 @@ function sanitizeVersion(value) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 48);
-  return sanitized || '1.0.0';
+  return sanitized || '1.3.0';
 }
 
 function packageVersion() {

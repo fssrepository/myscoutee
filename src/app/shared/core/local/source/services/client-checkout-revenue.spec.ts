@@ -6,6 +6,29 @@ import { LocalEventsService } from './events.service';
 describe('Local client checkout revenue contract', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('keeps group spending on the payer and reads asset income from the same record, including refunds', () => {
+    let state: any = { users: { ids: ['buyer', 'buyer-group', 'owner', 'owner-group'], byId: {
+      buyer: {id: 'buyer', activities: {}},
+      'buyer-group': {id: 'buyer-group', accountUserId: 'buyer', workspaceGroupId: 'group-a', activities: {}},
+      owner: {id: 'owner', activities: {}},
+      'owner-group': {id: 'owner-group', accountUserId: 'owner', workspaceGroupId: 'group-b', activities: {}}
+    }}};
+    TestBed.configureTestingModule({providers: [{provide: LocalMemoryDb, useValue: {
+      read: () => state, write: (change: any) => {state = change(state);}
+    }}]});
+    const ledger = TestBed.inject(LocalIntegrationRepository);
+    ledger.recordPayment('buyer-group', 'asset-payment', 'EUR', 20, 0, false, 'asset', 'owner');
+    expect(ledger.paymentHistory('buyer-group')).toEqual([expect.objectContaining({id: 'asset-payment', direction: 'expense'})]);
+    expect(ledger.paymentHistory('owner')).toEqual([expect.objectContaining({id: 'asset-payment', direction: 'income'})]);
+    expect(ledger.paymentHistory('buyer')).toEqual([]);
+    expect(ledger.paymentHistory('owner-group')).toEqual([]);
+    expect(state.users.byId.owner.affiliatePayments).toBeUndefined();
+    expect(state.users.byId.buyer.affiliatePayments).toBeUndefined();
+    ledger.recordPayment('buyer-group', 'asset-payment', 'EUR', 20, 5, false);
+    expect(ledger.paymentHistory('buyer-group')).toContainEqual(expect.objectContaining({auditKind: 'refund', direction: 'income', amount: 5}));
+    expect(ledger.paymentHistory('owner')).toContainEqual(expect.objectContaining({auditKind: 'refund', direction: 'expense', amount: 5}));
+  });
+
   it('records an asset purchase without an event booking and credits its actual owner', async () => {
     let state: any = { users: { ids: ['referrer', 'buyer', 'asset-owner'], byId: {
       referrer: { id: 'referrer', activities: {} },

@@ -1099,7 +1099,7 @@ export class AdminHelpEditorPopupComponent {
       return;
     }
     this.dialogStore.open({
-      title: `Delete v${revision.version}?`,
+      title: this.i18n.translate('confirmation.delete.help.revision').replace('{version}', String(revision.version)),
       message: revision.title,
       confirmLabel: 'Delete',
       busyConfirmLabel: 'Deleting...',

@@ -40,8 +40,8 @@ export class LocalActivityMembersRepository {
   } | null = null;
   private readonly gameSocialCardsByUserId = new Map<string, LocalGameSocialCardsByMode>();
 
-  peekRecordsByOwner(owner: ActivityMemberOwnerRef): ActivityMemberRecord[] {
-    return this.readRecordsByOwner(owner);
+  peekRecordsByOwner(owner: ActivityMemberOwnerRef, includeDeleted = false): ActivityMemberRecord[] {
+    return this.readRecordsByOwner(owner, undefined, includeDeleted);
   }
 
   async queryRecordsByOwner(
@@ -733,7 +733,8 @@ export class LocalActivityMembersRepository {
 
   private readRecordsByOwner(
     owner: ActivityMemberOwnerRef,
-    options?: ActivityMembersQueryOptions
+    options?: ActivityMembersQueryOptions,
+    includeDeleted = false
   ): ActivityMemberRecord[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -744,7 +745,7 @@ export class LocalActivityMembersRepository {
     return (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is ActivityMemberRecord => Boolean(record))
-      .filter(record => record.status !== 'deleted' && record.status !== 'removed')
+      .filter(record => includeDeleted || record.status !== 'deleted' && record.status !== 'removed')
       .filter(record => options?.pendingOnly === true ? record.status === 'pending' : true)
       .map(record => this.cloneRecord(record));
   }
@@ -795,8 +796,20 @@ export class LocalActivityMembersRepository {
         nextIdsByOwnerKey[ownerKey] = ownerBucket;
       }
 
+      const group = normalizedOwner.ownerType === 'community' ? state.communityGroups.byId[normalizedOwner.ownerId] : null;
+      const pendingDelta = group ? normalizedRecords.filter(member => member.status === 'pending').length
+        - (table.idsByOwnerKey[ownerKey] ?? []).filter(id => table.byId[id]?.status === 'pending').length : 0;
+      const groupChanged = group && (pendingDelta !== 0 || normalizedRecords.length !== (table.idsByOwnerKey[ownerKey] ?? []).length
+        || normalizedRecords.some(member => {
+          const previous = table.byId[member.id];
+          return !previous || member.updatedAtIso !== previous.updatedAtIso || member.status !== previous.status
+            || member.role !== previous.role || member.organizerOnly !== previous.organizerOnly;
+        }));
       return {
         ...state,
+        ...(group && groupChanged ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
+          [group.id]: { ...group, updatedAtIso: new Date().toISOString(), pendingMembers: Math.max(0, (group.pendingMembers ?? 0) + pendingDelta), version: group.version + 1 }
+        } } } : {}),
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextById,
           ids: nextIds,

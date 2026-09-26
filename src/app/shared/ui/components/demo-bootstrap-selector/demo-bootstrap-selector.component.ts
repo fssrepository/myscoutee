@@ -213,7 +213,8 @@ export class DemoBootstrapSelectorComponent {
       case 'D':
         return 'demo-user-item-deleted';
       default:
-        return this.isNewProfile(user) ? 'demo-user-item-new' : '';
+        return this.isNewProfile(user) ? 'demo-user-item-new'
+          : user.locationRequired ? 'demo-user-item-location' : '';
     }
   }
 
@@ -224,7 +225,8 @@ export class DemoBootstrapSelectorComponent {
       case 'D':
         return 'demo.selector.status.deleted';
       default:
-        return this.isNewProfile(user) ? 'demo.selector.status.new' : '';
+        return this.isNewProfile(user) ? 'demo.selector.status.new'
+          : user.locationRequired ? 'demo.selector.status.location' : '';
     }
   }
 
@@ -605,7 +607,7 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      const result = await request.onSelect(userId, mode);
+      const result = await request.onSelect(userId, mode, this.users.find(user => user.id === userId));
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }

@@ -1,3 +1,4 @@
+import type { ContactChatAccessAction, ContactChatAccessSnapshot } from '../../contracts/contact.interface';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -18,6 +19,14 @@ interface ContactsSaveRequest {
 export class HttpContactsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+
+  async loadChatAccess(): Promise<ContactChatAccessSnapshot> {
+    return (await this.http.get<ContactChatAccessSnapshot>(`${this.apiBaseUrl}/navigator/contacts/chat-access`).toPromise())!;
+  }
+
+  async changeChatAccess(userId: string, action: ContactChatAccessAction, version?: number): Promise<ContactChatAccessSnapshot> {
+    return (await this.http.put<ContactChatAccessSnapshot>(`${this.apiBaseUrl}/navigator/contacts/${encodeURIComponent(userId)}/chat-access`, { action, version }).toPromise())!;
+  }
 
   async loadContacts(userId: string): Promise<ContactContracts.StoredContact[]> {
     const normalizedUserId = userId.trim();

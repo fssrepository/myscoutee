@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nPipe } from '../../../pipes';
 import { PopupPresenceStore } from '../../../context/stores/popup-presence.store';
+import { OverlayNavigationStore } from '../../../context/stores/overlay-navigation.store';
 import { DateInputComponent, type DateInputValue } from '../form/inputs/date-input/date-input.component';
 import { AppMenuComponent, type AppMenuItemSelectEvent } from '../menu';
 import type {
@@ -39,6 +40,8 @@ import type {
 })
 export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, OnDestroy {
   private readonly popupPresenceStore = inject(PopupPresenceStore);
+  private readonly overlayNavigation = inject(OverlayNavigationStore);
+  private navigationToken: symbol | null = null;
   private presenceToken: symbol | null = null;
   private registeredZIndex = 2300;
 
@@ -64,6 +67,9 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
     if (this.active && !this.presenceToken) {
       this.presenceToken = this.popupPresenceStore.register(this.zIndex);
       this.registeredZIndex = this.popupPresenceStore.layer(this.presenceToken) ?? this.registeredZIndex;
+      this.navigationToken = this.overlayNavigation.register(() => {
+        if (this.showClose || this.closeOnBackdrop) this.emitClose(new Event('back'));
+      });
     } else if (!this.active) {
       this.clearPresence();
     }
@@ -74,6 +80,10 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
   }
 
   private clearPresence(): void {
+    if (this.navigationToken) {
+      this.overlayNavigation.unregister(this.navigationToken);
+      this.navigationToken = null;
+    }
     if (this.presenceToken) {
       this.popupPresenceStore.unregister(this.presenceToken);
       this.presenceToken = null;

@@ -449,6 +449,8 @@ export interface AssetTicketPageQueryDTO {
 }
 
 export interface AssetTicketDTO {
+  workspaceGroupId?: string | null;
+  workspaceGroupName?: string | null;
   id: string;
   revision?: string | null;
   scanCode: string;
@@ -521,6 +523,8 @@ export interface AssetOccupancyStatDTO {
 }
 
 export interface AssetOccupancyRowDTO {
+  workspaceGroupId?: string;
+  workspaceGroupName?: string;
   id: string;
   assetId: string;
   ownerUserId: string;

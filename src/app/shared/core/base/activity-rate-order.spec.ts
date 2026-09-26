@@ -46,6 +46,17 @@ describe('activity rate ordering', () => {
     ]);
   });
 
+  it('starts the next distance bucket at exactly five kilometres', () => {
+    const order = { sort: 'distance', secondaryFilter: 'relevant' } as const;
+    const items = [
+      rate('next-high', 10, '2026-07-03T10:00:00Z', 5_000),
+      rate('near-low', 1, '2026-07-03T10:00:00Z', 4_999),
+      rate('origin', 2, '2026-07-03T10:00:00Z', 0)
+    ];
+    expect(items.sort((a, b) => compareActivityRateItems(a, b, order)).map(item => item.id))
+      .toEqual(['origin', 'near-low', 'next-high']);
+  });
+
   it('uses harmonic mutual relevance like the backend', () => {
     const order = { sort: 'relevance', secondaryFilter: 'relevant' } as const;
     const balanced = rate('balanced', 5, '2026-07-03T10:00:00Z', 1_000, 5, 'mutual');
