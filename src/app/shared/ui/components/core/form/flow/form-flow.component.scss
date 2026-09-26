@@ -661,6 +661,22 @@
   grid-template-columns: minmax(320px, 400px) repeat(2, minmax(0, 1fr));
 }
 
+.form-flow--grouped .form-flow__slide--media {
+  container: form-flow-media / inline-size;
+}
+
+@container form-flow-media (max-width: 800px) {
+  .form-flow--grouped .form-flow__slide--media .form-flow__controls--mobile-wrap {
+    --form-flow-media-image-height: clamp(160px, 54cqw, 260px);
+    display: flex;
+    flex-wrap: wrap;
+
+    > .form-flow__control { flex: 0 0 100%; }
+    > .form-flow__control--half { flex: 0 0 auto; max-width: 100%; }
+    > .form-flow__control--align-end { margin-left: auto; }
+  }
+}
+
 .form-flow--grouped .form-flow__slide--media .form-flow__control--image {
   display: flex;
   grid-column: 1;

@@ -720,6 +720,7 @@ export class EventChatPopupComponent implements OnDestroy {
       ? [this.chatHeaderHistoryControl()]
       : [];
     if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
+      || this.session()?.item.channelType === 'groupSupport'
       || this.isServiceChat()
       || this.isBlockedSupportChat()) {
       return supportHistoryControls;

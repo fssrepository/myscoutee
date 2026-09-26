@@ -142,7 +142,10 @@ export class CommunityGroupEditorComponent implements OnChanges {
             requiredCheckboxLabel: this.t('groups.policies.required')
           } } }
       ] }] };
-    return { ...model, steps: model.steps.map(step => ({ ...step, controls: step.controls
+    return { ...model, steps: model.steps
+      .filter(step => step.id !== 'policies' || !this.readOnly
+        || (this.form.policy.policiesEnabled && (this.form.policy.policies?.length ?? 0) > 0))
+      .map(step => ({ ...step, controls: step.controls
       .filter(() => step.id !== 'policy' || this.form.policy.enabled)
       .filter(control => control.id !== 'rules-table' || this.form.policy.enabled && required.some(key => this.optionalPolicyField(key)))
       .map(control => ({ ...control, disabled: this.readOnly && control.id !== 'rules-open' })) })) };

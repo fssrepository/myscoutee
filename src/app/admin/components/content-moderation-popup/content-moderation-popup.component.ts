@@ -156,7 +156,8 @@ export class ContentModerationPopupComponent {
       if (!this.currentScope(groupId, actorId)) return;
       if (item.category === 'feed') {
         const post = detail as PhotoFeedPost;
-        this.gallery.open({ images: post.imageUrls, imageDetails: post.imageDetails, slotCount: 5, readOnly: true,
+        this.gallery.open({ images: post.imageUrls, imageDetails: post.imageDetails, slotCount: 5, readOnly: true, presentation: 'editor',
+          detailsConfig: { eventRequired: true },
           title: item.title, uploadOwnerId: post.creatorUserId, uploadEntityId: post.id });
       } else if (item.category === 'group') this.groups.editor.set({ group: detail as CommunityGroup, readOnly: true });
       else if (item.category === 'event') this.eventEditor.openView(detail as ActivityEventDetailDTO);
