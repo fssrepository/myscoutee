@@ -97,7 +97,7 @@ function activityRateDistanceMeters(item: ActivityRateDTO): number {
 }
 
 function activityRateDistanceBucketMeters(distanceMeters: number): number {
-  return Math.max(5_000, Math.ceil(distanceMeters / 5_000) * 5_000);
+  return Math.floor(distanceMeters / 5_000) * 5_000;
 }
 
 function normalizeActivityRateScore(value: unknown): number {

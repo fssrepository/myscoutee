@@ -20,6 +20,7 @@ export class HttpCommunityGroupsService implements ICommunityGroupsService {
     signal?.throwIfAborted();
     const page = await firstValueFrom(this.http.get<PageResult<CommunityGroupSummary, GroupCounters>>(this.url, { params: {
       userId, bucket: query.filters?.bucket ?? 'explore', category: query.filters?.category ?? '',
+      ...(query.sort ? { sort: query.sort } : {}),
       pageSize: query.pageSize, ...(query.cursor ? { cursor: query.cursor } : {})
     } }));
     signal?.throwIfAborted(); return page;

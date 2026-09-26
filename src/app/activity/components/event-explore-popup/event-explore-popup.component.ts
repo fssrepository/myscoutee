@@ -1614,8 +1614,10 @@ export class EventExplorePopupComponent {
     view: ContractTypes.EventExploreView
   ): string {
     if (view === 'distance') {
-      const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
-      return `${bucket} km`;
+      return AppUtils.activityGroupLabel(
+        { distanceMetersExact: record.distanceKm * 1000 }, 'distance',
+        { dateUnavailable: '', weekPrefix: '' }
+      );
     }
     const parsed = new Date(record.startAtIso);
     if (Number.isNaN(parsed.getTime())) {

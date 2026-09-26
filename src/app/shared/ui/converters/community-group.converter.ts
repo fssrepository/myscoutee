@@ -20,7 +20,7 @@ export const GROUP_CATEGORY_PALETTE = {
 export class CommunityGroupConverter {
   static card(group: CommunityGroupSummary, translate: (key: string) => string): InfoCardData<CommunityGroupSummary> {
     return { id: group.id, smartListKey: `community:${group.id}`, ownerId: group.ownerUserId, ownerUserId: group.ownerUserId,
-      title: group.name, dateIso: group.createdAtIso, imageUrl: group.imageUrl,
+      title: group.name, dateIso: group.updatedAtIso, imageUrl: group.imageUrl,
       placeholderLabel: group.imageUrl ? null : group.name,
       groupLabel: group.distanceKm == null ? translate('groups.title') : AppUtils.activityGroupLabel({ distanceMetersExact: group.distanceKm * 1000 }, 'distance', { dateUnavailable: '', weekPrefix: '' }),
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,

@@ -798,10 +798,16 @@ export class LocalActivityMembersRepository {
       const group = normalizedOwner.ownerType === 'community' ? state.communityGroups.byId[normalizedOwner.ownerId] : null;
       const pendingDelta = group ? normalizedRecords.filter(member => member.status === 'pending').length
         - (table.idsByOwnerKey[ownerKey] ?? []).filter(id => table.byId[id]?.status === 'pending').length : 0;
+      const groupChanged = group && (pendingDelta !== 0 || normalizedRecords.length !== (table.idsByOwnerKey[ownerKey] ?? []).length
+        || normalizedRecords.some(member => {
+          const previous = table.byId[member.id];
+          return !previous || member.updatedAtIso !== previous.updatedAtIso || member.status !== previous.status
+            || member.role !== previous.role || member.organizerOnly !== previous.organizerOnly;
+        }));
       return {
         ...state,
-        ...(group && pendingDelta ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
-          [group.id]: { ...group, pendingMembers: Math.max(0, (group.pendingMembers ?? 0) + pendingDelta), version: group.version + 1 }
+        ...(group && groupChanged ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
+          [group.id]: { ...group, updatedAtIso: new Date().toISOString(), pendingMembers: Math.max(0, (group.pendingMembers ?? 0) + pendingDelta), version: group.version + 1 }
         } } } : {}),
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextById,

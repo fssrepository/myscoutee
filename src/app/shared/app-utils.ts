@@ -787,7 +787,7 @@ export class AppUtils {
       const distanceMeters = Number.isFinite(row.distanceMetersExact)
         ? Math.max(0, Math.trunc(Number(row.distanceMetersExact)))
         : 0;
-      const bucket = Math.ceil(distanceMeters / 5000) * 5;
+      const bucket = Math.floor(distanceMeters / 5000) * 5;
       return `${bucket} km`;
     }
     const parsed = new Date(row.dateIso ?? '');

@@ -1,4 +1,5 @@
 import { Component, ViewChild, inject, effect } from '@angular/core';
+import { AppUtils } from '../../../app-utils';
 import { defer, map } from 'rxjs';
 import { PopupComponent, PopupModel } from '../core/popup';
 import { SmartListComponent, InfoCardComponent, InfoCardData, SmartListConfig, SmartListLoadPage } from '../core/smart-list';
@@ -8,7 +9,7 @@ import { I18nPipe } from '../../pipes/i18n.pipe';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
-import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory } from '../../../core/contracts/community-group.interface';
+import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
@@ -35,38 +36,43 @@ export class CommunityGroupsPopupComponent {
   private readonly i18n = inject(I18nService);
   private readonly moderation = inject(ContentModerationStore);
   @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroupSummary>, GroupFilters>;
-  protected query: { filters: GroupFilters } = { filters: { bucket: this.store.initialBucket(), category: null } };
+  protected query: { filters: GroupFilters; sort?: GroupSort } = { filters: { bucket: this.store.initialBucket(), category: null } };
   protected readonly config: SmartListConfig<InfoCardData<CommunityGroupSummary>, GroupFilters> = {
-    pageSize: 10, initialPageSize: 20, listLayout: 'card-grid', desktopColumns: 3,
+    pageSize: 10, initialPageSize: 20, listLayout: 'card-grid', minColumnWidth: '280px',
     containerClass: { 'experience-card-list': true, 'assets-card-list': true },
     snapMode: 'mandatory', scrollPaddingTop: '2.6rem', footerSpacerHeight: null,
     showStickyHeader: true, showFirstGroupMarker: false,
     trackBy: (_index, card) => card.id, groupBy: card => card.groupLabel ?? '',
     cacheable: { identity: card => card.id }, pollIntervalMs: 30000,
     headerProgress: { enabled: true, placement: 'inline' },
-    sortable: { sortKey: card => [card.distanceMetersExact == null ? Number.MAX_SAFE_INTEGER : Math.ceil(card.distanceMetersExact / 5000), -Date.parse(card.dateIso ?? ''), card.id] },
+    sortable: { sortKey: (card, _index, query) => groupSort(query.filters?.bucket ?? 'explore', query.sort) === 'distance'
+      ? [card.distanceMetersExact ?? Number.MAX_SAFE_INTEGER, card.id]
+      : [-Date.parse(card.dateIso ?? ''), card.id] },
     pollDelta: {
       revision: card => card.eagerDetail?.revision ?? JSON.stringify(card.eagerDetail),
       position: card => card.id,
       load: (query, snapshot, context) => defer(() => this.store.sync({
         bucket: query.filters?.bucket ?? 'hosting', category: query.filters?.category,
+        sort: groupSort(query.filters?.bucket ?? 'hosting', query.sort),
         limit: query.pageSize, knownItems: snapshot.knownItems.map(item => ({ id: item.id, revision: `${item.revision}` })),
         tailId: snapshot.loadedTail?.id ?? null
-      }, context?.signal)).pipe(map(delta => ({ ...delta, upserts: delta.upserts.map(group => this.card(group)) })))
+      }, context?.signal)).pipe(map(delta => ({ ...delta, upserts: delta.upserts.map(group => this.card(group, groupSort(query.filters?.bucket ?? 'hosting', query.sort))) })))
     },
     menuItems: context => context.item?.eagerDetail ? CommunityGroupConverter.menu(this.withModeration(context.item.eagerDetail), this.store.openUserId()) : []
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityGroupSummary>, GroupFilters> = (query, context) =>
     defer(() => this.store.page(query, context?.signal)).pipe(map(page => ({ ...page,
-      items: page.items.map(group => this.card(group)) })));
+      items: page.items.map(group => this.card(group, groupSort(query.filters?.bucket ?? 'explore', query.sort))) })));
   private withModeration(group: CommunityGroupSummary): CommunityGroupSummary {
     if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') return group;
     const attention = this.moderation.attention(group.id, group.moderationPending, group.moderationQueueRevision);
     return { ...group, activity: Math.max(0, group.activity - (group.moderationPending ?? 0)) + attention.pending,
       moderationPending: attention.pending, moderationQueueRevision: attention.revision };
   }
-  private card(group: CommunityGroupSummary) {
-    return CommunityGroupConverter.card(this.withModeration(group), key => this.i18n.translate(key));
+  private card(group: CommunityGroupSummary, sort: GroupSort = groupSort(this.query.filters.bucket, this.query.sort)) {
+    const card = CommunityGroupConverter.card(this.withModeration(group), key => this.i18n.translate(key));
+    if (sort === 'updated') card.groupLabel = AppUtils.smartListDayLabel(new Date(group.updatedAtIso));
+    return card;
   }
   constructor() {
     effect(() => {
@@ -100,6 +106,7 @@ export class CommunityGroupsPopupComponent {
   protected select(event: AppMenuItemSelectEvent): void { void this.store.action(event.id, event.context as CommunityGroupSummary); }
   protected model(): PopupModel {
     const bucket = this.query.filters.bucket; const category = this.query.filters.category;
+    const sort = groupSort(bucket, this.query.sort);
     return { title: 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
       toolbarMobileAlign: 'start', onClose: () => this.store.close(),
       headerActions: [{ id: 'create', icon: 'group_add', label: 'groups.create', palette: 'blue' }],
@@ -120,11 +127,16 @@ export class CommunityGroupsPopupComponent {
             counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket), counterTone: 'alert' },
             ...GROUP_CATEGORIES.map(id => ({ id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id],
               kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const,
-              counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, id), counterTone: 'alert' as const }))] }
+              counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, id), counterTone: 'alert' as const }))] },
+        { id: 'sort', kind: 'menu', align: 'start', menuKind: 'select',
+          trigger: { label: sort === 'distance' ? 'distance' : 'recent', icon: sort === 'distance' ? 'near_me' : 'schedule', palette: sort === 'distance' ? 'green' : 'violet', layout: 'pill' },
+          items: (['distance', 'updated'] as const).map(id => ({id, label: id === 'distance' ? 'distance' : 'recent',
+            icon: id === 'distance' ? 'near_me' : 'schedule', palette: id === 'distance' ? 'green' : 'violet', surface: 'tinted',
+            kind: 'radio', showCheck: true, active: sort === id, checked: sort === id})) }
       ], onMenuSelect: event => { const value = event.itemSelect.id;
-        this.query = { filters: event.control.id === 'bucket'
-          ? { ...this.query.filters, bucket: value as GroupBucket }
-          : { ...this.query.filters, category: value === 'all' ? null : value as GroupCategory } }; }
+        if (event.control.id === 'sort') this.query = { ...this.query, sort: value as GroupSort };
+        else if (event.control.id === 'bucket') this.query = { filters: { ...this.query.filters, bucket: value as GroupBucket } };
+        else this.query = { ...this.query, filters: { ...this.query.filters, category: value === 'all' ? null : value as GroupCategory } }; }
     };
   }
 }

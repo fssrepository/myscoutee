@@ -4,6 +4,10 @@ export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbie
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
 export type GroupVisibility = 'public' | 'private' | 'invitation';
 export type GroupBucket = 'hosting' | 'participation' | 'explore';
+export type GroupSort = 'distance' | 'updated';
+export function groupSort(bucket: GroupBucket, sort?: string | null): GroupSort {
+  return sort === 'distance' || sort === 'updated' ? sort : bucket === 'explore' ? 'distance' : 'updated';
+}
 export interface GroupPolicy { workspace: boolean; enabled: boolean; requiredFields: string[]; }
 export interface CommunityGroup {
   membersActivity?: number;
@@ -38,7 +42,7 @@ export interface GroupWorkspace {
   groupId: string; profileId: string | null; name: string; role: string; activity: number; policy: GroupPolicy;
 }
 export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; accountProfile?: UserDto | null; }
-export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
+export interface GroupSyncRequest { bucket: GroupBucket; category?: GroupCategory | null; sort?: GroupSort; limit: number; knownItems: readonly { id: string; revision: string }[]; tailId: string | null; }
 export interface GroupSyncResponse { upserts: CommunityGroupSummary[]; removedIds: string[]; total: number; }
 export interface ICommunityGroupsService {
   sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse>;

@@ -11,7 +11,7 @@ import { LocalAdminModerationRepository } from '../repositories/admin-moderation
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
-import { GROUP_CATEGORIES, communityGroupSummary, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
+import { GROUP_CATEGORIES, communityGroupSummary, groupSort, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../../contracts/list.interface';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
 
@@ -24,7 +24,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private readonly reports = inject(LocalAdminModerationRepository);
   async sync(userId: string, request: GroupSyncRequest, signal?: AbortSignal): Promise<GroupSyncResponse> {
     await this.groups.ready();
-    const page = await this.page(userId, { page: 0, pageSize: Math.max(1, this.groups.records().length), filters: request, sort: 'distance', direction: 'asc' }, signal);
+    const page = await this.page(userId, { page: 0, pageSize: Math.max(1, this.groups.records().length), filters: request, sort: request.sort }, signal);
     const known = new Map(request.knownItems.map(item => [item.id, item.revision]));
     const ids = new Set(page.items.map(group => group.id));
     const tail = page.items.findIndex(group => group.id === request.tailId);
@@ -98,8 +98,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         && (!g.moderationStatus || g.moderationStatus === 'accepted');
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
       .map(g => this.dto(userId, g)).sort((a, b) =>
-        Math.ceil((a.distanceKm ?? Infinity) / 5) - Math.ceil((b.distanceKm ?? Infinity) / 5)
-        || b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id));
+        (groupSort(bucket, query.sort) === 'distance'
+          ? (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
+          : b.updatedAtIso.localeCompare(a.updatedAtIso)) || a.id.localeCompare(b.id));
     const offset = Number(query.cursor ?? 0); if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
     const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
     return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,

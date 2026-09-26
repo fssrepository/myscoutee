@@ -467,7 +467,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       badgeToneClass: row => this.calendarBadgeToneClass(row)
     },
     emptyLabel: () => this.activitiesEmptyLabel,
-    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '5 km' : 'No items'),
+    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '0 km' : 'No items'),
     showGroupMarker: ({ groupIndex, scrollable }) => {
       if (groupIndex > 0) {
         return true;

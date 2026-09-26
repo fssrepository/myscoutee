@@ -60,6 +60,50 @@ describe('Community membership writes and recipient attention', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('orders Explore by distance within the same interval and supports Recent independently', async () => {
+    state[USERS_TABLE_NAME].byId['guest'].locationCoordinates = { latitude: 47.48, longitude: 19.03 };
+    state[USERS_TABLE_NAME].byId['admin'].locationCoordinates = { latitude: 47.51, longitude: 19.03 };
+    state[USERS_TABLE_NAME].byId['member'].locationCoordinates = { latitude: 47.49, longitude: 19.03 };
+    const group = state.communityGroups.byId['group'];
+    group.updatedAtIso = '2026-09-26T10:00:00.000Z';
+    state.communityGroups.byId['near'] = { ...group, id: 'near', ownerUserId: 'member', updatedAtIso: '2026-09-25T10:00:00.000Z' };
+    state.communityGroups.ids.push('near');
+    const query = { page: 0, pageSize: 1, filters: { bucket: 'explore' as const } };
+    const first = await service.page('guest', query);
+    expect(first.items.map(item => item.id)).toEqual(['near']);
+    expect((await service.page('guest', { ...query, cursor: first.nextCursor })).items.map(item => item.id)).toEqual(['group']);
+    const recent = await service.page('guest', { ...query, sort: 'updated' });
+    expect(recent.items.map(item => item.id)).toEqual(['group']);
+    const synced = await service.sync('guest', { bucket: 'explore', sort: 'updated', limit: 1, knownItems: [], tailId: null });
+    expect(synced.upserts.map(item => item.id)).toEqual(['group']);
+  });
+
+  it('persists membership change time and leaves it unchanged on a retry', async () => {
+    state.communityGroups.byId['group'].updatedAtIso = '2026-09-20T00:00:00.000Z';
+    await service.join('guest', 'group');
+    const changedAt = state.communityGroups.byId['group'].updatedAtIso;
+    expect(changedAt > '2026-09-20T00:00:00.000Z').toBe(true);
+    await service.join('guest', 'group');
+    expect(state.communityGroups.byId['group'].updatedAtIso).toBe(changedAt);
+  });
+
+  it('excludes invite-only groups from every Explore order, filter and sync response', async () => {
+    state.communityGroups.byId['group'].visibility = 'invitation';
+    for (const sort of ['distance', 'updated'] as const) {
+      for (const category of [null, 'friends'] as const) {
+        const page = await service.page('guest', { page: 0, pageSize: 1, sort, filters: { bucket: 'explore', category } });
+        expect(page.items).toEqual([]);
+        expect(page.total).toBe(0);
+        expect(page.nextCursor).toBeNull();
+        const sync = await service.sync('guest', { bucket: 'explore', category, sort, limit: 1,
+          knownItems: [{ id: 'group', revision: 'old' }], tailId: 'group' });
+        expect(sync.upserts).toEqual([]);
+        expect(sync.removedIds).toEqual(['group']);
+      }
+    }
+    await expect(service.detail('guest', 'group')).rejects.toThrow();
+  });
+
   it('moves a join into Participation and counts the pending operation only for the administrator', async () => {
     const joined = await service.join('guest', 'group');
     expect(joined.membershipStatus).toBe('pending');

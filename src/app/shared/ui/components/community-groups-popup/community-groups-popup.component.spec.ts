@@ -21,6 +21,14 @@ function model(bucket: string, category: string | null = null) {
 }
 
 describe('Group selector counters', () => {
+  it('offers only Distance and Recent, with contextual defaults', () => {
+    for (const bucket of ['hosting', 'participation', 'explore']) {
+      const sort = model(bucket).toolbarControls.find((control: { id: string }) => control.id === 'sort');
+      expect(sort.items.map((item: { label: string }) => item.label)).toEqual(['distance', 'recent']);
+      expect(sort.items.find((item: { checked: boolean }) => item.checked).id)
+        .toBe(bucket === 'explore' ? 'distance' : 'updated');
+    }
+  });
   it('sums operations in a category instead of counting matching groups', () => {
     expect(workspace().categoryCount('hosting', 'friends')).toBe(5);
     expect(workspace().categoryCount('hosting', 'work')).toBe(0);
@@ -43,10 +51,14 @@ describe('Group selector counters', () => {
     expect(controls[1].trigger.counter).toBe(5);
     expect(controls[1].items.find((item: { id: string }) => item.id === 'friends')).toMatchObject({ counter: 5, counterTone: 'alert' });
   });
-  it('uses the common Event distance grouping with a genuine zero-distance bucket', () => {
+  it('labels five-kilometre intervals by their inclusive lower boundary', () => {
     const labels = { dateUnavailable: '', weekPrefix: '' };
     expect(AppUtils.activityGroupLabel({ distanceMetersExact: 0 }, 'distance', labels)).toBe('0 km');
-    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 3200 }, 'distance', labels)).toBe('5 km');
-    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 5100 }, 'distance', labels)).toBe('10 km');
+    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 3200 }, 'distance', labels)).toBe('0 km');
+    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 4999 }, 'distance', labels)).toBe('0 km');
+    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 5000 }, 'distance', labels)).toBe('5 km');
+    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 5100 }, 'distance', labels)).toBe('5 km');
+    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 9999 }, 'distance', labels)).toBe('5 km');
+    expect(AppUtils.activityGroupLabel({ distanceMetersExact: 10000 }, 'distance', labels)).toBe('10 km');
   });
 });
