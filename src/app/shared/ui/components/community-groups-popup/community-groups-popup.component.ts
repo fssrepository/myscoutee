@@ -115,12 +115,12 @@ export class CommunityGroupsPopupComponent implements OnInit {
     const toolbarControls: PopupControl[] = [];
     if (!this.explore) toolbarControls.push({
       id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
-      trigger: { label: bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
-        counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
-      items: (['hosting', 'participation', 'pending', 'invitations'] as const).map(id => ({ id,
-        label: id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`, ...GROUP_BUCKET_STYLE[id],
+      trigger: { label: bucket === 'trash' ? 'trash' : bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
+        counter: bucket === 'explore' || bucket === 'trash' ? 0 : this.store.counters()[bucket] },
+      items: (['hosting', 'participation', 'pending', 'invitations', 'trash'] as const).map(id => ({ id,
+        label: id === 'trash' ? 'trash' : id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`, ...GROUP_BUCKET_STYLE[id],
         kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
-        counter: this.store.counters()[id], counterTone: 'alert' }))
+        counter: id === 'trash' ? 0 : this.store.counters()[id], counterTone: 'alert' }))
     });
     if (this.explore) toolbarControls.push({
       id: 'category', kind: 'menu', align: 'start', menuKind: 'select',

@@ -60,6 +60,66 @@ describe('Community membership writes and recipient attention', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  const page = (userId: string, bucket: 'trash' | 'participation' | 'pending' | 'explore') =>
+    service.page(userId, { filters: { bucket }, pageSize: 20 });
+
+  it('keeps a voluntary leave in Trash and restores accepted membership without admission', async () => {
+    const left = await service.action('member', 'group', 'member', 'remove');
+    expect(left.group?.membershipStatus).toBe('deleted');
+    expect((await page('member', 'trash')).items.map(g => g.id)).toEqual(['group']);
+    expect((await page('member', 'participation')).items).toEqual([]);
+    expect((await page('member', 'explore')).items).toEqual([]);
+    expect((await service.workspaces('member'))).toEqual([]);
+    const restored = await service.action('member', 'group', 'member', 'restore');
+    expect(restored.group).toMatchObject({ membershipStatus: 'accepted', requestKind: null, acceptedMembers: 2 });
+    expect((await page('member', 'trash')).items).toEqual([]);
+    expect((await page('member', 'participation')).items).toHaveLength(1);
+    const count = notices().length;
+    await service.action('member', 'group', 'member', 'restore');
+    expect(notices()).toHaveLength(count);
+  });
+
+  it('requires fresh approval after an administrator removes a member, including invitation-only groups', async () => {
+    state.communityGroups.byId['group'].visibility = 'invitation';
+    await service.action('admin', 'group', 'member', 'remove');
+    expect(member('member').status).toBe('blocked');
+    expect((await page('member', 'trash')).items[0].membershipStatus).toBe('blocked');
+    await expect(service.action('member', 'group', 'member', 'remove')).rejects.toThrow();
+    await expect(service.detail('member', 'group')).rejects.toThrow();
+    const restored = await service.action('member', 'group', 'member', 'restore');
+    expect(restored.group).toMatchObject({ membershipStatus: 'pending', requestKind: 'join', acceptedMembers: 1 });
+    expect((await page('member', 'pending')).items).toHaveLength(1);
+    expect((await service.workspaces('member')).filter(w => w.membershipStatus === 'accepted')).toEqual([]);
+    await expect(service.action('member', 'group', 'member', 'accept')).rejects.toThrow('Forbidden');
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member').status).toBe('pending');
+    await service.action('admin', 'group', 'member', 'accept');
+    expect(member('member').status).toBe('accepted');
+  });
+
+  it('retains another former member when an invitation changes the live roster', async () => {
+    await service.action('member', 'group', 'member', 'remove');
+    await service.invite('admin', 'group', ['guest']);
+    expect((await page('member', 'trash')).items).toHaveLength(1);
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member').status).toBe('accepted');
+    expect(member('guest').status).toBe('pending');
+  });
+
+  it('does not restore a group deleted after its last member leaves', async () => {
+    await service.action('member', 'group', 'member', 'remove');
+    await service.action('admin', 'group', 'admin', 'remove');
+    expect((await page('member', 'trash')).items).toEqual([]);
+    await expect(service.action('member', 'group', 'member', 'restore')).rejects.toThrow('Group not found');
+  });
+
+  it('restores membership without resurrecting former administrator privileges', async () => {
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    await service.action('member', 'group', 'member', 'remove');
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member')).toMatchObject({ status: 'accepted', role: 'Member', managerGrantedByUserId: null });
+  });
+
   it('records the granting Admin and denies revocation by another Admin', async () => {
     await service.invite('admin', 'group', ['guest']);
     await service.action('guest', 'group', 'guest', 'accept');

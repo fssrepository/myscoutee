@@ -10,6 +10,7 @@ export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: Ap
   hosting: { icon: 'event_seat', palette: 'green' }, participation: { icon: 'groups', palette: 'orange' },
   invitations: { icon: 'mail', palette: 'violet' },
   pending: { icon: 'pending_actions', palette: 'amber' },
+  trash: { icon: 'delete', palette: 'danger' },
   explore: { icon: 'explore', palette: 'violet' }
 };
 export const GROUP_VISIBILITY_STYLE: Record<GroupVisibility, { icon: string; palette: AppMenuPalette }> = {
@@ -36,7 +37,7 @@ export class CommunityGroupConverter {
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
       leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
-      surfaceTone: group.moderationStatus === 'under-review' || group.lifecycleStatus === 'under-review' ? 'review' : group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
+      surfaceTone: (group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked') ? 'deleted' : group.moderationStatus === 'under-review' || group.lifecycleStatus === 'under-review' ? 'review' : group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
       mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },
       mediaBottomStart: contentModerationBadge(group.moderationStatus),
@@ -49,6 +50,10 @@ export class CommunityGroupConverter {
       hasMenuOptions: true, menuBadgeCount, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
+    if ((group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked')) return group.lifecycleStatus === 'deleted' ? [] : [{
+      id: 'restore', label: 'restore', icon: CARD_MENU_ACTIONS['restore'].icon,
+      palette: ActivityEventInfoCardMenuConverter.actionPalette('restore', CARD_MENU_ACTIONS['restore'].tone), surface: 'tinted', context: group
+    }];
     const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: ActivityEventInfoCardMenuConverter.actionPalette('view', CARD_MENU_ACTIONS['view'].tone), surface: 'tinted', context: group }];
     if (group.lifecycleStatus !== 'under-review' && group.role === 'Admin' && group.membershipStatus === 'accepted') {
       items.push({ id: 'share', label: 'invite.external.title', icon: 'share', palette: 'teal', surface: 'tinted', context: group });

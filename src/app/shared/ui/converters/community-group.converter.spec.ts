@@ -60,3 +60,15 @@ describe('Group member badge access', () => {
     expect(card.menuBadgeCount).toBe(0);
   });
 });
+
+
+describe('Group Trash cards', () => {
+  it.each(['deleted', 'blocked'] as const)('shows a restore action without roster access or change badges for %s', membershipStatus => {
+    const dto = group({ membershipStatus, requestKind: null, hideMembers: false, activity: 0 });
+    const card = CommunityGroupConverter.card(dto, key => key);
+    expect(card.surfaceTone).toBe('deleted');
+    expect(card.menuBadgeCount).toBe(0);
+    expect(card.mediaEnd).toMatchObject({ disabled: true, interactive: false, pendingCount: 0 });
+    expect(CommunityGroupConverter.menu(dto).map(item => item.id)).toEqual(['restore']);
+  });
+});

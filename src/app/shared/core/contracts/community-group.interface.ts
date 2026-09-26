@@ -3,8 +3,9 @@ import type { ListQuery, PageResult } from './list.interface';
 export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbies', 'neighbourhood'] as const;
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
 export type GroupVisibility = 'public' | 'private' | 'invitation';
-export type GroupBucket = 'hosting' | 'participation' | 'pending' | 'invitations' | 'explore';
+export type GroupBucket = 'hosting' | 'participation' | 'pending' | 'invitations' | 'explore' | 'trash';
 export function groupMembershipBucket(group: { role?: string | null; membershipStatus?: string | null; requestKind?: string | null }): GroupBucket {
+  if (group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked') return 'trash';
   if (group.membershipStatus === 'accepted' && group.role === 'Admin') return 'hosting';
   if (group.membershipStatus === 'pending' && group.requestKind === 'invite') return 'invitations';
   if (group.membershipStatus === 'pending') return 'pending';
@@ -31,7 +32,7 @@ export interface CommunityGroup {
   name: string; description: string; imageUrl: string | null; category: GroupCategory;
   visibility: GroupVisibility; hideMembers: boolean; policy: GroupPolicy;
   createdAtIso: string; updatedAtIso: string; version: number;
-  role: 'Admin' | 'Member' | null; membershipStatus: 'accepted' | 'pending' | null;
+  role: 'Admin' | 'Member' | null; membershipStatus: 'accepted' | 'pending' | 'deleted' | 'blocked' | null;
   requestKind: 'invite' | 'join' | null; organizerOnly: boolean;
   acceptedMembers: number; pendingMembers: number; activity: number; distanceKm: number | null;
 }
@@ -41,7 +42,7 @@ export interface SaveCommunityGroup {
 }
 export type CommunityGroupSummary = Omit<CommunityGroup, 'description' | 'policy'>;
 export function canPreviewGroupMembers(group: CommunityGroupSummary): boolean {
-  return !group.hideMembers || (group.role === 'Admin' && group.membershipStatus === 'accepted');
+  return group.membershipStatus !== 'deleted' && group.membershipStatus !== 'blocked' && (!group.hideMembers || (group.role === 'Admin' && group.membershipStatus === 'accepted'));
 }
 export function communityGroupSummary(group: CommunityGroup | CommunityGroupSummary): CommunityGroupSummary {
   const { description, policy, ...summary } = group as CommunityGroup;
