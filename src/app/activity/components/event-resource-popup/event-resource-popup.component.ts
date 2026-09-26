@@ -2548,7 +2548,7 @@ export class EventResourcePopupComponent {
     }
     const isPending = syncedStatus === 'pending' || (!syncedStatus && currentRequest?.status === 'pending');
     this.dialogStore.open({
-      title: `Leave ${sourceCard.title}?`,
+      title: this.i18n.translate('confirmation.leave.named.asset').replace('{name}', sourceCard.title),
       message: isPending
         ? 'You will leave this asset and withdraw your pending request.'
         : 'You will leave this asset.',
@@ -3235,7 +3235,7 @@ export class EventResourcePopupComponent {
       title: card.title
     };
     this.dialogStore.open({
-      title: `Remove ${pending.title}?`,
+      title: this.i18n.translate('confirmation.remove.named.asset').replace('{name}', pending.title),
       message: `Remove this Asset from the event?`,
       cancelLabel: 'Cancel',
       confirmLabel: 'Remove',

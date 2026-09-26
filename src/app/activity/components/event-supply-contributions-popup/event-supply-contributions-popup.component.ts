@@ -606,7 +606,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       label: `${row.name} · ${row.quantity}`
     };
     this.dialogStore.open({
-      title: 'Delete quantity row',
+      title: 'confirmation.delete.supply',
       message: `Delete "${pending.label}" from supplies?`,
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',

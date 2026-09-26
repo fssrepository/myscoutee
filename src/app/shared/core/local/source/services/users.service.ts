@@ -322,8 +322,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       pageSize: LocalUsersService.OFFLINE_TICKET_SNAPSHOT_PAGE_SIZE,
       order: 'upcoming'
     });
+    const account = currentUser?.accountUserId ? this.usersRepository.queryUserById(currentUser.accountUserId) : null;
     return {
       ...snapshot,
+      accountCounters: account
+        ? this.buildInitialMenuCounterOverrides(LocalUsersMapper.toDto(account))
+        : null,
       locationCoordinates: currentUser ? LocalUsersMapper.toDto(currentUser).locationCoordinates ?? null : undefined,
       offlineTicketSnapshot
     };

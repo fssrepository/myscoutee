@@ -17,7 +17,7 @@
   </div>
   @if (effectivePanelEnabled()) {
   <div class="event-policies-panel-body">
-    @if (!locked()) {
+    @if (!locked() || config.showReadOnlyPopup) {
     <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
       <mat-icon>gavel</mat-icon>
       <span>{{ openPoliciesLabel() }}</span>

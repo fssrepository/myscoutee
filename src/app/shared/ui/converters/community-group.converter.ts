@@ -3,9 +3,12 @@ import { communityGroupSummary, type CommunityGroupSummary, type GroupBucket, ty
 import type { InfoCardData } from '../components/core/smart-list/card';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
 import { contentModerationBadge } from './content-moderation-badge';
+import { ActivityEventInfoCardMenuConverter } from './activity-event-info-card-menu.converter';
+import { CARD_MENU_ACTIONS } from '../components/core/smart-list/card';
 export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette }> = {
-  hosting: { icon: 'event_seat', palette: 'blue' }, participation: { icon: 'groups', palette: 'violet' },
-  explore: { icon: 'explore', palette: 'teal' }
+  hosting: { icon: 'event_seat', palette: 'green' }, participation: { icon: 'groups', palette: 'orange' },
+  invitations: { icon: 'mail', palette: 'violet' },
+  explore: { icon: 'explore', palette: 'violet' }
 };
 export const GROUP_VISIBILITY_STYLE: Record<GroupVisibility, { icon: string; palette: AppMenuPalette }> = {
   public: { icon: 'public', palette: 'green' }, private: { icon: 'lock', palette: 'blue' },
@@ -35,20 +38,20 @@ export class CommunityGroupConverter {
       hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
-    const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: 'blue', surface: 'tinted', context: group },
+    const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: ActivityEventInfoCardMenuConverter.actionPalette('view', CARD_MENU_ACTIONS['view'].tone), surface: 'tinted', context: group },
       { id: 'members', label: 'members', icon: 'groups', palette: 'violet', surface: 'tinted',
         counter: { value: group.membersActivity ?? 0, max: 99 }, counterTone: 'alert', context: group }];
     if (group.role === 'Admin' && group.membershipStatus === 'accepted') {
       items.push({ id: 'share', label: 'invite.external.title', icon: 'share', palette: 'teal', surface: 'tinted', context: group });
-      items.push({ id: 'edit', label: 'edit', icon: 'edit', palette: 'teal', surface: 'tinted', context: group });
+      items.push({ id: 'edit', label: 'edit', icon: 'edit', palette: ActivityEventInfoCardMenuConverter.actionPalette('edit', CARD_MENU_ACTIONS['edit'].tone), surface: 'tinted', context: group });
       items.push({ id: 'moderation', label: 'moderation.title', icon: 'fact_check', palette: 'lime', surface: 'tinted',
         counter: { value: group.moderationPending ?? 0, max: 99 }, counterTone: 'alert', context: group });
     } else if (!group.membershipStatus && (!group.moderationStatus || group.moderationStatus === 'accepted')) {
       items.push({ id: 'join', label: 'groups.join', icon: 'person_add', palette: 'blue', surface: 'tinted', context: group });
     } else if (group.membershipStatus === 'pending' && group.requestKind === 'invite') {
-      items.push({ id: 'accept', label: 'accept', icon: 'done', palette: 'blue', surface: 'tinted', context: group });
+      items.push({ id: 'accept', label: 'accept', icon: 'done', palette: ActivityEventInfoCardMenuConverter.actionPalette('accept', CARD_MENU_ACTIONS['accept'].tone), surface: 'tinted', context: group });
     }
-    if (userId && userId !== group.ownerUserId) items.push({ id: 'report', label: 'groups.report', icon: 'flag', palette: 'orange', surface: 'tinted', context: group });
+    if (userId && userId !== group.ownerUserId) items.push({ id: 'report', label: 'groups.report', icon: 'flag', palette: ActivityEventInfoCardMenuConverter.actionPalette('reportOrganizer', CARD_MENU_ACTIONS['reportOrganizer'].tone), surface: 'tinted', context: group });
     return items;
   }
 }

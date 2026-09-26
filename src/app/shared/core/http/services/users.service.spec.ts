@@ -11,6 +11,7 @@ import { HttpUsersService } from './users.service';
 
 describe('HttpUsersService demo authority boundary', () => {
   const get = vi.fn();
+  const post = vi.fn();
   const readUser = vi.fn();
   const writeUser = vi.fn();
   const setFirebaseAvatarPreview = vi.fn();
@@ -21,6 +22,7 @@ describe('HttpUsersService demo authority boundary', () => {
   beforeEach(() => {
     currentSession = { kind: 'demo', userId: 'demo-user' };
     get.mockReset();
+    post.mockReset();
     readUser.mockReset();
     writeUser.mockReset();
     setFirebaseAvatarPreview.mockReset();
@@ -31,7 +33,7 @@ describe('HttpUsersService demo authority boundary', () => {
     TestBed.configureTestingModule({
       providers: [
         HttpUsersService,
-        { provide: HttpClient, useValue: { get } },
+        { provide: HttpClient, useValue: { get, post } },
         { provide: OfflineCacheService, useValue: { readUser, writeUser } },
         { provide: RouteDelayService, useValue: { withRequestTimeout } },
         {
@@ -48,6 +50,16 @@ describe('HttpUsersService demo authority boundary', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
+  });
+
+  it('preserves separate account counters in the existing group-profile realtime response', async () => {
+    post.mockReturnValue(of({ userId: 'group-profile', counters: { game: 2 }, impressions: {},
+      accountCounters: { game: 8, cars: 3, contactRequestsPending: 1 } }));
+    const result = await TestBed.inject(HttpUsersService).queryUserRealtimeLongPoll('group-profile');
+    expect(result?.counters).toEqual({ game: 2 });
+    expect(result?.accountCounters).toEqual({ game: 8, cars: 3, contactRequestsPending: 1 });
+    expect(post).toHaveBeenCalledOnce();
+    expect(get).not.toHaveBeenCalled();
   });
 
   it('sends workspace selection only on a full profile load and keeps absence distinct from base', async () => {

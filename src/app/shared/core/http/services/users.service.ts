@@ -254,6 +254,7 @@ export class HttpUsersService implements UserService {
     }
     try {
       type HttpLongPollResponse = {
+        accountCounters?: UserMenuCountersDto | null;
         contentModeration?: UserRealtimeLongPollResponseDto['contentModeration'];
         following?: UserRealtimeLongPollResponseDto['following'];
         feedCounters?: UserRealtimeLongPollResponseDto['feedCounters'];
@@ -295,6 +296,7 @@ export class HttpUsersService implements UserService {
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),
         counters: response.counters,
+        accountCounters: response.accountCounters,
         impressions: response.impressions,
         offlineTicketSnapshot: response.offlineTicketSnapshot
           ? {

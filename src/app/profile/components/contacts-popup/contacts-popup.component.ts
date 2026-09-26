@@ -534,7 +534,7 @@ export class ContactsPopupComponent implements OnDestroy {
 
   private confirmChatAccess(contact: ContactListItem, action: ContactChatAccessAction): void {
     this.closeActionMenu();
-    this.dialogStore.open({ title: `contact.chat.${action}`, message: `contact.chat.${action}.message`,
+    this.dialogStore.open({ title: `contact.chat.${action}.question`, message: `contact.chat.${action}.message`,
       confirmLabel: `contact.chat.${action}`, cancelLabel: 'Cancel',
       confirmPalette: action === 'reject' ? 'red' : action === 'approve' ? 'green' : 'orange',
       failureMessage: 'contact.chat.error',
@@ -642,7 +642,7 @@ export class ContactsPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.closeActionMenu();
     this.dialogStore.open({
-      title: `Delete ${contact.name}?`,
+      title: this.i18n.translate('confirmation.delete.contact').replace('{name}', contact.name),
       message: 'This removes the contact and all saved availability methods from your local list.',
       confirmLabel: 'Delete',
       busyConfirmLabel: 'Deleting...',

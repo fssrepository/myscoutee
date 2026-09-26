@@ -9,7 +9,7 @@ import { I18nPipe } from '../../pipes/i18n.pipe';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
-import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort } from '../../../core/contracts/community-group.interface';
+import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort, groupMembershipBucket } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
@@ -92,10 +92,8 @@ export class CommunityGroupsPopupComponent {
       const group = this.store.changed(); if (!group) return;
       const card = this.card(group);
       const { bucket, category } = this.query.filters;
-      const admin = group.role === 'Admin' && group.membershipStatus === 'accepted';
-      const matches = (!category || category === group.category) && (bucket === 'hosting' ? admin
-        : bucket === 'participation' ? !admin && !!group.membershipStatus
-        : group.ownerUserId !== this.store.openUserId() && !group.membershipStatus && group.visibility !== 'invitation'
+      const matches = (!category || category === group.category) && groupMembershipBucket(group) === bucket
+        && (bucket !== 'explore' || group.ownerUserId !== this.store.openUserId() && group.visibility !== 'invitation'
           && (!group.moderationStatus || group.moderationStatus === 'accepted'));
       if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
       else if (!this.list?.patchVisibleItem(item => item.id === group.id, () => card)) {
@@ -109,13 +107,17 @@ export class CommunityGroupsPopupComponent {
     const sort = groupSort(bucket, this.query.sort);
     return { title: 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
       toolbarMobileAlign: 'start', onClose: () => this.store.close(),
-      headerActions: [{ id: 'create', icon: 'group_add', label: 'groups.create', palette: 'blue' }],
+      headerControls: [{ id: 'sort', kind: 'menu', menuKind: 'select',
+        trigger: { label: sort === 'distance' ? 'distance' : 'recent', icon: sort === 'distance' ? 'near_me' : 'schedule', palette: sort === 'distance' ? 'green' : 'violet', layout: 'pill' },
+        items: (['distance', 'updated'] as const).map(id => ({id, label: id === 'distance' ? 'distance' : 'recent',
+          icon: id === 'distance' ? 'near_me' : 'schedule', palette: id === 'distance' ? 'green' : 'violet', surface: 'tinted',
+          kind: 'radio', showCheck: true, active: sort === id, checked: sort === id})) }],
       onAction: () => { this.store.closeEditor(); this.store.error.set(''); this.store.editor.set({ group: null, readOnly: false }); },
       toolbarControls: [
         { id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
-          trigger: { label: `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
+          trigger: { label: bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
             counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
-          items: (['hosting','participation','explore'] as GroupBucket[]).map(id => ({ id, label: `groups.bucket.${id}`,
+          items: (['hosting','participation','invitations','explore'] as GroupBucket[]).map(id => ({ id, label: id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`,
             ...GROUP_BUCKET_STYLE[id], kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
             counter: id === 'explore' ? 0 : this.store.counters()[id], counterTone: 'alert' })) },
         { id: 'category', kind: 'menu', align: 'start', menuKind: 'select',
@@ -128,11 +130,7 @@ export class CommunityGroupsPopupComponent {
             ...GROUP_CATEGORIES.map(id => ({ id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id],
               kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const,
               counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, id), counterTone: 'alert' as const }))] },
-        { id: 'sort', kind: 'menu', align: 'start', menuKind: 'select',
-          trigger: { label: sort === 'distance' ? 'distance' : 'recent', icon: sort === 'distance' ? 'near_me' : 'schedule', palette: sort === 'distance' ? 'green' : 'violet', layout: 'pill' },
-          items: (['distance', 'updated'] as const).map(id => ({id, label: id === 'distance' ? 'distance' : 'recent',
-            icon: id === 'distance' ? 'near_me' : 'schedule', palette: id === 'distance' ? 'green' : 'violet', surface: 'tinted',
-            kind: 'radio', showCheck: true, active: sort === id, checked: sort === id})) }
+        { id: 'create', align: 'end', icon: 'add', ariaLabel: this.i18n.translate('groups.create'), palette: 'green' }
       ], onMenuSelect: event => { const value = event.itemSelect.id;
         if (event.control.id === 'sort') this.query = { ...this.query, sort: value as GroupSort };
         else if (event.control.id === 'bucket') this.query = { filters: { ...this.query.filters, bucket: value as GroupBucket } };

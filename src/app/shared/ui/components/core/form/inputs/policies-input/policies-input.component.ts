@@ -61,6 +61,7 @@ export interface PoliciesInputConfig {
   toggleable?: PoliciesInputConfigValue<boolean>;
   openLabel?: PoliciesInputConfigValue<string>;
   viewLabel?: PoliciesInputConfigValue<string>;
+  showReadOnlyPopup?: boolean;
   emptyLabel?: PoliciesInputConfigValue<string>;
   readOnlyEmptyLabel?: PoliciesInputConfigValue<string>;
   popupSubtitle?: PoliciesInputConfigValue<string>;
@@ -313,6 +314,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
   }
 
   protected policyPopupTitle(): string {
+    if (this.locked()) return 'event.editor.policy.view';
     return this.editingPolicyDraftIndex === null ? 'event.editor.policy.create' : 'event.editor.policy.edit';
   }
 

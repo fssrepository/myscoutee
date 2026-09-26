@@ -620,7 +620,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const label = followed ? 'event.following.follow' : 'event.following.unfollow';
     this.activitiesSmartList?.closeMenu();
     this.dialogStore.open({
-      title: label, message: this.activityEventDTOFromVisibleSource(row)?.creatorName,
+      title: `${label}.question`, message: this.activityEventDTOFromVisibleSource(row)?.creatorName,
       confirmLabel: label, cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
       onConfirm: async () => {
         await this.followingStore.change(organizerId, followed);

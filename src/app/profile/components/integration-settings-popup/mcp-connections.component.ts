@@ -73,7 +73,7 @@ export class McpConnectionsComponent {
     disabled: this.store.busy() || !this.store.settings() || this.store.settings()!.clients.length >= this.store.settings()!.maxClients}]; }
   protected revokeActions(id: string): AppMenuItem[] { return [{id, icon: 'delete', ariaLabel: 'integration.token.revoke', palette: 'danger', layout: 'icon', disabled: this.store.busy()}]; }
   protected revoke(id: string): void {
-    this.dialogs.open({title: 'mcp.revoke', message: 'mcp.revoke.message', confirmLabel: 'integration.token.revoke',
+    this.dialogs.open({title: 'mcp.revoke.question', message: 'mcp.revoke.message', confirmLabel: 'integration.token.revoke',
       confirmTone: 'danger', failureMessage: 'mcp.failed', onConfirm: () => this.store.revoke(id)});
   }
   protected editorModel(): PopupModel {

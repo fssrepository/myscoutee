@@ -3,12 +3,21 @@ import type { ListQuery, PageResult } from './list.interface';
 export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbies', 'neighbourhood'] as const;
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
 export type GroupVisibility = 'public' | 'private' | 'invitation';
-export type GroupBucket = 'hosting' | 'participation' | 'explore';
+export type GroupBucket = 'hosting' | 'participation' | 'invitations' | 'explore';
+export function groupMembershipBucket(group: { role?: string | null; membershipStatus?: string | null; requestKind?: string | null }): GroupBucket {
+  if (group.membershipStatus === 'accepted' && group.role === 'Admin') return 'hosting';
+  if (group.membershipStatus === 'pending' && group.requestKind === 'invite') return 'invitations';
+  return group.membershipStatus === 'accepted' || group.membershipStatus === 'pending' ? 'participation' : 'explore';
+}
 export type GroupSort = 'distance' | 'updated';
 export function groupSort(bucket: GroupBucket, sort?: string | null): GroupSort {
   return sort === 'distance' || sort === 'updated' ? sort : bucket === 'explore' ? 'distance' : 'updated';
 }
-export interface GroupPolicy { workspace: boolean; enabled: boolean; requiredFields: string[]; }
+export interface GroupPolicy {
+  workspace: boolean; enabled: boolean; requiredFields: string[];
+  policiesEnabled?: boolean;
+  policies?: import('./event.interface').EventPolicyDTO[];
+}
 export interface CommunityGroup {
   membersActivity?: number;
   moderationPending?: number;
@@ -33,12 +42,13 @@ export function communityGroupSummary(group: CommunityGroup | CommunityGroupSumm
   return summary;
 }
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
-export interface GroupCounters { hosting: number; participation: number; }
+export interface GroupCounters { hosting: number; participation: number; invitations: number; }
 export interface GroupWorkspace {
   membersActivity?: number;
   moderationPending?: number;
   moderationQueueRevision?: number;
   category?: GroupCategory; membershipStatus?: 'accepted' | 'pending';
+  requestKind?: 'invite' | 'join' | null;
   groupId: string; profileId: string | null; name: string; role: string; activity: number; policy: GroupPolicy;
 }
 export interface GroupWorkspaceSelection { workspace: GroupWorkspace | null; profile: UserDto; accountProfile?: UserDto | null; }

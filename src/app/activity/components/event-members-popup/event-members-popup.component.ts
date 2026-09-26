@@ -747,7 +747,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     switch (context.action) {
       case 'unfollow':
-        this.dialogStore.open({ title: 'event.following.unfollow', message: context.member.name,
+        this.dialogStore.open({ title: 'event.following.unfollow.question', message: context.member.name,
           confirmLabel: 'event.following.unfollow', cancelLabel: 'Cancel', confirmPalette: 'cyan',
           failureMessage: 'event.following.failed', onConfirm: async () => {
             await this.followingStore.change(context.member.userId, false);
@@ -800,6 +800,10 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
   }
 
+  private memberActionPalette(entry: ActivityContracts.ActivityMemberDTO, action: MemberMenuAction): AppMenuPalette | undefined {
+    return this.memberActionMenuItems(entry).find(item => item.context?.action === action)?.palette;
+  }
+
   protected approveMember(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
     event.stopPropagation();
     if (!this.canApproveMember(entry)) {
@@ -814,6 +818,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Approve',
       busyConfirmLabel: 'Approving...',
       confirmTone: 'accent',
+      confirmPalette: this.memberActionPalette(entry, 'approve'),
       failureMessage: 'Unable to approve request.',
       onConfirm: () => this.confirmApproveMember(entry)
     });
@@ -833,6 +838,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: this.memberRemovalConfirmLabel(entry),
       busyConfirmLabel: this.memberRemovalBusyLabel(entry),
       confirmTone: 'danger',
+      confirmPalette: this.memberActionPalette(entry, 'remove'),
       failureMessage: this.memberRemovalFailureMessage(entry),
       onConfirm: () => this.confirmRemoveMember(entry)
     });
@@ -860,6 +866,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Leave event',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
+      confirmPalette: this.memberActionPalette(entry, 'leave'),
       failureMessage: leavingAsAdmin
         ? 'Unable to leave event. Another accepted admin must remain.'
         : 'Unable to leave event.',
@@ -881,6 +888,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Disqualify',
       busyConfirmLabel: 'Disqualifying...',
       confirmTone: 'danger',
+      confirmPalette: this.memberActionPalette(entry, 'disqualify'),
       failureMessage: 'Unable to disqualify member.',
       onConfirm: () => this.confirmMemberAction(entry, 'disqualify')
     });
@@ -900,6 +908,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Reinstate',
       busyConfirmLabel: 'Reinstating...',
       confirmTone: 'accent',
+      confirmPalette: this.memberActionPalette(entry, 'reinstate'),
       failureMessage: 'Unable to reinstate member.',
       onConfirm: () => this.confirmMemberAction(entry, 'reinstate')
     });
@@ -921,6 +930,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: assetManagerPromotion ? 'Make Manager' : 'Promote',
       busyConfirmLabel: 'Promoting...',
       confirmTone: 'accent',
+      confirmPalette: this.memberActionPalette(entry, 'promoteAdmin'),
       failureMessage: 'Unable to promote member.',
       onConfirm: () => assetManagerPromotion
         ? this.confirmAssetManagerPromotion(entry)
@@ -943,6 +953,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Step down',
       busyConfirmLabel: 'Stepping down...',
       confirmTone: 'warning',
+      confirmPalette: this.memberActionPalette(entry, 'stepDownAdmin'),
       failureMessage: `Unable to step down as ${managerRole}.`,
       onConfirm: () => this.confirmMemberAction(entry, 'step-down-admin')
     });
@@ -959,7 +970,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     const setAsParticipant = entry.organizerOnly === true;
     this.membersSmartList?.closeMenu();
     this.dialogStore.open({
-      title: setAsParticipant ? 'Count as participant?' : 'Organizer only?',
+      title: setAsParticipant ? 'confirmation.count.as.participant' : 'confirmation.organizer.only',
       message: setAsParticipant
         ? 'You will count toward the available participant places in this scope.'
         : 'You will keep your organizer role but will not count toward the available participant places in this scope.',
@@ -967,6 +978,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: setAsParticipant ? 'Count as participant' : 'Organizer only',
       busyConfirmLabel: 'Saving...',
       confirmTone: setAsParticipant ? 'accent' : 'warning',
+      confirmPalette: this.memberActionPalette(entry, 'toggleOrganizerParticipation'),
       failureMessage: 'Unable to update participant status.',
       onConfirm: () => this.confirmMemberAction(
         entry,
@@ -988,6 +1000,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Revoke Manager',
       busyConfirmLabel: 'Revoking...',
       confirmTone: 'warning',
+      confirmPalette: this.memberActionPalette(entry, 'revokeManager'),
       failureMessage: 'Unable to revoke Asset Manager.',
       onConfirm: () => this.confirmAssetManagerRevocation(entry)
     });
@@ -1007,6 +1020,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Leave asset',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
+      confirmPalette: this.memberActionPalette(entry, 'leaveAsset'),
       failureMessage: 'Unable to leave this Asset.',
       onConfirm: () => this.confirmLeaveAssetOwner()
     });
@@ -1026,6 +1040,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Leave',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
+      confirmPalette: this.memberActionPalette(entry, 'leaveScopedAsset'),
       failureMessage: 'Unable to leave this Asset.',
       onConfirm: () => this.confirmLeaveScopedAsset(entry)
     });
@@ -1051,6 +1066,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       confirmLabel: 'Take Over',
       busyConfirmLabel: 'Taking over...',
       confirmTone: 'warning',
+      confirmPalette: this.memberActionPalette(entry, 'takeOverAsset'),
       failureMessage: 'Unable to take over this Asset.',
       onConfirm: () => this.confirmTakeOverAsset()
     });

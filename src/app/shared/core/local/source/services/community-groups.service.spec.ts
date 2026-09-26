@@ -60,6 +60,21 @@ describe('Community membership writes and recipient attention', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('persists the textual policies independently of profile visibility rules, including clearing them', async () => {
+    const original = await service.detail('admin', 'group');
+    const policies = [{ id: 'rule-1', title: 'Respect privacy', description: 'Do not share private group messages.', required: true }];
+    const saved = await service.save({ ...original, userId: 'admin', policy: {
+      ...original.policy, policiesEnabled: true, policies
+    } });
+    expect((await service.detail('member', 'group')).policy).toEqual({
+      ...original.policy, policiesEnabled: true, policies
+    });
+    await service.save({ ...saved, userId: 'admin', policy: { ...saved.policy, policiesEnabled: false, policies: [] } });
+    expect((await service.detail('member', 'group')).policy).toEqual({
+      ...original.policy, policiesEnabled: false, policies: []
+    });
+  });
+
   it('orders Explore by distance within the same interval and supports Recent independently', async () => {
     state[USERS_TABLE_NAME].byId['guest'].locationCoordinates = { latitude: 47.48, longitude: 19.03 };
     state[USERS_TABLE_NAME].byId['admin'].locationCoordinates = { latitude: 47.51, longitude: 19.03 };
@@ -166,8 +181,30 @@ describe('Community membership writes and recipient attention', () => {
     const rows = await service.workspaces('guest');
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ membershipStatus: 'pending', membersActivity: 1, activity: 1 });
+    expect(await service.detail('guest', 'group')).toMatchObject({ pendingMembers: 1, membersActivity: 1 });
+    expect(await service.detail('member', 'group')).toMatchObject({ pendingMembers: 0 });
     await expect(service.resolveWorkspace('guest', 'group')).rejects.toThrow('Forbidden');
     expect(notices().map(row => row.recipientUserId)).toEqual(['guest']);
     expect(state.communityGroups.byId['group'].pendingMembers).toBe(1);
+  });
+
+  it('moves an accepted invitation into Active groups and removes it from invitation sync without double counting', async () => {
+    await service.invite('admin', 'group', ['guest']);
+    const page = (bucket: 'hosting' | 'participation' | 'invitations' | 'explore') => service.page('guest', {
+      page: 0, pageSize: 10, filters: { bucket }
+    });
+    expect((await page('invitations')).items.map(row => row.id)).toEqual(['group']);
+    expect((await page('invitations')).context).toEqual({ hosting: 0, participation: 0, invitations: 1 });
+    expect((await page('participation')).items).toEqual([]);
+    expect((await page('hosting')).items).toEqual([]);
+    expect((await page('explore')).items).toEqual([]);
+    await service.action('guest', 'group', 'guest', 'accept');
+    await service.action('guest', 'group', 'guest', 'accept');
+    expect((await page('invitations')).items).toEqual([]);
+    expect((await page('participation')).items.map(row => row.id)).toEqual(['group']);
+    expect((await page('participation')).context?.invitations).toBe(0);
+    expect((await service.sync('guest', { bucket: 'invitations', limit: 10,
+      knownItems: [{ id: 'group', revision: 'before-acceptance' }], tailId: 'group' })).removedIds).toEqual(['group']);
+    expect((await service.workspaces('guest'))[0].requestKind).toBeNull();
   });
 });

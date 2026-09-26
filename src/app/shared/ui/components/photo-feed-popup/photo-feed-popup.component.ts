@@ -96,7 +96,7 @@ export class PhotoFeedPopupComponent {
       const post = event.context as PhotoFeedPost;
       if (post.creatorUserId !== this.store.userId()) return;
       this.appMenuDispatcher.close();
-      this.dialogStore.open({ title: 'feed.remove', message: 'feed.removeConfirm', confirmLabel: 'feed.remove',
+      this.dialogStore.open({ title: 'feed.remove.question', message: 'feed.removeConfirm', confirmLabel: 'feed.remove',
         cancelLabel: 'Cancel', confirmPalette: 'danger', failureMessage: 'feed.removeFailed',
         onConfirm: async () => {
           await this.store.remove(post.id);

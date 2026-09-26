@@ -14,7 +14,6 @@ import { ImageGalleryStore } from '../../context/stores/image-gallery.store';
 import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { profileMenuBadgeCount } from '../../context/stores/app-context-store.utils';
 import {
   CommonModule
 } from '@angular/common';
@@ -334,7 +333,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly assetStore = inject(AssetStore);
   protected readonly communityGroups = inject(CommunityGroupsStore);
   protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
-    this.communityGroups.counters().hosting + this.communityGroups.counters().participation));
+    this.communityGroups.counters().hosting + this.communityGroups.counters().participation + this.communityGroups.counters().invitations));
   protected readonly photoFeedStore = inject(PhotoFeedStore);
   protected readonly navigatorFeedMenuModel = computed(() =>
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));
@@ -2404,9 +2403,7 @@ export class SideMenuComponent implements OnDestroy {
         adminMetrics: this.resolveActivityBadge(user, 'adminMetrics')
       });
     }
-    const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
-    const activityOverrides = this.activityStore.getUserCounterOverrides(user.id);
-    return profileMenuBadgeCount(user, activityOverrides, impressionFlags);
+    return this.groupWorkspaces.avatarBadgeCount();
   }
 
   private notificationLauncherAriaLabel(unreadCount: number, muted: boolean): string {

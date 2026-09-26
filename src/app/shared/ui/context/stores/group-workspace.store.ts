@@ -13,6 +13,7 @@ import { ActivityStore } from './activity.store';
 import { profileMenuBadgeCount } from './app-context-store.utils';
 import { UiTaskScheduler, UiPollCoordinator } from '../../scheduler';
 import type { GroupCategory, GroupBucket, GroupWorkspace } from '../../../core/contracts/community-group.interface';
+import { groupMembershipBucket } from '../../../core/contracts/community-group.interface';
 
 @Injectable({ providedIn: 'root' })
 export class GroupWorkspaceStore {
@@ -37,17 +38,26 @@ export class GroupWorkspaceStore {
         ? this.moderation.attention(workspace.groupId, previousPending, workspace.moderationQueueRevision)
         : { pending: 0, revision: 0 };
       const activity = workspace.membershipStatus === 'accepted' && active?.groupId === workspace.groupId && profile?.id === workspace.profileId
-        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id)) + (workspace.membersActivity ?? 0)
+        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id), 'group') + (workspace.membersActivity ?? 0)
         : Math.max(0, workspace.activity - previousPending);
       return { ...workspace, activity: activity + attention.pending, moderationPending: attention.pending, moderationQueueRevision: attention.revision };
     });
   });
   readonly workspaces = computed(() => this.attentionRows().filter(workspace => workspace.membershipStatus === 'accepted' && workspace.policy.workspace && !!workspace.profileId));
+  private readonly accountAttention = computed(() => {
+    const account = this.profile.getUserProfile(this.context.accountUserId());
+    if (!account) return 0;
+    const flags = this.profile.getUserImpressionChangeFlags(account.id);
+    return profileMenuBadgeCount(account, this.activities.getUserCounterOverrides(account.id), flags);
+  });
+  readonly avatarBadgeCount = computed(() => this.accountAttention()
+    + this.attentionRows().reduce((sum, workspace) => sum + workspace.activity, 0));
   readonly error = signal('');
   readonly counters = computed(() => this.attentionRows().reduce((counts, workspace) => {
-    counts[workspace.role === 'Admin' && workspace.membershipStatus === 'accepted' ? 'hosting' : 'participation'] += workspace.activity;
+    const bucket = groupMembershipBucket(workspace);
+    if (bucket !== 'explore') counts[bucket] += workspace.activity;
     return counts;
-  }, { hosting: 0, participation: 0 }));
+  }, { hosting: 0, participation: 0, invitations: 0 }));
   private readonly poller = new UiTaskScheduler({
     intervalMs: () => this.context.accountUserId() ? 15000 : 0,
     state: () => this.context.accountUserId(),
@@ -74,6 +84,7 @@ export class GroupWorkspaceStore {
             ...previous, groupId: change.group.id, profileId: previous?.profileId ?? null,
             name: change.group.name, activity: change.group.activity, role: change.group.role ?? '',
             category: change.group.category, membershipStatus: change.group.membershipStatus,
+            requestKind: change.group.requestKind,
             policy: change.group.policy, membersActivity: change.group.membersActivity,
             moderationPending: change.group.moderationPending, moderationQueueRevision: change.group.moderationQueueRevision
           }];
@@ -106,7 +117,7 @@ export class GroupWorkspaceStore {
   categoryCount(bucket: GroupBucket, category: GroupCategory | null | undefined): number {
     if (bucket === 'explore') return 0;
     return this.attentionRows().filter(workspace => (!category || workspace.category === category)
-      && (workspace.role === 'Admin' && workspace.membershipStatus === 'accepted' ? 'hosting' : 'participation') === bucket)
+      && groupMembershipBucket(workspace) === bucket)
       .reduce((sum, workspace) => sum + workspace.activity, 0);
   }
   palette(id: string): AppMenuPalette {
@@ -115,9 +126,11 @@ export class GroupWorkspaceStore {
     return palettes[Math.max(0, ids.indexOf(id)) % palettes.length];
   }
   menuItems(selected: string, includeAll = false): AppMenuItem[] {
+    const accountCount = this.accountAttention();
     const items: AppMenuItem[] = [
       ...(includeAll ? [{ id: 'all', label: 'All', icon: 'apps', palette: 'slate' as const }] : []),
-      { id: 'main', label: 'groups.workspace.main', icon: 'public', palette: 'green' },
+      { id: 'main', label: 'groups.workspace.main', icon: 'public', palette: 'green',
+        counter: includeAll ? null : accountCount || null, counterTone: 'alert' },
       ...this.workspaces().map(workspace => ({
         id: workspace.groupId, label: workspace.name, imageFallback: AppUtils.initialsFromText(workspace.name),
         imageShape: 'circle' as const, palette: this.palette(workspace.groupId), counter: includeAll ? null : workspace.activity || null,

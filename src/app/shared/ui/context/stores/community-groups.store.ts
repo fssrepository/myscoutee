@@ -46,7 +46,7 @@ export class CommunityGroupsStore {
     this.openUserId.set(this.workspace.accountId(this.profile.getActiveUserId()));
   }
   async openInvitation(groupId: string): Promise<void> {
-    this.open('participation');
+    this.open('invitations');
     const userId = this.openUserId()!;
     try {
       const group = await this.service.detail(userId, groupId);
@@ -126,7 +126,7 @@ export class CommunityGroupsStore {
     if (action === 'members') { this.members(group); return; }
     const item = CommunityGroupConverter.menu(group, this.openUserId()).find(item => item.id === action);
     if (!item) return;
-    this.dialogs.open({ title: String(item.label),
+    this.dialogs.open({ title: `groups.confirm.${action}.title`,
       message: this.i18n.translateParams(`groups.confirm.${action}`, { name: group.name }),
       cancelLabel: 'Cancel', confirmLabel: String(item.label), confirmPalette: item.palette,
       failureMessage: 'groups.error',

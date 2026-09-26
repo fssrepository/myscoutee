@@ -11,7 +11,7 @@ import { LocalAdminModerationRepository } from '../repositories/admin-moderation
 import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
-import { GROUP_CATEGORIES, communityGroupSummary, groupSort, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
+import { GROUP_CATEGORIES, communityGroupSummary, groupSort, groupMembershipBucket, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
 import type { ListQuery, PageResult } from '../../../contracts/list.interface';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
 
@@ -39,7 +39,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       const profile = this.users.queryUserById(this.profileId(group.id, userId));
       return member && ['accepted', 'pending'].includes(member.status)
         ? [{ groupId: group.id, profileId: profile?.id ?? null, name: group.name, role: member.role, category: group.category,
-          membershipStatus: member.status as 'accepted' | 'pending', membersActivity: this.membersActivity(group, member),
+          membershipStatus: member.status as 'accepted' | 'pending', requestKind: member.requestKind === 'invite' ? 'invite' as const : member.requestKind === 'join' ? 'join' as const : null, membersActivity: this.membersActivity(group, member),
           activity: (member.status === 'accepted' ? this.attention(profile) : 0) + this.membersActivity(group, member) + (this.admin(member) ? group.moderationPending ?? 0 : 0),
           moderationPending: this.admin(member) ? group.moderationPending ?? 0 : 0,
           moderationQueueRevision: this.admin(member) ? group.moderationQueueRevision ?? 0 : 0,
@@ -82,8 +82,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   private attention(user: UserRecord | null): number {
     if (!user) return 0;
     const a = user.activities;
-    return [a.game, a.chats, a.event?.all ?? a.events, a.cars, a.accommodation, a.supplies,
-      a.tickets, a.contacts, a.feedback].reduce<number>((sum, count) => sum + Math.max(0, count ?? 0), 0)
+    return [a.game, a.chats, a.event?.all ?? 0, a.feedback, a.paymentRefundsPending]
+      .reduce<number>((sum, count) => sum + Math.max(0, count ?? 0), 0)
       + (user.impressions?.host?.unreadCount ? 1 : 0) + (user.impressions?.member?.unreadCount ? 1 : 0);
   }
   async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>> {
@@ -93,7 +93,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       const own = this.member(g.id, userId);
       const admin = this.admin(own);
       if (bucket === 'hosting') return admin;
-      if (bucket === 'participation') return !admin && !!own && ['accepted', 'pending'].includes(own.status);
+      if (bucket === 'invitations') return own?.status === 'pending' && own.requestKind === 'invite';
+      if (bucket === 'participation') return !admin && !!own && ['accepted', 'pending'].includes(own.status)
+        && !(own.status === 'pending' && own.requestKind === 'invite');
       return g.ownerUserId !== userId && !own && g.visibility !== 'invitation'
         && (!g.moderationStatus || g.moderationStatus === 'accepted');
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
@@ -105,8 +107,9 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
     return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
       context: (await this.workspaces(userId)).reduce((counts, w) => {
-        counts[w.role === 'Admin' && w.membershipStatus === 'accepted' ? 'hosting' : 'participation'] += w.activity; return counts;
-      }, { hosting: 0, participation: 0 }) };
+        const membershipBucket = groupMembershipBucket(w);
+        if (membershipBucket !== 'explore') counts[membershipBucket] += w.activity; return counts;
+      }, { hosting: 0, participation: 0, invitations: 0 }) };
   }
   async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups', signal); await this.groups.ready(); signal?.throwIfAborted();
@@ -263,8 +266,11 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   }
   private membersActivity(group: CommunityGroupRecord, own?: ActivityMemberRecord): number {
     if (!own) return 0;
-    return Math.max(0, own.communityUpdates ?? 0) + (this.admin(own) ? group.pendingMembers ?? 0
-      : own.status === 'pending' && own.requestKind === 'invite' ? 1 : 0);
+    return Math.max(0, own.communityUpdates ?? 0) + this.pendingMembers(group, own);
+  }
+  private pendingMembers(group: CommunityGroupRecord, own?: ActivityMemberRecord): number {
+    return this.admin(own) ? group.pendingMembers ?? 0
+      : own?.status === 'pending' && own.requestKind === 'invite' ? 1 : 0;
   }
   private dto(userId: string, group: CommunityGroupRecord): CommunityGroup {
     group = this.groups.find(group.id) ?? group;
@@ -283,7 +289,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       membershipStatus: own?.status === 'accepted' ? 'accepted' : own ? 'pending' : null,
       requestKind: own?.requestKind === 'invite' ? 'invite' : own?.requestKind === 'join' ? 'join' : null, organizerOnly: own?.organizerOnly === true,
       acceptedMembers: rows.filter(m => m.status === 'accepted').length,
-      pendingMembers: this.admin(own) ? group.pendingMembers ?? 0 : 0,
+      pendingMembers: this.pendingMembers(group, own),
       membersActivity: this.membersActivity(group, own),
       moderationPending: this.admin(own) ? group.moderationPending ?? 0 : 0,
       moderationQueueRevision: this.admin(own) ? group.moderationQueueRevision ?? 0 : 0,

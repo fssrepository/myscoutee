@@ -21,6 +21,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
       --image-single-slot-content-flex: 1 1 auto;
       --image-single-slot-content-width: 100%;
       --image-single-slot-aspect-ratio: auto;
+      --policies-open-button-mobile-width: auto;
     }
     :host(.group-editor--readonly) {
       --app-menu-disabled-opacity: 1;
@@ -117,16 +118,28 @@ export class CommunityGroupEditorComponent implements OnChanges {
             palette: this.form.hideMembers ? 'red' : 'green', active: !this.form.hideMembers, checked: !this.form.hideMembers,
             closeOnSelect: false, disabled: this.readOnly }
         ] } }
-      ] }, { id: 'policy', title: this.t('groups.policy'), icon: 'policy', palette: 'violet', headerControl:
+      ] }, { id: 'policy', title: this.t('groups.policy'), icon: 'badge', palette: 'violet', headerControl:
         { id: 'rules-enabled', bind: 'policy.enabled', kind: 'toggle', label: 'groups.visibility.rules', disabled: this.readOnly }, controls: [
         { id: 'rules-open', kind: 'menu', layout: 'wide', config: { kind: 'inline', items: [
           { id: 'rules-open', label: 'groups.visibility.rules', ariaLabel: 'groups.visibility.rules', icon: 'tune',
-            kind: 'action', layout: 'pill', compactOnMobile: true, palette: 'violet' }
+            kind: 'action', layout: 'pill', compactOnMobile: false, palette: 'violet' }
         ] } },
         { id: 'rules-table', kind: 'table', layout: 'wide', config: { rows: APP_STATIC_DATA.profileDetailGroupTemplates.flatMap((g, index) => g.rows
           .filter(row => this.form.policy.enabled && this.optionalPolicyField(row.labelKey) && required.includes(row.labelKey))
           .map(row => ({ label: row.labelKey, value: 'groups.required',
             icon: 'check', badgeTone: 'danger', palette: this.policyFieldPalette(row.labelKey, index) }))) } }
+      ] }, { id: 'policies', title: '', controls: [
+        { id: 'group-policies', kind: 'policies', bind: 'policy.policies', enabledBind: 'policy.policiesEnabled', layout: 'wide',
+          config: { model: {
+            title: this.t('groups.policies.title'), subtitle: this.t('groups.policies.description'),
+            emptyLabel: this.t('groups.policies.empty'), readOnlyEmptyLabel: this.t('groups.policies.empty'),
+            openLabel: this.t('event.editor.policies.setup.open'), viewLabel: this.t('event.editor.policies.view'),
+            showReadOnlyPopup: true,
+            editorSubtitle: this.t('groups.policies.editor'),
+            requiredApprovalLabel: this.t('groups.policies.required'), optionalPolicyLabel: this.t('groups.policies.optional'),
+            requiredPreview: this.t('groups.policies.required'), optionalPreview: this.t('groups.policies.optional'),
+            requiredCheckboxLabel: this.t('groups.policies.required')
+          } } }
       ] }] };
     return { ...model, steps: model.steps.map(step => ({ ...step, controls: step.controls
       .filter(() => step.id !== 'policy' || this.form.policy.enabled)

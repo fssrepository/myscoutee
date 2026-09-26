@@ -21,11 +21,14 @@ import type { UserProfileAdminUserDto } from './user-profile.store';
 export function profileMenuBadgeCount(
   user: UserDto,
   overrides: Partial<ActivityCounters>,
-  impressions: { host: boolean; member: boolean }
+  impressions: { host: boolean; member: boolean },
+  scope: 'all' | 'group' = 'all'
 ): number {
   const counters = { ...user.activities, ...overrides };
+  // event.all already contains invitations/hosting; those menu shortcuts must not be added again.
   return Number(impressions.host) + Number(impressions.member)
-    + ['game', 'chats', 'cars', 'accommodation', 'supplies', 'tickets', 'contacts', 'feedback']
+    + ['game', 'chats', 'feedback', 'paymentRefundsPending',
+      ...(scope === 'group' ? [] : ['cars', 'accommodation', 'supplies', 'tickets', 'contactRequestsPending'])]
       .reduce((total, key) => total + normalizeCounterValue(counters[key as keyof ActivityCounters]), 0)
     + normalizeCounterValue(counters.event?.all);
 }

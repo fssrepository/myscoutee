@@ -248,6 +248,7 @@ export interface UserNotificationDeviceDto {
 }
 
 export interface UserRealtimeLongPollResponseDto {
+  accountCounters?: UserMenuCountersDto | null;
   contentModeration?: import('./content-moderation.interface').ContentModerationSnapshot | null;
   following?: import('./following.interface').FollowingState;
   feedCounters?: import('./photo-feed.interface').PhotoFeedCounters;

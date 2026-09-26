@@ -86,3 +86,31 @@ describe('Profile loads within a Firebase session', () => {
     expect(service.workspace.switching()).toBe(false);
   });
 });
+
+describe('Group-profile polling keeps account counters separate', () => {
+  function fixture() {
+    const accountId = signal('account');
+    const activeId = signal('group-profile');
+    let finish!: (snapshot: unknown) => void;
+    const adapter = { queryUserRealtimeLongPoll: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
+    const token = { userId: 'account', revision: 3 };
+    const activity = { captureUserCounterSyncToken: vi.fn(() => token), applyRealtimeCounterOverrides: vi.fn() };
+    const service = Object.assign(Object.create(UsersService.prototype), {
+      workspace: { accountUserId: accountId }, userProfileStore: { activeUserId: activeId },
+      activityStore: activity, offlineCache: { writeTicketPage: vi.fn() }
+    });
+    Object.defineProperty(service, 'userService', { value: adapter });
+    return { service, activity, accountId, activeId, token, complete: () => finish({ userId: 'group-profile',
+      counters: { game: 2 }, accountCounters: { game: 8, cars: 3 } }) };
+  }
+  it('applies the account snapshot through the existing revision guard without overwriting the group profile', async () => {
+    const f = fixture(); const pending = f.service.pollUserRealtimeSnapshot('group-profile'); f.complete();
+    await pending;
+    expect(f.activity.applyRealtimeCounterOverrides).toHaveBeenCalledExactlyOnceWith(f.token, { game: 8, cars: 3 });
+  });
+  it.each(['account', 'profile'])('ignores an old account snapshot after changing %s', async kind => {
+    const f = fixture(); const pending = f.service.pollUserRealtimeSnapshot('group-profile');
+    (kind === 'account' ? f.accountId : f.activeId).set('other'); f.complete(); await pending;
+    expect(f.activity.applyRealtimeCounterOverrides).not.toHaveBeenCalled();
+  });
+});

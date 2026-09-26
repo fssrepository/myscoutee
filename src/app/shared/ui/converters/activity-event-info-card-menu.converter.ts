@@ -335,7 +335,7 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 
-  private static actionPalette(actionId: string, tone: CardMenuAction['tone']): AppMenuPalette {
+  static actionPalette(actionId: string, tone: CardMenuAction['tone']): AppMenuPalette {
     if (actionId === 'addWatchlist' || actionId === 'removeWatchlist') {
       return 'blue';
     }

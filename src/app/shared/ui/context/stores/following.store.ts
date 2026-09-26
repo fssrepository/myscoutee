@@ -26,7 +26,7 @@ export class FollowingStore {
   confirmChange(organizerId: string, organizerName: string, followed: boolean, onCommitted?: () => void): void {
     const label = followed ? 'event.following.follow' : 'event.following.unfollow';
     this.dialogStore.open({
-      title: label, message: organizerName, confirmLabel: label,
+      title: `${label}.question`, message: organizerName, confirmLabel: label,
       cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
       onConfirm: async () => {
         await this.change(organizerId, followed);

@@ -131,7 +131,7 @@ export class ContentModerationPopupComponent {
     if (!this.snapshot()?.settings.enabled || !item || !MODERATION_STATUSES.includes(status) || !moderationDecisionAllowed(item, status)) return;
     const commandId = crypto.randomUUID();
     const groupId = this.groupId, actor = this.admin;
-    this.dialogs.open({ title: this.decisionLabel(item, status), message: item.title,
+    this.dialogs.open({ title: `${this.decisionLabel(item, status)}.question`, message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
       confirmPalette: STATUS_STYLE[status].palette,
       input: ['rejected', 'blocked'].includes(status) ? { label: 'moderation.message', maxLength: 1000 } : null,

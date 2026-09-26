@@ -40,6 +40,7 @@ import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
 import { RouteDelayService } from './route-delay.service';
 import { OfflineCacheService } from './offline-cache.service';
+import { UserRealtimeUiConverter } from '../../../ui/converters/user-realtime-ui.converter';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -492,8 +493,16 @@ export class UsersService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return null;
     }
+    const accountId = this.workspace.accountUserId();
+    const accountToken = accountId && accountId !== normalizedUserId
+      ? this.activityStore.captureUserCounterSyncToken(accountId) : null;
     try {
       const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
+      if (snapshot?.accountCounters && accountToken && snapshot.userId === normalizedUserId
+          && this.workspace.accountUserId() === accountId && this.userProfileStore.activeUserId() === normalizedUserId) {
+        this.activityStore.applyRealtimeCounterOverrides(accountToken,
+          UserRealtimeUiConverter.toCounterPatch({ counters: snapshot.accountCounters }));
+      }
       if (snapshot?.offlineTicketSnapshot) {
         this.offlineCache.writeTicketPage(normalizedUserId, 'upcoming', snapshot.offlineTicketSnapshot);
       }

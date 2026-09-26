@@ -15,15 +15,16 @@ function model(bucket: string, category: string | null = null) {
   const counts = workspace();
   const component = Object.assign(Object.create(CommunityGroupsPopupComponent.prototype), {
     query: { filters: { bucket, category } },
-    store: { counters: () => ({ hosting: 5, participation: 5 }), categoryCount: counts.categoryCount.bind(counts) }
+    i18n: { translate: (key: string) => key },
+    store: { counters: () => ({ hosting: 5, participation: 5, invitations: 0 }), categoryCount: counts.categoryCount.bind(counts) }
   });
   return component.model();
 }
 
 describe('Group selector counters', () => {
   it('offers only Distance and Recent, with contextual defaults', () => {
-    for (const bucket of ['hosting', 'participation', 'explore']) {
-      const sort = model(bucket).toolbarControls.find((control: { id: string }) => control.id === 'sort');
+    for (const bucket of ['hosting', 'participation', 'invitations', 'explore']) {
+      const sort = model(bucket).headerControls.find((control: { id: string }) => control.id === 'sort');
       expect(sort.items.map((item: { label: string }) => item.label)).toEqual(['distance', 'recent']);
       expect(sort.items.find((item: { checked: boolean }) => item.checked).id)
         .toBe(bucket === 'explore' ? 'distance' : 'updated');
