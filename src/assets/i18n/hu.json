@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.198",
+  "version": "2026.09.27.hu.1",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3653,7 +3653,7 @@
     "moderation.message": "Opcionális üzenet a tulajdonosnak az alkalmazástámogatási chaten",
     "moderation.autoApprove": "Automatikus jóváhagyás",
     "moderation.delayMinutes": "Késleltetés (perc)",
-    "moderation.failed": "A moderáció betöltése vagy mentése sikertelen. Töltsd újra és próbáld ismét.",
+    "moderation.failed": "A moderáció betöltése vagy mentése sikertelen. Próbáld újra.",
     "moderation.changed": "Egy másik admin módosította az elemet. Töltsd újra és próbáld ismét.",
     "moderation.invalidSettings": "Adj meg 0 és 43200 közötti egész percszámot.",
     "admin.jobs.rule.content.autoApprove": "Tartalmak automatikus jóváhagyása",

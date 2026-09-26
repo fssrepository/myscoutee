@@ -411,7 +411,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           label: 'Invite',
           ariaLabel: 'Invite friends',
           palette: 'blue' as const,
-          compactOnMobile: true
+          compactOnMobile: false
         }] : []),
         ...(!this.followedOrganizers && (!this.mingleLive || this.canManageMembers) ? [{
           id: 'pending-only',
@@ -422,7 +422,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           palette: 'rose' as const,
           active: this.pendingOnly,
           counter: this.pendingCount > 0 ? this.pendingCount : null,
-          compactOnMobile: true
+          compactOnMobile: false
         }] : [])
       ],
       onClose: event => this.closeMembersPopup(event),

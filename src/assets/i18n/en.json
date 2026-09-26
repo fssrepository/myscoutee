@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.198",
+  "version": "2026.09.27.en.1",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3653,7 +3653,7 @@
     "moderation.message": "Optional message to the owner via App Support",
     "moderation.autoApprove": "Auto approve",
     "moderation.delayMinutes": "Delay (minutes)",
-    "moderation.failed": "Unable to save or load moderation. Reload and retry.",
+    "moderation.failed": "Unable to save or load moderation. Please try again.",
     "moderation.changed": "Another admin changed this item. Reload and retry.",
     "moderation.invalidSettings": "Enter a whole number from 0 to 43200 minutes.",
     "admin.jobs.rule.content.autoApprove": "Content auto approval",
