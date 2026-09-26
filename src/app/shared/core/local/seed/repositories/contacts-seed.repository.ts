@@ -52,6 +52,7 @@ export class SeedContactsRepository {
       return {
         ...state,
         [CONTACTS_TABLE_NAME]: {
+          ...current,
           byOwnerUserId: {
             ...current.byOwnerUserId,
             [ownerUserId]: contacts.map(contact => this.cloneContact(contact))

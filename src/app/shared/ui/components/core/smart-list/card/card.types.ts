@@ -251,6 +251,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
   markNotificationRead: { label: 'Mark as read', icon: 'done_all', tone: 'accent' },
   openNotificationAccommodation: { label: 'Open accommodation', icon: 'apartment', tone: 'accent' },
+  openNotificationContacts: { label: 'Contacts', icon: 'contacts', tone: 'accent' },
   openNotificationEvent: { label: 'Open event', icon: 'event', tone: 'accent' },
   openNotificationInvitation: { label: 'Open invitation', icon: 'mail', tone: 'accent' },
   openNotificationSupplies: { label: 'Open supplies', icon: 'inventory_2', tone: 'accent' },

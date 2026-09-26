@@ -694,6 +694,7 @@ export class HttpUsersService implements UserService {
         feedback: 0,
         notifications: 0,
         paymentRefundsPending: 0,
+        contactRequestsPending: 0,
         chat: {
           all: 0,
           event: 0,
@@ -756,6 +757,10 @@ export class HttpUsersService implements UserService {
       paymentRefundsPending: this.normalizeInitialCounterValue(
         overrides?.paymentRefundsPending,
         user.activities?.paymentRefundsPending
+      ),
+      contactRequestsPending: this.normalizeInitialCounterValue(
+        overrides?.contactRequestsPending,
+        user.activities?.contactRequestsPending
       ),
       chat: {
         all: this.normalizeInitialCounterValue(overrides?.chat?.all, user.activities?.chat?.all),

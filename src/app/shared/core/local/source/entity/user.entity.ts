@@ -158,6 +158,7 @@ export interface UserRecord {
     feedback?: number;
     notifications?: number;
     paymentRefundsPending?: number;
+    contactRequestsPending?: number;
     chat?: UserChatCountersRecord;
     event?: UserEventCountersRecord;
     asset?: UserAssetCountersRecord;

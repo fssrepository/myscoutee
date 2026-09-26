@@ -1,3 +1,5 @@
+import { ContactChatAccessStore } from '../../../shared/ui/context/stores/contact-chat-access.store';
+import type { ContactChatAccessAction } from '../../../shared/core/contracts/contact.interface';
 import { ChatsService } from '../../../shared/core/base/services/chats.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
@@ -190,7 +192,7 @@ const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
 
 type ContactsMenuContext =
   | { menu: 'contact-action'; action: 'run-method'; contactId: string; methodId: string }
-  | { menu: 'contact-action'; action: 'chat' | 'edit' | 'delete'; contactId: string }
+  | { menu: 'contact-action'; action: 'chat' | 'approve' | 'reject' | 'edit' | 'delete'; contactId: string }
   | { menu: 'method-type'; methodId: string; type: ContactMethodType };
 
 @Component({
@@ -210,6 +212,7 @@ type ContactsMenuContext =
   styleUrl: './contacts-popup.component.scss'
 })
 export class ContactsPopupComponent implements OnDestroy {
+  protected readonly chatAccess = inject(ContactChatAccessStore);
   private readonly chatsService = inject(ChatsService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly i18n = inject(I18nService);
@@ -231,6 +234,7 @@ export class ContactsPopupComponent implements OnDestroy {
   protected readonly contactSmartListQuery = computed<Partial<ListQuery<ContactListFilters>>>(() => ({
     filters: {
       search: this.searchText(),
+      requestsOnly: this.chatAccess.requestsOnly(),
       refreshToken: this.manualRefreshRevision()
     }
   }));
@@ -263,6 +267,15 @@ export class ContactsPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      this.chatAccess.records();
+      const contacts = this.chatAccess.contacts();
+      untracked(() => {
+        if (contacts) this.applyContacts(contacts, true);
+        this.reconcileContactRows();
+      });
+    });
+
+    effect(() => {
       this.setContactsExplanationContext(this.profileStore.contactsPopupOpen() ? 'contacts' : null);
     });
 
@@ -275,8 +288,8 @@ export class ContactsPopupComponent implements OnDestroy {
           if (this.contactsSmartList) {
             const additions = Math.max(0, currentTotal - this.lastKnownTotal);
             const loadedCount = this.contactsSmartList.itemsSnapshot().length;
-            this.contactsSmartList.replaceVisibleItems(this.contactListItems().slice(0, loadedCount + additions), {
-              total: currentTotal
+            this.contactsSmartList.replaceVisibleItems(this.filteredContacts().slice(0, loadedCount + additions), {
+              total: this.filteredContacts().length
             });
           }
           this.lastKnownTotal = currentTotal;
@@ -307,8 +320,8 @@ export class ContactsPopupComponent implements OnDestroy {
   protected readonly contactSmartListConfig = computed<SmartListConfig<ContactListItem, ContactListFilters>>(() => ({
     pageSize: 10,
     defaultView: 'list',
-    emptyLabel: 'No contacts saved yet',
-    emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',
+    emptyLabel: this.chatAccess.requestsOnly() ? 'contact.chat.requests.empty' : 'No contacts saved yet',
+    emptyDescription: this.chatAccess.requestsOnly() ? '' : 'Use Create contact to add members into your personal quick-reach list.',
     emptyStickyLabel: 'No contacts',
     headerProgress: {
       enabled: true,
@@ -325,9 +338,27 @@ export class ContactsPopupComponent implements OnDestroy {
     },
     trackBy: (_index, contact) => contact.id,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
-    groupBy: contact => contact.groupLabel,
-    onDelete: (contact: ContactListItem, event?: Event) => this.confirmDelete(contact, event)
+    groupBy: contact => this.chatAccess.requestsOnly() ? this.i18n.translate('contact.chat.requests') : contact.groupLabel,
+    onDelete: (contact: ContactListItem, event?: Event) => { if (contact.saved !== false) this.confirmDelete(contact, event); }
   }));
+
+  protected readonly bucketMenuItems = computed<AppMenuItem[]>(() => [
+    { id: 'contacts', label: 'Contacts', icon: 'contacts', palette: 'sky', surface: 'tinted',
+      active: !this.chatAccess.requestsOnly(), counter: this.chatAccess.contactCount() },
+    { id: 'requests', label: 'contact.chat.requests', icon: 'mark_chat_unread', palette: 'orange', surface: 'tinted',
+      active: this.chatAccess.requestsOnly(), counter: this.chatAccess.pendingCount(), counterTone: 'alert' }
+  ]);
+
+  protected readonly bucketMenuTrigger = computed<AppMenuTrigger>(() => ({
+    label: this.chatAccess.requestsOnly() ? 'contact.chat.requests' : 'Contacts',
+    icon: this.chatAccess.requestsOnly() ? 'mark_chat_unread' : 'contacts',
+    palette: this.chatAccess.requestsOnly() ? 'orange' : 'sky', layout: 'pill', collapsible: false,
+    counter: this.chatAccess.pendingCount()
+  }));
+
+  protected selectBucket(event: AppMenuItemSelectEvent): void {
+    this.chatAccess.requestsOnly.set(event.id === 'requests');
+  }
 
   protected contactsPopupModel(): PopupModel<ContactsMenuContext> {
     return {
@@ -469,7 +500,14 @@ export class ContactsPopupComponent implements OnDestroy {
 
   protected async openContactChat(contact: ContactListItem, event?: Event): Promise<void> {
     event?.stopPropagation();
-    if (this.openingContactChat() || !contact.userId) return;
+    if (this.openingContactChat() || this.chatAccess.busy() || !contact.userId) return;
+    if (contact.chatAccess?.status !== 'approved') {
+      if (contact.chatAccess?.status === 'pending') {
+        if (contact.chatAccess.requestedBy !== this.activeUserId()) this.confirmChatAccess(contact, 'approve');
+        else this.dialogStore.openNotice('contact.chat.pending.message', { title: 'contact.chat.pending' });
+      } else this.confirmChatAccess(contact, 'request');
+      return;
+    }
     const actorId = this.activeUserId();
     this.openingContactChat.set(true);
     try {
@@ -484,6 +522,40 @@ export class ContactsPopupComponent implements OnDestroy {
     } catch {
       if (actorId === this.activeUserId()) this.dialogStore.openInfo(this.i18n.translate('chat.contacts.error'));
     } finally { this.openingContactChat.set(false); }
+  }
+
+  protected chatPalette(contact: ContactListItem): AppMenuPalette {
+    return contact.chatAccess?.status === 'approved' ? 'green' : contact.chatAccess?.status === 'rejected' ? 'red' : 'orange';
+  }
+
+  protected chatStatusLabel(contact: ContactListItem): string {
+    return `contact.chat.${contact.chatAccess?.status ?? 'request'}`;
+  }
+
+  private confirmChatAccess(contact: ContactListItem, action: ContactChatAccessAction): void {
+    this.closeActionMenu();
+    this.dialogStore.open({ title: `contact.chat.${action}`, message: `contact.chat.${action}.message`,
+      confirmLabel: `contact.chat.${action}`, cancelLabel: 'Cancel',
+      confirmPalette: action === 'reject' ? 'red' : action === 'approve' ? 'green' : 'orange',
+      failureMessage: 'contact.chat.error',
+      onConfirm: () => this.chatAccess.change(contact.chatAccess, contact.userId, action) });
+  }
+
+  private reconcileContactRows(): void {
+    if (!this.contactsSmartList || !this.hasInitialLoadCompleted()) return;
+    const rows = this.filteredContacts();
+    const loaded = Math.max(10, this.contactsSmartList.itemsSnapshot().length);
+    this.contactsSmartList.replaceVisibleItems(rows.slice(0, loaded), { total: rows.length });
+  }
+
+  private filteredContacts(searchValue = this.searchText(), requestsOnly = this.chatAccess.requestsOnly()): ContactListItem[] {
+    const search = AppUtils.normalizeText(searchValue);
+    return this.contactListItems()
+      .filter(contact => !search || contact.searchText.includes(search))
+      .filter(contact => requestsOnly ? (contact.chatAccess?.status === 'pending' && contact.chatAccess.requestedBy !== this.activeUserId()) : contact.saved !== false)
+      .sort((a, b) => requestsOnly
+        ? (b.chatAccess!.requestedAtIso.localeCompare(a.chatAccess!.requestedAtIso) || a.id.localeCompare(b.id))
+        : this.compareContacts(a, b));
   }
 
   protected viewContactProfile(contact: ContactListItem, event?: Event): void {
@@ -642,8 +714,12 @@ export class ContactsPopupComponent implements OnDestroy {
     }));
     return [
       ...(contact.userId ? [{ id: `contact-${contact.id}-chat`, label: 'chat.contacts.open', icon: 'chat',
-        palette: 'teal' as const, disabled: this.openingContactChat(),
+        palette: this.chatPalette(contact), disabled: this.openingContactChat() || this.chatAccess.busy(),
         context: { menu: 'contact-action' as const, action: 'chat' as const, contactId: contact.id } }] : []),
+      ...(contact.chatAccess?.status === 'pending' && contact.chatAccess.requestedBy !== this.activeUserId()
+        ? (['approve', 'reject'] as const).map(action => ({ id: `contact-${contact.id}-${action}`, label: `contact.chat.${action}`,
+            icon: action === 'approve' ? 'check' : 'close', palette: (action === 'approve' ? 'green' : 'red') as AppMenuPalette,
+            disabled: this.chatAccess.busy(), context: { menu: 'contact-action' as const, action, contactId: contact.id } })) : []),
       ...methodItems,
       ...(methodItems.length > 0 ? [{ id: `contact-${contact.id}-methods-divider`, kind: 'divider' as const }] : []),
       {
@@ -652,13 +728,13 @@ export class ContactsPopupComponent implements OnDestroy {
         icon: 'edit',
         context: { menu: 'contact-action', action: 'edit', contactId: contact.id }
       },
-      {
+      ...(contact.saved !== false ? [{
         id: `contact-${contact.id}-delete`,
         label: 'Delete',
         icon: 'delete',
-        palette: 'danger',
-        context: { menu: 'contact-action', action: 'delete', contactId: contact.id }
-      }
+        palette: 'danger' as const,
+        context: { menu: 'contact-action' as const, action: 'delete' as const, contactId: contact.id }
+      }] : [])
     ];
   }
 
@@ -700,6 +776,7 @@ export class ContactsPopupComponent implements OnDestroy {
     if (!contact) {
       return;
     }
+    if (context.action === 'approve' || context.action === 'reject') { this.confirmChatAccess(contact, context.action); return; }
     if (context.action === 'chat') { void this.openContactChat(contact, event.sourceEvent); return; }
     if (context.action === 'run-method') {
       const method = contact.methods.find(item => item.id === context.methodId);
@@ -748,10 +825,7 @@ export class ContactsPopupComponent implements OnDestroy {
     query: ListQuery<ContactListFilters>
   ): Promise<PageResult<ContactListItem>> {
     await this.ensureContactsLoadedForActiveUser();
-    const search = AppUtils.normalizeText(query.filters?.search ?? '');
-    const contacts = this.contactListItems()
-      .filter(contact => !search || contact.searchText.includes(search))
-      .sort((left, right) => this.compareContacts(left, right));
+    const contacts = this.filteredContacts(query.filters?.search ?? '', query.filters?.requestsOnly ?? false);
     const pageSize = Math.max(1, Number(query.pageSize) || 24);
     const startIndex = Math.max(0, Number(query.page) || 0) * pageSize;
     return {
@@ -761,7 +835,12 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private contactListItems(): ContactListItem[] {
-    return this.contactsRef().map(contact => this.toListItem(contact));
+    const byUser = new Map(this.contactsRef().map(contact => [contact.userId || contact.id, this.toListItem(contact)]));
+    for (const access of this.chatAccess.records()) {
+      const item = byUser.get(access.contact.userId) ?? { ...this.toListItem(access.contact), saved: false };
+      byUser.set(access.contact.userId, { ...item, chatAccess: access });
+    }
+    return [...byUser.values()];
   }
 
   private createFormValue(contact: ContactListItem): ContactFormValue {
@@ -818,7 +897,7 @@ export class ContactsPopupComponent implements OnDestroy {
       .concat(nextContact);
     const savedContacts = await this.contactsDataService.saveContacts(activeUserId, this.normalizeContacts(nextContacts));
     this.contactsLoadedForUserId = activeUserId;
-    this.applyContacts(savedContacts, true);
+    this.chatAccess.replaceContacts(savedContacts);
   }
 
   private async deleteContact(contactId: string): Promise<void> {
@@ -830,7 +909,7 @@ export class ContactsPopupComponent implements OnDestroy {
     await this.ensureContactsLoadedForActiveUser();
     const savedContacts = await this.contactsDataService.deleteContact(activeUserId, normalizedContactId);
     this.contactsLoadedForUserId = activeUserId;
-    this.applyContacts(savedContacts, true);
+    this.chatAccess.replaceContacts(savedContacts);
   }
 
   private triggerMethod(method: ContactMethodItem): void {
@@ -904,7 +983,7 @@ export class ContactsPopupComponent implements OnDestroy {
     }
     const savedContacts = await this.contactsDataService.saveContacts(activeUserId, this.normalizeContacts([...nextById.values()]));
     this.contactsLoadedForUserId = activeUserId;
-    this.applyContacts(savedContacts, true);
+    this.chatAccess.replaceContacts(savedContacts);
   }
 
   private toListItem(contact: StoredContact): ContactListItem {
@@ -934,6 +1013,7 @@ export class ContactsPopupComponent implements OnDestroy {
       city,
       avatarUrl,
       headline,
+      saved: true,
       groupLabel: this.groupLabel(name),
       methodCount,
       methodCountLabel: methodCount === 1 ? '1 route' : `${methodCount} routes`,
@@ -1146,7 +1226,8 @@ export class ContactsPopupComponent implements OnDestroy {
 
   private async loadContactsForActiveUser(activeUserId: string): Promise<void> {
     const token = ++this.contactLoadToken;
-    const contacts = await this.contactsDataService.loadContacts(activeUserId);
+    await this.chatAccess.load();
+    const contacts = this.chatAccess.contacts() ?? [];
     if (token !== this.contactLoadToken || activeUserId !== this.loadedUserId) {
       return;
     }

@@ -1735,6 +1735,11 @@
   max-width: none;
 }
 
+.app-menu__selection-limit {
+  white-space: nowrap;
+  text-transform: none;
+}
+
 .app-menu__title {
   padding: 0.34rem 0.42rem 0.18rem;
   color: rgba(25, 45, 70, 0.7);

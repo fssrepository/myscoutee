@@ -672,6 +672,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${this.resolveLiveValue(this.title) ?? ''}`.trim();
   }
 
+  protected get selectionLimitLabel(): string {
+    const max = this.currentModelMaxSelected();
+    if (max === null) return '';
+    this.i18n.revision();
+    return this.i18n.translateParams('menu.selection.maximum', { count: max });
+  }
+
   protected triggerLabel(): string {
     const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
     return configuredLabel || this.modelSummary().label || this.defaultSelectTriggerLabel();

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.185",
+  "version": "2026.09.26.en.186",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3856,6 +3856,26 @@
     "app.setup.help.android.title": "Android settings",
     "app.setup.help.android.text": "Chrome → Settings → Site settings → Location / Notifications: allow this site. Also check Android Settings → Apps → your browser or installed app → Permissions / Notifications. Then return to MyScoutee.",
     "app.setup.help.ios.title": "iPhone / iPad settings",
-    "app.setup.help.ios.text": "Location: Settings → Privacy & Security → Location Services; also check Location in Safari’s settings for this website. Alerts: Settings → Notifications → MyScoutee → Allow Notifications. Open MyScoutee from the Home Screen and retry."
+    "app.setup.help.ios.text": "Location: Settings → Privacy & Security → Location Services; also check Location in Safari’s settings for this website. Alerts: Settings → Notifications → MyScoutee → Allow Notifications. Open MyScoutee from the Home Screen and retry.",
+    "contact.chat.requests": "Requests",
+    "contact.chat.requests.empty": "No pending requests",
+    "contact.chat.request": "Request",
+    "contact.chat.approve": "Approve",
+    "contact.chat.reject": "Reject",
+    "contact.chat.pending": "Pending",
+    "contact.chat.approved": "Chat",
+    "contact.chat.rejected": "Rejected",
+    "contact.chat.request.message": "Request permission to chat directly with this contact on MyScoutee?",
+    "contact.chat.approve.message": "Allow direct chat with this person? They will be added to your contacts.",
+    "contact.chat.reject.message": "Reject this direct chat request?",
+    "contact.chat.pending.message": "Your request is awaiting a response.",
+    "contact.chat.error": "The chat request could not be updated. Please try again.",
+    "notification.kind.contact-chat-requested.title": "Chat request",
+    "notification.kind.contact-chat-requested.message": "You received a request for direct chat. Open Contacts to respond.",
+    "notification.kind.contact-chat-approved.title": "Chat request approved",
+    "notification.kind.contact-chat-approved.message": "Your direct chat request was approved. You can now chat.",
+    "notification.kind.contact-chat-rejected.title": "Chat request rejected",
+    "notification.kind.contact-chat-rejected.message": "Your direct chat request was rejected.",
+    "menu.selection.maximum": "(max. {count})"
   }
 }

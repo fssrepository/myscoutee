@@ -388,6 +388,7 @@ export class AppMemoryDb {
         seededUserIds: []
       },
       [CONTACTS_TABLE_NAME]: {
+        chatAccessById: {},
         byOwnerUserId: {},
         ownerUserIds: []
       },
@@ -574,7 +575,7 @@ export class AppMemoryDb {
       );
     }
     if (key === CONTACTS_TABLE_NAME) {
-      return this.hasEntries(table['ownerUserIds']);
+      return this.hasEntries(table['ownerUserIds']) || Object.keys((table['chatAccessById'] ?? {}) as object).length > 0;
     }
     if (key === PROFILE_EXPERIENCES_TABLE_NAME) {
       return this.hasEntries(table['userIds']);
@@ -1081,6 +1082,7 @@ export class AppMemoryDb {
           : [...fallback[NOTIFICATIONS_TABLE_NAME].seededUserIds]
       },
       [CONTACTS_TABLE_NAME]: {
+        chatAccessById: { ...(contactsSource?.chatAccessById ?? {}) },
         byOwnerUserId: contactsByOwnerUserId,
         ownerUserIds: Object.keys(contactsByOwnerUserId)
       },

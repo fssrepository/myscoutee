@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.185",
+  "version": "2026.09.26.hu.186",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3856,6 +3856,26 @@
     "app.setup.help.android.title": "Android-beállítások",
     "app.setup.help.android.text": "Chrome → Beállítások → Webhelybeállítások → Hely / Értesítések: engedélyezd ezt a webhelyet. Az Android Beállítások → Alkalmazások → böngésző vagy telepített app → Engedélyek / Értesítések pontját is ellenőrizd. Ezután térj vissza a MyScoutee-hoz.",
     "app.setup.help.ios.title": "iPhone / iPad beállítások",
-    "app.setup.help.ios.text": "Hely: Beállítások → Adatvédelem és biztonság → Helymeghatározás; a Safari adott webhelyhez tartozó Hely beállítását is ellenőrizd. Jelzések: Beállítások → Értesítések → MyScoutee → Értesítések engedélyezése. A főképernyőről nyisd meg a MyScoutee-t, majd próbáld újra."
+    "app.setup.help.ios.text": "Hely: Beállítások → Adatvédelem és biztonság → Helymeghatározás; a Safari adott webhelyhez tartozó Hely beállítását is ellenőrizd. Jelzések: Beállítások → Értesítések → MyScoutee → Értesítések engedélyezése. A főképernyőről nyisd meg a MyScoutee-t, majd próbáld újra.",
+    "contact.chat.requests": "Kérelmek",
+    "contact.chat.requests.empty": "Nincs függő kérelem",
+    "contact.chat.request": "Kérés",
+    "contact.chat.approve": "Elfogadás",
+    "contact.chat.reject": "Elutasítás",
+    "contact.chat.pending": "Folyamatban",
+    "contact.chat.approved": "Chat",
+    "contact.chat.rejected": "Elutasítva",
+    "contact.chat.request.message": "Engedélyt kérsz a kapcsolattól a MyScoutee közvetlen chat használatához?",
+    "contact.chat.approve.message": "Engedélyezed a közvetlen chatet? A másik fél bekerül a kapcsolataid közé.",
+    "contact.chat.reject.message": "Elutasítod ezt a közvetlen chatkérelmet?",
+    "contact.chat.pending.message": "A kérelmed válaszra vár.",
+    "contact.chat.error": "A chatkérelem nem frissíthető. Próbáld újra.",
+    "notification.kind.contact-chat-requested.title": "Chatkérelem",
+    "notification.kind.contact-chat-requested.message": "Közvetlen chatkérelmet kaptál. A Kapcsolatoknál válaszolhatsz.",
+    "notification.kind.contact-chat-approved.title": "Elfogadott chatkérelem",
+    "notification.kind.contact-chat-approved.message": "Elfogadták a közvetlen chatkérelmedet. Most már beszélgethettek.",
+    "notification.kind.contact-chat-rejected.title": "Elutasított chatkérelem",
+    "notification.kind.contact-chat-rejected.message": "Elutasították a közvetlen chatkérelmedet.",
+    "menu.selection.maximum": "(max. {count} db)"
   }
 }

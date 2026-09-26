@@ -10,6 +10,7 @@ import type * as ContractTypes from '../../../contracts';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 
+import { LocalContactsRepository } from './contacts.repository';
 import { LocalChatsRepository } from './chats.repository';
 
 describe('LocalChatsRepository chat pages', () => {
@@ -33,6 +34,9 @@ describe('LocalChatsRepository chat pages', () => {
     memoryDb.write(state => ({ ...state, [CONTACTS_TABLE_NAME]: {
       ownerUserIds: ['contact-a'], byOwnerUserId: { 'contact-a': contacts }
     } }));
+    const access = TestBed.inject(LocalContactsRepository);
+    const request = access.changeChatAccess('contact-a', 'contact-b', 'request');
+    access.changeChatAccess('contact-b', 'contact-a', 'approve', request.version);
     const direct = repository.ensureContactChat('contact-a', 'contact-b');
     expect(direct.channelType).toBe('contact');
     expect(direct.eventId).toBeUndefined();
@@ -54,6 +58,9 @@ describe('LocalChatsRepository chat pages', () => {
         'share-a': ['share-b', 'share-c'].map(userId => ({ userId } as StoredContact))
       }
     } }));
+    const access = TestBed.inject(LocalContactsRepository);
+    const request = access.changeChatAccess('share-a', 'share-b', 'request');
+    access.changeChatAccess('share-b', 'share-a', 'approve', request.version);
     const direct = repository.ensureContactChat('share-a', 'share-b');
     const before = memoryDb.read()[USERS_TABLE_NAME].byId['share-b'].activities.chats ?? 0;
     const message: ContractTypes.ChatMessageDto = { id: 'shared-stable-id', clientId: 'shared-stable-id',

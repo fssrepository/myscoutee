@@ -643,6 +643,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'feedback',
       'notifications',
       'paymentRefundsPending',
+      'contactRequestsPending',
       'adminJobs',
       'adminMetrics'
     ];
@@ -687,6 +688,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'feedback',
       'notifications',
       'paymentRefundsPending',
+      'contactRequestsPending',
       'adminJobs',
       'adminMetrics'
     ];
@@ -874,6 +876,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       feedback,
       notifications: normalizeCounter(notificationActivities?.notifications),
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
+      contactRequestsPending: normalizeCounter(activities?.contactRequestsPending),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
         event: normalizeCounter(chat?.event),
@@ -938,6 +941,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         feedback: counters.feedback ?? user.activities.feedback,
         notifications: counters.notifications ?? user.activities.notifications,
         paymentRefundsPending: counters.paymentRefundsPending ?? user.activities.paymentRefundsPending,
+        contactRequestsPending: counters.contactRequestsPending ?? user.activities.contactRequestsPending,
         chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,

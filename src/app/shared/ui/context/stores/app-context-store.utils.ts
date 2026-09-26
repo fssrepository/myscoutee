@@ -232,6 +232,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       feedback: user.activities?.feedback ?? 0,
       notifications: user.activities?.notifications ?? 0,
       paymentRefundsPending: user.activities?.paymentRefundsPending ?? 0,
+      contactRequestsPending: user.activities?.contactRequestsPending ?? 0,
       chat: cloneChatCounters(user.activities?.chat),
       event: cloneEventCounters(user.activities?.event),
       asset: cloneAssetCounters(user.activities?.asset),

@@ -581,6 +581,7 @@ export class SideMenuComponent implements OnDestroy {
       supplies: activityOverrides.supplies ?? activeUser.activities?.supplies ?? 0,
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
+      contactRequestsPending: activityOverrides.contactRequestsPending ?? activeUser.activities?.contactRequestsPending ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
       paymentRefundsPending: activityOverrides.paymentRefundsPending ?? activeUser.activities?.paymentRefundsPending ?? 0,
@@ -759,7 +760,7 @@ export class SideMenuComponent implements OnDestroy {
       accommodation: user.activities.accommodation,
       supplies: user.activities.supplies,
       tickets: user.activities.tickets,
-      contacts: user.activities.contacts
+      contacts: user.activities.contactRequestsPending ?? 0
     };
   });
   protected readonly adminNavigatorMenuValues = computed<AppMenuValueMap<NavigatorAdminMenuShortcutId>>(() => {
@@ -935,6 +936,8 @@ export class SideMenuComponent implements OnDestroy {
             },
             {
               id: 'contacts',
+              counter: user.activities.contactRequestsPending || undefined,
+              counterTone: 'alert',
               label: 'Contacts',
               icon: 'contacts',
               palette: 'teal',

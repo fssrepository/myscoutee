@@ -111,6 +111,7 @@ export interface UserMenuCountersDto {
   feedback?: number;
   notifications?: number;
   paymentRefundsPending?: number;
+  contactRequestsPending?: number;
   chat?: UserChatCountersDto;
   event?: UserEventCountersDto;
   asset?: UserAssetCountersDto;
@@ -133,6 +134,7 @@ export interface UserMenuCounterDeltasDto {
   feedback?: number;
   notifications?: number;
   paymentRefundsPending?: number;
+  contactRequestsPending?: number;
   chat?: UserChatCounterDeltasDto;
   event?: UserEventCounterDeltasDto;
   asset?: UserAssetCounterDeltasDto;
@@ -333,6 +335,7 @@ export class UserDto {
     feedback?: number;
     notifications?: number;
     paymentRefundsPending?: number;
+    contactRequestsPending?: number;
     chat?: UserChatCountersDto;
     event?: UserEventCountersDto;
     asset?: UserAssetCountersDto;

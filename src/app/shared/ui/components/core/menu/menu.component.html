@@ -242,7 +242,11 @@
       (click)="$event.stopPropagation()"
       >
       @if (resolvedTitle) {
-        <div class="app-menu__title">{{ resolvedTitle | i18n }}</div>
+        <div class="app-menu__title">{{ resolvedTitle | i18n }}
+          @if (!showBranchBack && selectionLimitLabel) {
+            <span class="app-menu__selection-limit">{{ selectionLimitLabel }}</span>
+          }
+        </div>
       }
 
       @if (isInlineGridLayout && hasMenuNodes) {
@@ -489,7 +493,11 @@
                 >
                 <mat-icon>arrow_back</mat-icon>
               </button>
-              <span class="app-menu__branch-title">{{ itemLabel(branch) | i18n }}</span>
+              <span class="app-menu__branch-title">{{ itemLabel(branch) | i18n }}
+                @if (selectionLimitLabel) {
+                  <span class="app-menu__selection-limit">{{ selectionLimitLabel }}</span>
+                }
+              </span>
               @for (action of branchHeaderActions(branch); track trackByItemId($index, action)) {
                 <button
                   type="button"

@@ -25,8 +25,8 @@
 .contacts-toolbar {
   display: flex;
   width: 100%;
-  flex-wrap: wrap;
-  gap: 0.7rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
   align-items: center;
 }
 
@@ -478,18 +478,13 @@
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .contacts-toolbar,
   .contact-form-summary,
   .contact-form-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .contacts-search-field {
-    width: 100%;
-    min-width: 0;
-    flex: 0 0 auto;
-  }
+
 
   .contact-form-panel {
     padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
@@ -505,3 +500,16 @@
   color: #20727c;
   img { width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
 }
+
+.contact-card {
+  border-color: #efc6a5;
+  background: linear-gradient(145deg, #fff8f1, #fff1e4);
+}
+.contact-method-chip-chat {
+  &[data-palette='orange'] { background: #fff0df; border-color: #efbd92; color: #975019; }
+  &[data-palette='green'] { background: #e4f5eb; border-color: #a5d6ba; color: #176b47; }
+  &[data-palette='red'] { background: #ffe8ec; border-color: #eda8b5; color: #aa293e; }
+}
+.contact-request-time { margin: 0.25rem 0; font-size: 0.75rem; color: #795c45; }
+
+.contacts-bucket-menu { flex: 0 0 auto; }

@@ -14,7 +14,8 @@ describe('AppMenuComponent delayed drag', () => {
           provide: I18nService,
           useValue: {
             revision: () => 0,
-            translate: (value: string | null | undefined) => value ?? ''
+            translate: (value: string | null | undefined) => value ?? '',
+            translateParams: (_key: string, values: { count: number }) => `(max. ${values.count} db)`
           }
         }
       ]
@@ -25,6 +26,24 @@ describe('AppMenuComponent delayed drag', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     TestBed.resetTestingModule();
+  });
+
+  it('adds only the configured selection maximum to the common menu heading', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    fixture.componentRef.setInput('kind', 'select');
+    fixture.componentRef.setInput('title', 'Téma');
+    fixture.componentRef.setInput('items', [{ id: 'a', label: 'A', kind: 'toggle' }]);
+    fixture.componentRef.setInput('model', { maxSelected: 3 });
+    fixture.componentInstance.open = true;
+    fixture.detectChanges();
+    const heading = () => (fixture.nativeElement as HTMLElement).querySelector('.app-menu__title')?.textContent?.replace(/\s+/g, ' ').trim();
+    expect(heading()).toBe('Téma (max. 3 db)');
+    fixture.componentRef.setInput('model', { maxSelected: 1 });
+    fixture.detectChanges();
+    expect(heading()).toBe('Téma (max. 1 db)');
+    fixture.componentRef.setInput('model', { maxSelected: null });
+    fixture.detectChanges();
+    expect(heading()).toBe('Téma');
   });
 
   it('fits labelled action buttons to content by default and fills only when configured', () => {
