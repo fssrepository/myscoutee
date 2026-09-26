@@ -1,4 +1,5 @@
 import { LocalUsersService } from './users.service';
+import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 
 describe('Local profile-load location flush', () => {
   function fixture() {
@@ -12,6 +13,7 @@ describe('Local profile-load location flush', () => {
     };
     const service = Object.assign(Object.create(LocalUsersService.prototype), {
       usersRepository: repository, waitForRouteDelay: vi.fn().mockResolvedValue(undefined),
+      countryPartitionsRepository: new LocalCountryPartitionsRepository(),
       groups: { resolveWorkspace: vi.fn().mockResolvedValue({ profile: member, accountProfile: { ...account },
         workspace: { groupId: 'group-a', profileId: 'group-profile' } }) },
       readUserById: async (id: string) => ({ user: records.get(id) }),
@@ -40,5 +42,52 @@ describe('Local profile-load location flush', () => {
     repository.flushToIndexedDb.mockRejectedValue(new Error('storage unavailable'));
     await expect(service.loadProfileExtById('account', undefined, undefined, { latitude: 47, longitude: 19 }))
       .rejects.toThrow('storage unavailable');
+  });
+
+  it('discards an unsupported pending point and returns the last accepted profile', async () => {
+    const { service, repository, records } = fixture();
+    const accepted = { latitude: 47.4979, longitude: 19.0402 };
+    records.get('account').locationCoordinates = accepted;
+    records.get('group-profile').locationCoordinates = accepted;
+    const result = await service.loadProfileExtById('account', undefined, undefined, { latitude: 30.2672, longitude: -97.7431 });
+    expect(result.profileExt.profile.locationCoordinates).toEqual(accepted);
+    expect(repository.upsertUser).not.toHaveBeenCalled();
+    expect(repository.flushToIndexedDb).not.toHaveBeenCalled();
+    expect(records.get('account').locationCoordinates).toEqual(accepted);
+    expect(records.get('group-profile').locationCoordinates).toEqual(accepted);
+  });
+
+  it('still rejects an unsupported point if there is no previously accepted location', async () => {
+    const { service, repository } = fixture();
+    await expect(service.loadProfileExtById('account', undefined, 'group-b', { latitude: 30.2672, longitude: -97.7431 }))
+      .rejects.toThrow('Unavailable in your country');
+    expect(service.groups.resolveWorkspace).not.toHaveBeenCalled();
+    expect(repository.upsertUser).not.toHaveBeenCalled();
+  });
+
+  it.each(['saveUserProfile', 'saveUserProfileExt'])('rejects an unsupported edit through %s before writing', async method => {
+    const { service, repository } = fixture();
+    const profile = { id: 'account', locationCoordinates: { latitude: 30.2672, longitude: -97.7431 } };
+    await expect(service[method](method === 'saveUserProfile' ? profile : { profile }))
+      .rejects.toThrow('Unavailable in your country');
+    expect(repository.upsertUser).not.toHaveBeenCalled();
+    expect(repository.flushToIndexedDb).not.toHaveBeenCalled();
+  });
+});
+
+describe('Local demo selector location hint', () => {
+  it('marks member profiles requiring setup without marking privileged selector roles', async () => {
+    const records = [
+      { id: 'missing' },
+      { id: 'unsupported', locationCoordinates: { latitude: 30.2672, longitude: -97.7431 } },
+      { id: 'valid', locationCoordinates: { latitude: 47.4979, longitude: 19.0402 } }
+    ];
+    const service = Object.assign(Object.create(LocalUsersService.prototype), {
+      waitForRouteDelay: vi.fn().mockResolvedValue(undefined),
+      usersRepository: { queryAvailableDemoUsers: () => records },
+      countryPartitionsRepository: new LocalCountryPartitionsRepository()
+    });
+    expect((await service.queryAvailableDemoUsers('member')).map(user => user.locationRequired)).toEqual([true, true, false]);
+    expect((await service.queryAvailableDemoUsers('admin')).map(user => user.locationRequired)).toEqual([false, false, false]);
   });
 });

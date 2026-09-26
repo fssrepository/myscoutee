@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.187",
+  "version": "2026.09.26.en.188",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3897,6 +3897,7 @@
     "mcp.consent.message": "This connection can use the API operations allowed for this profile and group. It cannot switch profiles. You can revoke access under Profile editor → Affiliate → Client keys.",
     "mcp.authorization.failed": "This authorization request is invalid or belongs to another account. Reconnect from your AI client using the correct account.",
     "mcp.authorize": "Authorize AI connection",
-    "mcp.approve": "Allow access"
+    "mcp.approve": "Allow access",
+    "demo.selector.status.location": "Location needed"
   }
 }

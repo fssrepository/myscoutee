@@ -880,6 +880,8 @@ export class HttpUsersService implements UserService {
     const normalizedGender = `${user.gender ?? ''}`.trim().toLowerCase() === 'man' ? 'man' : 'woman';
     return {
       id,
+      locationCoordinates: user.locationCoordinates ?? null,
+      locationRequired: user.locationRequired === true,
       name: `${user.name ?? ''}`.trim(),
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),

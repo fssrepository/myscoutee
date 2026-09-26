@@ -5,12 +5,6 @@ import {
   inject,
   signal
 } from '@angular/core';
-import {
-  HttpErrorResponse
-} from '@angular/common/http';
-import {
-  Router
-} from '@angular/router';
 
 import {
   environment
@@ -25,9 +19,6 @@ import {
   SessionService
 } from './session.service';
 import {
-  DialogStore
-} from '../../../ui/context/stores/dialog.store';
-import {
   APP_STORAGE_KEYS,
   appLocationStorageKey
 } from '../../common/storage-scope';
@@ -40,19 +31,14 @@ type HttpUsersServiceInstance = import('../../http/services/users.service').Http
   providedIn: 'root'
 })
 export class AppLocationService {
-  private static readonly ACCESS_RESTRICTED_TITLE = 'Please register';
-  private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5_000;
 
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly injector = inject(Injector);
-  private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
-  private readonly dialogStore = inject(DialogStore);
   private httpUsersServicePromise: Promise<HttpUsersServiceInstance> | null = null;
   private readonly syncingUserIds = new Set<string>();
-  private readonly blockedUserIds = new Set<string>();
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
   private readonly lastPersistedCoordinatesByUserId = new Map<string, LocationCoordinates>();
   private readonly primedLocationUserIds = new Set<string>();
@@ -270,7 +256,7 @@ export class AppLocationService {
     if (!user || user.admin === true || !normalized
       || !this.isActiveMemberSession(userId)) return false;
     this.primePersistedCoordinates(userId, user.locationCoordinates);
-    await this.persistCoordinates(userId, user, normalized);
+    if (!await this.persistCoordinates(userId, user, normalized)) return false;
     if (this.userProfileStore.activeUserId().trim() !== userId) return false;
     this.storeCoordinates(userId, normalized);
     this.ensureCoordinateWatch(userId);
@@ -362,7 +348,6 @@ export class AppLocationService {
     }
 
     this.primePersistedCoordinates(userId, activeUser.locationCoordinates);
-    this.storeCoordinates(userId, coordinates);
     this.queueLocationSyncForActiveUser(userId, activeUser, coordinates);
   }
 
@@ -522,23 +507,11 @@ export class AppLocationService {
         return;
       }
       await this.persistCoordinates(userId, currentUser, normalizedCoordinates);
-    } catch (error) {
-      if (this.isIneligibleRegionError(error)) {
-        if (!this.blockedUserIds.has(userId)) {
-          this.blockedUserIds.add(userId);
-          this.dialogStore.openInfo(this.resolveIneligibleRegionMessage(error), {
-            title: AppLocationService.ACCESS_RESTRICTED_TITLE,
-            confirmLabel: 'OK',
-            allowBackdropClose: false,
-            allowEscapeClose: false,
-            onConfirm: async () => {
-              await this.sessionService.logout();
-              await this.router.navigateByUrl(this.router.url.split('?')[0].startsWith('/admin') ? '/admin' : '/entry');
-            }
-          });
-        }
-      }
+    } catch {
+      // A rejected background sample does not revoke an existing admission.
+      // Keep the saved profile, browser cache and distance baseline unchanged.
     } finally {
+      // Release the location-write marker only; authentication/session state is untouched.
       this.syncingUserIds.delete(userId);
       if (this.pendingCoordinatesByUserId.has(userId)) {
         void this.flushPendingLocationSync(userId, this.resolveTrackedUser(userId) ?? fallbackUser);
@@ -546,23 +519,20 @@ export class AppLocationService {
     }
   }
 
-  private async persistCoordinates(userId: string, user: UserDto, coordinates: LocationCoordinates): Promise<void> {
+  private async persistCoordinates(userId: string, user: UserDto, coordinates: LocationCoordinates): Promise<boolean> {
     const users = this.isLocalUserRouteEnabled()
       ? this.injector.get((await import('../../local/source/services/users.service')).LocalUsersService)
       : await this.httpUsersService();
     const savedUser = await users.saveUserProfile({ ...user, locationCoordinates: coordinates });
     if (savedUser?.id?.trim()) {
+      this.storeCoordinates(userId, this.normalizeCoordinates(savedUser.locationCoordinates) ?? coordinates);
       this.lastPersistedCoordinatesByUserId.set(
         userId, this.normalizeCoordinates(savedUser.locationCoordinates) ?? coordinates
       );
       this.userProfileStore.setUserProfile(savedUser);
-    } else {
-      this.lastPersistedCoordinatesByUserId.set(userId, coordinates);
+      return true;
     }
-  }
-
-  private isIneligibleRegionError(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && (error.status === 403 || error.status === 422);
+    return false;
   }
 
   private isLocalUserRouteEnabled(): boolean {
@@ -582,20 +552,6 @@ export class AppLocationService {
         .then(module => this.injector.get(module.HttpUsersService));
     }
     return this.httpUsersServicePromise;
-  }
-
-  private resolveIneligibleRegionMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      const backendMessage = typeof error.error?.message === 'string' ? error.error.message.trim() : '';
-      if (backendMessage) {
-        return backendMessage;
-      }
-      const topLevelMessage = typeof error.message === 'string' ? error.message.trim() : '';
-      if (topLevelMessage) {
-        return topLevelMessage;
-      }
-    }
-    return AppLocationService.ACCESS_RESTRICTED_MESSAGE;
   }
 
   private storageKey(userId: string): string {

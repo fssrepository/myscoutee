@@ -295,17 +295,10 @@ const BASE_DEMO_USERS: UserRecord[] = [
 ];
 
 export class SeedUserBuilder {
-  private static readonly CITY_LOCATION_COORDINATES_BY_NAME: Record<string, LocationCoordinates> = {
-    Austin: { latitude: 30.2672, longitude: -97.7431 },
-    Seattle: { latitude: 47.6062, longitude: -122.3321 },
-    Chicago: { latitude: 41.8781, longitude: -87.6298 },
-    Denver: { latitude: 39.7392, longitude: -104.9903 },
-    Miami: { latitude: 25.7617, longitude: -80.1918 },
-    Boston: { latitude: 42.3601, longitude: -71.0589 },
-    Phoenix: { latitude: 33.4484, longitude: -112.0740 },
-    Nashville: { latitude: 36.1627, longitude: -86.7816 },
-    'San Diego': { latitude: 32.7157, longitude: -117.1611 },
-    Portland: { latitude: 45.5152, longitude: -122.6784 }
+  // Pre-registered demo members start near Budapest, inside country:hu.
+  // The profile's city text is independent of its last accepted GPS sample.
+  private static readonly DEMO_LOCATION_COORDINATES: LocationCoordinates = {
+    latitude: 47.4979, longitude: 19.0402
   };
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
@@ -464,7 +457,7 @@ export class SeedUserBuilder {
   }
 
   static resolveDemoLocationCoordinates(city: string, seedKey: string): LocationCoordinates {
-    const base = this.CITY_LOCATION_COORDINATES_BY_NAME[city] ?? this.CITY_LOCATION_COORDINATES_BY_NAME['Austin'];
+    const base = this.DEMO_LOCATION_COORDINATES;
     const normalizedSeedKey = seedKey.trim() || city.trim() || 'demo-user';
     const seed = AppUtils.hashText(normalizedSeedKey);
     const latitudeOffset = (((seed % 29) - 14) * 0.0012);

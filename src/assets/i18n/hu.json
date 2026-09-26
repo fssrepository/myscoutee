@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.187",
+  "version": "2026.09.26.hu.188",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3897,6 +3897,7 @@
     "mcp.consent.message": "Ez a kapcsolat a profil és csoport számára engedélyezett API-műveleteket használhatja. Másik profilra nem válthat. A hozzáférést a Profilszerkesztő → Affiliate → Klienskulcsok alatt vonhatod vissza.",
     "mcp.authorization.failed": "Ez az engedélykérés érvénytelen, vagy másik fiókhoz tartozik. A megfelelő fiókkal indíts új csatlakozást az AI-kliensből.",
     "mcp.authorize": "AI-kapcsolat engedélyezése",
-    "mcp.approve": "Hozzáférés engedélyezése"
+    "mcp.approve": "Hozzáférés engedélyezése",
+    "demo.selector.status.location": "Helyadat kell"
   }
 }

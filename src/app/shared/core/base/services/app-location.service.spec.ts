@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AppLocationService } from './app-location.service';
 import { DialogStore } from '../../../ui/context/stores/dialog.store';
 
@@ -252,6 +253,46 @@ describe('Granted location background synchronization', () => {
     expect(save).toHaveBeenCalledTimes(2);
     expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(service.dialogStore.dialog()).toBeNull();
+  });
+
+  it.each([403, 422])('preserves admitted access and the saved point when a background sample is rejected (%s)', async status => {
+    const { service, save, profile } = fixture();
+    const stored = { latitude: 47.4979, longitude: 19.0402 };
+    const outside = { latitude: 30.2672, longitude: -97.7431 };
+    service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: stored });
+    service.userProfileStore.setUserProfile.mockClear();
+    service.sessionService.logout = vi.fn();
+    save.mockRejectedValueOnce(new HttpErrorResponse({ status, error: { message: 'Region unavailable' } }));
+
+    service.handleStreamedCoordinates('member', outside);
+    await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
+
+    expect(save).toHaveBeenCalledOnce();
+    expect(profile().locationCoordinates).toEqual(stored);
+    expect(service.lastPersistedCoordinatesByUserId.get('member')).toEqual(stored);
+    expect(service.userProfileStore.setUserProfile).not.toHaveBeenCalled();
+    expect(service.storeCoordinates).not.toHaveBeenCalled();
+    expect(service.dialogStore.dialog()).toBeNull();
+    expect(service.sessionService.logout).not.toHaveBeenCalled();
+    expect(service.isActiveMemberSession('member')).toBe(true);
+
+    const supported = { latitude: 47.6, longitude: 19.1 };
+    service.handleStreamedCoordinates('member', supported);
+    await vi.waitFor(() => expect(service.syncingUserIds.size).toBe(0));
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(profile().locationCoordinates).toEqual(supported);
+    expect(service.storeCoordinates).toHaveBeenCalledExactlyOnceWith('member', supported);
+  });
+
+  it('does not acknowledge an empty save response or advance the movement baseline', async () => {
+    const { service, save, profile } = fixture();
+    const stored = { latitude: 47.4979, longitude: 19.0402 };
+    service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: stored });
+    save.mockResolvedValueOnce(null);
+    expect(await service.saveCurrentCoordinates({ latitude: 47.6, longitude: 19.1 })).toBe(false);
+    expect(service.lastPersistedCoordinatesByUserId.get('member')).toEqual(stored);
+    expect(service.storeCoordinates).not.toHaveBeenCalled();
+    expect(profile().locationCoordinates).toEqual(stored);
   });
 
   it('stops app tracking and ignores late coordinates without clearing the stored profile', () => {

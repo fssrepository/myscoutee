@@ -274,6 +274,8 @@ export interface UserLocationEligibilityResponseDto {
 
 export interface UserSelectorListItemDto {
   id: string;
+  locationCoordinates?: LocationCoordinates | null;
+  locationRequired?: boolean;
   name: string;
   city: string;
   initials: string;

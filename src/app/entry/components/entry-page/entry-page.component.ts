@@ -44,6 +44,7 @@ import type {
   FirebaseAuthRequestDto,
   LocationCoordinates,
   UserDto,
+  UserSelectorListItemDto,
   UserLocationEligibilityResponseDto
 } from '../../../shared/core/contracts/user.interface';
 import {
@@ -113,6 +114,7 @@ import {
 
 interface EntryDemoUserSelectionEvent {
   userId: string;
+  user?: UserSelectorListItemDto;
   mode: DemoBootstrapSelectorMode;
   complete: () => void;
   fail: (message?: string) => void;
@@ -555,11 +557,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         await (this.grantedLocationEligibilityPromise
           ?? this.resolveBrowserLocationAccess(this.grantedLocationEligibilityRequestToken));
         if (!this.locationEligibilityResolvedFromCoordinates) {
-          this.dialogStore.openInfo(this.uiText('entry.permissions.location.unavailable'), {
-            title: 'Check Unavailable',
-            confirmLabel: 'OK'
-          });
-          return false;
+          return await this.requestLocationAccessFromDialog();
         }
       }
       const gateState = this.landingLoginAvailability;
@@ -568,27 +566,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           ? await this.appSetupStore.requestForLogin()
           : true;
       }
-      if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
-        this.dialogStore.openInfo(
-          this.loginUnavailableMessage(gateState),
-          {
-            title: 'please.register',
-            confirmLabel: 'OK'
-          }
-        );
-        return false;
-      }
-
       return await this.requestLocationAccessFromDialog();
     } catch {
-      this.dialogStore.openInfo(
-        'We could not complete the region-based check right now. Please try again later.',
-        {
-          title: 'Check Unavailable',
-          confirmLabel: 'OK'
-        }
-      );
-      return false;
+      return await this.requestLocationAccessFromDialog();
     } finally {
       this.loginEligibilityBusy = false;
     }
@@ -605,10 +585,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode,
       selectableModes,
-      onSelect: (userId, mode) => new Promise<boolean | string>(resolve => {
+      onSelect: (userId, mode, user) => new Promise<boolean | string>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({
             userId,
+            user,
             mode,
             complete: () => resolve(true),
             fail: message => resolve(message?.trim() || false)
@@ -643,6 +624,20 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     const selectedUser = this.usersService.localModeEnabled
       ? this.usersService.peekCachedUserById(normalizedUserId)
       : null;
+    try {
+      const coordinates = selectedUser?.locationCoordinates ?? selection.user?.locationCoordinates;
+      const eligible = coordinates
+        && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)
+        && Math.abs(coordinates.latitude) <= 90 && Math.abs(coordinates.longitude) <= 180
+        && (await this.usersService.checkLocationEligibility(coordinates)).eligible;
+      if (!eligible && !await this.requestLocationAccessFromDialog(normalizedUserId)) {
+        selection.fail();
+        return;
+      }
+    } catch {
+      selection.fail(this.uiText('entry.permissions.location.unavailable'));
+      return;
+    }
     if (selectedUser && this.requiresProfileOnboarding(selectedUser)) {
       this.pendingDemoSessionUserId = normalizedUserId;
       this.openOnboardingGate(selectedUser, this.memberRedirectUrl());
@@ -1102,8 +1097,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return this.appLocationService.requestCurrentCoordinates();
   }
 
-  private requestLocationAccessFromDialog(): Promise<boolean> {
-    const accountId = this.sessionService.activeUserId();
+  private requestLocationAccessFromDialog(accountId = this.sessionService.activeUserId()): Promise<boolean> {
+    const sessionIdentity = this.sessionService.identity();
     return this.appSetupStore.requestForLogin(async coordinates => {
       let result: UserLocationEligibilityResponseDto;
       try {
@@ -1116,7 +1111,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       if (!result.eligible) {
         throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
       }
-      if (accountId !== this.sessionService.activeUserId()) return false;
+      if (sessionIdentity !== this.sessionService.identity()) return false;
       this.appLocationService.stageLoginCoordinates(accountId, coordinates);
       return true;
     });
@@ -1460,8 +1455,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private syncEntryAuthGateState(): void {
-    const loginEnabled = this.authMode === 'firebase';
-    this.entryAuthUnavailable = !this.entryNetworkUnavailable && loginEnabled && this.isLoginBlockedByLandingBundle();
+    // A previous rejected browser sample must not turn Login into a permanent block.
+    // The selected profile and the retryable Setup flow decide admission on click.
+    this.entryAuthUnavailable = false;
     this.entryAuthUnavailableLabel = 'Unavailable here';
     // Location is checked after authentication, once the saved profile is known.
     this.changeDetectorRef.markForCheck();
