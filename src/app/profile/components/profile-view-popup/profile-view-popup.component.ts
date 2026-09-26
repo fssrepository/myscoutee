@@ -227,6 +227,9 @@ export class ProfileViewPopupComponent implements OnDestroy {
 
   protected displayDetailValue(row: ProfileDetailFormRow): string {
     const value = `${row.value ?? ''}`.trim();
+    if (row.labelKey === 'profile.details.children') {
+      return APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()] ?? (value || 'Not set');
+    }
     return value || 'Not set';
   }
 

@@ -9,7 +9,7 @@ export class AppCalendarDateAdapter extends NativeDateAdapter {
       if (!normalized) {
         return null;
       }
-      const match = normalized.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+      const match = normalized.match(/^(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})\.?$/);
       if (match) {
         const year = Number.parseInt(match[1], 10);
         const month = Number.parseInt(match[2], 10);
@@ -23,9 +23,18 @@ export class AppCalendarDateAdapter extends NativeDateAdapter {
           day >= 1 &&
           day <= 31
         ) {
-          return new Date(year, month - 1, day);
+          try {
+            const date = this.createDate(year, month - 1, day);
+            // NativeDateAdapter only rejects overflow in development builds.
+            return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+              ? date : this.invalid();
+          } catch {
+            return this.invalid();
+          }
         }
       }
+      // Do not reinterpret partial or day-first input through the browser's US parser.
+      return this.invalid();
     }
     return super.parse(value);
   }

@@ -1,5 +1,5 @@
 @if (store.isOpen()) {
-  <app-popup [model]="model" (close)="store.close()">
+  <app-popup [model]="model()" (close)="store.close()">
     <div class="app-setup-content">
       <section class="app-setup-section" aria-labelledby="setup-permissions">
         <h3 id="setup-permissions">{{ 'app.setup.permissions' | i18n }}</h3>
@@ -21,4 +21,16 @@
       }
     </div>
   </app-popup>
+  @if (helpOpen()) {
+    <app-popup [model]="helpModel" (close)="helpOpen.set(false)">
+      <div class="app-setup-help">
+        @for (section of helpSections; track section.id) {
+          <section class="app-setup-help-card" [attr.data-tone]="section.tone">
+            <h3><mat-icon aria-hidden="true">{{ section.icon }}</mat-icon>{{ 'app.setup.help.' + section.id + '.title' | i18n }}</h3>
+            <p>{{ 'app.setup.help.' + section.id + '.text' | i18n }}</p>
+          </section>
+        }
+      </div>
+    </app-popup>
+  }
 }

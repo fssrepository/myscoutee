@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, HostBinding, Input } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
+import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepicker, MatDatepickerModule, MatDateRangePicker } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTimepicker, MatTimepickerModule } from '@angular/material/timepicker';
 
 import { AppUtils } from '../../../../../../app-utils';
+import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../../../../app-calendar-date-adapter';
 import type { DateRangeDto } from '../../../../../../core/contracts/date.interface';
 import { I18nPipe } from '../../../../../pipes';
 
@@ -125,6 +126,8 @@ export interface DateInputModel {
   styleUrl: './date-input.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
+    { provide: DateAdapter, useClass: AppCalendarDateAdapter },
+    { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateTime },
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => DateInputComponent),

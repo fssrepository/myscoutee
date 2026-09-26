@@ -606,7 +606,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       field: {
         ...(model.field ?? {}),
         label: model.field?.label ?? control.label ?? '',
-        placeholder: model.field?.placeholder ?? control.placeholder ?? 'dd/mm/yyyy',
+        placeholder: model.field?.placeholder ?? control.placeholder ?? 'YYYY/MM/DD',
         required: model.field?.required ?? control.required === true
       },
       meta: model.meta ?? config.meta ?? null,

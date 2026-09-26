@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.25.hu.184",
+  "version": "2026.09.26.hu.185",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -1303,7 +1303,7 @@
     "articles": "Cikkek",
     "close.article": "Cikk bezárása",
     "close.articles": "Cikkek bezárása",
-    "footer.connect": "Kapcsolódjunk",
+    "footer.connect": "Kövess minket",
     "footer.tagline": "Ahol a gyors találatok valódi kapcsolódásokká válnak.",
     "install.prompt.description": "Nyisd meg a(z) {productName} alkalmazást közvetlenül a kezdőképernyőről, saját ablakban, böngészőfülek nélkül. Külön engedélyezett értesítésekkel az új üzenetekről is értesülhetsz.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "A jegyek, gyorsítótárazott profilrészletek és csevegési értesítések maradjanak elérhetők a telepített appban.",
@@ -3840,6 +3840,22 @@
     "invite.external.copy.failed": "A másolás nem sikerült. Jelöld ki és másold ki a fenti linket.",
     "chat.contacts": "Kapcsolatok",
     "chat.contacts.open": "MyScoutee-csevegés",
-    "chat.contacts.error": "A kapcsolati chat nem nyitható meg vagy frissíthető. Próbáld újra."
+    "chat.contacts.error": "A kapcsolati chat nem nyitható meg vagy frissíthető. Próbáld újra.",
+    "profile.children.none": "Nincs",
+    "profile.children.has": "Van",
+    "calendar.export.empty": "Nincs exportálható közelgő esemény.",
+    "app.setup.help.title": "Telepítés és engedélyek",
+    "app.setup.help.location.title": "Helyadatok",
+    "app.setup.help.location.text": "A helyadatok segítenek a közeli emberek és események megjelenítésében. Jelöld be itt, majd engedélyezd a böngésző kérését. A készülék helymeghatározása is legyen bekapcsolva.",
+    "app.setup.help.notifications.title": "Értesítések",
+    "app.setup.help.notifications.text": "Jelöld be az értesítéseket, ha ezen az eszközön szeretnél jelzéseket kapni. A böngészőnek és a rendszernek is engedélyeznie kell őket. A telepítés önmagában nem ad értesítési engedélyt.",
+    "app.setup.help.install.title": "Alkalmazás telepítése",
+    "app.setup.help.install.text": "Android: az itteni vagy a böngészőmenü Telepítés gombját használd. iPhone / iPad: Safari → Megosztás → Főképernyőhöz adás. Az értesítéseket erről az ikonról megnyitva engedélyezheted (iOS / iPadOS 16.4-től).",
+    "app.setup.help.blocked.title": "Korábban letiltottad?",
+    "app.setup.help.blocked.text": "A MyScoutee nem írhatja felül a böngésző vagy a rendszer tiltását. Módosítsd az engedélyt a beállításokban, majd térj vissza ide és próbáld újra. A menüpontok neve készülékenként és verziónként eltérhet.",
+    "app.setup.help.android.title": "Android-beállítások",
+    "app.setup.help.android.text": "Chrome → Beállítások → Webhelybeállítások → Hely / Értesítések: engedélyezd ezt a webhelyet. Az Android Beállítások → Alkalmazások → böngésző vagy telepített app → Engedélyek / Értesítések pontját is ellenőrizd. Ezután térj vissza a MyScoutee-hoz.",
+    "app.setup.help.ios.title": "iPhone / iPad beállítások",
+    "app.setup.help.ios.text": "Hely: Beállítások → Adatvédelem és biztonság → Helymeghatározás; a Safari adott webhelyhez tartozó Hely beállítását is ellenőrizd. Jelzések: Beállítások → Értesítések → MyScoutee → Értesítések engedélyezése. A főképernyőről nyisd meg a MyScoutee-t, majd próbáld újra."
   }
 }

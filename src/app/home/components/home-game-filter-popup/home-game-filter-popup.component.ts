@@ -1,3 +1,4 @@
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -732,6 +733,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   }
 
   protected filterMenuValueLabel(kind: GameFilterMenuKind, value: string): string {
+    if (kind === 'children') return APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()] ?? value;
     if (kind !== 'genders') {
       return value;
     }

@@ -2784,6 +2784,7 @@ export const APP_STATIC_DATA = {
   documentViewerHeaderPalettes: DOCUMENT_VIEWER_HEADER_PALETTES,
   explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
+  childrenValueLabels: { no: 'profile.children.none', yes: 'profile.children.has' } as Readonly<Record<string, string>>,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
   interestOptionGroups: INTEREST_OPTION_GROUPS,

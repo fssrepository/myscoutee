@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.25.en.184",
+  "version": "2026.09.26.en.185",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -1303,7 +1303,7 @@
     "articles": "Articles",
     "close.article": "Close article",
     "close.articles": "Close articles",
-    "footer.connect": "Let's connect",
+    "footer.connect": "Follow us",
     "footer.tagline": "Where fast matches turn into real connections.",
     "install.prompt.description": "Open {productName} quickly from your home screen, in its own window without browser tabs. Notifications can alert you to new messages when you grant permission separately.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "Keep tickets, cached profile details, and chat notifications available with the installed app.",
@@ -3840,6 +3840,22 @@
     "invite.external.copy.failed": "Copy failed. You can select and copy the link above.",
     "chat.contacts": "Contacts",
     "chat.contacts.open": "Chat in MyScoutee",
-    "chat.contacts.error": "The contact chat could not be opened or updated. Please try again."
+    "chat.contacts.error": "The contact chat could not be opened or updated. Please try again.",
+    "profile.children.none": "No children",
+    "profile.children.has": "Has children",
+    "calendar.export.empty": "There are no upcoming events to export.",
+    "app.setup.help.title": "Installation and permissions",
+    "app.setup.help.location.title": "Location",
+    "app.setup.help.location.text": "Location helps show nearby people and events. Select it here, then allow access when your browser asks. Your device’s location services must also be enabled.",
+    "app.setup.help.notifications.title": "Notifications",
+    "app.setup.help.notifications.text": "Select notifications to receive alerts on this device. Both the browser and your system must allow them. Installing the app does not grant notification permission.",
+    "app.setup.help.install.title": "Install the app",
+    "app.setup.help.install.text": "Android: use Install app here or in your browser menu. iPhone / iPad: in Safari, choose Share → Add to Home Screen. Open that icon to enable notifications (iOS / iPadOS 16.4 or later).",
+    "app.setup.help.blocked.title": "Previously blocked?",
+    "app.setup.help.blocked.text": "MyScoutee cannot override a browser or system block. Change the permission in settings, return here and retry. Menu names vary by device and version.",
+    "app.setup.help.android.title": "Android settings",
+    "app.setup.help.android.text": "Chrome → Settings → Site settings → Location / Notifications: allow this site. Also check Android Settings → Apps → your browser or installed app → Permissions / Notifications. Then return to MyScoutee.",
+    "app.setup.help.ios.title": "iPhone / iPad settings",
+    "app.setup.help.ios.text": "Location: Settings → Privacy & Security → Location Services; also check Location in Safari’s settings for this website. Alerts: Settings → Notifications → MyScoutee → Allow Notifications. Open MyScoutee from the Home Screen and retry."
   }
 }
