@@ -1,7 +1,7 @@
-import { Component, ViewChild, inject, effect } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, inject, effect } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { defer, map } from 'rxjs';
-import { PopupComponent, PopupModel } from '../core/popup';
+import { PopupComponent, PopupModel, PopupControl } from '../core/popup';
 import { SmartListComponent, InfoCardComponent, InfoCardData, SmartListConfig, SmartListLoadPage } from '../core/smart-list';
 import { AppMenuItemSelectEvent } from '../core/menu';
 import { I18nService } from '../../../core/base/services/i18n.service';
@@ -15,7 +15,7 @@ import { ContentModerationStore } from '../../context/stores/content-moderation.
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
-    <app-popup [model]="model()">
+    <app-popup [model]="model()" [zIndex]="explore ? 1200 : null">
       @if (store.error() && !store.editor()) { <p role="alert">{{ store.error() | i18n }}</p> }
       <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"
         (menuItemSelect)="select($event)"></app-smart-list>
@@ -25,12 +25,14 @@ import { ContentModerationStore } from '../../context/stores/content-moderation.
           (mediaEndClick)="store.members(card.eagerDetail)"></app-info-card>
       </ng-template>
     </app-popup>
-    @defer (when store.editor()) {
-      @if (store.editor(); as editor) { <app-community-group-editor [group]="editor.group" [readOnly]="editor.readOnly" [loading]="editor.loading === true"></app-community-group-editor> }
+    @defer (when !explore && store.editor()) {
+      @if (!explore && store.editor(); as editor) { <app-community-group-editor [group]="editor.group" [readOnly]="editor.readOnly" [loading]="editor.loading === true"></app-community-group-editor> }
     }
   `
 })
-export class CommunityGroupsPopupComponent {
+export class CommunityGroupsPopupComponent implements OnInit {
+  @Input() explore = false;
+  ngOnInit(): void { if (this.explore) this.query = { filters: { bucket: 'explore', category: null } }; }
   protected readonly store = inject(CommunityGroupsStore);
   protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);
@@ -105,36 +107,53 @@ export class CommunityGroupsPopupComponent {
   protected model(): PopupModel {
     const bucket = this.query.filters.bucket; const category = this.query.filters.category;
     const sort = groupSort(bucket, this.query.sort);
-    return { title: 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
-      toolbarMobileAlign: 'start', onClose: () => this.store.close(),
+    const toolbarControls: PopupControl[] = [];
+    if (!this.explore) toolbarControls.push({
+      id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
+      trigger: { label: bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
+        counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
+      items: (['hosting', 'participation', 'pending', 'invitations'] as const).map(id => ({ id,
+        label: id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`, ...GROUP_BUCKET_STYLE[id],
+        kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
+        counter: this.store.counters()[id], counterTone: 'alert' }))
+    });
+    if (this.explore) toolbarControls.push({
+      id: 'category', kind: 'menu', align: 'start', menuKind: 'select',
+      trigger: { label: category ? `groups.category.${category}` : 'groups.category.all',
+        icon: category ? GROUP_CATEGORY_ICON[category] : 'category', palette: category ? GROUP_CATEGORY_PALETTE[category] : 'teal', layout: 'pill',
+        counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, category) },
+      items: [{ id: 'all', label: 'groups.category.all', icon: 'category', palette: 'teal', surface: 'tinted',
+        kind: 'radio', showCheck: true, active: !category, checked: !category,
+        counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket), counterTone: 'alert' },
+        ...GROUP_CATEGORIES.map(id => ({ id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id],
+          kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const,
+          counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, id), counterTone: 'alert' as const }))]
+    });
+    if (!this.explore) toolbarControls.push({
+      id: 'actions', kind: 'menu', align: 'end', panelAlign: 'end',
+      trigger: { icon: 'add', closeIcon: 'close', ariaLabel: 'groups.actions', hideLabel: true, layout: 'icon', palette: 'green' },
+      items: [
+        { id: 'explore', label: 'groups.explore', icon: 'explore', palette: 'violet', surface: 'tinted' },
+        { id: 'create', label: 'groups.create', icon: 'add_circle', palette: 'green', surface: 'tinted' }
+      ]
+    });
+    return { title: this.explore ? 'groups.explore' : 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
+      toolbarMobileAlign: 'start', onClose: () => this.explore ? this.store.closeExplore() : this.store.close(),
       headerControls: [{ id: 'sort', kind: 'menu', menuKind: 'select',
         trigger: { label: sort === 'distance' ? 'distance' : 'recent', icon: sort === 'distance' ? 'near_me' : 'schedule', palette: sort === 'distance' ? 'green' : 'violet', layout: 'pill' },
         items: (['distance', 'updated'] as const).map(id => ({id, label: id === 'distance' ? 'distance' : 'recent',
           icon: id === 'distance' ? 'near_me' : 'schedule', palette: id === 'distance' ? 'green' : 'violet', surface: 'tinted',
           kind: 'radio', showCheck: true, active: sort === id, checked: sort === id})) }],
-      onAction: () => { this.store.closeEditor(); this.store.error.set(''); this.store.editor.set({ group: null, readOnly: false }); },
-      toolbarControls: [
-        { id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
-          trigger: { label: bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
-            counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
-          items: (['hosting','participation','invitations','explore'] as GroupBucket[]).map(id => ({ id, label: id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`,
-            ...GROUP_BUCKET_STYLE[id], kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
-            counter: id === 'explore' ? 0 : this.store.counters()[id], counterTone: 'alert' })) },
-        { id: 'category', kind: 'menu', align: 'start', menuKind: 'select',
-          trigger: { label: category ? `groups.category.${category}` : 'groups.category.all',
-            icon: category ? GROUP_CATEGORY_ICON[category] : 'category', palette: category ? GROUP_CATEGORY_PALETTE[category] : 'teal', layout: 'pill',
-            counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, category) },
-          items: [{ id: 'all', label: 'groups.category.all', icon: 'category', palette: 'teal', surface: 'tinted',
-            kind: 'radio', showCheck: true, active: !category, checked: !category,
-            counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket), counterTone: 'alert' },
-            ...GROUP_CATEGORIES.map(id => ({ id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id],
-              kind: 'radio' as const, showCheck: true, palette: GROUP_CATEGORY_PALETTE[id], active: category === id, checked: category === id, surface: 'tinted' as const,
-              counter: bucket === 'explore' ? 0 : this.store.categoryCount(bucket, id), counterTone: 'alert' as const }))] },
-        { id: 'create', align: 'end', icon: 'add', ariaLabel: this.i18n.translate('groups.create'), palette: 'green' }
-      ], onMenuSelect: event => { const value = event.itemSelect.id;
-        if (event.control.id === 'sort') this.query = { ...this.query, sort: value as GroupSort };
+      toolbarControls,
+      onMenuSelect: event => {
+        const value = event.itemSelect.id;
+        if (event.control.id === 'actions') {
+          if (value === 'explore') this.store.openExplore();
+          else if (value === 'create') { this.store.closeEditor(); this.store.error.set(''); this.store.editor.set({ group: null, readOnly: false }); }
+        } else if (event.control.id === 'sort') this.query = { ...this.query, sort: value as GroupSort };
         else if (event.control.id === 'bucket') this.query = { filters: { ...this.query.filters, bucket: value as GroupBucket } };
-        else this.query = { ...this.query, filters: { ...this.query.filters, category: value === 'all' ? null : value as GroupCategory } }; }
+        else if (event.control.id === 'category') this.query = { ...this.query, filters: { ...this.query.filters, category: value === 'all' ? null : value as GroupCategory } };
+      }
     };
   }
 }

@@ -1,13 +1,15 @@
 import { AppUtils } from '../../app-utils';
-import { communityGroupSummary, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../core/contracts/community-group.interface';
+import { canPreviewGroupMembers, communityGroupSummary, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../core/contracts/community-group.interface';
 import type { InfoCardData } from '../components/core/smart-list/card';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
+import { appMenuAlertCounter, appMenuResolveLiveValue } from '../components/core/menu';
 import { contentModerationBadge } from './content-moderation-badge';
 import { ActivityEventInfoCardMenuConverter } from './activity-event-info-card-menu.converter';
 import { CARD_MENU_ACTIONS } from '../components/core/smart-list/card';
 export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette }> = {
   hosting: { icon: 'event_seat', palette: 'green' }, participation: { icon: 'groups', palette: 'orange' },
   invitations: { icon: 'mail', palette: 'violet' },
+  pending: { icon: 'pending_actions', palette: 'amber' },
   explore: { icon: 'explore', palette: 'violet' }
 };
 export const GROUP_VISIBILITY_STYLE: Record<GroupVisibility, { icon: string; palette: AppMenuPalette }> = {
@@ -22,8 +24,13 @@ export const GROUP_CATEGORY_PALETTE = {
 } as const satisfies Record<GroupCategory, AppMenuPalette>;
 export class CommunityGroupConverter {
   static card(group: CommunityGroupSummary, translate: (key: string) => string): InfoCardData<CommunityGroupSummary> {
+    const membersVisible = canPreviewGroupMembers(group);
+    const menuCounter = appMenuAlertCounter(this.menu(group));
+    const menuBadgeCount = Number(appMenuResolveLiveValue(
+      menuCounter && typeof menuCounter === 'object' ? menuCounter.value : menuCounter
+    )) || 0;
     return { id: group.id, smartListKey: `community:${group.id}`, ownerId: group.ownerUserId, ownerUserId: group.ownerUserId,
-      title: group.name, dateIso: group.updatedAtIso, imageUrl: group.imageUrl,
+      title: group.name, dateIso: group.updatedAtIso, imageUrl: group.imageUrl, mediaFit: 'contain',
       placeholderLabel: group.imageUrl ? null : group.name,
       groupLabel: group.distanceKm == null ? translate('groups.title') : AppUtils.activityGroupLabel({ distanceMetersExact: group.distanceKm * 1000 }, 'distance', { dateUnavailable: '', weekPrefix: '' }),
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
@@ -33,9 +40,14 @@ export class CommunityGroupConverter {
       mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },
       mediaBottomStart: contentModerationBadge(group.moderationStatus),
-      mediaEnd: { variant: 'badge', shape: 'circle', label: `${group.acceptedMembers}`, ariaLabel: 'open.members',
-        interactive: true, pendingCount: group.pendingMembers },
-      hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
+      mediaEnd: { variant: 'badge', shape: membersVisible ? 'circle' : undefined, label: `${group.acceptedMembers}`,
+        ariaLabel: membersVisible ? 'open.members' : 'groups.member.list',
+        interactive: membersVisible, disabled: !membersVisible,
+        tone: membersVisible ? 'default' : 'inactive',
+        layout: membersVisible ? undefined : 'badge-with-leading-accessory',
+        leadingAccessory: membersVisible ? undefined : { icon: 'visibility_off', tone: 'negative' },
+        pendingCount: membersVisible ? group.membersActivity ?? group.pendingMembers : 0 },
+      hasMenuOptions: true, menuBadgeCount, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
     const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: ActivityEventInfoCardMenuConverter.actionPalette('view', CARD_MENU_ACTIONS['view'].tone), surface: 'tinted', context: group }];

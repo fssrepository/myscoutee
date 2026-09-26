@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.195",
+  "version": "2026.09.26.hu.196",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3985,6 +3985,9 @@
     "confirmation.delete.contact": "Törlöd {name} névjegyét?",
     "confirmation.delete.help.revision": "Törlöd a súgó v{version} változatát?",
     "confirmation.leave.named.asset": "Kilépsz a(z) „{name}” eszközből?",
-    "confirmation.remove.named.asset": "Eltávolítod a(z) „{name}” eszközt erről az eseményről?"
+    "confirmation.remove.named.asset": "Eltávolítod a(z) „{name}” eszközt erről az eseményről?",
+    "groups.bucket.pending": "Függő csoportok",
+    "groups.explore": "Csoportok felfedezése",
+    "groups.actions": "Csoportműveletek"
   }
 }

@@ -333,7 +333,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly assetStore = inject(AssetStore);
   protected readonly communityGroups = inject(CommunityGroupsStore);
   protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
-    this.communityGroups.counters().hosting + this.communityGroups.counters().participation + this.communityGroups.counters().invitations));
+    this.communityGroups.counters().hosting + this.communityGroups.counters().participation + this.communityGroups.counters().pending + this.communityGroups.counters().invitations));
   protected readonly photoFeedStore = inject(PhotoFeedStore);
   protected readonly navigatorFeedMenuModel = computed(() =>
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));

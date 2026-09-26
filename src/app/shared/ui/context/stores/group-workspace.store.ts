@@ -57,7 +57,7 @@ export class GroupWorkspaceStore {
     const bucket = groupMembershipBucket(workspace);
     if (bucket !== 'explore') counts[bucket] += workspace.activity;
     return counts;
-  }, { hosting: 0, participation: 0, invitations: 0 }));
+  }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }));
   private readonly poller = new UiTaskScheduler({
     intervalMs: () => this.context.accountUserId() ? 15000 : 0,
     state: () => this.context.accountUserId(),

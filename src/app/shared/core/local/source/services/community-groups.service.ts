@@ -94,8 +94,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       const admin = this.admin(own);
       if (bucket === 'hosting') return admin;
       if (bucket === 'invitations') return own?.status === 'pending' && own.requestKind === 'invite';
-      if (bucket === 'participation') return !admin && !!own && ['accepted', 'pending'].includes(own.status)
-        && !(own.status === 'pending' && own.requestKind === 'invite');
+      if (bucket === 'pending') return own?.status === 'pending' && own.requestKind !== 'invite';
+      if (bucket === 'participation') return !admin && own?.status === 'accepted';
       return g.ownerUserId !== userId && !own && g.visibility !== 'invitation'
         && (!g.moderationStatus || g.moderationStatus === 'accepted');
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
@@ -109,7 +109,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       context: (await this.workspaces(userId)).reduce((counts, w) => {
         const membershipBucket = groupMembershipBucket(w);
         if (membershipBucket !== 'explore') counts[membershipBucket] += w.activity; return counts;
-      }, { hosting: 0, participation: 0, invitations: 0 }) };
+      }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }) };
   }
   async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
     await this.waitForRouteDelay('/groups', signal); await this.groups.ready(); signal?.throwIfAborted();

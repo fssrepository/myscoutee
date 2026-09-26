@@ -15,6 +15,7 @@
     [class.ui-info-card__media--title]="isTitleMedia()"
     [class.ui-info-card__media--tone-neutral]="mediaTone() === 'neutral'"
     [appLazyBgImage]="cardImageUrl()"
+    [style.background-size]="card?.mediaFit"
     >
       @if ((card?.imageUrls?.length ?? 0) > 1) {
         <div class="ui-info-card__image-progress" aria-hidden="true">

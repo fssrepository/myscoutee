@@ -1320,7 +1320,10 @@
     border-radius: 10px;
   }
 
-  .form-flow__controls,
+  .form-flow__controls {
+    grid-template-columns: var(--form-flow-mobile-control-columns, minmax(0, 1fr));
+  }
+
   .form-flow__summary-panels,
   .form-flow__step-header:not(.form-flow__step-header--card) {
     grid-template-columns: minmax(0, 1fr);

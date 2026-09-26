@@ -13,6 +13,7 @@ import { UserProfileStore } from './user-profile.store';
 import { MemberMenuStore } from './member-menu.store';
 import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupCategory, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
+import { canPreviewGroupMembers } from '../../../core/contracts/community-group.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
   private readonly invites = inject(ActivityInvitePopupStore);
@@ -24,6 +25,7 @@ export class CommunityGroupsStore {
   private readonly profile = inject(UserProfileStore);
   private readonly memberMenu = inject(MemberMenuStore);
   readonly openUserId = signal<string | null>(null);
+  readonly exploreOpen = signal(false);
   readonly initialBucket = signal<GroupBucket>('hosting');
   readonly editor = signal<{ group: CommunityGroup | null; readOnly: boolean; loading?: boolean } | null>(null);
   readonly moderationComponent = signal<Type<unknown> | null>(null);
@@ -42,9 +44,11 @@ export class CommunityGroupsStore {
   readonly error = signal('');
   constructor() { effect(() => { if (this.openUserId() && this.openUserId() !== this.workspace.accountId(this.profile.activeUserId())) this.close(); }); }
   open(bucket: GroupBucket = 'hosting'): void {
-    this.error.set(''); this.initialBucket.set(bucket);
+    this.error.set(''); this.initialBucket.set(bucket === 'explore' ? 'hosting' : bucket); this.exploreOpen.set(bucket === 'explore');
     this.openUserId.set(this.workspace.accountId(this.profile.getActiveUserId()));
   }
+  openExplore(): void { this.error.set(''); this.exploreOpen.set(true); }
+  closeExplore(): void { this.exploreOpen.set(false); }
   async openInvitation(groupId: string): Promise<void> {
     this.open('invitations');
     const userId = this.openUserId()!;
@@ -56,7 +60,7 @@ export class CommunityGroupsStore {
     } catch (error) { this.error.set(this.message(error)); }
   }
   closeEditor(): void { this.editorRequest?.abort(); this.editorRequest = null; this.editor.set(null); }
-  close(): void { this.closeEditor(); this.moderationContext.set(null); this.openUserId.set(null); }
+  close(): void { this.closeExplore(); this.closeEditor(); this.moderationContext.set(null); this.openUserId.set(null); }
   async sync(request: GroupSyncRequest, signal?: AbortSignal) {
     const accountId = this.openUserId() ?? '';
     const revision = this.changes.revision();
@@ -72,6 +76,7 @@ export class CommunityGroupsStore {
     return page;
   }
   members(group: CommunityGroupSummary): void {
+    if (!canPreviewGroupMembers(group)) return;
     this.memberMenu.requestActivitiesNavigation({ type: 'members', ownerType: 'community', ownerId: group.id, ownerUserId: group.ownerUserId,
       subtitle: group.name, canManage: group.role === 'Admin' && group.membershipStatus === 'accepted',
       acceptedMembers: group.acceptedMembers, pendingMembers: group.pendingMembers, capacityTotal: group.acceptedMembers,

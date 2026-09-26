@@ -331,6 +331,7 @@ export interface SingleRowBadge {
 }
 
 export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
+  mediaFit?: ImageCardMediaFit | null;
   /** Optional gallery: card activation advances the image, overlay actions remain independent. */
   imageUrls?: readonly string[];
   status?: string | null;

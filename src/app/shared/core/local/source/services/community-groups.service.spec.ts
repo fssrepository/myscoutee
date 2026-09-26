@@ -119,13 +119,14 @@ describe('Community membership writes and recipient attention', () => {
     await expect(service.detail('guest', 'group')).rejects.toThrow();
   });
 
-  it('moves a join into Participation and counts the pending operation only for the administrator', async () => {
+  it('moves a join into Pending and counts the pending operation only for the administrator', async () => {
     const joined = await service.join('guest', 'group');
     expect(joined.membershipStatus).toBe('pending');
     expect(state.communityGroups.byId['group'].pendingMembers).toBe(1);
     const query = { page: 0, pageSize: 10, filters: { bucket: 'explore' as const } };
     expect((await service.page('guest', query)).items).toHaveLength(0);
-    expect((await service.page('guest', { ...query, filters: { bucket: 'participation' } })).items).toHaveLength(1);
+    expect((await service.page('guest', { ...query, filters: { bucket: 'pending' } })).items).toHaveLength(1);
+    expect((await service.page('guest', { ...query, filters: { bucket: 'participation' } })).items).toHaveLength(0);
     expect((await service.detail('admin', 'group')).membersActivity).toBe(1);
     expect((await service.detail('member', 'group')).membersActivity).toBe(0);
     await service.join('guest', 'group');
@@ -190,11 +191,11 @@ describe('Community membership writes and recipient attention', () => {
 
   it('moves an accepted invitation into Active groups and removes it from invitation sync without double counting', async () => {
     await service.invite('admin', 'group', ['guest']);
-    const page = (bucket: 'hosting' | 'participation' | 'invitations' | 'explore') => service.page('guest', {
+    const page = (bucket: 'hosting' | 'participation' | 'pending' | 'invitations' | 'explore') => service.page('guest', {
       page: 0, pageSize: 10, filters: { bucket }
     });
     expect((await page('invitations')).items.map(row => row.id)).toEqual(['group']);
-    expect((await page('invitations')).context).toEqual({ hosting: 0, participation: 0, invitations: 1 });
+    expect((await page('invitations')).context).toEqual({ hosting: 0, participation: 0, pending: 0, invitations: 1 });
     expect((await page('participation')).items).toEqual([]);
     expect((await page('hosting')).items).toEqual([]);
     expect((await page('explore')).items).toEqual([]);
@@ -207,4 +208,20 @@ describe('Community membership writes and recipient attention', () => {
       knownItems: [{ id: 'group', revision: 'before-acceptance' }], tailId: 'group' })).removedIds).toEqual(['group']);
     expect((await service.workspaces('guest'))[0].requestKind).toBeNull();
   });
+  it('moves a join request Explore → Pending → Active with matching sync removals', async () => {
+    const page = (bucket: 'explore' | 'pending' | 'participation') => service.page('guest', {
+      page: 0, pageSize: 10, filters: { bucket }
+    });
+    expect((await page('explore')).items.map(row => row.id)).toEqual(['group']);
+    await service.join('guest', 'group');
+    expect((await page('explore')).items).toEqual([]);
+    expect((await page('participation')).items).toEqual([]);
+    expect((await page('pending')).items.map(row => row.id)).toEqual(['group']);
+    await service.action('admin', 'group', 'guest', 'accept');
+    expect((await page('pending')).items).toEqual([]);
+    expect((await page('participation')).items.map(row => row.id)).toEqual(['group']);
+    expect((await service.sync('guest', { bucket: 'pending', limit: 10,
+      knownItems: [{ id: 'group', revision: 'before' }], tailId: 'group' })).removedIds).toEqual(['group']);
+  });
+
 });

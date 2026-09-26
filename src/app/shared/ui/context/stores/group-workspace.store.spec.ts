@@ -51,7 +51,7 @@ describe('Group workspace attention scope and live updates', () => {
     await store.refresh();
     expect(store.workspaces().map(value => value.groupId)).toEqual(['design', 'friends']);
     expect(store.menuItems('main').reduce((sum, item) => sum + Number(item.counter ?? 0), 0)).toBe(2);
-    expect(store.counters()).toEqual({ hosting: 2, participation: 0, invitations: 1 });
+    expect(store.counters()).toEqual({ hosting: 2, participation: 0, pending: 0, invitations: 1 });
     expect(store.categoryCount('explore', 'friends')).toBe(0);
   });
 
@@ -72,7 +72,7 @@ describe('Group workspace attention scope and live updates', () => {
     expect(store.menuItems('design').find(item => item.id === 'friends')?.counter).toBe(1);
     overrides.set({ event: { all: 7 } });
     expect(store.menuItems('design').find(item => item.id === 'design')?.counter).toBe(expected + 3);
-    expect(store.counters()).toEqual({ hosting: expected + 4, participation: 0, invitations: 1 });
+    expect(store.counters()).toEqual({ hosting: expected + 4, participation: 0, pending: 0, invitations: 1 });
   });
 
   it('keeps default-profile badges on Main profile and omits counters in the notification filter', async () => {
@@ -94,19 +94,19 @@ describe('Group workspace attention scope and live updates', () => {
     const inFlight = store.refresh();
     changes.signalAttentionDelta('account', 'design', -1);
     TestBed.tick();
-    expect(store.counters()).toEqual({ hosting: 1, participation: 0, invitations: 1 });
+    expect(store.counters()).toEqual({ hosting: 1, participation: 0, pending: 0, invitations: 1 });
     finish(baseline());
     await inFlight;
-    expect(store.counters()).toEqual({ hosting: 1, participation: 0, invitations: 1 });
+    expect(store.counters()).toEqual({ hosting: 1, participation: 0, pending: 0, invitations: 1 });
     changes.signalAttentionDelta('another-account', 'friends', -1);
     TestBed.tick();
-    expect(store.counters()).toEqual({ hosting: 1, participation: 0, invitations: 1 });
+    expect(store.counters()).toEqual({ hosting: 1, participation: 0, pending: 0, invitations: 1 });
   });
 
   it('does not grant pending administrators a moderation count or selectable workspace', async () => {
     response = async () => [{ ...row('pending-admin', 'pending', 'Admin'), activity: 8, moderationPending: 7 }];
     await store.refresh();
     expect(store.workspaces()).toEqual([]);
-    expect(store.counters()).toEqual({ hosting: 0, participation: 0, invitations: 1 });
+    expect(store.counters()).toEqual({ hosting: 0, participation: 0, pending: 0, invitations: 1 });
   });
 });

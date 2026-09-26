@@ -32,6 +32,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
       --form-flow-disabled-color: rgba(58, 76, 103, 0.9);
     }
     .group-policy-fields {
+      --form-flow-mobile-control-columns: repeat(2, minmax(0, 1fr));
       --app-menu-row-width: 100%;
       --app-menu-row-item-width: 100%;
       --app-menu-row-item-justify: space-between;

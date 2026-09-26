@@ -3,11 +3,12 @@ import type { ListQuery, PageResult } from './list.interface';
 export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbies', 'neighbourhood'] as const;
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
 export type GroupVisibility = 'public' | 'private' | 'invitation';
-export type GroupBucket = 'hosting' | 'participation' | 'invitations' | 'explore';
+export type GroupBucket = 'hosting' | 'participation' | 'pending' | 'invitations' | 'explore';
 export function groupMembershipBucket(group: { role?: string | null; membershipStatus?: string | null; requestKind?: string | null }): GroupBucket {
   if (group.membershipStatus === 'accepted' && group.role === 'Admin') return 'hosting';
   if (group.membershipStatus === 'pending' && group.requestKind === 'invite') return 'invitations';
-  return group.membershipStatus === 'accepted' || group.membershipStatus === 'pending' ? 'participation' : 'explore';
+  if (group.membershipStatus === 'pending') return 'pending';
+  return group.membershipStatus === 'accepted' ? 'participation' : 'explore';
 }
 export type GroupSort = 'distance' | 'updated';
 export function groupSort(bucket: GroupBucket, sort?: string | null): GroupSort {
@@ -37,12 +38,15 @@ export interface SaveCommunityGroup {
   category: GroupCategory; visibility: GroupVisibility; hideMembers: boolean; policy: GroupPolicy; version?: number;
 }
 export type CommunityGroupSummary = Omit<CommunityGroup, 'description' | 'policy'>;
+export function canPreviewGroupMembers(group: CommunityGroupSummary): boolean {
+  return !group.hideMembers || (group.role === 'Admin' && group.membershipStatus === 'accepted');
+}
 export function communityGroupSummary(group: CommunityGroup | CommunityGroupSummary): CommunityGroupSummary {
   const { description, policy, ...summary } = group as CommunityGroup;
   return summary;
 }
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
-export interface GroupCounters { hosting: number; participation: number; invitations: number; }
+export interface GroupCounters { hosting: number; participation: number; pending: number; invitations: number; }
 export interface GroupWorkspace {
   membersActivity?: number;
   moderationPending?: number;

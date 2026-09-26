@@ -238,7 +238,10 @@
   @if (photoFeedStore.userId()) { <app-photo-feed-popup></app-photo-feed-popup> }
 }
 
-@if (communityGroups.openUserId()) { <app-community-groups-popup></app-community-groups-popup> }
+@if (communityGroups.openUserId()) {
+  <app-community-groups-popup></app-community-groups-popup>
+  @if (communityGroups.exploreOpen()) { <app-community-groups-popup [explore]="true"></app-community-groups-popup> }
+}
 @if (communityGroups.moderationContext(); as moderationContext) {
   @if (communityGroups.moderationComponent(); as moderationComponent) {
     <ng-container *ngComponentOutlet="moderationComponent; inputs: { groupContext: moderationContext }"></ng-container>

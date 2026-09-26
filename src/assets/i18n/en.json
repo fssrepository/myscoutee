@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.195",
+  "version": "2026.09.26.en.196",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3985,6 +3985,9 @@
     "confirmation.delete.contact": "Would you like to delete the contact {name}?",
     "confirmation.delete.help.revision": "Would you like to delete help revision v{version}?",
     "confirmation.leave.named.asset": "Would you like to leave the asset “{name}”?",
-    "confirmation.remove.named.asset": "Would you like to remove “{name}” from this event?"
+    "confirmation.remove.named.asset": "Would you like to remove “{name}” from this event?",
+    "groups.bucket.pending": "Pending groups",
+    "groups.explore": "Explore groups",
+    "groups.actions": "Open group actions"
   }
 }
