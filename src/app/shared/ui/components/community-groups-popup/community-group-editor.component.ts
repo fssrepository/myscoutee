@@ -105,7 +105,7 @@ export class CommunityGroupEditorComponent implements OnChanges {
   protected flowModel(): FormFlowModel {
     const required = this.form.policy.requiredFields;
     const model: FormFlowModel = { title: 'groups.title', layout: 'grouped', header: false, save: null, summary: { enabled: false }, allowMenuOverflow: true,
-      steps: [{ id: 'basics', title: '', presentation: 'media', palette: 'blue', controls: [
+      steps: [{ id: 'basics', title: '', presentation: 'media', wrapControlsOnMobile: true, palette: 'blue', controls: [
         { id: 'image', bind: 'images', kind: 'image-carousel', config: { slotCount: 1, compact: true, autoSize: true, slotImageVariant: 'medium', uploadOwnerId: this.form.userId, uploadEntityId: this.form.id ?? 'group' } },
         { id: 'name', bind: 'name', kind: 'text', label: this.t('name'), required: true, maxLength: 20 },
         { id: 'description', bind: 'description', kind: 'textarea', label: this.t('description'), rows: 3, maxLength: 4000 },

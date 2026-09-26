@@ -38,9 +38,7 @@ export class CommunityGroupConverter {
       hasMenuOptions: true, menuBadgeCount: group.activity, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
-    const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: ActivityEventInfoCardMenuConverter.actionPalette('view', CARD_MENU_ACTIONS['view'].tone), surface: 'tinted', context: group },
-      { id: 'members', label: 'members', icon: 'groups', palette: 'violet', surface: 'tinted',
-        counter: { value: group.membersActivity ?? 0, max: 99 }, counterTone: 'alert', context: group }];
+    const items: AppMenuItem[] = [{ id: 'view', label: 'view', icon: 'visibility', palette: ActivityEventInfoCardMenuConverter.actionPalette('view', CARD_MENU_ACTIONS['view'].tone), surface: 'tinted', context: group }];
     if (group.role === 'Admin' && group.membershipStatus === 'accepted') {
       items.push({ id: 'share', label: 'invite.external.title', icon: 'share', palette: 'teal', surface: 'tinted', context: group });
       items.push({ id: 'edit', label: 'edit', icon: 'edit', palette: ActivityEventInfoCardMenuConverter.actionPalette('edit', CARD_MENU_ACTIONS['edit'].tone), surface: 'tinted', context: group });

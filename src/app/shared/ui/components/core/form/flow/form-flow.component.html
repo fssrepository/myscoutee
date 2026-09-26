@@ -207,7 +207,7 @@
                 </div>
               }
 
-                <div class="form-flow__controls" [hidden]="step.controls.length === 0">
+                <div class="form-flow__controls" [class.form-flow__controls--mobile-wrap]="step.wrapControlsOnMobile" [hidden]="step.controls.length === 0">
                 @for (control of step.controls; track control.id) {
                   @let validationError = controlValidationError(control);
                   <div

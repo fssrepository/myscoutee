@@ -1330,6 +1330,24 @@
     width: 100%;
   }
 
+  .form-flow__controls.form-flow__controls--mobile-wrap {
+    display: flex;
+    flex-wrap: wrap;
+
+    > .form-flow__control {
+      flex: 0 0 100%;
+    }
+
+    > .form-flow__control--half {
+      flex: 0 0 auto;
+      max-width: 100%;
+    }
+
+    > .form-flow__control--align-end {
+      margin-left: auto;
+    }
+  }
+
   .form-flow__summary-panel dl > div {
     grid-template-columns: minmax(118px, 0.46fr) minmax(0, 0.54fr);
     gap: 10px;

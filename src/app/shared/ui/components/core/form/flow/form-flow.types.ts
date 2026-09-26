@@ -180,6 +180,8 @@ export interface FormFlowStepModel {
   icon?: string;
   chrome?: 'default' | 'none';
   presentation?: 'default' | 'media';
+  /** Keep compact controls together on mobile, wrapping only when they no longer fit. */
+  wrapControlsOnMobile?: boolean;
   palette?: string;
   header?: FormFlowHeaderModel | null;
   headerControl?: FormFlowControlModel | null;
