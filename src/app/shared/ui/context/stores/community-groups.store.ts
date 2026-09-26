@@ -67,6 +67,9 @@ export class CommunityGroupsStore {
     const result = await this.service.sync(accountId, request, signal);
     if (accountId !== this.openUserId() || revision !== this.changes.revision())
       throw new DOMException('Group changed while polling', 'AbortError');
+    // The foreground list owns polling while the workspace poll is suspended.
+    // Refresh its canonical aggregates too, including changes in other buckets.
+    void this.workspaces.refresh(accountId);
     return result;
   }
   async page(query: ListQuery<GroupFilters>, signal?: AbortSignal) {
