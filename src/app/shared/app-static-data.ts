@@ -1063,108 +1063,127 @@ const EVENT_FEEDBACK_LIST_FILTER_META: Record<EventFeedbackListFilter, { label: 
 };
 const EVENT_FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> =
   EVENT_FEEDBACK_LIST_FILTERS.map(key => ({ key, ...EVENT_FEEDBACK_LIST_FILTER_META[key] }));
-const DEFAULT_HELP_CENTER_DESCRIPTION = 'MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.';
+const DEFAULT_HELP_CENTER_DESCRIPTION = "Profiles, communities, events, chats and tools: find the relevant topic and follow the steps.";
 const DEFAULT_PRIVACY_CENTER_DESCRIPTION = 'Before continuing, please review and accept how your data is used in MyScoutee.';
 const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
   {
-    id: 'events',
-    icon: 'event_note',
-    title: 'Events and Sub Events',
-    blurb: 'Build the full event flow with stages or optional items.',
-    contentHtml: `
-      <p><strong>Build the full event flow with stages or optional items.</strong></p>
-      <p>Create a main event, then split execution into sub events for stages, side activities, or optional sessions.</p>
-      <p>Each sub event carries its own date range, description, and status so planning stays clean and trackable.</p>
-      <ul>
-        <li>Supports casual and tournament structures</li>
-        <li>Keeps stage context visible in related screens</li>
-        <li>Lets hosts edit details without losing hierarchy</li>
-      </ul>
-    `,
-    details: [
-      'Create a main event, then split execution into sub events for stages, side activities, or optional sessions.',
-      'Each sub event carries its own date range, description, and status so planning stays clean and trackable.'
-    ],
-    points: [
-      'Supports casual and tournament structures',
-      'Keeps stage context visible in related screens',
-      'Lets hosts edit details without losing hierarchy'
-    ]
+    "id": "start",
+    "icon": "explore",
+    "title": "Getting started",
+    "blurb": "Choose a profile and discover the available activities.",
+    "contentHtml": "<ul><li>Open your profile from the avatar and complete the basic fields. The completion badge helps you find missing information.</li><li>Use the side menu for Community, Impressions, Activities and My tools. Available actions depend on your role and the current item.</li><li>A question-mark button opens contextual help. Mobile sheet menus have a close button in their header.</li></ul>"
   },
   {
-    id: 'resources',
-    icon: 'inventory_2',
-    title: 'Resources and Capacity',
-    blurb: 'Assign people, transport, accommodation, and supplies with limits.',
-    contentHtml: `
-      <p><strong>Assign people, transport, accommodation, and supplies with limits.</strong></p>
-      <p>Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.</p>
-      <p>Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.</p>
-      <ul>
-        <li>Capacity min/max control per assignment</li>
-        <li>Contextual badges for pending requests</li>
-        <li>Route and location support for travel resources</li>
-      </ul>
-    `,
-    details: [
-      'Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.',
-      'Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.'
-    ],
-    points: [
-      'Capacity min/max control per assignment',
-      'Contextual badges for pending requests',
-      'Route and location support for travel resources'
-    ]
+    "id": "integrations",
+    "icon": "api",
+    "title": "API and AI assistance",
+    "blurb": "Use the existing profile permissions for integrations.",
+    "contentHtml": "<ul><li>You can connect an MCP-compatible AI assistant to MyScoutee. Anonymous mode reads this help; personal operations require your API credentials.</li><li>In MyScoutee, open your profile editor → Affiliate → Client keys to create or revoke an integration key. In your AI client’s MCP settings, configure the MyScoutee adapter with the API URL, that key and its stable client ID. Never paste the key into chat.</li><li>The local adapter supports personal API operations. The remote HTTP connection currently provides help only; personal remote access and the in-app MCP connection controls are not available yet.</li><li>The AI has no extra permissions: every personal operation passes through the existing API checks for the key’s profile, group and resource ownership. Expired or revoked keys and forbidden operations are rejected.</li><li>Asset creation requires a base-profile key. Event operations follow the key’s profile and group permissions. A different client needs its own key.</li><li>For setup instructions, see the <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repository</a>.</li><li>To upload events and participants into another group, use a connection configured with a key issued by that group profile. Naming a group or switching groups in the app does not change the API key’s authority.</li><li>The connected AI discovers available operations and profile/group context from the API. Unavailable operations are omitted; write calls are not used to probe permissions. Event ownership and lifecycle conditions still apply.</li></ul>"
   },
   {
-    id: 'activities',
-    icon: 'forum',
-    title: 'Activities and Chats',
-    blurb: 'Coordinate with context-aware channels and filters.',
-    contentHtml: `
-      <p><strong>Coordinate with context-aware channels and filters.</strong></p>
-      <p>Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.</p>
-      <p>Context actions in chat headers help jump directly to related event/sub-event views and resources.</p>
-      <ul>
-        <li>Fast channel filtering by context</li>
-        <li>Unread counters scoped to relevant channels</li>
-        <li>Works for both mobile and desktop flows</li>
-      </ul>
-    `,
-    details: [
-      'Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.',
-      'Context actions in chat headers help jump directly to related event/sub-event views and resources.'
-    ],
-    points: [
-      'Fast channel filtering by context',
-      'Unread counters scoped to relevant channels',
-      'Works for both mobile and desktop flows'
-    ]
+    "id": "profiles",
+    "icon": "person",
+    "title": "Profiles and visibility",
+    "blurb": "Edit the profile belonging to your selected community.",
+    "contentHtml": "<ul><li>Check the active group before editing your profile, photos or visibility settings. Group profiles keep their own settings.</li><li>Visibility controls determine which profile details you share. Group rules can require particular details before participation.</li><li>Save the editor with its tick button. A nested rules editor belongs to the surrounding editor; finish by saving that editor too.</li></ul>"
   },
   {
-    id: 'safety',
-    icon: 'verified_user',
-    title: 'Profiles and Safety',
-    blurb: 'Improve trust with profile quality and moderation tools.',
-    contentHtml: `
-      <p><strong>Improve trust with profile quality and moderation tools.</strong></p>
-      <p>Profile completion updates in real time as users fill key fields and detail sections.</p>
-      <p>Safety controls include report tools, privacy visibility options, and clear moderation pathways.</p>
-      <ul>
-        <li>Live profile completion feedback</li>
-        <li>Report user and feedback workflows</li>
-        <li>Privacy and access visibility controls</li>
-      </ul>
-    `,
-    details: [
-      'Profile completion updates in real time as users fill key fields and detail sections.',
-      'Safety controls include report tools, privacy visibility options, and clear moderation pathways.'
-    ],
-    points: [
-      'Live profile completion feedback',
-      'Report user and feedback workflows',
-      'Privacy and access visibility controls'
-    ]
+    "id": "groups",
+    "icon": "groups",
+    "title": "Groups and switching",
+    "blurb": "Separate communities, shared account tools.",
+    "contentHtml": "<ul><li>The header selector switches between your base profile and groups you belong to. Nested community groups are not supported.</li><li>Community, Impressions, Activities and their popups use the selected group. Event discovery also follows that group.</li><li>My tools and the general header controls remain available across groups. Assets and asset discovery belong to your base profile.</li><li>Wait for a group switch to finish. If switching fails, the previous selection is restored so you can try again.</li></ul>"
+  },
+  {
+    "id": "group-membership",
+    "icon": "group_add",
+    "title": "Joining and managing groups",
+    "blurb": "Discovery, pending requests and membership are different states.",
+    "contentHtml": "<ul><li>Discovery shows groups you have not interacted with. Participation includes pending requests; your own groups are managed separately.</li><li>Open a group card to review its rules and apply. The member list is visible only when the group permits it.</li><li>Group admins handle their community moderation. Platform moderation of group creation depends on the application configuration.</li><li>Invitation links can carry group membership into registration and select the invited group afterward. Follow the link through the complete registration flow.</li></ul>"
+  },
+  {
+    "id": "ratings",
+    "icon": "star",
+    "title": "Discovery, ratings and filters",
+    "blurb": "Adjust what you see and review your interactions.",
+    "contentHtml": "<ul><li>Use the home filters to choose the profiles relevant to you. Ratings express your interest; they do not guarantee mutual interest.</li><li>The Impressions and Activities sections show the related ratings and feedback in the selected group.</li><li>Multi-select menus show their configured maximum in the title. Clear an existing selection before adding another when you reach the limit.</li></ul>"
+  },
+  {
+    "id": "events",
+    "icon": "event_note",
+    "title": "Events and participation",
+    "blurb": "Discover, join or organize an event in the active group.",
+    "contentHtml": "<ul><li>Review the date, location, capacity, price and joining rules on the event card before applying.</li><li>An application can remain pending until the required approval or payment step is complete. Check the participation status on the card.</li><li>Organizers manage invitations, members and event details through the existing event menus. Access depends on your event role.</li><li>Calendar export includes exportable upcoming events. If none are available, an information popup appears instead of downloading an empty calendar.</li></ul>"
+  },
+  {
+    "id": "stages",
+    "icon": "account_tree",
+    "title": "Sub events and tournaments",
+    "blurb": "Break an event into a schedule and manageable stages.",
+    "contentHtml": "<ul><li>Use sub events for individual stages, side activities or optional sessions. Each can have its own schedule and resources.</li><li>Tournament setup provides the supported stage and leaderboard options. Follow the event settings when assigning participants.</li><li>An event stage or participant group is not a nested community group. Keep the main event context when managing its children.</li></ul>"
+  },
+  {
+    "id": "resources",
+    "icon": "inventory_2",
+    "title": "Assets and borrowing",
+    "blurb": "Transport, accommodation, supplies and event assignments.",
+    "contentHtml": "<ul><li>Your assets belong to the base profile and remain visible when you switch groups. Asset discovery is independent of the active group.</li><li>Provide availability, capacity and the relevant details when creating an asset. Review requests through its existing menus.</li><li>An event may use an asset from outside its community. Access to the event and its participants still follows event permissions.</li><li>Asset borrowing payments remain associated with the payer profile. The owner can also see payments for their own assets in payment history.</li></ul>"
+  },
+  {
+    "id": "tickets",
+    "icon": "qr_code",
+    "title": "Tickets",
+    "blurb": "Find and validate the tickets you are allowed to manage.",
+    "contentHtml": "<ul><li>Open Tickets in My tools to find your available ticket actions. Tickets remain accessible across group switches.</li><li>Check the event and ticket status before using a QR code. Validation depends on event permissions and the current ticket state.</li><li>If scanning is blocked, check the browser or device camera permission before trying again.</li></ul>"
+  },
+  {
+    "id": "activities",
+    "icon": "forum",
+    "title": "Chats and sharing",
+    "blurb": "Keep event, contact and support conversations in context.",
+    "contentHtml": "<ul><li>Use the chat list filters to find the relevant channel. Event conversations retain their event permissions.</li><li>In Share assets or Share events, select cards and confirm with the basket tick. Newly selected items are sent as separate chat messages.</li><li>Removing a previously shared selection withdraws that share; an older message can show as deleted even when it is outside the first page.</li><li>Copying an external invitation link is different from sharing a card inside an existing chat. Review which action you are using.</li></ul>"
+  },
+  {
+    "id": "contacts",
+    "icon": "contacts",
+    "title": "Contacts and chat permission",
+    "blurb": "Saving a contact does not automatically grant direct chat access.",
+    "contentHtml": "<ul><li>You can save phone, email or social contact details independently. MyScoutee direct chat requires a separate request.</li><li>Choose the MyScoutee chat badge to request access. A pending request stays pending until the other member decides.</li><li>The Requests filter shows incoming requests with newest first. Approving adds the contact; declining changes the permission state.</li><li>The side-menu red badge counts pending incoming requests, not saved contacts. The other member receives the relevant notification. Only contacts can be invited through the contact invitation flow.</li></ul>"
+  },
+  {
+    "id": "notifications",
+    "icon": "notifications",
+    "title": "Notifications and badges",
+    "blurb": "Find what changed and which community it belongs to.",
+    "contentHtml": "<ul><li>The notification bar is account-wide. Group references help identify the origin of an item while you use the available filters.</li><li>Unread and pending badges indicate different things. Open the corresponding list to review the action or message.</li><li>Browser push notifications require permission. Turning push off does not mean the in-app notification history disappears.</li></ul>"
+  },
+  {
+    "id": "payments",
+    "icon": "payments",
+    "title": "Payments and history",
+    "blurb": "Review the transaction, recipient and status.",
+    "contentHtml": "<ul><li>Payment history follows the selected profile/group. Payments for assets you own can also appear through ownership.</li><li>Check whether an item is a payment, refund or cash record. A cash record is not proof of an online transfer and does not create affiliate commission.</li><li>A pending or failed payment is not a completed booking. Follow the status and the available retry or refund action.</li></ul>"
+  },
+  {
+    "id": "invitations",
+    "icon": "share",
+    "title": "Invitation links and affiliate",
+    "blurb": "Share the right link for a profile, event or group.",
+    "contentHtml": "<ul><li>A personal invitation link records the inviter when registration completes under the applicable rules.</li><li>Event and group invitation links also carry the relevant destination. Do not replace them with a plain page URL.</li><li>The API participant invitation flow also supports invitation attribution. Return the generated links to the people you intend to invite.</li><li>Affiliate information follows the selected profile. Cash records do not generate commission.</li></ul>"
+  },
+  {
+    "id": "safety",
+    "icon": "verified_user",
+    "title": "Safety, moderation and support",
+    "blurb": "Report a problem through the relevant item.",
+    "contentHtml": "<ul><li>Use the report action on the affected card or message and provide a clear explanation.</li><li>Group admins handle group moderation; application admins handle platform responsibilities according to configuration. A moderator does not gain unrelated group access.</li><li>Moderation status and pending badges show when attention is needed. Support conversations use their relevant channel and filters.</li><li>Share only the information needed to investigate. Never include passwords, API keys or payment secrets in a report.</li></ul>"
+  },
+  {
+    "id": "permissions",
+    "icon": "settings",
+    "title": "Installation, location and notifications",
+    "blurb": "Allow what you need; recover blocked permissions in device settings.",
+    "contentHtml": "<ul><li>Installation, location and push notifications are separate choices. The setup help explains each one.</li><li>The saved location lets the application continue when later location access is disabled. Enabled location tracking can update it under the distance rule.</li><li>Android: check the site permissions in your browser and the notification permissions in Android app settings. Installed web apps may also have their own app settings.</li><li>iPhone/iPad: check location access under Privacy &amp; Security and notifications for the installed web app under Settings. Available push behavior depends on installation and platform support.</li><li>After changing a permission, return to the app and retry. The application cannot override a browser or operating-system block.</li></ul>"
   }
 ];
 
@@ -1300,32 +1319,123 @@ const PRIVACY_CENTER_SECTIONS: HelpCenterSectionDto[] = [
 
 const HELP_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
-    id: 'events',
-    icon: 'event_note',
-    title: 'Események és alesemények',
-    blurb: 'Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.',
-    contentHtml: '<p><strong>Építsd fel a teljes eseményfolyamatot szakaszokkal vagy opcionális elemekkel.</strong></p><p>Hozz létre fő eseményt, majd bontsd aleseményekre szakaszokhoz, mellékprogramokhoz vagy opcionális alkalmakhoz.</p><ul><li>Alkalmi és verseny jellegű struktúrák támogatása</li><li>A szakaszkontextus látható marad a kapcsolódó képernyőkön</li><li>A szervezők a hierarchia elvesztése nélkül szerkeszthetnek</li></ul>'
+    "id": "start",
+    "icon": "explore",
+    "title": "Kezdés",
+    "blurb": "Válassz profilt, és fedezd fel a lehetőségeket.",
+    "contentHtml": "<ul><li>Az avatarról nyisd meg a profilodat, és töltsd ki az alapadatokat. A készültségi jelvény segít megtalálni a hiányzó információkat.</li><li>Az oldalsó menüben találod a Közösség, Benyomások, Tevékenységek és Eszközeim részeket. A műveletek a szerepkörödtől és az adott elemtől függenek.</li><li>A kérdőjel az adott felület magyarázatát nyitja meg. A mobil alsó menüket a fejlécükben lévő X-szel is bezárhatod.</li></ul>"
   },
   {
-    id: 'resources',
-    icon: 'inventory_2',
-    title: 'Erőforrások és kapacitás',
-    blurb: 'Rendelj embereket, transportkat, szállást és kellékeket limitekkel.',
-    contentHtml: '<p><strong>Rendelj embereket, transportkat, szállást és kellékeket limitekkel.</strong></p><p>Az erőforrásmenükben eszközöket rendelhetsz aleseményekhez és csoportokhoz, majd közvetlenül állíthatod a kapacitásokat.</p><ul><li>Minimum/maximum kapacitás feladatonként</li><li>Kontextusos jelvények függő kérésekhez</li><li>Útvonal- és helytámogatás utazási erőforrásokhoz</li></ul>'
+    "id": "integrations",
+    "icon": "api",
+    "title": "API és AI-segítség",
+    "blurb": "Az integrációk a meglévő profiljogosultságokat használják.",
+    "contentHtml": "<ul><li>A MyScoutee-hoz MCP-képes AI-asszisztenst is csatlakoztathatsz. Az anonim mód ezt a súgót olvassa; személyes műveletekhez saját API-hozzáférés kell.</li><li>A MyScoutee-ban a profilszerkesztő → Affiliate → Klienskulcsok résznél hozhatsz létre vagy vonhatsz vissza integrációs kulcsot. Az AI-kliens MCP-beállításainál add meg a MyScoutee adapter API-címét, a kulcsot és a hozzá tartozó állandó kliensazonosítót. A kulcsot ne másold csevegésbe.</li><li>A helyi adapter személyes API-műveleteket is támogat. A távoli HTTP-kapcsolat jelenleg csak súgót ad; a személyes távoli hozzáférés és az alkalmazáson belüli MCP-kapcsoló még nem érhető el.</li><li>Az AI nem kap többletjogosultságot: minden személyes műveletnél a meglévő API ellenőrzi a kulcshoz tartozó profilt, csoportot és tulajdonosi jogosultságot. A lejárt vagy visszavont kulcsot és a tiltott műveletet elutasítja.</li><li>Eszköz létrehozásához alapprofilhoz tartozó kulcs kell. Az eseményműveletek a kulcs profiljának és csoportjának jogosultságait követik. Másik klienshez külön kulcs szükséges.</li><li>A beállítás lépéseit a <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repóban</a> találod.</li><li>Másik csoportba történő esemény- és résztvevőfeltöltéshez annak csoportprofiljához kiadott kulccsal beállított kapcsolatot használj. A csoport nevének megadása vagy az alkalmazás csoportváltója nem váltja át az API-kulcs jogosultságát.</li><li>A csatlakoztatott AI az API-tól lekért műveletlistából és profil-/csoportadatból tájékozódik. Csak az elérhető műveleteket kínálja; a jogosultságokat nem próbafeltöltésekkel teszteli. Az adott esemény tulajdonosi és állapotfeltételei továbbra is érvényesek.</li></ul>"
   },
   {
-    id: 'activities',
-    icon: 'forum',
-    title: 'Tevékenységek és csevegések',
-    blurb: 'Koordinálj kontextustudatos csatornákkal és szűrőkkel.',
-    contentHtml: '<p><strong>Koordinálj kontextustudatos csatornákkal és szűrőkkel.</strong></p><p>A csevegőcsatornák követik az esemény hatókörét: fő esemény, opcionális alesemény és csoportcsatorna is együtt létezhet.</p><ul><li>Gyors csatornaszűrés kontextus szerint</li><li>Olvasatlan számlálók releváns csatornákra szűkítve</li><li>Mobilon és asztali nézetben is működik</li></ul>'
+    "id": "profiles",
+    "icon": "person",
+    "title": "Profilok és láthatóság",
+    "blurb": "A kiválasztott közösséghez tartozó profilodat szerkesztheted.",
+    "contentHtml": "<ul><li>Profil, képek vagy láthatóság szerkesztése előtt ellenőrizd az aktív csoportot. A csoportprofilok beállításai elkülönülnek.</li><li>A láthatósági kapcsolókkal választhatod ki, mely profiladatokat osztod meg. A csoportszabályok bizonyos adatokat kötelezővé tehetnek a részvételhez.</li><li>A szerkesztőt a pipával mentheted. A belső szabályszerkesztő módosításait a külső szerkesztő mentése véglegesíti.</li></ul>"
   },
   {
-    id: 'safety',
-    icon: 'verified_user',
-    title: 'Profilok és biztonság',
-    blurb: 'Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.',
-    contentHtml: '<p><strong>Erősítsd a bizalmat profilminőséggel és moderációs eszközökkel.</strong></p><p>A profilkészültség valós időben frissül, ahogy a felhasználók kitöltik a fontos mezőket.</p><ul><li>Élő profilkészültségi visszajelzés</li><li>Felhasználójelentési és visszajelzési folyamatok</li><li>Adatvédelmi és hozzáférési láthatósági kontrollok</li></ul>'
+    "id": "groups",
+    "icon": "groups",
+    "title": "Csoportok és váltás",
+    "blurb": "Elkülönülő közösségek, közös fiókeszközök.",
+    "contentHtml": "<ul><li>A fejléc választójával az alapprofil és azok a csoportok között válthatsz, amelyeknek tagja vagy. Egymásba ágyazott közösségi alcsoportok nincsenek.</li><li>A Közösség, Benyomások és Tevékenységek blokkok és belső ablakaik a kiválasztott csoporthoz tartoznak. Az eseményfelfedezés is ezt követi.</li><li>Az Eszközeim és a fejléc általános funkciói csoportváltás után is elérhetők. Az eszközök és az eszközfelfedezés az alapprofilhoz tartoznak.</li><li>Várd meg a csoportváltás végét. Sikertelen váltáskor visszaáll az előző választás, így újrapróbálhatod.</li></ul>"
+  },
+  {
+    "id": "group-membership",
+    "icon": "group_add",
+    "title": "Csatlakozás és csoportkezelés",
+    "blurb": "A felfedezés, a függő kérelem és a tagság külön állapot.",
+    "contentHtml": "<ul><li>A Felfedezés azokat a csoportokat mutatja, amelyekkel még nincs kapcsolatod. A Részvételbe a függő kérelmek is beletartoznak; a saját csoportok külön kezelhetők.</li><li>A csoportkártyán nézd meg a szabályokat, majd jelentkezz. A taglista csak akkor látható, ha a csoport ezt engedélyezi.</li><li>A közösségen belüli moderációt a csoport adminja kezeli. A csoport létrehozásának alkalmazásszintű moderációja konfigurációfüggő.</li><li>A meghívólink a regisztrációhoz csoportcsatlakozást is kapcsolhat, és utána a meghívott csoportot választhatja ki. A teljes regisztrációt a kapott linkről indítsd.</li></ul>"
+  },
+  {
+    "id": "ratings",
+    "icon": "star",
+    "title": "Felfedezés, értékelések és szűrők",
+    "blurb": "Állítsd be, kit látsz, és kövesd az interakcióidat.",
+    "contentHtml": "<ul><li>A kezdőlap szűrőivel állítsd be, milyen profilokat szeretnél látni. Az értékelés az érdeklődésedet jelzi, nem garantál kölcsönösséget.</li><li>A Benyomások és Tevékenységek részekben az adott csoport értékeléseit és visszajelzéseit találod.</li><li>A többválasztós menük címe jelzi a beállított maximumot. A korlát elérésekor előbb vegyél ki egy elemet, majd válassz másikat.</li></ul>"
+  },
+  {
+    "id": "events",
+    "icon": "event_note",
+    "title": "Események és részvétel",
+    "blurb": "Fedezz fel, csatlakozz vagy szervezz az aktív csoportban.",
+    "contentHtml": "<ul><li>Jelentkezés előtt nézd meg a kártyán az időpontot, helyszínt, létszámot, árat és csatlakozási szabályokat.</li><li>A jelentkezés függőben maradhat a szükséges jóváhagyás vagy fizetési lépés befejezéséig. Az állapotot a kártyán ellenőrizheted.</li><li>A szervezők az eseménymenükben kezelhetik a meghívásokat, tagokat és részleteket. A hozzáférés az eseményben betöltött szerepedtől függ.</li><li>A naptárexport az exportálható közelgő eseményeket tartalmazza. Ha nincs ilyen, üres fájl helyett tájékoztató ablak jelenik meg.</li></ul>"
+  },
+  {
+    "id": "stages",
+    "icon": "account_tree",
+    "title": "Alesemények és versenyek",
+    "blurb": "Bontsd az eseményt ütemezhető, kezelhető szakaszokra.",
+    "contentHtml": "<ul><li>Az egyes szakaszokhoz, mellékprogramokhoz vagy opcionális alkalmakhoz használj aleseményeket. Ezekhez külön időzítés és erőforrás is tartozhat.</li><li>A versenybeállításokban találod a támogatott szakasz- és ranglistaopciókat. A résztvevők beosztásakor kövesd az esemény beállításait.</li><li>Az eseményszakasz vagy résztvevői csoport nem közösségi alcsoport. A belső elemek kezelésekor a fő esemény környezetében maradsz.</li></ul>"
+  },
+  {
+    "id": "resources",
+    "icon": "inventory_2",
+    "title": "Eszközök és kölcsönzés",
+    "blurb": "Szállítás, szállás, kellékek és eseményhez rendelés.",
+    "contentHtml": "<ul><li>Az eszközeid az alapprofilhoz tartoznak, és csoportváltáskor is látszanak. Az eszközfelfedezés nem függ az aktív csoporttól.</li><li>Létrehozáskor add meg az elérhetőséget, kapacitást és a szükséges adatokat. A kérelmeket az eszköz menüiben kezelheted.</li><li>Egy esemény a közösségén kívülről származó eszközt is használhat. Az eseményhez és résztvevőihez való hozzáférést továbbra is az esemény jogosultságai szabályozzák.</li><li>Az eszközkölcsönzés fizetése a fizető profiljához kapcsolódik. A tulajdonos a saját eszközeihez tartozó fizetéseket szintén láthatja a fizetési előzményekben.</li></ul>"
+  },
+  {
+    "id": "tickets",
+    "icon": "qr_code",
+    "title": "Jegyek",
+    "blurb": "Keresd meg és ellenőrizd a jogosultságodhoz tartozó jegyeket.",
+    "contentHtml": "<ul><li>Az Eszközeim / Jegy alatt találod az elérhető jegyműveleteket. A jegyek csoportváltás után is hozzáférhetők.</li><li>QR-kód használata előtt ellenőrizd az eseményt és a jegy állapotát. Az érvényesítés az eseményjogosultságtól és a jegy aktuális állapotától függ.</li><li>Ha a beolvasás tiltva van, ellenőrizd a böngésző vagy eszköz kameraengedélyét, majd próbáld újra.</li></ul>"
+  },
+  {
+    "id": "activities",
+    "icon": "forum",
+    "title": "Csevegések és megosztás",
+    "blurb": "Tartsd külön az esemény-, kapcsolati és támogatási beszélgetéseket.",
+    "contentHtml": "<ul><li>A chatlista szűrőivel keresd meg a megfelelő csatornát. Az eseménybeszélgetésekben az esemény jogosultságai érvényesek.</li><li>Az eszköz- vagy eseménymegosztóban jelöld ki a kártyákat, majd nyomd meg a kosár pipáját. Az új kijelölések külön chatüzenetként kerülnek be.</li><li>Egy korábban megosztott kijelölés kivétele visszavonja a megosztást; a régi üzenet töröltként jelenhet meg akkor is, ha nincs az első oldalon.</li><li>A külső meghívólink másolása és a kártya belső chatbe küldése külön művelet. Ellenőrizd, melyiket használod.</li></ul>"
+  },
+  {
+    "id": "contacts",
+    "icon": "contacts",
+    "title": "Kapcsolatok és chatengedély",
+    "blurb": "A kapcsolat mentése önmagában nem ad közvetlen chatengedélyt.",
+    "contentHtml": "<ul><li>Telefont, e-mailt vagy közösségi elérhetőséget külön is menthetsz. A MyScoutee közvetlen chathez külön kérelmet kell küldeni.</li><li>A MyScoutee chatjelvényre kattintva kérhetsz hozzáférést. A kérelem a másik fél döntéséig függőben marad.</li><li>A Kérelmek szűrőben az új beérkező kérések vannak elöl. Jóváhagyáskor létrejön a kapcsolat; elutasításkor módosul az engedély állapota.</li><li>Az oldalsó piros jelvény a beérkező függő kérelmeket számolja, nem a mentett kapcsolatokat. Az értesítést a megfelelő másik fél kapja. A kapcsolati meghívóban csak a kapcsolataid hívhatók meg.</li></ul>"
+  },
+  {
+    "id": "notifications",
+    "icon": "notifications",
+    "title": "Értesítések és jelvények",
+    "blurb": "Lásd, mi változott, és melyik közösséghez tartozik.",
+    "contentHtml": "<ul><li>Az értesítési sáv az egész fiókhoz tartozik. A csoportjelölés segít azonosítani az elem eredetét az elérhető szűrők használatakor.</li><li>Az olvasatlan és a függő műveleteket jelző számok eltérő dolgokat jelentenek. A részletekhez nyisd meg a megfelelő listát.</li><li>A böngészős pushértesítésekhez engedély kell. A push kikapcsolása nem törli az alkalmazáson belüli értesítési előzményeket.</li></ul>"
+  },
+  {
+    "id": "payments",
+    "icon": "payments",
+    "title": "Fizetések és előzmények",
+    "blurb": "Ellenőrizd a tranzakciót, a címzettet és az állapotot.",
+    "contentHtml": "<ul><li>A fizetési előzmények a kiválasztott profilhoz/csoporthoz tartoznak. A saját eszközeid fizetései tulajdonosi alapon is megjelenhetnek.</li><li>Ellenőrizd, hogy fizetésről, visszatérítésről vagy készpénzes bejegyzésről van-e szó. A készpénzes bejegyzés nem online átutalási bizonylat, és nem keletkeztet affiliate jutalékot.</li><li>A függő vagy sikertelen fizetés még nem befejezett foglalás. Kövesd az állapotot és az elérhető újrapróbálási vagy visszatérítési műveletet.</li></ul>"
+  },
+  {
+    "id": "invitations",
+    "icon": "share",
+    "title": "Meghívólinkek és affiliate",
+    "blurb": "A profilhoz, eseményhez vagy csoporthoz illő linket oszd meg.",
+    "contentHtml": "<ul><li>A személyes meghívólink a vonatkozó szabályok szerint rögzíti a meghívót a regisztráció befejezésekor.</li><li>Az esemény- és csoportmeghívók a céljukat is tartalmazzák. Ne helyettesítsd őket egy egyszerű oldalhivatkozással.</li><li>Az API résztvevő-meghívása is támogatja a meghívóhoz rendelést. A létrehozott linkeket juttasd el a meghívni kívánt embereknek.</li><li>Az affiliate-adatok a kiválasztott profilhoz tartoznak. Készpénzes bejegyzésből nem keletkezik jutalék.</li></ul>"
+  },
+  {
+    "id": "safety",
+    "icon": "verified_user",
+    "title": "Biztonság, moderáció és támogatás",
+    "blurb": "A problémát a hozzá tartozó elemnél jelezd.",
+    "contentHtml": "<ul><li>Az érintett kártya vagy üzenet jelentési műveletét használd, és írd le érthetően a problémát.</li><li>A csoportmoderációt a csoport adminjai, az alkalmazásszintű feladatokat a konfigurációnak megfelelő alkalmazásadminok kezelik. A moderátori szerep nem ad hozzáférést idegen csoportokhoz.</li><li>A moderációs állapot és a függő jelvények mutatják, ha teendő van. A támogatási beszélgetéseket a megfelelő csatornában és szűrővel keresd.</li><li>Csak a vizsgálathoz szükséges adatokat oszd meg. Jelszót, API-kulcsot vagy fizetési titkot ne írj jelentésbe.</li></ul>"
+  },
+  {
+    "id": "permissions",
+    "icon": "settings",
+    "title": "Telepítés, helyadat és értesítések",
+    "blurb": "A szükséges engedélyeket add meg; a tiltás a rendszerbeállításokban oldható fel.",
+    "contentHtml": "<ul><li>A telepítés, a helyadat és a pushértesítés külön döntés. A beállítóablak súgója mindegyiket elmagyarázza.</li><li>A mentett helyadattal az alkalmazás akkor is tovább működhet, ha később letiltod a helyhozzáférést. Bekapcsolt követésnél a távolsági szabály alapján frissülhet.</li><li>Android: ellenőrizd a böngésző webhelyengedélyeit és az Android alkalmazásbeállítások értesítési engedélyeit. A telepített webappnak külön alkalmazásbeállítása is lehet.</li><li>iPhone/iPad: a helyhozzáférést az Adatvédelem és biztonság, a telepített webapp értesítéseit a Beállítások alatt ellenőrizd. A push működése a telepítéstől és a platform támogatásától függ.</li><li>Engedélymódosítás után térj vissza az apphoz, és próbáld újra. Az alkalmazás nem tudja felülírni a böngésző vagy az operációs rendszer tiltását.</li></ul>"
   }
 ];
 
@@ -1448,31 +1558,38 @@ const TERMS_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
 ];
 
 const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevisionDto = {
-  id: 'help-default-v1',
-  documentKind: 'help',
-  lang: 'en',
-  languageLabel: 'English',
-  version: 1,
-  title: 'MyScoutee help',
-  summary: 'What you can do in MyScoutee',
-  description: DEFAULT_HELP_CENTER_DESCRIPTION,
-  headerColor: 'amber',
-  sections: HELP_CENTER_SECTIONS,
-  active: true,
-  createdAtIso: '2026-05-01T00:00:00.000Z',
-  createdByUserId: 'system',
-  updatedAtIso: '2026-05-01T00:00:00.000Z',
-  updatedByUserId: 'system'
+  "lang": "en",
+  "languageLabel": "English",
+  "version": 2,
+  "title": "MyScoutee help",
+  "summary": "A practical guide by topic",
+  "description": "Profiles, communities, events, chats and tools: find the relevant topic and follow the steps.",
+  "headerColor": "amber",
+  "active": true,
+  "id": "help-default-v2",
+  "documentKind": "help",
+  "createdAtIso": "2026-09-26T00:00:00.000Z",
+  "createdByUserId": "system",
+  "updatedAtIso": "2026-09-26T00:00:00.000Z",
+  "updatedByUserId": "system",
+  sections: HELP_CENTER_SECTIONS
 };
 
 const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevisionDto = {
-  ...DEFAULT_HELP_CENTER_REVISION,
-  id: 'help-default-hu-v1',
-  lang: 'hu',
-  languageLabel: 'Magyar',
-  title: 'MyScoutee súgó',
-  summary: 'Mit tehetsz a MyScoutee-ban',
-  description: 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.',
+  "lang": "hu",
+  "languageLabel": "Magyar",
+  "version": 2,
+  "title": "MyScoutee súgó",
+  "summary": "Gyakorlati útmutató témánként",
+  "description": "Profilok, közösségek, események, beszélgetések és eszközök: válassz témát, és kövesd a lépéseket.",
+  "headerColor": "amber",
+  "active": true,
+  "id": "help-default-hu-v2",
+  "documentKind": "help",
+  "createdAtIso": "2026-09-26T00:00:00.000Z",
+  "createdByUserId": "system",
+  "updatedAtIso": "2026-09-26T00:00:00.000Z",
+  "updatedByUserId": "system",
   sections: HELP_CENTER_SECTIONS_HU
 };
 

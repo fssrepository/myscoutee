@@ -23,7 +23,7 @@ export class HelpCenterContentBuilder {
           ? APP_STATIC_DATA.defaultTermsCenterRevisionsByLang.hu.description
         : kind === 'explanation'
           ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang.hu.description
-          : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
+          : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang.hu.description;
     }
     return kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterDescription

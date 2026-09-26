@@ -1,3 +1,4 @@
+import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
 import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
 import type { AppMenuPalette } from '../core/menu';
@@ -1091,6 +1092,12 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   constructor() {
+    const overlayNavigation = inject(OverlayNavigationStore);
+    effect(onCleanup => {
+      if (!this.isMenuOpen()) return;
+      const token = overlayNavigation.register(() => this.closeSideMenu());
+      onCleanup(() => overlayNavigation.unregister(token));
+    });
     effect(() => this.moderationService.setWorkerActive(!!this.sessionService.session()));
     effect(() => this.adminNotificationsService.setWorkerActive(!!this.sessionService.session()));
     effect(() => {
