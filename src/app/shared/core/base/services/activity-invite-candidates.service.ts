@@ -31,6 +31,7 @@ import type * as ActivityContracts from '../../contracts/activity.interface';
 import type * as AppConstants from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { partitionEventInvitesByCapacity } from './activity-invite-capacity.policy';
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
 
 @Injectable({
@@ -42,6 +43,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private get inviteCandidatesService(): IActivityInviteCandidatesService {
     return this.resolveRouteService(
       ACTIVITY_INVITE_CANDIDATES_ROUTE,
@@ -53,7 +55,9 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   async queryCandidates(
     query: ActivityContracts.ActivityInviteCandidatesQuery
   ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
-    return this.inviteCandidatesService.queryCandidates(query);
+    return this.inviteCandidatesService.queryCandidates(query.owner.ownerType === 'community'
+      ? { ...query, activeUserId: this.workspace.accountId(query.activeUserId) }
+      : query);
   }
 
   async queryCandidatesByOwner(
@@ -80,7 +84,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     const resolvedExistingMemberUserIds = existingMemberUserIds.length > 0
       ? [...new Set(existingMemberUserIds.map(userId => userId.trim()).filter(Boolean))]
       : [...new Set(this.activityMembersService.peekMembersByOwner(ownerRef).map(member => member.userId.trim()).filter(Boolean))];
-    return this.inviteCandidatesService.queryCandidates({
+    return this.queryCandidates({
       activeUserId,
       owner,
       parentOwner,

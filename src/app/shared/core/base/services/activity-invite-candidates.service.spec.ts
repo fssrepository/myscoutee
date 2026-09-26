@@ -9,6 +9,8 @@ import { ActivityInviteCandidatesService } from './activity-invite-candidates.se
 import { ActivityMembersService } from './activity-members.service';
 import { EventsService } from './events.service';
 import { SessionService } from './session.service';
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { LocalActivityInviteCandidatesRepository } from '../../local/source/repositories/activity-invite-candidates.repository';
 
 const member = (userId: string, status: ActivityMemberDTO['status']): ActivityMemberDTO => ({
   id: userId,
@@ -75,6 +77,31 @@ describe('ActivityInviteCandidatesService', () => {
   afterEach(() => {
     environment.activitiesDataSource = originalActivitiesDataSource;
     TestBed.resetTestingModule();
+  });
+
+  it('uses the account identity for a community invite query from a group profile', async () => {
+    const queryCandidates = vi.fn().mockResolvedValue({ items: [], total: 0 });
+    TestBed.overrideProvider(GroupWorkspaceContextService, { useValue: { accountId: () => 'account' } });
+    TestBed.overrideProvider(HttpActivityInviteCandidatesService, { useValue: { queryCandidates } });
+    const service = TestBed.inject(ActivityInviteCandidatesService);
+    await service.queryCandidatesByOwner('community', 'recent', 'Group', 'community');
+    expect(queryCandidates).toHaveBeenCalledWith(expect.objectContaining({ activeUserId: 'account' }));
+  });
+
+  it('excludes self from local candidates even with no caller-supplied member exclusions', async () => {
+    const repository = Object.create(LocalActivityInviteCandidatesRepository.prototype);
+    Object.assign(repository, {
+      usersRepository: { queryUserById: () => ({ id: 'account' }) },
+      activityMembersRepository: { peekRecordsByOwner: () => [
+        { userId: 'account', status: 'pending', requestKind: 'invite' }
+      ] },
+      queryMetRateItems: async () => [{ userId: 'account', happenedAt: '2026-01-01T00:00:00Z' }]
+    });
+    const page = await repository.queryCandidateRecords({ activeUserId: 'account',
+      owner: { ownerId: 'community', ownerType: 'community' }, existingMemberUserIds: [],
+      pendingInviteUserIds: [], sort: 'recent', page: 0, pageSize: 16 });
+    expect(page.items).toEqual([]);
+    expect(page.total).toBe(0);
   });
 
   it('keeps the runtime Event and Sub Event scope when inviting an assigned Asset member', async () => {

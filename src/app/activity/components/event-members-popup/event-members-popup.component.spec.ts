@@ -64,4 +64,37 @@ describe('Event member popup mode isolation', () => {
     expect(component.pendingOnly).toBe(true);
     expect(reload).not.toHaveBeenCalled();
   });
+
+  it('keeps an open community roster live through the shared member delta poll', async () => {
+    const component = popup();
+    const existing = { id: 'owner', status: 'accepted' };
+    const joined = { id: 'applicant', status: 'pending' };
+    const owner = { ownerType: 'community', ownerId: 'community-1' };
+    const syncMembersByOwner = vi.fn().mockResolvedValue({ upserts: [joined], removedIds: [], total: 2 });
+    const applyCommittedMembers = vi.fn();
+    Object.assign(component, { isOpen: true, mingleLive: false, membersListReady: true,
+      runtimeStore: { isDataSourceAvailable: () => true }, ownerRef: owner, ownerId: owner.ownerId,
+      activityMembersService: { syncMembersByOwner }, currentOwnerMembers: () => [existing], applyCommittedMembers });
+    expect(component.shouldPollMembersList()).toBe(true);
+    await component.pollMembersList({ owner, ownerId: owner.ownerId, knownItems: [] });
+    expect(applyCommittedMembers).toHaveBeenCalledWith([existing, joined], [existing]);
+    component.isOpen = false;
+    expect(component.shouldPollMembersList()).toBe(false);
+    component.isOpen = true;
+    component.ownerId = 'another-community';
+    expect(component.shouldPollMembersList()).toBe(false);
+  });
+
+  it('recognizes an account invitation while another group profile is selected', () => {
+    const component = popup();
+    Object.assign(component, { ownerRef: { ownerType: 'community', ownerId: 'inviting-group' },
+      userProfileStore: { activeUserId: () => 'selected-group-profile' },
+      workspace: { accountId: () => 'account' }, viewOnlyMode: false, communityOwnerUserId: 'organizer' });
+    const invitation = { userId: 'account', status: 'pending', requestKind: 'invite' };
+    expect(component.canApproveMember(invitation)).toBe(true);
+    expect(component.canDeleteMember(invitation)).toBe(true);
+    component.ownerRef = { ownerType: 'event', ownerId: 'event' };
+    expect(component.isCurrentUser(invitation)).toBe(false);
+    expect(component.isCurrentUser({ userId: 'selected-group-profile' })).toBe(true);
+  });
 });

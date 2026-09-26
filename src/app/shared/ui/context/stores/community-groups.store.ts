@@ -80,7 +80,7 @@ export class CommunityGroupsStore {
     this.memberMenu.requestActivitiesNavigation({ type: 'members', ownerType: 'community', ownerId: group.id, ownerUserId: group.ownerUserId,
       subtitle: group.name, canManage: group.role === 'Admin' && group.membershipStatus === 'accepted',
       acceptedMembers: group.acceptedMembers, pendingMembers: group.pendingMembers, capacityTotal: group.acceptedMembers,
-      onMembersChanged: () => { void this.workspaces.refresh(); } });
+      onMembersChanged: () => { void this.refresh(group.id); } });
   }
   async refresh(id: string): Promise<void> {
     const userId = this.openUserId(); if (!userId) return;

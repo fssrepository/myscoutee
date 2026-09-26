@@ -1,5 +1,6 @@
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   CommonModule
 } from '@angular/common';
@@ -170,6 +171,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
@@ -2097,7 +2099,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       && this.membersListReady
       && this.runtimeStore.isDataSourceAvailable()
       && this.lookupRef?.type !== 'chat'
-      && this.ownerRef?.ownerType === 'event'
+      && (this.ownerRef?.ownerType === 'event' || this.ownerRef?.ownerType === 'community')
       && this.ownerRef.ownerId === this.ownerId;
   }
 
@@ -2633,7 +2635,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.userProfileStore.activeUserId().trim();
+    const profileId = this.userProfileStore.activeUserId().trim();
+    return this.ownerRef?.ownerType === 'community' ? this.workspace.accountId(profileId) : profileId;
   }
 
   private resetSummaryState(): void {
