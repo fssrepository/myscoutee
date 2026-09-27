@@ -40,17 +40,19 @@ export class CommunityGroupConverter {
       surfaceTone: (group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked') ? 'deleted' : group.moderationStatus === 'under-review' || group.lifecycleStatus === 'under-review' ? 'review' : group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
       mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
         ariaLabel: group.ownerName, interactive: true },
-      mediaBottomStart: contentModerationBadge(group.moderationStatus),
+      mediaBottomStart: group.lifecycleStatus === 'deleted' ? null : contentModerationBadge(group.moderationStatus),
+      mediaBottomEnd: group.lifecycleStatus === 'deleted'
+        ? { variant: 'badge', tone: 'danger', icon: 'delete', label: 'deleted', ariaLabel: 'deleted', interactive: false } : null,
       mediaEnd: { variant: 'badge', layout: 'badge-with-leading-accessory', label: `${group.acceptedMembers}`,
         ariaLabel: membersVisible ? 'open.members' : 'groups.member.list',
         interactive: membersVisible, disabled: !membersVisible,
         tone: membersVisible ? 'default' : 'inactive',
         leadingAccessory: { icon: membersVisible ? 'groups' : 'visibility_off', tone: membersVisible ? 'positive' : 'negative' },
         pendingCount: membersVisible ? group.membersActivity ?? group.pendingMembers : 0 },
-      hasMenuOptions: true, menuBadgeCount, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
+      hasMenuOptions: this.menu(group).length > 0, menuBadgeCount, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
-    if ((group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked')) return group.lifecycleStatus === 'deleted' ? [] : [{
+    if ((group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked')) return group.lifecycleStatus === 'deleted' && !group.canRestoreGroup ? [] : [{
       id: 'restore', label: 'restore', icon: CARD_MENU_ACTIONS['restore'].icon,
       palette: ActivityEventInfoCardMenuConverter.actionPalette('restore', CARD_MENU_ACTIONS['restore'].tone), surface: 'tinted', context: group
     }];

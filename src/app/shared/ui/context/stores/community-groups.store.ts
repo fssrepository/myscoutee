@@ -136,7 +136,8 @@ export class CommunityGroupsStore {
     if (action === 'members') { this.members(group); return; }
     const item = CommunityGroupConverter.menu(group, this.openUserId()).find(item => item.id === action);
     if (!item) return;
-    const confirmation = action === 'restore' && group.membershipStatus === 'blocked' ? 'restore-blocked' : action;
+    const confirmation = action === 'restore' && group.canRestoreGroup ? 'restore-group'
+      : action === 'restore' && group.membershipStatus === 'blocked' ? 'restore-blocked' : action;
     this.dialogs.open({ title: `groups.confirm.${confirmation}.title`,
       message: this.i18n.translateParams(`groups.confirm.${confirmation}`, { name: group.name }),
       cancelLabel: 'Cancel', confirmLabel: String(item.label), confirmPalette: item.palette,

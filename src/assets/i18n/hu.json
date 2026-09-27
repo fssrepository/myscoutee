@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.27.hu.7",
+  "version": "2026.09.27.hu.8",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -4008,6 +4008,8 @@
     "notification.kind.community-owner-left.message": "Átveheted a(z) {workspaceGroupName} csoport felelősségét.",
     "notification.kind.community-takeover.title": "Megváltozott a csoport felelőse",
     "notification.kind.community-takeover.message": "Egy admin átvette a(z) {workspaceGroupName} csoport felelősségét.",
+    "groups.confirm.restore-group.title": "Visszaállítod ezt a csoportot?",
+    "groups.confirm.restore-group": "Visszaállítod a(z) „{name}” csoportot, és újra átveszed az adminisztrálását?",
     "groups.confirm.restore.title": "Visszaállítod a csoporttagságodat?",
     "groups.confirm.restore": "Visszaállítod a tagságodat a(z) „{name}” csoportban újabb jóváhagyás nélkül?",
     "groups.confirm.restore-blocked.title": "Kéred az újbóli csatlakozást?",

@@ -144,11 +144,34 @@ describe('Community membership writes and recipient attention', () => {
     expect(member('guest').status).toBe('pending');
   });
 
-  it('does not restore a group deleted after its last member leaves', async () => {
+  it('keeps deleted groups in Trash and blocks members until an Admin restores the group', async () => {
     await service.action('member', 'group', 'member', 'remove');
     await service.action('admin', 'group', 'admin', 'remove');
-    expect((await page('member', 'trash')).items).toEqual([]);
+    expect((await page('member', 'trash')).items[0]).toMatchObject({ lifecycleStatus: 'deleted', canRestoreGroup: false });
     await expect(service.action('member', 'group', 'member', 'restore')).rejects.toThrow('Group not found');
+    await expect(service.join('member', 'group')).rejects.toThrow('Group not found');
+    expect((await page('admin', 'trash')).items[0]).toMatchObject({ lifecycleStatus: 'deleted', canRestoreGroup: true });
+    await service.action('admin', 'group', 'admin', 'restore');
+    expect(state.communityGroups.byId['group']).toMatchObject({ lifecycleStatus: 'active', ownerUserId: 'admin' });
+    expect(member('admin')).toMatchObject({ status: 'accepted', role: 'Admin' });
+    expect(member('member').status).toBe('deleted');
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member')).toMatchObject({ status: 'accepted', role: 'Member' });
+  });
+
+  it('allows an earlier departed Admin to restore and own the deleted group', async () => {
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    await service.action('member', 'group', 'member', 'remove');
+    await service.action('admin', 'group', 'admin', 'remove');
+    expect((await page('member', 'trash')).items[0].canRestoreGroup).toBe(true);
+    await service.action('member', 'group', 'member', 'restore');
+    expect(state.communityGroups.byId['group']).toMatchObject({ lifecycleStatus: 'active', ownerUserId: 'member' });
+    expect(member('member')).toMatchObject({ status: 'accepted', role: 'Admin' });
+    const before = notices().length;
+    await service.action('member', 'group', 'member', 'restore');
+    expect(notices()).toHaveLength(before);
+    await service.action('admin', 'group', 'admin', 'restore');
+    expect(member('admin')).toMatchObject({ status: 'accepted', role: 'Member' });
   });
 
   it('restores membership without resurrecting former administrator privileges', async () => {

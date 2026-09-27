@@ -23,6 +23,7 @@ export interface GroupPolicy {
 export interface CommunityGroup {
   lifecycleStatus?: 'active' | 'under-review' | 'deleted' | null;
   canTakeOver?: boolean;
+  canRestoreGroup?: boolean;
   membersActivity?: number;
   moderationPending?: number;
   moderationQueueRevision?: number;

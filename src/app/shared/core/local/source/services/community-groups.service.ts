@@ -89,7 +89,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
   async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>> {
     await this.waitForRouteDelay('/groups'); await this.groups.ready(); signal?.throwIfAborted();
     const bucket = query.filters?.bucket ?? 'explore';
-    const rows = this.groups.records().filter(g => g.lifecycleStatus !== 'deleted').filter(g => {
+    const rows = this.groups.records().filter(g => g.lifecycleStatus !== 'deleted' || bucket === 'trash').filter(g => {
       const trashed = this.restorableMembership(this.members.peekRecordsByOwner({ ownerType: 'community', ownerId: g.id }, true).find(m => m.userId === userId));
       if (bucket === 'trash') return trashed;
       const own = this.member(g.id, userId);
@@ -228,13 +228,15 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
       return { members: group.lifecycleStatus === 'deleted' || self && target.status === 'deleted' ? [] : this.roster(userId, id), counterOverrides: null, group: this.dto(userId, group) };
     }
-    if (group.lifecycleStatus === 'deleted') throw new Error('Group not found');
+    const restoreGroup = action === 'restore' && self && this.canRestoreGroup(group, target);
+    if (group.lifecycleStatus === 'deleted' && !restoreGroup) throw new Error('Group not found');
     if (action !== 'restore') this.visible(userId, id);
     if (group.lifecycleStatus === 'under-review' && !['take-over', 'remove', 'restore'].includes(action)) throw new Error('Forbidden');
     switch (action) {
       case 'restore':
         if (!self || !this.restorableMembership(target)) throw new Error('Forbidden');
-        target.role = 'Member'; target.organizerOnly = false; target.managerGrantedByUserId = null;
+        if (restoreGroup) group = { ...group, ownerUserId: userId, lifecycleStatus: 'active' };
+        target.role = restoreGroup ? 'Admin' : 'Member'; target.organizerOnly = false; target.managerGrantedByUserId = null;
         if (target.status === 'blocked') { target.status = 'pending'; target.role = 'Member'; target.requestKind = 'join'; target.pendingSource = 'member'; }
         else target.status = 'accepted';
         break;
@@ -266,7 +268,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     if (action === 'accept') this.admit(group, targetId);
     const next = rows.map(m => m.userId === targetId ? target : m);
     const remaining = next.filter(m => m.status === 'accepted' || m.status === 'pending');
-    if (!remaining.length) group = { ...group, lifecycleStatus: 'deleted', takeoverCandidates: [] };
+    if (!remaining.length) group = { ...group, lifecycleStatus: 'deleted', ownerReleasedAtIso: target.actionAtIso, takeoverCandidates: [] };
     else if ((owner && ['remove', 'step-down-admin'].includes(action)) || !remaining.some(m => this.admin(m))) {
       if (group.lifecycleStatus !== 'under-review') {
         const accepted = remaining.filter(m => m.status === 'accepted' && m.userId !== userId);
@@ -338,6 +340,10 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     return this.admin(own) ? group.pendingMembers ?? 0
       : own?.status === 'pending' && own.requestKind === 'invite' ? 1 : 0;
   }
+  private canRestoreGroup(group: CommunityGroupRecord, own?: ActivityMemberRecord): boolean {
+    return group.lifecycleStatus === 'deleted' && this.restorableMembership(own) && own?.role === 'Admin'
+      && own.status === 'deleted';
+  }
   private canTakeOver(group: CommunityGroupRecord, rows: ActivityMemberRecord[], own?: ActivityMemberRecord): boolean {
     return group.lifecycleStatus === 'under-review' && own?.status === 'accepted'
       && (own.role === 'Admin' || !rows.some(m => this.admin(m)));
@@ -360,7 +366,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         * Math.cos(b.latitude * rad) * Math.sin((b.longitude - a.longitude) * rad / 2) ** 2;
       distanceKm = Math.round(12742 * Math.asin(Math.sqrt(Math.min(1, h))) * 10) / 10;
     }
-    return { ...group, canTakeOver: this.canTakeOver(group, rows, own), ownerName: owner?.name ?? '', ownerAvatarUrl: owner?.images?.[0] ?? null,
+    return { ...group, canRestoreGroup: this.canRestoreGroup(group, own), canTakeOver: this.canTakeOver(group, rows, own), ownerName: owner?.name ?? '', ownerAvatarUrl: owner?.images?.[0] ?? null,
       role: own?.role === 'Admin' ? 'Admin' : own ? 'Member' : null,
       membershipStatus: own?.status === 'blocked' ? 'blocked' : own?.status === 'deleted' ? 'deleted' : own?.status === 'accepted' ? 'accepted' : own ? 'pending' : null,
       requestKind: own?.requestKind === 'invite' ? 'invite' : own?.requestKind === 'join' ? 'join' : null, organizerOnly: own?.organizerOnly === true,

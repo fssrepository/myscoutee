@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.27.en.11",
+  "version": "2026.09.27.en.12",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -4008,6 +4008,8 @@
     "notification.kind.community-owner-left.message": "You can take over responsibility for {workspaceGroupName}.",
     "notification.kind.community-takeover.title": "Group responsibility changed",
     "notification.kind.community-takeover.message": "An administrator took over responsibility for {workspaceGroupName}.",
+    "groups.confirm.restore-group.title": "Restore this group?",
+    "groups.confirm.restore-group": "Restore “{name}” and resume responsibility as its admin?",
     "groups.confirm.restore.title": "Restore your group membership?",
     "groups.confirm.restore": "Restore your membership in “{name}” without a new approval?",
     "groups.confirm.restore-blocked.title": "Request to rejoin this group?",
