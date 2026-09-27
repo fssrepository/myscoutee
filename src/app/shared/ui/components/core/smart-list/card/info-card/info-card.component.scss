@@ -680,6 +680,21 @@ button.ui-info-card__overlay-action {
   aspect-ratio: 1;
 }
 
+button.ui-info-card__overlay-action--avatar,
+button.ui-info-card__overlay-action--badge.ui-info-card__overlay-action--shape-circle {
+  width: auto;
+  border-radius: 999px;
+  aspect-ratio: auto;
+  padding-inline: 0.16rem;
+}
+
+button.ui-info-card__overlay-action--avatar .ui-info-card__overlay-avatar-image {
+  width: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
 .ui-info-card__overlay-action--ring-active {
   overflow: visible;
   box-shadow:
@@ -899,13 +914,12 @@ button.ui-info-card__overlay-action {
   color: currentColor;
 }
 
-.ui-info-card__overlay-detail .mat-icon {
+.ui-info-card__overlay-action .ui-info-card__overlay-detail .mat-icon {
   width: 11px;
   height: 11px;
   font-size: 11px;
   line-height: 11px;
   color: color-mix(in srgb, currentColor 88%, #111 12%);
-  transform: translateY(-0.5px);
 }
 
 .ui-info-card__overlay-badge-body {
@@ -923,6 +937,27 @@ button.ui-info-card__overlay-action {
   width: 16px;
   height: 16px;
   font-size: 16px;
+}
+
+button.ui-info-card__overlay-action:has(> .ui-info-card__overlay-chevron) {
+  gap: 0.1rem;
+  padding-inline-end: 0.18rem;
+}
+
+.ui-info-card__overlay-action > .ui-info-card__overlay-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 10px;
+  width: 10px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  overflow: visible;
+}
+
+.ui-info-card__overlay-action--avatar > .ui-info-card__overlay-chevron {
+  color: #fff;
 }
 
 .ui-info-card__overlay-action--tone-default.ui-info-card__overlay-action--avatar {

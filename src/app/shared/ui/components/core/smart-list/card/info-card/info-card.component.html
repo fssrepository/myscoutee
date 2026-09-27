@@ -86,7 +86,7 @@
             [disabled]="mediaStart.disabled"
             (click)="onMediaStartActivated($event)"
             >
-            <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaStart }"></ng-container>
+            <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaStart, interactive: true }"></ng-container>
           </button>
         } @else {
           <span
@@ -187,7 +187,7 @@
             [disabled]="mediaEnd.disabled"
             (click)="onMediaEndActivated($event)"
             >
-            <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd }"></ng-container>
+            <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd, interactive: true }"></ng-container>
             @if ((mediaEnd.pendingCount ?? 0) > 0) {
               <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ mediaEnd.pendingCount | counterBadge }}</span>
             }
@@ -447,7 +447,7 @@
   }
 </article>
 
-<ng-template #overlayContent let-action>
+<ng-template #overlayContent let-action let-interactive="interactive">
   @switch (overlayLayout(action)) {
     @case ('avatar-metric') {
       @if (overlayLeadingAccessory(action); as accessory) {
@@ -528,5 +528,8 @@
         }
       }
     }
+  }
+  @if (interactive && overlayVariant(action) !== 'toggle') {
+    <mat-icon class="ui-info-card__overlay-chevron" aria-hidden="true">chevron_right</mat-icon>
   }
 </ng-template>

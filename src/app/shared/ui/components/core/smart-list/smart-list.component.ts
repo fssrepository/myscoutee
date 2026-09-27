@@ -4474,6 +4474,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.finiteStepper.syncBounds();
     this.emitState();
     this.cdr.markForCheck();
+    this.refreshSurfaceSoon();
     return true;
   }
 
