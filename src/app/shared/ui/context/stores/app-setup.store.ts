@@ -35,6 +35,7 @@ export class AppSetupStore implements OnDestroy {
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
+  private loginAllowed = false;
   private checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null;
 
   constructor() {
@@ -124,7 +125,7 @@ export class AppSetupStore implements OnDestroy {
     this.locationRequestPending = false;
     this.nativePending.set(false);
     this.busy.set(false);
-    this.finish(false);
+    this.finish(this.loginAllowed);
   }
 
   install(): void {
@@ -166,10 +167,7 @@ export class AppSetupStore implements OnDestroy {
           await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
         }
         if (generation === this.generation) {
-          if (this.completeLogin) this.finish(true);
-          else {
-            this.showSaveFeedback();
-          }
+          this.showSaveFeedback();
         }
         return;
       }
@@ -203,10 +201,7 @@ export class AppSetupStore implements OnDestroy {
         await this.messaging.setDeviceNotificationsEnabled(this.notificationsSelected());
       }
       if (generation === this.generation) {
-        if (this.completeLogin) this.finish(true);
-        else {
-          this.showSaveFeedback();
-        }
+        this.showSaveFeedback();
       }
     } catch (error) {
       if (generation === this.generation) {
@@ -227,6 +222,7 @@ export class AppSetupStore implements OnDestroy {
 
   private showSaveFeedback(): void {
     this.clearSaveFeedback();
+    this.loginAllowed = !!this.completeLogin;
     this.saveSucceeded.set(true);
     this.saveFeedbackTimer = setTimeout(() => {
       this.saveFeedbackTimer = null;
@@ -235,6 +231,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   private clearSaveFeedback(): void {
+    this.loginAllowed = false;
     if (this.saveFeedbackTimer !== null) clearTimeout(this.saveFeedbackTimer);
     this.saveFeedbackTimer = null;
     this.saveSucceeded.set(false);
