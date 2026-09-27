@@ -2318,6 +2318,7 @@ export class SideMenuComponent implements OnDestroy {
     const followingRevision = this.followingStore.captureRevision();
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(userId);
+    const locationSyncToken = this.userProfileStore.captureUserLocationSyncToken(userId);
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -2334,7 +2335,7 @@ export class SideMenuComponent implements OnDestroy {
       this.photoFeedStore.applyCounters(snapshot.userId, snapshot.feedCounters);
       this.deploymentConfiguration.applyPaymentCardsAvailable(snapshot.paymentCardsAvailable);
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
-      this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
+      this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates, locationSyncToken);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {
