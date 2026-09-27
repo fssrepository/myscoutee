@@ -940,20 +940,11 @@ button.ui-info-card__overlay-action--avatar .ui-info-card__overlay-avatar-image 
 }
 
 button.ui-info-card__overlay-action:has(> .ui-info-card__overlay-chevron) {
-  gap: 0.1rem;
-  padding-inline-end: 0.18rem;
+  @include mediaBadge.actionable;
 }
 
 .ui-info-card__overlay-action > .ui-info-card__overlay-chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 10px;
-  width: 10px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-  overflow: visible;
+  @include mediaBadge.chevron;
 }
 
 .ui-info-card__overlay-action--avatar > .ui-info-card__overlay-chevron {
