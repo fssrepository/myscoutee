@@ -98,7 +98,7 @@
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.82rem;
+  gap: 0.35rem 0.82rem;
   align-items: start;
   padding: 0.92rem 0.98rem;
   border: 1px solid rgba(43, 69, 105, 0.16);
@@ -204,7 +204,7 @@
 }
 
 .contact-chat-action {
-  --app-menu-trigger-circle-size: 20px;
+  --app-menu-trigger-circle-padding: 4px;
 }
 
 .contact-method-chip {
