@@ -128,8 +128,8 @@ export class IntegrationSettingsPopupComponent {
       backdropTone: 'dim',
       headerControls: this.adminMode || !this.settings() ? [] : [{
         kind: 'menu', id: 'affiliate-revenue', model: { density: 'compact' },
-        trigger: { id: 'affiliate-revenue', label: 'affiliate.revenue.button', icon: 'payments', collapsible: true,
-          ariaLabel: 'affiliate.revenue.open', palette: 'green', layout: 'pill', action: 'custom' }
+        trigger: { id: 'affiliate-revenue', label: 'affiliate.revenue.button', icon: 'group_add', collapsible: true,
+          ariaLabel: 'affiliate.revenue.open', palette: 'pink', layout: 'pill', action: 'custom' }
       }],
       onMenuSelect: () => { if (!this.adminMode) this.revenueOpen.set(true); },
       headerActions: [{

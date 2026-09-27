@@ -298,6 +298,8 @@ export class LocalActivityMembersBuilder {
         return 'Removed';
       case 'deleted':
         return 'Deleted';
+      case 'blocked':
+        return 'Blocked';
     }
   }
 

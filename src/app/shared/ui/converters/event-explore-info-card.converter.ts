@@ -58,15 +58,13 @@ export class EventExploreInfoCardConverter {
       mediaStart: {
         variant: 'badge',
         layout: 'avatar-metric',
-        tone: this.creatorOverlayTone(record),
+        tone: 'cool',
         interactive: true,
-        ariaLabel: 'Open host impressions',
+        ariaLabel: `View ${record.creatorName || 'organizer'} profile`,
         leadingAccessory: {
           label: this.creatorInitials(record),
           tone: this.creatorAvatarOverlayTone(record)
-        },
-        detailLabel: record.rating.toFixed(1),
-        detailIcon: 'star'
+        }
       },
       mediaEnd: {
         variant: 'badge',
@@ -126,23 +124,6 @@ export class EventExploreInfoCardConverter {
       && record.checkoutResultState != null
       && record.checkoutResultState !== 'deleted'
       && !(record.slotsEnabled === true && this.isFull(record));
-  }
-
-  private static creatorOverlayTone(record: ActivityEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
-    const rating = AppUtils.clampNumber(record.rating, 0, 10);
-    if (rating <= 3.0) {
-      return 'cool';
-    }
-    if (rating <= 5.5) {
-      return 'cool-mid';
-    }
-    if (rating <= 7.2) {
-      return 'neutral';
-    }
-    if (rating <= 8.6) {
-      return 'warm-mid';
-    }
-    return 'warm';
   }
 
   private static creatorAvatarOverlayTone(

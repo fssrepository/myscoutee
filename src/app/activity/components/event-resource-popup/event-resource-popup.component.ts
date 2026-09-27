@@ -786,7 +786,7 @@ export class EventResourcePopupComponent {
       popupHeader: { title: 'Assets', subtitle: null },
       subEvent,
       fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
-    }, type, { hydrate: !request.viewOnly });
+    }, type, { hydrate: false });
     this.resourcePopupStore.assetExploreOnlyRef.set(true);
     this.openInitialExplorePopup();
   }
@@ -1025,7 +1025,7 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.assetExplorePopupRef.set({
       subEventId: context.subEvent.id,
       type,
-      category: AssetDefaultsBuilder.defaultCategory(type),
+      category: type === AppConstants.ASSET_TYPE_TRANSPORT ? '' : AssetDefaultsBuilder.defaultCategory(type),
       startAtIso,
       endAtIso,
       loading: true,
@@ -3328,7 +3328,7 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.assetExplorePopupRef.set({
       subEventId: context.subEvent.id,
       type,
-      category: AssetDefaultsBuilder.defaultCategory(type),
+      category: type === AppConstants.ASSET_TYPE_TRANSPORT ? '' : AssetDefaultsBuilder.defaultCategory(type),
       startAtIso,
       endAtIso,
       loading: true,

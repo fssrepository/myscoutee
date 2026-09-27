@@ -241,6 +241,8 @@
           <input
             matInput
             [matDatepicker]="singlePicker"
+            data-single-date
+            [attr.inputmode]="model?.formatWhileTyping ? 'numeric' : null"
             [ngModel]="singleDateValue"
             [ngModelOptions]="{ updateOn: model?.updateOn ?? 'change' }"
             (ngModelChange)="onSingleDateChange($event)"

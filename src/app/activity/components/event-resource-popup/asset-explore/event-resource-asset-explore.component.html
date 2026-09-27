@@ -3,7 +3,7 @@
     [card]="itemInfoCard(card, { groupLabel })"
     [useSharedMenu]="true"
     (selectionChange)="chatShare.toggle(shareItem(card))"
-    (mediaStartClick)="openOwnerImpressions(card)"
+    (mediaStartClick)="openOwnerProfile(card)"
     (mediaEndClick)="openBorrowFromBadge(card)"
     (menuAction)="onCardMenuAction(card, $event)"
     (menuRequest)="openInfoCardMenu(card, $event)"

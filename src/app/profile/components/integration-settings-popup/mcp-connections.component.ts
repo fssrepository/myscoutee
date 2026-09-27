@@ -22,8 +22,6 @@ import type { McpClientRequest } from '../../../shared/core/contracts/integratio
       </div>
       @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
       @if (store.settings(); as config) {
-        <small>{{ 'mcp.setup' | i18n }}</small>
-        @if (!config.remoteEnabled) { <p>{{ 'mcp.local.only' | i18n }}</p> }
         <small>{{ 'mcp.url' | i18n }}</small>
         <app-copy-link [value]="config.resource" label="mcp.url"></app-copy-link>
         <div class="integration-token-list">

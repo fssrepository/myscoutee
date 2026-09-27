@@ -143,6 +143,8 @@
         <div>
           @if (adminMode) { <p>{{ 'admin.api.help' | i18n }}</p> } @else {
             <p>{{ 'affiliate.help' | i18n }}</p><p>{{ 'integration.help.description' | i18n }}</p>
+            <p>{{ 'mcp.setup' | i18n }}</p>
+            <p>{{ 'mcp.local.only' | i18n }}</p>
           }
           <a
             [href]="integrationDocumentationUrl"

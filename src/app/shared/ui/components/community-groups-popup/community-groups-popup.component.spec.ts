@@ -53,7 +53,7 @@ describe('Group selector counters', () => {
   it('mirrors Event palettes and moves Explore into the plus action menu', () => {
     const controls = model('hosting').toolbarControls;
     expect(controls[0].items.map((item: { id: string; palette: string }) => [item.id, item.palette]))
-      .toEqual([['hosting', 'green'], ['participation', 'orange'], ['pending', 'amber'], ['invitations', 'violet']]);
+      .toEqual([['hosting', 'green'], ['participation', 'orange'], ['pending', 'amber'], ['invitations', 'violet'], ['trash', 'danger']]);
     expect(controls[1].trigger.icon).toBe('add');
     expect(controls[1].items.map((item: { id: string; palette: string }) => [item.id, item.palette]))
       .toEqual([['explore', 'violet'], ['create', 'green']]);

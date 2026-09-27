@@ -23,12 +23,14 @@ describe('AppMenuComponent delayed drag', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.clearAllTimers();
     vi.useRealTimers();
     TestBed.resetTestingModule();
   });
 
   it('closes a mobile titled menu through the shared X without changing a selection', () => {
+    vi.stubGlobal('innerWidth', 360);
     const fixture = TestBed.createComponent(AppMenuComponent);
     fixture.componentRef.setInput('kind', 'select');
     fixture.componentRef.setInput('panelMode', 'sheet');
@@ -45,10 +47,11 @@ describe('AppMenuComponent delayed drag', () => {
     expect(selected).not.toHaveBeenCalled();
   });
 
-  it('keeps the title on desktop without introducing an X', () => {
+  it.each(['anchored', 'sheet'] as const)('keeps the title on desktop without an X for %s menus', panelMode => {
+    vi.stubGlobal('innerWidth', 1100);
     const fixture = TestBed.createComponent(AppMenuComponent);
     fixture.componentRef.setInput('kind', 'select');
-    fixture.componentRef.setInput('panelMode', 'anchored');
+    fixture.componentRef.setInput('panelMode', panelMode);
     fixture.componentRef.setInput('title', 'Categories');
     fixture.componentRef.setInput('closeOnSelect', false);
     fixture.componentRef.setInput('items', [{ id: 'a', label: 'A', kind: 'checkbox' }]);
@@ -59,6 +62,7 @@ describe('AppMenuComponent delayed drag', () => {
   });
 
   it('uses the accessible basket name as the mobile heading without widening its icon button', () => {
+    vi.stubGlobal('innerWidth', 360);
     const fixture = TestBed.createComponent(AppMenuComponent);
     fixture.componentRef.setInput('kind', 'inline');
     fixture.componentRef.setInput('panelMode', 'sheet');
@@ -73,6 +77,7 @@ describe('AppMenuComponent delayed drag', () => {
   });
 
   it('provides an X for an untitled persistent mobile menu but leaves special anchored menus alone', () => {
+    vi.stubGlobal('innerWidth', 360);
     const fixture = TestBed.createComponent(AppMenuComponent);
     fixture.componentRef.setInput('kind', 'select');
     fixture.componentRef.setInput('panelMode', 'sheet');

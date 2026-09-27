@@ -40,7 +40,7 @@ export class CommunityGroupsPopupComponent implements OnInit {
   @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroupSummary>, GroupFilters>;
   protected query: { filters: GroupFilters; sort?: GroupSort } = { filters: { bucket: this.store.initialBucket(), category: null } };
   protected readonly config: SmartListConfig<InfoCardData<CommunityGroupSummary>, GroupFilters> = {
-    pageSize: 10, initialPageSize: 20, listLayout: 'card-grid', minColumnWidth: '280px',
+    pageSize: 10, initialPageSize: 20, listLayout: 'card-grid',
     containerClass: { 'experience-card-list': true, 'assets-card-list': true },
     snapMode: 'mandatory', scrollPaddingTop: '2.6rem', footerSpacerHeight: null,
     showStickyHeader: true, showFirstGroupMarker: false,
@@ -99,7 +99,7 @@ export class CommunityGroupsPopupComponent implements OnInit {
       const group = this.store.changed(); if (!group) return;
       const card = this.card(group);
       const { bucket, category } = this.query.filters;
-      const matches = group.lifecycleStatus !== 'deleted' && (!category || category === group.category) && groupMembershipBucket(group) === bucket
+      const matches = (group.lifecycleStatus !== 'deleted' || bucket === 'trash') && (!category || category === group.category) && groupMembershipBucket(group) === bucket
         && (bucket !== 'explore' || group.lifecycleStatus !== 'under-review' && group.ownerUserId !== this.store.openUserId() && group.visibility !== 'invitation'
           && (!group.moderationStatus || group.moderationStatus === 'accepted'));
       if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
@@ -115,12 +115,12 @@ export class CommunityGroupsPopupComponent implements OnInit {
     const toolbarControls: PopupControl[] = [];
     if (!this.explore) toolbarControls.push({
       id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
-      trigger: { label: bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
-        counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
-      items: (['hosting', 'participation', 'pending', 'invitations'] as const).map(id => ({ id,
-        label: id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`, ...GROUP_BUCKET_STYLE[id],
+      trigger: { label: bucket === 'trash' ? 'trash' : bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
+        counter: bucket === 'explore' || bucket === 'trash' ? 0 : this.store.counters()[bucket] },
+      items: (['hosting', 'participation', 'pending', 'invitations', 'trash'] as const).map(id => ({ id,
+        label: id === 'trash' ? 'trash' : id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`, ...GROUP_BUCKET_STYLE[id],
         kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
-        counter: this.store.counters()[id], counterTone: 'alert' }))
+        counter: id === 'trash' ? 0 : this.store.counters()[id], counterTone: 'alert' }))
     });
     if (this.explore) toolbarControls.push({
       id: 'category', kind: 'menu', align: 'start', menuKind: 'select',

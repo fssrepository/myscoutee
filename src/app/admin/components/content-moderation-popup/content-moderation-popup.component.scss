@@ -1,4 +1,18 @@
+@use '../../../shared/ui/styles/contextual-colors' as colors;
+
 :host { display: contents; }
+.moderation-error {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: .65rem .8rem;
+  border: 1px solid colors.$danger-border;
+  border-radius: .7rem;
+  background: colors.$danger-background;
+  color: colors.$danger-foreground;
+  font-size: .8rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
 app-smart-list { flex: 1 1 auto; min-height: 0; }
 .moderation-settings { display: grid; gap: 1rem; padding: .8rem; }
 .moderation-settings__parameters { display: grid; gap: 1rem; min-width: 0; margin: 0; padding: .74rem; border: 1px solid rgba(133, 91, 185, .24); border-radius: 12px; background: linear-gradient(180deg, #f6efff 0%, #ede2ff 100%); }

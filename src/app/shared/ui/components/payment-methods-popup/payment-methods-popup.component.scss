@@ -1,3 +1,5 @@
+@use './payment-feedback';
+
 :host { display: contents; }
 
 .payment-methods-popup__body {
@@ -29,7 +31,6 @@
 .payment-methods-popup__history-total:first-child { margin-inline-start: auto; }
 .payment-methods-popup__history-total--expense { color: #c4313c; background: #fff1f2; }
 .payment-methods-popup__history-total--income { color: #16845b; background: #edf9f3; }
-.payment-methods-popup__error { margin: 0; padding: .68rem .8rem; border: 1px solid rgba(180, 35, 24, .22); border-radius: .7rem; background: #fff1f0; color: #a82c22; font-size: .8rem; font-weight: 700; }
 .payment-methods-popup__provider-shell { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; height: 100%; min-height: 0; }
 .payment-methods-popup__provider-brand { display: flex; align-items: center; justify-content: center; min-height: 3rem; padding: .6rem 1rem; border-bottom: 1px solid rgba(67, 91, 132, .14); background: #fff; }
 .payment-methods-popup__provider-brand img { display: block; width: auto; max-width: 7.5rem; height: 1.8rem; object-fit: contain; }

@@ -1,5 +1,4 @@
-import { AppRuntimeStore } from './app-runtime.store';
-import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../../core/base/services/users.service';
+import { UsersService } from '../../../core/base/services/users.service';
 import { AppUtils } from '../../../app-utils';
 import { ContentModerationStore } from './content-moderation.store';
 import type { AppMenuItem, AppMenuPalette } from '../../components/core/menu';
@@ -20,7 +19,6 @@ export class GroupWorkspaceStore {
   readonly context = inject(GroupWorkspaceContextService);
   private readonly service = inject(CommunityGroupsService);
   private readonly users = inject(UsersService);
-  private readonly runtime = inject(AppRuntimeStore);
   private sessionKey = '';
   private readonly profile = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
@@ -55,7 +53,7 @@ export class GroupWorkspaceStore {
   readonly error = signal('');
   readonly counters = computed(() => this.attentionRows().reduce((counts, workspace) => {
     const bucket = groupMembershipBucket(workspace);
-    if (bucket !== 'explore') counts[bucket] += workspace.activity;
+    if (bucket !== 'explore' && bucket !== 'trash') counts[bucket] += workspace.activity;
     return counts;
   }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }));
   private readonly poller = new UiTaskScheduler({
@@ -79,7 +77,7 @@ export class GroupWorkspaceStore {
         this.workspaceSnapshots.update(workspaces => {
           const previous = workspaces.find(workspace => workspace.groupId === change.group.id);
           const remaining = workspaces.filter(workspace => workspace.groupId !== change.group.id);
-          if (!change.group.membershipStatus) return remaining;
+          if (!change.group.membershipStatus || change.group.membershipStatus === 'deleted' || change.group.membershipStatus === 'blocked') return remaining;
           return [...remaining, {
             ...previous, groupId: change.group.id, profileId: previous?.profileId ?? null,
             name: change.group.name, activity: change.group.activity, role: change.group.role ?? '',
@@ -161,7 +159,7 @@ export class GroupWorkspaceStore {
   async select(groupId: string | null): Promise<boolean> {
     if (this.context.switching()) return false;
     if ((this.context.active()?.groupId ?? null) === groupId
-        && this.runtime.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success') return true;
+        && this.users.profileExtLoadState().status === 'success') return true;
     const generation = this.generation;
     this.error.set(''); this.context.switching.set(true);
     try {

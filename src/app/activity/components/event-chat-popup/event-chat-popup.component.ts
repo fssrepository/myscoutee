@@ -721,6 +721,7 @@ export class EventChatPopupComponent implements OnDestroy {
       : [];
     if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
       || this.session()?.item.channelType === 'groupSupport'
+      || this.session()?.item.channelType === 'contact'
       || this.isServiceChat()
       || this.isBlockedSupportChat()) {
       return supportHistoryControls;
@@ -1087,11 +1088,12 @@ export class EventChatPopupComponent implements OnDestroy {
     const isCurrent = () => !this.destroyed && this.activeUserId() === actorId && this.session()?.openedAtIso === session.openedAtIso;
     this.contactInviteLoading = true;
     try {
-      const contacts = await this.contactsService.loadContacts(actorId);
+      const { contacts, records } = await this.contactsService.loadChatAccess();
       if (!isCurrent()) return;
+      const approvedIds = new Set(records.filter(record => record.status === 'approved').map(record => record.contact.userId));
       const now = new Date().toISOString();
       const candidates: ContractTypes.ActivityMemberDTO[] = contacts
-        .filter(contact => contact.userId && contact.userId !== actorId && !this.session()!.item.memberIds.includes(contact.userId))
+        .filter(contact => approvedIds.has(contact.userId) && contact.userId !== actorId && !this.session()!.item.memberIds.includes(contact.userId))
         .map(contact => ({ id: contact.id, userId: contact.userId, name: contact.name, initials: contact.initials,
           gender: contact.gender, city: contact.city, avatarUrl: contact.avatarUrl, role: 'Member', status: 'pending',
           statusText: '', requestKind: 'invite', pendingSource: null, invitedByActiveUser: true,

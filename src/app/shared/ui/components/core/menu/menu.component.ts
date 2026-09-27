@@ -674,7 +674,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get showMobileClose(): boolean {
-    if (this.resolvedLayout !== 'mobile' || this.usesInlinePanel || this.isBottomPanelMode
+    if (!this.isMobileViewport || this.resolvedLayout !== 'mobile' || this.usesInlinePanel || this.isBottomPanelMode
       || this.panelMode === 'anchored') return false;
     const items = this.visibleListItems;
     if (items.some(item => item.kind === 'rate')) return false;

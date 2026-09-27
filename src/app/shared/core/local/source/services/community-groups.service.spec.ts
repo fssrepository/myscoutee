@@ -43,7 +43,14 @@ describe('Community membership writes and recipient attention', () => {
         write: (update: (current: State) => State) => { state = update(state); },
         whenReady: async () => undefined
       } },
-      { provide: LocalUsersRepository, useValue: { queryUserById: (id: string) => state[USERS_TABLE_NAME].byId[id] ?? null } },
+      { provide: LocalUsersRepository, useValue: {
+        queryUserById: (id: string) => state[USERS_TABLE_NAME].byId[id] ?? null,
+        upsertUser: (user: UserRecord) => {
+          if (!state[USERS_TABLE_NAME].byId[user.id]) state[USERS_TABLE_NAME].ids.push(user.id);
+          state[USERS_TABLE_NAME].byId[user.id] = user;
+        },
+        selectWorkspace: async (id: string, groupId: string | null) => { state[USERS_TABLE_NAME].byId[id].activeWorkspaceGroupId = groupId; }
+      } },
       { provide: LocalAdminModerationRepository, useValue: {} },
       { provide: RouteDelayService, useValue: { waitForRouteDelay: async () => undefined } }
     ] });
@@ -59,6 +66,120 @@ describe('Community membership writes and recipient attention', () => {
   });
 
   afterEach(() => TestBed.resetTestingModule());
+
+  function eventInviter(): string {
+    state.communityGroups.byId['group'].policy.workspace = true;
+    const id = 'group:group:member';
+    state[USERS_TABLE_NAME].byId[id] = { ...state[USERS_TABLE_NAME].byId['member'], id, accountUserId: 'member', workspaceGroupId: 'group' };
+    state[USERS_TABLE_NAME].ids.push(id);
+    return id;
+  }
+
+  it('admits an event-link recipient through the normal group acceptance and reuses its profile on replay', async () => {
+    const inviter = eventInviter();
+    const first = await service.claimEventInvite('group', inviter, 'guest');
+    expect(member('guest').status).toBe('accepted');
+    expect(first).toMatchObject({id: 'group:group:guest', workspaceGroupId: 'group', accountUserId: 'guest'});
+    expect(state.users.byId['guest'].activeWorkspaceGroupId).toBe('group');
+    const noticeCount = notices().length;
+    await service.claimEventInvite('group', inviter, 'guest');
+    expect(state.users.ids.filter(id => id === first.id)).toHaveLength(1);
+    expect(notices()).toHaveLength(noticeCount);
+  });
+
+  it('does not let an event link bypass removal or a pending restoration approval', async () => {
+    const inviter = eventInviter();
+    await service.invite('admin', 'group', ['guest']);
+    await service.action('admin', 'group', 'guest', 'remove');
+    await expect(service.claimEventInvite('group', inviter, 'guest')).rejects.toThrow('Forbidden');
+    await service.action('guest', 'group', 'guest', 'restore');
+    await expect(service.claimEventInvite('group', inviter, 'guest')).rejects.toThrow('Forbidden');
+    expect(member('guest').status).toBe('pending');
+    expect(state.users.byId['group:group:guest']).toBeUndefined();
+  });
+
+  const page = (userId: string, bucket: 'trash' | 'participation' | 'pending' | 'explore') =>
+    service.page(userId, { filters: { bucket }, pageSize: 20 });
+
+  it('keeps a voluntary leave in Trash and restores accepted membership without admission', async () => {
+    const left = await service.action('member', 'group', 'member', 'remove');
+    expect(left.group?.membershipStatus).toBe('deleted');
+    expect((await page('member', 'trash')).items.map(g => g.id)).toEqual(['group']);
+    expect((await page('member', 'participation')).items).toEqual([]);
+    expect((await page('member', 'explore')).items).toEqual([]);
+    expect((await service.workspaces('member'))).toEqual([]);
+    const restored = await service.action('member', 'group', 'member', 'restore');
+    expect(restored.group).toMatchObject({ membershipStatus: 'accepted', requestKind: null, acceptedMembers: 2 });
+    expect((await page('member', 'trash')).items).toEqual([]);
+    expect((await page('member', 'participation')).items).toHaveLength(1);
+    const count = notices().length;
+    await service.action('member', 'group', 'member', 'restore');
+    expect(notices()).toHaveLength(count);
+  });
+
+  it('requires fresh approval after an administrator removes a member, including invitation-only groups', async () => {
+    state.communityGroups.byId['group'].visibility = 'invitation';
+    await service.action('admin', 'group', 'member', 'remove');
+    expect(member('member').status).toBe('blocked');
+    expect((await page('member', 'trash')).items[0].membershipStatus).toBe('blocked');
+    await expect(service.action('member', 'group', 'member', 'remove')).rejects.toThrow();
+    await expect(service.detail('member', 'group')).rejects.toThrow();
+    const restored = await service.action('member', 'group', 'member', 'restore');
+    expect(restored.group).toMatchObject({ membershipStatus: 'pending', requestKind: 'join', acceptedMembers: 1 });
+    expect((await page('member', 'pending')).items).toHaveLength(1);
+    expect((await service.workspaces('member')).filter(w => w.membershipStatus === 'accepted')).toEqual([]);
+    await expect(service.action('member', 'group', 'member', 'accept')).rejects.toThrow('Forbidden');
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member').status).toBe('pending');
+    await service.action('admin', 'group', 'member', 'accept');
+    expect(member('member').status).toBe('accepted');
+  });
+
+  it('retains another former member when an invitation changes the live roster', async () => {
+    await service.action('member', 'group', 'member', 'remove');
+    await service.invite('admin', 'group', ['guest']);
+    expect((await page('member', 'trash')).items).toHaveLength(1);
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member').status).toBe('accepted');
+    expect(member('guest').status).toBe('pending');
+  });
+
+  it('keeps deleted groups in Trash and blocks members until an Admin restores the group', async () => {
+    await service.action('member', 'group', 'member', 'remove');
+    await service.action('admin', 'group', 'admin', 'remove');
+    expect((await page('member', 'trash')).items[0]).toMatchObject({ lifecycleStatus: 'deleted', canRestoreGroup: false });
+    await expect(service.action('member', 'group', 'member', 'restore')).rejects.toThrow('Group not found');
+    await expect(service.join('member', 'group')).rejects.toThrow('Group not found');
+    expect((await page('admin', 'trash')).items[0]).toMatchObject({ lifecycleStatus: 'deleted', canRestoreGroup: true });
+    await service.action('admin', 'group', 'admin', 'restore');
+    expect(state.communityGroups.byId['group']).toMatchObject({ lifecycleStatus: 'active', ownerUserId: 'admin' });
+    expect(member('admin')).toMatchObject({ status: 'accepted', role: 'Admin' });
+    expect(member('member').status).toBe('deleted');
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member')).toMatchObject({ status: 'accepted', role: 'Member' });
+  });
+
+  it('allows an earlier departed Admin to restore and own the deleted group', async () => {
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    await service.action('member', 'group', 'member', 'remove');
+    await service.action('admin', 'group', 'admin', 'remove');
+    expect((await page('member', 'trash')).items[0].canRestoreGroup).toBe(true);
+    await service.action('member', 'group', 'member', 'restore');
+    expect(state.communityGroups.byId['group']).toMatchObject({ lifecycleStatus: 'active', ownerUserId: 'member' });
+    expect(member('member')).toMatchObject({ status: 'accepted', role: 'Admin' });
+    const before = notices().length;
+    await service.action('member', 'group', 'member', 'restore');
+    expect(notices()).toHaveLength(before);
+    await service.action('admin', 'group', 'admin', 'restore');
+    expect(member('admin')).toMatchObject({ status: 'accepted', role: 'Member' });
+  });
+
+  it('restores membership without resurrecting former administrator privileges', async () => {
+    await service.action('admin', 'group', 'member', 'promote-admin');
+    await service.action('member', 'group', 'member', 'remove');
+    await service.action('member', 'group', 'member', 'restore');
+    expect(member('member')).toMatchObject({ status: 'accepted', role: 'Member', managerGrantedByUserId: null });
+  });
 
   it('records the granting Admin and denies revocation by another Admin', async () => {
     await service.invite('admin', 'group', ['guest']);

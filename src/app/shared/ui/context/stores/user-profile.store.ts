@@ -72,6 +72,12 @@ export interface UserProfileSaveSignal {
   previousProfile: UserDto | null;
 }
 
+export interface UserLocationSyncToken {
+  userId: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -109,9 +115,26 @@ export class UserProfileStore {
   });
   readonly activeNotificationDevices = computed(() => this.activeUserProfile()?.notificationDevices ?? []);
 
-  applyUserRealtimeLocation(userId: string, coordinates: UserRealtimeLongPollResponseDto['locationCoordinates']): void {
+  captureUserLocationSyncToken(userId: string): UserLocationSyncToken {
+    const normalizedUserId = userId.trim();
+    const coordinates = this._userProfilesByUserId()[normalizedUserId]?.locationCoordinates;
+    return {
+      userId: normalizedUserId,
+      latitude: coordinates?.latitude ?? null,
+      longitude: coordinates?.longitude ?? null
+    };
+  }
+
+  applyUserRealtimeLocation(
+    userId: string,
+    coordinates: UserRealtimeLongPollResponseDto['locationCoordinates'],
+    token?: UserLocationSyncToken
+  ): void {
     if (coordinates === undefined) return;
     const current = this._userProfilesByUserId()[userId];
+    if (token && (token.userId !== userId
+      || (current?.locationCoordinates?.latitude ?? null) !== token.latitude
+      || (current?.locationCoordinates?.longitude ?? null) !== token.longitude)) return;
     if (!current || (current.locationCoordinates?.latitude === coordinates?.latitude
       && current.locationCoordinates?.longitude === coordinates?.longitude)) return;
     this._userProfilesByUserId.update(state => ({ ...state, [userId]: {

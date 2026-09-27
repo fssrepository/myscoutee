@@ -46,7 +46,10 @@ describe('Contacts permission buckets', () => {
     await component.openContactChat(row('outgoing', 'recipient'));
     expect(component.dialogStore.openNotice).toHaveBeenCalled();
     expect(component.chatAccess.change).not.toHaveBeenCalled();
-    expect(component.chatPalette(row('new', 'sender'))).toBe('orange');
+    expect(component.chatPalette(row('new', 'sender'))).toBe('purple');
+    expect(component.chatPalette(row('outgoing', 'recipient'))).toBe('purple');
+    expect(component.chatStatusLabel(row('new', 'sender'))).toBe('contact.chat.pending');
+    expect(component.chatStatusLabel(row('outgoing', 'recipient'))).toBe('contact.chat.pending');
     expect(component.chatPalette(row('new', 'sender', 'approved'))).toBe('green');
     expect(component.chatPalette(row('new', 'sender', 'rejected'))).toBe('red');
   });

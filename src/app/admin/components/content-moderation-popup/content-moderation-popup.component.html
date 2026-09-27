@@ -1,6 +1,6 @@
 @if (isOpen()) {
   <app-popup [model]="model()" [zIndex]="2470">
-    @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
+    @if (error()) { <p class="moderation-error" role="alert">{{ 'moderation.failed' | i18n }}</p> }
     <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="rowTemplate" (menuItemSelect)="decide($event)"></app-smart-list>
     <ng-template #rowTemplate let-item let-openMenu="openMenu">
       <single-row [row]="row(item)" [clickable]="true" [useSharedMenu]="true"
@@ -15,6 +15,7 @@
 }
 @if (settingsDraft(); as draft) {
   <app-popup [model]="settingsModel()" [zIndex]="2480">
+    @if (settingsError()) { <p class="moderation-error" role="alert">{{ 'moderation.failed' | i18n }}</p> }
     <div class="moderation-settings">
       <app-menu kind="inline" [items]="enabledItems()" (itemSelect)="toggleEnabled()"></app-menu>
       <fieldset class="moderation-settings__parameters" [disabled]="saving() || !draft.enabled">
@@ -32,7 +33,6 @@
             [closeOnSelect]="false" (itemSelect)="toggleCategory($event)"></app-menu>
         </div>
       </fieldset>
-      @if (error()) { <p role="alert">{{ 'moderation.failed' | i18n }}</p> }
     </div>
   </app-popup>
 }

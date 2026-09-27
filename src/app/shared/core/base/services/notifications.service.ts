@@ -51,6 +51,7 @@ export class NotificationsService extends BaseRouteModeService {
   ): Promise<NotificationReadResponseDto> {
     const result = await this.notificationService.markRead(userId, notificationId, signal);
     return {
+      communityActivityDelta: result.communityActivityDelta,
       notification: {
         ...result.notification,
         payload: result.notification.payload ? { ...result.notification.payload } : null

@@ -19,10 +19,7 @@ function history(direction = 'all') {
   };
   const component = Object.assign(Object.create(PaymentMethodsPopupComponent.prototype), {
     activeUserId: () => 'payer', historyList: () => list, historyDirectionRef: signal(direction),
-    euroSummary: signal(null), spendingTotalsRef: signal({}), incomeTotalsRef: signal({}),
-    historyTotalsLoadedRef: signal(false), pendingRefundCountRef: signal(0), revisionRef: signal(7),
-    activityStore: { patchUserCounterOverrides: vi.fn() },
-    userProfileStore: { patchActiveUserProfile: vi.fn() }, loadAllHistory: vi.fn()
+    store: { applyHistorySummary: vi.fn() }, revisionRef: signal(7), loadAllHistory: vi.fn()
   });
   return { component, list, rows: () => rows, untouched };
 }
@@ -46,8 +43,7 @@ describe('Payment history mutation reconciliation', () => {
     expect(list.reinsertVisibleItem).toHaveBeenCalledTimes(1);
     expect(component.revisionRef()).toBe(7);
     expect(component.loadAllHistory).not.toHaveBeenCalled();
-    expect(component.pendingRefundCountRef()).toBe(1);
-    expect(component.spendingTotalsRef()).toEqual({ EUR: 100 });
+    expect(component.store.applyHistorySummary).toHaveBeenCalledWith('payer', mutation);
   });
 
   it('keeps an incoming refund out of the expense filter while patching its original payment', () => {

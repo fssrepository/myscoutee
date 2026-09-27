@@ -1,3 +1,5 @@
+@use '../../../../styles/media-badge' as mediaBadge;
+
 :host {
   display: block;
   width: 100%;
@@ -453,6 +455,16 @@ button.shared-card-context-avatar-badge {
   height: 14px;
   font-size: 14px;
   line-height: 14px;
+}
+
+button.activities-rate-score-badge:has(> .activities-rate-score-chevron) {
+  @include mediaBadge.actionable;
+  min-width: 0;
+  padding-inline-start: 0.3rem;
+}
+
+.activities-rate-score-badge > .activities-rate-score-chevron {
+  @include mediaBadge.chevron;
 }
 
 .activities-rate-score-badge-floating {

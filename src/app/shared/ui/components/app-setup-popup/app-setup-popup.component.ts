@@ -1,14 +1,11 @@
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { DialogStore } from '../../context/stores/dialog.store';
-import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { PopupComponent, type PopupModel } from '../core/popup';
 import { AppMenuComponent, type AppMenuItem, type AppMenuModel, type AppMenuItemSelectEvent } from '../core/menu';
 import { I18nPipe } from '../../pipes';
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { SessionService } from '../../../core/base/services/session.service';
 
 @Component({
   selector: 'app-setup-popup',
@@ -18,9 +15,6 @@ import { SessionService } from '../../../core/base/services/session.service';
 })
 export class AppSetupPopupComponent {
   readonly store = inject(AppSetupStore);
-  private readonly session = inject(SessionService);
-  private readonly dialogs = inject(DialogStore);
-  private readonly presence = inject(PopupPresenceStore);
   private readonly i18n = inject(I18nService);
   readonly helpOpen = signal(false);
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
@@ -28,7 +22,7 @@ export class AppSetupPopupComponent {
     title: 'app.setup.title', size: 'small', height: 'auto',
     mobilePresentation: 'compact', headerTone: 'accent', headerPalette: 'violet',
     showClose: true, closeOnBackdrop: false, backdropTone: 'dim',
-    headerActions: [{ id: 'help', icon: 'help_outline', palette: 'blue',
+    headerActions: [{ id: 'help', icon: 'question_mark', palette: 'blue',
       ariaLabel: this.i18n.translate('app.setup.help.title') }],
     onAction: () => this.helpOpen.set(true)
   }));
@@ -84,10 +78,6 @@ export class AppSetupPopupComponent {
   constructor() {
     effect(() => {
       if (!this.store.isOpen()) this.helpOpen.set(false);
-      // An installable browser must not interrupt an authenticated session,
-      // including the interval before its profile has finished loading.
-      if (!this.session.currentSession() && this.store.pwa.installPromptVisible() && !this.store.isOpen()
-        && !this.dialogs.dialog() && !this.presence.visible()) this.store.open();
     });
   }
 

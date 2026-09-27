@@ -59,11 +59,11 @@
                 (click)="openSharedUrl(reportMemberShareUrl, $event)"
                 [card]="reportedUserImageCard(item.user, {
                   idPrefix: 'report-detail-member',
-                  title: memberCardTitle(item.user, reportedHandle(item)),
+                  title: memberCardTitle(item.user),
                   compact: true
                 })"
                 [menuId]="'report-detail-member-menu-' + (item.user.userId || item.user.name)"
-                [menuTitle]="memberCardTitle(item.user, reportedHandle(item))"
+                [menuTitle]="memberCardTitle(item.user)"
                 [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'report-detail')"
                 [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail', item)"
               ></app-image-card>
@@ -71,8 +71,8 @@
               <button
                 type="button"
                 class="admin-report-context-card"
-                [disabled]="!reportSourceShareUrl"
-                (click)="openSharedUrl(reportSourceShareUrl, $event)"
+                [disabled]="item.report.sourceType !== 'community' && !reportSourceShareUrl"
+                (click)="item.report.sourceType === 'community' ? reviewReport(item.report) : openSharedUrl(reportSourceShareUrl, $event)"
                 >
                 <span class="admin-report-context-head">
                   <span class="admin-report-context-avatar admin-report-context-source-avatar">
@@ -88,8 +88,8 @@
                 </span>
                 <span class="admin-report-context-detail">{{ sourceCardSubtitle(item.report) }}</span>
                 <span class="admin-report-context-foot">
-                  <mat-icon>open_in_new</mat-icon>
-                  <span>{{ 'open.shared.source' | i18n }}</span>
+                  <mat-icon>{{ item.report.sourceType === 'community' ? 'visibility' : 'open_in_new' }}</mat-icon>
+                  <span>{{ (item.report.sourceType === 'community' ? 'view' : 'open.shared.source') | i18n }}</span>
                 </span>
               </button>
             </div>

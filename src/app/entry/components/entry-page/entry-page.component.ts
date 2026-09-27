@@ -598,7 +598,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       }),
       onNewProfile: () => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {
-          this.onDemoNewProfileRequested({
+          void this.onDemoNewProfileRequested({
             complete: () => resolve(true),
             fail: () => resolve(false)
           });
@@ -674,8 +674,12 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected onDemoNewProfileRequested(request: EntryDemoNewProfileRequestEvent): void {
+  protected async onDemoNewProfileRequested(request: EntryDemoNewProfileRequestEvent): Promise<void> {
     const user = this.buildDemoRegistrationUser();
+    if (!await this.requestLocationAccessFromDialog(user.id)) {
+      request.fail();
+      return;
+    }
     this.pendingDemoSessionUserId = user.id;
     this.openOnboardingGate(
       user,

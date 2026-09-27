@@ -1402,7 +1402,8 @@ export class AdminReportsPopupComponent {
     }
     const [memberUrl, sourceUrl] = await Promise.all([
       this.createAdminHelpUrl(ownerUserId, this.reportMemberTargetUrl(item)),
-      this.createAdminHelpUrl(ownerUserId, this.reportSourceTargetUrl(item.report))
+      item.report.sourceType === 'community' ? Promise.resolve('')
+        : this.createAdminHelpUrl(ownerUserId, this.reportSourceTargetUrl(item.report))
     ]);
     if (version !== this.reportShareLinksVersion || this.reportDetail?.id !== item.id) {
       return;

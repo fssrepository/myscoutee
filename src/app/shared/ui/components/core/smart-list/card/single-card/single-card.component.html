@@ -157,6 +157,9 @@
           >
           <mat-icon>star</mat-icon>
           <span>{{ cardBadge.label }}</span>
+          @if (!cardBadge.disabled) {
+            <mat-icon class="activities-rate-score-chevron" aria-hidden="true">chevron_right</mat-icon>
+          }
         </button>
       } @else {
         <span

@@ -22,6 +22,23 @@ describe('Member location availability', () => {
     expect(runtime.getLoadingState('user-by-id').status).toBe('success');
   });
 
+  it('ignores a location poll started before a profile load saved newer coordinates', () => {
+    const profile = TestBed.inject(UserProfileStore);
+    profile.setActiveUserProfile({ id: 'member', profileStatus: 'public' } as UserDto);
+    const stalePoll = profile.captureUserLocationSyncToken('member');
+
+    profile.setUserProfile({
+      id: 'member', profileStatus: 'public',
+      locationCoordinates: { latitude: 47.4979, longitude: 19.0402 }
+    } as UserDto);
+    profile.applyUserRealtimeLocation('member', null, stalePoll);
+    expect(profile.activeUserLocationMissing()).toBe(false);
+
+    const currentPoll = profile.captureUserLocationSyncToken('member');
+    profile.applyUserRealtimeLocation('member', null, currentPoll);
+    expect(profile.activeUserLocationMissing()).toBe(true);
+  });
+
   it('does not apply member location restrictions to the admin or operator workspace', () => {
     const profile = TestBed.inject(UserProfileStore);
     profile.setActiveUserProfile({ id: 'admin', admin: true } as UserDto);

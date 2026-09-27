@@ -34,7 +34,7 @@
       ></app-smart-list>
 
       <ng-template #contactItemTemplate let-contact>
-        <article class="contact-card" [class.is-menu-open]="isActionMenuOpen(contact)">
+        <article class="contact-card" [class.contact-card--request]="chatAccess.requestsOnly()" [class.is-menu-open]="isActionMenuOpen(contact)">
           <div class="contact-avatar-shell">
             <span
               class="contact-avatar"
@@ -51,10 +51,12 @@
             <div class="contact-title-row">
               <div class="contact-title-wrap">
                 <h3>{{ contact.name }}</h3>
-                @if (contact.headline) {
-                  <p class="contact-headline">{{ contact.headline }}</p>
-                } @else {
-                  <p class="contact-headline contact-headline-muted">Quick reach card</p>
+                <p class="contact-city">
+                  <mat-icon>location_on</mat-icon>
+                  <span>{{ contact.city || 'City not set yet' }}</span>
+                </p>
+                @if (chatAccess.requestsOnly() && contact.chatAccess?.requestedAtIso; as requestedAt) {
+                  <p class="contact-request-date">{{ requestedAt | date:'short' }}</p>
                 }
               </div>
               <div class="contact-menu-anchor">
@@ -78,29 +80,22 @@
                 ></app-menu-trigger>
               </div>
             </div>
-
-            <p class="contact-city">
-              <mat-icon>location_on</mat-icon>
-              <span>{{ contact.city || 'City not set yet' }}</span>
-            </p>
-
-            @if (contact.chatAccess?.requestedAtIso) {
-              <p class="contact-request-time">{{ contact.chatAccess.requestedAtIso | date:'short' }}</p>
-            }
+          </div>
             @if (contact.userId || contact.methods.length > 0) {
               <div class="contact-method-chips">
                 @if (contact.userId) {
-                  <button type="button" class="contact-method-chip contact-method-chip-chat" [disabled]="openingContactChat() || chatAccess.busy()" [attr.data-palette]="chatPalette(contact)"
-                    (click)="openContactChat(contact, $event)" [attr.aria-label]="'chat.contacts.open' | i18n">
-                    <img src="assets/logo/heart.webp" alt="" width="20" height="20" />
-                    <span>MyScoutee · {{ chatStatusLabel(contact) | i18n }}</span>
-                  </button>
+                  <app-menu class="contact-chat-action" kind="select"
+                    [model]="{ density: 'compact' }"
+                    [trigger]="contactChatTrigger(contact)"
+                    (itemSelect)="openContactChat(contact, $event.sourceEvent)">
+                  </app-menu>
                 }
                 @for (method of visibleMethodChips(contact); track method.id) {
-                  <button type="button" class="contact-method-chip" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
-                    <mat-icon>{{ method.icon }}</mat-icon>
-                    <span>{{ method.displayValue || method.label }}</span>
-                  </button>
+                  <app-menu class="contact-method-action" kind="select"
+                    [model]="{ density: 'compact' }"
+                    [trigger]="contactMethodTrigger(method)"
+                    (itemSelect)="runMethod(method, $event.sourceEvent)">
+                  </app-menu>
                 }
                 @if (hiddenMethodCount(contact) > 0) {
                   <span class="contact-method-chip contact-method-chip-more">
@@ -111,7 +106,6 @@
             } @else {
               <p class="contact-empty-methods">No availability methods yet. Use Edit to add phone, Facebook, email, and more.</p>
             }
-          </div>
         </article>
       </ng-template>
     </div>

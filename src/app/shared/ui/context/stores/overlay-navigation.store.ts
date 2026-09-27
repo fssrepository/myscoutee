@@ -1,8 +1,9 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, NgZone, inject } from '@angular/core';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 
-/** One same-route history boundary for the visible overlay stack.
- * Back dismisses the top surface; X removes the boundary when the stack empties.
+/** One same-route history boundary per visible overlay.
+ * Back dismisses the top surface; X consumes its existing boundary.
  * No session, consent, route or application data is stored in history.
  */
 @Injectable({ providedIn: 'root' })
@@ -10,20 +11,39 @@ export class OverlayNavigationStore {
   private readonly browser = inject(DOCUMENT).defaultView;
   private readonly zone = inject(NgZone);
   private readonly markerKey = '__myscouteeOverlay';
+  private readonly depthKey = '__myscouteeOverlayDepth';
   private readonly owner = `overlay-${Date.now()}-${Math.random()}`;
   private readonly surfaces = new Map<symbol, () => void>();
   private ownsEntry = false;
+  private depth = 0;
+  private forwardDepth = 0;
   private removingEntry = false;
   private anchorUrl = '';
   private anchorNavigationId: unknown;
   private scheduled = false;
   private destroyed = false;
+  private navigating = false;
 
   constructor() {
     this.clearOrphanMarker();
     this.browser?.addEventListener('popstate', this.onPopState, true);
+    const navigation = inject(Router).events.subscribe(event => {
+      if (event instanceof NavigationStart) {
+        this.navigating = true;
+        // Route navigation owns history now. Destroying the old route's
+        // overlays must not schedule a Back that cancels the destination.
+        this.clearOrphanMarker();
+        this.ownsEntry = false;
+        this.depth = 0;
+        this.forwardDepth = 0;
+      } else if (event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError) {
+        this.navigating = false;
+        this.scheduleReconcile();
+      }
+    });
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
+      navigation.unsubscribe();
       this.browser?.removeEventListener('popstate', this.onPopState, true);
       this.surfaces.clear();
     });
@@ -50,17 +70,23 @@ export class OverlayNavigationStore {
       // Keep same-route overlay traversal out of Router guards and entry consent.
       event.stopImmediatePropagation();
       const dismiss = this.ownsEntry && !this.removingEntry;
-      this.ownsEntry = false;
+      const previousDepth = this.depth;
+      this.depth = event.state?.[this.markerKey] === this.owner
+        ? Number(event.state[this.depthKey]) || 0 : 0;
+      this.ownsEntry = this.depth > 0;
       this.removingEntry = false;
-      if (dismiss) {
-        const close = Array.from(this.surfaces.values()).at(-1);
-        this.zone.run(() => close?.());
+      if (this.depth < previousDepth) this.forwardDepth = previousDepth;
+      if (dismiss && this.depth < previousDepth) {
+        const close = Array.from(this.surfaces.values()).reverse().slice(0, previousDepth - this.depth);
+        this.zone.run(() => close.forEach(dismissSurface => dismissSurface()));
       }
       // A busy/required surface may decline closure; retain its Back boundary.
       this.scheduleReconcile();
       return;
     }
     this.ownsEntry = false;
+    this.depth = 0;
+    this.forwardDepth = 0;
     this.removingEntry = false;
     // Forward must not resurrect a dismissed popup or re-run same-route guards.
     if (event.state?.[this.markerKey] && this.surfaces.size === 0) {
@@ -80,25 +106,37 @@ export class OverlayNavigationStore {
 
   private reconcile(): void {
     const browser = this.browser;
-    if (!browser || this.removingEntry || this.destroyed) return;
+    if (!browser || this.removingEntry || this.destroyed || this.navigating) return;
     const state = browser.history.state;
-    const isOurEntry = state?.[this.markerKey] === this.owner;
-    if (this.surfaces.size > 0 && !isOurEntry) {
+    const depth = state?.[this.markerKey] === this.owner ? Number(state[this.depthKey]) || 0 : 0;
+    const desiredDepth = this.surfaces.size;
+    if (desiredDepth > depth && this.forwardDepth >= desiredDepth) {
+      // A busy/required surface refused Back. Restore its existing entry;
+      // pushState after a native Back makes Chrome skip this document's history.
+      this.removingEntry = true;
+      browser.history.go(desiredDepth - depth);
+    } else if (desiredDepth > depth) {
       this.anchorUrl = browser.location.href;
       this.anchorNavigationId = state?.navigationId;
-      browser.history.pushState({ ...state, [this.markerKey]: this.owner }, '', this.anchorUrl);
+      for (let nextDepth = depth + 1; nextDepth <= desiredDepth; nextDepth++) {
+        browser.history.pushState({ ...state, [this.markerKey]: this.owner, [this.depthKey]: nextDepth }, '', this.anchorUrl);
+      }
+      this.depth = desiredDepth;
       this.ownsEntry = true;
-    } else if (this.surfaces.size === 0 && isOurEntry) {
+      this.forwardDepth = 0;
+    } else if (desiredDepth < depth) {
       this.removingEntry = true;
       this.ownsEntry = false;
-      browser.history.back();
+      browser.history.go(desiredDepth - depth);
+    } else {
+      this.forwardDepth = 0;
     }
   }
 
   private clearOrphanMarker(): void {
     const browser = this.browser;
     if (!browser?.history.state?.[this.markerKey]) return;
-    const { [this.markerKey]: _marker, ...state } = browser.history.state;
+    const { [this.markerKey]: _marker, [this.depthKey]: _depth, ...state } = browser.history.state;
     browser.history.replaceState(state, '', browser.location.href);
   }
 }

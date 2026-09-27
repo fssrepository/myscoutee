@@ -92,6 +92,7 @@ export class AssetMemberPickerPopupComponent {
 
   protected isOpen = false;
   protected title = 'Invite members';
+  protected headerTitle = 'Invite members';
   protected ownerId = '';
   protected ownerType: AppConstants.ActivityMemberOwnerType = 'event';
   private parentOwner: ActivityContracts.ActivityMemberOwnerRef | null = null;
@@ -158,10 +159,10 @@ export class AssetMemberPickerPopupComponent {
 
   protected invitePopupModel(): PopupModel<AssetMemberPickerMenuContext> {
     return {
-      title: 'Invite members',
+      title: this.headerTitle,
       subtitle: this.title !== 'Invite members' ? this.title : null,
       translateSubtitle: false,
-      ariaLabel: 'Invite members',
+      ariaLabel: this.headerTitle,
       closeAriaLabel: 'Close',
       size: 'wide',
       height: 'full',
@@ -218,6 +219,7 @@ export class AssetMemberPickerPopupComponent {
           }
         : null;
       this.title = context.title?.trim() || 'Invite members';
+      this.headerTitle = context.headerTitle?.trim() || 'Invite members';
       this.inviteSort = 'recent';
       this.selectedUserIds = [];
       this.persistedSelectedUserIds = new Set<string>();
@@ -541,6 +543,7 @@ export class AssetMemberPickerPopupComponent {
   private resetState(): void {
     this.isOpen = false;
     this.title = 'Invite members';
+    this.headerTitle = 'Invite members';
     this.ownerId = '';
     this.ownerType = 'event';
     this.parentOwner = null;

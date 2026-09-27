@@ -103,6 +103,7 @@ export class HttpNotificationsService implements NotificationService {
     }
     return {
       notification,
+      communityActivityDelta: response?.communityActivityDelta,
       unreadCount: this.nonNegativeInteger(response?.unreadCount)
     };
   }

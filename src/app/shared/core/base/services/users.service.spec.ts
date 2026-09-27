@@ -23,7 +23,7 @@ describe('Profile loads within a Firebase session', () => {
     const session = TestBed.inject(SessionService);
     const adapter = { queryUserById: vi.fn(), loadProfileExtById: vi.fn() };
     const service = Object.assign(Object.create(UsersService.prototype), {
-      session, workspace: { revision: signal(0), switching: signal(false), accountUserId: signal('member'), active: signal(null) },
+      session, profileExtLoadSession: signal(null), workspace: { revision: signal(0), switching: signal(false), accountUserId: signal('member'), active: signal(null) },
       location: { pendingLoginCoordinates: vi.fn().mockReturnValue(null), confirmLoginCoordinates: vi.fn() },
       isLocalRouteEnabled: () => false, setLoadStatus: vi.fn(),
       counterOverrideSignature: () => '', counterOverridesChangedSince: () => false,

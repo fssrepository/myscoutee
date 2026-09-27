@@ -1,4 +1,23 @@
 // Shared with the Activity event card occupancy badge.
+@mixin actionable {
+  gap: 0.1rem;
+  padding-inline-end: 0;
+  border-radius: 999px;
+}
+
+@mixin chevron {
+  display: inline-block;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  // Trim the icon font's side bearings while keeping the glyph contained.
+  text-align: left;
+  text-indent: -3px;
+  overflow: hidden;
+}
+
 @mixin surface {
   min-width: 0;
   height: 25px;

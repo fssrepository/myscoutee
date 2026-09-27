@@ -673,7 +673,7 @@
 
     > .form-flow__control { flex: 0 0 100%; }
     > .form-flow__control--half { flex: 0 0 auto; max-width: 100%; }
-    > .form-flow__control--align-end { margin-left: auto; }
+    > .form-flow__control--align-end { flex: 1 1 0; margin-left: auto; }
   }
 }
 
@@ -1363,6 +1363,7 @@
     }
 
     > .form-flow__control--align-end {
+      flex: 1 1 0;
       margin-left: auto;
     }
   }

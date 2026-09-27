@@ -26,7 +26,7 @@
           [card]="eventExploreInfoCard(record, groupLabel)"
           [useSharedMenu]="true"
           (selectionChange)="chatShare.toggle(shareItem(record))"
-          (mediaStartClick)="openHostImpressions(record)"
+          (mediaStartClick)="openHostProfile(record)"
           (mediaEndClick)="openEventExploreMembers(record)"
           (menuAction)="onEventExploreCardMenuAction(record, $event)"
           (menuRequest)="openEventExploreInfoCardMenu(record, $event)"

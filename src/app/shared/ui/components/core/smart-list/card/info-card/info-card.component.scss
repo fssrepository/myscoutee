@@ -680,6 +680,21 @@ button.ui-info-card__overlay-action {
   aspect-ratio: 1;
 }
 
+button.ui-info-card__overlay-action--avatar,
+button.ui-info-card__overlay-action--badge.ui-info-card__overlay-action--shape-circle {
+  width: auto;
+  border-radius: 999px;
+  aspect-ratio: auto;
+  padding-inline: 0.16rem;
+}
+
+button.ui-info-card__overlay-action--avatar .ui-info-card__overlay-avatar-image {
+  width: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
 .ui-info-card__overlay-action--ring-active {
   overflow: visible;
   box-shadow:
@@ -899,13 +914,12 @@ button.ui-info-card__overlay-action {
   color: currentColor;
 }
 
-.ui-info-card__overlay-detail .mat-icon {
+.ui-info-card__overlay-action .ui-info-card__overlay-detail .mat-icon {
   width: 11px;
   height: 11px;
   font-size: 11px;
   line-height: 11px;
   color: color-mix(in srgb, currentColor 88%, #111 12%);
-  transform: translateY(-0.5px);
 }
 
 .ui-info-card__overlay-badge-body {
@@ -923,6 +937,18 @@ button.ui-info-card__overlay-action {
   width: 16px;
   height: 16px;
   font-size: 16px;
+}
+
+button.ui-info-card__overlay-action:has(> .ui-info-card__overlay-chevron) {
+  @include mediaBadge.actionable;
+}
+
+.ui-info-card__overlay-action > .ui-info-card__overlay-chevron {
+  @include mediaBadge.chevron;
+}
+
+.ui-info-card__overlay-action--avatar > .ui-info-card__overlay-chevron {
+  color: #fff;
 }
 
 .ui-info-card__overlay-action--tone-default.ui-info-card__overlay-action--avatar {
@@ -1192,10 +1218,10 @@ button.ui-info-card__overlay-action {
   grid-area: 1 / 1;
   justify-self: center;
   margin: 0;
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  line-height: 15px;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
   transform-origin: center;
   transition: transform 0.16s ease, opacity 0.16s ease;
 }
@@ -1577,6 +1603,10 @@ button.asset-occupancy-badge:focus-visible {
 }
 
 .ui-info-card__selection {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  z-index: 6;
   display: inline-grid;
   place-items: center;
   border: 1px solid #b6cbea;
