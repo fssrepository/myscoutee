@@ -69,7 +69,8 @@ export class AssetTicketInfoCardConverter {
   }
 
   private static ticketMetaLine(row: AssetContracts.AssetTicketDTO): string {
-    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketBuilder.dateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
+    const source = [row.type === 'hosting' ? 'Hosting' : 'Event', row.workspaceGroupName?.trim()].filter(Boolean).join(' · ');
+    return `${source} · ${AssetTicketBuilder.dateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
   }
 
   private static ticketDistanceLabel(distanceMeters: number | null | undefined): string {
