@@ -53,7 +53,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     const invite = this.repository.findExternalInvite(token);
     if (!invite) return null;
     await this.waitForRouteDelay('/integrations');
-    const user = this.users.queryUserById(userId);
+    let user = this.users.queryUserById(userId);
     if (!user) throw new Error('User unavailable');
     if (invite.ownerType === 'community') {
       const actor = user.accountUserId ?? user.id;
@@ -68,8 +68,13 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     }
     const event = this.requireEventInvite(invite.ownerUserId, invite.entityId);
     const ownerProfile = this.users.queryUserById(invite.ownerUserId);
+    const workspaceGroupId = ownerProfile?.workspaceGroupId ?? null;
+    if (!workspaceGroupId && user.accountUserId) {
+      user = this.users.queryUserById(user.accountUserId);
+      if (!user) throw new Error('User unavailable');
+    }
     if ((ownerProfile?.workspaceGroupId ?? null) !== (user.workspaceGroupId ?? null)) throw new Error('Forbidden');
-    if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, invitationAvailable: false};
+    if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, workspaceGroupId, invitationAvailable: false};
     const owner = {ownerType: 'event' as const, ownerId: event.id};
     const current = this.members.peekMembersByOwner(owner);
     const inviterCanInvite = event.adminIds?.includes(invite.ownerUserId) || event.creatorUserId === invite.ownerUserId
@@ -78,9 +83,9 @@ export class LocalIntegrationService extends LocalRouteDelayService {
       if (!this.events.queryExploreItems(user.id, true).some(item => item.id === event.id)) throw new Error('Forbidden');
       const result = await this.eventActions.requestJoin(user.id, event.id);
       if (!result || result.membershipStatus === 'unchanged') throw new Error('Event participation is unavailable');
-      return {eventId: event.id, invitationAvailable: true};
+      return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
     }
-    if (!current.some(member => member.userId === userId && ['accepted', 'pending'].includes(member.status))) {
+    if (!current.some(member => member.userId === user.id && ['accepted', 'pending'].includes(member.status))) {
       const now = new Date().toISOString();
       const candidate: ActivityMemberDTO = {id: `event:${event.id}:${user.id}`, userId: user.id, name: user.name,
         initials: user.initials, gender: user.gender, city: user.city, statusText: user.statusText, role: 'Member',
@@ -91,7 +96,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
       await this.members.replaceMembersByOwner(owner, [...current, candidate], event.capacityTotal, invite.ownerUserId);
     }
     await this.repository.flushToIndexedDb();
-    return {eventId: event.id, invitationAvailable: true};
+    return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
   }
 
   private requireEventInvite(actor: string, entityId: string) {

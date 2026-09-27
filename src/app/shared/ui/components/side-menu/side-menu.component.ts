@@ -2557,12 +2557,19 @@ export class SideMenuComponent implements OnDestroy {
         await this.router.navigateByUrl(tree, { replaceUrl: true });
         return;
       }
+      if (claim.invitationAvailable) {
+        if (!await this.groupWorkspaces.select(claim.workspaceGroupId ?? null)) throw new Error('groups.switch.failed');
+        if (this.groupWorkspaces.context.accountUserId() !== accountId || this.router.url !== url) return;
+      }
       delete tree.queryParams['partnerInvite'];
-        delete tree.queryParams['affiliate'];
+      delete tree.queryParams['affiliate'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
-      await this.usersService.loadUserById(userId);
-      if (this.userProfileStore.activeUserId() === userId) {
+      const selectedUserId = this.userProfileStore.activeUserId();
+      // A workspace switch already loaded its profile. Refresh only when the
+      // invitation stayed in the current workspace.
+      if (selectedUserId === userId) await this.usersService.loadUserById(selectedUserId);
+      if (this.userProfileStore.activeUserId() === selectedUserId) {
         this.activitiesStore.openActivities('events', 'all');
       }
     } catch {

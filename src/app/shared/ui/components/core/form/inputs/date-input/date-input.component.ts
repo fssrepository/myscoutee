@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, forwardRef, HostBinding, Input } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, forwardRef, HostBinding, inject, Input } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepicker, MatDatepickerModule, MatDateRangePicker } from '@angular/material/datepicker';
@@ -173,7 +173,11 @@ export class DateInputComponent implements ControlValueAccessor {
   private onValueChange: (value: DateInputValue) => void = () => undefined;
   private onTouched: () => void = () => undefined;
 
-  constructor(private readonly cdr: ChangeDetectorRef, host: ElementRef<HTMLElement>, destroyRef: DestroyRef) {
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  constructor() {
+    const host = inject<ElementRef<HTMLElement>>(ElementRef);
+    const destroyRef = inject(DestroyRef);
     const slots = [0, 1, 2, 3, 5, 6, 8, 9];
     const empty = '____/__/__';
     let edit: { value: string; start: number; end: number } | null = null;
@@ -222,7 +226,7 @@ export class DateInputComponent implements ControlValueAccessor {
         caret = previous.start;
         if (type.startsWith('delete') && previous.start === previous.end) {
           const slot = type === 'deleteContentBackward'
-            ? slots.findLast(position => position < previous.start)
+            ? [...slots].reverse().find(position => position < previous.start)
             : slots.find(position => position >= previous.start);
           if (slot !== undefined) { characters[slot] = '_'; caret = slot; }
         } else if (type.startsWith('insert')) {

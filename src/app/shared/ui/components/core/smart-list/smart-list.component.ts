@@ -1147,7 +1147,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedMinColumnWidth(): string | null {
-    return this.resolveConfigValue(this.config.minColumnWidth, null);
+    // Keep deliberate single-column rows and explicit mobile grids. Otherwise
+    // use the same container-sized cards everywhere, including narrow popups.
+    const defaultWidth = this.resolveConfigValue(this.config.desktopColumns, null) === 1
+      || this.resolvedMobileColumns() !== null ? null : '280px';
+    return this.config.minColumnWidth === undefined
+      ? defaultWidth : this.resolveConfigValue(this.config.minColumnWidth, null);
   }
 
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {

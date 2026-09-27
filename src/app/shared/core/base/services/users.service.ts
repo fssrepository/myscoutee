@@ -296,7 +296,7 @@ export class UsersService extends BaseRouteModeService {
 
   private readonly localInvites = inject(LocalIntegrationService);
 
-  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; invitationAvailable: boolean }> {
+  async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; workspaceGroupId?: string | null; invitationAvailable: boolean }> {
     if (this.localModeEnabled) {
       const local = await this.localInvites.claimExternalInvite(this.userProfileStore.activeUserId() || userId, token);
       if (local) return local;

@@ -40,7 +40,7 @@ export class CommunityGroupsPopupComponent implements OnInit {
   @ViewChild(SmartListComponent) private list?: SmartListComponent<InfoCardData<CommunityGroupSummary>, GroupFilters>;
   protected query: { filters: GroupFilters; sort?: GroupSort } = { filters: { bucket: this.store.initialBucket(), category: null } };
   protected readonly config: SmartListConfig<InfoCardData<CommunityGroupSummary>, GroupFilters> = {
-    pageSize: 10, initialPageSize: 20, listLayout: 'card-grid', minColumnWidth: '280px',
+    pageSize: 10, initialPageSize: 20, listLayout: 'card-grid',
     containerClass: { 'experience-card-list': true, 'assets-card-list': true },
     snapMode: 'mandatory', scrollPaddingTop: '2.6rem', footerSpacerHeight: null,
     showStickyHeader: true, showFirstGroupMarker: false,

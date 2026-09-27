@@ -413,7 +413,9 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   orientation?: SmartListConfigValue<SmartListOrientation, TFilters>;
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
   mobileColumns?: SmartListConfigValue<number | null, TFilters>;
-  /** Vertical card grids: fit columns to the list width on every viewport. */
+  /** Vertical card grids fit the container width (default 280px minimum).
+   * Explicit single-column/mobile layouts retain their configured columns.
+   * Set null to use the configured desktop/mobile columns instead. */
   minColumnWidth?: SmartListConfigValue<string | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;

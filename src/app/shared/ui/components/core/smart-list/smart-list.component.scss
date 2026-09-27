@@ -1003,7 +1003,7 @@
   }
 }
 
-// Opt-in vertical card grids follow their container width, including mobile.
+// Vertical card grids follow their container width, including mobile.
 // auto-fill retains the column width when the final row has fewer cards.
 .smart-list--list.smart-list--card-grid.smart-list--adaptive-columns:not(.smart-list--horizontal) {
   display: grid;
