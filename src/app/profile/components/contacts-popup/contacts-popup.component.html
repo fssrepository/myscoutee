@@ -34,7 +34,7 @@
       ></app-smart-list>
 
       <ng-template #contactItemTemplate let-contact>
-        <article class="contact-card" [class.is-menu-open]="isActionMenuOpen(contact)">
+        <article class="contact-card" [class.contact-card--request]="chatAccess.requestsOnly()" [class.is-menu-open]="isActionMenuOpen(contact)">
           <div class="contact-avatar-shell">
             <span
               class="contact-avatar"
