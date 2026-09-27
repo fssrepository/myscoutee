@@ -4,7 +4,7 @@ import { AssetCardBuilder } from '../../core/base/builders/asset-card.builder';
 import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
 import type * as AppDTOs from '../../core/contracts';
 import * as AppConstants from '../../core/common/constants';
-import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card/card.types';
+import type { CardMenuActionId, InfoCardData, InfoCardOverlayAccessoryTone } from '../components/core/smart-list/card/card.types';
 import type { UiListConverter } from './converter.types';
 
 export type AssetInfoCardModel = InfoCardData;
@@ -120,13 +120,16 @@ export class AssetInfoCardConverter {
         tone: this.assetExploreVisibilityTone(visibility)
       },
       mediaStart: {
-        variant: 'avatar',
-        tone: this.assetExploreOwnerAvatarTone(card),
-        imageUrl: options.ownerAvatarUrl?.trim() || null,
-        label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
+        variant: 'badge',
+        layout: 'avatar-metric',
+        tone: 'cool',
+        leadingAccessory: {
+          label: AppUtils.initialsFromText(card.ownerName?.trim() || card.title),
+          tone: this.assetExploreOwnerAvatarTone(card)
+        },
         interactive: Boolean(card.ownerUserId?.trim()),
         ariaLabel: card.ownerUserId?.trim()
-          ? `Open ${card.ownerName?.trim() || 'asset owner'} impressions`
+          ? `View ${card.ownerName?.trim() || 'asset owner'} profile`
           : null
       },
       mediaEnd: {
@@ -180,8 +183,8 @@ export class AssetInfoCardConverter {
     return 'public';
   }
 
-  private static assetExploreOwnerAvatarTone(card: AppDTOs.AssetDTO): NonNullable<InfoCardData['mediaStart']>['tone'] {
-    return `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as NonNullable<InfoCardData['mediaStart']>['tone'];
+  private static assetExploreOwnerAvatarTone(card: AppDTOs.AssetDTO): InfoCardOverlayAccessoryTone {
+    return `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as InfoCardOverlayAccessoryTone;
   }
 
   private static assetExploreMenuActions(

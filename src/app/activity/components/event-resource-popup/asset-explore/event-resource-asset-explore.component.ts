@@ -96,9 +96,6 @@ import {
   ChatsService
 } from '../../../../shared/core/base/services/chats.service';
 import {
-  ContactsService
-} from '../../../../shared/core/base/services/contacts.service';
-import {
   AssetsService as SharedAssetsService
 } from '../../../../shared/core/base/services/assets.service';
 import {
@@ -262,7 +259,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
-  private readonly contactsService = inject(ContactsService);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
@@ -699,18 +695,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }, null);
   }
 
-  protected openOwnerImpressions(card: ResourceAssetDTO): void {
+  protected openOwnerProfile(card: ResourceAssetDTO): void {
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
     if (!ownerUserId) {
       return;
     }
-    const owner = this.resolveOwnerUser(card);
-    this.userProfileStore.setUserProfile(owner);
-    void this.loadOwnerProfile(ownerUserId);
-    this.profileStore.openImpressionsPopup(ownerUserId, {
-      contextLabel: 'Asset Owner',
-      sourceLabel: card.title
-    });
+    this.profileStore.openProfileView({ userId: ownerUserId, label: card.ownerName });
   }
 
   protected onMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -2641,25 +2631,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         name: card.ownerName?.trim() || 'Asset owner',
         initials: AppUtils.initialsFromText(card.ownerName?.trim() || 'Asset owner')
       };
-  }
-
-  private async loadOwnerProfile(ownerUserId: string): Promise<void> {
-    const normalizedOwnerUserId = ownerUserId.trim();
-    if (!normalizedOwnerUserId) {
-      return;
-    }
-    const cached = this.userProfileStore.getUserProfile(normalizedOwnerUserId);
-    if (cached?.images?.some(image => image.trim().length > 0)) {
-      return;
-    }
-    try {
-      const profile = await this.contactsService.loadContactProfile(normalizedOwnerUserId);
-      if (profile.user?.id?.trim() === normalizedOwnerUserId) {
-        this.userProfileStore.setUserProfile(profile.user);
-      }
-    } catch {
-      // Owner enrichment is best-effort; the existing initials fallback remains usable.
-    }
   }
 
   private get users(): UserDto[] {

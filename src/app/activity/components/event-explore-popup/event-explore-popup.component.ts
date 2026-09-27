@@ -882,17 +882,12 @@ export class EventExplorePopupComponent {
     });
   }
 
-  protected openHostImpressions(
+  protected openHostProfile(
     record: ActivityEventRecord,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
-    void this.usersService.loadUserById(record.creatorUserId);
-    this.profileStore.openImpressionsPopup(record.creatorUserId, {
-      contextLabel: 'Event Host',
-      sourceLabel: record.title
-    });
+    this.profileStore.openProfileView({ userId: record.creatorUserId, label: record.creatorName });
   }
 
   protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {

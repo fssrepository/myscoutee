@@ -943,14 +943,6 @@ button.ui-info-card__overlay-action:has(> .ui-info-card__overlay-chevron) {
   @include mediaBadge.actionable;
 }
 
-button.ui-info-card__overlay-action--avatar:has(> .ui-info-card__overlay-avatar-image) {
-  padding-inline: 0.16rem calc(16px - 0.16rem);
-  // Keep the original badge size with a visible straight section before the tip.
-  border-radius: 13px 16px 16px 13px / 50%;
-  corner-top-right-shape: bevel;
-  corner-bottom-right-shape: bevel;
-}
-
 .ui-info-card__overlay-action > .ui-info-card__overlay-chevron {
   @include mediaBadge.chevron;
 }

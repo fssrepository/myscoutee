@@ -38,7 +38,8 @@ export class CommunityGroupConverter {
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
       leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
       surfaceTone: (group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked') ? 'deleted' : group.moderationStatus === 'under-review' || group.lifecycleStatus === 'under-review' ? 'review' : group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
-      mediaStart: { variant: 'avatar', imageUrl: group.ownerAvatarUrl, label: AppUtils.initialsFromText(group.ownerName),
+      mediaStart: { variant: 'badge', layout: 'avatar-metric', tone: 'cool',
+        leadingAccessory: { label: AppUtils.initialsFromText(group.ownerName), tone: 'default' },
         ariaLabel: group.ownerName, interactive: true },
       mediaBottomStart: group.lifecycleStatus === 'deleted' ? null : contentModerationBadge(group.moderationStatus),
       mediaBottomEnd: group.lifecycleStatus === 'deleted'

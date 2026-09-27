@@ -529,8 +529,7 @@
       }
     }
   }
-  @if (interactive && overlayVariant(action) !== 'toggle'
-    && !(overlayVariant(action) === 'avatar' && overlayImageUrl(action))) {
+  @if (interactive && overlayVariant(action) !== 'toggle') {
     <mat-icon class="ui-info-card__overlay-chevron" aria-hidden="true">chevron_right</mat-icon>
   }
 </ng-template>
