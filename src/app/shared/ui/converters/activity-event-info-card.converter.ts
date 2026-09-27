@@ -65,7 +65,7 @@ export class ActivityEventInfoCardConverter {
         ...this.locationMetaRows(dto)
       ],
       description: invited
-        ? dto.creatorName
+        ? null
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
