@@ -29,7 +29,8 @@ export class AppSetupStore implements OnDestroy {
   readonly error = signal('');
   readonly saveSucceeded = signal(false);
   private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending());
+  readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending()
+    || (this.isOpen() && (!this.loggedIn() || !!this.checkLocation) && !this.locationSelected()));
   private locationRequestPending = false;
   private opening = false;
   private generation = 0;
