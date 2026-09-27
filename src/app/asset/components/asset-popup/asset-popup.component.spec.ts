@@ -309,7 +309,9 @@ describe('AssetPopupComponent ticket cache reactivity', () => {
       'asset-pending-only',
       'asset-add'
     ]);
-    expect(controls[1]).toMatchObject({ palette: 'rose', counter: 2, active: false });
+    expect(controls[1]).toMatchObject({ kind: 'menu', menuKind: 'inline', items: [
+      { kind: 'toggle', palette: 'rose', counter: 2, checked: false, showToggleIndicator: true }
+    ] });
     for (const type of types) {
       expect((component as any).assetPendingRequestCount(type)).toBe(2);
     }
