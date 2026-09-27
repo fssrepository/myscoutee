@@ -163,6 +163,7 @@ export class LocalIntegrationRepository {
     const previousPayer = users.ids.find(userId => users.byId[userId].affiliatePayments?.[id]);
     if (previousPayer && previousPayer !== payer.id) throw new Error('Receipt request already used');
     const previous = payer.affiliatePayments?.[id];
+    if (previous?.manualCashDeleted) throw new Error('Receipt was deleted');
     if (previous && (previous.recipientUserId !== recipientId || previous.gross !== request.amount
       || previous.currency !== request.currency || previous.receiptNote !== note)) throw new Error('Receipt request already used');
     if (!previous) {
@@ -181,16 +182,32 @@ export class LocalIntegrationRepository {
     return this.paymentHistory(recipientId).find(item => item.id === id)!;
   }
 
+  deleteCashReceipt(recipientId: string, paymentId: string): import('../../../contracts/payment-method.interface').PaymentHistoryItemDto {
+    const users = this.memoryDb.read()[USERS_TABLE_NAME];
+    const payerId = users.ids.find(id => users.byId[id].affiliatePayments?.[paymentId]);
+    const payment = payerId ? users.byId[payerId].affiliatePayments?.[paymentId] : null;
+    if (!payerId || !payment?.manualCash || payment.recipientUserId !== recipientId) throw new Error('Receipt unavailable');
+    this.memoryDb.write(state => {
+      const table = state[USERS_TABLE_NAME];
+      const payer = table.byId[payerId];
+      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId, [payerId]: {
+        ...payer, affiliatePayments: { ...payer.affiliatePayments, [paymentId]: { ...payer.affiliatePayments![paymentId], manualCashDeleted: true } }
+      } } } };
+    });
+    return this.paymentHistory(recipientId).find(item => item.id === paymentId)!;
+  }
+
   paymentHistory(userId: string): import('../../../contracts/payment-method.interface').PaymentHistoryItemDto[] {
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     return users.ids.flatMap(payerId => Object.entries(users.byId[payerId].affiliatePayments ?? {}).flatMap(([id, payment]) => {
       if (!payment.sourceId || (payerId !== userId && payment.recipientUserId !== userId)) return [];
       const direction = payerId === userId ? 'expense' as const : 'income' as const;
-      const base = { sourceId: payment.sourceId, checkoutSessionId: id, provider: payment.provider ?? 'dummy', currency: payment.currency,
+      const base = { note: payment.receiptNote, counterpartyName: payerId === userId ? payment.receiptRecipientName : payment.receiptPayerName,
+        fulfillmentKind: payment.manualCash ? 'cash-receipt' : null, sourceId: payment.sourceId, checkoutSessionId: id, provider: payment.provider ?? 'dummy', currency: payment.currency,
         recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : 'joined',
         canRequestRefund: false, canApproveRefund: false };
-      const refundPreview = payment.manualCash ? null : this.refundPreview(payment);
-      return [{ ...base, id, direction, amount: payment.gross, status: 'approved', auditKind: 'payment',
+      const refundPreview = this.refundPreview(payment);
+      return [{ ...base, id, direction, amount: payment.gross, status: payment.manualCashDeleted ? 'deleted' : 'approved', auditKind: 'payment',
           fulfillmentKind: payment.manualCash ? 'cash-receipt' : null,
           note: payment.receiptNote, counterpartyName: direction === 'income' ? payment.receiptPayerName : payment.receiptRecipientName,
           refundPreview, canRequestRefund: payerId === userId && !payment.refundRequest
@@ -210,7 +227,7 @@ export class LocalIntegrationRepository {
   requestPolicyRefund(userId: string, paymentId: string): boolean {
     const payment = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId]?.affiliatePayments?.[paymentId];
     if (!payment) return false;
-    if (payment.manualCash) throw new Error('Cash receipts have no booking refund.');
+    if (payment.manualCashDeleted) throw new Error('Receipt was deleted');
     const preview = this.refundPreview(payment);
     if (payment.refundRequest || payment.refunded > 0 || preview.refundableAmount <= 0) {
       throw new Error('This payment can no longer be refunded.');
@@ -221,6 +238,11 @@ export class LocalIntegrationRepository {
 
   private refundPreview(payment: NonNullable<UserRecord['affiliatePayments']>[string]): PaymentRefundPreviewDto {
     const paid = payment.gross;
+    if (payment.manualCash) {
+      const remaining = payment.manualCashDeleted ? 0 : Math.max(0, paid - payment.refunded);
+      return { paidAmount: paid, refundableAmount: remaining, retainedAmount: paid - remaining,
+        currency: payment.currency, status: remaining > 0 ? 'full' : 'not_eligible', ruleId: 'cash-receipt', refundKind: 'full', refundValue: 100 };
+    }
     const startText = payment.bookingStartAtIso ?? '';
     const start = new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(startText) ? startText : `${startText}Z`);
     const eligible = (payment.cancellationPolicy?.enabled ? payment.cancellationPolicy.rules : [])

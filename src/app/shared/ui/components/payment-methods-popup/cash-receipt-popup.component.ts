@@ -11,11 +11,12 @@ import { I18nPipe } from '../../pipes';
 @Component({
   selector: 'app-cash-receipt-popup', standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent, I18nPipe],
+  styleUrl: './payment-feedback.scss',
   template: `
     <app-popup [model]="popupModel()" [zIndex]="22600">
+      @if (error()) { <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p> }
       <app-form-flow [model]="formModel()" [(ngModel)]="form" [loading]="loading()"
         [disabled]="busy()" (action)="selectMember($event)"></app-form-flow>
-      @if (error()) { <p role="alert">{{ error() | i18n }}</p> }
     </app-popup>
   `
 })
@@ -48,10 +49,12 @@ export class CashReceiptPopupComponent {
   protected formModel(): FormFlowModel {
     const selected = this.payer();
     return { title: 'payment.cash.record', header: false, layout: 'grouped', deferPreparation: false,
-      save: null, summary: { enabled: false }, steps: [{ id: 'receipt', title: 'payment.cash.record', palette: 'green', controls: [
+      save: null, summary: { enabled: false }, steps: [{ id: 'receipt', title: '', palette: 'green', controls: [
         { id: 'payer', kind: 'menu', label: 'payment.cash.from', required: true, config: {
-          kind: 'inline', items: [{ id: 'select-payer', label: selected?.name || 'payment.cash.select.member',
-            icon: 'person', imageUrl: selected?.avatarUrl, imageFallback: selected?.initials, palette: 'blue' }] } },
+          kind: 'select', trigger: { id: 'select-payer', action: 'custom', label: selected?.name || 'payment.cash.select.member',
+            ariaLabel: selected?.name || 'payment.cash.select.member',
+            icon: 'person', imageUrl: selected?.avatarUrl, imageFallback: selected?.initials,
+            imageShape: 'circle', layout: 'pill', palette: 'blue' }, items: [] } },
         { id: 'amount', bind: 'amount', kind: 'number', label: 'payment.cash.amount', required: true, min: 0.01, max: 1_000_000_000, step: 0.01, layout: 'half' },
         { id: 'currency', bind: 'currency', kind: 'text', label: 'payment.cash.currency', required: true, maxLength: 3, layout: 'half' },
         { id: 'note', bind: 'note', kind: 'textarea', label: 'payment.cash.note', maxLength: 1000, rows: 3 }
@@ -61,7 +64,7 @@ export class CashReceiptPopupComponent {
   protected selectMember(event: FormFlowActionEvent): void {
     if (event.control.id !== 'payer' || this.busy()) return;
     this.memberPicker.openActivityInvitePopup({
-      ownerId: this.userId, ownerType: 'asset', title: 'payment.cash.select.member', selectionLimit: 1,
+      ownerId: this.userId, ownerType: 'asset', headerTitle: 'payment.cash.select.member', selectionLimit: 1,
       parentZIndex: 22600, closeOwnerPopupOnClose: false,
       onApply: selected => {
         const member = selected[0];

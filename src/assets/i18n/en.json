@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.27.en.2",
+  "version": "2026.09.27.en.3",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -4009,6 +4009,10 @@
     "groups.confirm.restore.title": "Restore your group membership?",
     "groups.confirm.restore": "Restore your membership in “{name}” without a new approval?",
     "groups.confirm.restore-blocked.title": "Request to rejoin this group?",
-    "groups.confirm.restore-blocked": "You were removed from “{name}”. Send a request for an admin to approve your membership again?"
+    "groups.confirm.restore-blocked": "You were removed from “{name}”. Send a request for an admin to approve your membership again?",
+    "payment.cash.delete.title": "Delete cash receipt?",
+    "payment.cash.delete.message": "This receipt will be marked as deleted and excluded from both members’ payment totals.",
+    "payment.cash.delete.error": "Unable to delete the cash receipt.",
+    "payment.status.deleted": "Deleted"
   }
 }

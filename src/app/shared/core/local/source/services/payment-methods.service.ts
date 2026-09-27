@@ -44,6 +44,13 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
         incoming: item.direction === 'income' ? item.amount : 0 })));
   }
 
+  async deleteCashReceipt(userId: string, paymentId: string): Promise<PaymentHistoryMutationDto> {
+    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
+    const item = this.affiliateRepository.deleteCashReceipt(userId, paymentId);
+    await this.affiliateRepository.flushToIndexedDb();
+    return { ...this.localMutation(userId, item), items: [item] };
+  }
+
   async recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
     const item = this.affiliateRepository.recordCashReceipt(userId, request);

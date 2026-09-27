@@ -29,6 +29,10 @@ export class PaymentMethodsService extends BaseRouteModeService {
     return this.isLocalRouteEnabled(PaymentMethodsService.ROUTE);
   }
 
+  deleteCashReceipt(userId: string, paymentId: string): Promise<PaymentHistoryMutationDto> {
+    return this.service.deleteCashReceipt(userId, paymentId);
+  }
+
   recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
     return this.service.recordCashReceipt(userId, request);
   }

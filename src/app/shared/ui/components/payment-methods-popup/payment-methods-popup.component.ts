@@ -399,8 +399,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         },
         {
           label: statusLabel,
-          tone: item.direction === 'income' ? 'success' : 'danger',
-          className: item.direction === 'income'
+          tone: item.status !== 'deleted' && item.direction === 'income' ? 'success' : 'danger',
+          className: item.status !== 'deleted' && item.direction === 'income'
             ? 'payment-history-status-badge--success'
             : 'payment-history-status-badge--danger',
           position: 'top-right'
@@ -423,7 +423,9 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const row = (event.context as { row?: SingleRowData<PaymentHistoryItemDto> } | undefined)?.row;
     const item = row?.eagerDetail;
     if (!item) return;
-    if (event.id === 'paymentSummary') {
+    if (event.id === 'delete' && item.fulfillmentKind === 'cash-receipt') {
+      this.confirmCashReceiptDeletion(item);
+    } else if (event.id === 'paymentSummary') {
       void this.openPaymentSummary(item);
     } else if (event.id === 'requestRefund') {
       this.confirmRefundRequest(item);
@@ -816,17 +818,29 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   private paymentHistoryMenuActions(item: PaymentHistoryItemDto): string[] {
-    if (item.fulfillmentKind === 'cash-receipt') return [];
     if (item.auditKind === 'refund') {
       return item.canApproveRefund === true ? ['approveRefund'] : [];
     }
-    const actions = ['paymentSummary'];
-    if (item.direction === 'expense' && `${item.recipientUserId ?? ''}`.trim()) {
+    const actions = item.fulfillmentKind === 'cash-receipt'
+      ? (item.direction === 'income' && item.status !== 'deleted' ? ['delete'] : [])
+      : ['paymentSummary'];
+    if (item.fulfillmentKind !== 'cash-receipt' && item.direction === 'expense' && `${item.recipientUserId ?? ''}`.trim()) {
       actions.push(item.serviceContext === 'asset' ? 'askAssetOwner' : 'askOrganizer');
     }
     if (item.canRequestRefund === true) actions.push('requestRefund');
     if (item.canApproveRefund === true) actions.push('approveRefund');
     return actions;
+  }
+
+  private confirmCashReceiptDeletion(item: PaymentHistoryItemDto): void {
+    this.dialogStore.open({
+      title: 'payment.cash.delete.title', message: 'payment.cash.delete.message',
+      cancelLabel: 'cancel', confirmLabel: 'delete', confirmTone: 'danger',
+      busyConfirmLabel: 'payment.cards.delete.busy', failureMessage: 'payment.cash.delete.error',
+      onConfirm: async () => this.applyPaymentHistoryMutation(
+        await this.paymentMethods.deleteCashReceipt(this.activeUserId(), item.id)
+      )
+    });
   }
 
   private confirmRefundRequest(item: PaymentHistoryItemDto): void {
@@ -875,6 +889,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
 
   private refundPolicyBasis(item: PaymentHistoryItemDto): string {
     const preview = item.refundPreview;
+    if (preview?.ruleId === 'cash-receipt') return this.i18n.translate('payment.history.refund.preview.full');
     if (preview?.ruleId === 'event-terms-changed') return this.i18n.translate('payment.history.refund.preview.changed.terms');
     if (preview?.ruleId === 'assignment-manager-takeover') {
       return this.i18n.translate('payment.history.refund.preview.takeover');
