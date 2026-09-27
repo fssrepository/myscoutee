@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, NgZone, inject } from '@angular/core';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 
 /** One same-route history boundary for the visible overlay stack.
  * Back dismisses the top surface; X removes the boundary when the stack empties.
@@ -18,12 +19,26 @@ export class OverlayNavigationStore {
   private anchorNavigationId: unknown;
   private scheduled = false;
   private destroyed = false;
+  private navigating = false;
 
   constructor() {
     this.clearOrphanMarker();
     this.browser?.addEventListener('popstate', this.onPopState, true);
+    const navigation = inject(Router).events.subscribe(event => {
+      if (event instanceof NavigationStart) {
+        this.navigating = true;
+        // Route navigation owns history now. Destroying the old route's
+        // overlays must not schedule a Back that cancels the destination.
+        this.clearOrphanMarker();
+        this.ownsEntry = false;
+      } else if (event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError) {
+        this.navigating = false;
+        this.scheduleReconcile();
+      }
+    });
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
+      navigation.unsubscribe();
       this.browser?.removeEventListener('popstate', this.onPopState, true);
       this.surfaces.clear();
     });
@@ -80,7 +95,7 @@ export class OverlayNavigationStore {
 
   private reconcile(): void {
     const browser = this.browser;
-    if (!browser || this.removingEntry || this.destroyed) return;
+    if (!browser || this.removingEntry || this.destroyed || this.navigating) return;
     const state = browser.history.state;
     const isOurEntry = state?.[this.markerKey] === this.owner;
     if (this.surfaces.size > 0 && !isOurEntry) {

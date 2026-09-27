@@ -1,5 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
+import { NavigationEnd, NavigationStart, Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { OverlayNavigationStore } from './overlay-navigation.store';
 
 class Browser extends EventTarget {
@@ -31,9 +33,14 @@ const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve()
 
 describe('overlay Back history', () => {
   let store: OverlayNavigationStore;
+  let routeEvents: Subject<unknown>;
   beforeEach(() => {
     browser = new Browser();
-    TestBed.configureTestingModule({ providers: [{ provide: DOCUMENT, useValue: { defaultView: browser } }] });
+    routeEvents = new Subject();
+    TestBed.configureTestingModule({ providers: [
+      { provide: DOCUMENT, useValue: { defaultView: browser } },
+      { provide: Router, useValue: { events: routeEvents } }
+    ] });
     store = TestBed.inject(OverlayNavigationStore);
   });
   afterEach(() => TestBed.resetTestingModule());
@@ -93,6 +100,39 @@ describe('overlay Back history', () => {
     browser.history.pushState({ navigationId: 3 }, '', 'https://app.test/profile');
     store.unregister(token); await settle();
     expect(browser.location.href).toBe('https://app.test/profile');
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('does not send logout back to the old route while its lazy destination loads', async () => {
+    const old = store.register(vi.fn());
+    routeEvents.next(new NavigationStart(3, '/entry'));
+    store.unregister(old);
+    await settle();
+    expect(browser.location.href).toBe('https://app.test/game');
+    expect(browser.index).toBe(2);
+    expect(browser.history.state['__myscouteeOverlay']).toBeUndefined();
+    browser.history.pushState({ navigationId: 3 }, '', 'https://app.test/entry');
+    routeEvents.next(new NavigationEnd(3, '/entry', '/entry'));
+    await settle();
+    expect(browser.location.href).toBe('https://app.test/entry');
+    expect(browser.index).toBe(3);
+  });
+
+  it('anchors destination overlays only after the destination route commits', async () => {
+    const old = store.register(vi.fn());
+    routeEvents.next(new NavigationStart(3, '/entry'));
+    store.unregister(old);
+    const close = vi.fn();
+    const next = store.register(close);
+    await settle();
+    expect(browser.index).toBe(2);
+    browser.history.pushState({ navigationId: 3 }, '', 'https://app.test/entry');
+    routeEvents.next(new NavigationEnd(3, '/entry', '/entry'));
+    await settle();
+    store.unregister(next);
+    await settle();
+    expect(browser.location.href).toBe('https://app.test/entry');
+    expect(browser.index).toBe(3);
     expect(close).not.toHaveBeenCalled();
   });
 });

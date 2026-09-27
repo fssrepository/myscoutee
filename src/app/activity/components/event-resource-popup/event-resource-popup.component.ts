@@ -786,7 +786,7 @@ export class EventResourcePopupComponent {
       popupHeader: { title: 'Assets', subtitle: null },
       subEvent,
       fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
-    }, type, { hydrate: !request.viewOnly });
+    }, type, { hydrate: false });
     this.resourcePopupStore.assetExploreOnlyRef.set(true);
     this.openInitialExplorePopup();
   }
