@@ -1371,6 +1371,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return Number.isFinite(perimeter) && perimeter > 0 ? perimeter : 100;
   }
 
+  protected get menuHeaderActions(): readonly AppMenuItem<TId, TContext>[] {
+    return this.currentMenuModel()?.headerActions ?? [];
+  }
+
   protected branchHeaderActions(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
     return item.headerActions ?? [];
   }
@@ -2150,6 +2154,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.isLiveCounter(triggerCounter),
       visibleCounterKeys
     );
+    for (const action of this.menuHeaderActions) {
+      this.observeItemCounterPulse(action, visibleCounterKeys);
+    }
     for (const item of this.items) {
       this.observeItemCounterPulse(item, visibleCounterKeys);
     }

@@ -661,10 +661,10 @@ button.ui-info-card__overlay-action {
   box-shadow: 0 7px 16px rgba(9, 22, 40, 0.34), inset 0 0 0 1px rgba(18, 38, 64, 0.58);
 }
 
-.ui-info-card--owned-asset .ui-info-card__overlay-action--start.ui-info-card__overlay-action--avatar.ui-info-card__overlay-action--tone-default {
+.ui-info-card__overlay-action--avatar.ui-info-card__overlay-action--tone-warm {
   background: linear-gradient(180deg, #ffe8cc 0%, #ffd7af 100%);
   border-color: rgba(179, 108, 42, 0.54);
-  color: #8c4f18;
+  color: #c97316;
 }
 
 .ui-info-card__overlay-action--badge {

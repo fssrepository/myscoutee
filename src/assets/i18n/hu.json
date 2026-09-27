@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.27.hu.8",
+  "version": "2026.09.28.hu.1",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -4019,6 +4019,8 @@
     "payment.cash.delete.error": "Nem sikerült törölni a készpénzes tételt.",
     "payment.status.deleted": "Törölve",
     "payment.cash.refund.request.message": "Kéred ennek a készpénzes tételnek a visszatérítését a kedvezményezettől?",
-    "payment.cash.refund.approve.message": "Megerősíted, hogy ezt az összeget készpénzben visszaadtad a fizetőnek?"
+    "payment.cash.refund.approve.message": "Megerősíted, hogy ezt az összeget készpénzben visszaadtad a fizetőnek?",
+    "events.explore": "Események felfedezése",
+    "assets.explore": "Eszközök felfedezése"
   }
 }

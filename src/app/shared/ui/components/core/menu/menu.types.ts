@@ -242,6 +242,8 @@ export interface AppMenuSummary {
 }
 
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
+  /** Shared action-row controls before the menu heading close button. */
+  headerActions?: readonly AppMenuItem<TId, TContext>[];
   layout?: AppMenuLayout;
   density?: AppMenuDensity;
   /** Content-sized action rows also stay compact on mobile. */
