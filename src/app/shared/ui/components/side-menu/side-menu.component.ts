@@ -360,12 +360,14 @@ export class SideMenuComponent implements OnDestroy {
   private openingNotificationChat = '';
   private openingNotificationMingleTable = '';
   private openingPartnerInvite = '';
+  private openingPartnerInvitePromise: Promise<void> | null = null;
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly notificationDismissDraggingRef = signal(false);
   private readonly notificationDismissTargetedRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
-  private readonly activeUserLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+  private readonly activeUserLoadState = computed(() => this.isAdminWorkspaceRoute()
+    ? this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY) : this.usersService.profileExtLoadState());
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly userLogoutLoadState = this.runtimeStore.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
@@ -1969,7 +1971,18 @@ export class SideMenuComponent implements OnDestroy {
     const sessionKind = this.sessionService.currentSession()?.kind;
     const serverIdentifiedSession = sessionKind === 'firebase'
       || sessionKind === 'operator-bootstrap';
-    const loadedProfileExt = await this.usersService.loadProfileExtById(
+    const inviteUrl = this.router.url;
+    const hasPartnerInvite = AppUtils.normalizeRoutePath(inviteUrl) === '/game'
+      && !!this.router.parseUrl(inviteUrl).queryParams['partnerInvite'];
+    if (hasPartnerInvite) {
+      // Claim and select the invitation workspace before the first avatar load.
+      // The route effect may already own this same operation.
+      await this.openPartnerInviteTarget(inviteUrl, this.userProfileStore.activeUserId() || userId || '');
+      if (requestVersion !== this.hydrationRequestVersion) return null;
+    }
+    const selectedProfileExt = hasPartnerInvite && this.activeUserLoadState().status === 'success'
+      ? this.userProfileStore.getProfileExt(this.userProfileStore.activeUserId()) : null;
+    const loadedProfileExt = selectedProfileExt ?? await this.usersService.loadProfileExtById(
       serverIdentifiedSession ? undefined : userId
     );
     const loadedUser = loadedProfileExt?.profile ?? null;
@@ -2318,6 +2331,7 @@ export class SideMenuComponent implements OnDestroy {
     const followingRevision = this.followingStore.captureRevision();
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(userId);
+    const locationSyncToken = this.userProfileStore.captureUserLocationSyncToken(userId);
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -2334,7 +2348,7 @@ export class SideMenuComponent implements OnDestroy {
       this.photoFeedStore.applyCounters(snapshot.userId, snapshot.feedCounters);
       this.deploymentConfiguration.applyPaymentCardsAvailable(snapshot.paymentCardsAvailable);
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
-      this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates);
+      this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates, locationSyncToken);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
       const {
@@ -2542,8 +2556,23 @@ export class SideMenuComponent implements OnDestroy {
     if (!token) return;
     const accountId = this.groupWorkspaces.context.accountId(userId);
     const key = `${accountId}:${token}`;
-    if (this.openingPartnerInvite === key) return;
+    if (this.openingPartnerInvite === key) return this.openingPartnerInvitePromise ?? undefined;
     this.openingPartnerInvite = key;
+    const operation = this.claimAndOpenPartnerInviteTarget(url, userId, accountId, token, tree);
+    this.openingPartnerInvitePromise = operation;
+    try {
+      await operation;
+    } finally {
+      if (this.openingPartnerInvite === key) {
+        this.openingPartnerInvite = '';
+        this.openingPartnerInvitePromise = null;
+      }
+    }
+  }
+
+  private async claimAndOpenPartnerInviteTarget(
+    url: string, userId: string, accountId: string, token: string, tree: ReturnType<Router['parseUrl']>
+  ): Promise<void> {
     try {
       const claim = await this.usersService.claimPartnerInvite(accountId, token);
       if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
@@ -2557,20 +2586,25 @@ export class SideMenuComponent implements OnDestroy {
         await this.router.navigateByUrl(tree, { replaceUrl: true });
         return;
       }
+      if (claim.invitationAvailable) {
+        if (!await this.groupWorkspaces.select(claim.workspaceGroupId ?? null)) throw new Error('groups.switch.failed');
+        if (this.groupWorkspaces.context.accountUserId() !== accountId || this.router.url !== url) return;
+      }
       delete tree.queryParams['partnerInvite'];
-        delete tree.queryParams['affiliate'];
+      delete tree.queryParams['affiliate'];
       await this.router.navigateByUrl(tree, { replaceUrl: true });
       if (!claim.invitationAvailable) return;
-      await this.usersService.loadUserById(userId);
-      if (this.userProfileStore.activeUserId() === userId) {
+      const selectedUserId = this.userProfileStore.activeUserId();
+      // A workspace switch already loaded its profile. Refresh only when the
+      // invitation stayed in the current workspace.
+      if (selectedUserId === userId) await this.usersService.loadUserById(selectedUserId);
+      if (this.userProfileStore.activeUserId() === selectedUserId) {
         this.activitiesStore.openActivities('events', 'all');
       }
     } catch {
       if (this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()) === accountId) this.dialogStore.open({
         title: 'event.partner.invite', message: 'event.partner.invite.failed', confirmLabel: 'OK'
       });
-    } finally {
-      if (this.openingPartnerInvite === key) this.openingPartnerInvite = '';
     }
   }
 

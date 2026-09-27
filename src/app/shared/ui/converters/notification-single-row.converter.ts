@@ -37,6 +37,8 @@ export class NotificationSingleRowConverter implements UiConverter<
     const stageAvatar = this.hasStageAvatar(notification);
     const tournamentRoom = `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'tournament-room';
     const sourceLabel = securityAlert ? 'MyScoutee' : this.sourceLabel(notification.category, options);
+    const workspaceName = `${notification.payload?.['workspaceGroupName'] ?? ''}`.trim();
+    const sourceContext = workspaceName ? `${sourceLabel} · ${workspaceName}` : sourceLabel;
     const timestamp = this.timestampLabel(notification.createdAtIso, options.locale);
     const occurrenceCount = Math.max(1, Math.trunc(Number(notification.occurrenceCount ?? 1)) || 1);
     const statusBadgeKey = `${notification.payload?.['notification_status_badge_key'] ?? ''}`.trim();
@@ -48,7 +50,7 @@ export class NotificationSingleRowConverter implements UiConverter<
     return {
       id: notification.id,
       title: this.title(notification, options),
-      subtitle: senderName ? `${senderName} · ${sourceLabel}` : sourceLabel,
+      subtitle: senderName ? `${senderName} · ${sourceContext}` : sourceContext,
       detail: this.message(notification, options),
       dateIso: notification.createdAtIso,
       avatarUrl: systemAvatar || stageAvatar ? null : `${notification.senderAvatarUrl ?? ''}`.trim() || null,

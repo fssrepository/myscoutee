@@ -26,7 +26,7 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     expect(card.mediaEnd?.pendingCount).toBe(2);
   });
 
-  it('uses the organizer profile image in a clickable avatar overlay', () => {
+  it('uses the existing light monogram badge for the organizer profile', () => {
     const card = ActivityEventInfoCardConverter.convert({
       id: 'event-1',
       title: 'Seattle Wildflower Meetup',
@@ -37,10 +37,15 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     } as ActivityEventDTO);
 
     expect(card.mediaStart).toMatchObject({
-      variant: 'avatar',
-      imageUrl: '/media/kai.webp',
+      variant: 'badge',
+      layout: 'avatar-metric',
+      tone: 'cool',
+      leadingAccessory: { label: 'KM' },
       interactive: true
     });
+    expect(card.mediaStart?.imageUrl).toBeUndefined();
+    expect(card.mediaStart?.detailIcon).toBeUndefined();
+    expect(card.mediaStart?.detailLabel).toBeUndefined();
   });
 
   it.each(['DR', 'A'] as const)('keeps the Multislot badge in %s status', status => {
@@ -78,7 +83,7 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     });
   });
 
-  it('uses the standard clickable organizer avatar over the tournament card image', () => {
+  it('uses the same clickable organizer monogram over the tournament card image', () => {
     const imageUrl = '/media/public?key=images/system/tournament-room/v1/large.webp';
     const card = ActivityEventInfoCardConverter.convert({
       id: 'random-room:event-1:stage-1:room-1',
@@ -98,8 +103,9 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
     expect(card.surfaceTone).toBe('system');
     expect(card.leadingIcon?.icon).toBe('emoji_events');
     expect(card.mediaStart).toMatchObject({
-      variant: 'avatar',
-      imageUrl: '/media/casey.webp',
+      variant: 'badge',
+      layout: 'avatar-metric',
+      leadingAccessory: { label: 'CB' },
       interactive: true
     });
   });

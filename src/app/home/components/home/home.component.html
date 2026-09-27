@@ -47,7 +47,13 @@
   }
 
   <section class="game-layout-single">
-    @if (!isAvatarProfileSettled || isBlockedUserStatusPending) {
+    @if (hasAvatarProfileLoadError) {
+      <div class="game-blocked-panel game-profile-load-error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <h2>{{ 'game.profile.load.failed.title' | i18n }}</h2>
+        <p>{{ 'game.profile.load.failed.description' | i18n }}</p>
+      </div>
+    } @else if (!isAvatarProfileSettled || isBlockedUserStatusPending) {
       <div class="game-card-deck"></div>
     } @else if (isBlockedUser) {
       <div class="game-blocked-panel">

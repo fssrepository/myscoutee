@@ -136,8 +136,10 @@ export class CommunityGroupsStore {
     if (action === 'members') { this.members(group); return; }
     const item = CommunityGroupConverter.menu(group, this.openUserId()).find(item => item.id === action);
     if (!item) return;
-    this.dialogs.open({ title: `groups.confirm.${action}.title`,
-      message: this.i18n.translateParams(`groups.confirm.${action}`, { name: group.name }),
+    const confirmation = action === 'restore' && group.canRestoreGroup ? 'restore-group'
+      : action === 'restore' && group.membershipStatus === 'blocked' ? 'restore-blocked' : action;
+    this.dialogs.open({ title: `groups.confirm.${confirmation}.title`,
+      message: this.i18n.translateParams(`groups.confirm.${confirmation}`, { name: group.name }),
       cancelLabel: 'Cancel', confirmLabel: String(item.label), confirmPalette: item.palette,
       failureMessage: 'groups.error',
       input: action === 'report' ? { label: 'groups.report.details', maxLength: 2000 } : null,
@@ -148,7 +150,7 @@ export class CommunityGroupsStore {
     const userId = this.openUserId() ?? '';
     try {
       if (action === 'join') this.changes.publish(userId, await this.service.join(userId, group.id));
-      else if (action === 'accept' || action === 'remove' || action === 'take-over') {
+      else if (action === 'restore' || action === 'accept' || action === 'remove' || action === 'take-over') {
         await this.membersService.applyMemberAction({ ownerType: 'community', ownerId: group.id }, userId, action);
         void this.workspaces.refresh();
       }

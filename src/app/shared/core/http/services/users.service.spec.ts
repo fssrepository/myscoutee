@@ -110,6 +110,15 @@ describe('HttpUsersService demo authority boundary', () => {
     expect(readUser).not.toHaveBeenCalled();
   });
 
+  it.each([0, 503])('does not report cached summary data as a successful online avatar load after HTTP %s', async status => {
+    get.mockReturnValue(throwError(() => ({ status })));
+    readUser.mockReturnValue(cachedUserResponse());
+
+    await expect(TestBed.inject(HttpUsersService).loadProfileExtById('demo-user'))
+      .rejects.toEqual({ status });
+    expect(readUser).not.toHaveBeenCalled();
+  });
+
   it('does not expose a direct browser-cache peek during a backend demo session', () => {
     readUser.mockReturnValue(cachedUserResponse());
 

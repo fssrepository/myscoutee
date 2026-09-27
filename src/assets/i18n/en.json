@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.26.en.198",
+  "version": "2026.09.27.en.12",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3653,7 +3653,7 @@
     "moderation.message": "Optional message to the owner via App Support",
     "moderation.autoApprove": "Auto approve",
     "moderation.delayMinutes": "Delay (minutes)",
-    "moderation.failed": "Unable to save or load moderation. Reload and retry.",
+    "moderation.failed": "Unable to save or load moderation. Please try again.",
     "moderation.changed": "Another admin changed this item. Reload and retry.",
     "moderation.invalidSettings": "Enter a whole number from 0 to 43200 minutes.",
     "admin.jobs.rule.content.autoApprove": "Content auto approval",
@@ -3724,6 +3724,8 @@
     "email.unsubscribe.landing": "Visit MyScoutee",
     "email.unsubscribe.javascript": "Please enable JavaScript to confirm your email preferences.",
     "game.location.required.title": "Location required",
+    "game.profile.load.failed.title": "Profile failed to load",
+    "game.profile.load.failed.description": "Reload the page to try again.",
     "game.location.required.description": "To see profiles, open Settings → Install, enable location access, then press Update.",
     "event.member.payment.pending": "Waiting for payment",
     "event.checkout.payment.deadline.passed": "The payment deadline for this event has passed.",
@@ -3863,7 +3865,7 @@
     "contact.chat.request": "Request",
     "contact.chat.approve": "Approve",
     "contact.chat.reject": "Reject",
-    "contact.chat.pending": "Pending",
+    "contact.chat.pending": "Awaiting approval",
     "contact.chat.approved": "Chat",
     "contact.chat.rejected": "Rejected",
     "contact.chat.request.message": "Request permission to chat directly with this contact on MyScoutee?",
@@ -4005,6 +4007,18 @@
     "notification.kind.community-owner-left.title": "Group needs a new administrator",
     "notification.kind.community-owner-left.message": "You can take over responsibility for {workspaceGroupName}.",
     "notification.kind.community-takeover.title": "Group responsibility changed",
-    "notification.kind.community-takeover.message": "An administrator took over responsibility for {workspaceGroupName}."
+    "notification.kind.community-takeover.message": "An administrator took over responsibility for {workspaceGroupName}.",
+    "groups.confirm.restore-group.title": "Restore this group?",
+    "groups.confirm.restore-group": "Restore “{name}” and resume responsibility as its admin?",
+    "groups.confirm.restore.title": "Restore your group membership?",
+    "groups.confirm.restore": "Restore your membership in “{name}” without a new approval?",
+    "groups.confirm.restore-blocked.title": "Request to rejoin this group?",
+    "groups.confirm.restore-blocked": "You were removed from “{name}”. Send a request for an admin to approve your membership again?",
+    "payment.cash.delete.title": "Delete cash receipt?",
+    "payment.cash.delete.message": "This receipt will be marked as deleted and excluded from both members’ payment totals.",
+    "payment.cash.delete.error": "Unable to delete the cash receipt.",
+    "payment.status.deleted": "Deleted",
+    "payment.cash.refund.request.message": "Request a refund of this cash receipt from the recipient?",
+    "payment.cash.refund.approve.message": "Confirm that you have returned this cash amount to the payer?"
   }
 }

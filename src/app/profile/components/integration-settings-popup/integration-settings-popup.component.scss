@@ -141,7 +141,7 @@
 .integration-token-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 0.6rem;
   padding: 0.55rem 0.62rem;
   border: 1px solid rgba(30, 55, 88, 0.12);
@@ -157,7 +157,7 @@
 
 .integration-token-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   align-items: flex-end;
   gap: 0.4rem;
 }

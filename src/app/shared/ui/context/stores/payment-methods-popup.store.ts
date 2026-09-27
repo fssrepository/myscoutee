@@ -1,6 +1,10 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
-import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
+import type { PaymentHistoryPageDto, SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
+import { ActivityStore } from './activity.store';
+import { UserProfileStore } from './user-profile.store';
+
+type HistorySummary = Pick<PaymentHistoryPageDto, 'euroSummary' | 'spendingTotals' | 'incomeTotals' | 'pendingRefundCount'>;
 
 export interface PaymentMethodPickerRequest {
   selectedPaymentMethodId?: string | null;
@@ -9,6 +13,9 @@ export interface PaymentMethodPickerRequest {
 
 @Injectable({ providedIn: 'root' })
 export class PaymentMethodsPopupStore {
+  private readonly profiles = inject(UserProfileStore);
+  private readonly activities = inject(ActivityStore);
+  private readonly historySummaryRef = signal<HistorySummary | null>(null);
   private readonly openRef = signal(false);
   private readonly pickerRef = signal<PaymentMethodPickerRequest | null>(null);
   private readonly componentRef = signal<Type<unknown> | null>(null);
@@ -17,6 +24,31 @@ export class PaymentMethodsPopupStore {
   readonly picker = this.pickerRef.asReadonly();
   readonly selectedPaymentMethodId = computed(() => this.pickerRef()?.selectedPaymentMethodId ?? null);
   readonly component = this.componentRef.asReadonly();
+  readonly euroSummary = computed(() => this.historySummaryRef()?.euroSummary ?? null);
+  readonly pendingRefundCount = computed(() => this.historySummaryRef()?.pendingRefundCount ?? 0);
+
+  applyHistorySummary(userId: string, summary: HistorySummary): void {
+    if (this.profiles.activeUserId() !== userId) return;
+    const spendingTotals = { ...summary.spendingTotals };
+    const incomeTotals = { ...summary.incomeTotals };
+    const pendingRefundCount = Math.max(0, Math.trunc(Number(summary.pendingRefundCount) || 0));
+    this.historySummaryRef.set({
+      euroSummary: summary.euroSummary ? { ...summary.euroSummary } : null,
+      spendingTotals, incomeTotals, pendingRefundCount
+    });
+    const currencies = new Set([...Object.keys(spendingTotals), ...Object.keys(incomeTotals)]);
+    this.activities.patchUserCounterOverrides(userId, { paymentRefundsPending: pendingRefundCount });
+    this.profiles.patchActiveUserProfile(current => ({
+      paymentTotals: {
+        outgoing: spendingTotals,
+        incoming: incomeTotals,
+        all: Object.fromEntries([...currencies].map(currency => [currency,
+          Math.round(((Number(spendingTotals[currency]) || 0) + (Number(incomeTotals[currency]) || 0)) * 100) / 100
+        ]))
+      },
+      activities: { ...current.activities, paymentRefundsPending: pendingRefundCount }
+    }));
+  }
 
   async openHistory(): Promise<void> {
     await this.ensureLoaded();
@@ -40,6 +72,7 @@ export class PaymentMethodsPopupStore {
   close(): void {
     this.openRef.set(false);
     this.pickerRef.set(null);
+    this.historySummaryRef.set(null);
   }
 
   togglePickerSelection(paymentMethodId: string): void {

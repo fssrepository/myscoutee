@@ -1,5 +1,39 @@
 import { EntryPageComponent } from './entry-page.component';
 
+describe('EntryPageComponent new demo registration admission', () => {
+  it.each([false, true])('waits for location admission (%s) before onboarding and retains the invitation', async eligible => {
+    let finish!: (accepted: boolean) => void;
+    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+      buildDemoRegistrationUser: () => ({ id: 'new-demo-account' }),
+      requestLocationAccessFromDialog: vi.fn(() => new Promise<boolean>(resolve => { finish = resolve; })),
+      pendingDemoSessionUserId: '',
+      memberRedirectUrl: () => '/game?eventInvite=retained-test-invite',
+      openOnboardingGate: vi.fn()
+    });
+    const request = { complete: vi.fn(), fail: vi.fn() };
+    const pending = component.onDemoNewProfileRequested(request);
+    expect(component.requestLocationAccessFromDialog).toHaveBeenCalledWith('new-demo-account');
+    expect(component.pendingDemoSessionUserId).toBe('');
+    expect(component.openOnboardingGate).not.toHaveBeenCalled();
+    expect(request.complete).not.toHaveBeenCalled();
+    finish(eligible);
+    await pending;
+    if (eligible) {
+      expect(component.pendingDemoSessionUserId).toBe('new-demo-account');
+      expect(component.openOnboardingGate).toHaveBeenCalledWith(
+        { id: 'new-demo-account' }, '/game?eventInvite=retained-test-invite', expect.any(Object)
+      );
+      expect(request.complete).toHaveBeenCalledOnce();
+      expect(request.fail).not.toHaveBeenCalled();
+    } else {
+      expect(component.pendingDemoSessionUserId).toBe('');
+      expect(component.openOnboardingGate).not.toHaveBeenCalled();
+      expect(request.complete).not.toHaveBeenCalled();
+      expect(request.fail).toHaveBeenCalledOnce();
+    }
+  });
+});
+
 describe('EntryPageComponent browser connection transitions', () => {
   function entry() {
     return Object.assign(Object.create(EntryPageComponent.prototype), {

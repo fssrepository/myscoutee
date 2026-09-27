@@ -55,8 +55,12 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   async queryCandidates(
     query: ActivityContracts.ActivityInviteCandidatesQuery
   ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
-    return this.inviteCandidatesService.queryCandidates(query.owner.ownerType === 'community'
-      ? { ...query, activeUserId: this.workspace.accountId(query.activeUserId) }
+    const accountUserId = this.workspace.accountId(query.activeUserId);
+    // The Contacts picker uses the account itself as its asset-owner context.
+    const isContactPicker = query.owner.ownerType === 'asset'
+      && query.owner.ownerId === accountUserId;
+    return this.inviteCandidatesService.queryCandidates(query.owner.ownerType === 'community' || isContactPicker
+      ? { ...query, activeUserId: accountUserId }
       : query);
   }
 

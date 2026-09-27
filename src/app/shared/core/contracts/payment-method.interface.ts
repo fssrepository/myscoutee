@@ -109,6 +109,7 @@ export interface PaymentHistoryMutationDto {
 }
 
 export interface PaymentMethodDataService {
+  deleteCashReceipt(userId: string, paymentId: string): Promise<PaymentHistoryMutationDto>;
   recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto>;
   queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto>;
   beginRegistration(

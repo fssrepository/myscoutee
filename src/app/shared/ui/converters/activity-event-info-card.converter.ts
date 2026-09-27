@@ -65,7 +65,7 @@ export class ActivityEventInfoCardConverter {
         ...this.locationMetaRows(dto)
       ],
       description: invited
-        ? dto.creatorName
+        ? null
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
@@ -193,9 +193,13 @@ export class ActivityEventInfoCardConverter {
       };
     }
     return {
-      variant: 'avatar',
-      imageUrl: dto.creatorAvatarUrl?.trim() || null,
-      label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
+      variant: 'badge',
+      layout: 'avatar-metric',
+      tone: 'cool',
+      leadingAccessory: {
+        label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
+        tone: 'default'
+      },
       ariaLabel: `View ${dto.creatorName || 'organizer'} profile`,
       interactive: Boolean(this.profileUserId(dto))
     };

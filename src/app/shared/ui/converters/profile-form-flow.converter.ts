@@ -516,6 +516,7 @@ export class ProfileFormFlowConverter {
         config: {
           model: {
             updateOn: 'blur',
+            formatWhileTyping: true,
             field: { max: latestBirthday }
           },
           meta: {

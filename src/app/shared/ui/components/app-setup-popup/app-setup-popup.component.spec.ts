@@ -85,10 +85,10 @@ describe('Setup automatic installation offer', () => {
     expect(store.open).not.toHaveBeenCalled();
   });
 
-  it('retains the automatic installation offer while signed out', () => {
+  it('does not open permission setup for a signed-out installable browser', () => {
     const { store } = setup(null);
     store.pwa.installPromptVisible.set(true);
     TestBed.tick();
-    expect(store.open).toHaveBeenCalledOnce();
+    expect(store.open).not.toHaveBeenCalled();
   });
 });

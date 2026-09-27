@@ -1,4 +1,5 @@
 import { ContentModerationPopupComponent } from './content-moderation-popup.component';
+import { signal } from '@angular/core';
 import type { ContentModerationItem } from '../../../shared/core/contracts/content-moderation.interface';
 
 describe('Content moderation dual filters', () => {
@@ -11,7 +12,7 @@ describe('Content moderation dual filters', () => {
       category: 'all', status: 'under-review', groupContext: () => null, destroyRef: { destroyed: false },
       snapshot: () => component.state.snapshot(), i18n: { translate: (key: string) => key },
       workspace: { dashboard: () => ({ activeAdmin: { id: 'admin' } }) },
-      state: { apply: vi.fn(), snapshot: () => ({ settings: { enabled: true }, counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
+      state: { apply: vi.fn(), forScope: vi.fn().mockReturnValue(null), snapshot: () => ({ settings: { enabled: true }, counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
       error: { set: vi.fn() }, dialogs: { open: vi.fn() }, service: { decide: vi.fn(), page: vi.fn() },
       list: { removeVisibleItems: vi.fn(), patchVisibleItem: vi.fn() }, adminMenu: { closePopup: vi.fn() }
     });
@@ -82,6 +83,34 @@ describe('Content moderation dual filters', () => {
     component.decide({ id: 'rejected', context: original });
     expect(component.dialogs.open).not.toHaveBeenCalled();
     expect(component.service.decide).not.toHaveBeenCalled();
+  });
+  it('rejects an older list response after a decision so accepted rows cannot reappear', async () => {
+    const component = popup();
+    let resolve!: (value: unknown) => void;
+    component.service.page.mockReturnValue(new Promise(done => resolve = done));
+    const request = component.load({ filters: { category: 'all', status: 'under-review' }, pageSize: 20 });
+    component.state.forScope.mockReturnValue({ revision: 3, pendingCount: 0 });
+    resolve({ items: [original], total: 1, snapshot: { revision: 2, pendingCount: 1 } });
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    expect(component.state.apply).not.toHaveBeenCalled();
+    expect(component.error.set).not.toHaveBeenCalled();
+  });
+  it('keeps a settings save failure visible across successful list polls until settings are reopened', async () => {
+    const component = popup();
+    const draft = { enabled: true, autoApprove: false, delayMinutes: 0, categories: ['group'] };
+    component.settingsDraft = signal(draft);
+    component.settingsError = signal(false);
+    component.saving = signal(false);
+    component.service.settings = vi.fn().mockRejectedValue(new Error('revision conflict'));
+    await component.saveSettings();
+    expect(component.settingsError()).toBe(true);
+    expect(component.settingsDraft()).toEqual(draft);
+    component.service.page.mockResolvedValue({ items: [], total: 0, snapshot: { revision: 2 } });
+    await component.load({ filters: { category: 'all', status: 'under-review' }, pageSize: 20 });
+    expect(component.settingsError()).toBe(true);
+    component.service.snapshot = vi.fn().mockResolvedValue({ revision: 2, settings: draft });
+    await component.openSettings();
+    expect(component.settingsError()).toBe(false);
   });
   it('unblocks through confirmation into the Under review bucket', () => {
     const component = popup();

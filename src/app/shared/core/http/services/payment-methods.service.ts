@@ -27,6 +27,13 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
     await this.withTimeout(this.http.post(`${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/summary-currency`, { currency }));
   }
 
+  async deleteCashReceipt(userId: string, paymentId: string): Promise<PaymentHistoryMutationDto> {
+    return this.requireHistoryMutation(await this.withTimeout(this.http.delete<PaymentHistoryMutationDto>(
+      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history/cash/${encodeURIComponent(paymentId)}`,
+      { params: this.userParams(userId) }
+    )));
+  }
+
   recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
     return this.withTimeout(this.http.post<PaymentHistoryMutationDto>(
       `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history/cash`, request,

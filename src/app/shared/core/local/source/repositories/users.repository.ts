@@ -238,9 +238,13 @@ export class LocalUsersRepository {
   }
 
   queryGameStackUsers(raterUserId?: string): UserDto[] {
-    const users = this.queryUsersFromTable(USERS_TABLE_NAME)
-      .filter(user => UserProfileState.isPublicGameProfile(user));
     const normalizedRaterId = raterUserId?.trim() ?? '';
+    const rater = normalizedRaterId ? this.queryUserById(normalizedRaterId) : null;
+    if (normalizedRaterId && !rater) return [];
+    const users = this.queryUserRecordsFromTable(USERS_TABLE_NAME)
+      .filter(user => !normalizedRaterId || (user.workspaceGroupId ?? null) === (rater?.workspaceGroupId ?? null))
+      .filter(user => UserProfileState.isPublicGameProfile(user))
+      .map(user => LocalUsersMapper.toDto(user));
     if (!normalizedRaterId) {
       return users;
     }

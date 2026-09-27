@@ -14,6 +14,7 @@ export interface ActivityInvitePopupState {
   ownerType?: ActivityMemberOwnerType;
   parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
   title?: string;
+  headerTitle?: string;
   initialCandidates?: readonly ActivityMemberDTO[];
   selectionLimit?: number;
   parentZIndex?: number;
@@ -47,6 +48,7 @@ export class ActivityInvitePopupStore {
     ownerType?: ActivityMemberOwnerType;
     parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
     title?: string;
+    headerTitle?: string;
     initialCandidates?: readonly ActivityMemberDTO[];
     selectionLimit?: number;
     parentZIndex?: number;
@@ -71,6 +73,7 @@ export class ActivityInvitePopupStore {
           }
         : null,
       title: payload.title?.trim() || undefined,
+      headerTitle: payload.headerTitle?.trim() || undefined,
       selectionLimit: payload.selectionLimit,
       parentZIndex: payload.parentZIndex,
       initialCandidates: Array.isArray(payload.initialCandidates)

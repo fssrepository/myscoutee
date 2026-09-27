@@ -50,8 +50,8 @@ describe('LocalChatsRepository chat pages', () => {
   });
 
   it('opens one eventless conversation for saved contacts and limits member invitations to that list', () => {
-    for (const id of ['contact-a', 'contact-b', 'contact-c', 'outsider']) seedUser(user(id));
-    const contacts = ['contact-b', 'contact-c'].map(id => ({ userId: id } as StoredContact));
+    for (const id of ['contact-a', 'contact-b', 'contact-c', 'contact-d', 'outsider']) seedUser(user(id));
+    const contacts = ['contact-b', 'contact-c', 'contact-d'].map(id => ({ userId: id } as StoredContact));
     memoryDb.write(state => ({ ...state, [CONTACTS_TABLE_NAME]: {
       ownerUserIds: ['contact-a'], byOwnerUserId: { 'contact-a': contacts }
     } }));
@@ -65,6 +65,16 @@ describe('LocalChatsRepository chat pages', () => {
     expect(repository.ensureContactChat('contact-a', 'contact-b').id).toBe(direct.id);
     expect(() => repository.addContactChatMembers('contact-a', direct.id, ['outsider'])).toThrow();
     expect(repository.queryChatItemById('outsider', direct.id)).toBeNull();
+    expect(() => repository.addContactChatMembers('contact-a', direct.id, ['contact-c'])).toThrowError(/approval/);
+    const invitationConsent = access.changeChatAccess('contact-a', 'contact-c', 'request');
+    expect(() => repository.addContactChatMembers('contact-a', direct.id, ['contact-c'])).toThrowError(/approval/);
+    expect(repository.queryChatItemById('contact-c', direct.id)).toBeNull();
+    expect(repository.queryChatItemById('contact-a', direct.id)?.memberIds).toEqual(['contact-a', 'contact-b']);
+    access.changeChatAccess('contact-c', 'contact-a', 'approve', invitationConsent.version);
+    expect(() => repository.addContactChatMembers('contact-a', direct.id, ['contact-c', 'contact-d'])).toThrowError(/approval/);
+    expect(repository.queryChatItemById('contact-c', direct.id)).toBeNull();
+    expect(repository.queryChatItemById('contact-d', direct.id)).toBeNull();
+    expect(repository.queryChatItemById('contact-a', direct.id)?.memberIds).toEqual(['contact-a', 'contact-b']);
     const updated = repository.addContactChatMembers('contact-a', direct.id, ['contact-c']);
     expect(updated.memberIds).toEqual(['contact-a', 'contact-b', 'contact-c']);
     expect(repository.queryChatItemById('contact-c', direct.id)?.memberIds).toEqual(updated.memberIds);
@@ -104,6 +114,8 @@ describe('LocalChatsRepository chat pages', () => {
     expect(deleted.deletedAtIso).toBeTruthy();
     expect(deleted.deletedByUserId).toBe('share-a');
     // A new contact sees the existing deleted history without a fabricated unread count.
+    const invitationConsent = access.changeChatAccess('share-a', 'share-c', 'request');
+    access.changeChatAccess('share-c', 'share-a', 'approve', invitationConsent.version);
     repository.addContactChatMembers('share-a', direct.id, ['share-c']);
     const invited = repository.queryChatItemById('share-c', direct.id)!;
     expect(invited.unread).toBe(0);

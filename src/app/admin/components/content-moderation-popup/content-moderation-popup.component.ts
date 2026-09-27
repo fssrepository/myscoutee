@@ -60,6 +60,7 @@ export class ContentModerationPopupComponent {
   protected readonly settingsDraft = signal<ContentModerationSettings | null>(null);
   protected readonly saving = signal(false);
   protected readonly error = signal(false);
+  protected readonly settingsError = signal(false);
   private settingsRevision = 0;
   private get admin() { return this.groupContext()?.actor ?? this.workspace.dashboard()?.activeAdmin; }
   private currentScope(groupId: string | undefined, actorId: string | undefined): boolean {
@@ -78,7 +79,7 @@ export class ContentModerationPopupComponent {
   constructor() {
     effect(() => {
       if (this.isOpen()) {
-        this.settingsDraft.set(null); this.saving.set(false);
+        this.settingsDraft.set(null); this.saving.set(false); this.settingsError.set(false);
         if (this.groupId && this.category === 'group') this.category = 'all';
         this.query = { filters: { category: this.category, status: this.status } }; this.error.set(false);
       }
@@ -90,10 +91,14 @@ export class ContentModerationPopupComponent {
     try {
       const result = await this.service.page(actorId ?? '', category, status, query, groupId);
       if (!this.currentScope(groupId, actorId)) return result;
+      if (result.snapshot.revision < (this.state.forScope(groupId)?.revision ?? -1)) {
+        throw new DOMException('Moderation changed while polling', 'AbortError');
+      }
       this.error.set(false);
       this.state.apply(result.snapshot, groupId); return result;
     } catch (error) {
-      if (this.currentScope(groupId, actorId)) this.error.set(true);
+      if (!((error instanceof Error || error instanceof DOMException) && error.name === 'AbortError')
+          && this.currentScope(groupId, actorId)) this.error.set(true);
       throw error;
     }
   }
@@ -171,6 +176,7 @@ export class ContentModerationPopupComponent {
   }
   private async openSettings() {
     const groupId = this.groupId, actorId = this.admin?.id;
+    this.settingsError.set(false);
     this.error.set(false);
     try { const snapshot = await this.service.snapshot(actorId ?? '', groupId);
       if (!this.currentScope(groupId, actorId)) return;
@@ -220,14 +226,14 @@ export class ContentModerationPopupComponent {
   private async saveSettings() {
     const settings = this.settingsDraft(); if (!settings || this.saving()) return;
     const groupId = this.groupId, actorId = this.admin?.id;
-    this.saving.set(true); this.error.set(false);
+    this.saving.set(true); this.settingsError.set(false);
     try {
       const snapshot = await this.service.settings(actorId ?? '', this.settingsRevision, settings, groupId);
       if (!this.currentScope(groupId, actorId)) return;
       this.state.apply(snapshot, groupId);
       this.settingsDraft.set(null);
     }
-    catch { if (this.currentScope(groupId, actorId)) this.error.set(true); }
+    catch { if (this.currentScope(groupId, actorId)) this.settingsError.set(true); }
     finally { if (this.currentScope(groupId, actorId)) this.saving.set(false); }
   }
 }

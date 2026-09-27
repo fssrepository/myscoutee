@@ -64,6 +64,7 @@ export class LocalChatsRepository {
     const added = [...new Set(userIds.map(id => id.trim()))].filter(id => !chat.memberIds.includes(id));
     if (!added.length) return chat;
     this.requireContactTargets(actorId, added);
+    for (const targetId of added) this.requireDirectChatConsent(actorId, targetId);
     this.writeContactChat(chat.id, [...chat.memberIds, ...added]);
     return this.queryChatItemById(actorId, chat.id)!;
   }

@@ -830,7 +830,7 @@
 :host(.app-menu-host--compact) .app-menu__trigger .app-menu__trigger-image--circle {
   width: 26px;
   height: 26px;
-  padding: 0;
+  padding: var(--app-menu-trigger-circle-padding, 0);
   border-radius: 50%;
   font-size: 12px;
 }
@@ -1737,6 +1737,7 @@
 }
 
 .app-menu__selection-limit {
+  color: colors.$danger-foreground;
   white-space: nowrap;
   text-transform: none;
 }
@@ -2895,6 +2896,7 @@ a.app-menu__item {
 }
 
 .app-menu__item-check {
+  flex: 0 0 auto;
   color: #2f7b51;
 }
 

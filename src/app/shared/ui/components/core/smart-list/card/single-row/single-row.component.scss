@@ -496,3 +496,39 @@
   line-height: 1.4;
   min-height: 2.8em;
 }
+
+// Reserve the badge/action column in the layout so the existing text ellipsis
+// ends before those controls, including on narrow request cards.
+.ui-single-row--with-top-right:not(.notification-row):not(.ui-single-row--menu-top-right) {
+  grid-template-columns: auto minmax(0, 1fr) fit-content(46%);
+  grid-template-areas:
+    'avatar main badge'
+    'avatar main actions';
+
+  &.ui-single-row--no-leading {
+    grid-template-columns: minmax(0, 1fr) fit-content(46%);
+    grid-template-areas:
+      'main badge'
+      'main actions';
+  }
+
+  .ui-single-row__avatar { grid-area: avatar; }
+  .ui-single-row__main { grid-area: main; }
+
+  .ui-single-row__top-right {
+    grid-area: badge;
+    position: static;
+    justify-self: end;
+    align-self: start;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .ui-single-row__side {
+    grid-area: actions;
+    position: static;
+    justify-self: end;
+    align-self: start;
+    justify-content: flex-end;
+  }
+}

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, HostBinding, Input } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, forwardRef, HostBinding, inject, Input } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepicker, MatDatepickerModule, MatDateRangePicker } from '@angular/material/datepicker';
@@ -98,6 +98,8 @@ export interface DateInputModel {
   mode?: DateInputMode;
   /** Commit single-date edits on blur instead of while typing. */
   updateOn?: 'change' | 'blur';
+  /** Insert YYYY/MM/DD separators while editing the single date field. */
+  formatWhileTyping?: boolean;
   precision?: DateInputPrecision;
   valueFormat?: DateInputValueFormat;
   time?: boolean | DateInputTimeModel | null;
@@ -171,7 +173,85 @@ export class DateInputComponent implements ControlValueAccessor {
   private onValueChange: (value: DateInputValue) => void = () => undefined;
   private onTouched: () => void = () => undefined;
 
-  constructor(private readonly cdr: ChangeDetectorRef) {}
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  constructor() {
+    const host = inject<ElementRef<HTMLElement>>(ElementRef);
+    const destroyRef = inject(DestroyRef);
+    const slots = [0, 1, 2, 3, 5, 6, 8, 9];
+    const empty = '____/__/__';
+    let edit: { value: string; start: number; end: number } | null = null;
+    const target = (event: Event): HTMLInputElement | null => {
+      const input = event.target;
+      return this.model?.formatWhileTyping && input instanceof HTMLInputElement
+        && input.hasAttribute('data-single-date') && !input.disabled ? input : null;
+    };
+    const mask = (value: string): string => {
+      if (/^[\d_]{4}\/[\d_]{2}\/[\d_]{2}$/.test(value)) return value;
+      const separated = value.match(/^(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})\.?$/);
+      const digits = separated
+        ? separated[1] + separated[2].padStart(2, '0') + separated[3].padStart(2, '0')
+        : value.replace(/\D/g, '').slice(0, 8);
+      const result = empty.split('');
+      [...digits].forEach((digit, index) => result[slots[index]] = digit);
+      return result.join('');
+    };
+    const focus = (event: Event) => {
+      const input = target(event);
+      if (input && !input.value) {
+        input.value = empty;
+        input.setSelectionRange(0, 0);
+      }
+    };
+    const before = (event: Event) => {
+      const input = target(event);
+      edit = input ? { value: mask(input.value), start: input.selectionStart ?? 0,
+        end: input.selectionEnd ?? 0 } : null;
+    };
+    // Capture before Material parses the input: the visible mask and its
+    // parsed value stay in sync, using the original native input event.
+    const format = (event: Event) => {
+      const input = target(event);
+      const previous = edit;
+      edit = null;
+      if (!input || (event as InputEvent).isComposing) return;
+      const type = (event as InputEvent).inputType ?? '';
+      let value = mask(input.value);
+      let caret = input.selectionStart ?? 0;
+      if (previous && (type.startsWith('insert') || type.startsWith('delete'))) {
+        const characters = previous.value.split('');
+        for (const slot of slots) {
+          if (slot >= previous.start && slot < previous.end) characters[slot] = '_';
+        }
+        caret = previous.start;
+        if (type.startsWith('delete') && previous.start === previous.end) {
+          const slot = type === 'deleteContentBackward'
+            ? [...slots].reverse().find(position => position < previous.start)
+            : slots.find(position => position >= previous.start);
+          if (slot !== undefined) { characters[slot] = '_'; caret = slot; }
+        } else if (type.startsWith('insert')) {
+          let inserted = (event as InputEvent).data
+            ?? input.value.slice(previous.start, input.value.length - (previous.value.length - previous.end));
+          if (/^\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}\.?$/.test(inserted)) inserted = mask(inserted);
+          for (const digit of inserted.replace(/\D/g, '')) {
+            const slot = slots.find(position => position >= caret);
+            if (slot === undefined) break;
+            characters[slot] = digit;
+            caret = slots.find(position => position > slot) ?? 10;
+          }
+          if (/^[/.\-]$/.test(inserted)) caret = slots.find(position => position >= caret) ?? 10;
+        }
+        value = characters.join('');
+      }
+      input.value = value;
+      input.setSelectionRange(caret, caret);
+    };
+    const listeners: [string, (event: Event) => void][] = [['focus', focus], ['beforeinput', before], ['input', format]];
+    for (const [name, listener] of listeners) host.nativeElement.addEventListener(name, listener, true);
+    destroyRef.onDestroy(() => {
+      for (const [name, listener] of listeners) host.nativeElement.removeEventListener(name, listener, true);
+    });
+  }
 
   writeValue(value: DateInputValue | undefined): void {
     this.currentValue = value ?? null;

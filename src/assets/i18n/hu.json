@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.26.hu.198",
+  "version": "2026.09.27.hu.8",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3653,7 +3653,7 @@
     "moderation.message": "Opcionális üzenet a tulajdonosnak az alkalmazástámogatási chaten",
     "moderation.autoApprove": "Automatikus jóváhagyás",
     "moderation.delayMinutes": "Késleltetés (perc)",
-    "moderation.failed": "A moderáció betöltése vagy mentése sikertelen. Töltsd újra és próbáld ismét.",
+    "moderation.failed": "A moderáció betöltése vagy mentése sikertelen. Próbáld újra.",
     "moderation.changed": "Egy másik admin módosította az elemet. Töltsd újra és próbáld ismét.",
     "moderation.invalidSettings": "Adj meg 0 és 43200 közötti egész percszámot.",
     "admin.jobs.rule.content.autoApprove": "Tartalmak automatikus jóváhagyása",
@@ -3724,6 +3724,8 @@
     "email.unsubscribe.landing": "MyScoutee weboldal",
     "email.unsubscribe.javascript": "Az email-beállítások megerősítéséhez engedélyezd a JavaScriptet.",
     "game.location.required.title": "Hiányzó helyadat",
+    "game.profile.load.failed.title": "Nem sikerült betölteni a profilodat",
+    "game.profile.load.failed.description": "Töltsd újra az oldalt az újrapróbáláshoz.",
     "game.location.required.description": "A profilok megjelenítéséhez nyisd meg a Beállítások → Telepítés menüpontot, engedélyezd a helyadatok használatát, majd nyomd meg a Frissítés gombot.",
     "event.member.payment.pending": "Fizetésre vár",
     "event.checkout.payment.deadline.passed": "Az esemény fizetési határideje lejárt.",
@@ -3863,7 +3865,7 @@
     "contact.chat.request": "Kérés",
     "contact.chat.approve": "Elfogadás",
     "contact.chat.reject": "Elutasítás",
-    "contact.chat.pending": "Folyamatban",
+    "contact.chat.pending": "Jóváhagyásra vár",
     "contact.chat.approved": "Chat",
     "contact.chat.rejected": "Elutasítva",
     "contact.chat.request.message": "Engedélyt kérsz a kapcsolattól a MyScoutee közvetlen chat használatához?",
@@ -4005,6 +4007,18 @@
     "notification.kind.community-owner-left.title": "A csoport új felelős adminra vár",
     "notification.kind.community-owner-left.message": "Átveheted a(z) {workspaceGroupName} csoport felelősségét.",
     "notification.kind.community-takeover.title": "Megváltozott a csoport felelőse",
-    "notification.kind.community-takeover.message": "Egy admin átvette a(z) {workspaceGroupName} csoport felelősségét."
+    "notification.kind.community-takeover.message": "Egy admin átvette a(z) {workspaceGroupName} csoport felelősségét.",
+    "groups.confirm.restore-group.title": "Visszaállítod ezt a csoportot?",
+    "groups.confirm.restore-group": "Visszaállítod a(z) „{name}” csoportot, és újra átveszed az adminisztrálását?",
+    "groups.confirm.restore.title": "Visszaállítod a csoporttagságodat?",
+    "groups.confirm.restore": "Visszaállítod a tagságodat a(z) „{name}” csoportban újabb jóváhagyás nélkül?",
+    "groups.confirm.restore-blocked.title": "Kéred az újbóli csatlakozást?",
+    "groups.confirm.restore-blocked": "Eltávolítottak a(z) „{name}” csoportból. Küldesz kérelmet az adminnak a tagságod újbóli jóváhagyására?",
+    "payment.cash.delete.title": "Törlöd a készpénzes tételt?",
+    "payment.cash.delete.message": "A tétel törölt jelölést kap, és nem számít bele egyik tag fizetési összesítőibe sem.",
+    "payment.cash.delete.error": "Nem sikerült törölni a készpénzes tételt.",
+    "payment.status.deleted": "Törölve",
+    "payment.cash.refund.request.message": "Kéred ennek a készpénzes tételnek a visszatérítését a kedvezményezettől?",
+    "payment.cash.refund.approve.message": "Megerősíted, hogy ezt az összeget készpénzben visszaadtad a fizetőnek?"
   }
 }
