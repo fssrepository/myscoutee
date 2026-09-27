@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.27.en.4",
+  "version": "2026.09.27.en.5",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3863,7 +3863,7 @@
     "contact.chat.request": "Request",
     "contact.chat.approve": "Approve",
     "contact.chat.reject": "Reject",
-    "contact.chat.pending": "Pending",
+    "contact.chat.pending": "Awaiting approval",
     "contact.chat.approved": "Chat",
     "contact.chat.rejected": "Rejected",
     "contact.chat.request.message": "Request permission to chat directly with this contact on MyScoutee?",

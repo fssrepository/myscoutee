@@ -525,18 +525,29 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   protected chatPalette(contact: ContactListItem): AppMenuPalette {
-    return contact.chatAccess?.status === 'approved' ? 'green' : contact.chatAccess?.status === 'rejected' ? 'red' : 'orange';
+    return contact.chatAccess?.status === 'approved' ? 'green'
+      : contact.chatAccess?.status === 'rejected' ? 'red'
+      : contact.chatAccess?.status === 'pending' ? 'purple' : 'blue';
   }
 
   protected chatStatusLabel(contact: ContactListItem): string {
     return `contact.chat.${contact.chatAccess?.status ?? 'request'}`;
   }
 
+  protected contactChatTrigger(contact: ContactListItem): AppMenuTrigger {
+    return {
+      id: 'chat', action: 'custom', layout: 'pill', palette: this.chatPalette(contact),
+      imageUrl: 'assets/logo/heart.webp', imageShape: 'circle',
+      label: `MyScoutee · ${this.i18n.translate(this.chatStatusLabel(contact))}`,
+      disabled: this.openingContactChat() || this.chatAccess.busy()
+    };
+  }
+
   private confirmChatAccess(contact: ContactListItem, action: ContactChatAccessAction): void {
     this.closeActionMenu();
     this.dialogStore.open({ title: `contact.chat.${action}.question`, message: `contact.chat.${action}.message`,
       confirmLabel: `contact.chat.${action}`, cancelLabel: 'Cancel',
-      confirmPalette: action === 'reject' ? 'red' : action === 'approve' ? 'green' : 'orange',
+      confirmPalette: action === 'reject' ? 'red' : action === 'approve' ? 'green' : 'blue',
       failureMessage: 'contact.chat.error',
       onConfirm: () => this.chatAccess.change(contact.chatAccess, contact.userId, action) });
   }

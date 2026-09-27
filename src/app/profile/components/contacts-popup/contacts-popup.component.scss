@@ -25,16 +25,18 @@
 .contacts-toolbar {
   display: flex;
   width: 100%;
+  box-sizing: border-box;
+  padding-inline-end: 0.6rem;
   flex-wrap: nowrap;
   gap: 0.5rem;
   align-items: center;
 }
 
 .contacts-search-field {
-  width: 100%;
+  width: auto;
   max-width: 100%;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -183,12 +185,8 @@
   font-size: 0.82rem;
 }
 
-.contact-headline-muted {
-  color: rgba(40, 62, 92, 0.54);
-}
-
 .contact-city {
-  margin: 0;
+  margin: 0.25rem 0 0;
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
@@ -198,9 +196,15 @@
 }
 
 .contact-method-chips {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.42rem;
+  align-items: center;
+}
+
+.contact-chat-action {
+  --app-menu-trigger-circle-size: 20px;
 }
 
 .contact-method-chip {
@@ -226,6 +230,7 @@
 }
 
 .contact-empty-methods {
+  grid-column: 1 / -1;
   font-size: 0.79rem;
 }
 
@@ -495,21 +500,9 @@
   }
 }
 
-.contact-method-chip-chat {
-  background: #e6f7f8;
-  color: #20727c;
-  img { width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
-}
-
 .contact-card {
   border-color: #efc6a5;
   background: linear-gradient(145deg, #fff8f1, #fff1e4);
 }
-.contact-method-chip-chat {
-  &[data-palette='orange'] { background: #fff0df; border-color: #efbd92; color: #975019; }
-  &[data-palette='green'] { background: #e4f5eb; border-color: #a5d6ba; color: #176b47; }
-  &[data-palette='red'] { background: #ffe8ec; border-color: #eda8b5; color: #aa293e; }
-}
-.contact-request-time { margin: 0.25rem 0; font-size: 0.75rem; color: #795c45; }
 
 .contacts-bucket-menu { flex: 0 0 auto; }

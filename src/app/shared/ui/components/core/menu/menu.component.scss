@@ -828,8 +828,8 @@
 
 .app-menu__trigger .app-menu__trigger-image--circle,
 :host(.app-menu-host--compact) .app-menu__trigger .app-menu__trigger-image--circle {
-  width: 26px;
-  height: 26px;
+  width: var(--app-menu-trigger-circle-size, 26px);
+  height: var(--app-menu-trigger-circle-size, 26px);
   padding: 0;
   border-radius: 50%;
   font-size: 12px;

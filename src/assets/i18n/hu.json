@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.27.hu.4",
+  "version": "2026.09.27.hu.5",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3863,7 +3863,7 @@
     "contact.chat.request": "Kérés",
     "contact.chat.approve": "Elfogadás",
     "contact.chat.reject": "Elutasítás",
-    "contact.chat.pending": "Folyamatban",
+    "contact.chat.pending": "Jóváhagyásra vár",
     "contact.chat.approved": "Chat",
     "contact.chat.rejected": "Elutasítva",
     "contact.chat.request.message": "Engedélyt kérsz a kapcsolattól a MyScoutee közvetlen chat használatához?",
