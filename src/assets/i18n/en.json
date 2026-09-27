@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.27.en.5",
+  "version": "2026.09.27.en.7",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",

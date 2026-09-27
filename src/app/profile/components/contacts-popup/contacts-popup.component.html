@@ -58,6 +58,9 @@
                   <mat-icon>location_on</mat-icon>
                   <span>{{ contact.city || 'City not set yet' }}</span>
                 </p>
+                @if (chatAccess.requestsOnly() && contact.chatAccess?.requestedAtIso; as requestedAt) {
+                  <p class="contact-request-date">{{ requestedAt | date:'short' }}</p>
+                }
               </div>
               <div class="contact-menu-anchor">
                 <button
@@ -85,15 +88,17 @@
               <div class="contact-method-chips">
                 @if (contact.userId) {
                   <app-menu class="contact-chat-action" kind="select"
+                    [model]="{ density: 'compact' }"
                     [trigger]="contactChatTrigger(contact)"
                     (itemSelect)="openContactChat(contact, $event.sourceEvent)">
                   </app-menu>
                 }
                 @for (method of visibleMethodChips(contact); track method.id) {
-                  <button type="button" class="contact-method-chip" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
-                    <mat-icon>{{ method.icon }}</mat-icon>
-                    <span>{{ method.displayValue || method.label }}</span>
-                  </button>
+                  <app-menu class="contact-method-action" kind="select"
+                    [model]="{ density: 'compact' }"
+                    [trigger]="contactMethodTrigger(method)"
+                    (itemSelect)="runMethod(method, $event.sourceEvent)">
+                  </app-menu>
                 }
                 @if (hiddenMethodCount(contact) > 0) {
                   <span class="contact-method-chip contact-method-chip-more">

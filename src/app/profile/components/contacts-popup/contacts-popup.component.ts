@@ -527,18 +527,18 @@ export class ContactsPopupComponent implements OnDestroy {
   protected chatPalette(contact: ContactListItem): AppMenuPalette {
     return contact.chatAccess?.status === 'approved' ? 'green'
       : contact.chatAccess?.status === 'rejected' ? 'red'
-      : contact.chatAccess?.status === 'pending' ? 'purple' : 'blue';
+      : contact.chatAccess?.status === 'pending' ? 'purple' : 'red';
   }
 
   protected chatStatusLabel(contact: ContactListItem): string {
-    return `contact.chat.${contact.chatAccess?.status ?? 'request'}`;
+    return `contact.chat.${contact.chatAccess?.status ?? 'approved'}`;
   }
 
   protected contactChatTrigger(contact: ContactListItem): AppMenuTrigger {
     return {
       id: 'chat', action: 'custom', layout: 'pill', palette: this.chatPalette(contact),
       imageUrl: 'assets/logo/heart.webp', imageShape: 'circle',
-      label: `MyScoutee · ${this.i18n.translate(this.chatStatusLabel(contact))}`,
+      label: `MyScoutee - ${this.i18n.translate(this.chatStatusLabel(contact))}`,
       disabled: this.openingContactChat() || this.chatAccess.busy()
     };
   }
@@ -547,7 +547,7 @@ export class ContactsPopupComponent implements OnDestroy {
     this.closeActionMenu();
     this.dialogStore.open({ title: `contact.chat.${action}.question`, message: `contact.chat.${action}.message`,
       confirmLabel: `contact.chat.${action}`, cancelLabel: 'Cancel',
-      confirmPalette: action === 'reject' ? 'red' : action === 'approve' ? 'green' : 'blue',
+      confirmPalette: action === 'approve' ? 'green' : 'red',
       failureMessage: 'contact.chat.error',
       onConfirm: () => this.chatAccess.change(contact.chatAccess, contact.userId, action) });
   }
@@ -686,8 +686,11 @@ export class ContactsPopupComponent implements OnDestroy {
     return this.lookupMethodOption(type);
   }
 
-  protected methodToneClass(type: ContactMethodType): string {
-    return `contact-method-tone-${type}`;
+  protected contactMethodTrigger(method: ContactMethodItem): AppMenuTrigger {
+    return {
+      id: method.id, action: 'custom', layout: 'pill', icon: method.icon,
+      palette: this.methodMenuPalette(method.type), label: method.displayValue || method.label
+    };
   }
 
   protected trackMethod(_index: number, method: ContactMethodDraft): string {
