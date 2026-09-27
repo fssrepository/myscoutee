@@ -48,7 +48,7 @@
         <mat-icon [class.app-menu__trigger-icon--symbol]="isSymbolIcon(triggerIcon())">{{ triggerIcon() }}</mat-icon>
       }
       @if (!trigger?.hideLabel && triggerLabel()) {
-        <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
+        <span class="app-menu__trigger-label" data-i18n-ignore>{{ triggerLabel() | i18n }}</span>
       }
       @if (triggerTrailingIcon()) {
         <mat-icon
