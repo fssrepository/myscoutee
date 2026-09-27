@@ -20,7 +20,8 @@ class Browser extends EventTarget {
     replaceState: (state: Record<string, unknown>, _title: string, url: string) => {
       this.entries[this.index] = { state, url }; this.location.href = url;
     },
-    back: () => queueMicrotask(() => this.go(-1))
+    back: () => queueMicrotask(() => this.go(-1)),
+    go: (delta: number) => queueMicrotask(() => this.go(delta))
   };
   go(delta: number): void {
     this.index = Math.max(0, Math.min(this.entries.length - 1, this.index + delta));
@@ -50,13 +51,16 @@ describe('overlay Back history', () => {
     const closed: string[] = [];
     const parent = store.register(() => { closed.push('popup'); store.unregister(parent); });
     const child = store.register(() => { closed.push('menu'); store.unregister(child); });
-    expect(browser.entries).toHaveLength(3);
+    expect(browser.entries).toHaveLength(4);
+    const push = vi.spyOn(browser.history, 'pushState');
     expect(browser.history.state['other']).toBe('retained');
     browser.go(-1); await settle();
     expect(closed).toEqual(['menu']); expect(route).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
     expect(browser.location.href).toBe('https://app.test/game');
     browser.go(-1); await settle();
     expect(closed).toEqual(['menu', 'popup']); expect(browser.index).toBe(1);
+    expect(push).not.toHaveBeenCalled();
     expect(route).not.toHaveBeenCalled();
     browser.go(-1); expect(route).toHaveBeenCalledOnce();
     expect(browser.location.href).toBe('https://app.test/entry');
@@ -72,8 +76,10 @@ describe('overlay Back history', () => {
 
   it('keeps a busy/required dialog on its route when closure is declined', async () => {
     const close = vi.fn(); const token = store.register(close);
+    const push = vi.spyOn(browser.history, 'pushState');
     browser.go(-1); await settle();
     expect(close).toHaveBeenCalledOnce(); expect(browser.index).toBe(2);
+    expect(push).not.toHaveBeenCalled();
     expect(browser.location.href).toBe('https://app.test/game');
     store.unregister(token); await settle();
   });
