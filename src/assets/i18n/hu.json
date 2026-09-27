@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.27.hu.6",
+  "version": "2026.09.27.hu.7",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3724,6 +3724,8 @@
     "email.unsubscribe.landing": "MyScoutee weboldal",
     "email.unsubscribe.javascript": "Az email-beállítások megerősítéséhez engedélyezd a JavaScriptet.",
     "game.location.required.title": "Hiányzó helyadat",
+    "game.profile.load.failed.title": "Nem sikerült betölteni a profilodat",
+    "game.profile.load.failed.description": "Töltsd újra az oldalt az újrapróbáláshoz.",
     "game.location.required.description": "A profilok megjelenítéséhez nyisd meg a Beállítások → Telepítés menüpontot, engedélyezd a helyadatok használatát, majd nyomd meg a Frissítés gombot.",
     "event.member.payment.pending": "Fizetésre vár",
     "event.checkout.payment.deadline.passed": "Az esemény fizetési határideje lejárt.",

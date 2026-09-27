@@ -437,6 +437,11 @@ export class HomeComponent implements OnDestroy {
     return this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
   }
 
+  protected get hasAvatarProfileLoadError(): boolean {
+    const status = this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status;
+    return status === 'error' || status === 'timeout';
+  }
+
   protected get isBlockedUserStatusPending(): boolean {
     return this.activeUser.profileStatus === 'blocked' && !this.isAvatarProfileSettled;
   }

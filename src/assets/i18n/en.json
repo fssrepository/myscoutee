@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.27.en.10",
+  "version": "2026.09.27.en.11",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3724,6 +3724,8 @@
     "email.unsubscribe.landing": "Visit MyScoutee",
     "email.unsubscribe.javascript": "Please enable JavaScript to confirm your email preferences.",
     "game.location.required.title": "Location required",
+    "game.profile.load.failed.title": "Profile failed to load",
+    "game.profile.load.failed.description": "Reload the page to try again.",
     "game.location.required.description": "To see profiles, open Settings → Install, enable location access, then press Update.",
     "event.member.payment.pending": "Waiting for payment",
     "event.checkout.payment.deadline.passed": "The payment deadline for this event has passed.",
