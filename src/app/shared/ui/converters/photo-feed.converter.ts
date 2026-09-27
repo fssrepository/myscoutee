@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import { contentModerationBadge } from './content-moderation-badge';
 import type { PhotoFeedPost } from '../../core/contracts/photo-feed.interface';
 import type { InfoCardData } from '../components/core/smart-list/card';
@@ -14,7 +15,9 @@ export class PhotoFeedConverter {
       groupLabel: `${(bucket + 1) * 5} km`,
       localSortKey: [bucket, -Date.parse(post.createdAtIso), post.id],
       metaRows: [`${post.distanceKm.toFixed(1)} km`], i18nIgnoreContent: true,
-      mediaStart: { variant: 'avatar', imageUrl: post.creatorAvatarUrl, label: post.creatorName, interactive: false },
+      mediaStart: { variant: 'badge', layout: 'avatar-metric', tone: 'cool',
+        leadingAccessory: { label: AppUtils.initialsFromText(post.creatorName), tone: 'default' },
+        interactive: false },
       mediaEnd: { variant: 'badge', label: `${post.imageUrls.length} / 5`,
         ariaLabel: 'image.carousel.expand', interactive: true },
       mediaBottomEnd: contentModerationBadge(post.moderationStatus),

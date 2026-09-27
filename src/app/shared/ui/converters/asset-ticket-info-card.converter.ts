@@ -32,10 +32,13 @@ export class AssetTicketInfoCardConverter {
         tone: this.ticketLeadingIconTone(row)
       },
       mediaStart: {
-        variant: 'avatar',
-        imageUrl: row.creatorAvatarUrl?.trim() || null,
-        tone: this.ticketSourceAvatarTone(row),
-        label: this.ticketSourceAvatarLabel(row),
+        variant: 'badge',
+        layout: 'avatar-metric',
+        tone: 'cool',
+        leadingAccessory: {
+          label: this.ticketSourceAvatarLabel(row),
+          tone: this.ticketSourceAvatarTone(row)
+        },
         interactive: false,
         ariaLabel: null
       },
@@ -113,9 +116,9 @@ export class AssetTicketInfoCardConverter {
 
   private static ticketSourceAvatarTone(
     row: AssetContracts.AssetTicketDTO
-  ): NonNullable<InfoCardData['mediaStart']>['tone'] {
+  ): NonNullable<NonNullable<InfoCardData['mediaStart']>['leadingAccessory']>['tone'] {
     const toneIndex = (AppUtils.hashText(`${row.type}:${row.id}:${row.title}`) % 8) + 1;
-    return `tone-${toneIndex}` as NonNullable<InfoCardData['mediaStart']>['tone'];
+    return `tone-${toneIndex}` as NonNullable<NonNullable<InfoCardData['mediaStart']>['leadingAccessory']>['tone'];
   }
 
   private static ticketSourceAvatarLabel(row: AssetContracts.AssetTicketDTO): string {
