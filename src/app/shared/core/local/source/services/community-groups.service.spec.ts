@@ -43,7 +43,14 @@ describe('Community membership writes and recipient attention', () => {
         write: (update: (current: State) => State) => { state = update(state); },
         whenReady: async () => undefined
       } },
-      { provide: LocalUsersRepository, useValue: { queryUserById: (id: string) => state[USERS_TABLE_NAME].byId[id] ?? null } },
+      { provide: LocalUsersRepository, useValue: {
+        queryUserById: (id: string) => state[USERS_TABLE_NAME].byId[id] ?? null,
+        upsertUser: (user: UserRecord) => {
+          if (!state[USERS_TABLE_NAME].byId[user.id]) state[USERS_TABLE_NAME].ids.push(user.id);
+          state[USERS_TABLE_NAME].byId[user.id] = user;
+        },
+        selectWorkspace: async (id: string, groupId: string | null) => { state[USERS_TABLE_NAME].byId[id].activeWorkspaceGroupId = groupId; }
+      } },
       { provide: LocalAdminModerationRepository, useValue: {} },
       { provide: RouteDelayService, useValue: { waitForRouteDelay: async () => undefined } }
     ] });
@@ -59,6 +66,37 @@ describe('Community membership writes and recipient attention', () => {
   });
 
   afterEach(() => TestBed.resetTestingModule());
+
+  function eventInviter(): string {
+    state.communityGroups.byId['group'].policy.workspace = true;
+    const id = 'group:group:member';
+    state[USERS_TABLE_NAME].byId[id] = { ...state[USERS_TABLE_NAME].byId['member'], id, accountUserId: 'member', workspaceGroupId: 'group' };
+    state[USERS_TABLE_NAME].ids.push(id);
+    return id;
+  }
+
+  it('admits an event-link recipient through the normal group acceptance and reuses its profile on replay', async () => {
+    const inviter = eventInviter();
+    const first = await service.claimEventInvite('group', inviter, 'guest');
+    expect(member('guest').status).toBe('accepted');
+    expect(first).toMatchObject({id: 'group:group:guest', workspaceGroupId: 'group', accountUserId: 'guest'});
+    expect(state.users.byId['guest'].activeWorkspaceGroupId).toBe('group');
+    const noticeCount = notices().length;
+    await service.claimEventInvite('group', inviter, 'guest');
+    expect(state.users.ids.filter(id => id === first.id)).toHaveLength(1);
+    expect(notices()).toHaveLength(noticeCount);
+  });
+
+  it('does not let an event link bypass removal or a pending restoration approval', async () => {
+    const inviter = eventInviter();
+    await service.invite('admin', 'group', ['guest']);
+    await service.action('admin', 'group', 'guest', 'remove');
+    await expect(service.claimEventInvite('group', inviter, 'guest')).rejects.toThrow('Forbidden');
+    await service.action('guest', 'group', 'guest', 'restore');
+    await expect(service.claimEventInvite('group', inviter, 'guest')).rejects.toThrow('Forbidden');
+    expect(member('guest').status).toBe('pending');
+    expect(state.users.byId['group:group:guest']).toBeUndefined();
+  });
 
   const page = (userId: string, bucket: 'trash' | 'participation' | 'pending' | 'explore') =>
     service.page(userId, { filters: { bucket }, pageSize: 20 });

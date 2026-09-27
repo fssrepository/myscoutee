@@ -1,4 +1,3 @@
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -161,7 +160,6 @@ export class AssetPopupComponent {
   private readonly activityStore = inject(ActivityStore);
   private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
-  private readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
@@ -675,10 +673,6 @@ export class AssetPopupComponent {
     if (this.isBasketMode()) {
       return;
     }
-    if (event.actionId === 'shareAsset' || event.actionId === 'share') {
-      this.openOwnedAssetShareDialog(card);
-      return;
-    }
     if (event.actionId === 'assetAvailability') {
       this.openOwnedAssetAvailability(card);
       return;
@@ -992,14 +986,13 @@ export class AssetPopupComponent {
     const savedStatus = AssetCardBuilder.normalizeAssetStatus(savedCard?.status);
     const savedActions = (savedCard?.menuActions ?? [])
       .map(action => `${action ?? ''}`.trim())
-      .filter(action => action.length > 0 && action !== 'takeOver');
+      .filter(action => action.length > 0 && action !== 'takeOver' && action !== 'share' && action !== 'shareAsset');
     if (savedStatus !== 'UR' && savedActions.length > 0) {
       return savedActions;
     }
     const currentActions = current.menuActions ?? [];
-    const shareAction = currentActions.includes('shareAsset') ? 'shareAsset' : 'share';
     const editAction = currentActions.includes('editAsset') ? 'editAsset' : 'edit';
-    return [shareAction, editAction, 'delete'];
+    return [editAction, 'delete'];
   }
 
   private assetRequestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
@@ -1315,10 +1308,6 @@ export class AssetPopupComponent {
       default:
         return 'blue';
     }
-  }
-
-  private openOwnedAssetShareDialog(card: AppDTOs.AssetDTO): void {
-    void this.externalInvites.openExternalInvitePopup('asset', card.id, card.title, this.userProfileStore.activeUserId(), card.type);
   }
 
   private toggleAssetAssignBasketCard(cardId: string, event?: Event): void {

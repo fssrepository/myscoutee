@@ -1,4 +1,3 @@
-import { ActivityInvitePopupStore } from '../../../../shared/ui/context/stores/activity-invite-popup.store';
 import { ChatShareStore } from '../../../../shared/ui/context/stores/chat-share.store';
 import {
   CommonModule
@@ -274,7 +273,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetBorrowDraftStore = inject(AssetBorrowDraftStore);
   private readonly dialogStore = inject(DialogStore);
-  private readonly externalInvites = inject(ActivityInvitePopupStore);
   private readonly profileStore = inject(ProfileStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
@@ -891,10 +889,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     if (event.actionId === 'contactOwner') {
       void this.openServiceChat(card, new Event('click'));
-      return;
-    }
-    if (event.actionId === 'shareAsset') {
-      this.openShareDialog(card);
       return;
     }
     if (event.actionId === 'reportOwner') {
@@ -3532,10 +3526,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return sameDay
       ? `${startDate} · ${startTime} - ${endTime}`
       : `${startDate} ${startTime} - ${endDate} ${endTime}`;
-  }
-
-  private openShareDialog(card: ResourceAssetDTO): void {
-    void this.externalInvites.openExternalInvitePopup('asset', card.id, card.title, this.activeUser().id, card.type);
   }
 
   private canReportOwner(card: ResourceAssetDTO): boolean {

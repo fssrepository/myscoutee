@@ -192,6 +192,29 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       this.notifyMembers(group, 'invite', userId, member, [member.userId], false);
     return { members: this.roster(userId, id), invitedUserIds, rejections: [], group: this.dto(userId, group) };
   }
+  /** Admission from a validated sharing link for an event in this workspace. */
+  async claimEventInvite(groupId: string, inviterProfileId: string, accountId: string): Promise<UserRecord> {
+    await this.groups.ready();
+    const inviter = this.users.queryUserById(inviterProfileId);
+    const recipient = this.users.queryUserById(accountId);
+    const group = this.groups.find(groupId);
+    const inviterMembership = this.member(groupId, inviter?.accountUserId ?? '');
+    if (!group || !recipient || recipient.workspaceGroupId || inviter?.workspaceGroupId !== groupId
+        || inviterMembership?.status !== 'accepted' || !group.policy.workspace
+        || group.lifecycleStatus === 'deleted' || group.lifecycleStatus === 'under-review'
+        || group.moderationStatus && group.moderationStatus !== 'accepted') throw new Error('Forbidden');
+    const member = this.members.peekRecordsByOwner({ownerType: 'community', ownerId: groupId}, true).find(m => m.userId === accountId);
+    if (member?.status === 'blocked' || member?.status === 'pending' && member.communityAction === 'restore') throw new Error('Forbidden');
+    if (member?.status !== 'accepted') {
+      this.writeMembers(groupId, [...this.records(groupId).filter(m => m.userId !== accountId),
+        this.newMember(group, accountId, 'Member', 'pending', 'invite', inviter.accountUserId!)]);
+      await this.action(accountId, groupId, accountId, 'accept');
+    }
+    const selected = await this.resolveWorkspace(accountId, groupId);
+    await this.users.selectWorkspace(accountId, groupId);
+    return this.users.queryUserById(selected.profile.id)!;
+  }
+
   async action(userId: string, id: string, targetId: string, action: string): Promise<ActivityMemberActionResultDTO> {
     let group = this.groups.find(id); if (!group) throw new Error('Group not found');
     const rows = this.members.peekRecordsByOwner({ ownerType: 'community', ownerId: id }, true);

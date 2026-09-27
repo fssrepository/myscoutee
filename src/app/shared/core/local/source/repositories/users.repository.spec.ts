@@ -5,6 +5,9 @@ import type { UserDto } from '../../../contracts/user.interface';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 
 import { LocalUsersRepository } from './users.repository';
+import { LocalGameService } from '../services/game.service';
+import { LocalActivityMembersRepository } from './activity-members.repository';
+import { GroupWorkspaceContextService } from '../../../base/services/group-workspace-context.service';
 
 describe('LocalUsersRepository demo selector', () => {
   let memoryDb: LocalMemoryDb;
@@ -18,6 +21,7 @@ describe('LocalUsersRepository demo selector', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     TestBed.resetTestingModule();
   });
 
@@ -30,6 +34,40 @@ describe('LocalUsersRepository demo selector', () => {
     repository.upsertUserFilterPreferences('viewer', { pageFilters: { 'event-explore': { friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' } } });
     expect(repository.queryUserFilterPreferences('viewer')?.ageMin).toBe(30);
     expect(repository.queryUserFilterPreferences('viewer')?.pageFilters?.['event-explore']?.mode).toBe('');
+  });
+
+  it('keeps Home candidates in the rater profile workspace, independently of the saved selection', () => {
+    seedUsers([
+      user('account', 'Account', { activeWorkspaceGroupId: 'b' }),
+      user('base-peer', 'Base peer'),
+      user('a-self', 'A self', { workspaceGroupId: 'a', accountUserId: 'account' }),
+      user('a-peer', 'A peer', { workspaceGroupId: 'a' }),
+      user('b-self', 'B self', { workspaceGroupId: 'b', accountUserId: 'account' }),
+      user('b-peer', 'B peer', { workspaceGroupId: 'b' })
+    ]);
+    expect(repository.queryGameStackUsers('account').map(user => user.id)).toEqual(['base-peer']);
+    expect(repository.queryGameStackUsers('a-self').map(user => user.id)).toEqual(['a-peer']);
+    expect(repository.queryGameStackUsers('b-self').map(user => user.id)).toEqual(['b-peer']);
+    expect(repository.queryGameStackUsers('missing')).toEqual([]);
+  });
+
+  it('uses the requested profile for social cards when the saved workspace differs', async () => {
+    seedUsers([
+      user('account', 'Account', { activeWorkspaceGroupId: 'b' }),
+      user('a-self', 'A self', { workspaceGroupId: 'a', accountUserId: 'account' }),
+      user('a-peer', 'A peer', { workspaceGroupId: 'a' }),
+      user('b-peer', 'B peer', { workspaceGroupId: 'b' })
+    ]);
+    TestBed.inject(GroupWorkspaceContextService).accountUserId.set('account');
+    const service = TestBed.inject(LocalGameService);
+    vi.spyOn(service as any, 'waitForRouteDelay').mockResolvedValue(undefined);
+    vi.spyOn(TestBed.inject(LocalActivityMembersRepository), 'queryGameSocialCards').mockReturnValue([
+      { id: 'a-card', userId: 'a-peer', bridgeUserId: 'a-self', socialContext: 'friends-in-common' },
+      { id: 'b-card', userId: 'b-peer', bridgeUserId: 'a-self', socialContext: 'friends-in-common' }
+    ]);
+    const result = await service.queryUserGameCardsByFilter({ userId: 'a-self', mode: 'friends-in-common' });
+    expect(result.cards?.socialCards?.map(card => card.id)).toEqual(['a-card']);
+    expect(result.cards?.filterCount).toBe(1);
   });
 
   it('returns member and admin selector users alphabetically by display name', () => {

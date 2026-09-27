@@ -193,7 +193,6 @@ export class AssetInfoCardConverter {
       actions.push('borrowAsset');
     }
     actions.push('contactOwner');
-    actions.push('shareAsset');
     if (canReportOwner) {
       actions.push('reportOwner');
     }
@@ -251,15 +250,14 @@ export class AssetInfoCardConverter {
       .map(action => `${action ?? ''}`.trim())
       .filter(action => action.length > 0);
     const actions = configuredActions.length > 0
-      ? [...configuredActions]
-      : ['shareAsset', 'editAsset', 'delete'];
+      ? configuredActions.filter(action => action !== 'shareAsset' && action !== 'share')
+      : ['editAsset', 'delete'];
     if (!actions.includes('assetAvailability')) {
       actions.unshift('assetAvailability');
     }
     const sourceLink = AppUtils.normalizeHttpUrl(card.sourceLink ?? '');
     if (sourceLink && !actions.includes('externalInfo')) {
-      const shareIndex = actions.findIndex(action => action === 'shareAsset' || action === 'share');
-      actions.splice(shareIndex >= 0 ? shareIndex + 1 : 0, 0, 'externalInfo');
+      actions.unshift('externalInfo');
     }
     return actions;
   }

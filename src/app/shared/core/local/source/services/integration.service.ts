@@ -69,12 +69,15 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     const event = this.requireEventInvite(invite.ownerUserId, invite.entityId);
     const ownerProfile = this.users.queryUserById(invite.ownerUserId);
     const workspaceGroupId = ownerProfile?.workspaceGroupId ?? null;
+    if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, workspaceGroupId, invitationAvailable: false};
+    if (workspaceGroupId) {
+      user = await this.groups.claimEventInvite(workspaceGroupId, invite.ownerUserId, user.accountUserId ?? user.id);
+    }
     if (!workspaceGroupId && user.accountUserId) {
       user = this.users.queryUserById(user.accountUserId);
       if (!user) throw new Error('User unavailable');
     }
     if ((ownerProfile?.workspaceGroupId ?? null) !== (user.workspaceGroupId ?? null)) throw new Error('Forbidden');
-    if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, workspaceGroupId, invitationAvailable: false};
     const owner = {ownerType: 'event' as const, ownerId: event.id};
     const current = this.members.peekMembersByOwner(owner);
     const inviterCanInvite = event.adminIds?.includes(invite.ownerUserId) || event.creatorUserId === invite.ownerUserId
