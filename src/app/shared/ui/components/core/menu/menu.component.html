@@ -616,6 +616,9 @@
                 <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                   <span class="app-menu__item-header">
                     <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                    @if (showItemCheck(item)) {
+                      <mat-icon class="app-menu__item-check">done</mat-icon>
+                    }
                     @if (hasItemHeaderBadge(item)) {
                       <span
                         class="app-menu__counter app-menu__counter--header-badge"
@@ -648,9 +651,6 @@
                 </span>
                 @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                   <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
-                }
-                @if (showItemCheck(item)) {
-                  <mat-icon class="app-menu__item-check">done</mat-icon>
                 }
                 @if (hasNestedItems(item)) {
                   <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
@@ -699,6 +699,9 @@
                     <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                       <span class="app-menu__item-header">
                         <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                        @if (showItemCheck(item)) {
+                          <mat-icon class="app-menu__item-check">done</mat-icon>
+                        }
                         @if (hasItemHeaderBadge(item)) {
                           <span
                             class="app-menu__counter app-menu__counter--header-badge"
@@ -731,9 +734,6 @@
                     </span>
                     @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                       <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
-                    }
-                    @if (showItemCheck(item)) {
-                      <mat-icon class="app-menu__item-check">done</mat-icon>
                     }
                     @if (hasNestedItems(item)) {
                       <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
@@ -787,6 +787,9 @@
                   <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                     <span class="app-menu__item-header">
                       <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                      @if (showItemCheck(item)) {
+                        <mat-icon class="app-menu__item-check">done</mat-icon>
+                      }
                       @if (hasItemHeaderBadge(item)) {
                         <span
                           class="app-menu__counter app-menu__counter--header-badge"
@@ -819,9 +822,6 @@
                   </span>
                   @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                     <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
-                  }
-                  @if (showItemCheck(item)) {
-                    <mat-icon class="app-menu__item-check">done</mat-icon>
                   }
                   @if (hasNestedItems(item)) {
                     <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
