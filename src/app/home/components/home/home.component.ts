@@ -50,7 +50,7 @@ import {
 } from '../../../shared/app-static-data';
 import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { GameService } from '../../../shared/core/base/services/game.service';
-import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
+import { UsersService } from '../../../shared/core/base/services/users.service';
 import type { UserDto, UserGameMode, UserGameSocialCard } from '../../../shared/core';
 import {
   HomeGameFilterPopupComponent
@@ -326,7 +326,7 @@ export class HomeComponent implements OnDestroy {
     const activeUserIdSignal = this.userProfileStore.activeUserId;
     const profileSavedSignal = this.userProfileStore.profileSaved;
     this.lastHandledProfileSavedRevision = profileSavedSignal()?.revision ?? 0;
-    const userByIdLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+    const userByIdLoadState = this.usersService.profileExtLoadState;
     effect(() => {
       const targetUserId = activeUserIdSignal().trim();
       if (!targetUserId || targetUserId === this.lastHandledActiveUserId) {
@@ -434,11 +434,11 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get isAvatarProfileSettled(): boolean {
-    return this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
+    return this.usersService.profileExtLoadState().status === 'success';
   }
 
   protected get hasAvatarProfileLoadError(): boolean {
-    const status = this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status;
+    const status = this.usersService.profileExtLoadState().status;
     return status === 'error' || status === 'timeout';
   }
 

@@ -226,7 +226,7 @@ export class HttpUsersService implements UserService {
         counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
       };
     } catch (error) {
-      if (groupId !== undefined || location) throw error;
+      if (groupId !== undefined || location || this.requiresServerProfileAuthority()) throw error;
       const status = (error as { status?: number } | null)?.status;
       const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
       if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))
@@ -234,9 +234,6 @@ export class HttpUsersService implements UserService {
         return this.readProfileExtByIdFallback(cacheUserId)!;
       }
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
-        throw error;
-      }
-      if (this.requiresServerProfileAuthority()) {
         throw error;
       }
       return this.readProfileExtByIdFallback(normalizedUserId) ?? { profileExt: null };

@@ -1,5 +1,4 @@
-import { AppRuntimeStore } from './app-runtime.store';
-import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../../core/base/services/users.service';
+import { UsersService } from '../../../core/base/services/users.service';
 import { AppUtils } from '../../../app-utils';
 import { ContentModerationStore } from './content-moderation.store';
 import type { AppMenuItem, AppMenuPalette } from '../../components/core/menu';
@@ -20,7 +19,6 @@ export class GroupWorkspaceStore {
   readonly context = inject(GroupWorkspaceContextService);
   private readonly service = inject(CommunityGroupsService);
   private readonly users = inject(UsersService);
-  private readonly runtime = inject(AppRuntimeStore);
   private sessionKey = '';
   private readonly profile = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
@@ -161,7 +159,7 @@ export class GroupWorkspaceStore {
   async select(groupId: string | null): Promise<boolean> {
     if (this.context.switching()) return false;
     if ((this.context.active()?.groupId ?? null) === groupId
-        && this.runtime.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success') return true;
+        && this.users.profileExtLoadState().status === 'success') return true;
     const generation = this.generation;
     this.error.set(''); this.context.switching.set(true);
     try {

@@ -5,6 +5,8 @@ import { SessionService } from './session.service';
 import { AffiliateReferralService } from './affiliate-referral.service';
 import {
   Injectable,
+  computed,
+  signal,
   inject
 } from '@angular/core';
 
@@ -36,7 +38,7 @@ import {
   BaseRouteModeService
 } from './base-route-mode.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
+import { AppRuntimeStore, DEFAULT_LOAD_STATE } from '../../../ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
 import { RouteDelayService } from './route-delay.service';
 import { OfflineCacheService } from './offline-cache.service';
@@ -45,6 +47,7 @@ import { UserRealtimeUiConverter } from '../../../ui/converters/user-realtime-ui
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
+const USER_PROFILE_EXT_LOAD_CONTEXT_KEY = 'user-profile-ext';
 export const USER_FEEDBACK_SUBMIT_CONTEXT_KEY = 'user-feedback-submit';
 export const USER_REPORT_USER_SUBMIT_CONTEXT_KEY = 'user-report-user-submit';
 export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
@@ -66,6 +69,13 @@ export class UsersService extends BaseRouteModeService {
   private readonly activityStore = inject(ActivityStore);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly offlineCache = inject(OfflineCacheService);
+  private readonly profileExtLoadSession = signal<string | null>(null);
+  readonly profileExtLoadState = computed(() => {
+    const session = this.session.identity();
+    return session && session === this.profileExtLoadSession()
+      ? this.runtimeStore.getLoadingState(USER_PROFILE_EXT_LOAD_CONTEXT_KEY) : DEFAULT_LOAD_STATE;
+  });
+
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/auth/me');
   }
@@ -221,6 +231,7 @@ export class UsersService extends BaseRouteModeService {
     this.workspace.revision.set(revision);
     this.workspace.switching.set(true);
     const session = this.session.identity();
+    this.profileExtLoadSession.set(session);
     const current = () => revision === this.workspace.revision() && this.session.identity() === session;
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
@@ -228,11 +239,11 @@ export class UsersService extends BaseRouteModeService {
 
     if (this.isLocalRouteEnabled('/auth/me/profile-ext') && !normalizedUserId) {
       this.workspace.switching.set(false);
-      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
+      this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
 
-    this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
+    this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'loading');
     const accountId = this.session.activeUserId();
     const location = this.location.pendingLoginCoordinates(accountId);
 
@@ -243,13 +254,13 @@ export class UsersService extends BaseRouteModeService {
       const user = profileExt?.profile ?? null;
 
       if (!profileExt || !user) {
-        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'User profile not found.');
+        this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'error', 'User profile not found.');
         return null;
       }
 
       const resolvedUserId = user.id.trim() || normalizedUserId;
       if (user.profileStatus === 'deleted') {
-        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+        this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'success');
         return profileExt;
       }
 
@@ -278,16 +289,16 @@ export class UsersService extends BaseRouteModeService {
         }
       }
 
-      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+      this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'success');
       return this.userProfileStore.getProfileExt(resolvedUserId) ?? profileExt;
     } catch (error) {
       if (!current()) return null;
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
-        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User profile request timeout.');
+        this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'timeout', 'User profile request timeout.');
         return null;
       }
 
-      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
+      this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
       return null;
     } finally {
       if (revision === this.workspace.revision()) this.workspace.switching.set(false);
