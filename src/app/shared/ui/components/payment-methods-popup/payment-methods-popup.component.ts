@@ -168,6 +168,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     showStickyHeader: false,
     emptyLabel: 'payment.history.empty',
     emptyDescription: 'payment.history.empty.description',
+    pollIntervalMs: PaymentMethodsService.HISTORY_POLL_INTERVAL_MS,
     listLayout: 'stack',
     snapMode: 'none',
     cacheable: true,
@@ -846,7 +847,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private confirmRefundRequest(item: PaymentHistoryItemDto): void {
     this.dialogStore.open({
       title: 'payment.history.refund.request.title',
-      message: this.refundConfirmationMessage(item, 'payment.history.refund.request.message'),
+      message: this.refundConfirmationMessage(item, item.fulfillmentKind === 'cash-receipt'
+        ? 'payment.cash.refund.request.message' : 'payment.history.refund.request.message'),
       cancelLabel: 'cancel',
       confirmLabel: 'payment.history.refund.request',
       confirmTone: 'warning',
@@ -860,7 +862,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private confirmRefundApproval(item: PaymentHistoryItemDto): void {
     this.dialogStore.open({
       title: 'payment.history.refund.approve.title',
-      message: this.refundConfirmationMessage(item, 'payment.history.refund.approve.message'),
+      message: this.refundConfirmationMessage(item, item.fulfillmentKind === 'cash-receipt'
+        ? 'payment.cash.refund.approve.message' : 'payment.history.refund.approve.message'),
       cancelLabel: 'cancel',
       confirmLabel: 'payment.history.refund.approve',
       confirmTone: 'accent',

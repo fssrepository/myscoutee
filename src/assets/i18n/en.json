@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.27.en.3",
+  "version": "2026.09.27.en.4",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -4013,6 +4013,8 @@
     "payment.cash.delete.title": "Delete cash receipt?",
     "payment.cash.delete.message": "This receipt will be marked as deleted and excluded from both members’ payment totals.",
     "payment.cash.delete.error": "Unable to delete the cash receipt.",
-    "payment.status.deleted": "Deleted"
+    "payment.status.deleted": "Deleted",
+    "payment.cash.refund.request.message": "Request a refund of this cash receipt from the recipient?",
+    "payment.cash.refund.approve.message": "Confirm that you have returned this cash amount to the payer?"
   }
 }
