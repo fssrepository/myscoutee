@@ -51,9 +51,6 @@
             <div class="contact-title-row">
               <div class="contact-title-wrap">
                 <h3>{{ contact.name }}</h3>
-                @if (contact.headline) {
-                  <p class="contact-headline">{{ contact.headline }}</p>
-                }
                 <p class="contact-city">
                   <mat-icon>location_on</mat-icon>
                   <span>{{ contact.city || 'City not set yet' }}</span>

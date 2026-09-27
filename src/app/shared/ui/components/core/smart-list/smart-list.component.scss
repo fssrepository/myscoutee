@@ -874,6 +874,7 @@
 }
 
 .smart-list__empty {
+  grid-column: 1 / -1;
   margin: auto 0;
   overflow-anchor: none;
   border: 1px dashed rgba(37, 54, 82, 0.16);
