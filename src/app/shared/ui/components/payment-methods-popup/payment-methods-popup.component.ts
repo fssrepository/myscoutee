@@ -1,6 +1,5 @@
 import { CashReceiptPopupComponent } from './cash-receipt-popup.component';
 import { SummaryCurrencyPopupComponent } from '../summary-currency-popup/summary-currency-popup.component';
-import { PaymentEuroSummaryDto } from '../../../core/contracts/payment-method.interface';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, viewChild, computed, effect, untracked, inject, signal } from '@angular/core';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { from } from 'rxjs';
@@ -25,7 +24,6 @@ import type {
   SavedPaymentMethodDto
 } from '../../../core/contracts/payment-method.interface';
 import { UserProfileStore } from '../../context/stores/user-profile.store';
-import { ActivityStore } from '../../context/stores/activity.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import {
   ActivitiesPopupStore,
@@ -75,7 +73,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly store = inject(PaymentMethodsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly users = inject(UsersService);
-  private readonly activityStore = inject(ActivityStore);
   private readonly paymentMethods = inject(PaymentMethodsService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly events = inject(EventsService);
@@ -109,12 +106,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const revision = this.paymentMethods.summaryCurrencyRevision();
     if (revision > 0) untracked(() => this.revisionRef.update(value => value + 1));
   });
-  protected readonly euroSummary = signal<PaymentEuroSummaryDto | null>(null);
-  private readonly spendingTotalsRef = signal<Record<string, number>>({});
-  private readonly incomeTotalsRef = signal<Record<string, number>>({});
+  protected readonly euroSummary = this.store.euroSummary;
   private readonly historyDirectionRef = signal<PaymentHistoryDirection>('all');
-  private readonly pendingRefundCountRef = signal(0);
-  private readonly historyTotalsLoadedRef = signal(false);
   private readonly loadedCardsById = new Map<string, SavedPaymentMethodDto>();
   private registrationPoll: ReturnType<typeof setTimeout> | null = null;
   private registrationRefreshInFlight = false;
@@ -124,7 +117,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly registrationFrameOpen = this.registrationFrameOpenRef.asReadonly();
   protected readonly busy = this.busyRef.asReadonly();
   protected readonly error = this.errorRef.asReadonly();
-  protected readonly spendingTotals = this.spendingTotalsRef.asReadonly();
   protected readonly historyDirection = this.historyDirectionRef.asReadonly();
   protected readonly localMode = this.paymentMethods.localModeEnabled;
   protected readonly pickerMode = computed(() => this.store.picker() !== null);
@@ -206,16 +198,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     })
   );
 
-  protected readonly loadAllHistory: SmartListLoadPage<PaymentHistoryItemDto, PaymentListFilters> = (query, context) => from(
-    this.paymentMethods.queryAllHistory(this.activeUserId(), query, context?.signal).then(page => {
-      this.euroSummary.set(page.euroSummary ?? null);
-      this.spendingTotalsRef.set({ ...page.spendingTotals });
-      this.incomeTotalsRef.set({ ...page.incomeTotals });
-      this.historyTotalsLoadedRef.set(true);
-      this.pendingRefundCountRef.set(Math.max(0, Math.trunc(Number(page.pendingRefundCount) || 0)));
+  protected readonly loadAllHistory: SmartListLoadPage<PaymentHistoryItemDto, PaymentListFilters> = (query, context) => {
+    const userId = this.activeUserId();
+    return from(this.paymentMethods.queryAllHistory(userId, query, context?.signal).then(page => {
+      context?.signal?.throwIfAborted();
+      this.store.applyHistorySummary(userId, page);
       return page;
-    })
-  );
+    }));
+  };
 
   protected mainPopupModel(): PopupModel<PaymentPopupMenuContext> {
     return {
@@ -638,10 +628,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     this.closeRegistration();
     this.cardsOpenRef.set(false);
     this.errorRef.set('');
-    this.historyTotalsLoadedRef.set(false);
-    this.euroSummary.set(null);
-    this.spendingTotalsRef.set({});
-    this.incomeTotalsRef.set({});
     this.store.close();
   }
 
@@ -783,7 +769,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       expenses: 'payment.history.filter.expenses',
       income: 'payment.history.filter.income'
     };
-    const pendingRefundCount = this.pendingRefundCountRef();
+    const pendingRefundCount = this.store.pendingRefundCount();
     const items: AppMenuItem<string, PaymentPopupMenuContext>[] = (['all', 'expenses', 'income'] as const)
       .map(value => ({
         id: `payment-history-${value}`,
@@ -918,25 +904,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   protected applyPaymentHistoryMutation(mutation: AppDTOs.PaymentHistoryMutationDto): void {
-    const userId = this.activeUserId();
-    const pendingRefundCount = Math.max(0, Math.trunc(Number(mutation.pendingRefundCount) || 0));
-    this.euroSummary.set(mutation.euroSummary ?? null);
-    this.spendingTotalsRef.set({ ...mutation.spendingTotals });
-    this.incomeTotalsRef.set({ ...mutation.incomeTotals });
-    this.historyTotalsLoadedRef.set(true);
-    this.pendingRefundCountRef.set(pendingRefundCount);
-    this.activityStore.patchUserCounterOverrides(userId, { paymentRefundsPending: pendingRefundCount });
-    this.userProfileStore.patchActiveUserProfile(current => ({
-      paymentTotals: {
-        outgoing: { ...mutation.spendingTotals },
-        incoming: { ...mutation.incomeTotals },
-        all: this.mergePaymentTotals(mutation.spendingTotals, mutation.incomeTotals)
-      },
-      activities: {
-        ...current.activities,
-        paymentRefundsPending: pendingRefundCount
-      }
-    }));
+    this.store.applyHistorySummary(this.activeUserId(), mutation);
     const list = this.historyList();
     const direction = this.historyDirectionRef();
     for (const item of mutation.items ?? [mutation.item]) {
@@ -948,17 +916,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         list?.reinsertVisibleItem(item, { loadedRange: 'before-or-within' });
       }
     }
-  }
-
-  private mergePaymentTotals(
-    spending: Record<string, number>,
-    income: Record<string, number>
-  ): Record<string, number> {
-    const currencies = new Set([...Object.keys(spending), ...Object.keys(income)]);
-    return Object.fromEntries([...currencies].map(currency => [
-      currency,
-      Math.round(((Number(spending[currency]) || 0) + (Number(income[currency]) || 0)) * 100) / 100
-    ]));
   }
 
   private async openPaymentServiceChat(item: PaymentHistoryItemDto): Promise<void> {
