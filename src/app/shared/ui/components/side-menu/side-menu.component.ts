@@ -258,11 +258,11 @@ export class SideMenuComponent implements OnDestroy {
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
-  private static readonly NOTIFICATION_DRAG_ACTIVATION_DELAY_MS = 350;
-  private static readonly NOTIFICATION_DISMISS_TARGET_PADDING_PX = 10;
+  private static readonly FLOATING_LAUNCHER_DRAG_ACTIVATION_DELAY_MS = 350;
+  private static readonly FLOATING_LAUNCHER_DISMISS_TARGET_PADDING_PX = 10;
 
-  @ViewChild('notificationDismissTarget')
-  private notificationDismissTargetRef?: ElementRef<HTMLElement>;
+  @ViewChild('floatingLauncherDismissTarget')
+  private floatingLauncherDismissTargetRef?: ElementRef<HTMLElement>;
 
   private readonly router = inject(Router);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -277,7 +277,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly injector = inject(Injector);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
-  private readonly explanationGuide = inject(ExplanationGuideService);
+  protected readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
@@ -363,8 +363,8 @@ export class SideMenuComponent implements OnDestroy {
   private openingPartnerInvitePromise: Promise<void> | null = null;
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
-  private readonly notificationDismissDraggingRef = signal(false);
-  private readonly notificationDismissTargetedRef = signal(false);
+  private readonly floatingLauncherDismissDraggingRef = signal(false);
+  private readonly floatingLauncherDismissTargetedRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
   private readonly activeUserLoadState = computed(() => this.isAdminWorkspaceRoute()
     ? this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY) : this.usersService.profileExtLoadState());
@@ -406,10 +406,14 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
-  protected readonly notificationDismissDragging = this.notificationDismissDraggingRef.asReadonly();
-  protected readonly notificationDismissTargeted = this.notificationDismissTargetedRef.asReadonly();
-  protected readonly notificationDragActivationDelayMs =
-    SideMenuComponent.NOTIFICATION_DRAG_ACTIVATION_DELAY_MS;
+  protected readonly floatingLauncherDismissDragging = this.floatingLauncherDismissDraggingRef.asReadonly();
+  protected readonly floatingLauncherDismissTargeted = this.floatingLauncherDismissTargetedRef.asReadonly();
+  protected readonly floatingLauncherDragActivationDelayMs =
+    SideMenuComponent.FLOATING_LAUNCHER_DRAG_ACTIVATION_DELAY_MS;
+  protected readonly floatingLauncherZIndex = computed(() =>
+    Math.max(23000, this.popupPresenceStore.topLayer() + 2)
+  );
+  protected readonly explanationGuideDragPosition = signal<AppMenuDragPosition>({ x: 0, y: 0 });
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
     const activeUserId = this.userProfileStore.activeUserId().trim();
@@ -560,6 +564,14 @@ export class SideMenuComponent implements OnDestroy {
       ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false) + (offline ? ' — Offline' : '')
     };
   });
+  protected readonly explanationGuideTrigger: AppMenuTrigger = {
+    id: 'explanation-guide',
+    icon: 'tips_and_updates',
+    palette: 'neutral-strong',
+    action: 'custom',
+    hideLabel: true,
+    ariaLabel: 'explanations'
+  };
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
     const activeUser = this.userProfileStore.activeUserProfile();
     if (!activeUser) {
@@ -1431,7 +1443,7 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isVisible = this.explanationGuide.hasVisiblePopup();
+      const isVisible = this.explanationGuide.launcherVisible();
       if (isVisible) {
         void this.profileStore.ensureExplanationPopupLoaded();
       }
@@ -1484,26 +1496,40 @@ export class SideMenuComponent implements OnDestroy {
     this.openNotificationCenter(event.sourceEvent);
   }
 
+  protected onExplanationGuideSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id !== 'explanation-guide') {
+      return;
+    }
+    event.sourceEvent.stopPropagation();
+    this.closeSideMenu();
+    this.explanationGuide.openCurrent();
+  }
+
   protected onNotificationDragPositionChange(position: AppMenuDragPosition): void {
     this.notificationCenterStore.setDragPosition(position);
   }
 
-  protected onNotificationDragStateChange(event: AppMenuDragEvent): void {
+  protected onFloatingLauncherDragStateChange(launcher: 'notification' | 'guide', event: AppMenuDragEvent): void {
     switch (event.phase) {
       case 'start':
-        this.notificationDismissDraggingRef.set(true);
-        this.notificationDismissTargetedRef.set(false);
+        this.floatingLauncherDismissDraggingRef.set(true);
+        this.floatingLauncherDismissTargetedRef.set(false);
         return;
       case 'move':
-        this.notificationDismissTargetedRef.set(this.isNotificationDismissTargetHit(event));
+        this.floatingLauncherDismissTargetedRef.set(this.isFloatingLauncherDismissTargetHit(event));
         return;
       case 'cancel':
-        this.clearNotificationDismissDragState();
+        this.clearFloatingLauncherDismissDragState();
         return;
       case 'end': {
-        const shouldDismiss = this.isNotificationDismissTargetHit(event);
-        this.clearNotificationDismissDragState();
+        const shouldDismiss = this.isFloatingLauncherDismissTargetHit(event);
+        this.clearFloatingLauncherDismissDragState();
         if (!shouldDismiss) {
+          return;
+        }
+        if (launcher === 'guide') {
+          this.explanationGuideDragPosition.set({ x: 0, y: 0 });
+          this.explanationGuide.dismissLauncher();
           return;
         }
         this.notificationCenterStore.setDragPosition({ x: 0, y: 0 });
@@ -1513,8 +1539,8 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
-  private isNotificationDismissTargetHit(event: AppMenuDragEvent): boolean {
-    const target = this.notificationDismissTargetRef?.nativeElement;
+  private isFloatingLauncherDismissTargetHit(event: AppMenuDragEvent): boolean {
+    const target = this.floatingLauncherDismissTargetRef?.nativeElement;
     if (!target) {
       return false;
     }
@@ -1522,16 +1548,16 @@ export class SideMenuComponent implements OnDestroy {
     const targetCenterX = rect.left + (rect.width / 2);
     const targetCenterY = rect.top + (rect.height / 2);
     const hitRadius = (Math.max(rect.width, rect.height) / 2)
-      + SideMenuComponent.NOTIFICATION_DISMISS_TARGET_PADDING_PX;
+      + SideMenuComponent.FLOATING_LAUNCHER_DISMISS_TARGET_PADDING_PX;
     return Math.hypot(
       event.centerX - targetCenterX,
       event.centerY - targetCenterY
     ) <= hitRadius;
   }
 
-  private clearNotificationDismissDragState(): void {
-    this.notificationDismissDraggingRef.set(false);
-    this.notificationDismissTargetedRef.set(false);
+  private clearFloatingLauncherDismissDragState(): void {
+    this.floatingLauncherDismissDraggingRef.set(false);
+    this.floatingLauncherDismissTargetedRef.set(false);
   }
 
   protected onCloseMenu(): void {

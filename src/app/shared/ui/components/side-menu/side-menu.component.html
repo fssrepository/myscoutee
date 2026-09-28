@@ -28,30 +28,51 @@
   </div>
 }
 
-@if (avatarVisible() && !isOperatorMode() && notificationAttentionVisible()) {
+@if (avatarVisible() && !isOperatorMode() && (notificationAttentionVisible() || explanationGuide.launcherVisible())) {
   <div
-    class="notification-attention-launcher"
+    class="floating-launcher-rail"
+    [style.z-index]="floatingLauncherZIndex()"
     [class.is-chat-open]="activitiesStore.eventChatOpen() || activitiesStore.stackedEventChatOpen()"
     [class.is-checkout-open]="eventEditorStore.isOpen() && eventEditorStore.presentation().mode === 'checkout-review'"
     [class.is-popup-open]="popupPresenceStore.visible()"
   >
-    <app-menu
-      class="notification-attention-menu"
-      kind="fab"
-      [draggable]="true"
-      [dragActivationDelayMs]="notificationDragActivationDelayMs"
-      [dragPosition]="notificationCenterStore.dragPosition()"
-      [trigger]="notificationAttentionTrigger()"
-      (dragPositionChange)="onNotificationDragPositionChange($event)"
-      (dragStateChange)="onNotificationDragStateChange($event)"
-      (itemSelect)="onNotificationAttentionSelect($event)"
-    ></app-menu>
+    <div class="floating-launcher-slot">
+      @if (explanationGuide.launcherVisible()) {
+        <app-menu
+          class="explanation-guide-menu"
+          kind="fab"
+          [draggable]="true"
+          [dragActivationDelayMs]="floatingLauncherDragActivationDelayMs"
+          [dragPosition]="explanationGuideDragPosition()"
+          [trigger]="explanationGuideTrigger"
+          (dragPositionChange)="explanationGuideDragPosition.set($event)"
+          (dragStateChange)="onFloatingLauncherDragStateChange('guide', $event)"
+          (itemSelect)="onExplanationGuideSelect($event)"
+        ></app-menu>
+      }
+    </div>
+    <div class="floating-launcher-slot">
+      @if (notificationAttentionVisible()) {
+        <app-menu
+          class="notification-attention-menu"
+          kind="fab"
+          [draggable]="true"
+          [dragActivationDelayMs]="floatingLauncherDragActivationDelayMs"
+          [dragPosition]="notificationCenterStore.dragPosition()"
+          [trigger]="notificationAttentionTrigger()"
+          (dragPositionChange)="onNotificationDragPositionChange($event)"
+          (dragStateChange)="onFloatingLauncherDragStateChange('notification', $event)"
+          (itemSelect)="onNotificationAttentionSelect($event)"
+        ></app-menu>
+      }
+    </div>
   </div>
-  @if (notificationDismissDragging()) {
+  @if (floatingLauncherDismissDragging()) {
     <div
-      #notificationDismissTarget
-      class="notification-attention-dismiss-target"
-      [class.is-over]="notificationDismissTargeted()"
+      #floatingLauncherDismissTarget
+      class="floating-launcher-dismiss-target"
+      [style.z-index]="floatingLauncherZIndex() - 1"
+      [class.is-over]="floatingLauncherDismissTargeted()"
       aria-hidden="true"
     >
       <mat-icon>close</mat-icon>

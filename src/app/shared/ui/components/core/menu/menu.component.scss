@@ -158,7 +158,8 @@
 }
 
 .app-menu__palette--default,
-.app-menu__palette--neutral {
+.app-menu__palette--neutral,
+.app-menu__palette--neutral-strong {
   --app-menu-bg: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%);
   --app-menu-bg-hover: linear-gradient(180deg, #f4f9ff 0%, #e6f1ff 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #5f82b5 0%, #436a9f 100%);
@@ -172,6 +173,13 @@
   --app-menu-icon: #426a98;
   --app-menu-line: rgba(113, 124, 150, 0.32);
   --app-menu-shadow: rgba(18, 39, 68, 0.12);
+}
+
+.app-menu__palette--neutral-strong {
+  --app-menu-bg: var(--app-menu-bg-strong);
+  --app-menu-bg-hover: var(--app-menu-bg-strong);
+  --app-menu-fg: #fff;
+  --app-menu-icon: #fff;
 }
 
 .app-menu__palette--brand {

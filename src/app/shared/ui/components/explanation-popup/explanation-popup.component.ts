@@ -13,8 +13,6 @@ import { LazyBgImageDirective } from '../../directives';
 import { IndicatorComponent } from '../core/indicator';
 import {
   PopupComponent,
-  type PopupControl,
-  type PopupMenuSelectEvent,
   type PopupModel
 } from '../core/popup';
 
@@ -66,7 +64,6 @@ export class ExplanationPopupComponent {
       title: revision.title,
       translateTitle: false,
       ariaLabel: revision.title,
-      showClose: false,
       size: 'wide',
       height: 'full',
       headerLayout: 'document',
@@ -74,16 +71,13 @@ export class ExplanationPopupComponent {
       headerTitleTone: 'neutral',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      headerControls: this.explanationHeaderControls(),
-      onClose: event => this.close(event),
-      onMenuSelect: event => this.onExplanationMenuSelect(event)
+      onClose: event => this.close(event)
     };
   }
 
   protected loadingExplanationPopupModel(): PopupModel {
     return {
       ariaLabel: 'Loading explanation',
-      showClose: false,
       size: 'wide',
       height: 'full',
       headerLayout: 'document',
@@ -91,39 +85,12 @@ export class ExplanationPopupComponent {
       headerTitleTone: 'neutral',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      headerControls: this.explanationHeaderControls(),
-      onClose: event => this.close(event),
-      onMenuSelect: event => this.onExplanationMenuSelect(event)
+      onClose: event => this.close(event)
     };
   }
 
   protected explanationPopupZIndex(): number {
-    return 20000;
-  }
-
-  private explanationHeaderControls(): readonly PopupControl[] {
-    return [{
-      kind: 'menu',
-      id: 'dismiss-explanation-guide',
-      menuKind: 'inline',
-      closeOnSelect: false,
-      items: [{
-        id: 'dismiss-explanation-guide',
-        label: 'got.it',
-        icon: 'done',
-        kind: 'action',
-        layout: 'action',
-        palette: 'green',
-        closeOnSelect: false,
-        ariaLabel: 'got.it'
-      }]
-    }];
-  }
-
-  private onExplanationMenuSelect(event: PopupMenuSelectEvent): void {
-    if (event.itemSelect.item.id === 'dismiss-explanation-guide') {
-      this.close(event.itemSelect.sourceEvent);
-    }
+    return 23000;
   }
 
   protected homeFilterModeOptions(lang: string | null | undefined): ReadonlyArray<HomeFilterModeOption> {
@@ -594,6 +561,6 @@ export class ExplanationPopupComponent {
 
   protected close(event?: Event): void {
     event?.stopPropagation();
-    this.guide.dismiss();
+    this.guide.closePopup();
   }
 }
