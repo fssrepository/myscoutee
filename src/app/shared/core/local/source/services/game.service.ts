@@ -1,7 +1,7 @@
 import { GroupWorkspaceContextService } from '../../../base/services/group-workspace-context.service';
 import { Injectable, inject } from '@angular/core';
 
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { getGameUserFacet } from '../../../common/game-user-facet';
 import { LocalRouteDelayService } from './route-delay.service';
 import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
@@ -36,7 +36,6 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly ratesRepository = inject(LocalRatesRepository);
-  private readonly userFacetById = APP_STATIC_DATA.homeUserFacetById;
 
   async whenReady(): Promise<void> {
     await this.usersRepository.whenReady();
@@ -224,20 +223,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       const normalized = new Set(right.map(value => value.trim().toLowerCase()));
       return left.some(value => normalized.has(value.trim().toLowerCase()));
     };
-    const facet = this.userFacetById[user.id] ?? {
-      interests: [],
-      values: [],
-      smoking: 'never',
-      drinking: 'never',
-      workout: 'weekly',
-      pets: 'all pets welcome',
-      familyPlans: 'open to both',
-      children: 'no',
-      loveStyle: 'slow-burn connection',
-      communicationStyle: 'direct + warm',
-      sexualOrientation: 'straight',
-      religion: 'not religious'
-    };
+    const facet = getGameUserFacet(user);
 
     if (!intersectsNormalized(preferences.interests, facet.interests)) {
       return false;

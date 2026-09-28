@@ -835,14 +835,14 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   }
 
   private userInterests(user: UserDto): string[] {
-    return getGameUserInterests(user, this.context?.userFacets ?? {});
+    return getGameUserInterests(user);
   }
 
   private userValues(user: UserDto): string[] {
-    return getGameUserValues(user, this.context?.userFacets ?? {});
+    return getGameUserValues(user);
   }
 
   private userFacet(user: UserDto) {
-    return getGameUserFacet(user, this.context?.userFacets ?? {});
+    return getGameUserFacet(user);
   }
 }

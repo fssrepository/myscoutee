@@ -190,7 +190,6 @@ export class HomeComponent implements OnDestroy {
   private static readonly GAME_RATING_CONFIRMATION_MS = 120;
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterInterestGroups;
   private readonly gameFilterValuesGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterValuesGroups;
-  private readonly userFacetById: Record<string, GameUserFacet> = APP_STATIC_DATA.homeUserFacetById;
   protected readonly homeModeOptions: ReadonlyArray<HomeModeOption> = [
     { key: 'single', label: 'Preferences', icon: 'person' },
     { key: 'friends-in-common', label: 'Friends in Common', icon: 'diversity_3' },
@@ -2106,7 +2105,6 @@ export class HomeComponent implements OnDestroy {
       activeUser: this.activeUser,
       filter: cloneGameFilter(this.gameFilter),
       users: this.users,
-      userFacets: this.userFacetById,
       interestOptionGroups: this.gameFilterInterestGroups,
       valueOptionGroups: this.gameFilterValuesGroups
     };
@@ -2189,15 +2187,15 @@ export class HomeComponent implements OnDestroy {
   }
 
   private userInterests(user: UserDto): string[] {
-    return getGameUserInterests(user, this.userFacetById);
+    return getGameUserInterests(user);
   }
 
   private userValues(user: UserDto): string[] {
-    return getGameUserValues(user, this.userFacetById);
+    return getGameUserValues(user);
   }
 
   private userFacet(user: UserDto): GameUserFacet {
-    return getGameUserFacet(user, this.userFacetById);
+    return getGameUserFacet(user);
   }
 
   private pairModeCandidateForGender(gender: UserDto['gender']): UserDto | null {

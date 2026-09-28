@@ -259,6 +259,11 @@ export class SeedUsersRepository {
         };
         changed = true;
       }
+      if (existing.profileDetails == null && seededUser.profileDetails) {
+        nextById[userId] = { ...(nextById[userId] ?? existing),
+          profileDetails: structuredClone(seededUser.profileDetails) };
+        changed = true;
+      }
       if (!existing.paymentTotals && seededUser.paymentTotals) {
         nextById[userId] = {
           ...(nextById[userId] ?? existing),

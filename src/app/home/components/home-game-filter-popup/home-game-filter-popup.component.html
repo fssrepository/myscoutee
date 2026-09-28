@@ -111,7 +111,7 @@
                     class="game-filter-menu"
                     kind="select"
                     [title]="filterMenuTitle(kind)"
-                    [filterable]="true"
+                    [filterable]="kind !== 'children'"
                     [trigger]="filterMenuTrigger(kind)"
                     [model]="filterMenuModel(kind)"
                     (itemSelect)="onGameFilterMenuSelect($event)"
