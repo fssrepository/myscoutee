@@ -325,7 +325,7 @@
                         @if (itemIcon(item)) {
                           <mat-icon class="app-menu__tile-icon">{{ itemIcon(item) }}</mat-icon>
                         }
-                        <span class="app-menu__tile-label">{{ itemLabel(item) | i18n }}</span>
+                        <span class="app-menu__tile-label" data-i18n-ignore>{{ itemLabel(item) | i18n }}</span>
                         @if (itemDescription(item)) {
                           <span class="app-menu__tile-description">{{ itemDescription(item) | i18n }}</span>
                         }
@@ -454,7 +454,7 @@
                           <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
                         }
                         <span class="app-menu__tabs-item-main">
-                          <span class="app-menu__tabs-item-label">
+                          <span class="app-menu__tabs-item-label" data-i18n-ignore>
                             @for (part of itemLabelFilterParts(item); track $index) {
                               @if (part.match) {
                                 <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
@@ -623,7 +623,7 @@
                 }
                 <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                   <span class="app-menu__item-header">
-                    <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                    <span class="app-menu__item-label" data-i18n-ignore>{{ itemLabel(item) | i18n }}</span>
                     @if (showItemCheck(item)) {
                       <mat-icon class="app-menu__item-check">done</mat-icon>
                     }
@@ -706,7 +706,7 @@
                     }
                     <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                       <span class="app-menu__item-header">
-                        <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                        <span class="app-menu__item-label" data-i18n-ignore>{{ itemLabel(item) | i18n }}</span>
                         @if (showItemCheck(item)) {
                           <mat-icon class="app-menu__item-check">done</mat-icon>
                         }
@@ -794,7 +794,7 @@
                   }
                   <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                     <span class="app-menu__item-header">
-                      <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                      <span class="app-menu__item-label" data-i18n-ignore>{{ itemLabel(item) | i18n }}</span>
                       @if (showItemCheck(item)) {
                         <mat-icon class="app-menu__item-check">done</mat-icon>
                       }

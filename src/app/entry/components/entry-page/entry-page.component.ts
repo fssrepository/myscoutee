@@ -165,6 +165,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private loginEligibilityBusy = false;
+  private firebaseEntryAccessApproved = false;
+  private pendingFirebaseEntryCoordinates: LocationCoordinates | null = null;
   private entryContentLoadPromise: Promise<void> | null = null;
 
   protected showEntryConsentPopup = false;
@@ -331,6 +333,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (!options.bypassConsumerEligibility && this.loginEligibilityBusy) {
       return;
     }
+    this.firebaseEntryAccessApproved = false;
+    if (!options.bypassConsumerEligibility) {
+      if (!await this.ensureHttpLoginAccessAllowed()) {
+        this.pendingFirebaseEntryCoordinates = null;
+        return;
+      }
+      this.firebaseEntryAccessApproved = true;
+    }
     if (this.firebaseAuthProfile && !options.forceAuthPopup) {
       void this.onFirebaseSessionContinueRequested();
       return;
@@ -361,6 +371,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     void this.sessionService.cancelFirebaseAccountLink();
     this.showFirebaseAuthPopup = false;
+    this.firebaseEntryAccessApproved = false;
+    this.pendingFirebaseEntryCoordinates = null;
   }
 
   protected onRequestFirebaseAuth(request: FirebaseAuthRequestDto): void {
@@ -745,19 +757,28 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
+    const entryCoordinates = this.pendingFirebaseEntryCoordinates;
+    const entryAccessApproved = this.firebaseEntryAccessApproved;
     const session = await this.sessionService.startAuthSession(request);
     if (!session) {
       return;
     }
-    await this.runPostSessionGate(session, this.redirectUrl());
+    if (session.kind === 'firebase' && entryCoordinates) {
+      this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
+    }
+    this.pendingFirebaseEntryCoordinates = null;
+    this.firebaseEntryAccessApproved = false;
+    await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
   }
 
   protected async onFirebaseSessionContinueRequested(): Promise<void> {
+    const entryAccessApproved = this.firebaseEntryAccessApproved;
     const session = await this.sessionService.restoreFirebaseSession();
     if (!session) {
       return;
     }
-    await this.runPostSessionGate(session, this.redirectUrl());
+    this.firebaseEntryAccessApproved = false;
+    await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
   }
 
   protected onEntryConsentStateChanged(accepted: boolean): void {
@@ -851,8 +872,15 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private async runPostSessionGate(
     session: AppSession,
     redirectUrl: string,
-    loadedUser?: UserDto
+    loadedUser?: UserDto,
+    entryAccessApproved = false
   ): Promise<void> {
+    if (session.kind === 'firebase' && this.showFirebaseAuthPopup) {
+      this.ngZone.run(() => {
+        this.showFirebaseAuthPopup = false;
+        this.changeDetectorRef.detectChanges();
+      });
+    }
     const gateToken = ++this.postSessionGateToken;
     const sessionIdentity = this.sessionService.identity();
     const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
@@ -874,7 +902,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.locationEligibilityResolvedFromCoordinates = false;
         if (!await this.ensureHttpLoginAccessAllowed()) return;
         if (gateToken !== this.postSessionGateToken || this.sessionService.activeUserId() !== session.profile.id) return;
-      } else if (hasLocation && this.firebaseMessagingService.entryPermissionPending) {
+      } else if (hasLocation && !entryAccessApproved && this.firebaseMessagingService.entryPermissionPending) {
         if (!await this.appSetupStore.requestForLogin()) return;
         if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
       }
@@ -1120,7 +1148,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
       }
       if (sessionIdentity !== this.sessionService.identity()) return false;
-      this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+      if (accountId) {
+        this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+      } else if (this.authMode === 'firebase') {
+        // The anonymous device sample belongs to this entry attempt. Bind it to
+        // the authenticated account before its first authoritative profile read.
+        this.pendingFirebaseEntryCoordinates = coordinates;
+      }
       return true;
     });
   }
@@ -1467,7 +1501,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     // The selected profile and the retryable Setup flow decide admission on click.
     this.entryAuthUnavailable = false;
     this.entryAuthUnavailableLabel = 'Unavailable here';
-    // Location is checked after authentication, once the saved profile is known.
+    // Firebase entry resolves location through Setup before opening provider login.
     this.changeDetectorRef.markForCheck();
   }
 
@@ -1545,7 +1579,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
       this.ngZone.run(() => {
         this.syncLandingLoginAvailability(result, 'coordinates');
-        if (result.eligible && accountId === this.sessionService.activeUserId()) this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+        if (result.eligible && accountId === this.sessionService.activeUserId()) {
+          if (accountId) this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+          else this.pendingFirebaseEntryCoordinates = coordinates;
+        }
         this.changeDetectorRef.markForCheck();
       });
     } catch {
