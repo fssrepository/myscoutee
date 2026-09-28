@@ -294,11 +294,6 @@
   stroke-width: 3;
 }
 
-:host(.app-indicator-host--shape-circle) .app-indicator__action-ring-track,
-:host(.app-indicator-host--shape-circle) .app-indicator__action-ring-progress {
-  vector-effect: non-scaling-stroke;
-}
-
 :host(.app-indicator-host--shape-button) .app-indicator__action-ring-track,
 :host(.app-indicator-host--shape-button) .app-indicator__action-ring-progress,
 :host(.app-indicator-host--shape-surface) .app-indicator__action-ring-track,

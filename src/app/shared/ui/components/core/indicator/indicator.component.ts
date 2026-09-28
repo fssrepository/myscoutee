@@ -254,6 +254,11 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     return `0 0 ${width} ${height}`;
   }
 
+  protected actionCircleSize(): number {
+    const { width, height } = this.actionButtonSize();
+    return Math.min(width, height);
+  }
+
   protected actionButtonPath(): string {
     const { width, height } = this.actionButtonSize();
     const inset = 2;
@@ -338,7 +343,7 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private syncActionButtonSizeObserver(): void {
-    if (!this.isActionRingKind || !this.isActionPathShape) {
+    if (!this.isActionRingKind) {
       this.clearActionButtonSizeObserver();
       return;
     }

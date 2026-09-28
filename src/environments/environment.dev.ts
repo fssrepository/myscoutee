@@ -1,12 +1,12 @@
 export const environment = {
   production: false,
-  activitiesDataSource: 'http' as 'local' | 'http',
-  operatorRegistryDataSource: 'http' as 'local' | 'http' | 'session',
+  activitiesDataSource: 'local' as 'local' | 'http',
+  operatorRegistryDataSource: 'local' as 'local' | 'http' | 'session',
   bootstrapOffsetInDays: 0,
   apiBaseUrl: '/api',
-  serviceWorkerEnabled: true,
-  firebaseLoginEnabled: true,
+  serviceWorkerEnabled: false,
+  firebaseLoginEnabled: false,
   firebaseMessagingEnabled: true,
-  paymentIntegrationEnabled: true,
-  paymentSimulatorConfigUrl: '/api/admin/payment-simulator/configuration-access' as string | null
+  paymentIntegrationEnabled: false,
+  paymentSimulatorConfigUrl: null as string | null
 };
