@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#fff8ed"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#cfe2d9" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="160" y="160" width="620" height="52" rx="13" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="195" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Interests</text><rect x="160" y="220" width="620" height="52" rx="13" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="255" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Lifestyle</text><rect x="160" y="280" width="620" height="52" rx="13" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="184" y="315" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Experience</text>
+      <rect x="170" y="410" width="150" height="44" rx="22" fill="#e8f8ef" stroke="#bed2eb" stroke-width="3"/>
+  <text x="245" y="441" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Public</text><rect x="335" y="410" width="150" height="44" rx="22" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
+  <text x="410" y="441" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Friends</text><rect x="500" y="410" width="150" height="44" rx="22" fill="#fff4e8" stroke="#bed2eb" stroke-width="3"/>
+  <text x="575" y="441" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Hosts</text><rect x="665" y="410" width="130" height="44" rx="22" fill="#f0eafa" stroke="#bed2eb" stroke-width="3"/>
+  <text x="730" y="441" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Private</text>
+  </g>
+</svg>
