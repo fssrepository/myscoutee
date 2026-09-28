@@ -31,17 +31,57 @@ describe('Explicit location request', () => {
     expect(await request).toBeNull();
   });
 
-  it('preserves the native failure reason and honors the remaining acquisition budget', async () => {
-    const getCurrentPosition = vi.fn();
-    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
+  it('waits for native permission without an early timeout and cancels the watch at the owner deadline', async () => {
+    vi.useFakeTimers();
+    const watchPosition = vi.fn().mockReturnValue(42), clearWatch = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
     const service = Object.create(AppLocationService.prototype) as AppLocationService;
-    const onError = vi.fn();
-    const request = service.requestCurrentCoordinates({ timeoutMs: 4000, onError });
-    expect(getCurrentPosition.mock.calls[0][2].timeout).toBe(4000);
-    const error = { code: 3, message: 'Timeout expired' };
-    getCurrentPosition.mock.calls[0][1](error);
+    const controller = new AbortController(), settled = vi.fn();
+    const request = service.requestCurrentCoordinates(controller.signal).then(settled);
+    expect(watchPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: false, maximumAge: 0 });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(settled).not.toHaveBeenCalled();
+    controller.abort();
+    await request;
+    expect(settled).toHaveBeenCalledExactlyOnceWith(null);
+    expect(clearWatch).toHaveBeenCalledExactlyOnceWith(42);
+    watchPosition.mock.calls[0][0]({ coords: { latitude: 47, longitude: 19 } });
+    expect(settled).toHaveBeenCalledOnce();
+  });
+
+  it.each([1, 2])('stops the one-shot watch on native error %s without retry', async code => {
+    const watchPosition = vi.fn().mockReturnValue(42), clearWatch = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
+    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const controller = new AbortController();
+    const request = service.requestCurrentCoordinates(controller.signal);
+    watchPosition.mock.calls[0][1]({ code });
     expect(await request).toBeNull();
-    expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+    controller.abort();
+    expect(watchPosition).toHaveBeenCalledOnce();
+    expect(clearWatch).toHaveBeenCalledExactlyOnceWith(42);
+  });
+
+  it('stops watching after the first coordinates and ignores later updates', async () => {
+    const watchPosition = vi.fn().mockReturnValue(42), clearWatch = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
+    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const controller = new AbortController();
+    const request = service.requestCurrentCoordinates(controller.signal);
+    watchPosition.mock.calls[0][0]({ coords: { latitude: 47, longitude: 19 } });
+    expect(await request).toEqual({ latitude: 47, longitude: 19 });
+    controller.abort();
+    expect(clearWatch).toHaveBeenCalledExactlyOnceWith(42);
+  });
+
+  it('does not start a native request after cancellation', async () => {
+    const watchPosition = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { watchPosition } });
+    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const controller = new AbortController();
+    controller.abort();
+    expect(await service.requestCurrentCoordinates(controller.signal)).toBeNull();
+    expect(watchPosition).not.toHaveBeenCalled();
   });
 });
 

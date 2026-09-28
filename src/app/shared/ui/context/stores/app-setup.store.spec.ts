@@ -1,19 +1,19 @@
 import { signal } from '@angular/core';
 import { AppSetupStore } from './app-setup.store';
 
-describe('Setup acquisition budget after Android permission grant', () => {
+describe('Setup acquisition timer starts at permission grant', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
   async function setup(initialState: PermissionState = 'denied') {
     const permission = { state: initialState, onchange: null as (() => void) | null };
     vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockResolvedValue(permission) } });
-    const requests: { fail: (code: number) => void; succeed: () => void }[] = [];
-    const requestCurrentCoordinates = vi.fn().mockImplementation((options = {}) => new Promise(resolve => {
-      requests.push({
-        fail: code => { options.onError?.({ code }); resolve(null); },
-        succeed: () => resolve({ latitude: 47, longitude: 19 })
-      });
+    let finish!: (point: { latitude: number; longitude: number } | null) => void;
+    let requestSignal!: AbortSignal;
+    const requestCurrentCoordinates = vi.fn().mockImplementation((signal: AbortSignal) => new Promise(resolve => {
+      requestSignal = signal;
+      finish = resolve;
+      signal.addEventListener('abort', () => resolve(null), { once: true });
     }));
     const store = Object.assign(Object.create(AppSetupStore.prototype), {
       isOpen: signal(true), nativePending: signal(false), busy: signal(false),
@@ -22,7 +22,7 @@ describe('Setup acquisition budget after Android permission grant', () => {
       locationGranted: signal(initialState === 'granted'), locationPermission: signal(initialState),
       locationEdited: signal(true), error: signal(''), saveSucceeded: signal(false),
       generation: 1, permission: null, locationRequestPending: false,
-      locationAcquisitionDeadlineMs: null, saveFeedbackTimer: null,
+      locationRequestAbort: null, locationRequestTimer: null, saveFeedbackTimer: null,
       completeLogin: null, checkLocation: null,
       location: { requestCurrentCoordinates, saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
         trackingEnabled: () => true, setTrackingEnabled: vi.fn() },
@@ -32,85 +32,95 @@ describe('Setup acquisition budget after Android permission grant', () => {
     });
     await store.refreshPermissions();
     const grant = () => { permission.state = 'granted'; permission.onchange?.(); };
-    return { store, requests, grant, requestCurrentCoordinates };
+    return { store, grant, requestCurrentCoordinates,
+      finish: (point: { latitude: number; longitude: number } | null) => finish(point),
+      requestSignal: () => requestSignal };
   }
 
-  it('uses only the time still shown by the ring after an OS prompt consumed the native timeout', async () => {
-    const { store, requests, grant, requestCurrentCoordinates } = await setup();
+  it('does not start the ring or timeout while permission is pending, then allows all ten seconds', async () => {
+    const { store, grant, requestSignal, requestCurrentCoordinates } = await setup();
     const saving = store.allow();
-    await vi.advanceTimersByTimeAsync(4000);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(store.busy()).toBe(false);
+    expect(requestSignal().aborted).toBe(false);
+    expect(store.error()).toBe('');
+    expect(vi.getTimerCount()).toBe(0);
     grant();
     expect(store.busy()).toBe(true);
-    await vi.advanceTimersByTimeAsync(6000);
-    requests[0].fail(3);
-    await vi.advanceTimersByTimeAsync(0);
-    expect(requestCurrentCoordinates).toHaveBeenCalledTimes(2);
-    expect(requestCurrentCoordinates.mock.calls[1][0]).toEqual({ timeoutMs: 4000 });
-    expect(store.busy()).toBe(true);
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(9999);
+    expect(requestSignal().aborted).toBe(false);
     expect(store.error()).toBe('');
-    await vi.advanceTimersByTimeAsync(3000);
-    requests[1].succeed();
+    await vi.advanceTimersByTimeAsync(1);
     await saving;
+    expect(requestSignal().aborted).toBe(true);
+    expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(store.error()).toBe('entry.permissions.location.unavailable');
+    expect(store.busy()).toBe(false);
+    expect(store.location.saveCurrentCoordinates).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('accepts a point nine seconds after granting permission, regardless of time spent deciding', async () => {
+    const { store, grant, finish, requestCurrentCoordinates } = await setup();
+    const saving = store.allow();
+    await vi.advanceTimersByTimeAsync(40_000);
+    grant();
+    await vi.advanceTimersByTimeAsync(9000);
+    finish({ latitude: 47, longitude: 19 });
+    await saving;
+    expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
     expect(store.location.saveCurrentCoordinates).toHaveBeenCalledExactlyOnceWith({ latitude: 47, longitude: 19 });
     expect(store.saveSucceeded()).toBe(true);
     expect(store.isOpen()).toBe(true);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(store.error()).toBe('');
   });
 
-  it.each([1, 2, 3])('does not retry failure %s after the granted acquisition budget is spent', async code => {
-    const { store, requests, grant, requestCurrentCoordinates } = await setup();
+  it('does not reset the running timer on focus or another permission refresh', async () => {
+    const { store, grant, requestSignal } = await setup();
     const saving = store.allow();
     grant();
-    await vi.advanceTimersByTimeAsync(10_000);
-    requests[0].fail(code);
+    await vi.advanceTimersByTimeAsync(7000);
+    await store.refreshPermissions();
+    await vi.advanceTimersByTimeAsync(3000);
     await saving;
-    expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
-    expect(store.error()).not.toBe('');
-    expect(store.location.saveCurrentCoordinates).not.toHaveBeenCalled();
-  });
-
-  it.each([1, 2])('never retries native denial or position unavailable (%s), even with time remaining', async code => {
-    const { store, requests, grant, requestCurrentCoordinates } = await setup();
-    const saving = store.allow();
-    grant();
-    requests[0].fail(code);
-    await saving;
-    expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(requestSignal().aborted).toBe(true);
     expect(store.saveSucceeded()).toBe(false);
   });
 
-  it('finishes at the same deadline when the remaining request also times out', async () => {
-    const { store, requests, grant, requestCurrentCoordinates } = await setup();
+  it('starts immediately when permission was already granted', async () => {
+    const { store, requestSignal } = await setup('granted');
     const saving = store.allow();
-    await vi.advanceTimersByTimeAsync(4000);
-    grant();
-    await vi.advanceTimersByTimeAsync(6000);
-    requests[0].fail(3);
-    await vi.advanceTimersByTimeAsync(4000);
-    requests[1].fail(3);
+    expect(store.busy()).toBe(true);
+    await vi.advanceTimersByTimeAsync(9999);
+    expect(requestSignal().aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
     await saving;
-    expect(requestCurrentCoordinates).toHaveBeenCalledTimes(2);
-    expect(store.error()).not.toBe('');
-    expect(store.busy()).toBe(false);
-    expect(store.saveSucceeded()).toBe(false);
+    expect(requestSignal().aborted).toBe(true);
   });
 
-  it('does not repeat an already-granted request', async () => {
-    const { store, requests, requestCurrentCoordinates } = await setup('granted');
+  it('reports actual denial without starting a timer or retrying', async () => {
+    const { store, finish, requestCurrentCoordinates } = await setup();
     const saving = store.allow();
-    requests[0].fail(3);
+    finish(null);
     await saving;
     expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(store.error()).toBe('entry.permissions.location.blocked');
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('does not continue a request after Setup is closed', async () => {
-    const { store, requests, grant, requestCurrentCoordinates } = await setup();
+  it.each([false, true])('cancels acquisition on close without saving or retrying (granted: %s)', async granted => {
+    const { store, grant, requestSignal, requestCurrentCoordinates } = await setup();
     const saving = store.allow();
-    grant();
+    if (granted) grant();
     store.close();
-    requests[0].fail(3);
     await saving;
+    expect(requestSignal().aborted).toBe(true);
     expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
     expect(store.location.saveCurrentCoordinates).not.toHaveBeenCalled();
+    expect(store.error()).toBe('');
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

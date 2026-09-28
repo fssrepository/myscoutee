@@ -222,37 +222,41 @@ export class AppLocationService {
     }
   }
 
-  async requestCurrentCoordinates(options: {
-    timeoutMs?: number;
-    onError?: (error: GeolocationPositionError) => void;
-  } = {}): Promise<LocationCoordinates | null> {
+  async requestCurrentCoordinates(signal?: AbortSignal): Promise<LocationCoordinates | null> {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       return null;
     }
 
     return new Promise<LocationCoordinates | null>(resolve => {
-      // Android's OS permission prompt can consume the native timeout even
-      // when the origin's permission was already accepted.
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const latitude = Number(position.coords.latitude);
-          const longitude = Number(position.coords.longitude);
-          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            resolve(null);
-            return;
-          }
-          resolve({ latitude, longitude });
-        },
-        error => {
-          options.onError?.(error);
-          resolve(null);
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: options.timeoutMs ?? APP_SETUP_CONFIG.locationRequestTimeoutMs,
-          maximumAge: 0
-        }
-      );
+      let watchId: number | undefined;
+      let settled = false;
+      const finish = (coordinates: LocationCoordinates | null) => {
+        if (settled) return;
+        settled = true;
+        signal?.removeEventListener('abort', abort);
+        if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+        resolve(coordinates);
+      };
+      const abort = () => finish(null);
+      const success = (position: GeolocationPosition) => {
+        const latitude = Number(position.coords.latitude);
+        const longitude = Number(position.coords.longitude);
+        finish(Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null);
+      };
+      if (signal?.aborted) { finish(null); return; }
+      if (signal) {
+        // Setup owns the deadline, starting only at permission grant. A
+        // cancellable one-shot watch avoids Android's earlier native timeout.
+        signal.addEventListener('abort', abort, { once: true });
+        watchId = navigator.geolocation.watchPosition(success, () => finish(null), {
+          enableHighAccuracy: false, maximumAge: 0
+        });
+        if (settled) navigator.geolocation.clearWatch(watchId);
+      } else {
+        navigator.geolocation.getCurrentPosition(success, () => finish(null), {
+          enableHighAccuracy: false, timeout: APP_SETUP_CONFIG.locationRequestTimeoutMs, maximumAge: 0
+        });
+      }
     });
   }
 

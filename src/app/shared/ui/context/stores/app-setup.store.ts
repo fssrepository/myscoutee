@@ -33,7 +33,8 @@ export class AppSetupStore implements OnDestroy {
   readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending()
     || (this.isOpen() && (!this.loggedIn() || !!this.checkLocation) && !this.locationSelected()));
   private locationRequestPending = false;
-  private locationAcquisitionDeadlineMs: number | null = null;
+  private locationRequestAbort: AbortController | null = null;
+  private locationRequestTimer: ReturnType<typeof setTimeout> | null = null;
   private opening = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
@@ -115,8 +116,7 @@ export class AppSetupStore implements OnDestroy {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
         if (this.locationRequestPending && permission.state === 'granted') {
-          this.locationAcquisitionDeadlineMs ??= Date.now() + APP_SETUP_CONFIG.locationRequestTimeoutMs;
-          this.busy.set(true);
+          this.startLocationAcquisitionTimer();
         }
         if (!this.locationEdited()) this.locationSelected.set(permission.state === 'granted' && this.location.trackingEnabled());
       };
@@ -128,8 +128,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   close(): void {
-    this.locationRequestPending = false;
-    this.locationAcquisitionDeadlineMs = null;
+    this.stopLocationRequest();
     this.nativePending.set(false);
     this.busy.set(false);
     this.finish(this.loginAllowed);
@@ -179,25 +178,11 @@ export class AppSetupStore implements OnDestroy {
         return;
       }
       this.locationRequestPending = true;
-      const waitingForPermission = this.locationPermission() !== 'granted';
-      this.locationAcquisitionDeadlineMs = waitingForPermission
-        ? null : Date.now() + APP_SETUP_CONFIG.locationRequestTimeoutMs;
-      this.busy.set(!waitingForPermission);
-      let nativeErrorCode: number | undefined;
-      let coordinates = await this.location.requestCurrentCoordinates({
-        onError: error => { nativeErrorCode = error.code; }
-      });
+      this.locationRequestAbort = new AbortController();
+      if (this.locationPermission() === 'granted') this.startLocationAcquisitionTimer();
+      const coordinates = await this.location.requestCurrentCoordinates(this.locationRequestAbort.signal);
       if (generation !== this.generation) return;
-      const remainingMs = this.locationAcquisitionDeadlineMs === null
-        ? 0 : this.locationAcquisitionDeadlineMs - Date.now();
-      // Android may start its timeout before the OS grant, while the visible
-      // acquisition ring starts at that grant. Use only the unspent part of
-      // that same deadline, once, and only for a native TIMEOUT (code 3).
-      if (!coordinates && nativeErrorCode === 3 && waitingForPermission
-        && this.locationPermission() === 'granted' && remainingMs > 0) {
-        coordinates = await this.location.requestCurrentCoordinates({ timeoutMs: remainingMs });
-      }
-      if (generation !== this.generation) return;
+      this.stopLocationRequest();
       if (!coordinates) {
         await this.refreshPermissions();
         if (generation !== this.generation) return;
@@ -232,8 +217,7 @@ export class AppSetupStore implements OnDestroy {
       }
     } finally {
       if (generation === this.generation || !this.isOpen()) {
-        this.locationRequestPending = false;
-        this.locationAcquisitionDeadlineMs = null;
+        this.stopLocationRequest();
         this.nativePending.set(false);
         this.busy.set(false);
       }
@@ -241,7 +225,23 @@ export class AppSetupStore implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopLocationRequest();
     this.clearSaveFeedback();
+  }
+
+  private startLocationAcquisitionTimer(): void {
+    if (!this.locationRequestAbort || this.locationRequestTimer !== null) return;
+    const request = this.locationRequestAbort;
+    this.busy.set(true);
+    this.locationRequestTimer = setTimeout(() => request.abort(), APP_SETUP_CONFIG.locationRequestTimeoutMs);
+  }
+
+  private stopLocationRequest(): void {
+    this.locationRequestPending = false;
+    if (this.locationRequestTimer !== null) clearTimeout(this.locationRequestTimer);
+    this.locationRequestTimer = null;
+    this.locationRequestAbort?.abort();
+    this.locationRequestAbort = null;
   }
 
   private showSaveFeedback(): void {
