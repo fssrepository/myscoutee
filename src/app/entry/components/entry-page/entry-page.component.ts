@@ -592,7 +592,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             user,
             mode,
             complete: () => resolve(true),
-            fail: message => resolve(message?.trim() || false)
+            fail: message => resolve(message === '' ? '' : message?.trim() || false)
           });
         });
       }),
@@ -631,7 +631,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         && Math.abs(coordinates.latitude) <= 90 && Math.abs(coordinates.longitude) <= 180
         && (await this.usersService.checkLocationEligibility(coordinates)).eligible;
       if (!eligible && !await this.requestLocationAccessFromDialog(normalizedUserId)) {
-        selection.fail();
+        // Closing Setup is cancellation: retain the selector without an error page.
+        selection.fail('');
         return;
       }
     } catch {

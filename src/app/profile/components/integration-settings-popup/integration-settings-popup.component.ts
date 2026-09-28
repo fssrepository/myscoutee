@@ -65,7 +65,7 @@ export class IntegrationSettingsPopupComponent {
     const summary = this.revenue().euroSummary;
     return {
       title: 'affiliate.revenue.title', size: 'small', height: 'auto',
-      mobilePresentation: 'compact', backdropTone: 'dim', closeAriaLabel: 'close',
+      mobilePresentation: 'fullscreen', backdropTone: 'dim', closeAriaLabel: 'close',
       headerControls: summary ? [{ kind: 'menu', id: 'currency', model: { density: 'compact' },
         trigger: { id: 'currency', label: summary.currency, trailingIcon: 'chevron_right', ariaLabel: 'payment.currency.title',
           palette: 'blue', layout: 'pill', action: 'custom' } }] : [],
@@ -124,11 +124,11 @@ export class IntegrationSettingsPopupComponent {
       closeAriaLabel: 'close',
       size: 'small',
       height: 'auto',
-      mobilePresentation: 'compact',
+      mobilePresentation: 'fullscreen',
       backdropTone: 'dim',
       headerControls: this.adminMode || !this.settings() ? [] : [{
         kind: 'menu', id: 'affiliate-revenue', model: { density: 'compact' },
-        trigger: { id: 'affiliate-revenue', label: 'affiliate.revenue.button', icon: 'group_add', collapsible: true,
+        trigger: { id: 'affiliate-revenue', label: 'affiliate.revenue.button', icon: 'account_balance_wallet', collapsible: true,
           ariaLabel: 'affiliate.revenue.open', palette: 'pink', layout: 'pill', action: 'custom' }
       }],
       onMenuSelect: () => { if (!this.adminMode) this.revenueOpen.set(true); },

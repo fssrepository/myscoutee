@@ -96,7 +96,7 @@ export class McpConnectionsComponent {
   protected readonly oauthClients = computed(() => this.store.settings()?.clients.filter(client => client.manual === false) ?? []);
   protected readonly advancedActions = computed<AppMenuItem[]>(() => [{id: 'advanced', icon: 'settings', label: 'mcp.advanced',
     layout: 'pill', palette: 'neutral', compactOnMobile: true, counter: this.manualClients().length}]);
-  protected advancedModel(): PopupModel { return {title: 'mcp.advanced', size: 'small', height: 'auto',
+  protected advancedModel(): PopupModel { return {title: 'mcp.advanced', size: 'small', height: 'auto', mobilePresentation: 'fullscreen',
     backdropTone: 'dim', onClose: () => this.advanced.set(false)}; }
   protected async generate(): Promise<void> {
     const name = this.i18n.translateParams('integration.token.client.name', {index: this.manualClients().length + 1});

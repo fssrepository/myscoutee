@@ -608,6 +608,9 @@ export class DemoBootstrapSelectorComponent {
     if (!request || !this.isCurrentContextRequest(requestToken)) {
       return;
     }
+    // Session preparation has finished. Keep the selected, disabled list under
+    // any permission/onboarding popup opened by the entry flow.
+    this.commit(() => { this.loading = false; });
     try {
       const result = await request.onSelect(userId, mode, this.users.find(user => user.id === userId));
       if (!this.isCurrentContextRequest(requestToken)) {
@@ -617,7 +620,7 @@ export class DemoBootstrapSelectorComponent {
         return;
       }
       this.resetContextSelectionFailure(
-        typeof result === 'string' && result.trim()
+        typeof result === 'string'
           ? result.trim()
           : 'Unable to open selected demo user.'
       );

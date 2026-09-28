@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.28.hu.3",
+  "version": "2026.09.28.hu.4",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3602,8 +3602,8 @@
     "event.mode.mingle": "Villámtalálkozók",
     "landing.hero.event.formats": "Standard · Verseny · Villámtalálkozók",
     "landing.hero.free.to.join": "Ingyenes csatlakozás",
-    "event.partner.invite": "Eseménymeghívó",
-    "event.partner.invite.failed": "Az eseménymeghívót nem sikerült megnyitni.",
+    "event.partner.invite": "Meghívó",
+    "event.partner.invite.failed": "A meghívót nem sikerült megnyitni.",
     "mingle.tables.close.aria": "Villámtalálkozók asztalainak bezárása",
     "affiliate.title": "Affiliate",
     "affiliate.open": "Affiliate beállítások megnyitása",

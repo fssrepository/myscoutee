@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.28.en.3",
+  "version": "2026.09.28.en.4",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3602,8 +3602,8 @@
     "event.mode.mingle": "Speed meeting",
     "landing.hero.event.formats": "Standard · Tournament · Speed meeting",
     "landing.hero.free.to.join": "Free to join",
-    "event.partner.invite": "Event invitation",
-    "event.partner.invite.failed": "The event invitation could not be opened.",
+    "event.partner.invite": "Invitation",
+    "event.partner.invite.failed": "The invitation could not be opened.",
     "mingle.tables.close.aria": "Close Speed meeting tables",
     "affiliate.title": "Affiliate",
     "affiliate.open": "Open affiliate settings",
