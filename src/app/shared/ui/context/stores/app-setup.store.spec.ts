@@ -16,7 +16,7 @@ describe('Setup acquisition timer starts at permission grant', () => {
       signal.addEventListener('abort', () => resolve(null), { once: true });
     }));
     const store = Object.assign(Object.create(AppSetupStore.prototype), {
-      isOpen: signal(true), nativePending: signal(false), busy: signal(false),
+      isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
       allowDisabled: () => false, loggedIn: () => true, locationMissing: () => true,
       locationSelected: signal(true), notificationsSelected: signal(false),
       locationGranted: signal(initialState === 'granted'), locationPermission: signal(initialState),
@@ -124,19 +124,19 @@ describe('Setup acquisition timer starts at permission grant', () => {
   });
 });
 
-describe('Setup login continuation after explicit close', () => {
+describe('Setup explicit Login action and independent Close', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
   function setup(checkLocation: boolean) {
     return Object.assign(Object.create(AppSetupStore.prototype), {
-      isOpen: signal(true), nativePending: signal(false), busy: signal(false),
+      isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
       allowDisabled: () => false, loggedIn: () => false,
       locationSelected: signal(true), notificationsSelected: signal(false),
       locationGranted: signal(true), locationPermission: signal('granted'),
       locationEdited: signal(false), error: signal(''), saveSucceeded: signal(false),
       actionPending: () => false, generation: 1, permission: null,
-      saveFeedbackTimer: null, loginAllowed: false,
+      saveFeedbackTimer: null,
       completeLogin: vi.fn(),
       checkLocation: checkLocation ? vi.fn().mockResolvedValue(true) : null,
       location: {
@@ -149,19 +149,25 @@ describe('Setup login continuation after explicit close', () => {
     });
   }
 
-  it.each([true, false])('keeps Update open and resumes the pending login only on close (location check: %s)', async checkLocation => {
+  it.each([true, false])('continues only through successful Login (location check: %s)', async checkLocation => {
     const store = setup(checkLocation);
+    store.loginRequested.set(true);
     const continuation = store.completeLogin;
     await store.allow();
-    expect(store.isOpen()).toBe(true);
-    expect(store.saveSucceeded()).toBe(true);
-    expect(continuation).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1100);
-    expect(store.saveSucceeded()).toBe(false);
-    expect(store.isOpen()).toBe(true);
+    expect(store.isOpen()).toBe(false);
+    expect(store.loginRequested()).toBe(false);
+    expect(continuation).toHaveBeenCalledExactlyOnceWith(true);
+    store.close();
+    expect(continuation).toHaveBeenCalledOnce();
+  });
+
+  it.each([true, false])('Close cancels Login even with location granted (location check: %s)', checkLocation => {
+    const store = setup(checkLocation);
+    const continuation = store.completeLogin;
     store.close();
     expect(store.isOpen()).toBe(false);
-    expect(continuation).toHaveBeenCalledExactlyOnceWith(true);
+    expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
+    expect(store.location.requestCurrentCoordinates).not.toHaveBeenCalled();
   });
 
   it('does not continue after a rejected location check', async () => {
@@ -175,12 +181,14 @@ describe('Setup login continuation after explicit close', () => {
     expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
   });
 
-  it('requires another successful Update after editing a previously approved choice', async () => {
-    const store = setup(true);
-    const continuation = store.completeLogin;
+  it('keeps settings Update open and shows save feedback', async () => {
+    const store = setup(false);
+    store.completeLogin = null;
     await store.allow();
-    store.toggleLocation();
+    expect(store.isOpen()).toBe(true);
+    expect(store.saveSucceeded()).toBe(true);
     store.close();
-    expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
+    expect(store.isOpen()).toBe(false);
   });
+
 });

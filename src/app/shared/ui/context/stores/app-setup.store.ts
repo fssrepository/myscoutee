@@ -17,6 +17,7 @@ export class AppSetupStore implements OnDestroy {
   readonly loggedIn = computed(() => !!this.profile.activeUserId());
   readonly locationMissing = this.profile.activeUserLocationMissing;
   readonly isOpen = signal(false);
+  readonly loginRequested = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
   private readonly locationEdited = signal(false);
@@ -39,7 +40,6 @@ export class AppSetupStore implements OnDestroy {
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
-  private loginAllowed = false;
   private checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null;
 
   constructor() {
@@ -100,6 +100,7 @@ export class AppSetupStore implements OnDestroy {
     if (this.completeLogin) return Promise.resolve(false);
     this.open();
     this.checkLocation = checkLocation;
+    this.loginRequested.set(true);
     return new Promise(resolve => { this.completeLogin = resolve; });
   }
 
@@ -131,7 +132,7 @@ export class AppSetupStore implements OnDestroy {
     this.stopLocationRequest();
     this.nativePending.set(false);
     this.busy.set(false);
-    this.finish(this.loginAllowed);
+    this.finish(false);
   }
 
   install(): void {
@@ -246,7 +247,10 @@ export class AppSetupStore implements OnDestroy {
 
   private showSaveFeedback(): void {
     this.clearSaveFeedback();
-    this.loginAllowed = !!this.completeLogin;
+    if (this.completeLogin) {
+      this.finish(true);
+      return;
+    }
     this.saveSucceeded.set(true);
     this.saveFeedbackTimer = setTimeout(() => {
       this.saveFeedbackTimer = null;
@@ -255,7 +259,6 @@ export class AppSetupStore implements OnDestroy {
   }
 
   private clearSaveFeedback(): void {
-    this.loginAllowed = false;
     if (this.saveFeedbackTimer !== null) clearTimeout(this.saveFeedbackTimer);
     this.saveFeedbackTimer = null;
     this.saveSucceeded.set(false);
@@ -271,6 +274,7 @@ export class AppSetupStore implements OnDestroy {
     this.pwa.dismissInstallPrompt();
     const complete = this.completeLogin;
     this.completeLogin = null;
+    this.loginRequested.set(false);
     this.checkLocation = null;
     complete?.(allowed);
   }

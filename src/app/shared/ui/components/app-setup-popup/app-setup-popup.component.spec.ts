@@ -14,7 +14,7 @@ describe('Setup permission help', () => {
   it('opens above the unchanged setup and closes only the help without requesting permissions', () => {
     const allow = vi.fn(), close = vi.fn();
     const store = {
-      isOpen: signal(true), actionPending: signal(false), busy: signal(false),
+      isOpen: signal(true), loginRequested: signal(false), actionPending: signal(false), busy: signal(false),
       notificationConfigurationPending: signal(false), locationMissing: signal(false),
       locationPermission: signal('denied'), locationSelected: signal(false), locationGranted: signal(false),
       notificationsSelected: signal(false), saveSucceeded: signal(false), error: signal(''), allowDisabled: signal(false),
@@ -29,6 +29,11 @@ describe('Setup permission help', () => {
     ] });
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
+    expect(fixture.componentInstance.permissionActions()[0].label).toBe('app.setup.update');
+    store.loginRequested.set(true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.permissionActions()[0].label).toBe('login');
+    store.loginRequested.set(false);
     const root = fixture.nativeElement as HTMLElement;
     const setup = root.querySelector('.ui-popup')!;
     const presence = TestBed.inject(PopupPresenceStore);
