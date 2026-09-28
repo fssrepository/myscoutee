@@ -37,7 +37,7 @@ export interface ExternalInviteLinkRequest {
 
 export interface McpClientDto { manual?: boolean; clientId?: string; token: IntegrationTokenDto; redirectUri: string; }
 export interface McpSettingsDto { resource: string; maxClients: number; remoteEnabled: boolean; clients: McpClientDto[]; }
-export interface McpClientRequest { name: string; redirectUri: string; }
+export interface McpClientRequest { name: string; redirectUri?: string; }
 export interface McpClientCreatedDto { client: McpClientDto; secret: string; }
 export interface McpAuthorizationRequest {
   clientId: string; redirectUri: string; resource: string; scope: string;

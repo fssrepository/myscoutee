@@ -22,18 +22,9 @@
           <app-copy-link [value]="affiliateUrl()"></app-copy-link>
         </section>
         }
-        <section class="integration-settings-section integration-endpoint">
-          <div class="integration-endpoint-copy">
-            <span class="integration-endpoint-label">{{ 'integration.base.url' | i18n }}</span>
-            <code>{{ baseUrl() }}</code>
-          </div>
-          <app-menu
-            kind="inline"
-            layout="row"
-            [model]="actionMenuModel"
-            [items]="copyBaseUrlActions()"
-            (itemSelect)="onTokenAction($event)"
-          ></app-menu>
+        <section class="integration-settings-section">
+          <div class="integration-section-heading"><h3>{{ 'integration.base.url' | i18n }}</h3></div>
+          <app-copy-link [value]="baseUrl()" label="integration.base.url" copyLabel="integration.base.url.copy.aria"></app-copy-link>
           @if (!adminMode) { <small>{{ 'integration.batch.maximum' | i18n }} {{ config.maxBatchSize }}</small> }
         </section>
 

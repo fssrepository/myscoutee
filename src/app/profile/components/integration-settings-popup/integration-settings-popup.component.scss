@@ -67,37 +67,11 @@
   font-size: 0.72rem;
 }
 
-.integration-endpoint {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 0.42rem;
-}
-
-.integration-endpoint-copy {
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.52rem;
-}
-
 .integration-endpoint-label {
-  flex: 0 0 auto;
+  margin: 0;
   color: var(--text-main);
   font-size: 0.78rem;
   font-weight: 800;
-}
-
-.integration-endpoint code {
-  min-width: 0;
-  color: #315d91;
-  font-size: 0.72rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.integration-endpoint > small {
-  grid-column: 1 / -1;
 }
 
 .integration-section-heading {
@@ -252,13 +226,6 @@
 
 .integration-settings-state--error {
   color: #a82e2e;
-}
-
-@media (max-width: 520px) {
-  .integration-endpoint-copy {
-    display: grid;
-    gap: 0.16rem;
-  }
 }
 
 .affiliate-revenue-summary {

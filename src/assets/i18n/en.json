@@ -4022,9 +4022,13 @@
     "payment.cash.refund.approve.message": "Confirm that you have returned this cash amount to the payer?",
     "events.explore": "Explore Events",
     "assets.explore": "Explore Assets",
-    "mcp.advanced": "Advanced",
-    "mcp.manual.create": "Register client manually",
     "mcp.technical.details": "Connection details",
-    "mcp.manual.help": "Use Advanced → Register client manually only if the AI client specifically asks for a client ID and secret. Connection details are available beside the revoke button. Never paste a secret into chat."
+    "mcp.manual.help": "Advanced contains manually generated MCP client keys. Generate a client with its exact callback URL, then copy the client ID and the one-time secret into your client’s configuration. URL-based OAuth connections are listed separately under OAuth permissions; revoke them there. The settings icon beside Revoke shows connection details. Never paste secrets into chat.",
+    "mcp.copy.url": "Copy MCP URL",
+    "mcp.copy.client": "Copy client ID",
+    "mcp.copy.callback": "Copy callback URL",
+    "mcp.copy.secret": "Copy client secret",
+    "mcp.advanced": "Advanced",
+    "mcp.oauth.permissions": "OAuth permissions"
   }
 }

@@ -4022,9 +4022,13 @@
     "payment.cash.refund.approve.message": "Megerősíted, hogy ezt az összeget készpénzben visszaadtad a fizetőnek?",
     "events.explore": "Események felfedezése",
     "assets.explore": "Eszközök felfedezése",
-    "mcp.advanced": "Haladó",
-    "mcp.manual.create": "Kliens kézi regisztrálása",
     "mcp.technical.details": "Kapcsolat adatai",
-    "mcp.manual.help": "A Haladó → Kliens kézi regisztrálása csak akkor kell, ha az AI-kliens kifejezetten kliensazonosítót és titkot kér. A kapcsolat adatait a visszavonás gomb melletti ikonnal nyithatod meg. Titkot ne másolj csevegésbe."
+    "mcp.manual.help": "A Haladó ablakban kezelheted a kézzel generált MCP-klienskulcsokat. Add meg a kliens pontos visszahívási URL-jét, majd másold a kliensazonosítót és az egyszer megjelenő titkot a kliens beállításaiba. Az URL-en keresztüli OAuth-kapcsolatok külön, az OAuth-engedélyek között jelennek meg; ott vonhatod vissza őket. A kuka melletti beállításikon mutatja a kapcsolat részleteit. Titkot ne másolj beszélgetésbe.",
+    "mcp.copy.url": "MCP URL másolása",
+    "mcp.copy.client": "Kliensazonosító másolása",
+    "mcp.copy.callback": "Visszahívási cím másolása",
+    "mcp.copy.secret": "Kliens titkának másolása",
+    "mcp.advanced": "Haladó",
+    "mcp.oauth.permissions": "OAuth-engedélyek"
   }
 }
