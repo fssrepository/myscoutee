@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.28.hu.2",
+  "version": "2026.09.28.hu.3",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -4023,7 +4023,7 @@
     "events.explore": "Események felfedezése",
     "assets.explore": "Eszközök felfedezése",
     "mcp.technical.details": "Kapcsolat adatai",
-    "mcp.manual.help": "A Haladó ablakban kezelheted a kézzel generált MCP-klienskulcsokat. Add meg a kliens pontos visszahívási URL-jét, majd másold a kliensazonosítót és az egyszer megjelenő titkot a kliens beállításaiba. Az URL-en keresztüli OAuth-kapcsolatok külön, az OAuth-engedélyek között jelennek meg; ott vonhatod vissza őket. A kuka melletti beállításikon mutatja a kapcsolat részleteit. Titkot ne másolj beszélgetésbe.",
+    "mcp.manual.help": "A Haladó ablakban kezelheted a kézzel generált MCP-klienskulcsokat. A Generálás új sort hoz létre kliensazonosítóval és egyszer megjelenő titokkal; ezeket másold a kliens beállításaiba. A Haladó gomb számlálója ezeket a kulcsokat mutatja. Az URL-en keresztüli OAuth-kapcsolatok külön, az OAuth-engedélyek között jelennek meg; ott vonhatod vissza őket. Titkot ne másolj beszélgetésbe.",
     "mcp.copy.url": "MCP URL másolása",
     "mcp.copy.client": "Kliensazonosító másolása",
     "mcp.copy.callback": "Visszahívási cím másolása",

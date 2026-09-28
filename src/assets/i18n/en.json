@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.28.en.2",
+  "version": "2026.09.28.en.3",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -4023,7 +4023,7 @@
     "events.explore": "Explore Events",
     "assets.explore": "Explore Assets",
     "mcp.technical.details": "Connection details",
-    "mcp.manual.help": "Advanced contains manually generated MCP client keys. Generate a client with its exact callback URL, then copy the client ID and the one-time secret into your client’s configuration. URL-based OAuth connections are listed separately under OAuth permissions; revoke them there. The settings icon beside Revoke shows connection details. Never paste secrets into chat.",
+    "mcp.manual.help": "Advanced contains manually generated MCP client keys. Generate adds a row with a client ID and a one-time secret; copy them into your client’s configuration. The Advanced badge counts these keys. URL-based OAuth connections appear separately under OAuth permissions; revoke them there. Never paste secrets into chat.",
     "mcp.copy.url": "Copy MCP URL",
     "mcp.copy.client": "Copy client ID",
     "mcp.copy.callback": "Copy callback URL",

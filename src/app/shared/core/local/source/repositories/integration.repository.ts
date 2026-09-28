@@ -362,7 +362,7 @@ export class LocalIntegrationRepository {
   mcpSettings(userId: string, resource: string): McpSettingsDto {
     return {resource, maxClients: LocalIntegrationRepository.MAX_ACTIVE_TOKENS, remoteEnabled: false,
       clients: this.activeTokens(this.requireUser(userId), false, 'mcp').map(({value: _secret, redirectUri, ...token}) =>
-        ({token, redirectUri: redirectUri ?? ''}))};
+        ({token, redirectUri: redirectUri ?? '', manual: true, clientId: token.id}))};
   }
   createMcpClient(userId: string, input: McpClientRequest): McpClientCreatedDto {
     if (!input.name.trim() || input.name.length > 80) throw new Error('mcp.failed');

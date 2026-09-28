@@ -250,7 +250,7 @@ describe('Local MCP connections', () => {
     const db = {read: () => state, write: (change: any) => {state = change(state);}};
     const injector = createEnvironmentInjector([{provide: LocalMemoryDb, useValue: db}], null as any);
     const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
-    const input = {name: 'Claude', redirectUri: 'https://claude.example/callback'};
+    const input = {name: 'Client 1'};
     const first = repo.createMcpClient('owner', input);
     expect(first.secret).toMatch(/^msc_/);
     repo.createToken('owner', 'API', 90);
