@@ -1,3 +1,4 @@
+import { scheduleAfterPaint } from '../../../shared/ui/scheduler/after-paint';
 import { resolveSideMenuPresentation } from '../../../shared/ui/components/side-menu/side-menu-presenters';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
@@ -7,6 +8,9 @@ import {
   HostListener,
   Input,
   OnChanges,
+  AfterViewInit,
+  OnDestroy,
+  signal,
   Output,
   SimpleChanges
 } from '@angular/core';
@@ -15,6 +19,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile-form-flow.converter';
 import {
   AppMenuComponent,
+  FormFlowComponent,
   I18nPipe,
   PopupComponent,
   type FormFlowMenuControlConfig,
@@ -51,6 +56,7 @@ type GameFilterMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppMenuComponent,
+    FormFlowComponent,
     FormsModule,
     I18nPipe,
     MatSliderModule,
@@ -59,19 +65,41 @@ type GameFilterMenuContext =
   templateUrl: './home-game-filter-popup.component.html',
   styleUrl: './home-game-filter-popup.component.scss'
 })
-export class HomeGameFilterPopupComponent implements OnChanges {
+export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() context: HomeGameFilterPopupContext | null = null;
   @Input() saving = false;
 
   @Output() readonly closed = new EventEmitter<GameFilterForm | null>();
 
   protected filterDraft!: GameFilterForm;
-  private readonly profileFieldMenus = new Map<string, FormFlowMenuControlConfig>(
-    ProfileFormFlowConverter.convert(null, { imageEditor: 'external', showHeader: false, showSave: false })
-      .steps.flatMap(step => step.controls ?? [])
-      .filter(control => control.kind === 'menu')
-      .map(control => [control.id, control.config as FormFlowMenuControlConfig])
-  );
+  protected readonly preparing = signal(true);
+  private cancelPreparation: (() => void) | null = null;
+  private cachedProfileFieldMenus: Map<string, FormFlowMenuControlConfig> | null = null;
+  private readonly menuModels = new Map<GameFilterMenuKind, {
+    selected: string[];
+    model: AppMenuModel<GameFilterMenuId, GameFilterMenuContext>;
+  }>();
+
+  private get profileFieldMenus(): Map<string, FormFlowMenuControlConfig> {
+    return this.cachedProfileFieldMenus ??= new Map(
+      ProfileFormFlowConverter.convert(null, { imageEditor: 'external', showHeader: false, showSave: false })
+        .steps.flatMap(step => step.controls ?? [])
+        .filter(control => control.kind === 'menu')
+        .map(control => [control.id, control.config as FormFlowMenuControlConfig])
+    );
+  }
+
+  ngAfterViewInit(): void {
+    this.cancelPreparation = scheduleAfterPaint(() => {
+      this.preparing.set(false);
+      this.cancelPreparation = null;
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.cancelPreparation?.();
+  }
+
   private readonly profileFieldIds: Partial<Record<GameFilterMenuKind, string>> = {
     interests: 'interests', values: 'values', physiques: 'physique', languages: 'languages',
     genders: 'gender', smoking: 'smoking', drinking: 'drinking', workout: 'workout', pets: 'pets',
@@ -169,7 +197,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
       icon: 'check',
       kind: 'action',
       palette: 'green',
-      disabled: this.saving,
+      disabled: this.saving || this.preparing(),
       ariaLabel: this.saving ? 'Saving filters' : 'Apply filters',
       progress: this.saving
         ? {
@@ -236,6 +264,8 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   }
 
   protected filterMenuModel(kind: GameFilterMenuKind): AppMenuModel<GameFilterMenuId, GameFilterMenuContext> {
+    const cached = this.menuModels.get(kind);
+    if (cached?.selected === this.filterDraft[kind]) return cached.model;
     const config = this.profileFieldMenus.get(this.profileFieldIds[kind] ?? '');
     let groups: readonly AppMenuGroup[] = config?.model?.groups ?? [{
       id: `game-filter-${kind}`, label: this.filterMenuTitle(kind), items: config?.items ?? []
@@ -276,8 +306,10 @@ export class HomeGameFilterPopupComponent implements OnChanges {
         adapted[0].items.push(adapt({ id: value, value, label: value }));
       }
     }
-    return { layout: 'tabs', maxSelected: null, groups: adapted,
+    const model: AppMenuModel<GameFilterMenuId, GameFilterMenuContext> = { layout: 'tabs', maxSelected: null, groups: adapted,
       summary: { emptyLabel: 'any', maxLabels: 2, counter: 'overflow' } };
+    this.menuModels.set(kind, { selected: this.filterDraft[kind], model });
+    return model;
   }
 
   protected onGameFilterMenuSelect(
@@ -311,7 +343,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   }
 
   protected apply(): void {
-    if (this.saving) {
+    if (this.saving || this.preparing()) {
       return;
     }
     this.closed.emit(normalizeGameFilter(this.filterDraft));

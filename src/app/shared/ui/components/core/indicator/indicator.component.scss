@@ -357,7 +357,11 @@
 }
 
 @keyframes app-indicator-spinner-ring-spin {
+  from {
+    transform: rotate(-90deg);
+  }
+
   to {
-    transform: rotate(360deg);
+    transform: rotate(270deg);
   }
 }

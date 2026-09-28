@@ -1,5 +1,8 @@
 @if (context) {
   <app-popup [model]="gameFilterPopupModel()" [zIndex]="gameFilterPopupZIndex()">
+    @if (preparing()) {
+      <app-form-flow [loading]="true"></app-form-flow>
+    } @else {
     <div class="game-filter-body">
       <div class="game-filter-layout-columns">
           <div class="game-filter-layout-col game-filter-layout-col-basics">
@@ -122,5 +125,6 @@
           </div>
       </div>
     </div>
+    }
   </app-popup>
 }

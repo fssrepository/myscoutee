@@ -1227,14 +1227,14 @@ export class SideMenuComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId());
+      const activeUserId = this.privacyConsentAccountId();
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
         && (Boolean(session) || this.isAdminWorkspaceRoute());
 
       if (!shouldCheckPrivacyConsent) {
         this.privacyConsentCheckKeyRef.set('');
-        this.profileStore.clearPrivacyConsentRequirement();
+        this.clearActivePrivacyConsentRequirement();
         return;
       }
       if (!revision) {
@@ -2068,6 +2068,21 @@ export class SideMenuComponent implements OnDestroy {
     });
   }
 
+  private privacyConsentAccountId(): string {
+    // The session UID only bootstraps hydration; privacy consent belongs to the
+    // persisted account profile, which may have a different identifier.
+    const profileId = this.userProfileStore.activeUserProfile()?.id?.trim();
+    return profileId ? this.groupWorkspaces.context.accountId(profileId) : '';
+  }
+
+  private clearActivePrivacyConsentRequirement(): void {
+    const wasRequired = this.profileStore.privacyConsentRequiredKey().length > 0;
+    this.profileStore.clearPrivacyConsentRequirement();
+    if (wasRequired && this.profileStore.settingsPopup() === 'privacy') {
+      this.profileStore.closeSettingsPopup({ force: true });
+    }
+  }
+
   private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevisionDto, checkKey: string): Promise<void> {
     const requestToken = ++this.privacyConsentCheckToken;
     try {
@@ -2076,7 +2091,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       if (this.isPrivacyConsentCurrent(existingConsent, revision)) {
-        this.profileStore.clearPrivacyConsentRequirement();
+        this.clearActivePrivacyConsentRequirement();
         return;
       }
 
@@ -2085,7 +2100,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       if (syncedAnonymousConsent) {
-        this.profileStore.clearPrivacyConsentRequirement();
+        this.clearActivePrivacyConsentRequirement();
         return;
       }
 
