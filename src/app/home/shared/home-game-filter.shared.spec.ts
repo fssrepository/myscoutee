@@ -36,8 +36,8 @@ describe('saved game-filter profile facets', () => {
     for (const user of seeded) {
       const facet = getGameUserFacet(LocalUsersMapper.toDto(user));
       const prior = APP_STATIC_DATA.homeUserFacetById[user.id];
-      if (prior) expect(facet).toEqual(prior);
-      else expect(facet).toEqual({ interests: [], values: [], smoking: 'never', drinking: 'never',
+      if (prior) expect(facet).toEqual({ ...prior, gender: user.gender });
+      else expect(facet).toEqual({ gender: user.gender, interests: [], values: [], smoking: 'never', drinking: 'never',
         workout: 'weekly', pets: 'all pets welcome', familyPlans: 'open to both', children: 'no',
         loveStyle: 'slow-burn connection', communicationStyle: 'direct + warm',
         sexualOrientation: 'straight', religion: 'not religious' });

@@ -1,6 +1,8 @@
+import { APP_STATIC_DATA } from '../../app-static-data';
 import type { UserDto } from '../contracts/user.interface';
 
 export interface GameUserFacet {
+  gender: string;
   interests: string[];
   values: string[];
   smoking: string;
@@ -28,6 +30,7 @@ export function getGameUserFacet(
   const detail = (field: string) => details.get(`profile.details.${field}`.toLowerCase()) ?? '';
   const list = (field: string) => detail(field).split(',').map(value => value.trim()).filter(Boolean);
   return {
+    gender: (details.get('profile.gender') ?? user.gender ?? '').toLowerCase(),
     interests: list('interest'),
     values: list('values'),
     smoking: detail('smoking').toLowerCase(),
@@ -54,3 +57,23 @@ export function getGameUserValues(
 ): string[] {
   return getGameUserFacet(user).values;
 }
+
+export function resolvePersonalityTraitId(label: string | undefined): string | null {
+    const normalized = `${label ?? ''}`.trim().toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+    const direct = APP_STATIC_DATA.personalityTraitCatalog.find(trait =>
+      trait.id === normalized
+      || trait.label.toLowerCase() === normalized
+      || trait.aliases.some(alias => alias.toLowerCase() === normalized)
+    );
+    if (direct) {
+      return direct.id;
+    }
+    const byWordTail = APP_STATIC_DATA.personalityTraitCatalog.find(trait =>
+      normalized.endsWith(trait.label.toLowerCase())
+      || trait.aliases.some(alias => normalized.endsWith(alias.toLowerCase()))
+    );
+    return byWordTail?.id ?? null;
+  }

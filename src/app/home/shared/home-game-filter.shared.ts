@@ -1,6 +1,6 @@
 import type { UserDto } from '../../shared/core/contracts/user.interface';
 export type { GameUserFacet } from '../../shared/core/common/game-user-facet';
-export { getGameUserFacet, getGameUserInterests, getGameUserValues } from '../../shared/core/common/game-user-facet';
+export { resolvePersonalityTraitId, getGameUserFacet, getGameUserInterests, getGameUserValues } from '../../shared/core/common/game-user-facet';
 
 export const GAME_FILTER_AGE_MIN = 18;
 export const GAME_FILTER_AGE_MAX = 120;
@@ -35,7 +35,7 @@ export interface GameFilterForm {
   values: string[];
   physiques: string[];
   languages: string[];
-  genders: Array<UserDto['gender']>;
+  genders: string[];
   horoscopes: string[];
   traitLabels: string[];
   smoking: string[];

@@ -64,6 +64,7 @@ import {
   cloneGameFilter,
   createInitialGameFilter,
   getGameUserFacet,
+  resolvePersonalityTraitId,
   getGameUserInterests,
   getGameUserValues,
   isGameFilterActive,
@@ -2123,64 +2124,64 @@ export class HomeComponent implements OnDestroy {
       return false;
     }
     if (filter.interests.length > 0) {
-      const hasInterestMatch = this.userInterests(user).some(interest => filter.interests.includes(interest));
+      const hasInterestMatch = this.userInterests(user).some(interest => filter.interests.some(selected => selected.trim().toLowerCase() === interest.trim().toLowerCase()));
       if (!hasInterestMatch) {
         return false;
       }
     }
     if (filter.values.length > 0) {
-      const hasValuesMatch = this.userValues(user).some(value => filter.values.includes(value));
+      const hasValuesMatch = this.userValues(user).some(value => filter.values.some(selected => selected.trim().toLowerCase() === value.trim().toLowerCase()));
       if (!hasValuesMatch) {
         return false;
       }
     }
     const facet = this.userFacet(user);
-    if (filter.smoking.length > 0 && !filter.smoking.includes(facet.smoking)) {
+    if (filter.smoking.length > 0 && !filter.smoking.some(value => value.trim().toLowerCase() === facet.smoking)) {
       return false;
     }
-    if (filter.drinking.length > 0 && !filter.drinking.includes(facet.drinking)) {
+    if (filter.drinking.length > 0 && !filter.drinking.some(value => value.trim().toLowerCase() === facet.drinking)) {
       return false;
     }
-    if (filter.workout.length > 0 && !filter.workout.includes(facet.workout)) {
+    if (filter.workout.length > 0 && !filter.workout.some(value => value.trim().toLowerCase() === facet.workout)) {
       return false;
     }
-    if (filter.pets.length > 0 && !filter.pets.includes(facet.pets)) {
+    if (filter.pets.length > 0 && !filter.pets.some(value => value.trim().toLowerCase() === facet.pets)) {
       return false;
     }
-    if (filter.familyPlans.length > 0 && !filter.familyPlans.includes(facet.familyPlans)) {
+    if (filter.familyPlans.length > 0 && !filter.familyPlans.some(value => value.trim().toLowerCase() === facet.familyPlans)) {
       return false;
     }
-    if (filter.children.length > 0 && !filter.children.includes(facet.children)) {
+    if (filter.children.length > 0 && !filter.children.some(value => value.trim().toLowerCase() === facet.children)) {
       return false;
     }
-    if (filter.loveStyles.length > 0 && !filter.loveStyles.includes(facet.loveStyle)) {
+    if (filter.loveStyles.length > 0 && !filter.loveStyles.some(value => value.trim().toLowerCase() === facet.loveStyle)) {
       return false;
     }
-    if (filter.communicationStyles.length > 0 && !filter.communicationStyles.includes(facet.communicationStyle)) {
+    if (filter.communicationStyles.length > 0 && !filter.communicationStyles.some(value => value.trim().toLowerCase() === facet.communicationStyle)) {
       return false;
     }
-    if (filter.sexualOrientations.length > 0 && !filter.sexualOrientations.includes(facet.sexualOrientation)) {
+    if (filter.sexualOrientations.length > 0 && !filter.sexualOrientations.some(value => value.trim().toLowerCase() === facet.sexualOrientation)) {
       return false;
     }
-    if (filter.religions.length > 0 && !filter.religions.includes(facet.religion)) {
+    if (filter.religions.length > 0 && !filter.religions.some(value => value.trim().toLowerCase() === facet.religion)) {
       return false;
     }
-    if (filter.physiques.length > 0 && !filter.physiques.includes(user.physique)) {
+    if (filter.physiques.length > 0 && !filter.physiques.some(value => value.trim().toLowerCase() === user.physique?.trim().toLowerCase())) {
       return false;
     }
     if (filter.languages.length > 0) {
-      const hasLanguageMatch = user.languages.some(language => filter.languages.includes(language));
+      const hasLanguageMatch = user.languages.some(language => filter.languages.some(selected => selected.trim().toLowerCase() === language.trim().toLowerCase()));
       if (!hasLanguageMatch) {
         return false;
       }
     }
-    if (filter.genders.length > 0 && !filter.genders.includes(user.gender)) {
+    if (filter.genders.length > 0 && !filter.genders.some(value => value.trim().toLowerCase() === facet.gender)) {
       return false;
     }
-    if (filter.horoscopes.length > 0 && !filter.horoscopes.includes(user.horoscope)) {
+    if (filter.horoscopes.length > 0 && !filter.horoscopes.some(value => value.trim().toLowerCase() === user.horoscope?.trim().toLowerCase())) {
       return false;
     }
-    if (filter.traitLabels.length > 0 && !filter.traitLabels.includes(user.traitLabel)) {
+    if (filter.traitLabels.length > 0 && !filter.traitLabels.some(value => (resolvePersonalityTraitId(value) ?? value.trim().toLowerCase()) === (resolvePersonalityTraitId(user.traitLabel) ?? user.traitLabel?.trim().toLowerCase()))) {
       return false;
     }
     return true;

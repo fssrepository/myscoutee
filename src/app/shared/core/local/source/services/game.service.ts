@@ -1,7 +1,7 @@
 import { GroupWorkspaceContextService } from '../../../base/services/group-workspace-context.service';
 import { Injectable, inject } from '@angular/core';
 
-import { getGameUserFacet } from '../../../common/game-user-facet';
+import { getGameUserFacet, resolvePersonalityTraitId } from '../../../common/game-user-facet';
 import { LocalRouteDelayService } from './route-delay.service';
 import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
@@ -270,13 +270,11 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     if (!includesNormalized(preferences.horoscopes, user.horoscope)) {
       return false;
     }
-    if (!includesNormalized(preferences.traitLabels, user.traitLabel)) {
+    if (!includesNormalized(preferences.traitLabels?.map(value => resolvePersonalityTraitId(value) ?? value), resolvePersonalityTraitId(user.traitLabel) ?? user.traitLabel)) {
       return false;
     }
-    if (Array.isArray(preferences.genders) && preferences.genders.length > 0) {
-      if (!preferences.genders.includes(user.gender)) {
-        return false;
-      }
+    if (!includesNormalized(preferences.genders, facet.gender)) {
+      return false;
     }
     return true;
   }

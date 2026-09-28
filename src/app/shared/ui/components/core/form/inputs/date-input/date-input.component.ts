@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTimepicker, MatTimepickerModule } from '@angular/material/timepicker';
 
+import { APP_STATIC_DATA } from '../../../../../../app-static-data';
 import { AppUtils } from '../../../../../../app-utils';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../../../../app-calendar-date-adapter';
 import type { DateRangeDto } from '../../../../../../core/contracts/date.interface';
@@ -145,20 +146,7 @@ export class DateInputComponent implements ControlValueAccessor {
     return this.isCompactRange();
   }
 
-  private static readonly horoscopeMetaBySign: Record<string, DateInputMetaValue> = {
-    Aries: { label: 'aries', icon: '♈', palette: 'aries' },
-    Taurus: { label: 'taurus', icon: '♉', palette: 'taurus' },
-    Gemini: { label: 'gemini', icon: '♊', palette: 'gemini' },
-    Cancer: { label: 'cancer', icon: '♋', palette: 'cancer' },
-    Leo: { label: 'leo', icon: '♌', palette: 'leo' },
-    Virgo: { label: 'virgo', icon: '♍', palette: 'virgo' },
-    Libra: { label: 'libra', icon: '♎', palette: 'libra' },
-    Scorpio: { label: 'scorpio', icon: '♏', palette: 'scorpio' },
-    Sagittarius: { label: 'sagittarius', icon: '♐', palette: 'sagittarius' },
-    Capricorn: { label: 'capricorn', icon: '♑', palette: 'capricorn' },
-    Aquarius: { label: 'aquarius', icon: '♒', palette: 'aquarius' },
-    Pisces: { label: 'pisces', icon: '♓', palette: 'pisces' }
-  };
+  private static readonly horoscopeMetaBySign: Record<string, DateInputMetaValue> = APP_STATIC_DATA.profileHoroscopeMetaBySign;
 
   protected singleDateValue: Date | null = null;
   protected singleTimeValue: Date | null = null;

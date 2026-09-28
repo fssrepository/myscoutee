@@ -348,6 +348,20 @@ const EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS: EventFeedbackTraitOption[] = PER
   icon: trait.icon,
   coreVibe: trait.coreVibe
 }));
+const PROFILE_HOROSCOPE_META_BY_SIGN = {
+    Aries: { label: 'aries', icon: '♈', palette: 'aries' },
+    Taurus: { label: 'taurus', icon: '♉', palette: 'taurus' },
+    Gemini: { label: 'gemini', icon: '♊', palette: 'gemini' },
+    Cancer: { label: 'cancer', icon: '♋', palette: 'cancer' },
+    Leo: { label: 'leo', icon: '♌', palette: 'leo' },
+    Virgo: { label: 'virgo', icon: '♍', palette: 'virgo' },
+    Libra: { label: 'libra', icon: '♎', palette: 'libra' },
+    Scorpio: { label: 'scorpio', icon: '♏', palette: 'scorpio' },
+    Sagittarius: { label: 'sagittarius', icon: '♐', palette: 'sagittarius' },
+    Capricorn: { label: 'capricorn', icon: '♑', palette: 'capricorn' },
+    Aquarius: { label: 'aquarius', icon: '♒', palette: 'aquarius' },
+    Pisces: { label: 'pisces', icon: '♓', palette: 'pisces' }
+  } as const;
 const PHYSIQUE_OPTIONS = ['Slim', 'Lean', 'Athletic', 'Fit', 'Curvy', 'Average', 'Muscular'];
 const LANGUAGE_SUGGESTIONS = [
   'English',
@@ -2883,6 +2897,7 @@ export const APP_STATIC_DATA = {
   navigatorTraitPresenterDefault: NAVIGATOR_TRAIT_PRESENTER_DEFAULT,
   personalityTraitCatalog: PERSONALITY_TRAIT_CATALOG,
   physiqueOptions: PHYSIQUE_OPTIONS,
+  profileHoroscopeMetaBySign: PROFILE_HOROSCOPE_META_BY_SIGN,
   languageSuggestions: LANGUAGE_SUGGESTIONS,
   activitiesPrimaryFilters: ACTIVITIES_PRIMARY_FILTERS,
   activitiesSecondaryFilters: ACTIVITIES_SECONDARY_FILTERS,
