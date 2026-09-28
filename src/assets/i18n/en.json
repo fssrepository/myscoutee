@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.28.en.5",
+  "version": "2026.09.28.en.8",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -3612,7 +3612,7 @@
     "affiliate.copy": "Copy personal invitation link",
     "affiliate.registered": "People registered through your personal invitation link",
     "affiliate.clients.ratio": "Registered accounts linked / distinct API participants imported",
-    "affiliate.help": "Your personal link records who invited a newly registered member. Existing accounts do not count as new referrals. The client ratio counts distinct imported participant IDs linked to registered accounts; repeat imports do not increase it.",
+    "affiliate.help": "Your personal link records new registrations you referred. Existing accounts do not count.",
     "landing.partners.role.affiliate.label": "Invite people",
     "landing.partners.role.affiliate.title": "Affiliate partner",
     "landing.partners.role.affiliate.description": "Any member can share a personal invitation link from Profile → Affiliate and see how many people registered through it. API clients can also invite participants and track how many connected to registered accounts.",
@@ -3882,7 +3882,7 @@
     "menu.selection.maximum": "(max. {count})",
     "mcp.connections": "AI / MCP connections",
     "mcp.create": "New connection",
-    "mcp.setup": "Copy the MCP URL into your AI client and choose Connect. Sign in to MyScoutee, check the displayed profile and group, then approve access. Return to the client and enable the connection for your conversation. You can revoke it here; connections expire after 90 days. No client ID or secret is needed for automatic registration.",
+    "mcp.setup": "Copy the MCP URL into your AI client and choose Connect. No manual client ID or secret is needed.",
     "mcp.local.only": "Browser-only local mode cannot receive external OAuth requests. In dev with the backend running, the normal demo sign-in can be used; deployed installations use their configured sign-in methods.",
     "mcp.url": "MCP URL",
     "mcp.client.id": "Client ID",
@@ -4023,12 +4023,17 @@
     "events.explore": "Explore Events",
     "assets.explore": "Explore Assets",
     "mcp.technical.details": "Connection details",
-    "mcp.manual.help": "Advanced contains manually generated MCP client keys. Generate adds a row with a client ID and a one-time secret; copy them into your client’s configuration. The Advanced badge counts these keys. URL-based OAuth connections appear separately under OAuth permissions; revoke them there. Never paste secrets into chat.",
+    "mcp.manual.help": "Generate creates a client ID and a one-time secret. Copy them into your client’s settings, never into chat.",
     "mcp.copy.url": "Copy MCP URL",
     "mcp.copy.client": "Copy client ID",
     "mcp.copy.callback": "Copy callback URL",
     "mcp.copy.secret": "Copy client secret",
-    "mcp.advanced": "Advanced",
-    "mcp.oauth.permissions": "OAuth permissions"
+    "mcp.advanced": "MCP Advanced",
+    "mcp.oauth.permissions": "OAuth permissions",
+    "affiliate.help.participants": "The client ratio counts distinct imported participants linked to registered accounts. Repeat imports do not increase it.",
+    "mcp.setup.approve": "Sign in to MyScoutee, check the displayed profile and group, then approve access.",
+    "mcp.setup.return": "Return to your AI client and enable the connection for the conversation.",
+    "mcp.setup.revoke": "Revoke access under OAuth permissions. Connections expire after 90 days.",
+    "mcp.manual.help.badge": "The badge counts manual keys. Manage or revoke them here; URL-based connections remain under OAuth permissions."
   }
 }

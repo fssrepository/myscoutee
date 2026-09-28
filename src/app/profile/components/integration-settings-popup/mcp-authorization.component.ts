@@ -25,7 +25,6 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       </section>
       <p class="authorization-message">{{ 'mcp.consent.message' | i18n }}</p>
-      <details class="authorization-callback"><summary>{{ 'mcp.callback' | i18n }}</summary><code>{{ value.redirectUri }}</code></details>
       <app-menu class="authorization-actions" kind="inline" layout="row" [items]="actions()" (itemSelect)="decide($event.id === 'approve')"></app-menu>
     } @else if (!error()) { <p class="authorization-message">{{ 'integration.loading' | i18n }}</p> }
     @if (error()) { <p class="authorization-error" role="alert">{{ error() | i18n }}</p> }
@@ -53,9 +52,9 @@ export class McpAuthorizationComponent {
   protected model(): PopupModel { return {title: 'mcp.authorize', size: 'small', height: 'auto', backdropTone: 'dim',
     onClose: () => { if (!this.busy()) { if (this.context()) void this.decide(false); else void this.router.navigateByUrl('/game'); } }}; }
   protected actions(): AppMenuItem[] { return [
-    {id: 'cancel', label: 'cancel', icon: 'close', palette: 'neutral', layout: 'pill', disabled: this.busy()},
-    {id: 'approve', label: 'mcp.approve', icon: 'done', palette: 'green', layout: 'pill', disabled: this.busy(),
-      progress: this.busy() ? { state: 'loading', shape: 'circle' } : null}
+    {id: 'cancel', label: 'cancel', palette: 'slate', layout: 'action', disabled: this.busy()},
+    {id: 'approve', label: 'mcp.approve', palette: 'blue', layout: 'action', disabled: this.busy(),
+      progress: this.busy() ? { state: 'loading', shape: 'button' } : null}
   ]; }
   protected async decide(approve: boolean): Promise<void> {
     if (this.busy() || !this.context()) return;

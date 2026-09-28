@@ -130,13 +130,26 @@
   @if (helpOpen()) {
     <app-popup [model]="helpPopupModel()" [zIndex]="2510">
       <section class="integration-help-body">
-        <mat-icon>question_mark</mat-icon>
         <div>
           @if (adminMode) { <p>{{ 'admin.api.help' | i18n }}</p> } @else {
-            <p>{{ 'affiliate.help' | i18n }}</p><p>{{ 'integration.help.description' | i18n }}</p>
-            <p>{{ 'mcp.setup' | i18n }}</p>
+            <h3>{{ 'affiliate.personal.link' | i18n }}</h3>
+            <ul>
+              <li>{{ 'affiliate.help' | i18n }}</li>
+              <li>{{ 'affiliate.help.participants' | i18n }}</li>
+            </ul>
+            <h3>{{ 'mcp.connections' | i18n }}</h3>
+            <ol>
+              <li>{{ 'mcp.setup' | i18n }}</li>
+              <li>{{ 'mcp.setup.approve' | i18n }}</li>
+              <li>{{ 'mcp.setup.return' | i18n }}</li>
+              <li>{{ 'mcp.setup.revoke' | i18n }}</li>
+            </ol>
+            <h3>{{ 'mcp.advanced' | i18n }}</h3>
+            <ul>
+              <li>{{ 'mcp.manual.help' | i18n }}</li>
+              <li>{{ 'mcp.manual.help.badge' | i18n }}</li>
+            </ul>
             <p>{{ 'mcp.local.only' | i18n }}</p>
-            <p>{{ 'mcp.manual.help' | i18n }}</p>
           }
           <a
             [href]="integrationDocumentationUrl"
