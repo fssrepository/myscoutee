@@ -81,7 +81,7 @@ describe('profile editor prepared state', () => {
     expect(editor.profileEditorData.profile.name).toBe('Bela');
   });
 
-  it('keeps the same form, draft and scroll position across the image editor', () => {
+  it('keeps the same form, draft and scroll position across the image editor', async () => {
     // Use the real parent template: state-only tests cannot detect @if teardown.
     TestBed.overrideComponent(ProfileEditorComponent, { set: {
       imports: [FormsModule, FormFlowComponent, ImageEditorStub],
@@ -93,13 +93,19 @@ describe('profile editor prepared state', () => {
     const area = f.nativeElement.querySelector('.profile-editor-scroll-area');
     area.scrollTop = 123;
     editor.onProfileDraftChange(profile('a', 'Unsaved'));
-    editor.openImageEditor(); f.changeDetectorRef.markForCheck(); f.detectChanges();
+    f.debugElement.query(By.css('app-header-card')).triggerEventHandler('edit');
+    await f.whenStable();
+    f.detectChanges();
+    expect(editor.panel).toBe('image');
+    expect(editor.isOpen()).toBe(true);
+    expect(editor.activeUser?.id).toBe('a');
     expect(f.debugElement.query(By.directive(FormFlowComponent)).componentInstance).toBe(form);
     expect(f.nativeElement.querySelectorAll('app-popup').length).toBe(2);
     expect(f.nativeElement.querySelector('.profile-editor-wrap').hidden).toBe(false);
     expect(f.nativeElement.querySelector('.profile-editor-popup-content').hasAttribute('inert')).toBe(true);
     editor.onProfileImagesChange(['new-image']);
-    editor.handleCloseAction(); f.changeDetectorRef.markForCheck(); f.detectChanges();
+    editor.handleCloseAction(); f.changeDetectorRef.markForCheck();
+    await f.whenStable(); f.detectChanges();
     expect(f.debugElement.query(By.directive(FormFlowComponent)).componentInstance).toBe(form);
     expect(f.nativeElement.querySelector('.profile-editor-wrap').hidden).toBe(false);
     expect(area.scrollTop).toBe(123);
