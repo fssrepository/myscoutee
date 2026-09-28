@@ -129,7 +129,7 @@ export class IntegrationSettingsPopupComponent {
       headerControls: this.adminMode || !this.settings() ? [] : [{
         kind: 'menu', id: 'affiliate-revenue', model: { density: 'compact' },
         trigger: { id: 'affiliate-revenue', label: 'affiliate.revenue.button', icon: 'account_balance_wallet', collapsible: true,
-          ariaLabel: 'affiliate.revenue.open', palette: 'pink', layout: 'pill', action: 'custom' }
+          ariaLabel: 'affiliate.revenue.open', palette: 'green', layout: 'pill', action: 'custom' }
       }],
       onMenuSelect: () => { if (!this.adminMode) this.revenueOpen.set(true); },
       headerActions: [{
