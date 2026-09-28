@@ -9,6 +9,7 @@ function controller() {
     privacyConsentRequiredKey: () => '', settingsPopup: () => null,
     clearPrivacyConsentRequirement: vi.fn(), closeSettingsPopup: vi.fn(), setPrivacyConsentRequiredKey: vi.fn()
   };
+  component.currentRoutePathRef = () => '/game';
   component.privacyConsentCheckToken = 0;
   component.privacyConsentCheckKeyRef = () => 'current';
   component.openSettingsPopup = vi.fn();
@@ -38,6 +39,23 @@ describe('privacy consent after profile hydration', () => {
     component.privacyPolicy = { loadConsent: vi.fn().mockResolvedValue({ revisionId: 'privacy', revisionVersion: 1 }) };
     await component.ensureActivePrivacyConsent('backend-profile', { id: 'privacy', version: 1 }, 'current');
     expect(component.profileStore.closeSettingsPopup).not.toHaveBeenCalled();
+  });
+  it('does not open account consent on the landing page or after returning there', async () => {
+    const component = controller();
+    let resolveConsent!: (value: null) => void;
+    component.privacyPolicy = {
+      loadConsent: vi.fn(() => new Promise(resolve => { resolveConsent = resolve; })),
+      syncAnonymousEntryConsent: vi.fn().mockResolvedValue(false)
+    };
+    const pending = component.ensureActivePrivacyConsent('backend-profile', { id: 'privacy', version: 2 }, 'current');
+    component.currentRoutePathRef = () => '/entry';
+    resolveConsent(null);
+    await pending;
+    expect(component.openSettingsPopup).not.toHaveBeenCalled();
+    expect(component.privacyPolicy.syncAnonymousEntryConsent).not.toHaveBeenCalled();
+    expect(component.isCurrentPrivacyConsentCheck('current', 1)).toBe(false);
+    component.currentRoutePathRef = () => '/';
+    expect(component.isCurrentPrivacyConsentCheck('current', 1)).toBe(false);
   });
   it('still requests a genuinely unaccepted revision', async () => {
     const component = controller();

@@ -185,6 +185,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
+  private firebaseEntryTransitionBusy = false;
   protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
   protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
@@ -292,7 +293,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected get firebaseAuthIsBusy(): boolean {
-    return this.sessionService.firebaseBusy();
+    return this.firebaseEntryTransitionBusy || this.sessionService.firebaseBusy();
   }
 
   protected get firebaseAuthMessage(): string {
@@ -757,28 +758,38 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
-    const entryCoordinates = this.pendingFirebaseEntryCoordinates;
-    const entryAccessApproved = this.firebaseEntryAccessApproved;
-    const session = await this.sessionService.startAuthSession(request);
-    if (!session) {
-      return;
+    this.firebaseEntryTransitionBusy = true;
+    try {
+      const entryCoordinates = this.pendingFirebaseEntryCoordinates;
+      const entryAccessApproved = this.firebaseEntryAccessApproved;
+      const session = await this.sessionService.startAuthSession(request);
+      if (!session) {
+        return;
+      }
+      if (session.kind === 'firebase' && entryCoordinates) {
+        this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
+      }
+      this.pendingFirebaseEntryCoordinates = null;
+      this.firebaseEntryAccessApproved = false;
+      await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
+    } finally {
+      this.firebaseEntryTransitionBusy = false;
     }
-    if (session.kind === 'firebase' && entryCoordinates) {
-      this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
-    }
-    this.pendingFirebaseEntryCoordinates = null;
-    this.firebaseEntryAccessApproved = false;
-    await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
   }
 
   protected async onFirebaseSessionContinueRequested(): Promise<void> {
-    const entryAccessApproved = this.firebaseEntryAccessApproved;
-    const session = await this.sessionService.restoreFirebaseSession();
-    if (!session) {
-      return;
+    this.firebaseEntryTransitionBusy = true;
+    try {
+      const entryAccessApproved = this.firebaseEntryAccessApproved;
+      const session = await this.sessionService.restoreFirebaseSession();
+      if (!session) {
+        return;
+      }
+      this.firebaseEntryAccessApproved = false;
+      await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
+    } finally {
+      this.firebaseEntryTransitionBusy = false;
     }
-    this.firebaseEntryAccessApproved = false;
-    await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
   }
 
   protected onEntryConsentStateChanged(accepted: boolean): void {
@@ -875,12 +886,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     loadedUser?: UserDto,
     entryAccessApproved = false
   ): Promise<void> {
-    if (session.kind === 'firebase' && this.showFirebaseAuthPopup) {
-      this.ngZone.run(() => {
-        this.showFirebaseAuthPopup = false;
-        this.changeDetectorRef.detectChanges();
-      });
-    }
     const gateToken = ++this.postSessionGateToken;
     const sessionIdentity = this.sessionService.identity();
     const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
@@ -898,11 +903,21 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (session.kind === 'firebase' && !this.isAdminUser(user) && !this.isOperatorUser(user)) {
       const coordinates = user?.locationCoordinates;
       const hasLocation = coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude);
-      if (!hasLocation && !this.appLocationService.pendingLoginCoordinates(session.profile.id)) {
+      const needsLocationSetup = !hasLocation && !this.appLocationService.pendingLoginCoordinates(session.profile.id);
+      const needsNotificationSetup = hasLocation && !entryAccessApproved && this.firebaseMessagingService.entryPermissionPending;
+      // Keep provider login visible through profile loading and route activation.
+      // Only a required Setup or registration screen replaces it before navigation.
+      if ((needsLocationSetup || needsNotificationSetup) && this.showFirebaseAuthPopup) {
+        this.ngZone.run(() => {
+          this.showFirebaseAuthPopup = false;
+          this.changeDetectorRef.detectChanges();
+        });
+      }
+      if (needsLocationSetup) {
         this.locationEligibilityResolvedFromCoordinates = false;
         if (!await this.ensureHttpLoginAccessAllowed()) return;
         if (gateToken !== this.postSessionGateToken || this.sessionService.activeUserId() !== session.profile.id) return;
-      } else if (hasLocation && !entryAccessApproved && this.firebaseMessagingService.entryPermissionPending) {
+      } else if (needsNotificationSetup) {
         if (!await this.appSetupStore.requestForLogin()) return;
         if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
       }

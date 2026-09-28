@@ -595,6 +595,40 @@ describe('Authenticated entry location', () => {
       expect(component.router.navigateByUrl).not.toHaveBeenCalled();
     });
   }
+  it.each(['onFirebaseAuthRequested', 'onFirebaseSessionContinueRequested'])(
+    '%s retains the busy provider popup until profile loading and navigation finish', async method => {
+      const component = entry({ latitude: 47, longitude: 19 });
+      let resolveProfile!: (value: unknown) => void;
+      let resolveNavigation!: (value: boolean) => void;
+      const profile = new Promise(resolve => { resolveProfile = resolve; });
+      const navigation = new Promise<boolean>(resolve => { resolveNavigation = resolve; });
+      Object.assign(component, {
+        showFirebaseAuthPopup: true, firebaseEntryTransitionBusy: false,
+        redirectUrl: () => '/game', firebaseEntryAccessApproved: true
+      });
+      Object.assign(component.sessionService, {
+        firebaseBusy: () => false,
+        startAuthSession: vi.fn().mockResolvedValue(session),
+        restoreFirebaseSession: vi.fn().mockResolvedValue(session)
+      });
+      component.usersService.loadUserById.mockReturnValue(profile);
+      component.router.navigateByUrl.mockReturnValue(navigation);
+      const pending = component[method]({ provider: 'google' });
+      await vi.waitFor(() => expect(component.usersService.loadUserById).toHaveBeenCalled());
+      expect(component.showFirebaseAuthPopup).toBe(true);
+      expect(component.firebaseAuthIsBusy).toBe(true);
+      component.closeFirebaseAuthPopup();
+      expect(component.showFirebaseAuthPopup).toBe(true);
+      resolveProfile({ id: 'member', locationCoordinates: { latitude: 47, longitude: 19 } });
+      await vi.waitFor(() => expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game'));
+      expect(component.showFirebaseAuthPopup).toBe(true);
+      expect(component.firebaseAuthIsBusy).toBe(true);
+      resolveNavigation(false);
+      await pending;
+      expect(component.showFirebaseAuthPopup).toBe(true);
+      expect(component.firebaseAuthIsBusy).toBe(false);
+    }
+  );
   it('keeps the provider dialog open when authentication fails', async () => {
     const component = entry();
     component.showFirebaseAuthPopup = true;

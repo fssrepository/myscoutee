@@ -1230,6 +1230,7 @@ export class SideMenuComponent implements OnDestroy {
       const activeUserId = this.privacyConsentAccountId();
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
+        && (this.isNavigatorHydrationRoute() || this.isAdminWorkspaceRoute())
         && (Boolean(session) || this.isAdminWorkspaceRoute());
 
       if (!shouldCheckPrivacyConsent) {
@@ -2115,7 +2116,8 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private isCurrentPrivacyConsentCheck(checkKey: string, requestToken: number): boolean {
-    return this.privacyConsentCheckToken === requestToken
+    return (this.isNavigatorHydrationRoute() || this.isAdminWorkspaceRoute())
+      && this.privacyConsentCheckToken === requestToken
       && this.privacyConsentCheckKeyRef() === checkKey;
   }
 
