@@ -63,10 +63,10 @@ describe('profile filter catalogs with an empty result set', () => {
     component.draft().children = ['yes', 'custom'];
     let item = component.model('children').groups![0].items!.find(item => item.value === 'Yes')!;
     expect(item.checked).toBe(true);
-    component.select({ item, id: item.id, context: item.context, value: item.value, action: 'select' });
+    component.select({ sourceEvent: new Event('click'), item, id: item.id, context: item.context, value: item.value, action: 'select' });
     expect(component.draft().children).toEqual(['custom']);
     item = component.model('children').groups![0].items!.find(item => item.value === 'custom')!;
-    component.select({ item, id: item.id, context: item.context, value: item.value, action: 'remove' });
+    component.select({ sourceEvent: new Event('click'), item, id: item.id, context: item.context, value: item.value, action: 'remove' });
     expect(component.draft().children).toEqual([]);
   });
 });

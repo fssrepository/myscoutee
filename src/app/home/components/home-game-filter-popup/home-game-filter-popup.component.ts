@@ -1,3 +1,4 @@
+import { resolveSideMenuPresentation } from '../../../shared/ui/components/side-menu/side-menu-presenters';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   ChangeDetectionStrategy,
@@ -16,7 +17,6 @@ import {
   AppMenuComponent,
   I18nPipe,
   PopupComponent,
-  resolveSideMenuPresentation,
   type FormFlowMenuControlConfig,
   type AppMenuGroup,
   type AppMenuItem,
@@ -263,7 +263,8 @@ export class HomeGameFilterPopupComponent implements OnChanges {
       const key = value.trim().toLowerCase();
       known.add(key);
       const active = selected.has(key);
-      return { ...item, id: `game-filter-${kind}-${item.id}`, value,
+      return { label: item.label, icon: item.icon, iconKind: item.iconKind, palette: item.palette,
+        surface: item.surface, togglePalette: item.togglePalette, id: `game-filter-${kind}-${item.id}`, value,
         kind: 'checkbox', checked: active, active, removable: active,
         disabled: false, closeOnSelect: false, context: { kind, value } };
     };
