@@ -249,10 +249,16 @@
   height: 100%;
 }
 
+.app-indicator--spinner-ring {
+  display: block;
+  // Animate the HTML layer on the compositor while Angular prepares the form.
+  // SVG/filter animation can stall during that synchronous work on Android.
+  will-change: transform;
+  animation: app-indicator-spinner-ring-spin 1.05s linear infinite;
+}
+
 .app-indicator__spinner-ring-svg {
   display: block;
-  filter: drop-shadow(0 8px 18px rgba(31, 61, 96, 0.18));
-  animation: app-indicator-spinner-ring-spin 1.05s linear infinite;
 }
 
 .app-indicator__spinner-ring-track,
