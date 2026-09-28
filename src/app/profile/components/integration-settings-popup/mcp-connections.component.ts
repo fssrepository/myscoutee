@@ -73,16 +73,24 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
     }
     @if (details(); as client) {
       <app-popup [model]="detailsModel()" [zIndex]="2520">
-        <p><strong>{{ client.token.name }}</strong></p>
-        <span class="integration-endpoint-label">{{ 'mcp.client.id' | i18n }}</span>
-        <app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
-        <span class="integration-endpoint-label">{{ 'mcp.callback' | i18n }}</span>
-        <app-copy-link [value]="client.redirectUri" label="mcp.callback" copyLabel="mcp.copy.callback"></app-copy-link>
+        <div class="integration-settings-body">
+          <div class="integration-section-heading"><h3>{{ client.token.name }}</h3></div>
+          <div class="integration-credential-field">
+            <span class="integration-endpoint-label">{{ 'mcp.client.id' | i18n }}</span>
+            <app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+          </div>
+          <div class="integration-credential-field">
+            <span class="integration-endpoint-label">{{ 'mcp.callback' | i18n }}</span>
+            <app-copy-link [value]="client.redirectUri" label="mcp.callback" copyLabel="mcp.copy.callback"></app-copy-link>
+          </div>
         @if (store.secretClientId() === client.token.id && store.secret()) {
-          <span class="integration-endpoint-label">{{ 'mcp.secret' | i18n }}</span>
-          <app-copy-link [value]="store.secret()" label="mcp.secret" copyLabel="mcp.copy.secret"></app-copy-link>
+          <div class="integration-credential-field">
+            <span class="integration-endpoint-label">{{ 'mcp.secret' | i18n }}</span>
+            <app-copy-link [value]="store.secret()" label="mcp.secret" copyLabel="mcp.copy.secret"></app-copy-link>
+          </div>
           <small>{{ 'integration.token.copy.now' | i18n }}</small>
         }
+        </div>
       </app-popup>
     }
   `

@@ -74,6 +74,12 @@
   font-weight: 800;
 }
 
+.integration-credential-field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
 .integration-section-heading {
   display: flex;
   align-items: center;

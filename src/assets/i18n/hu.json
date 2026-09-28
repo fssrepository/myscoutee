@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.28.hu.4",
+  "version": "2026.09.28.hu.5",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3897,7 +3897,7 @@
     "mcp.failed": "A művelet nem sikerült. Ellenőrizd az adatokat, majd próbáld újra.",
     "mcp.profile": "Profil",
     "mcp.base.profile": "Alapprofil",
-    "mcp.consent.message": "Ez a kapcsolat a profil és csoport számára engedélyezett API-műveleteket használhatja. Másik profilra nem válthat. A hozzáférést a Profilszerkesztő → Affiliate → Klienskulcsok alatt vonhatod vissza.",
+    "mcp.consent.message": "A kliens csak ehhez a profilhoz engedélyezett API-műveleteket használhatja. A hozzáférés az API → OAuth-engedélyek alatt visszavonható.",
     "mcp.authorization.failed": "Ez az engedélykérés érvénytelen, vagy másik fiókhoz tartozik. A megfelelő fiókkal indíts új csatlakozást az AI-kliensből.",
     "mcp.authorize": "AI-kapcsolat engedélyezése",
     "mcp.approve": "Hozzáférés engedélyezése",

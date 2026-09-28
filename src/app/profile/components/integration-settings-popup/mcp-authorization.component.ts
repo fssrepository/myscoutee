@@ -5,18 +5,31 @@ import type { McpAuthorizationContext, McpAuthorizationRequest } from '../../../
 import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import { AppMenuComponent, type AppMenuItem } from '../../../shared/ui/components/core/menu';
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  standalone: true, imports: [PopupComponent, AppMenuComponent, I18nPipe],
+  standalone: true, imports: [PopupComponent, AppMenuComponent, I18nPipe, MatIconModule],
+  styleUrl: './mcp-authorization.component.scss',
   template: `<app-popup [model]="model()">
+    <div class="authorization-body">
     @if (context(); as value) {
-      <p><strong>{{ value.clientName }}</strong></p>
-      <p>{{ 'mcp.profile' | i18n }}: {{ value.profileName }} · {{ value.groupName || ('mcp.base.profile' | i18n) }}</p>
-      <p>{{ 'mcp.consent.message' | i18n }}</p>
-      <p>{{ 'mcp.callback' | i18n }}: {{ value.redirectUri }}</p>
-      <app-menu kind="inline" layout="row" [items]="actions()" (itemSelect)="decide($event.id === 'approve')"></app-menu>
-    } @else if (!error()) { <p>{{ 'integration.loading' | i18n }}</p> }
-    @if (error()) { <p role="alert">{{ error() | i18n }}</p> }
+      <div class="authorization-client">
+        <span class="authorization-client-icon"><mat-icon aria-hidden="true">link</mat-icon></span>
+        <strong>{{ value.clientName }}</strong>
+      </div>
+      <section class="authorization-profile">
+        <mat-icon aria-hidden="true">account_circle</mat-icon>
+        <div><span class="authorization-label">{{ 'mcp.profile' | i18n }}</span>
+          <strong>{{ value.profileName }}</strong>
+          <span class="authorization-workspace">{{ value.groupName || ('mcp.base.profile' | i18n) }}</span>
+        </div>
+      </section>
+      <p class="authorization-message">{{ 'mcp.consent.message' | i18n }}</p>
+      <details class="authorization-callback"><summary>{{ 'mcp.callback' | i18n }}</summary><code>{{ value.redirectUri }}</code></details>
+      <app-menu class="authorization-actions" kind="inline" layout="row" [items]="actions()" (itemSelect)="decide($event.id === 'approve')"></app-menu>
+    } @else if (!error()) { <p class="authorization-message">{{ 'integration.loading' | i18n }}</p> }
+    @if (error()) { <p class="authorization-error" role="alert">{{ error() | i18n }}</p> }
+    </div>
   </app-popup>`
 })
 export class McpAuthorizationComponent {
@@ -41,7 +54,8 @@ export class McpAuthorizationComponent {
     onClose: () => { if (!this.busy()) { if (this.context()) void this.decide(false); else void this.router.navigateByUrl('/game'); } }}; }
   protected actions(): AppMenuItem[] { return [
     {id: 'cancel', label: 'cancel', icon: 'close', palette: 'neutral', layout: 'pill', disabled: this.busy()},
-    {id: 'approve', label: 'mcp.approve', icon: 'done', palette: 'green', layout: 'pill', disabled: this.busy()}
+    {id: 'approve', label: 'mcp.approve', icon: 'done', palette: 'green', layout: 'pill', disabled: this.busy(),
+      progress: this.busy() ? { state: 'loading', shape: 'circle' } : null}
   ]; }
   protected async decide(approve: boolean): Promise<void> {
     if (this.busy() || !this.context()) return;

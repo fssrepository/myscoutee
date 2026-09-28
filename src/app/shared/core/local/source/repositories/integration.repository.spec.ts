@@ -80,7 +80,7 @@ describe('Local affiliate summary', () => {
     repo.recordCashReceipt('recipient', request);
     expect(repo.paymentHistory('recipient')).toHaveLength(1);
     expect(repo.paymentHistory('recipient')[0]).toMatchObject({ provider: 'cash', direction: 'income', amount: 20, note: 'Lunch', counterpartyName: 'Payer' });
-    expect(repo.paymentHistory('member')[0]).toMatchObject({ direction: 'expense', canRequestRefund: false, counterpartyName: 'Recipient' });
+    expect(repo.paymentHistory('member')[0]).toMatchObject({ direction: 'expense', canRequestRefund: true, counterpartyName: 'Recipient' });
     expect(repo.settings('owner', '/api').affiliate.revenue?.purchases ?? 0).toBe(0);
     expect(() => repo.recordCashReceipt('recipient', { ...request, amount: 21 })).toThrow();
     expect(() => repo.recordCashReceipt('recipient', { ...request, payerUserId: 'owner' })).toThrow();
