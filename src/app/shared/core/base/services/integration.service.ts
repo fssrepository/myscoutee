@@ -38,7 +38,7 @@ export class IntegrationService extends BaseRouteModeService {
   createMcpClient(input: McpClientRequest): Promise<McpClientCreatedDto> { return this.service(false).createMcpClient(input); }
   revokeMcpClient(id: string): Promise<void> { return this.service(false).revokeMcpClient(id); }
   mcpAuthorization(input: McpAuthorizationRequest): Promise<McpAuthorizationContext> { return this.service(false).mcpAuthorization(input); }
-  mcpConsent(input: McpAuthorizationRequest, approve: boolean): Promise<{url: string}> { return this.service(false).mcpConsent(input, approve); }
+  mcpConsent(input: McpAuthorizationRequest, approve: boolean, profileId?: string): Promise<{url: string}> { return this.service(false).mcpConsent(input, approve, profileId); }
 
   loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     return this.service(admin).loadSettings(admin);

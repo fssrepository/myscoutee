@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.28.hu.1",
+  "version": "2026.09.28.hu.2",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -3882,8 +3882,8 @@
     "menu.selection.maximum": "(max. {count} db)",
     "mcp.connections": "AI / MCP-kapcsolatok",
     "mcp.create": "Új kapcsolat",
-    "mcp.setup": "Hozz létre külön kapcsolatot az AI-kliensekhez. A kliens beállításaiban add meg az MCP-címet, a kliensazonosítót és a titkot, majd jelentkezz be és engedélyezd a hozzáférést. A kapcsolatok 90 nap után lejárnak.",
-    "mcp.local.only": "Demó módban ezek a beállítások helyben tárolódnak. A távoli AI-kapcsolathoz működő HTTPS-telepítés szükséges.",
+    "mcp.setup": "Másold az MCP URL-t az AI-kliensbe, és válaszd a Connect lehetőséget. Jelentkezz be a MyScoutee-ba, ellenőrizd a megjelenő profilt és csoportot, majd engedélyezd a hozzáférést. Visszatérve a kliensbe kapcsold be a kapcsolatot a beszélgetéshez. A kapcsolatot itt vonhatod vissza; 90 nap után lejár. Automatikus regisztrációnál nem kell kliensazonosítót vagy titkot megadni.",
+    "mcp.local.only": "A kizárólag böngészőben működő local mód nem tud külső OAuth-kérést fogadni. Futó backenddel devben a szokásos demóbelépés is használható; telepített környezetben az ott beállított belépési módok érvényesek.",
     "mcp.url": "MCP-cím",
     "mcp.client.id": "Kliensazonosító",
     "mcp.callback": "Visszahívási cím",
@@ -4021,6 +4021,10 @@
     "payment.cash.refund.request.message": "Kéred ennek a készpénzes tételnek a visszatérítését a kedvezményezettől?",
     "payment.cash.refund.approve.message": "Megerősíted, hogy ezt az összeget készpénzben visszaadtad a fizetőnek?",
     "events.explore": "Események felfedezése",
-    "assets.explore": "Eszközök felfedezése"
+    "assets.explore": "Eszközök felfedezése",
+    "mcp.advanced": "Haladó",
+    "mcp.manual.create": "Kliens kézi regisztrálása",
+    "mcp.technical.details": "Kapcsolat adatai",
+    "mcp.manual.help": "A Haladó → Kliens kézi regisztrálása csak akkor kell, ha az AI-kliens kifejezetten kliensazonosítót és titkot kér. A kapcsolat adatait a visszavonás gomb melletti ikonnal nyithatod meg. Titkot ne másolj csevegésbe."
   }
 }

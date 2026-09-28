@@ -46,7 +46,7 @@ export class McpAuthorizationComponent {
   protected async decide(approve: boolean): Promise<void> {
     if (this.busy() || !this.context()) return;
     this.busy.set(true); this.error.set('');
-    try { const result = await this.api.mcpConsent(this.request, approve); globalThis.location.assign(result.url); }
+    try { const result = await this.api.mcpConsent(this.request, approve, this.context()!.profileId); globalThis.location.assign(result.url); }
     catch { this.error.set('mcp.failed'); this.busy.set(false); }
   }
 }

@@ -18,7 +18,7 @@ import type { McpClientRequest } from '../../../shared/core/contracts/integratio
     <section class="integration-settings-section">
       <div class="integration-section-heading">
         <h3>{{ 'mcp.connections' | i18n }}</h3>
-        <app-menu kind="inline" layout="row" [items]="createActions()" (itemSelect)="editor.set(true)"></app-menu>
+        <app-menu kind="inline" layout="row" [items]="advancedActions()" (itemSelect)="editor.set(true)"></app-menu>
       </div>
       @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
       @if (store.settings(); as config) {
@@ -29,23 +29,29 @@ import type { McpClientRequest } from '../../../shared/core/contracts/integratio
             <article class="integration-token-row">
               <div class="integration-token-main">
                 <strong>{{ client.token.name }}</strong>
-                <small>{{ 'mcp.client.id' | i18n }}</small>
-                <app-copy-link [value]="client.token.id" label="mcp.client.id"></app-copy-link>
-                <small>{{ 'mcp.callback' | i18n }}: {{ client.redirectUri }}</small>
                 <small>{{ 'integration.token.expires' | i18n }} {{ client.token.expiresAt | date:'mediumDate' }}</small>
                 @if (client.token.lastUsedAt) { <small>{{ 'mcp.last.used' | i18n }} {{ client.token.lastUsedAt | date:'short' }}</small> }
-                @if (store.secretClientId() === client.token.id && store.secret()) {
-                  <small>{{ 'mcp.secret' | i18n }}</small>
-                  <app-copy-link [value]="store.secret()" label="mcp.secret"></app-copy-link>
-                  <small>{{ 'integration.token.copy.now' | i18n }}</small>
-                }
               </div>
-              <app-menu kind="inline" [items]="revokeActions(client.token.id)" (itemSelect)="revoke(client.token.id)"></app-menu>
+              <app-menu kind="inline" [items]="connectionActions(client.token.id)" (itemSelect)="$event.id === 'details' ? detailsId.set(client.token.id) : revoke(client.token.id)"></app-menu>
             </article>
           } @empty { <p>{{ 'mcp.empty' | i18n }}</p> }
         </div>
       } @else if (store.busy()) { <p>{{ 'integration.loading' | i18n }}</p> }
     </section>
+    @if (details(); as client) {
+      <app-popup [model]="detailsModel()" [zIndex]="2520">
+        <p><strong>{{ client.token.name }}</strong></p>
+        <small>{{ 'mcp.client.id' | i18n }}</small>
+        <app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id"></app-copy-link>
+        <small>{{ 'mcp.callback' | i18n }}</small>
+        <app-copy-link [value]="client.redirectUri" label="mcp.callback"></app-copy-link>
+        @if (store.secretClientId() === client.token.id && store.secret()) {
+          <small>{{ 'mcp.secret' | i18n }}</small>
+          <app-copy-link [value]="store.secret()" label="mcp.secret"></app-copy-link>
+          <small>{{ 'integration.token.copy.now' | i18n }}</small>
+        }
+      </app-popup>
+    }
     @if (editor()) {
       <app-popup [model]="editorModel()" [zIndex]="2520">
         <app-form-flow [model]="formModel" [(ngModel)]="form" [disabled]="store.busy()"></app-form-flow>
@@ -59,6 +65,13 @@ export class McpConnectionsComponent {
   protected readonly store = inject(McpConnectionsStore);
   private readonly dialogs = inject(DialogStore);
   protected readonly editor = signal(false);
+  protected readonly detailsId = signal<string | null>(null);
+  protected details() { return this.store.settings()?.clients.find(client => client.token.id === this.detailsId()) ?? null; }
+  protected detailsModel(): PopupModel { return {title: 'mcp.technical.details', size: 'small', height: 'auto',
+    backdropTone: 'dim', onClose: () => this.detailsId.set(null)}; }
+  protected advancedActions(): AppMenuItem[] { return [{id: 'advanced', icon: 'settings', label: 'mcp.advanced',
+    layout: 'pill', palette: 'neutral', compactOnMobile: true,
+    items: this.createActions()}]; }
   protected form: McpClientRequest = {name: '', redirectUri: ''};
   protected readonly formModel: FormFlowModel = {
     title: 'mcp.create', header: false, layout: 'grouped', deferPreparation: false, save: null,
@@ -67,9 +80,11 @@ export class McpConnectionsComponent {
       {id: 'redirectUri', bind: 'redirectUri', kind: 'text', label: 'mcp.callback', required: true, maxLength: 2048}
     ]}]
   };
-  protected createActions(): AppMenuItem[] { return [{id: 'create', icon: 'add', label: 'mcp.create', layout: 'pill', palette: 'purple',
+  protected createActions(): AppMenuItem[] { return [{id: 'create', icon: 'add', label: 'mcp.manual.create', layout: 'pill', palette: 'purple',
     disabled: this.store.busy() || !this.store.settings() || this.store.settings()!.clients.length >= this.store.settings()!.maxClients}]; }
-  protected revokeActions(id: string): AppMenuItem[] { return [{id, icon: 'delete', ariaLabel: 'integration.token.revoke', palette: 'danger', layout: 'icon', disabled: this.store.busy()}]; }
+  protected connectionActions(id: string): AppMenuItem[] { return [
+    {id: 'details', icon: 'settings', ariaLabel: 'mcp.technical.details', palette: 'neutral', layout: 'icon', disabled: this.store.busy()},
+    {id, icon: 'delete', ariaLabel: 'integration.token.revoke', palette: 'danger', layout: 'icon', disabled: this.store.busy()}]; }
   protected revoke(id: string): void {
     this.dialogs.open({title: 'mcp.revoke.question', message: 'mcp.revoke.message', confirmLabel: 'integration.token.revoke',
       confirmTone: 'danger', failureMessage: 'mcp.failed', onConfirm: () => this.store.revoke(id)});
@@ -79,6 +94,6 @@ export class McpConnectionsComponent {
       onClose: () => { if (!this.store.busy()) this.editor.set(false); },
       headerControls: [{id: 'save', kind: 'menu', menuKind: 'inline', items: [{id: 'save', icon: 'done', ariaLabel: 'save',
         palette: 'success', disabled: this.store.busy() || !this.form.name.trim() || !this.form.redirectUri.trim()}]}],
-      onMenuSelect: async () => { if (await this.store.create({...this.form})) { this.editor.set(false); this.form = {name: '', redirectUri: ''}; } }};
+      onMenuSelect: async () => { if (await this.store.create({...this.form})) { this.editor.set(false); this.detailsId.set(this.store.secretClientId()); this.form = {name: '', redirectUri: ''}; } }};
   }
 }
