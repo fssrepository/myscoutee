@@ -1,5 +1,6 @@
 import '@angular/compiler';
 import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it, vi } from 'vitest';
 import { EventCheckoutPopupComponent } from './event-checkout-popup.component';
 
@@ -21,6 +22,17 @@ function checkout() {
 }
 
 describe('Review Booking context loading', () => {
+  it('uses the checkout failure message when HTTP has no useful explanation', () => {
+    const { component } = checkout();
+    const fallback = 'Unable to complete payment.';
+    for (const message of ['No message available', '', undefined]) {
+      expect(component.resolveErrorMessage(new HttpErrorResponse({ status: 500, error: { message } }), fallback))
+        .toBe(fallback);
+    }
+    expect(component.resolveErrorMessage(new HttpErrorResponse({ status: 400, error: { message: 'Card expired.' } }), fallback))
+      .toBe('Card expired.');
+  });
+
   it('uses the service-composed basket and pricing response without a second delayed request', async () => {
     const { component, dialog, resolve } = checkout();
     const loading = component.openCheckoutReviewEditor(dialog);

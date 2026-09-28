@@ -293,21 +293,13 @@ export class ProfileEditorComponent implements OnDestroy {
   }
 
   protected popupTitle(): string {
-    if (this.panel === 'image') {
-      return 'Images';
-    }
     if (this.activeUserIsAdmin()) {
       return 'Admin profile';
     }
     if (this.activeUserIsOperator()) {
       return 'Operator profile';
     }
-    switch (this.panel) {
-      case 'experience':
-        return 'Experience';
-      default:
-        return 'Profile';
-    }
+    return 'Profile';
   }
 
   protected profileEditorPopupModel(): PopupModel<ProfileEditorMenuContext> {
@@ -325,10 +317,16 @@ export class ProfileEditorComponent implements OnDestroy {
     };
   }
 
+  protected nestedEditorPopupModel(): PopupModel {
+    const title = this.panel === 'image' ? 'Images' : 'Experience';
+    return {
+      title, ariaLabel: title, closeAriaLabel: 'Close',
+      size: 'wide', height: 'full', bodyLayout: 'fill',
+      onClose: () => this.handleCloseAction()
+    };
+  }
+
   protected profileEditorHeaderControls(): readonly PopupControl<ProfileEditorMenuContext>[] {
-    if (this.panel !== 'profile') {
-      return [];
-    }
     const controls: PopupControl<ProfileEditorMenuContext>[] = [];
     if (!this.activeUserUsesCompactProfile()) {
       controls.push({

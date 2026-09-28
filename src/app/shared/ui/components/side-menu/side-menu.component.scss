@@ -61,11 +61,14 @@
   pointer-events: none;
 }
 
-// A modal menu owns pointer interaction until its sheet closes. The floating
-// attention shortcut must not cover its heading or selected-item actions.
-:host-context(body:has(.app-menu__heading > .popup-close, .app-menu__branch-close)) .notification-attention-launcher {
-  visibility: hidden;
-  pointer-events: none;
+// Keep the floating shortcut out of every open mobile menu, including sheets
+// without a heading close button.
+:host-context(body:has(.app-menu__heading > .popup-close, .app-menu__branch-close)),
+:host-context(body:has(.app-menu-host--layout-mobile.app-menu-host--open .app-menu__panel:not(.app-menu__panel--inline))) {
+  .notification-attention-launcher {
+    visibility: hidden;
+    pointer-events: none;
+  }
 }
 
 .notification-attention-launcher.is-chat-open,

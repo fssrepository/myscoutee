@@ -99,7 +99,7 @@ export class EventSubeventRuntimeInfoCardConverter
       },
       mediaStart: isMingle ? null : {
         variant: 'avatar',
-        tone: 'default',
+        tone: 'warm',
         icon: 'location_on',
         interactive: false
       },

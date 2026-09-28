@@ -261,7 +261,9 @@ export class DemoBootstrapSelectorComponent {
       label: 'new.demo.profile',
       icon: 'person_add',
       kind: 'action',
-      palette: 'orange',
+      layout: 'action',
+      compactOnMobile: true,
+      palette: 'red',
       disabled: () => this.loading || this.submitting,
       ariaLabel: 'Open new demo profile',
       context: { action: 'new-profile' }
@@ -534,7 +536,7 @@ export class DemoBootstrapSelectorComponent {
     this.commit(() => {
       this.submitting = true;
       this.selectedUserId = '';
-      this.loading = true;
+      this.loading = false;
       this.loadingUserList = false;
       this.loadingProgress = 0;
       this.loadingLabel = 'Opening profile setup';
@@ -606,6 +608,9 @@ export class DemoBootstrapSelectorComponent {
     if (!request || !this.isCurrentContextRequest(requestToken)) {
       return;
     }
+    // Session preparation has finished. Keep the selected, disabled list under
+    // any permission/onboarding popup opened by the entry flow.
+    this.commit(() => { this.loading = false; });
     try {
       const result = await request.onSelect(userId, mode, this.users.find(user => user.id === userId));
       if (!this.isCurrentContextRequest(requestToken)) {
@@ -615,7 +620,7 @@ export class DemoBootstrapSelectorComponent {
         return;
       }
       this.resetContextSelectionFailure(
-        typeof result === 'string' && result.trim()
+        typeof result === 'string'
           ? result.trim()
           : 'Unable to open selected demo user.'
       );
@@ -632,14 +637,11 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      const accepted = await request.onNewProfile();
+      await request.onNewProfile();
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
-      if (accepted !== false) {
-        return;
-      }
-      this.resetContextSelectionFailure('Unable to open profile setup.');
+      this.commit(() => { this.submitting = false; });
     } catch {
       if (this.isCurrentContextRequest(requestToken)) {
         this.resetContextSelectionFailure('Unable to open profile setup.');

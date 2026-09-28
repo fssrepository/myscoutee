@@ -68,15 +68,7 @@ export class DemoBootstrapSelectorStore {
         }
         return result;
       },
-      onNewProfile: payload.onNewProfile
-        ? async () => {
-            const accepted = await payload.onNewProfile?.();
-            if (accepted !== false) {
-              this.closeDemoBootstrapSelector();
-            }
-            return accepted !== false;
-          }
-        : undefined,
+      onNewProfile: payload.onNewProfile,
       onClose: () => {
         try {
           payload.onClose?.();

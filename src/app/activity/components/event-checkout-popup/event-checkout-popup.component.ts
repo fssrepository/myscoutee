@@ -3595,8 +3595,9 @@ export class EventCheckoutPopupComponent {
     if (this.isPaymentSessionConflict(error)) {
       return 'Checkout details changed. A fresh payment session is needed.';
     }
-    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string' && error.error.message.trim()) {
-      return error.error.message.trim();
+    if (error instanceof HttpErrorResponse) {
+      const message = typeof error.error?.message === 'string' ? error.error.message.trim() : '';
+      return message && message.toLowerCase() !== 'no message available' ? message : fallback;
     }
     if (error instanceof Error && error.message.trim().length > 0) {
       return error.message.trim();

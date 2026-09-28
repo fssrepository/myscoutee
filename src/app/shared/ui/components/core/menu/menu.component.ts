@@ -1261,7 +1261,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.itemVisualLayout(item) === 'action';
+    return item.layout === 'action';
   }
 
   protected isImageLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
@@ -1369,6 +1369,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   protected itemProgressPerimeter(item: AppMenuItem<TId, TContext>): number {
     const perimeter = Number(this.resolveLiveValue(item.progress?.perimeter));
     return Number.isFinite(perimeter) && perimeter > 0 ? perimeter : 100;
+  }
+
+  protected get menuHeaderActions(): readonly AppMenuItem<TId, TContext>[] {
+    return this.currentMenuModel()?.headerActions ?? [];
   }
 
   protected branchHeaderActions(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
@@ -2150,6 +2154,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.isLiveCounter(triggerCounter),
       visibleCounterKeys
     );
+    for (const action of this.menuHeaderActions) {
+      this.observeItemCounterPulse(action, visibleCounterKeys);
+    }
     for (const item of this.items) {
       this.observeItemCounterPulse(item, visibleCounterKeys);
     }

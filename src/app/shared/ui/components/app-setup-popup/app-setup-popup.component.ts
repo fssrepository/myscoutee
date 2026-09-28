@@ -66,7 +66,7 @@ export class AppSetupPopupComponent {
   readonly permissionActionPending = computed(() => this.store.busy() || this.store.notificationConfigurationPending());
   readonly permissionActions = computed<AppMenuItem[]>(() => [
     { id: 'allow', icon: this.permissionActionPending() ? 'hourglass_empty' : this.store.saveSucceeded() ? 'check_circle' : 'check',
-      label: this.permissionActionPending() ? 'entry.permissions.checking' : 'app.setup.update',
+      label: this.permissionActionPending() ? 'entry.permissions.checking' : this.store.loginRequested() ? 'login' : 'app.setup.update',
       layout: 'action', palette: this.store.error() ? 'danger' : this.store.saveSucceeded() ? 'green' : 'blue',
       disabled: this.store.allowDisabled(),
       progress: this.permissionActionPending() || this.store.error()

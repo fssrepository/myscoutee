@@ -57,6 +57,8 @@
 .header-card__avatar-stack {
   --header-card-badge-overhang: var(--app-header-card-badge-overhang, 6px);
   position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
   padding-bottom: var(--header-card-badge-overhang);
   width: max-content;
   max-width: 100%;
@@ -64,7 +66,8 @@
 
 .header-card__ring {
   position: absolute;
-  inset: -8px;
+  inset: -6px -6px calc(var(--header-card-badge-overhang) - 6px);
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -101,8 +104,9 @@
 
 .header-card__edit {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: 0;
+  right: 0;
+  z-index: 1;
   width: 30px;
   height: 30px;
   border: 0;
@@ -131,6 +135,7 @@
 
 .header-card__badge {
   position: absolute;
+  z-index: 1;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);

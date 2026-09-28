@@ -160,10 +160,6 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     );
   }
 
-  protected contextBadgeImageUrl(badge: CardContextBadgeConfig): string {
-    return AppUtils.mediaImageVariantUrl(badge.imageUrl, 'small');
-  }
-
   protected clampedActiveIndex(): number {
     const slides = this.resolvedSlides();
     if (slides.length <= 1) {

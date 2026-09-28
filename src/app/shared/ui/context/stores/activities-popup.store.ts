@@ -277,12 +277,8 @@ export class ActivitiesPopupStore {
         ? {
             rateFilter: resolvedRateFilter,
             rateSocialBadgeEnabled: initialRateSocialBadgeEnabled,
-            rateIndividualSocialBadgeEnabled: resolvedRateFilter.startsWith('individual')
-              ? initialRateSocialBadgeEnabled
-              : false,
-            ratePairSocialBadgeEnabled: resolvedRateFilter.startsWith('pair')
-              ? initialRateSocialBadgeEnabled
-              : false
+            rateIndividualSocialBadgeEnabled: initialRateSocialBadgeEnabled,
+            ratePairSocialBadgeEnabled: initialRateSocialBadgeEnabled
           }
         : {
             rateSocialBadgeEnabled: false,
@@ -388,9 +384,8 @@ export class ActivitiesPopupStore {
     this._uiState.update(state => ({
       ...state,
       rateSocialBadgeEnabled: enabled,
-      ...(state.rateFilter.startsWith('pair')
-        ? { ratePairSocialBadgeEnabled: enabled }
-        : { rateIndividualSocialBadgeEnabled: enabled })
+      ratePairSocialBadgeEnabled: enabled,
+      rateIndividualSocialBadgeEnabled: enabled
     }));
   }
 

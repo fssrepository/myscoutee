@@ -241,7 +241,7 @@ export class AssetInfoCardConverter {
     }
     return {
       variant: 'avatar',
-      tone: 'default',
+      tone: 'warm',
       icon: 'location_on',
       interactive: true,
       ariaLabel: 'Open property map'

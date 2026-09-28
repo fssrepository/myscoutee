@@ -1,6 +1,5 @@
 import type { EventExploreFilterPreferences } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
-import type { UserGender } from '../../../common/constants';
 
 export const USER_RATES_TABLE_NAME = APP_INDEXED_DB_KEYS.userRates;
 export const USER_RATES_OUTBOX_TABLE_NAME = APP_INDEXED_DB_KEYS.userRatesOutbox;
@@ -86,7 +85,7 @@ export interface UserFilterPreferencesRecord {
   values?: string[];
   physiques?: string[];
   languages?: string[];
-  genders?: UserGender[];
+  genders?: string[];
   horoscopes?: string[];
   traitLabels?: string[];
   smoking?: string[];

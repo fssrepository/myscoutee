@@ -1540,7 +1540,7 @@ export interface UserGameFilterPreferencesDto {
   values?: string[];
   physiques?: string[];
   languages?: string[];
-  genders?: AppConstants.UserGender[];
+  genders?: string[];
   horoscopes?: string[];
   traitLabels?: string[];
   smoking?: string[];

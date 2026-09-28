@@ -5,6 +5,7 @@ import { I18nService } from '../../../core/base/services/i18n.service';
 import { PwaService } from '../../../core/base/services/pwa.service';
 import { UserProfileStore } from './user-profile.store';
 import type { LocationCoordinates } from '../../../core/contracts/user.interface';
+import { APP_SETUP_CONFIG } from '../../../core/base/config';
 
 @Injectable({ providedIn: 'root' })
 export class AppSetupStore implements OnDestroy {
@@ -16,6 +17,7 @@ export class AppSetupStore implements OnDestroy {
   readonly loggedIn = computed(() => !!this.profile.activeUserId());
   readonly locationMissing = this.profile.activeUserLocationMissing;
   readonly isOpen = signal(false);
+  readonly loginRequested = signal(false);
   readonly locationSelected = signal(false);
   readonly notificationsSelected = signal(false);
   private readonly locationEdited = signal(false);
@@ -32,11 +34,12 @@ export class AppSetupStore implements OnDestroy {
   readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending()
     || (this.isOpen() && (!this.loggedIn() || !!this.checkLocation) && !this.locationSelected()));
   private locationRequestPending = false;
+  private locationRequestAbort: AbortController | null = null;
+  private locationRequestTimer: ReturnType<typeof setTimeout> | null = null;
   private opening = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
-  private loginAllowed = false;
   private checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null;
 
   constructor() {
@@ -97,6 +100,7 @@ export class AppSetupStore implements OnDestroy {
     if (this.completeLogin) return Promise.resolve(false);
     this.open();
     this.checkLocation = checkLocation;
+    this.loginRequested.set(true);
     return new Promise(resolve => { this.completeLogin = resolve; });
   }
 
@@ -112,7 +116,9 @@ export class AppSetupStore implements OnDestroy {
       const update = () => {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
-        if (this.locationRequestPending && permission.state === 'granted') this.busy.set(true);
+        if (this.locationRequestPending && permission.state === 'granted') {
+          this.startLocationAcquisitionTimer();
+        }
         if (!this.locationEdited()) this.locationSelected.set(permission.state === 'granted' && this.location.trackingEnabled());
       };
       permission.onchange = update;
@@ -123,10 +129,10 @@ export class AppSetupStore implements OnDestroy {
   }
 
   close(): void {
-    this.locationRequestPending = false;
+    this.stopLocationRequest();
     this.nativePending.set(false);
     this.busy.set(false);
-    this.finish(this.loginAllowed);
+    this.finish(false);
   }
 
   install(): void {
@@ -173,9 +179,11 @@ export class AppSetupStore implements OnDestroy {
         return;
       }
       this.locationRequestPending = true;
-      this.busy.set(this.locationPermission() === 'granted');
-      const coordinates = await this.location.requestCurrentCoordinates();
+      this.locationRequestAbort = new AbortController();
+      if (this.locationPermission() === 'granted') this.startLocationAcquisitionTimer();
+      const coordinates = await this.location.requestCurrentCoordinates(this.locationRequestAbort.signal);
       if (generation !== this.generation) return;
+      this.stopLocationRequest();
       if (!coordinates) {
         await this.refreshPermissions();
         if (generation !== this.generation) return;
@@ -210,7 +218,7 @@ export class AppSetupStore implements OnDestroy {
       }
     } finally {
       if (generation === this.generation || !this.isOpen()) {
-        this.locationRequestPending = false;
+        this.stopLocationRequest();
         this.nativePending.set(false);
         this.busy.set(false);
       }
@@ -218,12 +226,31 @@ export class AppSetupStore implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopLocationRequest();
     this.clearSaveFeedback();
+  }
+
+  private startLocationAcquisitionTimer(): void {
+    if (!this.locationRequestAbort || this.locationRequestTimer !== null) return;
+    const request = this.locationRequestAbort;
+    this.busy.set(true);
+    this.locationRequestTimer = setTimeout(() => request.abort(), APP_SETUP_CONFIG.locationRequestTimeoutMs);
+  }
+
+  private stopLocationRequest(): void {
+    this.locationRequestPending = false;
+    if (this.locationRequestTimer !== null) clearTimeout(this.locationRequestTimer);
+    this.locationRequestTimer = null;
+    this.locationRequestAbort?.abort();
+    this.locationRequestAbort = null;
   }
 
   private showSaveFeedback(): void {
     this.clearSaveFeedback();
-    this.loginAllowed = !!this.completeLogin;
+    if (this.completeLogin) {
+      this.finish(true);
+      return;
+    }
     this.saveSucceeded.set(true);
     this.saveFeedbackTimer = setTimeout(() => {
       this.saveFeedbackTimer = null;
@@ -232,7 +259,6 @@ export class AppSetupStore implements OnDestroy {
   }
 
   private clearSaveFeedback(): void {
-    this.loginAllowed = false;
     if (this.saveFeedbackTimer !== null) clearTimeout(this.saveFeedbackTimer);
     this.saveFeedbackTimer = null;
     this.saveSucceeded.set(false);
@@ -248,6 +274,7 @@ export class AppSetupStore implements OnDestroy {
     this.pwa.dismissInstallPrompt();
     const complete = this.completeLogin;
     this.completeLogin = null;
+    this.loginRequested.set(false);
     this.checkLocation = null;
     complete?.(allowed);
   }

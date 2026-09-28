@@ -3,11 +3,8 @@
       @if (activeUser; as user) {
       <div
         class="profile-editor-popup-content"
-        [class.profile-editor-popup-content--profile]="panel === 'profile'"
-        [class.profile-editor-popup-content--image]="panel === 'image'"
-        [class.profile-editor-popup-content--experience]="panel === 'experience'"
+        [attr.inert]="panel !== 'profile' ? '' : null"
       >
-          @if (panel === 'profile') {
             <div
               class="profile-editor-wrap"
               [class.profile-editor-wrap-admin]="activeUserUsesCompactProfile()"
@@ -42,15 +39,23 @@
               </div>
               <app-integration-settings-popup [adminMode]="activeUserIsAdmin()"></app-integration-settings-popup>
             </div>
-          }
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
+      </div>
+      } @else {
+        <app-form-flow [loading]="true"></app-form-flow>
+      }
+    </app-popup>
+    @if (isOpen() && activeUser && panel !== 'profile') {
+      <app-popup [model]="nestedEditorPopupModel()">
+        <div class="profile-editor-popup-content"
+          [class.profile-editor-popup-content--experience]="panel === 'experience'">
           @if (panel === 'image') {
             <div class="image-editor-wrap">
               <app-image-carousel
                 [previewMode]="true"
                 [ngModel]="profileEditorData.profile.images"
                 (ngModelChange)="onProfileImagesChange($event)"
-                [uploadOwnerId]="user.id"
+                [uploadOwnerId]="activeUser.id"
               ></app-image-carousel>
             </div>
           }
@@ -62,9 +67,7 @@
               (ngModelChange)="onExperienceEntriesChange($event)"
             ></app-profile-experience-manager>
           }
-      </div>
-      } @else {
-        <app-form-flow [loading]="true"></app-form-flow>
-      }
-    </app-popup>
+        </div>
+      </app-popup>
+    }
 }

@@ -1,3 +1,4 @@
+import { resolvePersonalityTraitId } from '../../../common/game-user-facet';
 import { AppUtils } from '../../../../app-utils';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { environment } from '../../../../../../environments/environment';
@@ -158,7 +159,7 @@ export class SeedUserImpressionsBuilder {
     for (const trait of this.personalityTraitCatalog) {
       baseScores.set(trait.id, 3);
     }
-    const dominantTraitId = this.resolveTraitId(user.traitLabel) ?? this.personalityTraitCatalog[0]?.id ?? 'social-charmer';
+    const dominantTraitId = resolvePersonalityTraitId(user.traitLabel) ?? this.personalityTraitCatalog[0]?.id ?? 'social-charmer';
     const dominantIndex = Math.max(0, this.personalityTraitCatalog.findIndex(trait => trait.id === dominantTraitId));
     const scopeOffset = scope === 'host' ? 37 : 61;
     const secondaryIndex = (dominantIndex + 2 + (this.seededMetric(user, scopeOffset, 0, 1))) % this.personalityTraitCatalog.length;
@@ -210,23 +211,5 @@ export class SeedUserImpressionsBuilder {
       .map(trait => `${trait.label} ${Math.max(0, Math.trunc(Number(trait.percent) || 0))}%`);
   }
 
-  private static resolveTraitId(label: string | undefined): string | null {
-    const normalized = `${label ?? ''}`.trim().toLowerCase();
-    if (!normalized) {
-      return null;
-    }
-    const direct = this.personalityTraitCatalog.find(trait =>
-      trait.id === normalized
-      || trait.label.toLowerCase() === normalized
-      || trait.aliases.some(alias => alias.toLowerCase() === normalized)
-    );
-    if (direct) {
-      return direct.id;
-    }
-    const byWordTail = this.personalityTraitCatalog.find(trait =>
-      normalized.endsWith(trait.label.toLowerCase())
-      || trait.aliases.some(alias => normalized.endsWith(alias.toLowerCase()))
-    );
-    return byWordTail?.id ?? null;
-  }
+
 }

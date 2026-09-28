@@ -1,0 +1,1 @@
+var e={"under-review":{icon:"fact_check",palette:"teal"},accepted:{icon:"check_circle",palette:"green"},rejected:{icon:"cancel",palette:"purple"},blocked:{icon:"block",palette:"danger"}};export{e as a};

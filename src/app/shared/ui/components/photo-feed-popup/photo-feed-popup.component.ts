@@ -9,6 +9,7 @@ import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedStatusFilter } from '../
 import { MODERATION_STATUSES } from '../../../core/contracts/content-moderation.interface';
 import { MODERATION_STATUS_STYLE } from '../../converters/content-moderation-presentation';
 import { FollowingStore } from '../../context/stores/following.store';
+import { ProfileStore } from '../../context/stores/profile.store';
 import { AppMenuDispatcher, AppMenuOutletComponent, type AppMenuItemSelectEvent } from '../core/menu';
 import type { CardMenuRequestEvent } from '../core/smart-list/card';
 import { PhotoFeedEventPickerComponent } from './photo-feed-event-picker.component';
@@ -28,6 +29,7 @@ import { ViewportSeenDirective } from '../../directives/viewport-seen.directive'
         <app-info-card [card]="card" [useSharedMenu]="true"
           [appViewportSeen]="status === 'public'" (viewportSeen)="store.seen(card.eagerDetail)"
           (menuRequest)="openCardMenu(card.eagerDetail, $event)"
+          (mediaStartClick)="profiles.openProfileView({ userId: card.eagerDetail.creatorUserId })"
           (mediaEndClick)="store.view(card.eagerDetail)"></app-info-card>
       </ng-template>
       <app-menu-outlet (itemSelect)="onMenuSelect($event)"></app-menu-outlet>
@@ -40,6 +42,7 @@ import { ViewportSeenDirective } from '../../directives/viewport-seen.directive'
 })
 export class PhotoFeedPopupComponent {
   protected readonly store = inject(PhotoFeedStore);
+  protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);
   private readonly followingStore = inject(FollowingStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);

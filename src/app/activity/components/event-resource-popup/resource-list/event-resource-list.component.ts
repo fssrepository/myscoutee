@@ -223,7 +223,7 @@ export class EventResourceListComponent implements DoCheck {
     }
     actions.push({
       id: 'quick-explore',
-      label: 'Explore',
+      label: 'assets.explore',
       icon: 'explore',
       palette: 'green',
       surface: 'tinted',

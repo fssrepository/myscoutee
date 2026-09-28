@@ -124,7 +124,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     await this.repository.flushToIndexedDb();
   }
   mcpAuthorization(_input: McpAuthorizationRequest): Promise<McpAuthorizationContext> { return Promise.reject(new Error('mcp.local.only')); }
-  mcpConsent(_input: McpAuthorizationRequest, _approve: boolean): Promise<{url: string}> { return Promise.reject(new Error('mcp.local.only')); }
+  mcpConsent(_input: McpAuthorizationRequest, _approve: boolean, profileId?: string): Promise<{url: string}> { return Promise.reject(new Error('mcp.local.only')); }
 
   async loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     await this.repository.whenReady();

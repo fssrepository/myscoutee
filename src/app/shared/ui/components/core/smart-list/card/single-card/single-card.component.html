@@ -98,11 +98,8 @@
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           (click)="onContextBadgeClick(contextBadge, $event)"
           >
-          @if (contextBadgeImageUrl(contextBadge)) {
-            <img [src]="contextBadgeImageUrl(contextBadge)" alt="" />
-          } @else {
-            <span>{{ contextBadgeLabel(contextBadge) }}</span>
-          }
+          <span class="shared-card-context-monogram">{{ contextBadgeLabel(contextBadge) }}</span>
+          <mat-icon class="shared-card-context-chevron" aria-hidden="true">chevron_right</mat-icon>
           @if (contextBadge.counterLabel) {
             <em>{{ contextBadge.counterLabel }}</em>
           }
@@ -113,11 +110,7 @@
           [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'Related profile'"
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           >
-          @if (contextBadgeImageUrl(contextBadge)) {
-            <img [src]="contextBadgeImageUrl(contextBadge)" alt="" />
-          } @else {
-            <span>{{ contextBadgeLabel(contextBadge) }}</span>
-          }
+          <span class="shared-card-context-monogram">{{ contextBadgeLabel(contextBadge) }}</span>
           @if (contextBadge.counterLabel) {
             <em>{{ contextBadge.counterLabel }}</em>
           }

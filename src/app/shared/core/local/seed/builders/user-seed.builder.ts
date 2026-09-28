@@ -1,3 +1,4 @@
+import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type { UserDto } from '../../../contracts/user.interface';
@@ -301,6 +302,38 @@ export class SeedUserBuilder {
     latitude: 47.4979, longitude: 19.0402
   };
 
+  // These are seed values only. Runtime readers consume repository profileDetails.
+  private static readonly DEFAULT_GAME_USER_FACET = {
+    interests: [] as string[], values: [] as string[], smoking: 'never', drinking: 'never',
+    workout: 'weekly', pets: 'all pets welcome', familyPlans: 'open to both', children: 'no',
+    loveStyle: 'slow-burn connection', communicationStyle: 'direct + warm',
+    sexualOrientation: 'straight', religion: 'not religious'
+  };
+
+  static withSeededProfileDetails(user: UserRecord, seedUserId = user.id): UserRecord {
+    if (user.profileDetails != null) return user;
+    const facet = APP_STATIC_DATA.homeUserFacetById[seedUserId] ?? this.DEFAULT_GAME_USER_FACET;
+    const values: Record<string, string> = {
+      interest: facet.interests.join(', '), values: facet.values.join(', '),
+      smoking: facet.smoking, drinking: facet.drinking, workout: facet.workout,
+      pets: facet.pets, familyPlans: facet.familyPlans, children: facet.children,
+      loveStyle: facet.loveStyle, communicationStyle: facet.communicationStyle,
+      sexualOrientation: facet.sexualOrientation, religion: facet.religion
+    };
+    const profileDetails = APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
+      title: group.title,
+      rows: group.rows.filter(row => row.labelKey.startsWith('profile.details.')
+        && Object.hasOwn(values, row.labelKey.slice('profile.details.'.length))).map(row => {
+        const value = values[row.labelKey.slice('profile.details.'.length)];
+        const options = APP_STATIC_DATA.profileDetailValueOptions[row.labelKey] ?? [];
+        return { labelKey: row.labelKey, privacy: row.privacy,
+          value: options.find(option => option.toLowerCase() === value.toLowerCase()) ?? value,
+          options: [...options] };
+      })
+    })).filter(group => group.rows.length > 0);
+    return { ...user, profileDetails };
+  }
+
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
     const normalizedBaseUsers = baseUsers.map(user => this.withStoredChatCounters(this.withResolvedLocationCoordinates(user)));
     if (baseUsers.length >= totalCount) {
@@ -350,7 +383,7 @@ export class SeedUserBuilder {
 
   private static withUniqueDemoPortraitUrls(users: readonly UserRecord[]): UserRecord[] {
     const usersWithGallerySizes = users.map((user, index) => ({
-      ...user,
+      ...this.withSeededProfileDetails(user),
       images: (user.images ?? []).slice(0, this.demoPortraitCountForIndex(index))
     }));
     // Reserve future raw URLs so replacing one duplicate cannot collide with a later user.
