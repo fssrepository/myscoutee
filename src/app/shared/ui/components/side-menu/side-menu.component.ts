@@ -1091,6 +1091,10 @@ export class SideMenuComponent implements OnDestroy {
     const overlayNavigation = inject(OverlayNavigationStore);
     effect(onCleanup => {
       if (!this.isMenuOpen()) return;
+      if (this.popupPresenceStore.visible() || this.dialogStore.dialog()) {
+        this.closeSideMenu();
+        return;
+      }
       const token = overlayNavigation.register(() => this.closeSideMenu());
       onCleanup(() => overlayNavigation.unregister(token));
     });
