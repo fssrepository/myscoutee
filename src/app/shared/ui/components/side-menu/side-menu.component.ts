@@ -410,11 +410,6 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly notificationDismissTargeted = this.notificationDismissTargetedRef.asReadonly();
   protected readonly notificationDragActivationDelayMs =
     SideMenuComponent.NOTIFICATION_DRAG_ACTIVATION_DELAY_MS;
-  protected readonly isCoveredByAssetPopup = computed(() =>
-    this.assetPopupStore.visible()
-    || this.activityInviteStore.activityInvitePopup() !== null
-    || this.activityInviteStore.externalInvite() !== null
-  );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
     const activeUserId = this.userProfileStore.activeUserId().trim();
@@ -624,6 +619,11 @@ export class SideMenuComponent implements OnDestroy {
         icon: 'install_desktop',
         counter: this.pwaService.appVersionLabel(),
         ariaLabel: 'install.app'
+      }, {
+        id: 'share',
+        label: `Share ${this.deploymentBranding().productName}`,
+        icon: 'share',
+        ariaLabel: `Share ${this.deploymentBranding().productName}`
       });
     }
     items.push({
@@ -718,12 +718,6 @@ export class SideMenuComponent implements OnDestroy {
           kind: 'toggle',
           checked: this.explanationGuide.enabled(),
           ariaLabel: this.explanationGuide.enabled() ? 'Turn explanations off' : 'Turn explanations on'
-        },
-        {
-          id: 'share',
-          label: `Share ${this.deploymentBranding().productName}`,
-          icon: 'share',
-          ariaLabel: `Share ${this.deploymentBranding().productName}`
         }
       );
     }

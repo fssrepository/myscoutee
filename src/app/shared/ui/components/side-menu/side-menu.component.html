@@ -1,10 +1,5 @@
 @if (avatarVisible()) {
-  <div
-    class="navigator-trigger-rail"
-    [class.is-open]="isMenuOpen()"
-    [class.is-covered]="isCoveredByAssetPopup()"
-    [class.is-notification-open]="notificationCenterStore.isOpen()"
-  >
+  <div class="navigator-trigger-rail">
     <div class="navigator-trigger-rail-inner">
       @if (isOperatorMode()) {
         <app-menu
@@ -67,12 +62,11 @@
 @if (menuUser(); as user) {
   @if (menuUiState(); as ui) {
     @if (ui.open) {
-      <div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()" (click)="onCloseMenu()"></div>
+      <div class="user-menu-backdrop" [class.open]="ui.open" (click)="onCloseMenu()"></div>
     }
     <aside
       class="user-menu-panel"
       [class.open]="ui.open"
-      [class.is-covered]="isCoveredByAssetPopup()"
     >
       <div class="navigator-menu-header">
         <app-header-card

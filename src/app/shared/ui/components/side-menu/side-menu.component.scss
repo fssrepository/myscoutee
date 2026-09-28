@@ -7,24 +7,6 @@
 .navigator-trigger-rail {
   @include navigator-avatar.position;
   pointer-events: none;
-  transition: transform 0.16s ease, opacity 0.16s ease;
-}
-
-.navigator-trigger-rail.is-open {
-  opacity: 0;
-  transform: scale(0.88);
-  pointer-events: none;
-}
-
-.navigator-trigger-rail.is-notification-open {
-  opacity: 0;
-  transform: scale(0.88);
-  pointer-events: none;
-}
-
-.navigator-trigger-rail.is-covered {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .navigator-trigger-rail-inner {
@@ -165,11 +147,6 @@
   pointer-events: auto;
 }
 
-.user-menu-backdrop.is-covered {
-  visibility: hidden;
-  pointer-events: none;
-}
-
 .user-menu-panel {
   position: fixed;
   top: 0;
@@ -189,11 +166,6 @@
 
 .user-menu-panel.open {
   transform: translateX(0);
-}
-
-.user-menu-panel.is-covered {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .navigator-menu-header {

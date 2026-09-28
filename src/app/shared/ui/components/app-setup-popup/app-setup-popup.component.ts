@@ -45,13 +45,17 @@ export class AppSetupPopupComponent {
       palette: 'blue',
       togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending() },
+      showToggleIndicator: !this.store.locationPermissionPending(),
+      progress: this.store.locationPermissionPending() ? { state: 'loading', shape: 'button' } : null,
+      disabled: this.store.actionPending() || this.store.locationPermissionPending() },
     { id: 'notifications', kind: 'toggle', layout: 'pill', icon: 'notifications',
       label: 'app.setup.notifications',
       palette: 'violet',
       togglePalette: this.store.notificationsSelected() && this.store.messaging.notificationPermission() === 'granted' ? 'green' : this.store.messaging.notificationPermission() === 'denied' ? 'red' : this.store.notificationsSelected() ? 'blue' : 'slate',
       checked: this.store.notificationsSelected(),
-      showToggleIndicator: true, disabled: this.store.actionPending()
+      showToggleIndicator: !this.store.notificationConfigurationPending(),
+      progress: this.store.notificationConfigurationPending() ? { state: 'loading', shape: 'button' } : null,
+      disabled: this.store.actionPending()
         || this.store.notificationConfigurationPending() || !this.store.messaging.notificationsConfigured }
   ]);
   readonly installActions = computed<AppMenuItem[]>(() => [
@@ -61,9 +65,11 @@ export class AppSetupPopupComponent {
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
   readonly showPermissionAction = computed(() => this.store.actionPending()
+    || this.store.locationPermissionPending() || this.store.notificationConfigurationPending()
     || this.store.locationMissing()
     || this.toggles().some(item => !item.disabled));
-  readonly permissionActionPending = computed(() => this.store.busy() || this.store.notificationConfigurationPending());
+  readonly permissionActionPending = computed(() => this.store.busy() || this.store.notificationConfigurationPending()
+    || this.store.locationPermissionPending());
   readonly permissionActions = computed<AppMenuItem[]>(() => [
     { id: 'allow', icon: this.permissionActionPending() ? 'hourglass_empty' : this.store.saveSucceeded() ? 'check_circle' : 'check',
       label: this.permissionActionPending() ? 'entry.permissions.checking' : this.store.loginRequested() ? 'login' : 'app.setup.update',

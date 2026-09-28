@@ -24,6 +24,7 @@ export class AppSetupStore implements OnDestroy {
   private readonly notificationsEdited = signal(false);
   readonly locationGranted = signal(false);
   readonly locationPermission = signal<PermissionState | null>(null);
+  readonly locationPermissionPending = signal(false);
   readonly nativePending = signal(false);
   readonly busy = signal(false);
   readonly notificationConfigurationPending = signal(false);
@@ -31,12 +32,11 @@ export class AppSetupStore implements OnDestroy {
   readonly error = signal('');
   readonly saveSucceeded = signal(false);
   private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending()
+  readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending() || this.locationPermissionPending()
     || (this.isOpen() && (!this.loggedIn() || !!this.checkLocation) && !this.locationSelected()));
   private locationRequestPending = false;
   private locationRequestAbort: AbortController | null = null;
   private locationRequestTimer: ReturnType<typeof setTimeout> | null = null;
-  private opening = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
   private completeLogin: ((allowed: boolean) => void) | null = null;
@@ -53,7 +53,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   toggleLocation(): void {
-    if (this.actionPending()) return;
+    if (this.actionPending() || this.locationPermissionPending()) return;
     this.clearSaveFeedback();
     this.locationEdited.set(true);
     this.locationSelected.update(value => !value);
@@ -67,8 +67,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   open(): void {
-    if (this.isOpen() || this.opening) return;
-    this.opening = true;
+    if (this.isOpen()) return;
     this.generation++;
     this.clearSaveFeedback();
     this.error.set('');
@@ -76,22 +75,18 @@ export class AppSetupStore implements OnDestroy {
     this.locationPermission.set(null);
     this.locationEdited.set(false);
     this.locationSelected.set(false);
-    this.messaging.refreshNotificationPermission();
     this.notificationsEdited.set(false);
     this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
-    // Resolve the deployment flag before the click, preserving the click's
-    // native permission gesture and avoiding token work for an inactive setup.
+    // Show the popup immediately; only the controls that need async state wait.
     const generation = this.generation;
     this.notificationConfigurationPending.set(true);
-    void Promise.all([
-      this.messaging.prepareNotificationConfiguration().catch(() => undefined),
-      this.refreshPermissions()
-    ]).then(() => {
+    this.locationPermissionPending.set(true);
+    this.isOpen.set(true);
+    void this.refreshPermissions();
+    void this.messaging.prepareNotificationConfiguration().catch(() => undefined).then(() => {
       if (generation !== this.generation) return;
       this.notificationConfigurationPending.set(false);
-      this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
-      this.opening = false;
-      this.isOpen.set(true);
+      if (!this.notificationsEdited()) this.notificationsSelected.set(this.messaging.deviceNotificationsEnabled());
     });
   }
 
@@ -110,7 +105,7 @@ export class AppSetupStore implements OnDestroy {
     const generation = this.generation;
     try {
       const permission = await navigator.permissions.query({ name: 'geolocation' });
-      if ((!this.isOpen() && !this.opening) || generation !== this.generation) return;
+      if (!this.isOpen() || generation !== this.generation) return;
       if (this.permission) this.permission.onchange = null;
       this.permission = permission;
       const update = () => {
@@ -124,7 +119,9 @@ export class AppSetupStore implements OnDestroy {
       permission.onchange = update;
       update();
     } catch {
-      this.locationGranted.set(false);
+      if (generation === this.generation) this.locationGranted.set(false);
+    } finally {
+      if (generation === this.generation) this.locationPermissionPending.set(false);
     }
   }
 
@@ -267,7 +264,8 @@ export class AppSetupStore implements OnDestroy {
   private finish(allowed: boolean): void {
     this.clearSaveFeedback();
     this.generation++;
-    this.opening = false;
+    this.locationPermissionPending.set(false);
+    this.notificationConfigurationPending.set(false);
     if (this.permission) this.permission.onchange = null;
     this.permission = null;
     this.isOpen.set(false);
