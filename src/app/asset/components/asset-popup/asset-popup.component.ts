@@ -437,14 +437,18 @@ export class AssetPopupComponent {
       const pendingCount = this.assetPendingRequestCount();
       controls.push({
         id: 'asset-pending-only',
+        kind: 'menu',
+        menuKind: 'inline',
         align: 'end',
-        icon: 'pending_actions',
-        label: 'Pending only',
-        ariaLabel: this.assetPendingOnly ? 'Show all assets' : 'Show assets with pending requests only',
-        palette: 'rose',
-        active: this.assetPendingOnly,
-        counter: pendingCount > 0 ? pendingCount : null,
-        compactOnMobile: true
+        closeOnSelect: false,
+        items: [{
+          id: 'asset-pending-only', kind: 'toggle', layout: 'pill',
+          icon: 'pending_actions', label: 'Pending only',
+          ariaLabel: this.assetPendingOnly ? 'Show all assets' : 'Show assets with pending requests only',
+          palette: 'rose', checked: this.assetPendingOnly,
+          showToggleIndicator: true, closeOnSelect: false,
+          counter: pendingCount > 0 ? pendingCount : null, counterTone: 'alert'
+        }]
       });
       controls.push({
         id: 'asset-add',
@@ -461,9 +465,6 @@ export class AssetPopupComponent {
     switch (event.action.id) {
       case 'asset-add':
         this.openAssetEditorCreate();
-        return;
-      case 'asset-pending-only':
-        this.toggleAssetPendingOnly(event.sourceEvent);
         return;
       case 'ticket-scan':
         this.openTicketScannerPopup(event.sourceEvent);
@@ -1194,6 +1195,10 @@ export class AssetPopupComponent {
   }
 
   protected onAssetPopupMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (event.id === 'asset-pending-only') {
+      this.toggleAssetPendingOnly(event.sourceEvent);
+      return;
+    }
     const context = event.context as AssetPopupMenuContext | undefined;
     if (!context) {
       return;

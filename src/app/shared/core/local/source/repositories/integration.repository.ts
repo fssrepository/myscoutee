@@ -362,16 +362,20 @@ export class LocalIntegrationRepository {
   mcpSettings(userId: string, resource: string): McpSettingsDto {
     return {resource, maxClients: LocalIntegrationRepository.MAX_ACTIVE_TOKENS, remoteEnabled: false,
       clients: this.activeTokens(this.requireUser(userId), false, 'mcp').map(({value: _secret, redirectUri, ...token}) =>
-        ({token, redirectUri: redirectUri ?? ''}))};
+        ({token, redirectUri: redirectUri ?? '', manual: true, clientId: token.id}))};
   }
   createMcpClient(userId: string, input: McpClientRequest): McpClientCreatedDto {
-    let uri: URL;
-    try { uri = new URL(input.redirectUri); } catch { throw new Error('mcp.failed'); }
-    if (!input.name.trim() || input.name.length > 80 || input.redirectUri.length > 2048 || uri.username || uri.password
-      || input.redirectUri !== input.redirectUri.trim() || input.redirectUri.includes('#') || input.redirectUri.includes('*') || !(uri.protocol === 'https:'
-        || (uri.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(uri.hostname)))) throw new Error('mcp.failed');
-    const created = this.createToken(userId, input.name, 90, false, 'mcp', input.redirectUri);
-    return {client: {token: created.token, redirectUri: input.redirectUri}, secret: created.value};
+    if (!input.name.trim() || input.name.length > 80) throw new Error('mcp.failed');
+    const redirectUri = input.redirectUri ?? '';
+    if (redirectUri) {
+      let uri: URL;
+      try { uri = new URL(redirectUri); } catch { throw new Error('mcp.failed'); }
+      if (redirectUri.length > 2048 || uri.username || uri.password
+        || redirectUri !== redirectUri.trim() || redirectUri.includes('#') || redirectUri.includes('*') || !(uri.protocol === 'https:'
+          || (uri.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(uri.hostname)))) throw new Error('mcp.failed');
+    }
+    const created = this.createToken(userId, input.name, 90, false, 'mcp', redirectUri);
+    return {client: {token: created.token, redirectUri, manual: true, clientId: created.token.id}, secret: created.value};
   }
   revokeMcpClient(userId: string, id: string): void { this.revokeToken(userId, id, false, 'mcp'); }
 

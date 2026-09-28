@@ -35,12 +35,12 @@ export interface ExternalInviteLinkRequest {
   assetType?: import('../common/constants').AssetType;
 }
 
-export interface McpClientDto { token: IntegrationTokenDto; redirectUri: string; }
+export interface McpClientDto { manual?: boolean; clientId?: string; token: IntegrationTokenDto; redirectUri: string; }
 export interface McpSettingsDto { resource: string; maxClients: number; remoteEnabled: boolean; clients: McpClientDto[]; }
-export interface McpClientRequest { name: string; redirectUri: string; }
+export interface McpClientRequest { name: string; redirectUri?: string; }
 export interface McpClientCreatedDto { client: McpClientDto; secret: string; }
 export interface McpAuthorizationRequest {
   clientId: string; redirectUri: string; resource: string; scope: string;
   responseType: string; codeChallenge: string; codeChallengeMethod: string; state: string | null;
 }
-export interface McpAuthorizationContext { clientName: string; profileName: string; groupName: string | null; redirectUri: string; }
+export interface McpAuthorizationContext { profileId: string; clientName: string; profileName: string; groupName: string | null; redirectUri: string; }

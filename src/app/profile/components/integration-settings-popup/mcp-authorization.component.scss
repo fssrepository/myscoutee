@@ -1,0 +1,48 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+
+:host { display: contents; }
+
+.authorization-body {
+  display: grid;
+  gap: 1rem;
+  padding: 0.35rem;
+  color: var(--text-main, #263f5b);
+}
+
+.authorization-client {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.authorization-client-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.6rem;
+  height: 2.6rem;
+  border-radius: 12px;
+  color: #306ca8;
+  background: #eaf3ff;
+}
+
+.authorization-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(26, 48, 78, 0.14);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.authorization-profile > mat-icon { color: #477ba9; flex-shrink: 0; }
+.authorization-profile > div { display: grid; gap: 0.2rem; min-width: 0; overflow-wrap: anywhere; }
+.authorization-label, .authorization-workspace { font-size: 0.75rem; color: var(--text-muted, #61718a); }
+.authorization-profile strong { font-size: 0.9rem; }
+.authorization-message { margin: 0; font-size: 0.84rem; line-height: 1.55; }
+.authorization-actions { justify-self: end; max-width: 100%; }
+.authorization-error { margin: 0; color: #b4233d; font-size: 0.84rem; line-height: 1.5; }

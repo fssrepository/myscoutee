@@ -103,7 +103,7 @@ export class ActivitySubEventResourceInfoCardConverter {
     }
     return {
       variant: 'avatar',
-      tone: 'default',
+      tone: 'warm',
       icon: 'location_on',
       interactive: true,
       ariaLabel: card.type === AppConstants.ASSET_TYPE_TRANSPORT ? 'Open route map' : 'Open accommodation map'

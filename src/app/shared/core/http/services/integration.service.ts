@@ -28,8 +28,8 @@ export class HttpIntegrationService {
   mcpAuthorization(input: McpAuthorizationRequest): Promise<McpAuthorizationContext> {
     return firstValueFrom(this.http.post<McpAuthorizationContext>(`${this.apiBaseUrl}/integrations/mcp/authorization`, input));
   }
-  mcpConsent(authorization: McpAuthorizationRequest, approve: boolean): Promise<{url: string}> {
-    return firstValueFrom(this.http.post<{url: string}>(`${this.apiBaseUrl}/integrations/mcp/consent`, {authorization, approve}));
+  mcpConsent(authorization: McpAuthorizationRequest, approve: boolean, profileId?: string): Promise<{url: string}> {
+    return firstValueFrom(this.http.post<{url: string}>(`${this.apiBaseUrl}/integrations/mcp/consent`, {authorization, approve, profileId}));
   }
 
   externalInviteLink(request: import('../../contracts/integration.interface').ExternalInviteLinkRequest): Promise<{url: string}> {

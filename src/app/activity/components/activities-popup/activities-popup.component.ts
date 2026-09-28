@@ -1,3 +1,4 @@
+import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import {
@@ -1317,7 +1318,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.selectActivitiesRateFilter(context.value);
         return;
       case 'rate-social':
-        this.toggleRateSocialBadgeForGroup(context.value);
+        this.toggleRateSocialBadge();
         return;
       case 'secondary':
         this.selectActivitiesSecondaryFilter(context.value);
@@ -1409,7 +1410,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         id: 'event-explore',
         align: 'end',
         icon: 'explore',
-        label: 'Explore',
+        label: 'events.explore',
         ariaLabel: 'Open event explore',
         palette: 'violet',
         compactOnMobile: true
@@ -1573,19 +1574,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
           label: this.rateGroupOptionLabelKey(groupLabel),
           icon: this.rateSocialBadgeGroupIconForGroup(groupLabel),
           palette: groupPalette,
-          items: [],
-          headerActions: this.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
-            ? [{
-              id: `rate-social:${groupLabel}`,
-              label: this.rateSocialBadgeButtonLabelForGroup(groupLabel),
-              icon: this.rateSocialBadgeToggleIconForGroup(groupLabel),
-              kind: 'toggle',
-              active: this.isRateSocialBadgeToggleActiveForGroup(groupLabel),
-              closeOnSelect: false,
-              palette: groupPalette,
-              context: { menu: 'rate-social', value: groupLabel }
-            }]
-            : []
+          items: []
         };
         nodes.push(currentNode);
         continue;
@@ -1610,7 +1599,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
         context: { menu: 'rate', value: option.key }
       }));
     }
-    return { nodes };
+    return {
+      nodes,
+      headerActions: [{
+        id: 'rate-social',
+        label: 'social',
+        icon: 'diversity_3',
+        kind: 'toggle',
+        layout: 'pill',
+        checked: () => this.activitiesRateSocialBadgeEnabled,
+        showToggleIndicator: true,
+        counter: () => this.rateSocialCount(),
+        counterTone: 'alert',
+        palette: 'blue',
+        closeOnSelect: false,
+        context: { menu: 'rate-social', value: 'all' }
+      }]
+    };
   }
 
   private activitiesSecondaryMenuTrigger(): AppMenuTrigger {
@@ -1671,7 +1676,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return [
       {
         id: 'quick-action:explore',
-        label: 'Explore',
+        label: 'events.explore',
         icon: 'explore',
         palette: 'violet',
         surface: 'tinted',
@@ -1824,40 +1829,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return icons[key] ?? 'star';
   }
 
-  private shouldShowRateSocialBadgeToggle(): boolean {
-    return this.activitiesPrimaryFilter === 'rates';
-  }
-
-  private shouldShowRateSocialBadgeToggleForGroup(label: string): boolean {
-    if (!this.shouldShowRateSocialBadgeToggle()) {
-      return false;
-    }
-    const normalized = label.trim().toLowerCase();
-    return normalized === 'individual'
-      || normalized === 'pair'
-      || normalized === 'preferences'
-      || normalized === 'suggestions'
-      || normalized === this.rateGroupLabelKeyForKey('individual-given')
-      || normalized === this.rateGroupLabelKeyForKey('pair-given');
-  }
-
-  private rateSocialBadgeButtonLabelForGroup(label: string): string {
-    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'Social on' : 'Social off';
-  }
-
-  private rateSocialBadgeToggleIconForGroup(label: string): string {
-    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'sell' : 'sell_off';
-  }
-
   private rateSocialBadgeGroupIconForGroup(label: string): string {
     return this.rateSocialGroupForLabel(label) === 'pair' ? 'groups_2' : 'person';
-  }
-
-  private isRateSocialBadgeToggleActiveForGroup(label: string): boolean {
-    const group = this.rateSocialGroupForLabel(label);
-    return group === 'pair'
-      ? this.activitiesPairRateSocialBadgeEnabled
-      : this.activitiesIndividualRateSocialBadgeEnabled;
   }
 
   private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
@@ -2893,28 +2866,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
       .filter((item: ActivityRateDTO) => this.activitiesRates.matchesFilter(item, filter)).length;
   }
 
-  toggleRateSocialBadgeForGroup(labelOrGroup: string): void {
-    const group = this.rateSocialGroupForLabel(labelOrGroup);
-    const nextEnabled = group === 'pair'
-      ? !this.activitiesPairRateSocialBadgeEnabled
-      : !this.activitiesIndividualRateSocialBadgeEnabled;
-    if (group === 'pair') {
-      this.activitiesPairRateSocialBadgeEnabled = nextEnabled;
-    } else {
-      this.activitiesIndividualRateSocialBadgeEnabled = nextEnabled;
-    }
-    if (this.activitiesRateFilter.startsWith(group)) {
-      this.activitiesRateSocialBadgeEnabled = nextEnabled;
-    }
-    this.activitiesStore.setActivitiesRateSocialBadgeEnabledForGroup(group, nextEnabled);
-    if (this.activitiesRateFilter.startsWith(group)) {
-      this.lastRateIndicatorPulseRowId = null;
-      this.selectedActivityRateId = null;
-      this.activitiesStore.setActivitiesSelectedRateId(null);
-      this.resetActivitiesScroll();
-      this.syncActivitiesSmartListQuery();
-      this.activitiesSmartList?.reload();
-    }
+  private rateSocialCount(): number {
+    return this.ratesService.peekRateItemsByUser(this.activeUser.id)
+      .filter(item => APP_STATIC_DATA.rateFilters.some(option => matchesActivitiesRateFilter(item, option.key, true))).length;
+  }
+
+  toggleRateSocialBadge(): void {
+    const enabled = !this.activitiesRateSocialBadgeEnabled;
+    this.activitiesRateSocialBadgeEnabled = enabled;
+    this.activitiesIndividualRateSocialBadgeEnabled = enabled;
+    this.activitiesPairRateSocialBadgeEnabled = enabled;
+    this.activitiesStore.setActivitiesRateSocialBadgeEnabled(enabled);
+    this.lastRateIndicatorPulseRowId = null;
+    this.selectedActivityRateId = null;
+    this.activitiesStore.setActivitiesSelectedRateId(null);
+    this.resetActivitiesScroll();
+    this.syncActivitiesSmartListQuery();
+    this.activitiesSmartList?.reload();
     this.cdr.markForCheck();
   }
 

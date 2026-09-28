@@ -80,7 +80,7 @@ describe('Local affiliate summary', () => {
     repo.recordCashReceipt('recipient', request);
     expect(repo.paymentHistory('recipient')).toHaveLength(1);
     expect(repo.paymentHistory('recipient')[0]).toMatchObject({ provider: 'cash', direction: 'income', amount: 20, note: 'Lunch', counterpartyName: 'Payer' });
-    expect(repo.paymentHistory('member')[0]).toMatchObject({ direction: 'expense', canRequestRefund: false, counterpartyName: 'Recipient' });
+    expect(repo.paymentHistory('member')[0]).toMatchObject({ direction: 'expense', canRequestRefund: true, counterpartyName: 'Recipient' });
     expect(repo.settings('owner', '/api').affiliate.revenue?.purchases ?? 0).toBe(0);
     expect(() => repo.recordCashReceipt('recipient', { ...request, amount: 21 })).toThrow();
     expect(() => repo.recordCashReceipt('recipient', { ...request, payerUserId: 'owner' })).toThrow();
@@ -250,7 +250,7 @@ describe('Local MCP connections', () => {
     const db = {read: () => state, write: (change: any) => {state = change(state);}};
     const injector = createEnvironmentInjector([{provide: LocalMemoryDb, useValue: db}], null as any);
     const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
-    const input = {name: 'Claude', redirectUri: 'https://claude.example/callback'};
+    const input = {name: 'Client 1'};
     const first = repo.createMcpClient('owner', input);
     expect(first.secret).toMatch(/^msc_/);
     repo.createToken('owner', 'API', 90);

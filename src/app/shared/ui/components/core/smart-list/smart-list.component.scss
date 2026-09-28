@@ -271,12 +271,17 @@
 }
 
 .smart-list--list.smart-list--card-grid .smart-list__item-shell {
+  display: flex;
   width: 100%;
   justify-self: stretch;
   align-self: stretch;
 }
 
-.smart-list--list.smart-list--card-grid .smart-list__item-shell > * {
+:host ::ng-deep .smart-list--list.smart-list--card-grid .smart-list__item-shell > * {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
   max-width: 100%;
   justify-self: stretch;

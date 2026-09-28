@@ -165,6 +165,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private loginEligibilityBusy = false;
+  private firebaseEntryAccessApproved = false;
+  private pendingFirebaseEntryCoordinates: LocationCoordinates | null = null;
   private entryContentLoadPromise: Promise<void> | null = null;
 
   protected showEntryConsentPopup = false;
@@ -183,6 +185,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
+  private firebaseEntryTransitionBusy = false;
   protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
   protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
@@ -290,7 +293,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected get firebaseAuthIsBusy(): boolean {
-    return this.sessionService.firebaseBusy();
+    return this.firebaseEntryTransitionBusy || this.sessionService.firebaseBusy();
   }
 
   protected get firebaseAuthMessage(): string {
@@ -331,6 +334,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (!options.bypassConsumerEligibility && this.loginEligibilityBusy) {
       return;
     }
+    this.firebaseEntryAccessApproved = false;
+    if (!options.bypassConsumerEligibility) {
+      if (!await this.ensureHttpLoginAccessAllowed()) {
+        this.pendingFirebaseEntryCoordinates = null;
+        return;
+      }
+      this.firebaseEntryAccessApproved = true;
+    }
     if (this.firebaseAuthProfile && !options.forceAuthPopup) {
       void this.onFirebaseSessionContinueRequested();
       return;
@@ -361,6 +372,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     void this.sessionService.cancelFirebaseAccountLink();
     this.showFirebaseAuthPopup = false;
+    this.firebaseEntryAccessApproved = false;
+    this.pendingFirebaseEntryCoordinates = null;
   }
 
   protected onRequestFirebaseAuth(request: FirebaseAuthRequestDto): void {
@@ -592,7 +605,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             user,
             mode,
             complete: () => resolve(true),
-            fail: message => resolve(message?.trim() || false)
+            fail: message => resolve(message === '' ? '' : message?.trim() || false)
           });
         });
       }),
@@ -631,7 +644,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         && Math.abs(coordinates.latitude) <= 90 && Math.abs(coordinates.longitude) <= 180
         && (await this.usersService.checkLocationEligibility(coordinates)).eligible;
       if (!eligible && !await this.requestLocationAccessFromDialog(normalizedUserId)) {
-        selection.fail();
+        // Closing Setup is cancellation: retain the selector without an error page.
+        selection.fail('');
         return;
       }
     } catch {
@@ -744,19 +758,38 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
-    const session = await this.sessionService.startAuthSession(request);
-    if (!session) {
-      return;
+    this.firebaseEntryTransitionBusy = true;
+    try {
+      const entryCoordinates = this.pendingFirebaseEntryCoordinates;
+      const entryAccessApproved = this.firebaseEntryAccessApproved;
+      const session = await this.sessionService.startAuthSession(request);
+      if (!session) {
+        return;
+      }
+      if (session.kind === 'firebase' && entryCoordinates) {
+        this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
+      }
+      this.pendingFirebaseEntryCoordinates = null;
+      this.firebaseEntryAccessApproved = false;
+      await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
+    } finally {
+      this.firebaseEntryTransitionBusy = false;
     }
-    await this.runPostSessionGate(session, this.redirectUrl());
   }
 
   protected async onFirebaseSessionContinueRequested(): Promise<void> {
-    const session = await this.sessionService.restoreFirebaseSession();
-    if (!session) {
-      return;
+    this.firebaseEntryTransitionBusy = true;
+    try {
+      const entryAccessApproved = this.firebaseEntryAccessApproved;
+      const session = await this.sessionService.restoreFirebaseSession();
+      if (!session) {
+        return;
+      }
+      this.firebaseEntryAccessApproved = false;
+      await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
+    } finally {
+      this.firebaseEntryTransitionBusy = false;
     }
-    await this.runPostSessionGate(session, this.redirectUrl());
   }
 
   protected onEntryConsentStateChanged(accepted: boolean): void {
@@ -792,6 +825,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         }
       }
       const navigated = await this.router.navigateByUrl(redirect);
+      if (navigated && demoSessionUserId) {
+        this.demoBootstrapSelectorStore.closeDemoBootstrapSelector();
+      }
       if (!navigated) {
         this.onboardingOpen = false;
         this.onboardingUser = null;
@@ -847,7 +883,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private async runPostSessionGate(
     session: AppSession,
     redirectUrl: string,
-    loadedUser?: UserDto
+    loadedUser?: UserDto,
+    entryAccessApproved = false
   ): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
     const sessionIdentity = this.sessionService.identity();
@@ -866,11 +903,21 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (session.kind === 'firebase' && !this.isAdminUser(user) && !this.isOperatorUser(user)) {
       const coordinates = user?.locationCoordinates;
       const hasLocation = coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude);
-      if (!hasLocation && !this.appLocationService.pendingLoginCoordinates(session.profile.id)) {
+      const needsLocationSetup = !hasLocation && !this.appLocationService.pendingLoginCoordinates(session.profile.id);
+      const needsNotificationSetup = hasLocation && !entryAccessApproved && this.firebaseMessagingService.entryPermissionPending;
+      // Keep provider login visible through profile loading and route activation.
+      // Only a required Setup or registration screen replaces it before navigation.
+      if ((needsLocationSetup || needsNotificationSetup) && this.showFirebaseAuthPopup) {
+        this.ngZone.run(() => {
+          this.showFirebaseAuthPopup = false;
+          this.changeDetectorRef.detectChanges();
+        });
+      }
+      if (needsLocationSetup) {
         this.locationEligibilityResolvedFromCoordinates = false;
         if (!await this.ensureHttpLoginAccessAllowed()) return;
         if (gateToken !== this.postSessionGateToken || this.sessionService.activeUserId() !== session.profile.id) return;
-      } else if (hasLocation && this.firebaseMessagingService.entryPermissionPending) {
+      } else if (needsNotificationSetup) {
         if (!await this.appSetupStore.requestForLogin()) return;
         if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
       }
@@ -1116,7 +1163,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
       }
       if (sessionIdentity !== this.sessionService.identity()) return false;
-      this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+      if (accountId) {
+        this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+      } else if (this.authMode === 'firebase') {
+        // The anonymous device sample belongs to this entry attempt. Bind it to
+        // the authenticated account before its first authoritative profile read.
+        this.pendingFirebaseEntryCoordinates = coordinates;
+      }
       return true;
     });
   }
@@ -1463,7 +1516,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     // The selected profile and the retryable Setup flow decide admission on click.
     this.entryAuthUnavailable = false;
     this.entryAuthUnavailableLabel = 'Unavailable here';
-    // Location is checked after authentication, once the saved profile is known.
+    // Firebase entry resolves location through Setup before opening provider login.
     this.changeDetectorRef.markForCheck();
   }
 
@@ -1541,7 +1594,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
       this.ngZone.run(() => {
         this.syncLandingLoginAvailability(result, 'coordinates');
-        if (result.eligible && accountId === this.sessionService.activeUserId()) this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+        if (result.eligible && accountId === this.sessionService.activeUserId()) {
+          if (accountId) this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+          else this.pendingFirebaseEntryCoordinates = coordinates;
+        }
         this.changeDetectorRef.markForCheck();
       });
     } catch {

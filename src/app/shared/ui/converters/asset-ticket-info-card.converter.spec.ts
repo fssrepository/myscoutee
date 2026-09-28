@@ -3,23 +3,24 @@ import { AssetTicketInfoCardConverter } from './asset-ticket-info-card.converter
 import type * as AssetContracts from '../../core/contracts/asset.interface';
 
 describe('AssetTicketInfoCardConverter', () => {
-  it('renders the organizer image with organizer initials as the fallback', () => {
+  it('renders the light organizer monogram even when an image exists', () => {
     const card = AssetTicketInfoCardConverter.convert(ticketRow({
       creatorName: 'Casey Bridge',
       creatorAvatarUrl: ' /media/organizer.webp '
     }));
 
     expect(card.mediaStart).toMatchObject({
-      variant: 'avatar',
-      imageUrl: '/media/organizer.webp',
-      label: 'CB'
+      variant: 'badge',
+      layout: 'avatar-metric',
+      tone: 'cool',
+      leadingAccessory: { label: 'CB' }
     });
   });
 
   it('uses the organizer monogram when no organizer image exists', () => {
     const card = AssetTicketInfoCardConverter.convert(ticketRow({ creatorName: 'Casey Bridge' }));
 
-    expect(card.mediaStart).toMatchObject({ imageUrl: null, label: 'CB' });
+    expect(card.mediaStart).toMatchObject({ leadingAccessory: { label: 'CB' } });
   });
 
   it('keeps the QR action on an unused ticket', () => {

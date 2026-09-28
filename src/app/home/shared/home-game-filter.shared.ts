@@ -1,4 +1,6 @@
 import type { UserDto } from '../../shared/core/contracts/user.interface';
+export type { GameUserFacet } from '../../shared/core/common/game-user-facet';
+export { resolvePersonalityTraitId, getGameUserFacet, getGameUserInterests, getGameUserValues } from '../../shared/core/common/game-user-facet';
 
 export const GAME_FILTER_AGE_MIN = 18;
 export const GAME_FILTER_AGE_MAX = 120;
@@ -33,7 +35,7 @@ export interface GameFilterForm {
   values: string[];
   physiques: string[];
   languages: string[];
-  genders: Array<UserDto['gender']>;
+  genders: string[];
   horoscopes: string[];
   traitLabels: string[];
   smoking: string[];
@@ -48,21 +50,6 @@ export interface GameFilterForm {
   religions: string[];
 }
 
-export interface GameUserFacet {
-  interests: string[];
-  values: string[];
-  smoking: string;
-  drinking: string;
-  workout: string;
-  pets: string;
-  familyPlans: string;
-  children: string;
-  loveStyle: string;
-  communicationStyle: string;
-  sexualOrientation: string;
-  religion: string;
-}
-
 export interface GameFilterOptionGroup {
   title: string;
   icon: string;
@@ -74,25 +61,9 @@ export interface HomeGameFilterPopupContext {
   activeUser: UserDto;
   filter: GameFilterForm;
   users: readonly UserDto[];
-  userFacets: Readonly<Record<string, GameUserFacet>>;
   interestOptionGroups: readonly GameFilterOptionGroup[];
   valueOptionGroups: readonly GameFilterOptionGroup[];
 }
-
-const DEFAULT_GAME_USER_FACET: GameUserFacet = {
-  interests: [],
-  values: [],
-  smoking: 'never',
-  drinking: 'never',
-  workout: 'weekly',
-  pets: 'all pets welcome',
-  familyPlans: 'open to both',
-  children: 'no',
-  loveStyle: 'slow-burn connection',
-  communicationStyle: 'direct + warm',
-  sexualOrientation: 'straight',
-  religion: 'not religious'
-};
 
 export function parseGameHeightCm(height: string): number | null {
   const parsed = Number.parseInt(height, 10);
@@ -209,25 +180,4 @@ export function isGameFilterActive(
     filter.sexualOrientations.length > 0 ||
     filter.religions.length > 0
   );
-}
-
-export function getGameUserFacet(
-  user: UserDto,
-  userFacets: Readonly<Record<string, GameUserFacet>>
-): GameUserFacet {
-  return userFacets[user.id] ?? DEFAULT_GAME_USER_FACET;
-}
-
-export function getGameUserInterests(
-  user: UserDto,
-  userFacets: Readonly<Record<string, GameUserFacet>>
-): string[] {
-  return getGameUserFacet(user, userFacets).interests;
-}
-
-export function getGameUserValues(
-  user: UserDto,
-  userFacets: Readonly<Record<string, GameUserFacet>>
-): string[] {
-  return getGameUserFacet(user, userFacets).values;
 }
