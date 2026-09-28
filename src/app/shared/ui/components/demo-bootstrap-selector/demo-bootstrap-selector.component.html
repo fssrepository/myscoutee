@@ -1,7 +1,7 @@
 @if (open) {
   <app-popup [model]="popupModel()" [zIndex]="2800">
     <div class="demo-user-stage">
-        @if (loading || submitting) {
+        @if (loading || (submitting && selectedUserId)) {
           <div class="demo-user-grid demo-user-grid-loading">
             <div class="demo-user-loading-shell">
               <div class="demo-user-loading-copy-group">

@@ -792,6 +792,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         }
       }
       const navigated = await this.router.navigateByUrl(redirect);
+      if (navigated && demoSessionUserId) {
+        this.demoBootstrapSelectorStore.closeDemoBootstrapSelector();
+      }
       if (!navigated) {
         this.onboardingOpen = false;
         this.onboardingUser = null;

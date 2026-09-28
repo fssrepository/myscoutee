@@ -1261,7 +1261,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.itemVisualLayout(item) === 'action';
+    return item.layout === 'action';
   }
 
   protected isImageLayoutItem(item: AppMenuItem<TId, TContext>): boolean {

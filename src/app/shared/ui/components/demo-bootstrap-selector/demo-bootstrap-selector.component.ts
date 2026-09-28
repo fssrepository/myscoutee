@@ -261,7 +261,9 @@ export class DemoBootstrapSelectorComponent {
       label: 'new.demo.profile',
       icon: 'person_add',
       kind: 'action',
-      palette: 'orange',
+      layout: 'action',
+      compactOnMobile: true,
+      palette: 'red',
       disabled: () => this.loading || this.submitting,
       ariaLabel: 'Open new demo profile',
       context: { action: 'new-profile' }
@@ -534,7 +536,7 @@ export class DemoBootstrapSelectorComponent {
     this.commit(() => {
       this.submitting = true;
       this.selectedUserId = '';
-      this.loading = true;
+      this.loading = false;
       this.loadingUserList = false;
       this.loadingProgress = 0;
       this.loadingLabel = 'Opening profile setup';
@@ -632,14 +634,11 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      const accepted = await request.onNewProfile();
+      await request.onNewProfile();
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
-      if (accepted !== false) {
-        return;
-      }
-      this.resetContextSelectionFailure('Unable to open profile setup.');
+      this.commit(() => { this.submitting = false; });
     } catch {
       if (this.isCurrentContextRequest(requestToken)) {
         this.resetContextSelectionFailure('Unable to open profile setup.');
