@@ -163,8 +163,8 @@
   min-height: 0;
 }
 
-:host ::ng-deep .process-list-smart-list .smart-list__stage {
-  top: 0;
+:host ::ng-deep .process-list-smart-list .smart-list__surface {
+  padding-top: 0;
 }
 
 :host ::ng-deep .process-list-smart-list .smart-list.admin-job-process-list {
