@@ -2446,7 +2446,7 @@ export class SideMenuComponent implements OnDestroy {
   private openNotificationCenter(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.accountLocationMissing()) return;
+    if (this.connectionOffline() || this.accountLocationMissing()) return;
     this.closeSideMenu();
     this.notificationCenterStore.open();
   }
