@@ -5,6 +5,7 @@ import { I18nService } from '../../../core/base/services/i18n.service';
 import { PwaService } from '../../../core/base/services/pwa.service';
 import { UserProfileStore } from './user-profile.store';
 import type { LocationCoordinates } from '../../../core/contracts/user.interface';
+import { APP_SETUP_CONFIG } from '../../../core/base/config';
 
 @Injectable({ providedIn: 'root' })
 export class AppSetupStore implements OnDestroy {
@@ -32,6 +33,7 @@ export class AppSetupStore implements OnDestroy {
   readonly allowDisabled = computed(() => this.busy() || this.notificationConfigurationPending()
     || (this.isOpen() && (!this.loggedIn() || !!this.checkLocation) && !this.locationSelected()));
   private locationRequestPending = false;
+  private locationAcquisitionDeadlineMs: number | null = null;
   private opening = false;
   private generation = 0;
   private permission: PermissionStatus | null = null;
@@ -112,7 +114,10 @@ export class AppSetupStore implements OnDestroy {
       const update = () => {
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
-        if (this.locationRequestPending && permission.state === 'granted') this.busy.set(true);
+        if (this.locationRequestPending && permission.state === 'granted') {
+          this.locationAcquisitionDeadlineMs ??= Date.now() + APP_SETUP_CONFIG.locationRequestTimeoutMs;
+          this.busy.set(true);
+        }
         if (!this.locationEdited()) this.locationSelected.set(permission.state === 'granted' && this.location.trackingEnabled());
       };
       permission.onchange = update;
@@ -124,6 +129,7 @@ export class AppSetupStore implements OnDestroy {
 
   close(): void {
     this.locationRequestPending = false;
+    this.locationAcquisitionDeadlineMs = null;
     this.nativePending.set(false);
     this.busy.set(false);
     this.finish(this.loginAllowed);
@@ -173,8 +179,24 @@ export class AppSetupStore implements OnDestroy {
         return;
       }
       this.locationRequestPending = true;
-      this.busy.set(this.locationPermission() === 'granted');
-      const coordinates = await this.location.requestCurrentCoordinates();
+      const waitingForPermission = this.locationPermission() !== 'granted';
+      this.locationAcquisitionDeadlineMs = waitingForPermission
+        ? null : Date.now() + APP_SETUP_CONFIG.locationRequestTimeoutMs;
+      this.busy.set(!waitingForPermission);
+      let nativeErrorCode: number | undefined;
+      let coordinates = await this.location.requestCurrentCoordinates({
+        onError: error => { nativeErrorCode = error.code; }
+      });
+      if (generation !== this.generation) return;
+      const remainingMs = this.locationAcquisitionDeadlineMs === null
+        ? 0 : this.locationAcquisitionDeadlineMs - Date.now();
+      // Android may start its timeout before the OS grant, while the visible
+      // acquisition ring starts at that grant. Use only the unspent part of
+      // that same deadline, once, and only for a native TIMEOUT (code 3).
+      if (!coordinates && nativeErrorCode === 3 && waitingForPermission
+        && this.locationPermission() === 'granted' && remainingMs > 0) {
+        coordinates = await this.location.requestCurrentCoordinates({ timeoutMs: remainingMs });
+      }
       if (generation !== this.generation) return;
       if (!coordinates) {
         await this.refreshPermissions();
@@ -211,6 +233,7 @@ export class AppSetupStore implements OnDestroy {
     } finally {
       if (generation === this.generation || !this.isOpen()) {
         this.locationRequestPending = false;
+        this.locationAcquisitionDeadlineMs = null;
         this.nativePending.set(false);
         this.busy.set(false);
       }

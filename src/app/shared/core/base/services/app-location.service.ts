@@ -222,13 +222,17 @@ export class AppLocationService {
     }
   }
 
-  async requestCurrentCoordinates(): Promise<LocationCoordinates | null> {
+  async requestCurrentCoordinates(options: {
+    timeoutMs?: number;
+    onError?: (error: GeolocationPositionError) => void;
+  } = {}): Promise<LocationCoordinates | null> {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       return null;
     }
 
     return new Promise<LocationCoordinates | null>(resolve => {
-      // The native timeout excludes time spent waiting for permission.
+      // Android's OS permission prompt can consume the native timeout even
+      // when the origin's permission was already accepted.
       navigator.geolocation.getCurrentPosition(
         position => {
           const latitude = Number(position.coords.latitude);
@@ -239,10 +243,13 @@ export class AppLocationService {
           }
           resolve({ latitude, longitude });
         },
-        () => resolve(null),
+        error => {
+          options.onError?.(error);
+          resolve(null);
+        },
         {
           enableHighAccuracy: false,
-          timeout: APP_SETUP_CONFIG.locationRequestTimeoutMs,
+          timeout: options.timeoutMs ?? APP_SETUP_CONFIG.locationRequestTimeoutMs,
           maximumAge: 0
         }
       );

@@ -6,7 +6,7 @@ import { DialogStore } from '../../../ui/context/stores/dialog.store';
 describe('Explicit location request', () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-  it('leaves permission decision time to the native API and limits acquisition to ten seconds', async () => {
+  it('uses the native ten-second limit without a competing JavaScript timeout', async () => {
     vi.useFakeTimers();
     const getCurrentPosition = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
@@ -29,6 +29,19 @@ describe('Explicit location request', () => {
     const request = service.requestCurrentCoordinates();
     getCurrentPosition.mock.calls[0][1]({ code: 3 });
     expect(await request).toBeNull();
+  });
+
+  it('preserves the native failure reason and honors the remaining acquisition budget', async () => {
+    const getCurrentPosition = vi.fn();
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
+    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const onError = vi.fn();
+    const request = service.requestCurrentCoordinates({ timeoutMs: 4000, onError });
+    expect(getCurrentPosition.mock.calls[0][2].timeout).toBe(4000);
+    const error = { code: 3, message: 'Timeout expired' };
+    getCurrentPosition.mock.calls[0][1](error);
+    expect(await request).toBeNull();
+    expect(onError).toHaveBeenCalledExactlyOnceWith(error);
   });
 });
 
