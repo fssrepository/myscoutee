@@ -9,14 +9,13 @@ import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 })
 export class ExplanationGuideService {
   private static readonly STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideEnabled;
-  private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideDismissedContexts;
   private readonly helpCenter = inject(HelpCenterService);
   private readonly enabledRef = signal(this.readEnabledState());
   private readonly currentContextRef = signal<string | null>(null);
   private readonly popupOpenRef = signal(false);
+  private readonly launcherDismissedRef = signal(false);
   private readonly loadingRef = signal(false);
   private readonly visibleRevisionRef = signal<HelpCenterRevisionDto | null>(null);
-  private readonly dismissedContexts = new Set<string>(this.readDismissedContexts());
   private readonly contextStack: string[] = [];
   private loadSerial = 0;
 
@@ -27,6 +26,7 @@ export class ExplanationGuideService {
   readonly visibleRevision = this.visibleRevisionRef.asReadonly();
   readonly hasVisiblePopup = computed(() => this.popupOpenRef());
   readonly hasVisibleRevision = computed(() => Boolean(this.visibleRevisionRef()));
+  readonly launcherVisible = computed(() => this.enabledRef() && !this.launcherDismissedRef() && this.hasVisibleRevision());
 
   registerContext(contextKey: string): () => void {
     const normalized = this.normalizeContextKey(contextKey);
@@ -34,107 +34,89 @@ export class ExplanationGuideService {
       return () => undefined;
     }
     this.contextStack.push(normalized);
-    this.currentContextRef.set(normalized);
-    this.refreshVisibleForCurrent();
+    this.setCurrentContext(normalized);
+    let registered = true;
     return () => {
+      if (!registered) {
+        return;
+      }
+      registered = false;
       const index = this.contextStack.lastIndexOf(normalized);
       if (index >= 0) {
         this.contextStack.splice(index, 1);
       }
-      this.currentContextRef.set(this.contextStack[this.contextStack.length - 1] ?? null);
-      this.refreshVisibleForCurrent();
+      this.setCurrentContext(this.contextStack[this.contextStack.length - 1] ?? null);
     };
   }
 
   setEnabled(enabled: boolean): void {
-    this.enabledRef.set(enabled);
-    this.writeEnabledState(enabled);
-    if (!enabled) {
-      this.closePopup();
+    if (this.enabledRef() === enabled) {
       return;
     }
-    const contextKey = this.currentContextRef();
-    if (contextKey) {
-      this.refreshVisibleForCurrent();
-    }
+    this.enabledRef.set(enabled);
+    this.writeEnabledState(enabled);
+    this.refreshVisibleForCurrent();
   }
 
   toggleEnabled(): void {
     this.setEnabled(!this.enabledRef());
   }
 
-  dismiss(): void {
-    const contextKey = this.currentContextRef();
-    if (contextKey) {
-      this.rememberDismissedContext(contextKey);
+  openCurrent(): void {
+    if (this.launcherVisible()) {
+      this.popupOpenRef.set(true);
     }
+  }
+
+  closePopup(): void {
+    this.popupOpenRef.set(false);
+  }
+
+  dismissLauncher(): void {
+    this.launcherDismissedRef.set(true);
     this.closePopup();
   }
 
-  replayCurrent(): void {
-    const contextKey = this.currentContextRef();
-    if (!contextKey) {
+  private setCurrentContext(contextKey: string | null): void {
+    if (this.currentContextRef() === contextKey) {
       return;
     }
-    this.dismissedContexts.delete(contextKey);
-    this.writeDismissedContexts();
-    this.setEnabled(true);
+    this.currentContextRef.set(contextKey);
+    this.refreshVisibleForCurrent();
   }
 
   private refreshVisibleForCurrent(): void {
+    ++this.loadSerial;
+    this.closePopup();
+    this.launcherDismissedRef.set(false);
+    this.visibleRevisionRef.set(null);
+    this.loadingRef.set(false);
     const contextKey = this.currentContextRef();
-    if (!this.enabledRef() || !contextKey || this.isDismissedContext(contextKey)) {
-      this.closePopup();
+    if (!this.enabledRef() || !contextKey) {
       return;
     }
-    this.popupOpenRef.set(true);
-    this.visibleRevisionRef.set(null);
     void this.loadForContext(contextKey);
   }
 
   private async loadForContext(contextKey: string): Promise<void> {
-    const serial = ++this.loadSerial;
+    const serial = this.loadSerial;
     this.loadingRef.set(true);
     try {
       const state = await this.helpCenter.loadExplanationState(contextKey);
-      if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey || this.isDismissedContext(contextKey)) {
+      if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey) {
         return;
       }
-      const revision = state.activeRevision ?? null;
-      if (!revision) {
-        this.closePopup();
-        return;
-      }
-      this.visibleRevisionRef.set(revision);
+      this.visibleRevisionRef.set(state.activeRevision ?? null);
       this.loadingRef.set(false);
     } catch {
       if (serial === this.loadSerial) {
-        this.closePopup();
+        this.loadingRef.set(false);
       }
     }
-  }
-
-  private closePopup(): void {
-    this.loadingRef.set(false);
-    this.visibleRevisionRef.set(null);
-    this.popupOpenRef.set(false);
   }
 
   private normalizeContextKey(contextKey: string | null | undefined): string {
     return `${contextKey ?? ''}`.trim();
-  }
-
-  private isDismissedContext(contextKey: string): boolean {
-    return this.dismissedContexts.has(this.normalizeContextKey(contextKey));
-  }
-
-  private rememberDismissedContext(contextKey: string): void {
-    const normalized = this.normalizeContextKey(contextKey);
-    if (!normalized) {
-      return;
-    }
-    this.dismissedContexts.add(normalized);
-    this.writeDismissedContexts();
   }
 
   private readEnabledState(): boolean {
@@ -157,38 +139,6 @@ export class ExplanationGuideService {
       localStorage.setItem(ExplanationGuideService.STORAGE_KEY, enabled ? 'true' : 'false');
     } catch {
       // Ignore unavailable storage; the guide still works for the current session.
-    }
-  }
-
-  private readDismissedContexts(): string[] {
-    if (typeof localStorage === 'undefined') {
-      return [];
-    }
-    try {
-      const stored = localStorage.getItem(ExplanationGuideService.DISMISSED_CONTEXTS_STORAGE_KEY);
-      const parsed: unknown = stored ? JSON.parse(stored) : [];
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-      return parsed
-        .map(value => this.normalizeContextKey(`${value ?? ''}`))
-        .filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-
-  private writeDismissedContexts(): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-    try {
-      localStorage.setItem(
-        ExplanationGuideService.DISMISSED_CONTEXTS_STORAGE_KEY,
-        JSON.stringify([...this.dismissedContexts].sort())
-      );
-    } catch {
-      // Ignore unavailable storage; the in-memory dismissal still prevents repeats.
     }
   }
 }

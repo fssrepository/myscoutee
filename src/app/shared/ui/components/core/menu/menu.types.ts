@@ -25,6 +25,7 @@ export type AppMenuPalette =
   | 'brand'
   | 'ink'
   | 'neutral'
+  | 'neutral-strong'
   | 'slate'
   | 'offline'
   | 'blue'

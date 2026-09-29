@@ -115,6 +115,20 @@ describe('DeploymentConfigurationService', () => {
     expect(service.firebaseMessagingConfigured()).toBe(false);
   });
 
+  it('shares bootstrap configuration with later setup opens without reading the adapter again', async () => {
+    let resolveConfiguration!: (value: typeof DEFAULT_DEPLOYMENT_CONFIGURATION) => void;
+    loadLocalBranding.mockReturnValue(new Promise(resolve => resolveConfiguration = resolve));
+    const service = TestBed.inject(DeploymentConfigurationService);
+    const startup = service.initialize();
+    const setup = service.initialize();
+    expect(loadLocalBranding).toHaveBeenCalledOnce();
+    resolveConfiguration({ ...DEFAULT_DEPLOYMENT_CONFIGURATION, firebaseMessagingConfigured: true });
+    await Promise.all([startup, setup]);
+    await service.initialize();
+    expect(service.firebaseMessagingConfigured()).toBe(true);
+    expect(loadLocalBranding).toHaveBeenCalledOnce();
+  });
+
   it('uses the sized app icons rather than the small inline logo for the bundled brand', async () => {
     const service = TestBed.inject(DeploymentConfigurationService);
 

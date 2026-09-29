@@ -7,24 +7,6 @@
 .navigator-trigger-rail {
   @include navigator-avatar.position;
   pointer-events: none;
-  transition: transform 0.16s ease, opacity 0.16s ease;
-}
-
-.navigator-trigger-rail.is-open {
-  opacity: 0;
-  transform: scale(0.88);
-  pointer-events: none;
-}
-
-.navigator-trigger-rail.is-notification-open {
-  opacity: 0;
-  transform: scale(0.88);
-  pointer-events: none;
-}
-
-.navigator-trigger-rail.is-covered {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .navigator-trigger-rail-inner {
@@ -53,28 +35,35 @@
   pointer-events: auto;
 }
 
-.notification-attention-launcher {
+.floating-launcher-rail {
   position: fixed;
   right: 1.4rem;
   bottom: 1.4rem;
   z-index: 23000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1rem;
   pointer-events: none;
 }
 
-// Keep the floating shortcut out of every open mobile menu, including sheets
-// without a heading close button.
+.floating-launcher-slot {
+  min-height: 42px;
+}
+
+.explanation-guide-menu {
+  pointer-events: auto;
+  --app-menu-draggable-cursor: pointer;
+}
+
+// Keep the notification shortcut out of open mobile menus. The guide stays
+// available as help above the current popup.
 :host-context(body:has(.app-menu__heading > .popup-close, .app-menu__branch-close)),
 :host-context(body:has(.app-menu-host--layout-mobile.app-menu-host--open .app-menu__panel:not(.app-menu__panel--inline))) {
-  .notification-attention-launcher {
+  .notification-attention-menu {
     visibility: hidden;
     pointer-events: none;
   }
-}
-
-.notification-attention-launcher.is-chat-open,
-.notification-attention-launcher.is-checkout-open,
-.notification-attention-launcher.is-popup-open {
-  bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px));
 }
 
 .notification-attention-menu {
@@ -88,7 +77,7 @@
   --app-menu-trigger-counter-right: -0.48rem;
 }
 
-.notification-attention-dismiss-target {
+.floating-launcher-dismiss-target {
   position: fixed;
   left: 50%;
   bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
@@ -107,7 +96,7 @@
     0 0 0 7px rgba(77, 96, 126, 0.12),
     0 10px 28px rgba(15, 30, 51, 0.34);
   pointer-events: none;
-  animation: notification-dismiss-target-in 0.18s ease-out both;
+  animation: floating-launcher-dismiss-target-in 0.18s ease-out both;
   transition:
     transform 0.14s ease,
     border-color 0.14s ease,
@@ -115,7 +104,7 @@
     box-shadow 0.14s ease;
 }
 
-.notification-attention-dismiss-target.is-over {
+.floating-launcher-dismiss-target.is-over {
   transform: translateX(-50%) scale(1.14);
   border-color: rgba(255, 255, 255, 1);
   background: linear-gradient(180deg, #ef6472, #c72e48);
@@ -124,7 +113,7 @@
     0 12px 32px rgba(112, 20, 38, 0.42);
 }
 
-.notification-attention-dismiss-target .mat-icon {
+.floating-launcher-dismiss-target .mat-icon {
   display: block;
   width: 1.55rem;
   height: 1.55rem;
@@ -132,7 +121,7 @@
   line-height: 1.55rem;
 }
 
-@keyframes notification-dismiss-target-in {
+@keyframes floating-launcher-dismiss-target-in {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(0.8rem) scale(0.82);
@@ -144,7 +133,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .notification-attention-dismiss-target {
+  .floating-launcher-dismiss-target {
     animation: none;
     transition: none;
   }
@@ -163,11 +152,6 @@
 .user-menu-backdrop.open {
   opacity: 1;
   pointer-events: auto;
-}
-
-.user-menu-backdrop.is-covered {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .user-menu-panel {
@@ -189,11 +173,6 @@
 
 .user-menu-panel.open {
   transform: translateX(0);
-}
-
-.user-menu-panel.is-covered {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .navigator-menu-header {
@@ -320,14 +299,14 @@ app-event-supply-contributions-popup {
     order: 1;
   }
 
-  .notification-attention-launcher {
+  .floating-launcher-rail {
     right: 1rem;
     bottom: 1rem;
   }
 
-  .notification-attention-launcher.is-chat-open,
-  .notification-attention-launcher.is-checkout-open,
-  .notification-attention-launcher.is-popup-open {
+  .floating-launcher-rail.is-chat-open,
+  .floating-launcher-rail.is-checkout-open,
+  .floating-launcher-rail.is-popup-open {
     bottom: calc(3.6rem + 5px + env(safe-area-inset-bottom, 0px));
   }
 

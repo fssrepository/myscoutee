@@ -69,7 +69,6 @@ export const APP_STORAGE_KEYS = {
   entryLoginLocationEligibility: scopedStorageKey('entry.login-location-eligibility.v1'),
   assetBorrowDrafts: scopedStorageKey('asset.borrow.drafts.v1'),
   eventCheckoutDrafts: scopedStorageKey('event.checkout.drafts.v1'),
-  explanationGuideDismissedContexts: scopedStorageKey('explanation-guide.dismissed-contexts.v1'),
   explanationGuideEnabled: scopedStorageKey('explanation-guide.enabled.v1'),
   firebaseConfigurationInvalidation: scopedStorageKey(
     'firebase.configuration-invalidation.v1'

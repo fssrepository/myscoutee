@@ -12,6 +12,8 @@
   --smart-list-fullscreen-top-offset: 0px;
   --smart-list-fullscreen-bottom-offset: 0px;
   position: relative;
+  padding-top: 5px;
+  box-sizing: border-box;
   display: flex;
   flex: 1;
   min-width: 0;
@@ -44,7 +46,6 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  top: 5px;
 }
 
 .smart-list__stage-list-shell {

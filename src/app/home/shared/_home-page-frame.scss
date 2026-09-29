@@ -1,11 +1,24 @@
+@mixin geometry {
+  --home-frame-width: min(1160px, calc(100vw - 2rem));
+  --home-frame-height: calc(100dvh - 2rem);
+  --home-frame-top: 0.9rem;
+  --home-frame-radius: 18px;
+
+  @media (max-width: 760px) {
+    --home-frame-width: calc(100vw - 0.9rem);
+    --home-frame-height: calc(100dvh - 1.55rem);
+    --home-frame-top: 0.7rem;
+  }
+}
+
 .game-page {
-  width: min(1160px, calc(100vw - 2rem));
+  width: var(--home-frame-width);
   margin: 0 auto;
-  min-height: calc(100vh - 2rem);
+  min-height: var(--home-frame-height);
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(21, 38, 62, 0.14);
-  border-radius: 18px;
+  border-radius: var(--home-frame-radius);
   padding: 0.9rem;
   box-sizing: border-box;
   background:
@@ -20,7 +33,7 @@
     min-height: 100%;
     height: 100%;
     max-height: 100%;
-    border-radius: 18px;
+    border-radius: var(--home-frame-radius);
     padding: 0.9rem;
     box-sizing: border-box;
     overflow: hidden;

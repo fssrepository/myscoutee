@@ -29,6 +29,7 @@ describe('Notification preference and background registration', () => {
   const activeUserId = signal('user-1');
   const locationMissing = signal(false);
   const reloadDeployment = vi.fn();
+  const initializeDeployment = vi.fn();
   let setup: AppSetupStore;
 
   beforeEach(async () => {
@@ -38,6 +39,7 @@ describe('Notification preference and background registration', () => {
     activeUserId.set('user-1');
     locationMissing.set(false);
     reloadDeployment.mockResolvedValue(undefined);
+    initializeDeployment.mockResolvedValue(undefined);
     localStorage.clear();
     localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceEnabled, 'false');
     vi.stubGlobal('Notification', { permission: 'granted' });
@@ -61,7 +63,7 @@ describe('Notification preference and background registration', () => {
       { provide: DeviceRegistrationsService, useValue: { isLocal: false, upsert, remove } },
       { provide: FirebaseAppService, useValue: { ensureFirebaseRuntime, activeRuntime } },
       { provide: DeploymentConfigurationService, useValue: {
-        firebaseMessagingConfigured: messagingConfigured, reload: reloadDeployment
+        firebaseMessagingConfigured: messagingConfigured, reload: reloadDeployment, initialize: initializeDeployment
       } },
       { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
@@ -93,20 +95,53 @@ describe('Notification preference and background registration', () => {
     vi.useRealTimers();
   });
 
-  it.each(['granted', 'prompt'] as const)('renders the initial %s location state without first rendering OFF', async state => {
+  it.each(['granted', 'prompt'] as const)('opens immediately while the initial %s location permission loads', async state => {
     setup.close();
     let resolvePermission!: (permission: PermissionStatus) => void;
     vi.mocked(navigator.permissions.query).mockReturnValue(new Promise(resolve => resolvePermission = resolve));
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     setup.open();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-popup')).toBeNull();
+    expect(setup.isOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('app-popup')).not.toBeNull();
+    const pendingLocation = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]') as HTMLButtonElement;
+    expect(pendingLocation.disabled).toBe(true);
+    expect(pendingLocation.classList.contains('app-menu__button-row-item--progress-loading')).toBe(true);
+    expect(setup.allowDisabled()).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setup.notificationConfigurationPending()).toBe(false);
+    expect(setup.allowDisabled()).toBe(true);
     resolvePermission({ state } as PermissionStatus);
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
     const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]');
     expect(button.getAttribute('aria-pressed')).toBe(String(state === 'granted'));
+    expect(button.disabled).toBe(false);
+    expect(button.classList.contains('app-menu__button-row-item--progress-loading')).toBe(false);
     expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
+  it('keeps setup visible and closeable while configuration loads independently of location', async () => {
+    setup.close();
+    let resolveConfiguration!: () => void;
+    initializeDeployment.mockReturnValueOnce(new Promise<void>(resolve => resolveConfiguration = resolve));
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    setup.open();
+    fixture.detectChanges();
+    expect(setup.isOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('app-popup')).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(setup.notificationConfigurationPending()).toBe(true);
+    expect(fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]').disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('button[aria-label="app.setup.notifications"]').disabled).toBe(true);
+    expect(setup.allowDisabled()).toBe(true);
+    fixture.nativeElement.querySelector('.ui-popup__close').click();
+    expect(setup.isOpen()).toBe(false);
+    resolveConfiguration();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setup.isOpen()).toBe(false);
     fixture.destroy();
   });
 
@@ -119,6 +154,26 @@ describe('Notification preference and background registration', () => {
     resolvePermission({ state: 'granted' } as PermissionStatus);
     await vi.advanceTimersByTimeAsync(0);
     expect(setup.isOpen()).toBe(false);
+  });
+
+  it('allows installation and help before permission checks finish', () => {
+    setup.close();
+    vi.mocked(navigator.permissions.query).mockReturnValue(new Promise(() => undefined));
+    const promptInstall = vi.fn().mockResolvedValue(undefined);
+    Object.assign(TestBed.inject(PwaService), {
+      installAvailable: () => true, installBusy: () => false, promptInstall
+    });
+    const fixture = TestBed.createComponent(AppSetupPopupComponent);
+    setup.open();
+    fixture.detectChanges();
+    const install = fixture.nativeElement.querySelector('.app-setup-install button') as HTMLButtonElement;
+    expect(install.disabled).toBe(false);
+    install.click();
+    expect(promptInstall).toHaveBeenCalledOnce();
+    fixture.nativeElement.querySelector('button[aria-label="app.setup.help.title"]').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.ui-popup')).toHaveLength(2);
+    fixture.destroy();
   });
 
   it('renders success on the actual Update button after a click and keeps the popup open', async () => {
@@ -178,7 +233,8 @@ describe('Notification preference and background registration', () => {
     const messaging = TestBed.inject(FirebaseMessagingService);
     expect(messaging.notificationsConfigured).toBe(true);
     await messaging.prepareNotificationConfiguration();
-    expect(reloadDeployment).toHaveBeenCalled();
+    expect(initializeDeployment).toHaveBeenCalled();
+    expect(reloadDeployment).not.toHaveBeenCalled();
     expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
   });
 
@@ -471,17 +527,19 @@ describe('Notification preference and background registration', () => {
     fixture.destroy();
   });
 
-  it('keeps Update available before location selection and explains the required choice on click', async () => {
+  it('keeps the signed-out permission action disabled until location is selected', () => {
     activeUserId.set('');
     setup.locationSelected.set(false);
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
     const button = fixture.nativeElement.querySelector('.app-setup-action button') as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
+    expect(button.disabled).toBe(true);
     button.click();
+    expect(setup.error()).toBe('');
+    expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
+    setup.toggleLocation();
     fixture.detectChanges();
-    expect(setup.error()).toBe('entry.permissions.location.required');
-    expect(button.classList.contains('app-menu__button-row-item--progress-error')).toBe(true);
+    expect(button.disabled).toBe(false);
     expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
     fixture.destroy();
   });

@@ -15,7 +15,7 @@ describe('Setup permission help', () => {
     const allow = vi.fn(), close = vi.fn();
     const store = {
       isOpen: signal(true), loginRequested: signal(false), actionPending: signal(false), busy: signal(false),
-      notificationConfigurationPending: signal(false), locationMissing: signal(false),
+      notificationConfigurationPending: signal(false), locationPermissionPending: signal(false), locationMissing: signal(false),
       locationPermission: signal('denied'), locationSelected: signal(false), locationGranted: signal(false),
       notificationsSelected: signal(false), saveSucceeded: signal(false), error: signal(''), allowDisabled: signal(false),
       allow, close,
