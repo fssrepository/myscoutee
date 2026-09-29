@@ -682,7 +682,12 @@ app-popup {
     align-items: stretch;
   }
 
-  .ui-popup__panel:not(.ui-popup__panel--height-full) {
+  .ui-popup.ui-popup--height-full {
+    padding: 0;
+  }
+
+  .ui-popup__panel,
+  .ui-popup--height-full > .ui-popup__panel {
     width: 100vw !important;
     max-width: 100vw !important;
     height: 100vh !important;
