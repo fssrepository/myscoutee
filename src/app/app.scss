@@ -2,6 +2,7 @@
 @use './shared/ui/components/side-menu/navigator-avatar';
 
 :host {
+  @include home-page-frame.geometry;
   display: block;
   --bg-soft: #f3f6ff;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
@@ -136,7 +137,7 @@
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0.9rem 0.35rem 1rem;
+  padding: var(--home-frame-top) 0.35rem 1rem;
 }
 
 .content-area.content-area-public {
@@ -166,7 +167,7 @@
   }
 
   .content-area.content-area-full {
-    padding: 0.7rem 0 0.85rem;
+    padding: var(--home-frame-top) 0 0.85rem;
   }
 }
 

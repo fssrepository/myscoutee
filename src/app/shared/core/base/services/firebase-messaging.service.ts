@@ -148,7 +148,8 @@ export class FirebaseMessagingService {
   }
 
   async prepareNotificationConfiguration(): Promise<void> {
-    await this.deploymentConfiguration.reload();
+    // Reuse the application bootstrap's loaded/in-flight configuration.
+    await this.deploymentConfiguration.initialize();
   }
 
   initialize(): void {

@@ -3,6 +3,7 @@
   [class.ui-popup]="active"
   [style.display]="active ? null : 'none'"
   [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
+  [class.ui-popup--height-full]="popupModel.height === 'full' && popupModel.size !== 'fullscreen'"
   [class.ui-popup--auto-height]="popupModel.height !== 'full' && popupModel.size !== 'fullscreen'"
   [class.ui-popup--mobile-compact]="popupModel.mobilePresentation === 'compact'"
   [style.z-index]="effectiveZIndex"

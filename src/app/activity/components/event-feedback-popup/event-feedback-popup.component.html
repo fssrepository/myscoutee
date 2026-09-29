@@ -1,6 +1,6 @@
 <div class="event-feedback-popup-module">
   @if (isPopupOpen()) {
-    <div class="event-feedback-parent-popup" [class.event-feedback-parent-hidden]="isStackedPopupOpen()">
+    <div class="event-feedback-parent-popup">
       <app-popup [model]="eventFeedbackPopupModel()" [zIndex]="eventFeedbackPopupZIndex()">
         <div class="support-popup event-feedback-list-popup">
           @if (eventFeedbackListSubmitMessage()) {
