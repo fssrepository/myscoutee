@@ -18,7 +18,7 @@ import type { AppMenuDragPosition, AppMenuTrigger } from '../core/menu';
     @defer (when guide.popupOpen()) { <app-explanation-popup></app-explanation-popup> }`,
   styles: [`.floating-launcher-rail { position: fixed; right: 1.4rem;
     bottom: calc(2.75rem + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
-    .floating-launcher-rail.is-embedded { position: static; }
+    .floating-launcher-rail.is-embedded { position: relative; right: auto; bottom: auto; }
     @media (max-width: 720px) { .floating-launcher-rail { right: .8rem; } }`]
 })
 export class ExplanationLauncherComponent {

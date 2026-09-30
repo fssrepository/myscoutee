@@ -61,12 +61,14 @@
   }
 }
 
-// Reuse the notification's menu exclusion for both launchers. A running
-// guide opens menus itself, so its launcher remains available in that mode.
+// Mobile menus need the launcher space. Desktop has room for both launchers.
+// A running guide opens menus itself, so its launcher stays available.
+@media (max-width: 760px) {
 :host-context(body:has(.app-menu__heading > .popup-close, .app-menu__branch-close)):not(.explanation-guide-menu),
 :host-context(body:has(.app-menu-host--open:not(.app-menu-host--panel-bottom-docked) > .app-menu > .app-menu__panel:not(.app-menu__panel--inline))):not(.explanation-guide-menu),
 :host-context(body:not(:has(.explanation-guide-overlay)):has(.app-menu__heading > .popup-close, .app-menu__branch-close)),
 :host-context(body:not(:has(.explanation-guide-overlay)):has(.app-menu-host--open:not(.app-menu-host--panel-bottom-docked) > .app-menu > .app-menu__panel:not(.app-menu__panel--inline))) {
   visibility: hidden;
   pointer-events: none;
+}
 }
