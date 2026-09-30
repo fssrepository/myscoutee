@@ -64,6 +64,8 @@
               @if (isMenuControl(control)) {
                 <app-menu
                   class="ui-popup__control"
+                  [attr.data-guide-control]="control.id"
+                  [attr.data-guide-field]="control.guideFieldId ?? null"
                   [kind]="control.menuKind ?? 'select'"
                   [title]="control.title ?? null"
                   [trigger]="control.trigger ?? null"
@@ -80,6 +82,8 @@
                 @defer (on immediate) {
                   <app-date-input
                     class="ui-popup__date-input"
+                    [attr.data-guide-control]="control.id"
+                    [attr.data-guide-field]="control.guideFieldId ?? null"
                     [model]="control.model"
                     [ngModel]="control.value"
                     (ngModelChange)="changeDateInput(control, $event)"
@@ -89,6 +93,10 @@
                 <button
                   type="button"
                   class="ui-popup__action"
+                  [attr.data-guide-control]="control.id"
+                  [attr.data-guide-field]="control.guideFieldId ?? null"
+                  [attr.data-guide-activate-on-step]="control.guideActivateOnStep ? 'true' : null"
+                  [attr.data-guide-active]="control.guideActivateOnStep ? (control.active ? 'true' : 'false') : null"
                   [ngClass]="actionPaletteClass(control)"
                   [class.ui-popup__action--active]="control.active"
                   [class.ui-popup__action--icon-only]="!control.label"
@@ -120,6 +128,10 @@
             <button
               type="button"
               class="ui-popup__action"
+              [attr.data-guide-control]="headerAction.id"
+              [attr.data-guide-field]="headerAction.guideFieldId ?? null"
+              [attr.data-guide-activate-on-step]="headerAction.guideActivateOnStep ? 'true' : null"
+              [attr.data-guide-active]="headerAction.guideActivateOnStep ? (headerAction.active ? 'true' : 'false') : null"
               [ngClass]="actionPaletteClass(headerAction)"
               [class.ui-popup__action--active]="headerAction.active"
               [class.ui-popup__action--badge]="headerAction.variant === 'badge'"
@@ -142,7 +154,7 @@
             </button>
           }
           @if (showClose) {
-            <button type="button" class="ui-popup__close" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel | i18n">
+            <button type="button" class="ui-popup__close" data-guide-control="close" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel | i18n">
               <mat-icon>close</mat-icon>
             </button>
           }
@@ -151,7 +163,7 @@
     }
 
     @if (!hasHeader && showClose) {
-      <button type="button" class="ui-popup__close ui-popup__close--floating" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel | i18n">
+      <button type="button" class="ui-popup__close ui-popup__close--floating" data-guide-control="close" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel | i18n">
         <mat-icon>close</mat-icon>
       </button>
     }
@@ -169,6 +181,8 @@
               @if (isMenuControl(control)) {
                 <app-menu
                   class="ui-popup__control"
+                  [attr.data-guide-control]="control.id"
+                  [attr.data-guide-field]="control.guideFieldId ?? null"
                   [kind]="control.menuKind ?? 'select'"
                   [title]="control.title ?? null"
                   [trigger]="control.trigger ?? null"
@@ -185,6 +199,8 @@
                 @defer (on immediate) {
                   <app-date-input
                     class="ui-popup__date-input"
+                    [attr.data-guide-control]="control.id"
+                    [attr.data-guide-field]="control.guideFieldId ?? null"
                     [model]="control.model"
                     [ngModel]="control.value"
                     (ngModelChange)="changeDateInput(control, $event)"
@@ -194,6 +210,10 @@
                 <button
                   type="button"
                   class="ui-popup__action"
+                  [attr.data-guide-control]="control.id"
+                  [attr.data-guide-field]="control.guideFieldId ?? null"
+                  [attr.data-guide-activate-on-step]="control.guideActivateOnStep ? 'true' : null"
+                  [attr.data-guide-active]="control.guideActivateOnStep ? (control.active ? 'true' : 'false') : null"
                   [ngClass]="actionPaletteClass(control)"
                   [class.ui-popup__action--active]="control.active"
                   [class.ui-popup__action--icon-only]="!control.label"
@@ -221,6 +241,8 @@
               @if (isMenuControl(control)) {
                 <app-menu
                   class="ui-popup__control"
+                  [attr.data-guide-control]="control.id"
+                  [attr.data-guide-field]="control.guideFieldId ?? null"
                   [kind]="control.menuKind ?? 'select'"
                   [title]="control.title ?? null"
                   [trigger]="control.trigger ?? null"
@@ -237,6 +259,8 @@
                 @defer (on immediate) {
                   <app-date-input
                     class="ui-popup__date-input"
+                    [attr.data-guide-control]="control.id"
+                    [attr.data-guide-field]="control.guideFieldId ?? null"
                     [model]="control.model"
                     [ngModel]="control.value"
                     (ngModelChange)="changeDateInput(control, $event)"
@@ -246,6 +270,10 @@
                 <button
                   type="button"
                   class="ui-popup__action"
+                  [attr.data-guide-control]="control.id"
+                  [attr.data-guide-field]="control.guideFieldId ?? null"
+                  [attr.data-guide-activate-on-step]="control.guideActivateOnStep ? 'true' : null"
+                  [attr.data-guide-active]="control.guideActivateOnStep ? (control.active ? 'true' : 'false') : null"
                   [ngClass]="actionPaletteClass(control)"
                   [class.ui-popup__action--active]="control.active"
                   [class.ui-popup__action--icon-only]="!control.label"

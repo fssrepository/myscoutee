@@ -13,6 +13,7 @@ export interface HelpCenterSectionRecord {
   imageUrls?: string[];
   panelSpan?: string;
   optional?: boolean;
+  guideStepId?: string | null;
   details?: string[];
   points?: string[];
 }
@@ -28,6 +29,7 @@ export interface HelpCenterRevisionRecord {
   summary: string;
   description: string;
   headerColor?: string;
+  presentation?: string;
   sections: HelpCenterSectionRecord[];
   active: boolean;
   createdAtIso: string;
@@ -47,6 +49,14 @@ export interface HelpCenterAuditRecord {
   actorUserId: string;
   createdAtIso: string;
   message: string;
+}
+
+export interface HelpCenterGuideFieldRecord {
+  id: string;
+  screenKey: string;
+  group: string;
+  i18nKey: string;
+  order: number;
 }
 
 export interface PrivacyConsentLocalRecord {
@@ -69,6 +79,8 @@ export interface HelpCenterTable {
   revisionIds: string[];
   auditById: Record<string, HelpCenterAuditRecord>;
   auditIds: string[];
+  guideFieldsById?: Record<string, HelpCenterGuideFieldRecord>;
+  guideFieldIds?: string[];
   privacyConsentsById?: Record<string, PrivacyConsentLocalRecord>;
   privacyConsentIds?: string[];
 }

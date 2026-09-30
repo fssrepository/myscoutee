@@ -1,7 +1,7 @@
 @if (open) {
   <section class="firebase-auth-overlay">
     <div class="firebase-auth-backdrop" (click)="requestClose()"></div>
-    <div class="firebase-auth-panel" [class.mobile-fullscreen]="isMobileView" (click)="$event.stopPropagation()">
+    <div class="firebase-auth-panel" appLandingGuideSurface="landing.auth" [class.mobile-fullscreen]="isMobileView" (click)="$event.stopPropagation()">
       <div class="firebase-auth-header">
         <h2>{{ 'login' | i18n }}</h2>
         <button
@@ -19,7 +19,7 @@
         <p class="firebase-auth-status" role="status">{{ statusMessage | i18n }}</p>
       }
       @if (authStep === 'providers') {
-        <div class="firebase-auth-provider-list">
+        <div class="firebase-auth-provider-list" data-guide-field="providers">
           <button
             type="button"
             class="firebase-auth-provider-btn google"
@@ -77,7 +77,7 @@
           <span>{{ 'all.login.methods' | i18n }}</span>
         </button>
         <form class="firebase-auth-email-form" (submit)="$event.preventDefault(); requestEmail()">
-          <div class="firebase-auth-email-tabs" role="tablist" [attr.aria-label]="'email.login.mode' | i18n">
+          <div class="firebase-auth-email-tabs" data-guide-field="account-mode" role="tablist" [attr.aria-label]="'email.login.mode' | i18n">
             <button
               type="button"
               role="tab"
@@ -105,7 +105,7 @@
             <span>{{ 'email' | i18n }}</span>
             <input
               type="email"
-              name="email"
+              name="email" data-guide-field="email"
               autocomplete="email"
               [disabled]="busy"
               [(ngModel)]="email"
@@ -116,7 +116,7 @@
             <span class="firebase-auth-password-control">
               <input
                 [type]="passwordInputType()"
-                name="password"
+                name="password" data-guide-field="password"
                 [autocomplete]="emailPasswordAutocomplete()"
                 [placeholder]="passwordPlaceholder() | i18n"
                 [disabled]="busy"
@@ -150,7 +150,7 @@
             <span>{{ passwordStrengthText() | i18n }}</span>
           </div>
           @if (emailMode === 'create') {
-            <ul class="firebase-password-rules" [attr.aria-label]="'password.rules' | i18n">
+            <ul class="firebase-password-rules" data-guide-field="password-rules" [attr.aria-label]="'password.rules' | i18n">
               <li [class.met]="passwordHasMinimumLength()">
                 <mat-icon>{{ passwordHasMinimumLength() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
                 <span>{{ 'password.minimum.8' | i18n }}</span>
@@ -179,7 +179,7 @@
               <span class="firebase-auth-password-control">
                 <input
                   [type]="passwordConfirmationInputType()"
-                  name="passwordConfirmation"
+                  name="passwordConfirmation" data-guide-field="confirmation"
                   autocomplete="new-password"
                   [disabled]="busy"
                   [(ngModel)]="passwordConfirmation"
@@ -201,7 +201,7 @@
             <p class="firebase-auth-error">{{ emailError | i18n }}</p>
           }
           <button
-            type="submit"
+            type="submit" data-guide-field="submit"
             class="firebase-auth-main-btn"
             [disabled]="busy"
             matRipple

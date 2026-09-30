@@ -48,6 +48,14 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static lastCompactSplitPercent = PairCardComponent.SPLIT_DEFAULT_PERCENT;
 
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly compactMedia = typeof globalThis.matchMedia === 'function'
+    ? globalThis.matchMedia('(max-width: 760px)') : null;
+  private compactViewport = this.compactMedia?.matches ?? false;
+  private readonly onCompactViewportChange = (event: MediaQueryListEvent): void => {
+    this.compactViewport = event.matches;
+    this.scheduleFullscreenLayoutSync();
+    this.cdr.markForCheck();
+  };
   private readonly loadingTimersByKey: Record<string, ReturnType<typeof setTimeout>> = {};
   private badgeBlinkTimer: ReturnType<typeof setTimeout> | null = null;
   private fullscreenResizeObserver: ResizeObserver | null = null;
@@ -60,12 +68,19 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private dragListenersBound = false;
   private fullscreenShellElementRef?: ElementRef<HTMLElement>;
   private readonly onWindowPointerMove = (event: PointerEvent): void => {
+    // Touch browsers also send pointer moves. The touch handler owns this drag;
+    // keep its duplicate pointer stream away from page-wide menu listeners.
+    if (this.isResizing && this.splitPointerId === -1 && event.pointerType === 'touch') {
+      event.stopPropagation();
+      return;
+    }
     if (!this.isResizing || this.splitPointerId !== event.pointerId) {
       return;
     }
     if (event.cancelable) {
       event.preventDefault();
     }
+    event.stopPropagation();
     this.updateSplitFromDragDelta(event.clientX);
   };
   private readonly onWindowPointerUp = (event: PointerEvent): void => {
@@ -81,9 +96,11 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.stopSplitDrag();
   };
   private readonly onWindowTouchMove = (event: TouchEvent): void => {
-    if (!this.isResizing || this.splitPointerId !== -1) {
+    if (!this.isResizing) {
       return;
     }
+    event.stopPropagation();
+    if (this.splitPointerId !== -1) return;
     const touch = event.touches?.[0] ?? event.changedTouches?.[0];
     if (!touch) {
       return;
@@ -107,6 +124,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   };
 
   @Input() card: PairCardData | null = null;
+  @Input() imagesEnabled = true;
   @Input() showSplitHandle = true;
 
   @Output() readonly badgeClick = new EventEmitter<string>();
@@ -140,6 +158,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    this.compactMedia?.addEventListener('change', this.onCompactViewportChange);
     this.bindFullscreenObserver();
     this.scheduleFullscreenLayoutSync();
   }
@@ -170,6 +189,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.compactMedia?.removeEventListener('change', this.onCompactViewportChange);
     Object.values(this.loadingTimersByKey).forEach(timer => clearTimeout(timer));
     if (this.badgeBlinkTimer) {
       clearTimeout(this.badgeBlinkTimer);
@@ -197,6 +217,10 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   protected resolvedSlots(): readonly PairCardSlot[] {
     return this.card?.slots ?? [];
+  }
+
+  protected isImageSwitchButtonTarget(imageIndex: number): boolean {
+    return imageIndex === 0 && (this.card?.guideImageSwitch !== true || this.resolvedState() === 'active');
   }
 
   protected resolvedStackClasses(): readonly string[] {
@@ -260,6 +284,11 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
       return `${PairCardComponent.SPLIT_DEFAULT_PERCENT}%`;
     }
     return `${this.splitPercent}%`;
+  }
+
+  protected slotFlexBasis(slotIndex: number): string | null {
+    if (this.resolvedPresentation() !== 'fullscreen' || !this.isCompactViewport()) return null;
+    return `${slotIndex === 0 ? this.splitPercent : 100 - this.splitPercent}%`;
   }
 
   protected isSplitEnabled(): boolean {
@@ -375,6 +404,12 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   protected onSplitHandleTouchStart(event: TouchEvent, splitContainerElement: HTMLElement): void {
+    // Modern touch browsers already started a captured pointer drag. Do not
+    // replace it with the duplicate, scroll-blocking touch event stream.
+    if (this.isResizing && this.splitPointerId !== null) {
+      event.stopPropagation();
+      return;
+    }
     if (!this.isSplitEnabled() || !splitContainerElement) {
       return;
     }
@@ -508,7 +543,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private isCompactViewport(): boolean {
-    return typeof globalThis.innerWidth === 'number' && globalThis.innerWidth <= 760;
+    return this.compactViewport;
   }
 
   private updateSplitFromDragDelta(clientX: number): void {
@@ -543,10 +578,12 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.dragListenersBound || typeof globalThis.addEventListener !== 'function') {
       return;
     }
-    globalThis.addEventListener('pointermove', this.onWindowPointerMove);
+    // A divider drag belongs to this card, not the list's scroll/swipe handlers.
+    // Consume moves before Angular's ancestor listeners schedule a page render.
+    globalThis.addEventListener('pointermove', this.onWindowPointerMove, true);
     globalThis.addEventListener('pointerup', this.onWindowPointerUp);
     globalThis.addEventListener('pointercancel', this.onWindowPointerCancel);
-    globalThis.addEventListener('touchmove', this.onWindowTouchMove, { passive: false });
+    globalThis.addEventListener('touchmove', this.onWindowTouchMove, { passive: false, capture: true });
     globalThis.addEventListener('touchend', this.onWindowTouchEnd);
     globalThis.addEventListener('touchcancel', this.onWindowTouchCancel);
     this.dragListenersBound = true;
@@ -556,10 +593,10 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (!this.dragListenersBound || typeof globalThis.removeEventListener !== 'function') {
       return;
     }
-    globalThis.removeEventListener('pointermove', this.onWindowPointerMove);
+    globalThis.removeEventListener('pointermove', this.onWindowPointerMove, true);
     globalThis.removeEventListener('pointerup', this.onWindowPointerUp);
     globalThis.removeEventListener('pointercancel', this.onWindowPointerCancel);
-    globalThis.removeEventListener('touchmove', this.onWindowTouchMove);
+    globalThis.removeEventListener('touchmove', this.onWindowTouchMove, true);
     globalThis.removeEventListener('touchend', this.onWindowTouchEnd);
     globalThis.removeEventListener('touchcancel', this.onWindowTouchCancel);
     this.dragListenersBound = false;

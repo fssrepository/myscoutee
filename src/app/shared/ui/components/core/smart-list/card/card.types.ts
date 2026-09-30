@@ -132,6 +132,7 @@ export interface SingleCardData {
   rowId: string;
   groupLabel?: string | null;
   slides: readonly CardImageSlide[];
+  guideImageSwitch?: boolean;
   statusBadgeLabel?: string | null;
   profileView?: CardProfileViewData | null;
   stackClasses?: readonly string[];
@@ -150,6 +151,7 @@ export interface PairCardData {
   rowId: string;
   groupLabel?: string | null;
   slots: readonly PairCardSlot[];
+  guideImageSwitch?: boolean;
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
   presentation?: CardPresentation;
@@ -171,6 +173,7 @@ export interface InfoCardOverlayAccessory {
 }
 
 export interface InfoCardOverlayAction {
+  guideFieldId?: string | null;
   actionId?: CardMenuActionId | null;
   actionTone?: CardMenuActionTone | null;
   variant?: InfoCardOverlayVariant;
@@ -398,6 +401,7 @@ export interface ImageCardStatusChip {
 }
 
 export interface ImageCardMediaAction {
+  guideFieldId?: string;
   id: string;
   icon: string;
   selectedIcon?: string | null;

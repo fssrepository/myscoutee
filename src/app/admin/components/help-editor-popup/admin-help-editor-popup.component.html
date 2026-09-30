@@ -41,6 +41,16 @@
                               </span>
                             </div>
                             <div class="help-editor-revision-actions help-editor-draft-header-actions">
+                              @if (documentKind === 'explanation' && editDraft.contextKey === 'activities.rates') {
+                                <button type="button" class="help-editor-presentation-toggle"
+                                  [class.is-tour]="editDraft.presentation === 'tour'"
+                                  [attr.aria-pressed]="editDraft.presentation === 'tour'"
+                                  (click)="toggleDraftPresentation($event)">
+                                  <mat-icon>{{ editDraft.presentation === 'tour' ? 'lightbulb' : 'article' }}</mat-icon>
+                                  <span>{{ editDraft.presentation === 'tour' ? uiText('Small guide') : uiText('Full guide') }}</span>
+                                  <span class="help-editor-presentation-switch" aria-hidden="true"></span>
+                                </button>
+                              }
                               <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="saving">
                                 @if (saving) {
                                   <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
@@ -170,7 +180,14 @@
                                       required
                                       [attr.aria-label]="sectionTitleAriaLabel()"
                                     />
-                                    @if (documentKind === 'explanation') {
+                                    @if (documentKind === 'explanation' && editDraft.presentation === 'tour' && editDraft.contextKey === 'activities.rates') {
+                                      <app-menu class="help-editor-guide-field-menu" kind="select"
+                                        [trigger]="guideFieldTrigger(section)"
+                                        [model]="guideFieldModel(section)"
+                                        panelAlign="end" [closeOnSelect]="true"
+                                        (itemSelect)="onGuideFieldSelect(section, $event)"></app-menu>
+                                    }
+                                    @if (documentKind === 'explanation' && editDraft.presentation !== 'tour') {
                                       <div class="help-editor-panel-span-toggle" role="group" aria-label="Panel grid span">
                                         @for (option of panelSpanOptions; track option.value) {
                                           <button
@@ -307,6 +324,15 @@
                           }
                         </button>
                         <div class="help-editor-revision-actions">
+                          @if (documentKind === 'explanation') {
+                            <button type="button" class="help-editor-presentation-toggle is-readonly"
+                              [class.is-tour]="revision.presentation === 'tour'"
+                              [disabled]="true" aria-disabled="true">
+                              <mat-icon>{{ revision.presentation === 'tour' ? 'lightbulb' : 'article' }}</mat-icon>
+                              <span>{{ revision.presentation === 'tour' ? uiText('Small guide') : uiText('Full guide') }}</span>
+                              <span class="help-editor-presentation-switch" aria-hidden="true"></span>
+                            </button>
+                          }
                           <button
                             type="button"
                             class="help-editor-icon-btn"

@@ -6,6 +6,7 @@
             <section class="profile-view-card-stage">
               <article
                 class="profile-view-card"
+                data-guide-field="profile-card"
                 [class.has-photo]="!!activePhoto()"
                 [ngClass]="avatarClass(profile)"
                 [style.backgroundImage]="activePhoto() ? 'url(' + activePhoto() + ')' : null"
@@ -19,7 +20,7 @@
                       <span [class.active]="index === activePhotoIndex()"></span>
                     }
                   </div>
-                  <div class="profile-view-card-hit-area">
+                  <div class="profile-view-card-hit-area" data-guide-field="profile-photo-switch">
                     @for (photo of photos(); track trackPhoto($index, photo); let index = $index) {
                       <button
                         type="button"
@@ -45,7 +46,7 @@
               </article>
             </section>
 
-            <section #profileDetails tabindex="-1" class="profile-view-section profile-view-section-basics">
+            <section #profileDetails tabindex="-1" class="profile-view-section profile-view-section-basics" data-guide-field="profile-details">
               <header class="profile-view-section-header">
                 <h3>Basics</h3>
               </header>
@@ -68,7 +69,7 @@
               </div>
             </section>
 
-          <section class="profile-view-section profile-view-section-about">
+          <section class="profile-view-section profile-view-section-about" data-guide-field="profile-about">
             <header class="profile-view-section-header">
               <h3>About</h3>
             </header>
@@ -86,7 +87,7 @@
           </section>
 
           @for (group of detailGroups(); track trackGroup($index, group)) {
-            <section class="profile-view-section" [ngClass]="detailGroupClass(group.title)">
+            <section class="profile-view-section" data-guide-field="profile-detail-groups" [ngClass]="detailGroupClass(group.title)">
               <header class="profile-view-section-header">
                 <h3>{{ group.title }}</h3>
               </header>
@@ -112,7 +113,7 @@
             </section>
           }
 
-          <section class="profile-view-section profile-view-section-experience">
+          <section class="profile-view-section profile-view-section-experience" data-guide-field="profile-experience">
             <header class="profile-view-section-header">
               <h3>Experience</h3>
             </header>

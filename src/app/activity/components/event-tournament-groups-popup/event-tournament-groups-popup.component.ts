@@ -6,6 +6,7 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  OnDestroy,
   effect,
   inject
 } from '@angular/core';
@@ -20,6 +21,7 @@ import { of } from 'rxjs';
 import {
   ActivityResourceBuilder,
   ActivityResourcesService,
+  ExplanationGuideService,
   EventsService
 } from '../../../shared/core';
 import type * as AppDTOs from '../../../shared/core/contracts';
@@ -170,7 +172,7 @@ interface FifaRow {
   styleUrl: './event-tournament-groups-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventTournamentGroupsPopupComponent {
+export class EventTournamentGroupsPopupComponent implements OnDestroy {
   private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
@@ -181,6 +183,8 @@ export class EventTournamentGroupsPopupComponent {
   private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
 
   protected state: ContractTypes.EventTournamentGroupsStateDTO | null = null;
   protected selectedStageId: string | null = null;
@@ -244,6 +248,13 @@ export class EventTournamentGroupsPopupComponent {
   };
 
   constructor() {
+    effect(() => {
+      if (this.eventSubeventsStore.eventTournamentGroupsPopup()) {
+        this.unregisterExplanationContext ??= this.explanationGuide.registerContext('event.tournament.groups');
+      } else {
+        this.clearExplanationContext();
+      }
+    });
     effect(() => {
       const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
       if (!request) {
@@ -384,6 +395,15 @@ export class EventTournamentGroupsPopupComponent {
       selectedStageId: this.selectedStageId,
       openGroupIds: this.openGroupIds
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearExplanationContext();
+  }
+
+  private clearExplanationContext(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
   }
 
   protected tournamentGroupsPopupModel(vm: EventTournamentGroupsPopupModel): PopupModel<unknown> {

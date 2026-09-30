@@ -50,7 +50,7 @@ export class ImageGalleryPopupComponent {
       headerPalette: 'slate',
       mobilePresentation: 'fullscreen',
       showClose: !this.store.saving(),
-      headerActions: !gallery?.readOnly && gallery?.onSave ? [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.store.invalid() ? 'danger' : 'success',
+      headerActions: !gallery?.readOnly && gallery?.onSave ? [{ id: 'save', guideFieldId: 'image-gallery-save', icon: 'check', ariaLabel: 'save', palette: this.store.invalid() ? 'danger' : 'success',
         disabled: this.store.saving() || this.store.uploading() || this.store.invalid() || !gallery.images.length }] : [],
       onAction: () => { if (gallery) void this.store.save(gallery.token); },
       onClose: () => this.store.close(gallery?.token)

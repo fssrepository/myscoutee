@@ -8,6 +8,7 @@
           }
           <app-smart-list
             #eventFeedbackSmartList
+            data-guide-field="feedback-list"
             class="event-feedback-list-surface"
             [config]="eventFeedbackSmartListConfig"
             [loadPage]="eventFeedbackSmartListLoadPage"
@@ -21,10 +22,12 @@
               [class.is-feedbacked]="item.status === 'feedbacked'"
               [class.is-removed]="item.status === 'removed'"
               [class.is-own-event]="item.status === 'own-event'"
+              [attr.data-guide-field]="item.mediaEnd?.interactive === false ? 'card-badge-end' : null"
               >
               <app-info-card
                 [card]="item"
                 [useSharedMenuTrigger]="true"
+                [sharedMenuGuideField]="'card-actions'"
                 [sharedMenuContext]="{ menu: 'info-card', card: item }"
                 (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
                 (menuAction)="onEventFeedbackCardMenuAction(item, $event)"

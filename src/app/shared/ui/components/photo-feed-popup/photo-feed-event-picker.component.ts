@@ -13,9 +13,9 @@ import { SmartListComponent, InfoCardComponent, type InfoCardData, type SmartLis
   imports: [PopupComponent, SmartListComponent, InfoCardComponent],
   template: `
     <app-popup [model]="popupModel()">
-      <app-smart-list [config]="config" [loadPage]="loadPage" [itemTemplate]="eventTemplate"></app-smart-list>
+      <app-smart-list data-guide-field="image-event-options" [config]="config" [loadPage]="loadPage" [itemTemplate]="eventTemplate"></app-smart-list>
       <ng-template #eventTemplate let-option>
-        <app-info-card [card]="card(option)" (mediaEndClick)="selected.set(option.event)"></app-info-card>
+        <app-info-card data-guide-field="image-event-option" [card]="card(option)" (mediaEndClick)="selected.set(option.event)"></app-info-card>
       </ng-template>
     </app-popup>
   `
@@ -46,13 +46,13 @@ export class PhotoFeedEventPickerComponent {
     return { id: option.event.id, title: option.event.title, imageUrl: option.imageUrl,
       metaRows: [option.event.organizerName, option.event.location],
       dateIso: option.startAtIso, clickable: false, i18nIgnoreContent: true,
-      mediaEnd: { variant: 'badge', tone: 'public', icon: selected ? 'check' : 'add', selected,
+      mediaEnd: { variant: 'toggle', guideFieldId: 'image-event-select', tone: 'public', icon: 'add', selectedIcon: 'check', selected,
         ariaLabel: selected ? 'feed.event.selected' : 'feed.event.select', interactive: true } };
   }
   protected popupModel(): PopupModel {
     return { title: 'feed.event.select', size: 'wide', height: 'full', bodyLayout: 'fill',
       mobilePresentation: 'fullscreen', backdropTone: 'dim', headerLayout: 'document',
-      headerActions: [{ id: 'select', icon: 'check', counter: this.selected() ? 1 : null,
+      headerActions: [{ id: 'select', guideFieldId: 'image-event-confirm', icon: 'check', counter: this.selected() ? 1 : null,
         ariaLabel: 'feed.event.confirm', palette: 'success', disabled: !this.selected() }],
       onAction: () => { if (this.selected()) this.picked.emit(this.selected()); },
       onClose: () => this.picked.emit(null) };

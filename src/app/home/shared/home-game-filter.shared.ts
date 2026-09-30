@@ -156,28 +156,13 @@ export function isGameFilterActive(
   filter: GameFilterForm,
   activeUser?: Pick<UserDto, 'age' | 'height'> | null
 ): boolean {
-  const baseline = createInitialGameFilter(activeUser);
-  return (
-    filter.ageMin !== baseline.ageMin ||
-    filter.ageMax !== baseline.ageMax ||
-    filter.heightMinCm !== baseline.heightMinCm ||
-    filter.heightMaxCm !== baseline.heightMaxCm ||
-    filter.interests.length > 0 ||
-    filter.values.length > 0 ||
-    filter.physiques.length > 0 ||
-    filter.languages.length > 0 ||
-    filter.genders.length > 0 ||
-    filter.horoscopes.length > 0 ||
-    filter.traitLabels.length > 0 ||
-    filter.smoking.length > 0 ||
-    filter.drinking.length > 0 ||
-    filter.workout.length > 0 ||
-    filter.pets.length > 0 ||
-    filter.familyPlans.length > 0 ||
-    filter.children.length > 0 ||
-    filter.loveStyles.length > 0 ||
-    filter.communicationStyles.length > 0 ||
-    filter.sexualOrientations.length > 0 ||
-    filter.religions.length > 0
-  );
+  return countGameFilterSelections(filter) > 0;
+}
+
+/** Each selected option counts once; each narrowed range counts as one filter. */
+export function countGameFilterSelections(filter: GameFilterForm): number {
+  const age = filter.ageMin !== GAME_FILTER_AGE_MIN || filter.ageMax !== GAME_FILTER_AGE_MAX;
+  const height = filter.heightMinCm !== GAME_FILTER_HEIGHT_MIN_CM || filter.heightMaxCm !== GAME_FILTER_HEIGHT_MAX_CM;
+  return Number(age) + Number(height)
+    + Object.values(filter).reduce((count: number, value) => count + (Array.isArray(value) ? value.length : 0), 0);
 }

@@ -1,3 +1,6 @@
+import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
 import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
 import {
   NgComponentOutlet
@@ -127,8 +130,10 @@ interface EntryDemoNewProfileRequestEvent {
 
 @Component({
   selector: 'app-entry-page',
+  providers: [{ provide: ExplanationGuideService, useFactory: () => inject(LANDING_EXPLANATION_GUIDE) }],
   standalone: true,
   imports: [
+    ExplanationLauncherComponent,
     NgComponentOutlet,
     EntryLandingComponent,
     DocumentViewerComponent,
@@ -161,6 +166,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly landingContent = inject(LandingContentService);
+  private readonly landingGuide = inject(LANDING_EXPLANATION_GUIDE);
   private readonly dialogStore = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
@@ -226,6 +232,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly affiliateReferral = inject(AffiliateReferralService);
 
   ngOnInit(): void {
+    this.landingGuide.beginVisit();
     this.syncMobileView();
     this.queryParamSubscription = this.route.queryParamMap.subscribe(queryParams => {
       this.affiliateReferral.capture(queryParams.get('affiliate'));

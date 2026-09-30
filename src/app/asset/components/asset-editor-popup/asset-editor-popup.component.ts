@@ -4,6 +4,8 @@ import {
 } from '@angular/common';
 import {
   Component,
+  OnDestroy,
+  effect,
   inject
 } from '@angular/core';
 import {
@@ -20,6 +22,7 @@ import {
 } from '../../../shared/core/base/builders';
 import {
   AssetsService,
+  ExplanationGuideService,
   I18nService
 } from '../../../shared/core';
 import {
@@ -99,15 +102,18 @@ type AssetEditorFlowValue = AssetFormState & {
   templateUrl: './asset-editor-popup.component.html',
   styleUrl: './asset-editor-popup.component.scss'
 })
-export class AssetEditorPopupComponent {
+export class AssetEditorPopupComponent implements OnDestroy {
   protected readonly environment = environment;
   private static readonly RUNTIME_ROUTE_SAVE_MINIMUM_MS = 520;
 
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly assetsService = inject(AssetsService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly i18n = inject(I18nService);
   protected readonly assetStore = inject(AssetStore);
+  private unregisterAssetEditorExplanationContext: (() => void) | null = null;
+  private assetEditorExplanationContextKey: string | null = null;
   protected readonly assetVisibilityOptions = APP_STATIC_DATA.eventVisibilityOptions;
   private assetImageUrlsCacheKey = '';
   private assetImageUrlsCache: string[] = [];
@@ -165,6 +171,33 @@ export class AssetEditorPopupComponent {
       onToggle: policyId => this.toggleCheckoutPolicy(policyId)
     }
   };
+
+  constructor() {
+    effect(() => {
+      const open = this.assetStore.showAssetForm();
+      const checkout = this.assetStore.assetFormCheckout();
+      if (open) {
+        const contextKey = checkout ? 'assets.checkout' : 'assets';
+        if (this.assetEditorExplanationContextKey !== contextKey) {
+          this.clearAssetEditorExplanationContext();
+          this.assetEditorExplanationContextKey = contextKey;
+          this.unregisterAssetEditorExplanationContext = this.explanationGuide.registerContext(contextKey);
+        }
+      } else {
+        this.clearAssetEditorExplanationContext();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.clearAssetEditorExplanationContext();
+  }
+
+  private clearAssetEditorExplanationContext(): void {
+    this.unregisterAssetEditorExplanationContext?.();
+    this.unregisterAssetEditorExplanationContext = null;
+    this.assetEditorExplanationContextKey = null;
+  }
 
   protected get assetForm(): AssetFormState {
     return this.assetStore.assetForm();

@@ -57,7 +57,8 @@ function helpCenterState(): HelpCenterStateDto {
     activeRevision: null,
     revisions: [],
     auditTrail: [],
-    availableLanguages: []
+    availableLanguages: [],
+    guideFields: []
   };
 }
 

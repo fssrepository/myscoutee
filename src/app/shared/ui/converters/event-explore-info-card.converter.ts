@@ -153,7 +153,10 @@ export class EventExploreInfoCardConverter {
   }
 
   private static creatorInitials(record: ActivityEventRecord): string {
-    return record.creatorInitials || AppUtils.initialsFromText(record.creatorName || record.title);
+    const source = `${record.creatorInitials ?? ''}`.trim()
+      || `${record.creatorName ?? ''}`.trim()
+      || record.title;
+    return AppUtils.initialsFromText(source);
   }
 
   private static membersLabel(record: ActivityEventRecord): string {

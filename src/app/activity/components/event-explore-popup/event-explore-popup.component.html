@@ -3,6 +3,7 @@
     <div class="event-explore-popup">
       <app-smart-list
         #eventExploreSmartList
+        data-guide-field="event-list"
         [config]="eventExploreSmartListConfig"
         [loadPage]="eventExploreLoadPage"
         [itemTemplate]="eventExploreItemTemplateRef ?? null"
@@ -12,6 +13,7 @@
       @if (checkoutDraftCount() > 0) {
         <app-menu
           class="event-explore-basket-menu"
+          data-guide-control="checkout-draft"
           kind="fab"
           title="Basket"
           [trigger]="checkoutDraftMenuTrigger()"
@@ -24,6 +26,7 @@
       <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
         <app-info-card
           [card]="eventExploreInfoCard(record, groupLabel)"
+          [attr.data-guide-menu-items]="eventExploreGuideMenuIds(record, groupLabel)"
           [useSharedMenu]="true"
           (selectionChange)="chatShare.toggle(shareItem(record))"
           (mediaStartClick)="openHostProfile(record)"

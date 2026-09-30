@@ -239,9 +239,9 @@ export class LocalEventsRepository {
   private queryEventRecordsByFilter(
     userId: string,
     filter: ActivityEventScopeFilter,
-    hostingPublicationFilter: 'all' | 'drafts' = 'all'
+    hostingPublicationFilter: 'all' | 'drafts' = 'all',
+    userItems: ActivityEventRecord[] = this.queryUserRecords(userId)
   ): ActivityEventRecord[] {
-    const userItems = this.queryUserRecords(userId);
     const memberEventItems = userItems
       .filter(record => !this.isEventAdminRecord(record, userId))
       .filter(record => !this.isInvitationRecordForUser(record, userId))
@@ -2325,18 +2325,18 @@ export class LocalEventsRepository {
         event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, watchlist: 0, trash: 0 }
       };
     }
-    const invitations = this.queryInvitationItemsByUser(normalizedUserId).length;
-    const hostingItems = this.queryHostingItemsByUser(normalizedUserId)
-      .filter(record => this.normalizeEventStatus(record.status) !== 'T');
-    const memberItems = this.queryEventItemsByUser(normalizedUserId)
-      .filter(record => this.normalizeEventStatus(record.status) !== 'T');
-    const pending = memberItems.filter(record =>
-      (record.pendingRequestMemberUserIds ?? []).some(memberId => memberId.trim() === normalizedUserId)
-      || (record.pendingMemberUserIds ?? []).some(memberId => memberId.trim() === normalizedUserId)
-    ).length;
-    const active = this.countUpcomingActiveEventItemsByUser(normalizedUserId);
+    const userItems = this.queryUserRecords(normalizedUserId);
+    const now = Date.now();
+    const currentItems = userItems.filter(record => this.resolveActivitiesEndTimestamp(record) > now);
+    const scope = (filter: ActivityEventScopeFilter) =>
+      this.queryEventRecordsByFilter(normalizedUserId, filter, 'all', currentItems);
+    const invitations = scope('invitations').length;
+    const hostingItems = scope('my-events');
+    const pending = scope('pending').length;
+    const active = scope('active-events').length;
     const hosting = hostingItems.length;
-    const watchlist = this.queryUserRecords(normalizedUserId)
+    const all = new Set(scope('all').map(record => record.id)).size;
+    const watchlist = userItems
       .filter(record => record.watched === true && !this.isTrashStatus(record))
       .length;
     return {
@@ -2344,7 +2344,7 @@ export class LocalEventsRepository {
       invitations,
       hosting,
       event: {
-        all: active + pending + invitations + hosting,
+        all,
         active,
         pending,
         invitations,

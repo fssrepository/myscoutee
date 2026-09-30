@@ -29,7 +29,9 @@ import * as AppConstants from '../../../shared/core/common/constants';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
+  HelpCenterGuideFieldDto,
   HelpCenterHeaderColor,
+  HelpCenterPresentation,
   HelpCenterRevisionDto,
   HelpCenterSectionPanelSpan,
   HelpCenterSectionDto,
@@ -92,6 +94,7 @@ interface HelpEditorSectionDraft {
   imageUrls: string[];
   panelSpan: HelpCenterSectionPanelSpan;
   optional: boolean;
+  guideStepId: string | null;
   mode: EditorTab;
 }
 
@@ -102,8 +105,11 @@ interface HelpEditorRevisionDraft {
   summary: string;
   description: string;
   headerColor: HelpCenterHeaderColor;
+  presentation: HelpCenterPresentation;
   sections: HelpEditorSectionDraft[];
 }
+
+type RatingGuideField = HelpCenterGuideFieldDto;
 
 interface HelpEditorRevisionRow {
   id: string;
@@ -458,13 +464,16 @@ export class AdminHelpEditorPopupComponent {
           adminUserId,
           this.documentKind,
           this.selectedContentLang,
-          this.documentKind === 'explanation' ? null : this.selectedExplanationContextKey
+          this.documentKind === 'explanation' ? this.selectedExplanationContextKey : null
         )
       ];
       if (this.documentKind !== 'explanation') {
         stateLoads.push(this.helpCenter.loadAdminState(adminUserId, 'explanation', this.selectedContentLang, null));
       }
-      await Promise.all(stateLoads);
+      await Promise.all([
+        ...stateLoads,
+        this.i18n.ensureLanguageLoaded(this.selectedContentLang)
+      ]);
       this.selectInitialRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.loadErrorLabel();
@@ -852,6 +861,7 @@ export class AdminHelpEditorPopupComponent {
       imageUrls: [],
       panelSpan: 'span-1',
       optional: false,
+      guideStepId: null,
       mode: 'html'
     };
     this.draft.sections = [...this.draft.sections, next];
@@ -1038,6 +1048,71 @@ export class AdminHelpEditorPopupComponent {
     this.selectIcon(section, icon, event.sourceEvent);
   }
 
+  protected toggleDraftPresentation(event: Event): void {
+    event.stopPropagation();
+    if (this.draft && !this.saving) {
+      this.draft.presentation = this.draft.presentation === 'tour' ? 'document' : 'tour';
+    }
+  }
+
+  protected guideFieldTrigger(section: HelpEditorSectionDraft): AppMenuTrigger {
+    const field = this.guideFieldsForDraft().find(value => value.id === section.guideStepId);
+    return {
+      id: `guide-field:${section.localId}`,
+      icon: 'ads_click',
+      label: field ? this.guideFieldLabel(field) : this.uiText('Guide step'),
+      ariaLabel: this.uiText('Guide step'),
+      layout: 'pill',
+      palette: 'violet'
+    };
+  }
+
+  protected guideFieldModel(section: HelpEditorSectionDraft): AppMenuModel<string, { stepId: string | null }> {
+    const pageFields = this.guideFieldsForDraft();
+    const groups: Array<{ id: RatingGuideField['group']; label: string; icon: string }> = [
+      { id: 'menus', label: this.uiText('Menus'), icon: 'menu' },
+      { id: 'ratings', label: this.uiText('Ratings'), icon: 'star' },
+      { id: 'order', label: this.uiText('Order'), icon: 'sort' },
+      { id: 'view', label: this.uiText('View'), icon: 'view_module' },
+      { id: 'card', label: this.uiText('Card'), icon: 'credit_card' },
+      { id: 'popup', label: this.uiText('Popup'), icon: 'web_asset' }
+    ];
+    return {
+      layout: 'tabs', density: 'compact', maxSelected: 1,
+      groups: groups.map(group => ({
+        ...group,
+        items: pageFields.filter(field => field.group === group.id).map(field => ({
+          id: field.id,
+          kind: 'radio' as const,
+          label: this.guideFieldLabel(field),
+          description: this.guideFieldDescription(field),
+          icon: group.icon,
+          checked: section.guideStepId === field.id,
+          closeOnSelect: true,
+          context: { stepId: field.id }
+        }))
+      }))
+    };
+  }
+
+  protected onGuideFieldSelect(section: HelpEditorSectionDraft, event: AppMenuItemSelectEvent<string, { stepId: string | null }>): void {
+    section.guideStepId = event.context?.stepId ?? null;
+  }
+
+  private guideFieldLabel(field: RatingGuideField): string {
+    return this.i18n.translateForLanguage(`${field.i18nKey}.label`, this.selectedContentLang);
+  }
+
+  private guideFieldDescription(field: RatingGuideField): string {
+    return this.i18n.translateForLanguage(`${field.i18nKey}.description`, this.selectedContentLang);
+  }
+
+  private guideFieldsForDraft(): readonly RatingGuideField[] {
+    const state = this.helpCenter.explanationState();
+    const key = this.draft?.contextKey ?? this.selectedExplanationContextKey;
+    return (state?.guideFields ?? []).filter(field => field.screenKey === key);
+  }
+
   protected async saveDraft(event?: Event): Promise<void> {
     event?.preventDefault();
     event?.stopPropagation();
@@ -1057,6 +1132,7 @@ export class AdminHelpEditorPopupComponent {
       summary: this.draft.summary,
       description: this.draft.description,
       headerColor: this.draft.headerColor,
+      presentation: this.documentKind === 'explanation' ? this.draft.presentation : 'document',
       sections: this.toSections(this.draft.sections)
     };
     this.saving = true;
@@ -1477,6 +1553,7 @@ export class AdminHelpEditorPopupComponent {
       summary: revision.summary,
       description: revision.description?.trim() || this.defaultDescription(),
       headerColor: this.normalizeHeaderColor(revision.headerColor),
+      presentation: revision.presentation === 'tour' ? 'tour' : 'document',
       sections: revision.sections.map(section => ({
         localId: this.newLocalId(),
         id: section.id?.trim() ?? '',
@@ -1487,6 +1564,7 @@ export class AdminHelpEditorPopupComponent {
         imageUrls: this.normalizeSectionImageUrls(section.imageUrls),
         panelSpan: this.sectionPanelSpan(section) ?? 'span-1',
         optional: section.optional === true,
+        guideStepId: section.guideStepId ?? null,
         mode: 'html'
       }))
     };
@@ -1503,6 +1581,7 @@ export class AdminHelpEditorPopupComponent {
       summary: '',
       description: '',
       headerColor: this.documentKind === 'explanation' ? 'violet' : 'amber',
+      presentation: this.documentKind === 'explanation' ? 'tour' : 'document',
       sections: [
         {
           localId: this.newLocalId(),
@@ -1514,6 +1593,7 @@ export class AdminHelpEditorPopupComponent {
           imageUrls: [],
           panelSpan: 'span-1',
           optional: false,
+          guideStepId: null,
           mode: 'html'
         }
       ]
@@ -1540,7 +1620,8 @@ export class AdminHelpEditorPopupComponent {
           contentHtml: this.withoutSectionLayoutMarkers(draft.contentHtml).trim(),
           imageUrls: this.normalizeSectionImageUrls(draft.imageUrls),
           panelSpan: this.normalizeSectionPanelSpan(draft.panelSpan) ?? 'span-1',
-          optional: this.documentKind === 'privacy' && draft.optional === true
+          optional: this.documentKind === 'privacy' && draft.optional === true,
+          guideStepId: this.documentKind === 'explanation' ? draft.guideStepId : null
         };
       })
       .filter(section => section.contentHtml.length > 0);

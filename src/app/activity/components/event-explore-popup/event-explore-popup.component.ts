@@ -8,6 +8,7 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  OnDestroy,
   TemplateRef,
   ViewChild,
   effect,
@@ -44,6 +45,7 @@ import {
   ActivityMembersBuilder,
   ActivityMembersService,
   ActivitiesService,
+  ExplanationGuideService,
   EventsService,
   GameService,
   UsersService,
@@ -147,7 +149,7 @@ type EventExploreMenuContext =
   providers: [AppMenuDispatcher],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventExplorePopupComponent {
+export class EventExplorePopupComponent implements OnDestroy {
   protected readonly followingStore = inject(FollowingStore);
   private requestedFollowedOnly = false;
 
@@ -192,6 +194,9 @@ export class EventExplorePopupComponent {
   private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
+  private registeredExplanationContextKey: string | null = null;
   protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: ContractTypes.EventExploreView = 'day';
   protected readonly eventExploreFilters = signal<EventExploreFilterPreferences>({
@@ -239,6 +244,25 @@ export class EventExplorePopupComponent {
 
   private applyFilters(filters: EventExploreFilterPreferences): void {
     this.eventExploreFilters.set({ ...filters });
+    this.syncExplanationContext();
+  }
+
+  private syncExplanationContext(): void {
+    const contextKey = this.isOpen
+      ? (this.eventExploreFilters().followedOnly ? 'events.followed' : 'event.explore')
+      : null;
+    if (contextKey === this.registeredExplanationContextKey) return;
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = contextKey
+      ? this.explanationGuide.registerContext(contextKey)
+      : null;
+    this.registeredExplanationContextKey = contextKey;
+  }
+
+  ngOnDestroy(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+    this.registeredExplanationContextKey = null;
   }
 
   protected eventExploreHeaderProgress = 0;
@@ -366,6 +390,7 @@ export class EventExplorePopupComponent {
       this.activeUserId = nextActiveUserId;
       this.exploreOpenRevision++;
       this.isOpen = false;
+      this.syncExplanationContext();
       this.filterPopup = null;
       this.preferencesRequest = null;
       this.preferencesReady.set(false);
@@ -507,6 +532,7 @@ export class EventExplorePopupComponent {
     if (this.filterPopup) return;
     this.exploreOpenRevision++;
     this.isOpen = false;
+    this.syncExplanationContext();
     this.closeEventExploreSubeventsPopup();
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -635,13 +661,19 @@ export class EventExplorePopupComponent {
       id: menuId,
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
-      items: this.infoCardMenuItems(record, request),
+      items: this.infoCardMenuItems(record, request.card, request.actions ?? []),
       triggerRect: request.triggerRect,
       openUp: request.openUp,
       panelAlign: 'auto',
       closeOnSelect: true,
       onClose: request.closeTrigger
     }, null);
+  }
+
+  protected eventExploreGuideMenuIds(record: ActivityEventRecord, groupLabel: string): string {
+    const card = this.eventExploreInfoCard(record, groupLabel);
+    return this.infoCardMenuItems(record, card, card.menuActions ?? [])
+      .map(item => item.id).join('\n');
   }
 
   private infoCardMenuTitle(card: InfoCardData): string | null {
@@ -653,7 +685,8 @@ export class EventExplorePopupComponent {
 
   private infoCardMenuItems(
     record: ActivityEventRecord,
-    request: CardMenuRequestEvent<InfoCardData>
+    card: InfoCardData,
+    actionIds: readonly string[]
   ): readonly AppMenuItem<string, EventExploreMenuContext>[] {
     const followed = this.followingStore.state().organizerIds.includes(record.creatorUserId);
     const followingAction: AppMenuItem<string, EventExploreMenuContext> = {
@@ -661,7 +694,7 @@ export class EventExplorePopupComponent {
       icon: followed ? 'remove_circle_outline' : 'rss_feed', palette: 'cyan', surface: 'tinted',
       context: { menu: 'following', record, followed: !followed }
     };
-    return [followingAction, ...(request.actions ?? []).flatMap<AppMenuItem<string, EventExploreMenuContext>>(actionId => {
+    return [followingAction, ...actionIds.flatMap<AppMenuItem<string, EventExploreMenuContext>>(actionId => {
       const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
@@ -680,7 +713,7 @@ export class EventExplorePopupComponent {
         context: {
           menu: 'info-card',
           record,
-          card: request.card,
+          card,
           action
         }
       }];
@@ -1690,6 +1723,7 @@ export class EventExplorePopupComponent {
     this.preferencesRequest = null;
     this.preferencesReady.set(false);
     this.isOpen = true;
+    this.syncExplanationContext();
     this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
     this.closeMembersPopup();

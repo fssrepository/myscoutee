@@ -10,6 +10,7 @@ import {
   OnChanges,
   AfterViewInit,
   OnDestroy,
+  inject,
   signal,
   Output,
   SimpleChanges
@@ -17,6 +18,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile-form-flow.converter';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import {
   AppMenuComponent,
   FormFlowComponent,
@@ -74,6 +76,8 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
   protected filterDraft!: GameFilterForm;
   protected readonly preparing = signal(true);
   private cancelPreparation: (() => void) | null = null;
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
   private cachedProfileFieldMenus: Map<string, FormFlowMenuControlConfig> | null = null;
   private readonly menuModels = new Map<GameFilterMenuKind, {
     selected: string[];
@@ -98,6 +102,8 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
 
   ngOnDestroy(): void {
     this.cancelPreparation?.();
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
   }
 
   private readonly profileFieldIds: Partial<Record<GameFilterMenuKind, string>> = {
@@ -127,9 +133,16 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
   ];
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (!changes['context'] || !this.context) {
+    if (!changes['context']) {
       return;
     }
+    if (this.context) {
+      this.unregisterExplanationContext ??= this.explanationGuide.registerContext('home.filters');
+    } else {
+      this.unregisterExplanationContext?.();
+      this.unregisterExplanationContext = null;
+    }
+    if (!this.context) return;
     this.filterDraft = cloneGameFilter(this.context.filter);
   }
 

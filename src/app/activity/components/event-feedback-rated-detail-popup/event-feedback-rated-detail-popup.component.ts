@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { EventsService } from '../../../shared/core/base';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
 import {
   EventFeedbackDetailConverter,
@@ -30,7 +31,10 @@ import {
 })
 export class EventFeedbackRatedDetailPopupComponent {
   private readonly eventsService = inject(EventsService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly activitiesPopupStore = inject(ActivitiesPopupStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private unregisterExplanationContext: (() => void) | null = null;
   private loadRevision = 0;
 
   protected readonly session = this.activitiesPopupStore.eventFeedbackRatedDetailSession;
@@ -43,9 +47,19 @@ export class EventFeedbackRatedDetailPopupComponent {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.unregisterExplanationContext?.();
+      this.unregisterExplanationContext = null;
+    });
     effect(() => {
       const session = this.session();
       const revision = ++this.loadRevision;
+      if (session) {
+        this.unregisterExplanationContext ??= this.explanationGuide.registerContext('event.feedback.detail');
+      } else {
+        this.unregisterExplanationContext?.();
+        this.unregisterExplanationContext = null;
+      }
       this.detail.set(null);
       this.loadError.set('');
       if (!session) {

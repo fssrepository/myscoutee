@@ -11,6 +11,7 @@ import type {
 import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
 import { IndicatorComponent } from '../core/indicator';
+import { ExplanationGuideOverlayComponent } from './explanation-guide-overlay.component';
 import {
   PopupComponent,
   type PopupModel
@@ -27,7 +28,7 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 @Component({
   selector: 'app-explanation-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, PopupComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, PopupComponent, ExplanationGuideOverlayComponent],
   templateUrl: './explanation-popup.component.html',
   styleUrl: './explanation-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

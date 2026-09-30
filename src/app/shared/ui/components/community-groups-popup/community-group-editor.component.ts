@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, inject } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PopupComponent, PopupModel } from '../core/popup';
 import { FormFlowComponent, FormFlowModel, FormFlowActionEvent, FormFlowControlModel, FormFlowMenuControlConfig } from '../core/form/flow';
@@ -10,6 +10,7 @@ import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup }
 import { GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE, GROUP_VISIBILITY_STYLE } from '../../converters/community-group.converter';
 import { ProfileFormFlowConverter } from '../../converters/profile-form-flow.converter';
 import { APP_STATIC_DATA } from '../../../app-static-data';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 interface GroupForm extends SaveCommunityGroup { images: string[]; }
 @Component({ selector: 'app-community-group-editor', standalone: true, imports: [FormsModule, PopupComponent, FormFlowComponent, I18nPipe],
   host: { '[class.group-editor--readonly]': 'readOnly' },
@@ -42,23 +43,25 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
   `],
   template: `
     <app-popup [model]="popupModel()" [zIndex]="zIndex">
-      <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="loading || store.busy()" [loading]="loading"
-        [saving]="store.busy()" (action)="action($event)"></app-form-flow>
+        <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="loading || store.busy()" [loading]="loading"
+          [saving]="store.busy()" (action)="action($event)"></app-form-flow>
       @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
     </app-popup>
     @if (policyDraft) {
       <app-popup [model]="policyPopupModel()" [zIndex]="zIndex + 40">
-        <app-form-flow class="group-policy-fields" [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
+        <app-form-flow class="group-policy-fields" data-guide-field="policy-fields" [model]="policyFlowModel()" [(ngModel)]="policyDraft" [disabled]="readOnly"></app-form-flow>
       </app-popup>
     }
   `
 })
-export class CommunityGroupEditorComponent implements OnChanges {
+export class CommunityGroupEditorComponent implements OnChanges, OnInit, OnDestroy {
   @Input() group: CommunityGroup | null = null;
   @Input() readOnly = false;
   @Input() loading = false;
   @Input() zIndex = 1300;
   protected readonly store = inject(CommunityGroupsStore);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
   private readonly i18n = inject(I18nService);
   protected form!: GroupForm;
   protected policyDraft: { fields: string[] } | null = null;
@@ -72,6 +75,16 @@ export class CommunityGroupEditorComponent implements OnChanges {
     return this.profileControl(labelKey)?.required !== true;
   }
   private readonly policyPalettes: readonly AppMenuPalette[] = ['blue', 'green', 'orange', 'violet'];
+  ngOnInit(): void { this.setExplanationContext('community.group.editor'); }
+  ngOnDestroy(): void { this.clearExplanationContext(); }
+  private setExplanationContext(context: string): void {
+    this.clearExplanationContext();
+    this.unregisterExplanationContext = this.explanationGuide.registerContext(context);
+  }
+  private clearExplanationContext(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+  }
   private policyFieldPalette(labelKey: string, groupIndex: number): AppMenuPalette {
     const trigger = (this.profileControl(labelKey)?.config as FormFlowMenuControlConfig)?.trigger;
     return trigger?.palette ?? this.policyPalettes[groupIndex];
@@ -150,15 +163,19 @@ export class CommunityGroupEditorComponent implements OnChanges {
       .map(control => ({ ...control, disabled: this.readOnly && control.id !== 'rules-open' })) })) };
   }
   protected action(event: FormFlowActionEvent): void {
-    if (event.sourceEvent.id === 'rules-open') this.policyDraft = { fields: this.form.policy.requiredFields.filter(key => this.optionalPolicyField(key)) };
+    if (event.sourceEvent.id === 'rules-open') {
+      this.policyDraft = { fields: this.form.policy.requiredFields.filter(key => this.optionalPolicyField(key)) };
+      this.setExplanationContext('community.group.policy');
+    }
     if (event.sourceEvent.id === 'hideMembers' && !this.readOnly) this.form = { ...this.form, hideMembers: !this.form.hideMembers };
   }
   protected policyPopupModel(): PopupModel {
     return { title: 'groups.visibility.rules', size: 'wide', height: 'full', mobilePresentation: 'fullscreen', backdropTone: 'dim',
-      onClose: () => { this.policyDraft = null; }, headerControls: [{ id: 'done', kind: 'menu', menuKind: 'inline', items: [
+      onClose: () => { this.policyDraft = null; this.setExplanationContext('community.group.editor'); }, headerControls: [{ id: 'done', kind: 'menu', menuKind: 'inline', items: [
         { id: 'done', icon: 'done', kind: 'action', palette: 'success', disabled: this.readOnly }
       ] }], onMenuSelect: () => { if (!this.readOnly && this.policyDraft) {
         this.form = { ...this.form, policy: { ...this.form.policy, requiredFields: [...this.policyDraft.fields] } }; this.policyDraft = null;
+        this.setExplanationContext('community.group.editor');
       } } };
   }
   protected policyFlowModel(): FormFlowModel {

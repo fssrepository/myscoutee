@@ -215,3 +215,23 @@ function appMenuSummaryCounter(
   const overflow = selectedCount - maxLabels;
   return overflow > 0 ? `+${overflow}` : null;
 }
+
+/** Current menu inventory for the guide, including items in unopened branches. */
+export function appMenuGuideItemIds(
+  items: readonly AppMenuItem[] = [], model: AppMenuModel | null = null,
+  groups: readonly AppMenuGroup[] = []
+): string {
+  const ids = new Set<string>();
+  const visit = (item: AppMenuItem): void => {
+    const id = item.guideId ?? item.id;
+    if (ids.has(id)) return;
+    ids.add(id);
+    for (const child of item.items ?? []) visit(child);
+    for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+      for (const child of group.items ?? []) visit(child);
+    }
+  };
+  for (const item of items) visit(item);
+  for (const group of appMenuModelGroups(model, groups)) for (const item of group.items ?? []) visit(item);
+  return [...ids].join('\n');
+}

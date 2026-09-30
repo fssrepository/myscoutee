@@ -23,6 +23,7 @@ import {
   AppUtils
 } from '../../../shared/app-utils';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
+import { ExplanationGuideService } from '../../../shared/core';
 import {
   resolveSideMenuPresentation,
   type SideMenuPresentation
@@ -106,6 +107,8 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
 
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly profileStore = inject(ProfileStore);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
   private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
   private readonly pulseFlagsRef = signal<ProfileImpressionsPulseFlags>({
     ...ProfileImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
@@ -237,6 +240,8 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
         : null;
 
       if (!isOpen || !userId) {
+        this.unregisterExplanationContext?.();
+        this.unregisterExplanationContext = null;
         if (this.lastPopupOpen && this.lastTrackedUserId) {
           this.finalizePopupSession(this.lastTrackedUserId);
         }
@@ -247,6 +252,8 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
         this.resetPulseFlags();
         return;
       }
+
+      this.unregisterExplanationContext ??= this.explanationGuide.registerContext('profile.impressions');
 
       if (!this.lastPopupOpen || this.lastTrackedUserId !== userId) {
         if (this.lastPopupOpen && this.lastTrackedUserId && this.lastTrackedUserId !== userId) {
@@ -298,6 +305,8 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
     this.clearPulseTimers();
   }
 

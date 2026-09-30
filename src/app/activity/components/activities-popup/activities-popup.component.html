@@ -1,12 +1,13 @@
 @if (activitiesStore.activitiesOpenBoolean()) {
   <app-popup [model]="activitiesPopupModel()">
     <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" [class.activities-popup-blocked-user]="isBlockedUser" (click)="onActivitiesPopupSurfaceClick($event)">
-      <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
+      <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState" let-imagesEnabled="imagesEnabled">
         @if (row) {
           <app-activities-rate-template
             [row]="row"
             [presentation]="'fullscreen'"
             [state]="renderState"
+            [imagesEnabled]="imagesEnabled !== false"
             [context]="activitiesRateTemplateContext"
             [cardRevision]="activitiesRateCardRevisionForRow(row)"
             (detailClick)="openProfileView($event)"
@@ -15,6 +16,7 @@
       </ng-template>
       <app-smart-list
         #activitiesSmartList
+        data-guide-field="activity-list"
         [config]="activitiesSmartListConfig"
         [loadPage]="activitiesSmartListLoadPage"
         [itemTemplate]="activitiesPrimaryFilter === 'rates'
@@ -34,6 +36,7 @@
       ></app-smart-list>
       <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
         <app-activities-event-template
+          [attr.data-guide-menu-items]="activityEventGuideMenuIds(row)"
           [row]="row"
           [groupLabel]="groupLabel"
           [cardRevision]="activitiesEventCardRevisionForRow(row)"
@@ -57,12 +60,13 @@
           (supportCaseAction)="onSupportCaseAction(sourceItem, $event)"
         ></app-activities-chat-template>
       </ng-template>
-      <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
+      <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu" let-imagesEnabled="imagesEnabled">
         <app-activities-rate-template
           [row]="row"
           [groupLabel]="groupLabel"
           [context]="activitiesRateTemplateContext"
           [openMenu]="openMenu"
+          [imagesEnabled]="imagesEnabled !== false"
           [cardRevision]="activitiesRateCardRevisionForRow(row)"
           (detailClick)="openProfileView($event)"
         ></app-activities-rate-template>

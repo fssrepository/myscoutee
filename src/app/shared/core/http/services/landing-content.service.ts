@@ -17,6 +17,13 @@ export class HttpLandingContentService {
   private readonly ideaPosts = inject(HttpIdeaPostsService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  async loadExplanationState(contextKey: string, language: string): Promise<HelpCenterStateDto> {
+    const response = await this.http.get<HelpCenterStateDto>(`${this.apiBaseUrl}/landing/explanation`, {
+      params: { contextKey, lang: language }
+    }).toPromise();
+    return this.helpCenter.normalizeExternalState(response, 'explanation');
+  }
+
   async loadContent(): Promise<LandingContentStateDto> {
     type LandingContentResponse = {
       privacy?: Partial<HelpCenterStateDto> | null;

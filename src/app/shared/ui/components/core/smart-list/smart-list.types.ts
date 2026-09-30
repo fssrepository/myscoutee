@@ -99,6 +99,7 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
   selectMode: boolean;
   presentation: SmartListPresentation;
   renderState: SmartListItemRenderState;
+  imagesEnabled?: boolean;
   selectItem: (event?: Event) => void;
   openMenu: (request: SmartListItemMenuRequest) => void;
 }
@@ -427,6 +428,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);
+    /** Keep the fullscreen view mounted against the same loaded page while the list is visible. */
+    retainFullscreen?: SmartListConfigValue<boolean, TFilters>;
     step?: SmartListConfigValue<SmartListPaginationStep, TFilters>;
     headerControls?: SmartListConfigValue<boolean, TFilters>;
     autoplayMs?: SmartListConfigValue<number | null, TFilters>;

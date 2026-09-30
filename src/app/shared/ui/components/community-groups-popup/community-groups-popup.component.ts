@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild, inject, effect } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { defer, map } from 'rxjs';
 import { PopupComponent, PopupModel, PopupControl } from '../core/popup';
@@ -12,12 +12,13 @@ import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP
 import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort, groupMembershipBucket } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
     <app-popup [model]="model()" [zIndex]="explore ? 1200 : null">
       @if (store.error() && !store.editor()) { <p role="alert">{{ store.error() | i18n }}</p> }
-      <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"
+      <app-smart-list data-guide-field="group-list" [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"
         (menuItemSelect)="select($event)"></app-smart-list>
       <ng-template #cardTemplate let-card let-openMenu="openMenu">
         <app-info-card [card]="card" [useSharedMenu]="true" (menuRequest)="openMenu($event)"
@@ -30,9 +31,15 @@ import { ContentModerationStore } from '../../context/stores/content-moderation.
     }
   `
 })
-export class CommunityGroupsPopupComponent implements OnInit {
+export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
   @Input() explore = false;
-  ngOnInit(): void { if (this.explore) this.query = { filters: { bucket: 'explore', category: null } }; }
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
+  ngOnInit(): void {
+    if (this.explore) this.query = { filters: { bucket: 'explore', category: null } };
+    this.unregisterExplanationContext = this.explanationGuide.registerContext(this.explore ? 'community.groups.explore' : 'community.groups');
+  }
+  ngOnDestroy(): void { this.unregisterExplanationContext?.(); this.unregisterExplanationContext = null; }
   protected readonly store = inject(CommunityGroupsStore);
   protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);

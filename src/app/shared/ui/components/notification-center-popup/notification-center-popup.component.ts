@@ -8,8 +8,10 @@ import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   ViewChild,
   computed,
+  effect,
   inject
 } from '@angular/core';
 import { from } from 'rxjs';
@@ -31,6 +33,7 @@ import { DialogStore } from '../../context/stores/dialog.store';
 import { ActivitiesPopupStore } from '../../context/stores/activities-popup.store';
 import { EventSubeventsPopupStore } from '../../context/stores/event-subevents-popup.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 import { SubEventResourcePopupStore } from '../../context/stores/sub-event-resource-popup.store';
 import {
   type AppMenuItem,
@@ -77,7 +80,7 @@ type NotificationHeaderMenuContext =
   styleUrl: './notification-center-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NotificationCenterPopupComponent {
+export class NotificationCenterPopupComponent implements OnDestroy {
   private readonly contactProfile = inject(ProfileStore);
   private readonly contactChatAccess = inject(ContactChatAccessStore);
   private readonly communityGroups = inject(CommunityGroupsStore);
@@ -95,7 +98,25 @@ export class NotificationCenterPopupComponent {
   private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly i18n = inject(I18nService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly converter = new NotificationSingleRowConverter();
+  private unregisterExplanationContext: (() => void) | null = null;
+
+  constructor() {
+    effect(() => {
+      if (this.store.isOpen()) {
+        this.unregisterExplanationContext ??= this.explanationGuide.registerContext('notifications');
+      } else {
+        this.unregisterExplanationContext?.();
+        this.unregisterExplanationContext = null;
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+  }
 
   protected readonly query = computed<Partial<ListQuery<NotificationListFilters>>>(() => ({
     page: 0,

@@ -26,6 +26,7 @@ export class ActivitiesRateEditorPresenter {
       readonly: this.isSelectedReadOnly(),
       label: this.selectedBarLabel(),
       actionLabel: 'save',
+      guideFields: { slider: 'rating-input', action: 'rating-save' },
       dock: {
         enabled: !this.deps.isFullscreenModeActive(),
         state: this.deps.isEditorClosing()

@@ -1,3 +1,4 @@
+import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, inject } from '@angular/core';
@@ -54,7 +55,7 @@ interface PartnerRoleOverview {
 @Component({
   selector: 'app-entry-landing',
   standalone: true,
-  imports: [
+  imports: [LandingGuideSurfaceDirective,
     DeploymentBrandComponent,
     InfoCardComponent,
     WarpImageCardComponent,

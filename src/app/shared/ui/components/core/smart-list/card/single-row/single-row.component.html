@@ -24,7 +24,7 @@
     <span class="ui-single-row__top-right">
       @for (badge of topRightBadges(); track trackByBadge($index, badge)) {
         <span
-          [ngClass]="badgeClassList(badge)"
+          data-guide-field="row-status" [ngClass]="badgeClassList(badge)"
           [attr.aria-label]="badge.ariaLabel"
           [attr.title]="badge.title || badge.ariaLabel || null"
           >
@@ -59,7 +59,7 @@
         <span class="ui-single-row__inline-badges">
           @for (badge of inlineBadges(); track trackByBadge($index, badge)) {
             <span
-              [ngClass]="badgeClassList(badge)"
+              data-guide-field="row-status" [ngClass]="badgeClassList(badge)"
               [attr.aria-label]="badge.ariaLabel"
               [attr.title]="badge.title || badge.ariaLabel || null"
               >
@@ -93,7 +93,7 @@
         <span class="ui-single-row__side-badges">
           @for (badge of sideBadges(); track trackByBadge($index, badge)) {
             <span
-              [ngClass]="badgeClassList(badge)"
+              data-guide-field="row-status" [ngClass]="badgeClassList(badge)"
               [attr.aria-label]="badge.ariaLabel"
               [attr.title]="badge.title || badge.ariaLabel || null"
               >
@@ -110,6 +110,8 @@
           <button
             type="button"
             class="ui-single-row__menu-trigger"
+            data-guide-field="card-actions" aria-haspopup="menu"
+            [attr.aria-expanded]="menuOpen" [attr.data-guide-items]="row?.menuActions?.join('\n') ?? ''"
             [class.is-open]="menuOpen"
             [disabled]="row?.progressRing === true"
             [attr.aria-label]="menuOpen ? 'Close menu' : 'Open menu'"
@@ -123,7 +125,7 @@
           </button>
         } @else {
           <app-menu
-            class="ui-single-row__menu"
+            data-guide-control="card-actions" class="ui-single-row__menu"
             kind="select"
             [title]="rowMenuTitle()"
             [trigger]="rowMenuTrigger()"

@@ -33,6 +33,7 @@ export type PopupActionIconSize = 'default' | 'large';
 export interface PopupControlBase {
   id: string;
   align?: PopupControlAlign;
+  guideFieldId?: string;
 }
 
 export interface PopupAction extends PopupControlBase {
@@ -44,6 +45,7 @@ export interface PopupAction extends PopupControlBase {
   palette?: AppMenuPalette;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   active?: boolean;
+  guideActivateOnStep?: boolean;
   disabled?: boolean;
   compactOnMobile?: boolean;
 }

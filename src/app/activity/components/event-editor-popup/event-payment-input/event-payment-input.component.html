@@ -37,7 +37,7 @@
       <strong>{{ formatMoney(totalAmount, currency) }}</strong>
     </article>
     <article
-      class="event-payment-status"
+      data-guide-field="payment-status" class="event-payment-status"
       [class.event-payment-status--success]="statusTone === 'success'"
       [class.event-payment-status--danger]="statusTone === 'danger'"
       [class.event-payment-status--refund]="statusTone === 'refund'"
@@ -48,7 +48,7 @@
   </div>
 
   @if (showPaymentMethod()) {
-  <div class="event-payment-method-shell">
+  <div data-guide-field="payment-method" class="event-payment-method-shell">
     @if (paymentCard(); as card) {
       <button
         type="button"

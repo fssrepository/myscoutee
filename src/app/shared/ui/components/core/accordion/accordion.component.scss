@@ -10,6 +10,11 @@
   isolation: isolate;
 }
 
+.ui-accordion:has(.app-menu-host--open) {
+  position: relative;
+  z-index: 20;
+}
+
 .ui-accordion__item {
   --ui-accordion-accent: #2f6fb1;
   --ui-accordion-border: rgba(62, 96, 139, 0.22);
@@ -25,16 +30,19 @@
   box-shadow: 0 10px 28px rgba(38, 52, 82, 0.08);
 }
 
-.ui-accordion__item:focus-within {
+.ui-accordion__item:focus-within,
+.ui-accordion__item:has(.app-menu-host--open) {
   overflow: visible;
   z-index: 20;
 }
 
-.ui-accordion__item:focus-within .ui-accordion__header {
+.ui-accordion__item:focus-within .ui-accordion__header,
+.ui-accordion__item:has(.app-menu-host--open) .ui-accordion__header {
   border-radius: 8px;
 }
 
-.ui-accordion__item.is-open:focus-within .ui-accordion__header {
+.ui-accordion__item.is-open:focus-within .ui-accordion__header,
+.ui-accordion__item.is-open:has(.app-menu-host--open) .ui-accordion__header {
   border-radius: 8px 8px 0 0;
 }
 

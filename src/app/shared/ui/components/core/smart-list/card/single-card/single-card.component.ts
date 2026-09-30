@@ -54,6 +54,7 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
   private fullscreenShellElementRef?: ElementRef<HTMLElement>;
 
   @Input() card: SingleCardData | null = null;
+  @Input() imagesEnabled = true;
 
   @Output() readonly badgeClick = new EventEmitter<string>();
   @Output() readonly menuRequest = new EventEmitter<CardMenuRequestEvent<SingleCardData>>();

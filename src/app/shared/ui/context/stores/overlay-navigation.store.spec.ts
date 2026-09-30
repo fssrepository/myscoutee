@@ -66,6 +66,23 @@ describe('overlay Back history', () => {
     expect(browser.location.href).toBe('https://app.test/entry');
   });
 
+  it('dismisses a guide before its auto-opened menu without adding history entries', async () => {
+    const closed: string[] = [];
+    const parent = store.register(() => { closed.push('popup'); store.unregister(parent); });
+    const guide = store.register(() => { closed.push('guide'); store.unregister(guide); });
+    const menu = store.register(() => { closed.push('menu'); store.unregister(menu); });
+    const push = vi.spyOn(browser.history, 'pushState');
+    store.bringToFront(guide);
+    store.bringToFront(guide);
+    expect(push).not.toHaveBeenCalled();
+    browser.go(-1); await settle();
+    expect(closed).toEqual(['guide']);
+    browser.go(-1); await settle();
+    expect(closed).toEqual(['guide', 'menu']);
+    browser.go(-1); await settle();
+    expect(closed).toEqual(['guide', 'menu', 'popup']);
+  });
+
   it('X consumes only the overlay boundary, so the next Back navigates normally', async () => {
     const token = store.register(vi.fn());
     store.unregister(token); await settle();

@@ -39,8 +39,7 @@ import {
   triggerActivitiesRateBlink
 } from './activities-rate-blink.presenter';
 import {
-  animateActivitiesRateEditorScrollTo,
-  syncActivitiesRatesListPositionToRow
+  animateActivitiesRateEditorScrollTo
 } from './activities-rate-motion.presenter';
 import {
   activitiesPairReceivedAverageScore,
@@ -84,6 +83,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
   @Input() context: ActivitiesRateTemplateContext | null = null;
   @Input() openMenu: ((request: SmartListItemMenuRequest) => void) | null = null;
   @Input() cardRevision: string | number = 0;
+  @Input() imagesEnabled = true;
 
   @Output() readonly detailClick = new EventEmitter<CardProfileViewData>();
 
@@ -142,18 +142,21 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
       return;
     }
 
+    // One current DTO snapshot per card; badge helpers must not repeatedly
+    // clone/project the entire user rating collection.
+    const item = context.getRateItemById(row.id);
     const sharedOptions = {
       groupLabel: this.groupLabel,
       presentation: this.presentation,
       state: this.state,
-      displayedDirection: this.displayedDirectionForRow(row, context),
+      displayedDirection: this.displayedDirectionForRow(row, context, item),
       activeUserGender: context.getActiveUserGender()
     } as const;
 
     if (isActivityRatePairCardRow(row)) {
       this.pairCard = ActivityRatePairCardConverter.convert(row, {
         ...sharedOptions,
-        badge: this.activityRateBadgeConfig(row, context, {
+        badge: this.activityRateBadgeConfig(row, context, item, {
           layout: this.presentation === 'fullscreen' ? 'pair-overlap' : 'between',
           interactive: this.presentation !== 'fullscreen',
           forceActive: this.presentation === 'fullscreen'
@@ -165,7 +168,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 
     this.singleCard = ActivityRateSingleCardConverter.convert(row, {
       ...sharedOptions,
-      badge: this.activityRateBadgeConfig(row, context, {
+      badge: this.activityRateBadgeConfig(row, context, item, {
         layout: 'floating',
         interactive: this.presentation !== 'fullscreen',
         forceActive: this.presentation === 'fullscreen'
@@ -174,17 +177,18 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     this.pairCard = null;
   }
 
-  private isPairReceivedRateRow(row: ImageCardData, context: ActivitiesRateTemplateContext): boolean {
-    const rate = this.rateItemForRow(row, context);
+  private isPairReceivedRateRow(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): boolean {
+    const rate = item;
     if (rate) {
       return rate.mode === 'pair' && context.getDisplayedDirection(rate) === 'received';
     }
-    return row.mode === 'pair' && this.displayedDirectionForRow(row, context) === 'received';
+    return row.mode === 'pair' && this.displayedDirectionForRow(row, context, item) === 'received';
   }
 
   private activityRateBadgeConfig(
     row: ImageCardData,
     context: ActivitiesRateTemplateContext,
+    item: ActivityRateDTO | null,
     options?: {
       layout?: CardBadgeConfig['layout'];
       interactive?: boolean;
@@ -192,11 +196,11 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     }
   ): CardBadgeConfig {
     return {
-      label: this.activityRateBadgeLabel(row, context),
-      ariaLabel: this.activityRateBadgeAriaLabel(row, context),
+      label: this.activityRateBadgeLabel(row, context, item),
+      ariaLabel: this.activityRateBadgeAriaLabel(row, context, item),
       active: options?.forceActive ? true : context.isSelectedActivityRateRow(row),
-      pending: this.isActivityRatePending(row, context),
-      disabled: this.isPairReceivedRateRow(row, context),
+      pending: this.isActivityRatePending(row, context, item),
+      disabled: this.isPairReceivedRateRow(row, context, item),
       blink: context.isActivityRateBlinking(row),
       interactive: options?.interactive ?? true,
       menuRequest: options?.interactive ?? true,
@@ -204,8 +208,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     };
   }
 
-  private activityOwnRatingValue(row: ImageCardData, context: ActivitiesRateTemplateContext): number {
-    const item = this.rateItemForRow(row, context);
+  private activityOwnRatingValue(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): number {
     if (!item) {
       return Number.isFinite(row.scoreGiven) ? context.normalizeRateScore(Number(row.scoreGiven)) : 0;
     }
@@ -218,13 +221,12 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     return context.rateOwnScore(item);
   }
 
-  private activityOwnRatingLabel(row: ImageCardData, context: ActivitiesRateTemplateContext): string {
-    const value = this.activityOwnRatingValue(row, context);
+  private activityOwnRatingLabel(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): string {
+    const value = this.activityOwnRatingValue(row, context, item);
     return value > 0 ? `${value}` : '';
   }
 
-  private isActivityRatePending(row: ImageCardData, context: ActivitiesRateTemplateContext): boolean {
-    const item = this.rateItemForRow(row, context);
+  private isActivityRatePending(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): boolean {
     if (!item) {
       return false;
     }
@@ -234,27 +236,23 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     return !context.hasOwnRating(item);
   }
 
-  private activityRateBadgeLabel(row: ImageCardData, context: ActivitiesRateTemplateContext): string {
-    const ownLabel = this.activityOwnRatingLabel(row, context);
+  private activityRateBadgeLabel(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): string {
+    const ownLabel = this.activityOwnRatingLabel(row, context, item);
     return ownLabel ? ownLabel : 'Rate';
   }
 
-  private activityRateBadgeAriaLabel(row: ImageCardData, context: ActivitiesRateTemplateContext): string {
-    if (this.isPairReceivedRateRow(row, context)) {
+  private activityRateBadgeAriaLabel(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): string {
+    if (this.isPairReceivedRateRow(row, context, item)) {
       return 'Received pair rating';
     }
-    return this.isActivityRatePending(row, context) ? 'Add your rating' : 'Edit your rating';
-  }
-
-  private rateItemForRow(row: ImageCardData, context: ActivitiesRateTemplateContext): ActivityRateDTO | null {
-    return context.getRateItemById(row.id);
+    return this.isActivityRatePending(row, context, item) ? 'Add your rating' : 'Edit your rating';
   }
 
   private displayedDirectionForRow(
     row: ImageCardData,
-    context: ActivitiesRateTemplateContext
+    context: ActivitiesRateTemplateContext,
+    item: ActivityRateDTO | null
   ): ActivityRateDTO['direction'] {
-    const item = this.rateItemForRow(row, context);
     if (item) {
       return context.getDisplayedDirection(item);
     }
@@ -369,6 +367,7 @@ export class ActivitiesRatesController {
     return {
       scale: this.deps.getRatingScale(),
       value: this.ownRatingValue(row),
+      guideFields: { slider: 'rating-input', action: 'rating-save' },
       readonly: this.isPairReceivedRow(row),
       label: `Affinity · ${modeLabel} · ${row.title || 'Rate'}`,
       actionLabel: 'save',
@@ -640,10 +639,9 @@ export class ActivitiesRatesController {
     }
     this.resetEditorStateForFullscreenEntry();
     this.setFullscreenMode(true);
-    this.deps.runAfterNextPaint(() => {
-      this.syncFullscreenSelection();
-      this.deps.markForCheck();
-    });
+    // Initialize the bar with the view. SmartList's stateChange synchronizes any
+    // subsequent cursor adjustment to the first visible list row.
+    this.syncFullscreenSelection();
     this.deps.markForCheck();
   }
 
@@ -651,20 +649,14 @@ export class ActivitiesRatesController {
     if (!this.deps.getFullscreenMode()) {
       return;
     }
-    const selectedRateId = this.selectedRateId();
     this.setFullscreenMode(false);
     this.deps.setEditorClosing(false);
     this.deps.setLastEditorLiftDelta(0);
     this.deps.setLastIndicatorPulseRowId(null);
     this.deps.setSelectedRateIdInContext(this.selectedRateId());
     this.deps.markForCheck();
-    if (!selectedRateId) {
-      return;
-    }
-    this.deps.runAfterNextPaint(() => {
-      this.syncListPositionToRow(selectedRateId);
-      this.smoothRevealSelectedRateRowWhenNeeded(selectedRateId);
-    });
+    // The list remains mounted at its own scroll position. Switching views
+    // must not launch a second scroll/reveal animation after the first paint.
   }
 
   syncFullscreenSelection(): void {
@@ -878,23 +870,8 @@ export class ActivitiesRatesController {
     this.deps.setEditorOpenScrollTop(null);
     this.deps.setLastEditorLiftDelta(0);
     this.deps.setLastIndicatorPulseRowId(null);
-    if (!this.selectedRateId()) {
-      return;
-    }
-    this.setSelectedRateId(null);
-  }
-
-  private syncListPositionToRow(rowId: string): void {
-    const scrollElement = this.deps.getActivitiesListScrollElement();
-    if (!scrollElement) {
-      return;
-    }
-    syncActivitiesRatesListPositionToRow(
-      scrollElement,
-      rowId,
-      this.deps.isMobileView(),
-      () => this.deps.markForCheck()
-    );
+    // Both views share the existing selection; clearing and reselecting it
+    // would rebuild the selected card solely because presentation changed.
   }
 
   private selectedRateId(): string | null {
@@ -911,7 +888,10 @@ export class ActivitiesRatesController {
     }
     this.deps.setSelectedRateId(value);
     this.deps.setSelectedRateIdInContext(value);
-    this.refreshRateCards();
+    // Selection only changes the old and new row's active badge. Keep the
+    // retained list cards intact when switching presentation or cursor.
+    if (previousValue) this.refreshRateCards(previousValue);
+    if (value) this.refreshRateCards(value);
   }
 
   private rateItemForRow(row: ImageCardData): ActivityRateDTO | null {
@@ -932,7 +912,6 @@ export class ActivitiesRatesController {
     }
     this.deps.setFullscreenMode(value);
     this.deps.setFullscreenModeInContext(value);
-    this.refreshRateCards();
   }
 
   private refreshRateCards(rowId?: string | null): void {

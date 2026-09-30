@@ -10,7 +10,7 @@
     </div>
     <div class="subevent-definition-panel__toggle-wrap">
       @if (showEnableToggle && canEdit()) {
-      <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
+      <button type="button" data-guide-field="event-stages-enabled" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
         [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" [attr.aria-label]="'event.editor.subevents.toggle.aria' | i18n">
         <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
         <span>{{ (enabled ? 'on' : 'off') | i18n }}</span>
@@ -21,14 +21,14 @@
       @if (enabled) {
       @if (modeControl === 'badge') {
       <app-menu
-        class="subevent-definition-panel__mode-menu subevent-definition-panel__mode-menu--badge"
+        data-guide-field="event-mode-locked" class="subevent-definition-panel__mode-menu subevent-definition-panel__mode-menu--badge"
         kind="select"
         [trigger]="modeBadgeTrigger()"
         [items]="[]"
       ></app-menu>
       } @else {
       <app-menu
-        class="subevent-definition-panel__mode-menu"
+        data-guide-control="event-mode" class="subevent-definition-panel__mode-menu"
         kind="select"
         [trigger]="modeMenuTrigger()"
         [items]="modeMenuItems()"
@@ -36,7 +36,7 @@
       ></app-menu>
       }
       <app-menu
-        class="subevent-definition-panel__view-menu"
+        data-guide-control="event-stage-view" class="subevent-definition-panel__view-menu"
         kind="select"
         [trigger]="viewMenuTrigger()"
         [items]="viewMenuItems()"
@@ -44,7 +44,7 @@
       ></app-menu>
       @if ((mode === 'Mingle' && canOpenMingleConfiguration()) || (mode !== 'Mingle' && canConfigureDefinitions())) {
       <app-menu
-        class="subevent-definition-panel__add-menu"
+        data-guide-field="event-stage-add" class="subevent-definition-panel__add-menu"
         kind="inline"
         [items]="addMenuItems()"
         (itemSelect)="onAddMenuSelect($event)"
@@ -75,7 +75,7 @@
 
   <ng-template #definitionTimelineTemplate let-definition>
     <app-text-card
-      class="subevent-definition-panel__timeline-card"
+      data-guide-field="event-stage-summary" badgeGuideField="event-stage-duration" statusGuideField="event-stage-kind" class="subevent-definition-panel__timeline-card"
       [title]="definition.name"
       [detail]="definitionTimelineDetail(definition)"
       [icon]="definitionTimelineIcon(definition)"

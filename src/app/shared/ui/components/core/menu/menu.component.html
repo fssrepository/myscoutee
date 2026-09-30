@@ -2,6 +2,7 @@
           <button
             type="button"
             class="app-menu__button-row-item"
+            [attr.data-guide-item]="item.guideId ?? item.id"
             [ngClass]="itemPaletteClass(item)"
             [class.app-menu__button-row-item--active]="isItemActive(item)"
             [class.app-menu__button-row-item--open]="isActionRowItemOpen(item)"
@@ -148,6 +149,7 @@
       class="app-menu__trigger motion-static"
       [ngClass]="triggerPaletteClass()"
       [class.app-menu__trigger--open]="open"
+      [attr.data-guide-items]="guideItemIds()"
       [class.app-menu__trigger--static-icon]="trigger?.rotateIcon === false"
       [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
       [class.app-menu__trigger--collapsible]="trigger?.collapsible"
@@ -291,6 +293,7 @@
                     <button
                       type="button"
                       class="app-menu__tile-item"
+                      [attr.data-guide-item]="item.guideId ?? item.id"
                       [ngClass]="itemPaletteClass(item)"
                       [class.app-menu__tile-item--active]="isItemActive(item)"
                       [class.app-menu__tile-item--disabled]="isItemDisabled(item)"
@@ -429,6 +432,7 @@
                     <button
                       type="button"
                       class="app-menu__tabs-item"
+                      [attr.data-guide-item]="item.guideId ?? item.id"
                       [ngClass]="itemPaletteClass(item)"
                       [class.app-menu__tabs-item--active]="isItemActive(item)"
                       [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
@@ -587,6 +591,7 @@
             } @else if (itemHref(item)) {
               <a
                 class="app-menu__item"
+                [attr.data-guide-item]="item.guideId ?? item.id"
                 [ngClass]="itemPaletteClass(item)"
                 [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
                 [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
@@ -761,6 +766,7 @@
                 <button
                   type="button"
                   class="app-menu__item"
+                  [attr.data-guide-item]="item.guideId ?? item.id"
                   [ngClass]="itemPaletteClass(item)"
                   [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
                   [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"

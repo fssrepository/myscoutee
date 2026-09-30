@@ -53,6 +53,11 @@ export class RateComponent implements OnDestroy {
     return this.dockEnabled ? 'true' : null;
   }
 
+  @HostBinding('attr.aria-hidden')
+  protected get hostHidden(): string | null {
+    return this.dockEnabled && (this.dockState === 'hidden' || this.dockState === 'closing') ? 'true' : null;
+  }
+
   @Input() config: AppMenuRateConfig | null = null;
   @Input() value = 0;
 

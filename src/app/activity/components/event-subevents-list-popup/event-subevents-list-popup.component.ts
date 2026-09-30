@@ -6,6 +6,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   HostListener,
   QueryList,
   ViewChild,
@@ -63,6 +64,7 @@ import {
 } from '../../../shared/ui/converters';
 import {
   EventsService,
+  ExplanationGuideService,
   I18nService
 } from '../../../shared/core';
 import { tournamentCurrentStageFromSubEvents } from '../../../shared/core/common/tournament-group-count';
@@ -165,6 +167,9 @@ export class EventSubeventsListPopupComponent {
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly mingleStore = inject(MingleStore);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly destroyRef = inject(DestroyRef);
+  private unregisterExplanationContext: (() => void) | null = null;
 
   protected isLoading = false;
   protected event: EventSubeventsParentContext | null = null;
@@ -290,9 +295,19 @@ export class EventSubeventsListPopupComponent {
   };
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.unregisterExplanationContext?.();
+      this.unregisterExplanationContext = null;
+    });
     this.syncMobileViewFromViewport();
     effect(() => {
       const request = this.eventSubeventsStore.eventSubeventsListPopup();
+      if (request) {
+        this.unregisterExplanationContext ??= this.explanationGuide.registerContext('event.subevents');
+      } else {
+        this.unregisterExplanationContext?.();
+        this.unregisterExplanationContext = null;
+      }
       if (!request) {
         this.lastLoadedEventId = '';
         this.loadedEventId = '';
@@ -777,6 +792,10 @@ export class EventSubeventsListPopupComponent {
       menuTitle: item.name,
       translateParams: (key, values, fallback) => this.i18n.translateParams(key, values, fallback)
     });
+  }
+
+  protected subEventGuideMenuIds(item: SubEventDTO): string {
+    return this.subEventMenuItems(item).map(action => action.id).join('\n');
   }
 
   protected subEventMenuContext(item: SubEventDTO): { itemKey: string } {

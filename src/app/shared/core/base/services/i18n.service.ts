@@ -79,15 +79,19 @@ export class I18nService {
   private readonly currentLanguageSignal = signal(I18nService.DEFAULT_LANGUAGE);
   private readonly messagesSignal = signal<Record<string, string>>({});
   private readonly sourceMessagesSignal = signal<Record<string, string>>({});
+  private readonly messagesByLanguageSignal = signal<Record<string, Record<string, string>>>({});
   private readonly sourceKeyByTextSignal = signal<Record<string, string>>({});
   private readonly revisionSignal = signal(0);
-  private readonly textNodeSources = new WeakMap<Text, string>();
-  private readonly attributeSources = new WeakMap<Element, Map<string, string>>();
+  private readonly textNodeSources = new WeakMap<Text, { source: string; translated: string }>();
+  private readonly attributeSources = new WeakMap<Element, Map<string, { source: string; translated: string }>>();
   private domObserver: MutationObserver | null = null;
   private initialized = false;
   private activeBundleScope = this.resolveBundleScope();
   private bundleLoadGeneration = 0;
   private scanQueued = false;
+  private fullDomScanPending = false;
+  private readonly pendingDomRoots = new Set<Node>();
+  private readonly pendingAttributeElements = new Set<Element>();
   private translatingDom = false;
   private missingKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private lastMissingKeyRefreshAt = 0;
@@ -131,6 +135,74 @@ export class I18nService {
       return this.translateRaw(fallbackText);
     }
     return translated;
+  }
+
+  async ensureLanguageLoaded(language: string): Promise<void> {
+    const lang = this.normalizeLanguage(language);
+    if (!lang) {
+      return;
+    }
+
+    const scope = this.activeBundleScope;
+    const generation = this.bundleLoadGeneration;
+    if (lang === I18nService.DEFAULT_LANGUAGE) {
+      if (Object.keys(this.sourceMessagesSignal()).length > 0) {
+        return;
+      }
+      await this.loadDefaultSourceBundle(scope, generation);
+      if (this.isCurrentBundleLoad(scope, generation) && this.usesHttpBundles()) {
+        await this.refreshLanguageFromServer(scope, generation, lang, false);
+      }
+      return;
+    }
+    if (this.messagesByLanguageSignal()[lang]) {
+      return;
+    }
+    const stored = await this.bundleRepository.readStoredBundle(scope, lang);
+    if (!this.isCurrentBundleLoad(scope, generation)) {
+      return;
+    }
+    if (stored && Object.keys(stored.data).length > 0) {
+      this.cacheLanguageMessages(lang, stored.data);
+      if (this.usesHttpBundles()) {
+        await this.refreshLanguageFromServer(scope, generation, lang, false);
+        return;
+      }
+      const seed = await this.loadLocalSeedBundle(I18nService.LOCAL_SEED_ASSETS[lang]);
+      if (this.isCurrentBundleLoad(scope, generation)
+        && seed?.lang === lang
+        && this.compareVersions(seed.version, stored.version) > 0) {
+        await this.bundleRepository.writeStoredBundle(scope, seed);
+        this.cacheLanguageMessages(lang, seed.data);
+      }
+      return;
+    }
+
+    if (!this.usesHttpBundles()) {
+      const seed = await this.loadLocalSeedBundle(I18nService.LOCAL_SEED_ASSETS[lang]);
+      if (!this.isCurrentBundleLoad(scope, generation) || !seed || seed.lang !== lang) {
+        return;
+      }
+      await this.bundleRepository.writeStoredBundle(scope, seed);
+      this.cacheLanguageMessages(lang, seed.data);
+      return;
+    }
+
+    await this.refreshLanguageFromServer(scope, generation, lang, false);
+  }
+
+  translateForLanguage(value: string | null | undefined, language: string, fallback?: string | null): string {
+    const key = `${value ?? ''}`.trim();
+    if (!key) {
+      return `${fallback ?? ''}`;
+    }
+    const lang = this.normalizeLanguage(language);
+    const messages = lang === I18nService.DEFAULT_LANGUAGE
+      ? this.sourceMessagesSignal()
+      : lang === this.currentLanguageSignal()
+        ? this.messagesSignal()
+        : this.messagesByLanguageSignal()[lang] ?? {};
+    return messages[key] ?? `${fallback ?? key}`;
   }
 
   revalidate(): Promise<void> {
@@ -192,6 +264,7 @@ export class I18nService {
     this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
     this.messagesSignal.set({});
     this.sourceMessagesSignal.set({});
+    this.messagesByLanguageSignal.set({});
     this.sourceKeyByTextSignal.set({});
     this.updateDocumentLanguage(I18nService.DEFAULT_LANGUAGE);
     this.bumpRevision();
@@ -368,6 +441,7 @@ export class I18nService {
     activateTranslation: boolean
   ): void {
     if (bundle.lang === I18nService.DEFAULT_LANGUAGE) {
+      this.cacheLanguageMessages(bundle.lang, bundle.data);
       if (activateTranslation) {
         this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
         this.messagesSignal.set({});
@@ -376,6 +450,7 @@ export class I18nService {
       this.applySourceBundle(bundle.data, true);
       return;
     }
+    this.cacheLanguageMessages(bundle.lang, bundle.data);
     if (activateTranslation) {
       this.applyBundle(bundle.lang, bundle.version, bundle.data);
     }
@@ -462,11 +537,13 @@ export class I18nService {
       }
       this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
       this.messagesSignal.set({});
+      this.cacheLanguageMessages(I18nService.DEFAULT_LANGUAGE, data);
       this.updateDocumentLanguage(I18nService.DEFAULT_LANGUAGE);
       this.bumpRevision();
       this.scheduleDomScan();
       return;
     }
+    this.cacheLanguageMessages(normalizedLang, data);
     this.currentLanguageSignal.set(normalizedLang);
     this.messagesSignal.set(data);
     this.updateDocumentLanguage(normalizedLang);
@@ -480,12 +557,21 @@ export class I18nService {
     preserveTextAliases = false
   ): void {
     this.sourceMessagesSignal.set(data);
+    this.cacheLanguageMessages(I18nService.DEFAULT_LANGUAGE, data);
     const nextIndex = this.buildSourceKeyIndex(data);
     this.sourceKeyByTextSignal.set(preserveTextAliases
       ? { ...this.sourceKeyByTextSignal(), ...nextIndex }
       : nextIndex);
     this.bumpRevision();
     this.scheduleDomScan();
+  }
+
+  private cacheLanguageMessages(language: string, messages: Record<string, string>): void {
+    const lang = this.normalizeLanguage(language);
+    if (!lang) {
+      return;
+    }
+    this.messagesByLanguageSignal.update(current => ({ ...current, [lang]: messages }));
   }
 
   private buildSourceKeyIndex(data: Record<string, string>): Record<string, string> {
@@ -582,9 +668,9 @@ export class I18nService {
       return;
     }
     this.zone.runOutsideAngular(() => {
-      this.domObserver = new view.MutationObserver(() => {
+      this.domObserver = new view.MutationObserver(records => {
         if (!this.translatingDom) {
-          this.scheduleDomScan();
+          this.scheduleDomScan(records);
         }
       });
       this.domObserver.observe(body, {
@@ -598,19 +684,41 @@ export class I18nService {
     });
   }
 
-  private scheduleDomScan(): void {
+  private scheduleDomScan(records?: readonly MutationRecord[]): void {
     const view = this.document?.defaultView;
-    if (this.scanQueued || !view) {
+    if (!view) {
       return;
     }
+    if (!records) {
+      // Bundle/language changes still retranslate existing, unchanged content.
+      this.fullDomScanPending = true;
+      this.pendingDomRoots.clear();
+      this.pendingAttributeElements.clear();
+    } else if (!this.fullDomScanPending) {
+      for (const record of records) {
+        if (record.type === 'childList') {
+          record.addedNodes.forEach(node => this.pendingDomRoots.add(node));
+        } else if (record.type === 'characterData') {
+          this.pendingDomRoots.add(record.target);
+        } else if (record.type === 'attributes' && record.target.nodeType === 1) {
+          this.pendingAttributeElements.add(record.target as Element);
+        }
+      }
+    }
+    if (this.scanQueued) return;
     this.scanQueued = true;
     view.requestAnimationFrame(() => {
       this.scanQueued = false;
-      this.scanDom();
+      const roots = this.fullDomScanPending ? undefined : [...this.pendingDomRoots];
+      const attributes = [...this.pendingAttributeElements];
+      this.fullDomScanPending = false;
+      this.pendingDomRoots.clear();
+      this.pendingAttributeElements.clear();
+      this.scanDom(roots, attributes);
     });
   }
 
-  private scanDom(): void {
+  private scanDom(roots?: readonly Node[], attributes: readonly Element[] = []): void {
     const body = this.document?.body;
     const view = this.document?.defaultView;
     if (!body || !view) {
@@ -618,16 +726,31 @@ export class I18nService {
     }
     this.translatingDom = true;
     try {
-      this.translateElementAttributes(body);
-      body.querySelectorAll<HTMLElement>('*').forEach(element => this.translateElementAttributes(element));
+      const rootSet = new Set(roots ?? [body]);
+      for (const element of attributes) {
+        if (body.contains(element)) this.translateElementAttributes(element);
+      }
       const showText = typeof NodeFilter !== 'undefined' ? NodeFilter.SHOW_TEXT : 4;
-      const walker = this.document.createTreeWalker(body, showText);
-      let current = walker.nextNode();
-      while (current) {
-        if (current.nodeType === 3) {
-          this.translateTextNode(current as Text);
+      for (const root of rootSet) {
+        if (!body.contains(root)) continue;
+        // A new subtree can produce both an ancestor and descendant record.
+        let ancestor = root.parentNode;
+        while (ancestor && !rootSet.has(ancestor)) ancestor = ancestor.parentNode;
+        if (ancestor) continue;
+        if (root.nodeType === 3) {
+          this.translateTextNode(root as Text);
+          continue;
         }
-        current = walker.nextNode();
+        if (root.nodeType !== 1) continue;
+        const element = root as Element;
+        this.translateElementAttributes(element);
+        element.querySelectorAll('*').forEach(child => this.translateElementAttributes(child));
+        const walker = this.document.createTreeWalker(root, showText);
+        let current = walker.nextNode();
+        while (current) {
+          this.translateTextNode(current as Text);
+          current = walker.nextNode();
+        }
       }
     } finally {
       this.translatingDom = false;
@@ -645,6 +768,7 @@ export class I18nService {
       }
       const source = this.resolveAttributeSource(element, attributeName, current);
       const translated = this.translateRaw(source);
+      this.attributeSources.get(element)?.set(attributeName, { source, translated });
       if (translated !== current) {
         element.setAttribute(attributeName, translated);
       }
@@ -662,42 +786,28 @@ export class I18nService {
     }
     const source = this.resolveTextSource(node, current);
     const translated = this.translateRaw(source);
+    this.textNodeSources.set(node, { source, translated });
     if (translated !== current) {
       node.data = translated;
     }
   }
 
   private resolveTextSource(node: Text, current: string): string {
-    const previousSource = this.textNodeSources.get(node);
-    if (!previousSource) {
-      this.textNodeSources.set(node, current);
-      return current;
-    }
-    const previousTranslation = this.translateRaw(previousSource);
-    if (current !== previousSource && current !== previousTranslation) {
-      this.textNodeSources.set(node, current);
-      return current;
-    }
-    return previousSource;
+    const previous = this.textNodeSources.get(node);
+    // Compare with the last DOM output, not a translation using the new bundle.
+    return previous && (current === previous.source || current === previous.translated)
+      ? previous.source : current;
   }
 
   private resolveAttributeSource(element: Element, attributeName: string, current: string): string {
     let sources = this.attributeSources.get(element);
     if (!sources) {
-      sources = new Map<string, string>();
+      sources = new Map();
       this.attributeSources.set(element, sources);
     }
-    const previousSource = sources.get(attributeName);
-    if (!previousSource) {
-      sources.set(attributeName, current);
-      return current;
-    }
-    const previousTranslation = this.translateRaw(previousSource);
-    if (current !== previousSource && current !== previousTranslation) {
-      sources.set(attributeName, current);
-      return current;
-    }
-    return previousSource;
+    const previous = sources.get(attributeName);
+    return previous && (current === previous.source || current === previous.translated)
+      ? previous.source : current;
   }
 
   private translateRaw(source: string): string {

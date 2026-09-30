@@ -109,6 +109,10 @@ export interface AppMenuRateConfig {
   readonly?: boolean;
   label?: string | null;
   actionLabel?: string | null;
+  guideFields?: {
+    slider?: string | null;
+    action?: string | null;
+  };
   presentation?: AppMenuRatePresentation;
   animation?: AppMenuRateAnimation;
   blinkOnSelect?: boolean;
@@ -175,6 +179,8 @@ export interface AppMenuImageStackItem {
 }
 
 export interface AppMenuItem<TId extends string = string, TContext = unknown> {
+  /** Stable guide target when the action ID contains a row identity. */
+  guideId?: string;
   imageShape?: 'circle' | 'rectangle';
   id: TId;
   label?: AppMenuLiveValue<string | null | undefined>;

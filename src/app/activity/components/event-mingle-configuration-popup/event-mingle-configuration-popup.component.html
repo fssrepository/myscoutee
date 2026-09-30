@@ -7,7 +7,7 @@
 
       <div class="mingle-configuration__grid">
         @for (field of numberFields; track field.key) {
-          <label class="mingle-configuration__field" [class.mingle-configuration__field--wide]="field.wide">
+          <label class="mingle-configuration__field" [class.mingle-configuration__field--wide]="field.wide" [attr.data-guide-field]="'mingle-' + field.key">
             <span class="mingle-configuration__label">
               <mat-icon>{{ field.icon }}</mat-icon>
               <span>{{ field.label | i18n }}</span>
@@ -34,7 +34,7 @@
         }
       </div>
 
-      <label class="mingle-configuration__constraint" [class.is-disabled]="fieldDisabled('requireGenderBalance')">
+      <label class="mingle-configuration__constraint" [class.is-disabled]="fieldDisabled('requireGenderBalance')" data-guide-field="mingle-require-gender-balance">
         <input
           type="checkbox"
           [checked]="draft().requireGenderBalance"

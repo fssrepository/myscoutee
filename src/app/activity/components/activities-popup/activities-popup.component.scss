@@ -289,6 +289,7 @@
 }
 // ─── Popup Surface ───────────────────────────────────────────────────────
 .activities-popup {
+  --smart-list-retained-fullscreen-background: linear-gradient(180deg, #f9fbff 0%, #eef4ff 58%, #eaf1ff 100%);
   position: relative;
   display: flex;
   flex-direction: column;

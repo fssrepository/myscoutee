@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalLandingContentService } from '../../local/source/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
-import type { LandingContentStateDto } from '../../contracts';
+import type { HelpCenterStateDto, LandingContentStateDto } from '../../contracts';
 import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { IdeaPostsService } from './idea-posts.service';
@@ -29,6 +29,10 @@ export class LandingContentService extends BaseRouteModeService {
   private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
 
   readonly state = this.stateRef.asReadonly();
+
+  async loadExplanationState(contextKey: string, language: string): Promise<HelpCenterStateDto> {
+    return this.landingService().loadExplanationState(contextKey, language);
+  }
 
   async loadOnce(): Promise<LandingContentStateDto> {
     const current = this.stateRef();
@@ -105,7 +109,8 @@ export class LandingContentService extends BaseRouteModeService {
           sections: revision.sections.map(section => ({ ...section }))
         })),
         auditTrail: state.privacy.auditTrail.map(entry => ({ ...entry })),
-        availableLanguages: state.privacy.availableLanguages.map(language => ({ ...language }))
+        availableLanguages: state.privacy.availableLanguages.map(language => ({ ...language })),
+        guideFields: state.privacy.guideFields.map(field => ({ ...field }))
       },
       terms: {
         activeRevision: state.terms.activeRevision
@@ -119,7 +124,8 @@ export class LandingContentService extends BaseRouteModeService {
           sections: revision.sections.map(section => ({ ...section }))
         })),
         auditTrail: state.terms.auditTrail.map(entry => ({ ...entry })),
-        availableLanguages: state.terms.availableLanguages.map(language => ({ ...language }))
+        availableLanguages: state.terms.availableLanguages.map(language => ({ ...language })),
+        guideFields: state.terms.guideFields.map(field => ({ ...field }))
       },
       ideas: state.ideas.map(post => ({ ...post, imageUrls: [...post.imageUrls] })),
       ideasTotal: Math.max(

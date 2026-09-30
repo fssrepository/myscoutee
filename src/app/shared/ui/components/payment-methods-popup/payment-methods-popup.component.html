@@ -7,7 +7,7 @@
       }
       @if (historyHeaderTotals(); as totals) {
         @if (totals.length) {
-          <div class="payment-methods-popup__history-totals" role="group" [attr.aria-label]="'payment.history.totals' | i18n">
+          <div class="payment-methods-popup__history-totals" data-guide-field="payment-history-totals" role="group" [attr.aria-label]="'payment.history.totals' | i18n">
             @for (total of totals; track total.tone + ':' + total.text) {
               <button type="button" (click)="currencyPickerOpen.set(true)"
                 class="payment-methods-popup__history-total motion-static"
@@ -20,6 +20,7 @@
       }
 
       <app-smart-list #historyList
+        data-guide-field="payment-history-list"
         class="payment-methods-popup__list"
         [config]="allHistoryListConfig"
         [loadPage]="loadAllHistory"
@@ -28,7 +29,7 @@
         (menuItemSelect)="onPaymentHistoryMenuSelect($event)"
       ></app-smart-list>
       <ng-template #paymentHistoryTemplate let-item let-openMenu="openMenu">
-        <single-row
+        <single-row data-guide-field="payment-history-row"
           [row]="historyRow(item, true)"
           [useSharedMenu]="true"
           (menuRequest)="openMenu($event)"
@@ -54,7 +55,7 @@
         (menuItemSelect)="onCardMenuSelect($event)"
       ></app-smart-list>
       <ng-template #paymentCardTemplate let-method let-openMenu="openMenu">
-        <app-payment-card
+        <app-payment-card data-guide-field="payment-card"
           [card]="paymentCard(method)"
           [selectable]="pickerMode()"
           [showMenu]="true"

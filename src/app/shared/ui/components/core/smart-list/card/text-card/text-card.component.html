@@ -6,7 +6,7 @@
     @if (badgeClickable) {
       <button
         type="button"
-        class="ui-text-card__badge ui-text-card__badge--button"
+        [attr.data-guide-field]="badgeGuideField" class="ui-text-card__badge ui-text-card__badge--button"
         [attr.aria-label]="resolvedBadgeAriaLabel()"
         (click)="emitBadgeClick($event)"
       >
@@ -16,7 +16,7 @@
         <span>{{ resolvedBadge() }}</span>
       </button>
     } @else {
-      <span class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
+      <span [attr.data-guide-field]="badgeGuideField" class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
         @if (resolvedBadgeIcon()) {
           <mat-icon aria-hidden="true">{{ resolvedBadgeIcon() }}</mat-icon>
         }
@@ -26,7 +26,7 @@
   }
 
   @if (resolvedStatusBadge()) {
-    <span class="ui-text-card__status-badge" [attr.aria-label]="resolvedStatusBadgeAriaLabel()">
+    <span [attr.data-guide-field]="statusGuideField" class="ui-text-card__status-badge" [attr.aria-label]="resolvedStatusBadgeAriaLabel()">
       @if (resolvedStatusBadgeIcon()) {
         <mat-icon aria-hidden="true">{{ resolvedStatusBadgeIcon() }}</mat-icon>
       }
@@ -71,6 +71,7 @@
       @if (hasMenu()) {
         @if (useSharedMenuTrigger) {
           <app-menu-trigger
+            guideField="card-actions"
             class="ui-text-card__menu"
             kind="select"
             [menuId]="resolvedSharedMenuId()"
@@ -81,6 +82,7 @@
           ></app-menu-trigger>
         } @else {
           <app-menu
+            data-guide-control="card-actions"
             class="ui-text-card__menu"
             kind="select"
             layout="list"

@@ -60,6 +60,7 @@ export class EventFeedbackFormFlowConverter {
         controls: [
           {
             id: `${card.id}-primary`,
+            guideFieldId: 'feedback-primary',
             kind: 'menu',
             label: card.questionPrimary,
             bind: ['cards', cardIndex, 'answerPrimary'],
@@ -68,6 +69,7 @@ export class EventFeedbackFormFlowConverter {
           },
           {
             id: `${card.id}-secondary`,
+            guideFieldId: 'feedback-secondary',
             kind: 'menu',
             label: card.questionSecondary,
             bind: ['cards', cardIndex, 'answerSecondary'],
@@ -76,6 +78,7 @@ export class EventFeedbackFormFlowConverter {
           },
           {
             id: `${card.id}-traits`,
+            guideFieldId: 'feedback-traits',
             kind: 'menu',
             layout: 'wide' as const,
             label: card.traitQuestion,
@@ -86,6 +89,7 @@ export class EventFeedbackFormFlowConverter {
           },
           ...(card.kind === 'event' ? [{
             id: `${card.id}-comment`,
+            guideFieldId: 'feedback-comment',
             kind: 'textarea' as const,
             layout: 'wide' as const,
             label: 'Your opinion about the event',

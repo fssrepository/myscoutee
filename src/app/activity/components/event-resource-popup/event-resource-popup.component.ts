@@ -42,6 +42,7 @@ import {
 import {
   DeploymentConfigurationService
 } from '../../../shared/core/base/services/deployment-configuration.service';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import {
   PaymentAuthorizationService
 } from '../../../shared/core/base/services/payment-authorization.service';
@@ -163,7 +164,9 @@ export class EventResourcePopupComponent {
   private readonly chatsService = inject(ChatsService);
   private readonly activityStore = inject(ActivityStore);
   private readonly i18n = inject(I18nService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly destroyRef = inject(DestroyRef);
+  private unregisterExplanationContext: (() => void) | null = null;
 
   @Input() parentZIndex = 2500;
 
@@ -203,6 +206,18 @@ export class EventResourcePopupComponent {
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       this.subEventResourceOpenVersion += 1;
+      this.unregisterExplanationContext?.();
+      this.unregisterExplanationContext = null;
+    });
+
+    effect(() => {
+      const context = this.resourcePopupStore.popupContextRef();
+      if (context) {
+        this.unregisterExplanationContext ??= this.explanationGuide.registerContext('event.resources');
+      } else {
+        this.unregisterExplanationContext?.();
+        this.unregisterExplanationContext = null;
+      }
     });
 
     effect(() => {

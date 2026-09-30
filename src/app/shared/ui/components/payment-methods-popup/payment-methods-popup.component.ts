@@ -11,6 +11,7 @@ import {
   EventsService,
   I18nService,
   PaymentMethodsService,
+  ExplanationGuideService,
   UsersService
 } from '../../../core';
 import type * as AppDTOs from '../../../core/contracts';
@@ -84,6 +85,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly dialogStore = inject(DialogStore);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly i18n = inject(I18nService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
 
   private readonly historyList = viewChild<SmartListComponent<PaymentHistoryItemDto, PaymentListFilters>>('historyList');
   private readonly revisionRef = signal(0);
@@ -105,6 +107,15 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   private readonly currencyRefresh = effect(() => {
     const revision = this.paymentMethods.summaryCurrencyRevision();
     if (revision > 0) untracked(() => this.revisionRef.update(value => value + 1));
+  });
+  private unregisterExplanationContext: (() => void) | null = null;
+  private readonly explanationContextEffect = effect(() => {
+    if (this.store.isOpen() && this.store.picker() === null) {
+      this.unregisterExplanationContext ??= this.explanationGuide.registerContext('payment.history');
+    } else {
+      this.unregisterExplanationContext?.();
+      this.unregisterExplanationContext = null;
+    }
   });
   protected readonly euroSummary = this.store.euroSummary;
   private readonly historyDirectionRef = signal<PaymentHistoryDirection>('all');
@@ -1256,6 +1267,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
     this.stopRegistrationPolling();
   }
 }

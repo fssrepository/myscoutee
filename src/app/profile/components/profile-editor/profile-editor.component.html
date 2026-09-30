@@ -11,11 +11,13 @@
             >
               <div class="profile-editor-header-card">
                 <app-header-card
+                  editGuideField="profile-photo"
                   [model]="profileHeaderCardModel()"
                   (edit)="openImageEditor()"
                 ></app-header-card>
                 <app-menu
                   class="profile-api-integration-action"
+                  data-guide-field="profile-shortcuts"
                   kind="inline"
                   layout="row"
                   [model]="profileHeaderActionMenuModel"
@@ -27,6 +29,7 @@
                 <div class="profile-editor-flow-area">
                   <app-form-flow
                     class="profile-editor-flow"
+                    data-guide-field="profile-form"
                     [model]="profileEditorFlowModel"
                     [ngModel]="profileEditorData"
                     (ngModelChange)="onProfileDraftChange($event)"

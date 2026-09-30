@@ -21,7 +21,7 @@
     @if (showAdd() && !readOnly()) {
     <div class="event-basket-panel-actions">
       <app-menu
-        class="event-basket-add-menu"
+        class="event-basket-add-menu" data-guide-field="checkout-basket-edit"
         kind="inline"
         [items]="addMenuItems()"
         (itemSelect)="onAddSelect($event)"
@@ -60,7 +60,7 @@
       <div class="event-basket-list">
         @for (item of items; track itemTrackId($index, item)) {
           @if (readOnly()) {
-            <article class="event-basket-readonly-row">
+            <article class="event-basket-readonly-row" data-guide-field="checkout-basket-item">
               <div>
                 <strong>{{ item.title }}</strong>
                 <span>{{ itemMeta(item) }}</span>
@@ -72,7 +72,7 @@
             </article>
           } @else {
           <app-text-card
-            class="event-basket-card"
+            class="event-basket-card" data-guide-field="checkout-basket-item"
             [tone]="itemTone(item)"
             icon="event_seat"
             [title]="item.title"
@@ -98,7 +98,7 @@
           <mat-icon>price_check</mat-icon>
         </div>
         @for (row of visiblePricingSummaryRows(); track row.key || row.label) {
-          <div class="event-basket-pricing-row">
+          <div data-guide-field="pricing-breakdown" class="event-basket-pricing-row">
             <span class="event-basket-pricing-label">
               <span>
                 @if (row.label === 'pricing.asset.billed.duration' && row.multiplier) {
@@ -117,7 +117,7 @@
         @if (visiblePricingSummaryRows().length === 0) {
           <p class="event-basket-pricing-empty">{{ 'event.editor.basket.no.selected.items' | i18n }}</p>
         }
-        <div class="event-basket-pricing-total">
+        <div data-guide-field="pricing-total" class="event-basket-pricing-total">
           <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
           <strong>{{ pricingSummaryTotalLabel() }}</strong>
         </div>

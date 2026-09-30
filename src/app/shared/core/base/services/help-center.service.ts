@@ -189,7 +189,8 @@ export class HelpCenterService extends BaseRouteModeService {
         }))
       })),
       auditTrail: state.auditTrail.map(entry => ({ ...entry })),
-      availableLanguages: state.availableLanguages.map(language => ({ ...language }))
+      availableLanguages: state.availableLanguages.map(language => ({ ...language })),
+      guideFields: state.guideFields.map(field => ({ ...field }))
     };
   }
 

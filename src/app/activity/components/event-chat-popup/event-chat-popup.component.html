@@ -11,6 +11,7 @@
       <div class="chat-popup-box">
         <app-smart-list
           #chatThreadSmartList
+          data-guide-field="chat-list"
           [config]="chatThreadSmartListConfig"
           [loadPage]="chatThreadLoadPage"
           [itemTemplate]="chatThreadMessageTemplate"
@@ -27,7 +28,7 @@
             </span>
           </div>
         }
-        <div class="chat-compose-box" #chatComposeBox>
+        <div class="chat-compose-box" data-guide-field="chat-compose" #chatComposeBox>
           @if (replyTarget) {
             <div class="chat-reply-draft">
               <span class="chat-reply-draft-copy">
@@ -53,6 +54,7 @@
           <span class="chat-compose-plus-wrap">
             <app-menu
               class="chat-composer-app-menu"
+              data-guide-control="chat-attachments"
               kind="select"
               [trigger]="composerMenuTrigger()"
               [items]="composerMenuItems()"
@@ -142,7 +144,7 @@
                   (keydown)="onComposerKeydown($event)"
                   [disabled]="chatInitialLoadPending"
                 ></textarea>
-                <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
+                <button type="button" class="chat-send-btn" data-guide-field="chat-send" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
                   <mat-icon>send</mat-icon>
                 </button>
               }
@@ -194,6 +196,7 @@
 <ng-template #chatThreadMessageTemplate let-message let-groupLabel="groupLabel">
   <article
     class="chat-message"
+    data-guide-field="chat-message-actions"
     [class.mine]="message.mine"
     [class.chat-message-fresh]="isFreshMessage(message.id)"
     [class.chat-message-pending]="message.deliveryState === 'pending'"

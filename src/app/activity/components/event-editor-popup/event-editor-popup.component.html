@@ -1,6 +1,6 @@
 @if (eventEditorStore.isOpenBoolean()) {
 <app-popup [model]="eventEditorPopupModel()" [zIndex]="eventEditorPopupZIndex()">
-    <div class="popup-body" [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
+    <div class="popup-body" [attr.data-guide-field]="checkoutReviewMode() ? 'checkout-event' : null" [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
       @if (eventEditorBodyLoading()) {
       <div class="popup-loading-overlay" aria-busy="true">
         <app-indicator
@@ -10,7 +10,7 @@
       </div>
       } @else {
       @if (checkoutPaymentPhase()) {
-      <section class="editor-list-card editor-list-card--payment">
+      <section class="editor-list-card editor-list-card--payment" data-guide-field="checkout-payment">
         <div class="event-checkout-payment-stack">
           <app-event-basket-input
             [config]="checkoutPaymentBasketConfig"
@@ -31,7 +31,8 @@
               [config]="eventPricingEditorConfig" [readOnly]="true" [disabled]="true"></app-pricing-editor-input>
             @if (showCheckoutPromoCodeAction()) {
               <app-menu
-                class="event-pricing-promo-action"
+              class="event-pricing-promo-action"
+              data-guide-field="checkout-promo"
                 kind="inline"
                 [items]="checkoutPromoCodeMenuItems()"
                 (itemSelect)="onCheckoutPromoCodeMenuSelect($event)"
@@ -62,6 +63,7 @@
             <div class="experience-description-field event-image-field">
               <app-image-gallery
                 class="event-image-carousel"
+                data-guide-field="event-images"
                 [slotCount]="5"
                 [readOnly]="eventStructureReadOnly()"
                 title="event.editor.image.aria"
@@ -73,20 +75,20 @@
                 (imagesChange)="onEventImageUrlsChange($event)"
               ></app-image-gallery>
             </div>
-            <label class="experience-title-field">
+            <label class="experience-title-field" data-guide-field="event-title">
               <span>{{ 'name' | i18n }} <span class="required-star">*</span></span>
               <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
             </label>
-            <label class="event-capacity-range-field">
+            <label class="event-capacity-range-field" data-guide-field="event-capacity">
               <span>{{ 'capacity' | i18n }} <span class="required-star">*</span></span>
               <div class="subevent-capacity-range">
-                <input type="number" min="0" step="1" required [ngModel]="eventDetailDTO.capacityMin"
+                <input data-guide-field="event-capacity-min" type="number" min="0" step="1" required [ngModel]="eventDetailDTO.capacityMin"
                   (input)="onEventCapacityInput($event)" (ngModelChange)="onEventCapacityMinChange($event)"
                   [disabled]="eventCapacityMinReadOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" [placeholder]="'min' | i18n" />
                 <span class="subevent-capacity-separator">-</span>
-                <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
+                <input data-guide-field="event-capacity-max" type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
                   (input)="onEventCapacityInput($event)" (ngModelChange)="onEventCapacityMaxChange($event)"
                   (blur)="onEventCapacityMaxBlur()"
                   [disabled]="eventCapacityMaxReadOnly()"
@@ -94,13 +96,14 @@
               </div>
             </label>
             <app-location-input
+              data-guide-field="event-location"
               class="experience-description-field event-location-field"
               [ngModel]="eventDetailDTO.location"
               (ngModelChange)="onEventLocationChange($event)"
               [config]="eventLocationInputConfig"
               [readOnly]="eventStructureReadOnly()"
             ></app-location-input>
-            <div class="event-intel-row">
+            <div class="event-intel-row" data-guide-field="event-options">
               <app-menu
                 class="event-intel-menu"
                 [style.--app-menu-mobile-big-columns]="2"
@@ -109,12 +112,13 @@
                 (itemSelect)="onEventEditorMenuSelect($event)"
               ></app-menu>
             </div>
-            <label class="experience-description-field">
+            <label class="experience-description-field" data-guide-field="event-description">
               <span>{{ 'description' | i18n }} <span class="required-star">*</span></span>
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
             <app-link-input
+              data-guide-field="event-source-link"
               class="experience-description-field"
               [(ngModel)]="eventDetailDTO.sourceLink"
               [config]="{ label: 'event.external.link', placeholder: 'https://...' }"
@@ -123,6 +127,7 @@
             @if (showSubEventDefinitionsPanel()) {
               <app-event-subevent-definitions-panel
                 class="experience-description-field"
+                [attr.data-guide-field]="checkoutReviewMode() ? 'checkout-options' : 'event-definitions'"
                 [ngModel]="eventDetailDTO.subEventDefinitions"
                 (ngModelChange)="onSubEventDefinitionsChange($event)"
                 [mode]="eventDetailDTO.mode"
@@ -139,7 +144,7 @@
               ></app-event-subevent-definitions-panel>
             }
             <section class="event-scheduling-stack">
-              <section class="event-schedule-panel">
+              <section class="event-schedule-panel" data-guide-field="event-date">
                 <div class="event-schedule-panel-head">
                   <span class="event-schedule-panel-title">
                     <mat-icon>calendar_month</mat-icon>
@@ -154,7 +159,7 @@
                 ></app-date-input>
               </section>
               @if (showSlotsInput()) {
-                <app-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
+              <app-slots-input [attr.data-guide-field]="checkoutReviewMode() ? 'checkout-slot' : 'event-slot-templates'" [(ngModel)]="eventDetailDTO.slotTemplates"
                     [config]="slotsInputConfig"
                     [popupZIndex]="eventEditorPopupZIndex() + 100"
                     [readOnly]="eventStructureReadOnly()"
@@ -177,6 +182,7 @@
             }
             <div
               class="experience-description-field event-pricing-field-shell"
+              data-guide-field="event-pricing"
               [class.event-pricing-field-shell--promo]="showCheckoutPromoCodeAction()"
             >
               <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
@@ -187,13 +193,14 @@
               @if (showCheckoutPromoCodeAction()) {
                 <app-menu
                   class="event-pricing-promo-action"
+                  data-guide-field="checkout-promo"
                   kind="inline"
                   [items]="checkoutPromoCodeMenuItems()"
                   (itemSelect)="onCheckoutPromoCodeMenuSelect($event)"
                 ></app-menu>
               }
             </div>
-            <app-policies-input [(ngModel)]="eventDetailDTO.policies"
+            <app-policies-input data-guide-field="event-policies" [(ngModel)]="eventDetailDTO.policies"
               [(enabled)]="eventDetailDTO.policiesEnabled"
               [config]="eventPoliciesInputConfig"
               [readOnly]="eventPoliciesReadOnly()"></app-policies-input>
@@ -206,7 +213,7 @@
     @if (checkoutReviewMode()) {
       @let checkoutFooterItems = checkoutReviewFooterMenuItems();
       @if (checkoutFooterItems.length > 0) {
-      <div class="event-editor-checkout-footer">
+      <div class="event-editor-checkout-footer" data-guide-field="checkout-confirm">
         <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() | i18n }}</p>
         <app-menu
           class="event-editor-checkout-footer__actions"

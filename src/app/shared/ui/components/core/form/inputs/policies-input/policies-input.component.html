@@ -18,7 +18,7 @@
   @if (effectivePanelEnabled()) {
   <div class="event-policies-panel-body">
     @if (!locked() || config.showReadOnlyPopup) {
-    <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
+    <button type="button" data-guide-field="policies-read" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
       <mat-icon>gavel</mat-icon>
       <span>{{ openPoliciesLabel() }}</span>
     </button>
@@ -38,7 +38,7 @@
                 <span class="event-slots-summary-title">{{ policy.title }}</span>
                 <div class="event-policy-summary-actions">
                   <span
-                    class="event-policy-summary-badge"
+                    data-guide-field="policy-requirement" class="event-policy-summary-badge"
                     [class.event-policy-summary-badge--mandatory]="policyRequired(policy)"
                     [class.event-policy-summary-badge--optional]="!policyRequired(policy)"
                   >
@@ -46,7 +46,7 @@
                   </span>
                   @if (policyApprovalEnabled() && !policyRequired(policy)) {
                     <label
-                      class="event-policy-summary-approval"
+                      data-guide-field="policy-optional-approval" class="event-policy-summary-approval"
                       (click)="$event.stopPropagation()"
                     >
                       <input

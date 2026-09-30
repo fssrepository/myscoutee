@@ -26,6 +26,8 @@
     <button
       type="button"
       class="payment-card__status payment-card__status--expired payment-card__status--action"
+      data-guide-field="payment-card-actions" aria-haspopup="menu"
+      [attr.aria-expanded]="menuOpen()" [attr.data-guide-items]="menuGuideItems()"
       [attr.aria-label]="'payment.card.actions.open' | i18n"
       (pointerdown)="captureMenuRect($event)"
       (click)="openMenu($event)"
@@ -46,6 +48,8 @@
     <button
       type="button"
       class="payment-card__status payment-card__status--retokenize payment-card__status--action"
+      data-guide-field="payment-card-actions" aria-haspopup="menu"
+      [attr.aria-expanded]="menuOpen()" [attr.data-guide-items]="menuGuideItems()"
       [attr.aria-label]="'payment.card.actions.open' | i18n"
       (pointerdown)="captureMenuRect($event)"
       (click)="openMenu($event)"
@@ -71,6 +75,8 @@
     <button
       type="button"
       class="payment-card__menu"
+      data-guide-field="payment-card-actions" aria-haspopup="menu"
+      [attr.aria-expanded]="menuOpen()" [attr.data-guide-items]="menuGuideItems()"
       [attr.aria-label]="'payment.card.actions.open' | i18n"
       (pointerdown)="captureMenuRect($event)"
       (click)="openMenu($event)"

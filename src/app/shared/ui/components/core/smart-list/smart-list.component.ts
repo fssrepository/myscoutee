@@ -26,6 +26,7 @@ import { IndicatorComponent } from '../indicator/indicator.component';
 import type { IndicatorBarConfig, IndicatorPlacement } from '../indicator';
 import { CalendarCardComponent as SmartListPageCardComponent } from './card/calendar-card/calendar-card.component';
 import { ROUTE_CONFIG } from '../../../../core/base/config';
+import { ExplanationGuideService } from '../../../../core/base/services/explanation-guide.service';
 import { AppMenuDispatcher } from '../menu/menu-dispatcher.service';
 import { AppMenuOutletComponent } from '../menu/outlet/menu-outlet.component';
 import type {
@@ -125,6 +126,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   protected readonly itemTemplateInjector = inject(Injector);
   private readonly itemMenuDispatcher = inject(AppMenuDispatcher);
   private readonly pollCoordinator = inject(UiPollCoordinator);
@@ -422,6 +424,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     hasMore: () => this.hasMore,
     loading: () => this.loading,
     markDirty: () => {
+      this.alignRetainedListToFullscreenCursor();
       this.emitState();
       this.cdr.markForCheck();
     }
@@ -539,7 +542,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     if (!this.shouldUseHostedFullscreenPagination()) {
-      this.resetHostedFullscreenTransition();
+      if (this.retainsFullscreenView()) this.interruptHostedFullscreenTransition();
+      else this.resetHostedFullscreenTransition();
     }
   }
 
@@ -614,7 +618,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }, this.resolvedHeaderProgressMode());
   }
 
+  protected retainsFullscreenView(): boolean {
+    return this.currentViewMode === 'list'
+      && this.resolveConfigValue(this.config.pagination?.retainFullscreen, false)
+      && this.configuredPaginationMode() !== 'scroll';
+  }
+
   protected resolvedPaginationMode(): SmartListPaginationMode {
+    return this.retainsFullscreenView() && this.resolvedPresentation() !== 'fullscreen'
+      ? 'scroll'
+      : this.configuredPaginationMode();
+  }
+
+  private configuredPaginationMode(): SmartListPaginationMode {
     const value = this.config.pagination?.mode;
     if (typeof value === 'function') {
       return value(this.cursorItem(), this.currentQuery());
@@ -668,11 +684,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!baseConfig) {
       return null;
     }
-    if (!this.shouldUseHostedFullscreenPagination()) {
+    if (!this.shouldUseHostedFullscreenPagination() && !this.retainsFullscreenView()) {
       return baseConfig;
     }
     return {
       ...baseConfig,
+      label: this.retainsFullscreenView() ? null : baseConfig.label,
       presentation: 'fullscreen',
       dock: {
         enabled: true,
@@ -686,7 +703,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected paginationRatingMenu(): AppMenuDispatchState<string, unknown> | null {
-    if (!this.shouldRenderPaginationRatingBar()) {
+    if (!this.shouldRenderPaginationRatingBar()
+      && !(this.retainsFullscreenView() && this.configuredPaginationMode() === 'rating-stars'
+        && this.resolvedPaginationRatingBarConfig())) {
       return null;
     }
     return {
@@ -703,7 +722,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       context: { menu: SmartListComponent.PAGINATION_RATING_MENU_ID },
       openUp: false,
       panelAlign: 'auto',
-      panelMode: this.shouldUseHostedFullscreenPagination() ? 'fixed' : 'dock',
+      panelMode: this.shouldUseHostedFullscreenPagination() || this.retainsFullscreenView() ? 'fixed' : 'dock',
       mobileBreakpointPx: 760,
       closeOnSelect: false,
       triggerElement: null,
@@ -1157,7 +1176,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
     const baseSnapMode = this.resolveConfigValue(this.config.snapMode, 'none');
-    const snapMode = this.shouldUseHorizontalMobileStepper() ? 'mandatory' : baseSnapMode;
+    const snapMode = this.explanationGuide.popupOpen() ? 'none'
+      : this.shouldUseHorizontalMobileStepper() ? 'mandatory' : baseSnapMode;
     this.trackSnapModeTransition(snapMode);
     return this.deferSnapReactivationUntilScroll ? 'none' : snapMode;
   }
@@ -1253,6 +1273,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const target = event.target as HTMLDivElement;
     if (this.isHorizontalList()) {
       this.finishHorizontalListScroll(target);
+    } else if (this.retainsFullscreenView() && this.resolvedPresentation() === 'list') {
+      this.syncCursorIndexToVisibleListItem();
     }
   }
 
@@ -1324,6 +1346,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
       presentation: 'list',
+      imagesEnabled: !this.shouldRenderHostedFullscreenOverlay(),
       renderState: 'list',
       selectItem: event => this.selectSmartListItem(item, event),
       openMenu: request => this.openItemMenu(item, request)
@@ -1332,6 +1355,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected resolvedFullscreenItemTemplate(): TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null {
     return this.fullscreenItemTemplate ?? this.itemTemplate;
+  }
+
+  protected shouldMountHostedFullscreenOverlay(): boolean {
+    return (this.retainsFullscreenView() || this.shouldUseHostedFullscreenPagination())
+      && this.resolvedFullscreenItemTemplate() !== null;
   }
 
   protected shouldRenderHostedFullscreenOverlay(): boolean {
@@ -1396,6 +1424,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
       presentation: 'fullscreen',
+      imagesEnabled: this.shouldRenderHostedFullscreenOverlay(),
       renderState,
       selectItem: event => this.selectSmartListItem(item, event),
       openMenu: request => this.openItemMenu(item, request)
@@ -3825,8 +3854,22 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       && this.resolvedPaginationMode() !== 'scroll';
   }
 
+  private alignRetainedListToFullscreenCursor(): void {
+    if (!this.retainsFullscreenView() || !this.shouldRenderHostedFullscreenOverlay()) return;
+    const host = this.scrollHostRef?.nativeElement;
+    const index = this.finiteStepper.state().index;
+    const row = host?.querySelector<HTMLElement>(`[data-smart-list-index="${index}"]`);
+    if (!host || !row) return;
+    const bounds = host.getBoundingClientRect();
+    const rowBounds = row.getBoundingClientRect();
+    // Only move the hidden list when paging has taken the cursor off screen.
+    // Closing the overlay itself never scrolls or animates the list.
+    if (rowBounds.top >= bounds.top && rowBounds.bottom <= bounds.bottom) return;
+    host.scrollTo({ top: Math.max(0, host.scrollTop + rowBounds.top - bounds.top - this.stickyHeaderHeightPx), behavior: 'instant' });
+  }
+
   private syncCursorIndexToVisibleListItem(): void {
-    if (!this.shouldUseHostedFullscreenPagination()) {
+    if (!this.shouldUseHostedFullscreenPagination() && !this.retainsFullscreenView()) {
       return;
     }
     const scrollElement = this.scrollHostRef?.nativeElement;

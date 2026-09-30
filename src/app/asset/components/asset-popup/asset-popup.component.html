@@ -13,6 +13,7 @@
         }
         @if (assetStore.ticketPopup() && !isBasketMode()) {
           <app-smart-list
+            data-guide-field="ticket-list"
             [config]="ticketSmartListConfig"
             [loadPage]="ticketSmartListLoadPage"
             [itemTemplate]="ticketItemTemplate"
@@ -22,6 +23,7 @@
         } @else {
           <app-smart-list
             #assetSmartList
+            data-guide-field="asset-list"
             [config]="assetSmartListConfig"
             [loadPage]="assetSmartListLoadPage"
             [itemTemplate]="assetItemTemplate"

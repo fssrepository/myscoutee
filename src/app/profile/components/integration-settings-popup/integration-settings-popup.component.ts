@@ -3,11 +3,12 @@ import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
 import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input, computed, effect, untracked, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnDestroy, computed, effect, untracked, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { IntegrationService } from '../../../shared/core';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import type {
   IntegrationSettingsDto,
   IntegrationTokenDto
@@ -43,7 +44,9 @@ type IntegrationActionContext =
   styleUrl: './integration-settings-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class IntegrationSettingsPopupComponent {
+export class IntegrationSettingsPopupComponent implements OnDestroy {
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
   @Input() adminMode = false;
   private readonly integrationService = inject(IntegrationService);
   private readonly i18nService = inject(I18nService);
@@ -161,14 +164,22 @@ export class IntegrationSettingsPopupComponent {
   openPopup(event?: Event): void {
     event?.stopPropagation();
     this.open.set(true);
+    this.unregisterExplanationContext ??= this.explanationGuide.registerContext('profile.integrations');
     this.revealedToken.set('');
     this.revealedTokenId.set('');
     this.errorMessage.set('');
     void this.loadSettings();
   }
 
+  ngOnDestroy(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+  }
+
   protected closePopup(): void {
     this.open.set(false);
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
     this.helpOpen.set(false);
     this.revenueOpen.set(false);
     this.revealedToken.set('');

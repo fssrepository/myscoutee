@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, inject, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payment-methods.service';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../core/contracts/payment-method.interface';
 import { PopupComponent, type PopupModel } from '../core/popup';
@@ -27,13 +28,23 @@ export class CashReceiptPopupComponent {
   @Output() readonly closed = new EventEmitter<void>();
   private readonly memberPicker = inject(ActivityInvitePopupStore);
   private readonly payments = inject(PaymentMethodsService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
   protected readonly payer = signal<ActivityMemberDTO | null>(null);
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected form: CashReceiptRequestDto = { requestId: crypto.randomUUID(), payerUserId: '', amount: 0, currency: 'EUR', note: '' };
 
-  ngOnInit(): void { this.form.currency = this.currency; }
+  ngOnInit(): void {
+    this.form.currency = this.currency;
+    this.unregisterExplanationContext = this.explanationGuide.registerContext('payment.cash.receipt');
+  }
+
+  ngOnDestroy(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+  }
 
   protected popupModel(): PopupModel {
     return { title: 'payment.cash.record', size: 'default', backdropTone: 'dim',

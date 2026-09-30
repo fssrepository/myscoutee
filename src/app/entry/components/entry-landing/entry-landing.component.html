@@ -1,7 +1,7 @@
 @let branding = deploymentBranding();
 
 <section
-  class="entry-shell"
+  class="entry-shell" appLandingGuideSurface="landing.home"
   [attr.data-deployment-theme]="branding.themePreset.toLowerCase()"
   [attr.inert]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? '' : null"
   [attr.aria-hidden]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? 'true' : null"
@@ -18,7 +18,7 @@
       <div class="entry-header-actions">
         <button
           type="button"
-          class="entry-auth-btn"
+          class="entry-auth-btn" data-guide-field="login"
           [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
           [class.entry-auth-btn-network]="networkUnavailable"
           [class.entry-auth-btn-unavailable]="authUnavailable"
@@ -56,7 +56,7 @@
             {{ 'landing.hero.event.formats' | i18n }}
           </p>
           <app-menu
-            class="entry-hero-cta-menu"
+            class="entry-hero-cta-menu" data-guide-control="entry-actions"
             kind="inline"
             layout="row"
             [model]="entryHeroCtaModel"

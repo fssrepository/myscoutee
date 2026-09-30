@@ -55,6 +55,7 @@ import type {
 } from './menu.types';
 import {
   appMenuAlertCounter,
+  appMenuGuideItemIds,
   appMenuModelGroups,
   appMenuModelSummary,
   type AppMenuModelSummaryResult,
@@ -329,6 +330,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.isBottomPanelMode;
   }
 
+  @HostBinding('class.app-menu-host--panel-fixed')
+  protected get hostPanelFixedClass(): boolean {
+    return this.isFixedPanelMode;
+  }
+
   @HostBinding('style.--app-menu-panel-gap')
   protected get hostPanelGapStyle(): string | null {
     if (this.panelGapPx === null || this.panelGapPx === undefined) {
@@ -344,6 +350,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       || !this.panelVisible
       || this.usesInlinePanel
       || this.panelDockToHost
+      || this.isBottomPanelMode
     ) {
       return null;
     }
@@ -560,7 +567,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get resolvedOpenUp(): boolean {
-    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel) {
+    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel || this.isBottomPanelMode) {
       return this.openUp;
     }
     if (this.openUp) {
@@ -578,7 +585,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get resolvedPanelAlign(): 'start' | 'end' {
-    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel) {
+    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel || this.isBottomPanelMode) {
       return this.panelAlign === 'start' ? 'start' : 'end';
     }
     const rect = this.hostRect();
@@ -601,6 +608,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return 'end';
     }
     return spaceRight >= spaceLeft ? 'start' : 'end';
+  }
+
+  protected guideItemIds(): string {
+    return appMenuGuideItemIds(this.items, this.model, this.groups);
   }
 
   protected get menuNodes(): readonly AppMenuGroup<TId, TContext>[] {
@@ -2029,7 +2040,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.isMobileViewport = false;
       return;
     }
-    this.isMobileViewport = window.innerWidth <= Math.max(1, Number(this.mobileBreakpointPx) || 760);
+    this.isMobileViewport = window.matchMedia(`(max-width: ${Math.max(1, Number(this.mobileBreakpointPx) || 760)}px)`).matches;
   }
 
   private hostRect(): DOMRect | null {

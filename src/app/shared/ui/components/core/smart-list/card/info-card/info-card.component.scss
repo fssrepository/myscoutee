@@ -929,6 +929,11 @@ button.ui-info-card__overlay-action:has(> .ui-info-card__overlay-chevron) {
   @include mediaBadge.chevron;
 }
 
+// Arial digits sit one pixel above the Material chevron's optical centre.
+.ui-info-card__overlay-action--badge:has(> .ui-info-card__overlay-chevron) > span:not([class]) {
+  transform: translateY(1px);
+}
+
 .ui-info-card__overlay-action--avatar > .ui-info-card__overlay-chevron {
   color: #fff;
 }

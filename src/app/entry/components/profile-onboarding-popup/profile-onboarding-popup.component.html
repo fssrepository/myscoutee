@@ -1,7 +1,7 @@
 @if (open && draft && user) {
   @if (draft.data; as onboardingData) {
     <app-popup [model]="onboardingPopupModel()" [zIndex]="3200">
-      <main class="profile-onboarding-body">
+      <main class="profile-onboarding-body" appLandingGuideSurface="landing.registration">
         @if (onboardingFlowModel; as flowModel) {
           <app-form-flow
             class="profile-onboarding-flow"

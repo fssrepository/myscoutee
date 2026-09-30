@@ -189,6 +189,8 @@ export class EventTournamentGroupsPopupConverter
     const pendingLabel = pendingTotal === 1 ? '1 pending' : `${pendingTotal} pending`;
     return {
       id: group.id,
+      guideFieldId: index === 0 ? 'tournament-group-accordion' : undefined,
+      guideActivateOnStep: index === 0,
       title: group.name || (mode === 'Mingle'
         ? `Table ${index + 1}`
         : `Group ${String.fromCharCode(65 + (index % 26))}`),
@@ -224,6 +226,7 @@ export class EventTournamentGroupsPopupConverter
     pendingTotal: number,
     mode: EventMode
   ): {
+    guideControlId: string;
     kind: 'select';
     trigger: AppMenuTrigger;
     model: AppMenuModel<string, EventTournamentGroupsActionContext>;
@@ -259,6 +262,7 @@ export class EventTournamentGroupsPopupConverter
       );
     }
     return {
+      guideControlId: 'tournament-group-actions',
       kind: 'select',
       trigger: {
         icon: 'more_vert',
@@ -278,7 +282,7 @@ export class EventTournamentGroupsPopupConverter
             items: [
               this.pendingMenuItem(
                 'members',
-                'Tagok',
+                'members',
                 canManage ? 'group_add' : 'groups',
                 'blue',
                 contextBase,

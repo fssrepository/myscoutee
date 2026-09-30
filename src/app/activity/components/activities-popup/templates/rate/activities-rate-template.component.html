@@ -1,6 +1,7 @@
 @if (pairCard) {
   <app-pair-card
     [card]="pairCard"
+    [imagesEnabled]="imagesEnabled"
     [showSplitHandle]="showSplitHandle()"
     (menuRequest)="onMenuRequest($event)"
     (detailClick)="onDetailClick($event)"
@@ -9,6 +10,7 @@
   @if (singleCard) {
     <app-single-card
       [card]="singleCard"
+      [imagesEnabled]="imagesEnabled"
       (menuRequest)="onMenuRequest($event)"
       (detailClick)="onDetailClick($event)"
     ></app-single-card>

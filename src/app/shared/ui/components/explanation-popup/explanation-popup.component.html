@@ -1,4 +1,6 @@
-@if (popupOpen()) {
+@if (popupOpen() && guide.popupMode() === 'tour') {
+  <app-explanation-guide-overlay></app-explanation-guide-overlay>
+} @else if (popupOpen()) {
   @if (activeRevision(); as revision) {
     <app-popup [model]="explanationPopupModel(revision)" [zIndex]="explanationPopupZIndex()">
       <div class="explanation-popup__body">

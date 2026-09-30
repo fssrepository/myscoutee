@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../../../directives/lazy-bg-image.directive';
@@ -36,7 +36,11 @@ export class PaymentCardComponent {
   @Output() readonly cardSelect = new EventEmitter<Event>();
   @Output() readonly menuRequest = new EventEmitter<PaymentCardMenuRequest>();
 
-  private menuOpen = false;
+  protected readonly menuOpen = signal(false);
+
+  protected menuGuideItems(): string {
+    return this.card.paymentMenuActions?.map(action => action.id).join('\n') ?? '';
+  }
   private menuTriggerRect: CardMenuTriggerRect | null = null;
 
   protected maskedNumber(): string {
@@ -91,7 +95,7 @@ export class PaymentCardComponent {
     if (!this.card.paymentMenuActions?.length) return;
     const trigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     this.menuTriggerRect = this.menuTriggerRect ?? this.rect(trigger);
-    this.menuOpen = true;
+    this.menuOpen.set(true);
     this.menuRequest.emit({
       id: `payment-card-menu-${this.card.id}`,
       kind: 'select',
@@ -106,7 +110,7 @@ export class PaymentCardComponent {
       triggerRect: this.menuTriggerRect,
       panelAlign: 'end',
       closeTrigger: () => {
-        this.menuOpen = false;
+        this.menuOpen.set(false);
         this.menuTriggerRect = null;
       }
     });

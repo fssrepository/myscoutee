@@ -1,6 +1,6 @@
 @if (open()) {
   <app-popup [model]="popupModel()" [zIndex]="2500">
-    <div class="integration-settings-body">
+    <div class="integration-settings-body" data-guide-field="integration-settings">
       @if (loading()) {
         <div class="integration-settings-state">{{ 'integration.loading' | i18n }}</div>
       } @else if (errorMessage()) {
@@ -11,7 +11,7 @@
             [model]="actionMenuModel" [items]="clientDownloadActions"></app-menu>
         }
         @if (!adminMode) {
-        <section class="integration-settings-section">
+        <section class="integration-settings-section" data-guide-field="affiliate-link">
           <div class="integration-section-heading">
             <h3>{{ 'affiliate.personal.link' | i18n }}</h3>
             <span class="integration-count-badge"
@@ -22,13 +22,13 @@
           <app-copy-link [value]="affiliateUrl()"></app-copy-link>
         </section>
         }
-        <section class="integration-settings-section">
+        <section class="integration-settings-section" data-guide-field="integration-base-url">
           <div class="integration-section-heading"><h3>{{ 'integration.base.url' | i18n }}</h3></div>
           <app-copy-link [value]="baseUrl()" label="integration.base.url" copyLabel="integration.base.url.copy.aria"></app-copy-link>
           @if (!adminMode) { <small>{{ 'integration.batch.maximum' | i18n }} {{ config.maxBatchSize }}</small> }
         </section>
 
-        <section class="integration-settings-section">
+        <section class="integration-settings-section" data-guide-field="integration-tokens">
           <div class="integration-section-heading">
             <div>
               <h3>{{ 'integration.client.keys' | i18n }}</h3>
@@ -41,6 +41,7 @@
               >{{ config.participants.registered }} / {{ config.participants.imported }}</span> }
               <app-menu
                 class="integration-generate-action"
+                data-guide-control="integration-generate"
                 kind="inline"
                 layout="row"
                 [model]="actionMenuModel"
@@ -53,7 +54,7 @@
           @if (config.tokens.length > 0) {
             <div class="integration-token-list">
               @for (token of config.tokens; track token.id) {
-                <article class="integration-token-row">
+                <article class="integration-token-row" data-guide-field="integration-token-row">
                   <div class="integration-token-main">
                     <div class="integration-token-title">
                       <strong>{{ token.name }}</strong>
@@ -91,6 +92,7 @@
                     }
                     <app-menu
                       class="integration-token-action"
+                      data-guide-control="integration-token-actions"
                       kind="inline"
                       layout="row"
                       [model]="actionMenuModel"
@@ -113,17 +115,17 @@
     <app-popup [model]="revenuePopupModel()" [zIndex]="2510">
       <section class="integration-settings-section affiliate-revenue-summary">
         <dl>
-          <div><dt>{{ 'affiliate.revenue.purchases' | i18n }}</dt><dd>{{ revenue().purchases }}</dd></div>
-          <div><dt>{{ 'affiliate.revenue.bookings' | i18n }}</dt><dd>{{ revenue().eventBookings }}</dd></div>
+          <div data-guide-field="revenue-purchases"><dt>{{ 'affiliate.revenue.purchases' | i18n }}</dt><dd>{{ revenue().purchases }}</dd></div>
+          <div data-guide-field="revenue-bookings"><dt>{{ 'affiliate.revenue.bookings' | i18n }}</dt><dd>{{ revenue().eventBookings }}</dd></div>
           @if (revenue().euroSummary; as eur) {
             @if (eur.missingRates === 0) {
-              <div><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ eur.gross | number:'1.2-2' }} {{ eur.currency }}</dd></div>
-              <div><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ eur.refunded | number:'1.2-2' }} {{ eur.currency }}</dd></div>
-              <div class="affiliate-revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ eur.net | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div data-guide-field="revenue-gross"><dt>{{ 'affiliate.revenue.gross' | i18n }}</dt><dd>{{ eur.gross | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div data-guide-field="revenue-refunds"><dt>{{ 'affiliate.revenue.refunds' | i18n }}</dt><dd>{{ eur.refunded | number:'1.2-2' }} {{ eur.currency }}</dd></div>
+              <div class="affiliate-revenue-net" data-guide-field="revenue-net"><dt>{{ 'affiliate.revenue.net' | i18n }}</dt><dd>{{ eur.net | number:'1.2-2' }} {{ eur.currency }}</dd></div>
             } @else { <p role="status">{{ 'payment.euro.pending' | i18n }}</p> }
           } @else { <p role="status">{{ 'payment.euro.pending' | i18n }}</p> }
         </dl>
-        <small>{{ 'affiliate.revenue.commission.pending' | i18n }}</small>
+        <small data-guide-field="revenue-commission">{{ 'affiliate.revenue.commission.pending' | i18n }}</small>
       </section>
     </app-popup>
   }

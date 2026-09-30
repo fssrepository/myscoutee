@@ -1,3 +1,4 @@
+import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-surface.directive';
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
@@ -9,7 +10,7 @@ import { I18nService } from '../../../core/base/services/i18n.service';
 
 @Component({
   selector: 'app-setup-popup',
-  imports: [PopupComponent, AppMenuComponent, I18nPipe, MatIconModule],
+  imports: [LandingGuideSurfaceDirective,PopupComponent, AppMenuComponent, I18nPipe, MatIconModule],
   templateUrl: './app-setup-popup.component.html',
   styleUrl: './app-setup-popup.component.scss'
 })

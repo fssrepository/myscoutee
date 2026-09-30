@@ -1,3 +1,4 @@
+import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-surface.directive';
 import {
   ChangeDetectorRef,
   Component,
@@ -68,7 +69,7 @@ type DemoSelectorPopupMenuContext = DemoSelectorHeaderMenuContext | DemoSelector
 @Component({
   selector: 'app-demo-bootstrap-selector',
   standalone: true,
-  imports: [
+  imports: [LandingGuideSurfaceDirective,
     CommonModule,
     MatButtonModule,
     MatRippleModule,

@@ -33,6 +33,7 @@
         <button
           type="button"
           class="header-card__edit"
+          [attr.data-guide-field]="editGuideField"
           [disabled]="card?.editDisabled === true"
           [attr.aria-label]="card?.editAriaLabel || 'Edit'"
           (click)="onEdit($event)"

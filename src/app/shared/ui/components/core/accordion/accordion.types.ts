@@ -10,6 +10,7 @@ import type {
 } from '../menu';
 
 export interface UiAccordionActionMenu<TContext = unknown> {
+  guideControlId?: string;
   kind?: AppMenuKind;
   trigger?: AppMenuTrigger | null;
   items?: readonly AppMenuItem<string, TContext>[];
@@ -41,6 +42,8 @@ export interface UiAccordionItem<TId extends string = string, TContext = unknown
   badges?: readonly UiAccordionBadge[] | null;
   palette?: AppMenuPalette;
   disabled?: boolean;
+  guideFieldId?: string;
+  guideActivateOnStep?: boolean;
   open?: boolean;
   selectable?: boolean;
   selected?: boolean;

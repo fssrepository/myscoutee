@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
   ActivityEventDetailDTO,
   type MingleConfigurationDTO
 } from '../../../shared/core/contracts/activity.interface';
-import { I18nService } from '../../../shared/core';
+import { ExplanationGuideService, I18nService } from '../../../shared/core';
 import {
   I18nPipe,
   PopupComponent,
@@ -38,8 +38,10 @@ type MingleConfigurationMenuContext = { menu: 'save' };
   styleUrl: './event-mingle-configuration-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventMingleConfigurationPopupComponent {
+export class EventMingleConfigurationPopupComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
 
   readonly open = input(false);
   readonly configuration = input<MingleConfigurationDTO | null>(null);
@@ -111,6 +113,13 @@ export class EventMingleConfigurationPopupComponent {
 
   constructor() {
     effect(() => {
+      if (this.open()) {
+        this.unregisterExplanationContext ??= this.explanationGuide.registerContext('event.mingle.configuration');
+      } else {
+        this.clearExplanationContext();
+      }
+    });
+    effect(() => {
       const open = this.open();
       const configuration = this.configuration();
       const minimumPlannedRounds = this.normalizedMinimumPlannedRounds();
@@ -125,6 +134,15 @@ export class EventMingleConfigurationPopupComponent {
       }
       this.wasOpen = open;
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearExplanationContext();
+  }
+
+  private clearExplanationContext(): void {
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
   }
 
   protected fieldMinimum(field: MingleNumberField): number {

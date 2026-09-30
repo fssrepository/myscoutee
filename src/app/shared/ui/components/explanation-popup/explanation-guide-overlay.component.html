@@ -1,0 +1,62 @@
+<div class="explanation-guide-overlay" role="dialog" [attr.aria-label]="heading()">
+  @if (guide.loading()) {
+    <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
+    <div class="explanation-guide-overlay__loading-indicator" aria-hidden="true">
+      <app-indicator kind="load-ring" state="loading" [durationMs]="3000"></app-indicator>
+    </div>
+  } @else if (guide.loadError()) {
+    <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
+    <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" (pointerdown)="$event.stopPropagation()">
+      <header class="explanation-guide-overlay__header">
+        <span class="explanation-guide-overlay__progress"></span>
+        <button type="button" class="explanation-guide-overlay__close" (click)="guide.closePopup()" [attr.aria-label]="'close' | i18n"><mat-icon>close</mat-icon></button>
+      </header>
+      <h3>{{ 'guide.load.error.title' | i18n: 'Guide unavailable' }}</h3>
+      <p>{{ 'guide.load.error.body' | i18n: 'The guide could not be loaded. Close this message and try again.' }}</p>
+    </section>
+  } @else if (frame(); as focus) {
+    @for (shade of focus.shades; track $index) {
+      <div class="explanation-guide-overlay__shade" [style.left.px]="shade.left" [style.top.px]="shade.top" [style.width.px]="shade.width" [style.height.px]="shade.height" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
+    }
+    @for (target of focus.targets; track $index) {
+      <div class="explanation-guide-overlay__focus" [style.left.px]="target.left" [style.top.px]="target.top" [style.width.px]="target.width" [style.height.px]="target.height"></div>
+    }
+    <section class="explanation-guide-overlay__card" [class.explanation-guide-overlay__card--menu]="insideMenu()" [style.left.px]="focus.cardLeft" [style.top.px]="focus.cardTop" [style.width.px]="focus.cardWidth" (pointerdown)="$event.stopPropagation()">
+      <ng-container *ngTemplateOutlet="tourContent"></ng-container>
+    </section>
+  } @else {
+    <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
+    @if (!positionPending()) {
+      <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" (pointerdown)="$event.stopPropagation()">
+        <ng-container *ngTemplateOutlet="tourContent"></ng-container>
+      </section>
+    }
+  }
+</div>
+
+<ng-template #tourContent>
+  <header class="explanation-guide-overlay__header">
+    <span class="explanation-guide-overlay__progress">{{ progress() }}</span>
+    <button type="button" class="explanation-guide-overlay__close" (click)="guide.closePopup()" [attr.aria-label]="'close' | i18n"><mat-icon>close</mat-icon></button>
+  </header>
+  <h3>{{ guideSection()?.title || title() }}</h3>
+  @if (guideSection(); as section) {
+    <div class="explanation-guide-overlay__body" [innerHTML]="section.contentHtml"></div>
+  } @else {
+    <p>{{ body() }}</p>
+  }
+  <div class="explanation-guide-overlay__controls">
+    <app-menu class="explanation-guide-overlay__previous" kind="inline" layout="row"
+      style="--app-menu-action-flex: 1 1 0; --app-menu-action-min-width: 0; --app-menu-action-padding: 0 0.25rem"
+      [model]="{ actionSizing: 'fill' }" [items]="previousItems()"
+      (itemSelect)="onNavigationSelect($event)"></app-menu>
+    <app-menu class="explanation-guide-overlay__step-picker" kind="select" panelAlign="auto" title="explanations"
+      style="display: block; width: 100%; min-width: 0"
+      [trigger]="stepPickerTrigger()" [model]="stepPickerModel()" [closeOnSelect]="true"
+      (itemSelect)="onStepSelect($event)"></app-menu>
+    <app-menu class="explanation-guide-overlay__next" kind="inline" layout="row"
+      style="--app-menu-action-flex: 1 1 0; --app-menu-action-min-width: 0; --app-menu-action-padding: 0 0.25rem"
+      [model]="{ actionSizing: 'fill' }" [items]="nextItems()"
+      (itemSelect)="onNavigationSelect($event)"></app-menu>
+  </div>
+</ng-template>

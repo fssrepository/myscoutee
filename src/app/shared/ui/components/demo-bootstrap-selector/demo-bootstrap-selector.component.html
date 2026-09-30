@@ -1,6 +1,6 @@
 @if (open) {
   <app-popup [model]="popupModel()" [zIndex]="2800">
-    <div class="demo-user-stage">
+    <div class="demo-user-stage" appLandingGuideSurface="landing.demo">
         @if (loading) {
           <div class="demo-user-grid demo-user-grid-loading">
             <div class="demo-user-loading-shell">
@@ -85,7 +85,7 @@
               @for (user of visibleUsers(); track user.id) {
                 <button
                   type="button"
-                  class="demo-user-item"
+                  class="demo-user-item" data-guide-field="member-card"
                   [attr.data-user-id]="user.id"
                   [ngClass]="userStatusClass(user)"
                   [class.demo-user-item-selected]="selectedUserId.trim() === user.id.trim()"

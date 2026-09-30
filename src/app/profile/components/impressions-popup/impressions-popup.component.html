@@ -1,7 +1,7 @@
 @if (popupOpen() && viewModel(); as vm) {
   <app-popup [model]="impressionsPopupModel(vm)" [zIndex]="impressionsPopupZIndex()">
     <div class="profile-impressions-popup">
-        <section class="profile-impressions-person-stage">
+        <section class="profile-impressions-person-stage" data-guide-field="impressions-photos">
           <article
             class="profile-impressions-person-card"
             [class.has-photo]="!!vm.activeProfilePhoto"
@@ -49,6 +49,7 @@
         <div class="social-proof-grid">
           <div
             class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host"
+            data-guide-field="impressions-host"
             [ngClass]="vm.hostTierPresentation.toneClass"
             >
             <div class="social-proof-identity-pill social-proof-identity-pill-host">
@@ -159,6 +160,7 @@
           </div>
           <div
             class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member"
+            data-guide-field="impressions-member"
             [ngClass]="vm.traitPresentation.toneClass"
             >
             <div class="social-proof-identity-pill social-proof-identity-pill-member">
