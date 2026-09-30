@@ -1,0 +1,6833 @@
+{
+  "activities.rates": [
+    {
+      "id": "primary:trigger",
+      "screenKey": "activities.rates",
+      "group": "menus",
+      "i18nKey": "guide.activities.rates.primary.trigger",
+      "order": 0
+    },
+    {
+      "id": "primary:rates",
+      "screenKey": "activities.rates",
+      "group": "menus",
+      "i18nKey": "guide.activities.rates.primary.rates",
+      "order": 1
+    },
+    {
+      "id": "primary:chats",
+      "screenKey": "activities.rates",
+      "group": "menus",
+      "i18nKey": "guide.activities.rates.primary.chats",
+      "order": 2
+    },
+    {
+      "id": "primary:events",
+      "screenKey": "activities.rates",
+      "group": "menus",
+      "i18nKey": "guide.activities.rates.primary.events",
+      "order": 3
+    },
+    {
+      "id": "rate:trigger",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.trigger",
+      "order": 4
+    },
+    {
+      "id": "rate-social",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.social",
+      "order": 5
+    },
+    {
+      "id": "rate:individual-given",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.individual.given",
+      "order": 6
+    },
+    {
+      "id": "rate:individual-received",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.individual.received",
+      "order": 7
+    },
+    {
+      "id": "rate:individual-mutual",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.individual.mutual",
+      "order": 8
+    },
+    {
+      "id": "rate:individual-met",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.individual.met",
+      "order": 9
+    },
+    {
+      "id": "rate:pair-given",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.pair.given",
+      "order": 10
+    },
+    {
+      "id": "rate:pair-received",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rate.pair.received",
+      "order": 11
+    },
+    {
+      "id": "secondary:trigger",
+      "screenKey": "activities.rates",
+      "group": "order",
+      "i18nKey": "guide.activities.rates.secondary.trigger",
+      "order": 12
+    },
+    {
+      "id": "secondary:recent",
+      "screenKey": "activities.rates",
+      "group": "order",
+      "i18nKey": "guide.activities.rates.secondary.recent",
+      "order": 13
+    },
+    {
+      "id": "secondary:relevant",
+      "screenKey": "activities.rates",
+      "group": "order",
+      "i18nKey": "guide.activities.rates.secondary.relevant",
+      "order": 14
+    },
+    {
+      "id": "secondary:past",
+      "screenKey": "activities.rates",
+      "group": "order",
+      "i18nKey": "guide.activities.rates.secondary.past",
+      "order": 15
+    },
+    {
+      "id": "view:trigger",
+      "screenKey": "activities.rates",
+      "group": "view",
+      "i18nKey": "guide.activities.rates.view.trigger",
+      "order": 16
+    },
+    {
+      "id": "view:month",
+      "screenKey": "activities.rates",
+      "group": "view",
+      "i18nKey": "guide.activities.rates.view.month",
+      "order": 17
+    },
+    {
+      "id": "view:week",
+      "screenKey": "activities.rates",
+      "group": "view",
+      "i18nKey": "guide.activities.rates.view.week",
+      "order": 18
+    },
+    {
+      "id": "view:day",
+      "screenKey": "activities.rates",
+      "group": "view",
+      "i18nKey": "guide.activities.rates.view.day",
+      "order": 19
+    },
+    {
+      "id": "view:distance",
+      "screenKey": "activities.rates",
+      "group": "view",
+      "i18nKey": "guide.activities.rates.view.distance",
+      "order": 20
+    },
+    {
+      "id": "fullscreen",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.fullscreen",
+      "order": 21
+    },
+    {
+      "id": "score",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.score",
+      "order": 22
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.pagination.prev",
+      "order": 23
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.pagination.next",
+      "order": 24
+    },
+    {
+      "id": "pair-resize",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.pair.resize",
+      "order": 25
+    },
+    {
+      "id": "related-profile",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.related.profile",
+      "order": 26
+    },
+    {
+      "id": "image-switch",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.image.switch",
+      "order": 27
+    },
+    {
+      "id": "profile",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.profile",
+      "order": 28
+    },
+    {
+      "id": "rating-input",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rating-input",
+      "order": 29
+    },
+    {
+      "id": "rating-save",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rating-save",
+      "order": 30
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.card-badge-start",
+      "order": 31
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.card-badge-end",
+      "order": 32
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.card-actions",
+      "order": 33
+    },
+    {
+      "id": "close",
+      "screenKey": "activities.rates",
+      "group": "popup",
+      "i18nKey": "guide.activities.rates.close",
+      "order": 34
+    },
+    {
+      "id": "pair-score-received",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.common.pair-score-received",
+      "order": 35
+    },
+    {
+      "id": "pair-images",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.common.pair-images",
+      "order": 36
+    },
+    {
+      "id": "pair-profiles",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.common.pair-profiles",
+      "order": 37
+    },
+    {
+      "id": "pair-score-summary",
+      "screenKey": "activities.rates",
+      "group": "card",
+      "i18nKey": "guide.common.pair-score-summary",
+      "order": 38
+    }
+  ],
+  "home.game": [
+    {
+      "id": "home-header",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.home.game.header",
+      "order": 0
+    },
+    {
+      "id": "home-cards",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.home.game.cards",
+      "order": 1
+    },
+    {
+      "id": "home-mode",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-mode",
+      "order": 2
+    },
+    {
+      "id": "home-mode:single",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-mode.single",
+      "order": 3
+    },
+    {
+      "id": "home-mode:friends-in-common",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-mode.friends-in-common",
+      "order": 4
+    },
+    {
+      "id": "home-mode:separated-friends",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-mode.separated-friends",
+      "order": 5
+    },
+    {
+      "id": "home-mode:outside-network",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-mode.outside-network",
+      "order": 6
+    },
+    {
+      "id": "home-filter",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-filter",
+      "order": 7
+    },
+    {
+      "id": "home-history",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.home.game.home-history",
+      "order": 8
+    },
+    {
+      "id": "rating-input",
+      "screenKey": "home.game",
+      "group": "ratings",
+      "i18nKey": "guide.home.game.rating-input",
+      "order": 9
+    },
+    {
+      "id": "image-switch",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.home.game.image-switch",
+      "order": 10
+    },
+    {
+      "id": "profile",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.home.game.profile",
+      "order": 11
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.home.game.pagination-next",
+      "order": 12
+    },
+    {
+      "id": "pair-resize",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.activities.rates.pair.resize",
+      "order": 13
+    },
+    {
+      "id": "pair-images",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.common.pair-images",
+      "order": 14
+    },
+    {
+      "id": "pair-profiles",
+      "screenKey": "home.game",
+      "group": "card",
+      "i18nKey": "guide.common.pair-profiles",
+      "order": 15
+    }
+  ],
+  "chats": [
+    {
+      "id": "primary:trigger",
+      "screenKey": "chats",
+      "group": "menus",
+      "i18nKey": "guide.chats.primary.trigger",
+      "order": 0
+    },
+    {
+      "id": "chat-context:trigger",
+      "screenKey": "chats",
+      "group": "menus",
+      "i18nKey": "guide.chats.chat.context.trigger",
+      "order": 1
+    },
+    {
+      "id": "activity-list",
+      "screenKey": "chats",
+      "group": "card",
+      "i18nKey": "guide.chats.activity.list",
+      "order": 2
+    },
+    {
+      "id": "chat-list",
+      "screenKey": "chats",
+      "group": "card",
+      "i18nKey": "guide.chats.chat-list",
+      "order": 3
+    },
+    {
+      "id": "chat-compose",
+      "screenKey": "chats",
+      "group": "card",
+      "i18nKey": "guide.chats.chat-compose",
+      "order": 4
+    },
+    {
+      "id": "chat-send",
+      "screenKey": "chats",
+      "group": "card",
+      "i18nKey": "guide.chats.chat-send",
+      "order": 5
+    },
+    {
+      "id": "chat-actions",
+      "screenKey": "chats",
+      "group": "card",
+      "i18nKey": "guide.chats.chat-actions",
+      "order": 6
+    },
+    {
+      "id": "chat-attachments",
+      "screenKey": "chats",
+      "group": "card",
+      "i18nKey": "guide.event.chat.chat-attachments",
+      "order": 7
+    },
+    {
+      "id": "close",
+      "screenKey": "chats",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 8
+    }
+  ],
+  "profile.editor": [
+    {
+      "id": "profile-photo",
+      "screenKey": "profile.editor",
+      "group": "card",
+      "i18nKey": "guide.profile.editor.profile.photo",
+      "order": 0
+    },
+    {
+      "id": "profile-calendar-export",
+      "screenKey": "profile.editor",
+      "group": "menus",
+      "i18nKey": "guide.profile.editor.calendar-export",
+      "order": 1
+    },
+    {
+      "id": "profile-api-integration",
+      "screenKey": "profile.editor",
+      "group": "menus",
+      "i18nKey": "guide.profile.editor.api-integration",
+      "order": 2
+    },
+    {
+      "id": "full-name",
+      "screenKey": "profile.editor",
+      "group": "card",
+      "i18nKey": "guide.profile.editor.profile-name",
+      "order": 3
+    },
+    {
+      "id": "about",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.about",
+      "order": 4
+    },
+    {
+      "id": "birthday",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.birthday",
+      "order": 5
+    },
+    {
+      "id": "gender",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.gender",
+      "order": 6
+    },
+    {
+      "id": "city",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.city",
+      "order": 7
+    },
+    {
+      "id": "height",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.height",
+      "order": 8
+    },
+    {
+      "id": "physique",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.physique",
+      "order": 9
+    },
+    {
+      "id": "profession",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.profession",
+      "order": 10
+    },
+    {
+      "id": "workspace",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.workspace",
+      "order": 11
+    },
+    {
+      "id": "school",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.school",
+      "order": 12
+    },
+    {
+      "id": "languages",
+      "screenKey": "profile.editor",
+      "group": "menus",
+      "i18nKey": "guide.profile.editor.profile-language",
+      "order": 13
+    },
+    {
+      "id": "interests",
+      "screenKey": "profile.editor",
+      "group": "card",
+      "i18nKey": "guide.profile.editor.profile-experience",
+      "order": 14
+    },
+    {
+      "id": "drinking",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.drinking",
+      "order": 15
+    },
+    {
+      "id": "smoking",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.smoking",
+      "order": 16
+    },
+    {
+      "id": "workout",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.workout",
+      "order": 17
+    },
+    {
+      "id": "pets",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.pets",
+      "order": 18
+    },
+    {
+      "id": "familyPlans",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.familyPlans",
+      "order": 19
+    },
+    {
+      "id": "children",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.children",
+      "order": 20
+    },
+    {
+      "id": "loveStyle",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.loveStyle",
+      "order": 21
+    },
+    {
+      "id": "communicationStyle",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.communicationStyle",
+      "order": 22
+    },
+    {
+      "id": "sexualOrientation",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.sexualOrientation",
+      "order": 23
+    },
+    {
+      "id": "religion",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.religion",
+      "order": 24
+    },
+    {
+      "id": "values",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.values",
+      "order": 25
+    },
+    {
+      "id": "profile-status:trigger",
+      "screenKey": "profile.editor",
+      "group": "menus",
+      "i18nKey": "guide.profile.editor.profile-status.trigger",
+      "order": 26
+    },
+    {
+      "id": "profile-save",
+      "screenKey": "profile.editor",
+      "group": "card",
+      "i18nKey": "guide.profile.editor.profile-save",
+      "order": 27
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.editor",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 28
+    },
+    {
+      "id": "image-preview",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-preview",
+      "order": 29
+    },
+    {
+      "id": "image-upload",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-upload",
+      "order": 30
+    },
+    {
+      "id": "image-replace",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-replace",
+      "order": 31
+    },
+    {
+      "id": "image-copy",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-copy",
+      "order": 32
+    },
+    {
+      "id": "image-remove",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-remove",
+      "order": 33
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-pages",
+      "order": 34
+    },
+    {
+      "id": "image-details",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-details",
+      "order": 35
+    },
+    {
+      "id": "image-location",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-location",
+      "order": 36
+    },
+    {
+      "id": "image-caption",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-caption",
+      "order": 37
+    },
+    {
+      "id": "image-details-save",
+      "screenKey": "profile.editor",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-details-save",
+      "order": 38
+    },
+    {
+      "id": "image-view",
+      "screenKey": "profile.editor",
+      "group": "card",
+      "i18nKey": "guide.common.image-view",
+      "order": 39
+    }
+  ],
+  "profile.view": [
+    {
+      "id": "profile-card",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.profile.view.profile.card",
+      "order": 0
+    },
+    {
+      "id": "profile-details",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.profile.view.profile.details",
+      "order": 1
+    },
+    {
+      "id": "profile-experience",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.profile.view.profile.experience",
+      "order": 2
+    },
+    {
+      "id": "profile-photo-switch",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.profile.view.profile-photo-switch",
+      "order": 3
+    },
+    {
+      "id": "profile-about",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.profile.view.about",
+      "order": 4
+    },
+    {
+      "id": "profile-detail-groups",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.profile.view.detail-groups",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.view",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 6
+    },
+    {
+      "id": "image-view",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.common.image-view",
+      "order": 7
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "profile.view",
+      "group": "card",
+      "i18nKey": "guide.event.editor.image-pages",
+      "order": 8
+    }
+  ],
+  "contacts": [
+    {
+      "id": "contact-search",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.contacts.contact.search",
+      "order": 0
+    },
+    {
+      "id": "contacts-buckets:trigger",
+      "screenKey": "contacts",
+      "group": "menus",
+      "i18nKey": "guide.contacts.contacts.buckets.trigger",
+      "order": 1
+    },
+    {
+      "id": "contacts-list",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.contacts.contacts.list",
+      "order": 2
+    },
+    {
+      "id": "contact-add",
+      "screenKey": "contacts",
+      "group": "menus",
+      "i18nKey": "guide.contacts.contact-add",
+      "order": 3
+    },
+    {
+      "id": "contact-card-start",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.contacts.contact-card-start",
+      "order": 4
+    },
+    {
+      "id": "contact-card-actions",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.contacts.contact-card-actions",
+      "order": 5
+    },
+    {
+      "id": "contact-list",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.contacts.contact-list",
+      "order": 6
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 7
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "contacts",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 8
+    },
+    {
+      "id": "close",
+      "screenKey": "contacts",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 9
+    }
+  ],
+  "assets": [
+    {
+      "id": "imageUrls",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.imageUrls",
+      "order": 0
+    },
+    {
+      "id": "title",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.title",
+      "order": 1
+    },
+    {
+      "id": "category",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.category",
+      "order": 2
+    },
+    {
+      "id": "asset-form",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.asset-form",
+      "order": 3
+    },
+    {
+      "id": "asset-flow",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.asset-flow",
+      "order": 4
+    },
+    {
+      "id": "subtitle",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.subtitle",
+      "order": 5
+    },
+    {
+      "id": "capacityTotal",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.capacityTotal",
+      "order": 6
+    },
+    {
+      "id": "quantity",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.quantity",
+      "order": 7
+    },
+    {
+      "id": "sourceLink",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.sourceLink",
+      "order": 8
+    },
+    {
+      "id": "details",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.details",
+      "order": 9
+    },
+    {
+      "id": "routeLocation",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.routeLocation",
+      "order": 10
+    },
+    {
+      "id": "runtimeRoutes",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.runtimeRoutes",
+      "order": 11
+    },
+    {
+      "id": "pricing",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.pricing",
+      "order": 12
+    },
+    {
+      "id": "policies",
+      "screenKey": "assets",
+      "group": "form",
+      "i18nKey": "guide.assets.policies",
+      "order": 13
+    },
+    {
+      "id": "asset-editor-visibility:trigger",
+      "screenKey": "assets",
+      "group": "menus",
+      "i18nKey": "guide.assets.asset-editor-visibility.trigger",
+      "order": 14
+    },
+    {
+      "id": "asset-editor-save",
+      "screenKey": "assets",
+      "group": "menus",
+      "i18nKey": "guide.assets.asset-editor-save",
+      "order": 15
+    },
+    {
+      "id": "asset-editor-runtime-route-save",
+      "screenKey": "assets",
+      "group": "menus",
+      "i18nKey": "guide.assets.asset-editor-runtime-route-save",
+      "order": 16
+    },
+    {
+      "id": "close",
+      "screenKey": "assets",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 17
+    },
+    {
+      "id": "pricing-breakdown",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-breakdown",
+      "order": 18
+    },
+    {
+      "id": "pricing-total",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-total",
+      "order": 19
+    },
+    {
+      "id": "policies-read",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.policies-read",
+      "order": 20
+    },
+    {
+      "id": "policy-requirement",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.policy-requirement",
+      "order": 21
+    },
+    {
+      "id": "policy-optional-approval",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.policy-optional-approval",
+      "order": 22
+    },
+    {
+      "id": "pricing-basePrice",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-basePrice",
+      "order": 23
+    },
+    {
+      "id": "pricing-currency",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-currency",
+      "order": 24
+    },
+    {
+      "id": "pricing-taxMode",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-taxMode",
+      "order": 25
+    },
+    {
+      "id": "pricing-chargeType",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-chargeType",
+      "order": 26
+    },
+    {
+      "id": "pricing-minPrice",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-minPrice",
+      "order": 27
+    },
+    {
+      "id": "pricing-maxPrice",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-maxPrice",
+      "order": 28
+    },
+    {
+      "id": "pricing-rounding",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-rounding",
+      "order": 29
+    },
+    {
+      "id": "pricing-save",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.pricing-save",
+      "order": 30
+    },
+    {
+      "id": "image-preview",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-preview",
+      "order": 31
+    },
+    {
+      "id": "image-upload",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-upload",
+      "order": 32
+    },
+    {
+      "id": "image-replace",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-replace",
+      "order": 33
+    },
+    {
+      "id": "image-copy",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-copy",
+      "order": 34
+    },
+    {
+      "id": "image-remove",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-remove",
+      "order": 35
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-pages",
+      "order": 36
+    },
+    {
+      "id": "image-details",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-details",
+      "order": 37
+    },
+    {
+      "id": "image-location",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-location",
+      "order": 38
+    },
+    {
+      "id": "image-caption",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-caption",
+      "order": 39
+    },
+    {
+      "id": "image-details-save",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-details-save",
+      "order": 40
+    },
+    {
+      "id": "image-gallery-expand",
+      "screenKey": "assets",
+      "group": "fields",
+      "i18nKey": "guide.assets.image-gallery-expand",
+      "order": 41
+    },
+    {
+      "id": "image-view",
+      "screenKey": "assets",
+      "group": "card",
+      "i18nKey": "guide.common.image-view",
+      "order": 42
+    }
+  ],
+  "assets.transport": [
+    {
+      "id": "asset-filter:trigger",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.asset.filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "asset-pending-only",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.asset.pending",
+      "order": 1
+    },
+    {
+      "id": "asset-list",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.transport.asset.list",
+      "order": 2
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-start",
+      "order": 3
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-end",
+      "order": 4
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.card-actions",
+      "order": 5
+    },
+    {
+      "id": "card-actions:editAsset",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editAsset",
+      "order": 6
+    },
+    {
+      "id": "card-actions:viewAsset",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewAsset",
+      "order": 7
+    },
+    {
+      "id": "card-actions:borrowAsset",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.borrowAsset",
+      "order": 8
+    },
+    {
+      "id": "card-actions:assetAvailability",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.assetAvailability",
+      "order": 9
+    },
+    {
+      "id": "card-actions:capacity",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.capacity",
+      "order": 10
+    },
+    {
+      "id": "card-actions:route",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.route",
+      "order": 11
+    },
+    {
+      "id": "card-actions:contactOwner",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.contactOwner",
+      "order": 12
+    },
+    {
+      "id": "card-actions:shareAsset",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareAsset",
+      "order": 13
+    },
+    {
+      "id": "card-actions:reportOwner",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOwner",
+      "order": 14
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 15
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 16
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.card.action.delete",
+      "order": 17
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 18
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 19
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.transport",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 20
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.card-actions.edit",
+      "order": 21
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.transport.card-pending-count",
+      "order": 22
+    },
+    {
+      "id": "card-status",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.transport.card-status",
+      "order": 23
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.card-actions.externalInfo",
+      "order": 24
+    },
+    {
+      "id": "card-actions:takeOver",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.card-actions.takeOver",
+      "order": 25
+    },
+    {
+      "id": "card-static-state",
+      "screenKey": "assets.transport",
+      "group": "card",
+      "i18nKey": "guide.assets.transport.card-static-state",
+      "order": 26
+    }
+  ],
+  "assets.accommodation": [
+    {
+      "id": "asset-filter:trigger",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.assets.accommodation.asset.filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "asset-pending-only",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.assets.accommodation.asset.pending",
+      "order": 1
+    },
+    {
+      "id": "asset-list",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.accommodation.asset.list",
+      "order": 2
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-start",
+      "order": 3
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-end",
+      "order": 4
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.card-actions",
+      "order": 5
+    },
+    {
+      "id": "card-actions:editAsset",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editAsset",
+      "order": 6
+    },
+    {
+      "id": "card-actions:viewAsset",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewAsset",
+      "order": 7
+    },
+    {
+      "id": "card-actions:borrowAsset",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.borrowAsset",
+      "order": 8
+    },
+    {
+      "id": "card-actions:assetAvailability",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.assetAvailability",
+      "order": 9
+    },
+    {
+      "id": "card-actions:capacity",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.capacity",
+      "order": 10
+    },
+    {
+      "id": "card-actions:route",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.route",
+      "order": 11
+    },
+    {
+      "id": "card-actions:contactOwner",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.contactOwner",
+      "order": 12
+    },
+    {
+      "id": "card-actions:shareAsset",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareAsset",
+      "order": 13
+    },
+    {
+      "id": "card-actions:reportOwner",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOwner",
+      "order": 14
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 15
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 16
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.card.action.delete",
+      "order": 17
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 18
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 19
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.accommodation",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 20
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.assets.accommodation.card-actions.edit",
+      "order": 21
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.accommodation.card-pending-count",
+      "order": 22
+    },
+    {
+      "id": "card-status",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.accommodation.card-status",
+      "order": 23
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.assets.accommodation.card-actions.externalInfo",
+      "order": 24
+    },
+    {
+      "id": "card-actions:takeOver",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.assets.accommodation.card-actions.takeOver",
+      "order": 25
+    },
+    {
+      "id": "card-static-state",
+      "screenKey": "assets.accommodation",
+      "group": "card",
+      "i18nKey": "guide.assets.accommodation.card-static-state",
+      "order": 26
+    }
+  ],
+  "assets.supplies": [
+    {
+      "id": "asset-filter:trigger",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.assets.supplies.asset.filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "asset-pending-only",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.assets.supplies.asset.pending",
+      "order": 1
+    },
+    {
+      "id": "asset-list",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.supplies.asset.list",
+      "order": 2
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-start",
+      "order": 3
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-end",
+      "order": 4
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.card-actions",
+      "order": 5
+    },
+    {
+      "id": "card-actions:editAsset",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editAsset",
+      "order": 6
+    },
+    {
+      "id": "card-actions:viewAsset",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewAsset",
+      "order": 7
+    },
+    {
+      "id": "card-actions:borrowAsset",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.borrowAsset",
+      "order": 8
+    },
+    {
+      "id": "card-actions:assetAvailability",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.assetAvailability",
+      "order": 9
+    },
+    {
+      "id": "card-actions:capacity",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.capacity",
+      "order": 10
+    },
+    {
+      "id": "card-actions:route",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.route",
+      "order": 11
+    },
+    {
+      "id": "card-actions:contactOwner",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.contactOwner",
+      "order": 12
+    },
+    {
+      "id": "card-actions:shareAsset",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareAsset",
+      "order": 13
+    },
+    {
+      "id": "card-actions:reportOwner",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOwner",
+      "order": 14
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 15
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 16
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.card.action.delete",
+      "order": 17
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 18
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 19
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.supplies",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 20
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.assets.supplies.card-actions.edit",
+      "order": 21
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.supplies.card-pending-count",
+      "order": 22
+    },
+    {
+      "id": "card-status",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.supplies.card-status",
+      "order": 23
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.assets.supplies.card-actions.externalInfo",
+      "order": 24
+    },
+    {
+      "id": "card-actions:takeOver",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.assets.supplies.card-actions.takeOver",
+      "order": 25
+    },
+    {
+      "id": "card-static-state",
+      "screenKey": "assets.supplies",
+      "group": "card",
+      "i18nKey": "guide.assets.supplies.card-static-state",
+      "order": 26
+    }
+  ],
+  "assets.tickets": [
+    {
+      "id": "asset-filter:trigger",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.assets.tickets.asset.filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "ticket-order:trigger",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.assets.tickets.ticket.order.trigger",
+      "order": 1
+    },
+    {
+      "id": "ticket-list",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.tickets.ticket.list",
+      "order": 2
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-start",
+      "order": 3
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.card-badge-end",
+      "order": 4
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.card-actions",
+      "order": 5
+    },
+    {
+      "id": "card-actions:editAsset",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editAsset",
+      "order": 6
+    },
+    {
+      "id": "card-actions:viewAsset",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewAsset",
+      "order": 7
+    },
+    {
+      "id": "card-actions:borrowAsset",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.borrowAsset",
+      "order": 8
+    },
+    {
+      "id": "card-actions:assetAvailability",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.assetAvailability",
+      "order": 9
+    },
+    {
+      "id": "card-actions:capacity",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.capacity",
+      "order": 10
+    },
+    {
+      "id": "card-actions:route",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.route",
+      "order": 11
+    },
+    {
+      "id": "card-actions:contactOwner",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.contactOwner",
+      "order": 12
+    },
+    {
+      "id": "card-actions:shareAsset",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareAsset",
+      "order": 13
+    },
+    {
+      "id": "card-actions:reportOwner",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOwner",
+      "order": 14
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 15
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 16
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.card.action.delete",
+      "order": 17
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 18
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 19
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.tickets",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 20
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.assets.tickets.card-actions.edit",
+      "order": 21
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.tickets.card-pending-count",
+      "order": 22
+    },
+    {
+      "id": "card-status",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.tickets.card-status",
+      "order": 23
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.assets.tickets.card-actions.externalInfo",
+      "order": 24
+    },
+    {
+      "id": "card-actions:takeOver",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.assets.tickets.card-actions.takeOver",
+      "order": 25
+    },
+    {
+      "id": "card-static-state",
+      "screenKey": "assets.tickets",
+      "group": "card",
+      "i18nKey": "guide.assets.tickets.card-static-state",
+      "order": 26
+    }
+  ],
+  "events": [
+    {
+      "id": "primary:trigger",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.primary.trigger",
+      "order": 0
+    },
+    {
+      "id": "event-scope:trigger",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.event.scope.trigger",
+      "order": 1
+    },
+    {
+      "id": "secondary:trigger",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.secondary.trigger",
+      "order": 2
+    },
+    {
+      "id": "view:trigger",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.view.trigger",
+      "order": 3
+    },
+    {
+      "id": "event-explore",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.event-explore",
+      "order": 4
+    },
+    {
+      "id": "quick-actions:trigger",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.quick-actions.trigger",
+      "order": 5
+    },
+    {
+      "id": "activity-list",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.activity.list",
+      "order": 6
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.card-badge-start",
+      "order": 7
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.card-badge-end",
+      "order": 8
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.card-actions",
+      "order": 9
+    },
+    {
+      "id": "card-actions:manageEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.manageEvent",
+      "order": 10
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.view",
+      "order": 11
+    },
+    {
+      "id": "card-actions:editEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editEvent",
+      "order": 12
+    },
+    {
+      "id": "card-actions:notifyParticipants",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.notifyParticipants",
+      "order": 13
+    },
+    {
+      "id": "card-actions:shareEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareEvent",
+      "order": 14
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.externalInfo",
+      "order": 15
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 16
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 17
+    },
+    {
+      "id": "card-actions:cancelEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.cancelEvent",
+      "order": 18
+    },
+    {
+      "id": "card-actions:deleteEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.deleteEvent",
+      "order": 19
+    },
+    {
+      "id": "card-actions:followOrganizer",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.followOrganizer",
+      "order": 20
+    },
+    {
+      "id": "card-actions:unfollowOrganizer",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unfollowOrganizer",
+      "order": 21
+    },
+    {
+      "id": "card-actions:requestJoin",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.requestJoin",
+      "order": 22
+    },
+    {
+      "id": "card-actions:bookEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.bookEvent",
+      "order": 23
+    },
+    {
+      "id": "card-actions:joinWaitlist",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.joinWaitlist",
+      "order": 24
+    },
+    {
+      "id": "card-actions:leaveEvent",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.leaveEvent",
+      "order": 25
+    },
+    {
+      "id": "card-actions:addWatchlist",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.addWatchlist",
+      "order": 26
+    },
+    {
+      "id": "card-actions:removeWatchlist",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.removeWatchlist",
+      "order": 27
+    },
+    {
+      "id": "card-actions:askOrganizer",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.askOrganizer",
+      "order": 28
+    },
+    {
+      "id": "card-actions:reportOrganizer",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOrganizer",
+      "order": 29
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.pagination-prev",
+      "order": 30
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.pagination-next",
+      "order": 31
+    },
+    {
+      "id": "close",
+      "screenKey": "events",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 32
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.card-pending-count",
+      "order": 33
+    },
+    {
+      "id": "card-status",
+      "screenKey": "events",
+      "group": "card",
+      "i18nKey": "guide.events.card-status",
+      "order": 34
+    },
+    {
+      "id": "card-actions:paymentSummary",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.paymentSummary",
+      "order": 35
+    },
+    {
+      "id": "card-actions:continueBooking",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.continueBooking",
+      "order": 36
+    },
+    {
+      "id": "card-actions:continueBookingPending",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.continueBookingPending",
+      "order": 37
+    },
+    {
+      "id": "card-actions:viewInvitation",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.viewInvitation",
+      "order": 38
+    },
+    {
+      "id": "card-actions:accept",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.accept",
+      "order": 39
+    },
+    {
+      "id": "card-actions:rejectInvitation",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.rejectInvitation",
+      "order": 40
+    },
+    {
+      "id": "card-actions:cancelBooking",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.cancelBooking",
+      "order": 41
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.events.card-actions.restore",
+      "order": 42
+    }
+  ],
+  "event.editor": [
+    {
+      "id": "event-editor-visibility:trigger",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.event-editor-visibility.trigger",
+      "order": 0
+    },
+    {
+      "id": "event-images",
+      "screenKey": "event.editor",
+      "group": "card",
+      "i18nKey": "guide.event.editor.event.images",
+      "order": 1
+    },
+    {
+      "id": "event-title",
+      "screenKey": "event.editor",
+      "group": "card",
+      "i18nKey": "guide.event.editor.event.title",
+      "order": 2
+    },
+    {
+      "id": "event-capacity-min",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-capacity-min",
+      "order": 3
+    },
+    {
+      "id": "event-capacity-max",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-capacity-max",
+      "order": 4
+    },
+    {
+      "id": "event-location",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.location",
+      "order": 5
+    },
+    {
+      "id": "event-blind-mode",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-blind-mode",
+      "order": 6
+    },
+    {
+      "id": "event-topics",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-topics",
+      "order": 7
+    },
+    {
+      "id": "event-auto-inviter",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-auto-inviter",
+      "order": 8
+    },
+    {
+      "id": "event-ticketing",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-ticketing",
+      "order": 9
+    },
+    {
+      "id": "event-approval-required",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-approval-required",
+      "order": 10
+    },
+    {
+      "id": "event-description",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.description",
+      "order": 11
+    },
+    {
+      "id": "event-source-link",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-source-link",
+      "order": 12
+    },
+    {
+      "id": "event-stages-enabled",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-stages-enabled",
+      "order": 13
+    },
+    {
+      "id": "event-mode:trigger",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.event-mode.trigger",
+      "order": 14
+    },
+    {
+      "id": "event-mode:Casual",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.event-mode.Casual",
+      "order": 15
+    },
+    {
+      "id": "event-mode:Tournament",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.event-mode.Tournament",
+      "order": 16
+    },
+    {
+      "id": "event-mode:Mingle",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.event-mode.Mingle",
+      "order": 17
+    },
+    {
+      "id": "event-mode-locked",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-mode-locked",
+      "order": 18
+    },
+    {
+      "id": "event-stage-view:trigger",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.event-stage-view.trigger",
+      "order": 19
+    },
+    {
+      "id": "event-stage-add",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-stage-add",
+      "order": 20
+    },
+    {
+      "id": "event-definitions",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.definitions",
+      "order": 21
+    },
+    {
+      "id": "event-date",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.date",
+      "order": 22
+    },
+    {
+      "id": "event-slot-templates",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.slots",
+      "order": 23
+    },
+    {
+      "id": "event-pricing",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.pricing",
+      "order": 24
+    },
+    {
+      "id": "event-policies",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.policies",
+      "order": 25
+    },
+    {
+      "id": "event-editor-save",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-editor-save",
+      "order": 26
+    },
+    {
+      "id": "event-editor-publication",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.event-editor-publication",
+      "order": 27
+    },
+    {
+      "id": "close",
+      "screenKey": "event.editor",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 28
+    },
+    {
+      "id": "pricing-breakdown",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-breakdown",
+      "order": 29
+    },
+    {
+      "id": "pricing-total",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-total",
+      "order": 30
+    },
+    {
+      "id": "policies-read",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.policies-read",
+      "order": 31
+    },
+    {
+      "id": "policy-requirement",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.policy-requirement",
+      "order": 32
+    },
+    {
+      "id": "policy-optional-approval",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.policy-optional-approval",
+      "order": 33
+    },
+    {
+      "id": "pricing-basePrice",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-basePrice",
+      "order": 34
+    },
+    {
+      "id": "pricing-currency",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-currency",
+      "order": 35
+    },
+    {
+      "id": "pricing-taxMode",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-taxMode",
+      "order": 36
+    },
+    {
+      "id": "pricing-chargeType",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-chargeType",
+      "order": 37
+    },
+    {
+      "id": "pricing-minPrice",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-minPrice",
+      "order": 38
+    },
+    {
+      "id": "pricing-maxPrice",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-maxPrice",
+      "order": 39
+    },
+    {
+      "id": "pricing-rounding",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-rounding",
+      "order": 40
+    },
+    {
+      "id": "pricing-save",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.pricing-save",
+      "order": 41
+    },
+    {
+      "id": "image-preview",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-preview",
+      "order": 42
+    },
+    {
+      "id": "image-upload",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-upload",
+      "order": 43
+    },
+    {
+      "id": "image-replace",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-replace",
+      "order": 44
+    },
+    {
+      "id": "image-copy",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-copy",
+      "order": 45
+    },
+    {
+      "id": "image-remove",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-remove",
+      "order": 46
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-pages",
+      "order": 47
+    },
+    {
+      "id": "image-details",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-details",
+      "order": 48
+    },
+    {
+      "id": "image-location",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-location",
+      "order": 49
+    },
+    {
+      "id": "image-caption",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-caption",
+      "order": 50
+    },
+    {
+      "id": "image-details-save",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-details-save",
+      "order": 51
+    },
+    {
+      "id": "image-gallery-expand",
+      "screenKey": "event.editor",
+      "group": "fields",
+      "i18nKey": "guide.event.editor.image-gallery-expand",
+      "order": 52
+    },
+    {
+      "id": "event-stage-summary",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.event-stage-summary",
+      "order": 53
+    },
+    {
+      "id": "event-stage-duration",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.event-stage-duration",
+      "order": 54
+    },
+    {
+      "id": "event-stage-kind",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.event-stage-kind",
+      "order": 55
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.card-actions",
+      "order": 56
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.card-actions.edit",
+      "order": 57
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.card-actions.delete",
+      "order": 58
+    },
+    {
+      "id": "subevent-mode:trigger",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.event.editor.subevent-mode.trigger",
+      "order": 59
+    },
+    {
+      "id": "subevent-save",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.subevent-save",
+      "order": 60
+    },
+    {
+      "id": "stage-name",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-name",
+      "order": 61
+    },
+    {
+      "id": "stage-capacity",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-capacity",
+      "order": 62
+    },
+    {
+      "id": "stage-placement",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-placement",
+      "order": 63
+    },
+    {
+      "id": "stage-anchor",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-anchor",
+      "order": 64
+    },
+    {
+      "id": "stage-offset",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-offset",
+      "order": 65
+    },
+    {
+      "id": "stage-description",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-description",
+      "order": 66
+    },
+    {
+      "id": "stage-duration",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-duration",
+      "order": 67
+    },
+    {
+      "id": "stage-date",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-date",
+      "order": 68
+    },
+    {
+      "id": "stage-location",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-location",
+      "order": 69
+    },
+    {
+      "id": "stage-pricing",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-pricing",
+      "order": 70
+    },
+    {
+      "id": "stage-price-included",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-price-included",
+      "order": 71
+    },
+    {
+      "id": "stage-group-min",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-group-min",
+      "order": 72
+    },
+    {
+      "id": "stage-group-max",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-group-max",
+      "order": 73
+    },
+    {
+      "id": "stage-ranking",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-ranking",
+      "order": 74
+    },
+    {
+      "id": "stage-advance",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-advance",
+      "order": 75
+    },
+    {
+      "id": "stage-group-estimate",
+      "screenKey": "event.editor",
+      "group": "form",
+      "i18nKey": "guide.event.editor.stage-group-estimate",
+      "order": 76
+    },
+    {
+      "id": "image-view",
+      "screenKey": "event.editor",
+      "group": "card",
+      "i18nKey": "guide.common.image-view",
+      "order": 77
+    }
+  ],
+  "event.feedback": [
+    {
+      "id": "event-feedback-filter:trigger",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.event.feedback.event.feedback.filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "feedback-list",
+      "screenKey": "event.feedback",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.feedback.list",
+      "order": 1
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "event.feedback",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.card-badge-end",
+      "order": 2
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "event.feedback",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.card-actions",
+      "order": 3
+    },
+    {
+      "id": "card-actions:startFeedback",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.card.action.startFeedback",
+      "order": 4
+    },
+    {
+      "id": "card-actions:viewSubmittedFeedback",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewSubmittedFeedback",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "event.feedback",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 6
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "event.feedback",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.card-pending-count",
+      "order": 7
+    },
+    {
+      "id": "card-status",
+      "screenKey": "event.feedback",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.card-status",
+      "order": 8
+    },
+    {
+      "id": "card-actions:addOrganizerNote",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.event.feedback.card-actions.addOrganizerNote",
+      "order": 9
+    },
+    {
+      "id": "card-actions:editOrganizerNote",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.event.feedback.card-actions.editOrganizerNote",
+      "order": 10
+    },
+    {
+      "id": "card-actions:removeFeedback",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.event.feedback.card-actions.removeFeedback",
+      "order": 11
+    },
+    {
+      "id": "card-actions:restoreFeedback",
+      "screenKey": "event.feedback",
+      "group": "menus",
+      "i18nKey": "guide.event.feedback.card-actions.restoreFeedback",
+      "order": 12
+    },
+    {
+      "id": "form-progress",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.form-progress",
+      "order": 13
+    },
+    {
+      "id": "feedback-primary",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.feedback-primary",
+      "order": 15
+    },
+    {
+      "id": "feedback-secondary",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.feedback-secondary",
+      "order": 17
+    },
+    {
+      "id": "feedback-traits",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.feedback-traits",
+      "order": 19
+    },
+    {
+      "id": "feedback-comment",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.feedback-comment",
+      "order": 21
+    },
+    {
+      "id": "form-navigation",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.form-navigation",
+      "order": 23
+    },
+    {
+      "id": "form-save",
+      "screenKey": "event.feedback",
+      "group": "fields",
+      "i18nKey": "guide.event.feedback.form-save",
+      "order": 25
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notification-workspace:trigger",
+      "screenKey": "notifications",
+      "group": "menus",
+      "i18nKey": "guide.notifications.notification-workspace.trigger",
+      "order": 0
+    },
+    {
+      "id": "notification-bucket:trigger",
+      "screenKey": "notifications",
+      "group": "menus",
+      "i18nKey": "guide.notifications.notification-bucket.trigger",
+      "order": 1
+    },
+    {
+      "id": "notification-attention-preference",
+      "screenKey": "notifications",
+      "group": "menus",
+      "i18nKey": "guide.notifications.notification-attention-preference",
+      "order": 2
+    },
+    {
+      "id": "notification-list",
+      "screenKey": "notifications",
+      "group": "card",
+      "i18nKey": "guide.notifications.notification-list",
+      "order": 3
+    },
+    {
+      "id": "notification-row-actions",
+      "screenKey": "notifications",
+      "group": "card",
+      "i18nKey": "guide.notifications.notification-row-actions",
+      "order": 4
+    },
+    {
+      "id": "close",
+      "screenKey": "notifications",
+      "group": "popup",
+      "i18nKey": "guide.notifications.close",
+      "order": 5
+    }
+  ],
+  "payment.history": [
+    {
+      "id": "payment-history-filter:trigger",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.payment-history-filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "payment-history-totals",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.payment-history-totals",
+      "order": 1
+    },
+    {
+      "id": "payment-history-list",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.payment-history-list",
+      "order": 2
+    },
+    {
+      "id": "record-cash",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.record-cash",
+      "order": 3
+    },
+    {
+      "id": "open-cards",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.open-cards",
+      "order": 4
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 5
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 6
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.row-actions",
+      "order": 7
+    },
+    {
+      "id": "close",
+      "screenKey": "payment.history",
+      "group": "popup",
+      "i18nKey": "guide.payment.history.close",
+      "order": 8
+    },
+    {
+      "id": "payment-history-row",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.payment-history-row",
+      "order": 9
+    },
+    {
+      "id": "row-status",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.row-status",
+      "order": 10
+    },
+    {
+      "id": "card-actions:paymentSummary",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.card-actions.paymentSummary",
+      "order": 11
+    },
+    {
+      "id": "card-actions:askOrganizer",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.card-actions.askOrganizer",
+      "order": 12
+    },
+    {
+      "id": "card-actions:askAssetOwner",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.card-actions.askAssetOwner",
+      "order": 13
+    },
+    {
+      "id": "card-actions:requestRefund",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.card-actions.requestRefund",
+      "order": 14
+    },
+    {
+      "id": "card-actions:approveRefund",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.card-actions.approveRefund",
+      "order": 15
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.card-actions.delete",
+      "order": 16
+    },
+    {
+      "id": "summary-currency:trigger",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.summary-currency.trigger",
+      "order": 17
+    },
+    {
+      "id": "summary-currency-save",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.summary-currency-save",
+      "order": 18
+    },
+    {
+      "id": "payment-card",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.payment-card",
+      "order": 19
+    },
+    {
+      "id": "add-card",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.add-card",
+      "order": 20
+    },
+    {
+      "id": "confirm-card",
+      "screenKey": "payment.history",
+      "group": "card",
+      "i18nKey": "guide.payment.history.confirm-card",
+      "order": 21
+    },
+    {
+      "id": "payment-card-actions",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.payment-card-actions",
+      "order": 22
+    },
+    {
+      "id": "payment-card-actions:replace-payment-card",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.payment-card-actions.replace-payment-card",
+      "order": 23
+    },
+    {
+      "id": "payment-card-actions:retokenize-payment-card",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.payment-card-actions.retokenize-payment-card",
+      "order": 24
+    },
+    {
+      "id": "payment-card-actions:delete-payment-card",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.payment.history.payment-card-actions.delete-payment-card",
+      "order": 25
+    }
+  ],
+  "profile.impressions": [
+    {
+      "id": "impressions-host",
+      "screenKey": "profile.impressions",
+      "group": "card",
+      "i18nKey": "guide.profile.impressions.impressions-host",
+      "order": 0
+    },
+    {
+      "id": "impressions-member",
+      "screenKey": "profile.impressions",
+      "group": "card",
+      "i18nKey": "guide.profile.impressions.impressions-member",
+      "order": 1
+    },
+    {
+      "id": "impressions-photos",
+      "screenKey": "profile.impressions",
+      "group": "card",
+      "i18nKey": "guide.profile.impressions.impressions-photos",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.impressions",
+      "group": "popup",
+      "i18nKey": "guide.profile.impressions.close",
+      "order": 3
+    }
+  ],
+  "community.groups": [
+    {
+      "id": "bucket:trigger",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.bucket.trigger",
+      "order": 0
+    },
+    {
+      "id": "sort:trigger",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.sort.trigger",
+      "order": 1
+    },
+    {
+      "id": "actions:trigger",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.actions.trigger",
+      "order": 2
+    },
+    {
+      "id": "group-list",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.community.groups.group-list",
+      "order": 3
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.community.groups.card-badge-start",
+      "order": 4
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.community.groups.card-badge-end",
+      "order": 5
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.community.groups.card-actions",
+      "order": 6
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 7
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 8
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.view",
+      "order": 9
+    },
+    {
+      "id": "card-actions:share",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.share",
+      "order": 10
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.edit",
+      "order": 11
+    },
+    {
+      "id": "card-actions:moderation",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.moderation",
+      "order": 12
+    },
+    {
+      "id": "card-actions:remove",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.remove",
+      "order": 13
+    },
+    {
+      "id": "card-actions:join",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.join",
+      "order": 14
+    },
+    {
+      "id": "card-actions:accept",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.accept",
+      "order": 15
+    },
+    {
+      "id": "card-actions:take-over",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.take-over",
+      "order": 16
+    },
+    {
+      "id": "card-actions:report",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.report",
+      "order": 17
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.card-actions.restore",
+      "order": 18
+    },
+    {
+      "id": "card-state-start",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.community.groups.card-state-start",
+      "order": 19
+    },
+    {
+      "id": "card-state-end",
+      "screenKey": "community.groups",
+      "group": "card",
+      "i18nKey": "guide.community.groups.card-state-end",
+      "order": 20
+    },
+    {
+      "id": "close",
+      "screenKey": "community.groups",
+      "group": "popup",
+      "i18nKey": "guide.community.groups.close",
+      "order": 21
+    }
+  ],
+  "community.groups.explore": [
+    {
+      "id": "category:trigger",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.category.trigger",
+      "order": 0
+    },
+    {
+      "id": "sort:trigger",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.sort.trigger",
+      "order": 1
+    },
+    {
+      "id": "actions:trigger",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.actions.trigger",
+      "order": 2
+    },
+    {
+      "id": "group-list",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.community.groups.explore.group-list",
+      "order": 3
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.community.groups.explore.card-badge-start",
+      "order": 4
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.community.groups.explore.card-badge-end",
+      "order": 5
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.community.groups.explore.card-actions",
+      "order": 6
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 7
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 8
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.view",
+      "order": 9
+    },
+    {
+      "id": "card-actions:share",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.share",
+      "order": 10
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.edit",
+      "order": 11
+    },
+    {
+      "id": "card-actions:moderation",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.moderation",
+      "order": 12
+    },
+    {
+      "id": "card-actions:remove",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.remove",
+      "order": 13
+    },
+    {
+      "id": "card-actions:join",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.join",
+      "order": 14
+    },
+    {
+      "id": "card-actions:accept",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.accept",
+      "order": 15
+    },
+    {
+      "id": "card-actions:take-over",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.take-over",
+      "order": 16
+    },
+    {
+      "id": "card-actions:report",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.report",
+      "order": 17
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.community.groups.explore.card-actions.restore",
+      "order": 18
+    },
+    {
+      "id": "card-state-start",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.community.groups.explore.card-state-start",
+      "order": 19
+    },
+    {
+      "id": "card-state-end",
+      "screenKey": "community.groups.explore",
+      "group": "card",
+      "i18nKey": "guide.community.groups.explore.card-state-end",
+      "order": 20
+    },
+    {
+      "id": "close",
+      "screenKey": "community.groups.explore",
+      "group": "popup",
+      "i18nKey": "guide.community.groups.explore.close",
+      "order": 21
+    }
+  ],
+  "community.feed": [
+    {
+      "id": "status:trigger",
+      "screenKey": "community.feed",
+      "group": "menus",
+      "i18nKey": "guide.community.feed.status.trigger",
+      "order": 0
+    },
+    {
+      "id": "feed-list",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.community.feed.feed-list",
+      "order": 1
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.community.feed.card-badge-start",
+      "order": 2
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.community.feed.card-badge-end",
+      "order": 3
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.community.feed.card-actions",
+      "order": 4
+    },
+    {
+      "id": "add",
+      "screenKey": "community.feed",
+      "group": "menus",
+      "i18nKey": "guide.community.feed.add",
+      "order": 5
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 6
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 7
+    },
+    {
+      "id": "image-preview",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-preview",
+      "order": 8
+    },
+    {
+      "id": "image-upload",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-upload",
+      "order": 9
+    },
+    {
+      "id": "image-replace",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-replace",
+      "order": 10
+    },
+    {
+      "id": "image-copy",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-copy",
+      "order": 11
+    },
+    {
+      "id": "image-remove",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-remove",
+      "order": 12
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-pages",
+      "order": 13
+    },
+    {
+      "id": "image-details",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-details",
+      "order": 14
+    },
+    {
+      "id": "image-location",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-location",
+      "order": 15
+    },
+    {
+      "id": "image-caption",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-caption",
+      "order": 16
+    },
+    {
+      "id": "image-details-save",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-details-save",
+      "order": 17
+    },
+    {
+      "id": "image-event",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-event",
+      "order": 18
+    },
+    {
+      "id": "image-event-options",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-event-options",
+      "order": 19
+    },
+    {
+      "id": "image-event-option",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-event-option",
+      "order": 20
+    },
+    {
+      "id": "image-event-confirm",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-event-confirm",
+      "order": 21
+    },
+    {
+      "id": "image-gallery-save",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-gallery-save",
+      "order": 22
+    },
+    {
+      "id": "card-state-end",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.community.feed.card-state-end",
+      "order": 23
+    },
+    {
+      "id": "image-event-select",
+      "screenKey": "community.feed",
+      "group": "fields",
+      "i18nKey": "guide.community.feed.image-event-select",
+      "order": 24
+    },
+    {
+      "id": "close",
+      "screenKey": "community.feed",
+      "group": "popup",
+      "i18nKey": "guide.community.feed.close",
+      "order": 25
+    },
+    {
+      "id": "image-view",
+      "screenKey": "community.feed",
+      "group": "card",
+      "i18nKey": "guide.common.image-view",
+      "order": 26
+    }
+  ],
+  "events.followed": [
+    {
+      "id": "event-explore-filters",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.event-explore-filters",
+      "order": 0
+    },
+    {
+      "id": "event-explore-order:trigger",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.event-explore-order.trigger",
+      "order": 1
+    },
+    {
+      "id": "event-explore-view:trigger",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.event-explore-view.trigger",
+      "order": 2
+    },
+    {
+      "id": "event-list",
+      "screenKey": "events.followed",
+      "group": "card",
+      "i18nKey": "guide.events.followed.event-list",
+      "order": 3
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "events.followed",
+      "group": "card",
+      "i18nKey": "guide.events.followed.card-badge-start",
+      "order": 4
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "events.followed",
+      "group": "card",
+      "i18nKey": "guide.events.followed.card-badge-end",
+      "order": 5
+    },
+    {
+      "id": "checkout-draft:trigger",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.checkout-draft.trigger",
+      "order": 6
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "events.followed",
+      "group": "card",
+      "i18nKey": "guide.events.followed.card-pending-count",
+      "order": 7
+    },
+    {
+      "id": "card-status",
+      "screenKey": "events.followed",
+      "group": "card",
+      "i18nKey": "guide.events.followed.card-status",
+      "order": 8
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "events.followed",
+      "group": "card",
+      "i18nKey": "guide.event.explore.card-actions",
+      "order": 9
+    },
+    {
+      "id": "card-actions:paymentSummary",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.paymentSummary",
+      "order": 10
+    },
+    {
+      "id": "card-actions:continueBooking",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.continueBooking",
+      "order": 11
+    },
+    {
+      "id": "card-actions:continueBookingPending",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.continueBookingPending",
+      "order": 12
+    },
+    {
+      "id": "card-actions:viewInvitation",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.viewInvitation",
+      "order": 13
+    },
+    {
+      "id": "card-actions:accept",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.accept",
+      "order": 14
+    },
+    {
+      "id": "card-actions:rejectInvitation",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.rejectInvitation",
+      "order": 15
+    },
+    {
+      "id": "card-actions:cancelBooking",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.cancelBooking",
+      "order": 16
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.events.followed.card-actions.restore",
+      "order": 17
+    },
+    {
+      "id": "close",
+      "screenKey": "events.followed",
+      "group": "popup",
+      "i18nKey": "guide.events.followed.close",
+      "order": 18
+    }
+  ],
+  "event.explore": [
+    {
+      "id": "event-explore-filters",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.event-explore-filters",
+      "order": 0
+    },
+    {
+      "id": "event-explore-order:trigger",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.event-explore-order.trigger",
+      "order": 1
+    },
+    {
+      "id": "event-explore-view:trigger",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.event-explore-view.trigger",
+      "order": 2
+    },
+    {
+      "id": "event-list",
+      "screenKey": "event.explore",
+      "group": "card",
+      "i18nKey": "guide.event.explore.event-list",
+      "order": 3
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "event.explore",
+      "group": "card",
+      "i18nKey": "guide.event.explore.card-badge-start",
+      "order": 4
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "event.explore",
+      "group": "card",
+      "i18nKey": "guide.event.explore.card-badge-end",
+      "order": 5
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "event.explore",
+      "group": "card",
+      "i18nKey": "guide.event.explore.card-actions",
+      "order": 6
+    },
+    {
+      "id": "card-actions:manageEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.manageEvent",
+      "order": 7
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.view",
+      "order": 8
+    },
+    {
+      "id": "card-actions:editEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editEvent",
+      "order": 9
+    },
+    {
+      "id": "card-actions:notifyParticipants",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.notifyParticipants",
+      "order": 10
+    },
+    {
+      "id": "card-actions:shareEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareEvent",
+      "order": 11
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.externalInfo",
+      "order": 12
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 13
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 14
+    },
+    {
+      "id": "card-actions:cancelEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.cancelEvent",
+      "order": 15
+    },
+    {
+      "id": "card-actions:deleteEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.deleteEvent",
+      "order": 16
+    },
+    {
+      "id": "card-actions:followOrganizer",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.followOrganizer",
+      "order": 17
+    },
+    {
+      "id": "card-actions:unfollowOrganizer",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unfollowOrganizer",
+      "order": 18
+    },
+    {
+      "id": "card-actions:requestJoin",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.requestJoin",
+      "order": 19
+    },
+    {
+      "id": "card-actions:bookEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.bookEvent",
+      "order": 20
+    },
+    {
+      "id": "card-actions:joinWaitlist",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.joinWaitlist",
+      "order": 21
+    },
+    {
+      "id": "card-actions:leaveEvent",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.leaveEvent",
+      "order": 22
+    },
+    {
+      "id": "card-actions:addWatchlist",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.addWatchlist",
+      "order": 23
+    },
+    {
+      "id": "card-actions:removeWatchlist",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.removeWatchlist",
+      "order": 24
+    },
+    {
+      "id": "card-actions:askOrganizer",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.askOrganizer",
+      "order": 25
+    },
+    {
+      "id": "card-actions:reportOrganizer",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOrganizer",
+      "order": 26
+    },
+    {
+      "id": "checkout-draft:trigger",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.checkout-draft.trigger",
+      "order": 27
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "event.explore",
+      "group": "card",
+      "i18nKey": "guide.event.explore.card-pending-count",
+      "order": 28
+    },
+    {
+      "id": "card-status",
+      "screenKey": "event.explore",
+      "group": "card",
+      "i18nKey": "guide.event.explore.card-status",
+      "order": 29
+    },
+    {
+      "id": "card-actions:paymentSummary",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.paymentSummary",
+      "order": 30
+    },
+    {
+      "id": "card-actions:continueBooking",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.continueBooking",
+      "order": 31
+    },
+    {
+      "id": "card-actions:continueBookingPending",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.continueBookingPending",
+      "order": 32
+    },
+    {
+      "id": "card-actions:viewInvitation",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.viewInvitation",
+      "order": 33
+    },
+    {
+      "id": "card-actions:accept",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.accept",
+      "order": 34
+    },
+    {
+      "id": "card-actions:rejectInvitation",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.rejectInvitation",
+      "order": 35
+    },
+    {
+      "id": "card-actions:cancelBooking",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.cancelBooking",
+      "order": 36
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.restore",
+      "order": 37
+    },
+    {
+      "id": "close",
+      "screenKey": "event.explore",
+      "group": "popup",
+      "i18nKey": "guide.event.explore.close",
+      "order": 38
+    },
+    {
+      "id": "card-actions:follow-organizer",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.event.explore.card-actions.follow-organizer",
+      "order": 39
+    }
+  ],
+  "event.chat": [
+    {
+      "id": "chat-list",
+      "screenKey": "event.chat",
+      "group": "card",
+      "i18nKey": "guide.event.chat.chat-list",
+      "order": 0
+    },
+    {
+      "id": "chat-compose",
+      "screenKey": "event.chat",
+      "group": "card",
+      "i18nKey": "guide.event.chat.chat-compose",
+      "order": 1
+    },
+    {
+      "id": "chat-send",
+      "screenKey": "event.chat",
+      "group": "card",
+      "i18nKey": "guide.event.chat.chat-send",
+      "order": 2
+    },
+    {
+      "id": "chat-attachments",
+      "screenKey": "event.chat",
+      "group": "menus",
+      "i18nKey": "guide.event.chat.chat-attachments",
+      "order": 3
+    },
+    {
+      "id": "chat-message-actions",
+      "screenKey": "event.chat",
+      "group": "card",
+      "i18nKey": "guide.event.chat.chat-message-actions",
+      "order": 4
+    },
+    {
+      "id": "chat-header-members",
+      "screenKey": "event.chat",
+      "group": "menus",
+      "i18nKey": "guide.event.chat.chat-members",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "event.chat",
+      "group": "popup",
+      "i18nKey": "guide.event.chat.close",
+      "order": 6
+    }
+  ],
+  "event.members": [
+    {
+      "id": "members-list",
+      "screenKey": "event.members",
+      "group": "card",
+      "i18nKey": "guide.event.members.members-list",
+      "order": 0
+    },
+    {
+      "id": "pending-only",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.pending-only",
+      "order": 1
+    },
+    {
+      "id": "invite",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.invite",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "event.members",
+      "group": "popup",
+      "i18nKey": "guide.event.members.members-close",
+      "order": 3
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions",
+      "order": 4
+    },
+    {
+      "id": "card-actions:member-involvement",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-involvement",
+      "order": 5
+    },
+    {
+      "id": "card-actions:member-toggleOrganizerParticipation",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-toggleOrganizerParticipation",
+      "order": 6
+    },
+    {
+      "id": "card-actions:member-promoteAdmin",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-promoteAdmin",
+      "order": 7
+    },
+    {
+      "id": "card-actions:member-revokeManager",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-revokeManager",
+      "order": 8
+    },
+    {
+      "id": "card-actions:member-stepDownAdmin",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-stepDownAdmin",
+      "order": 9
+    },
+    {
+      "id": "card-actions:member-approve",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-approve",
+      "order": 10
+    },
+    {
+      "id": "card-actions:member-remove",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-remove",
+      "order": 11
+    },
+    {
+      "id": "card-actions:member-leave",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-leave",
+      "order": 12
+    },
+    {
+      "id": "card-actions:member-disqualify",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-disqualify",
+      "order": 13
+    },
+    {
+      "id": "card-actions:member-reinstate",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-reinstate",
+      "order": 14
+    },
+    {
+      "id": "card-actions:member-report",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.event.members.card-actions.member-report",
+      "order": 15
+    },
+    {
+      "id": "card-status",
+      "screenKey": "event.members",
+      "group": "card",
+      "i18nKey": "guide.event.members.card-status",
+      "order": 16
+    },
+    {
+      "id": "card-state-detail",
+      "screenKey": "event.members",
+      "group": "card",
+      "i18nKey": "guide.event.members.card-state-detail",
+      "order": 17
+    },
+    {
+      "id": "member-profile",
+      "screenKey": "event.members",
+      "group": "card",
+      "i18nKey": "guide.event.members.member-profile",
+      "order": 18
+    }
+  ],
+  "event.checkout": [
+    {
+      "id": "checkout-event",
+      "screenKey": "event.checkout",
+      "group": "card",
+      "i18nKey": "guide.event.checkout.checkout-event",
+      "order": 0
+    },
+    {
+      "id": "checkout-slot",
+      "screenKey": "event.checkout",
+      "group": "card",
+      "i18nKey": "guide.event.checkout.checkout-slot",
+      "order": 1
+    },
+    {
+      "id": "checkout-options",
+      "screenKey": "event.checkout",
+      "group": "card",
+      "i18nKey": "guide.event.checkout.checkout-options",
+      "order": 2
+    },
+    {
+      "id": "checkout-payment",
+      "screenKey": "event.checkout",
+      "group": "card",
+      "i18nKey": "guide.event.checkout.checkout-payment",
+      "order": 3
+    },
+    {
+      "id": "checkout-promo",
+      "screenKey": "event.checkout",
+      "group": "menus",
+      "i18nKey": "guide.event.checkout.checkout-promo",
+      "order": 4
+    },
+    {
+      "id": "checkout-confirm",
+      "screenKey": "event.checkout",
+      "group": "menus",
+      "i18nKey": "guide.event.checkout.checkout-confirm",
+      "order": 5
+    },
+    {
+      "id": "pricing-breakdown",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.pricing-breakdown",
+      "order": 6
+    },
+    {
+      "id": "pricing-total",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.pricing-total",
+      "order": 7
+    },
+    {
+      "id": "policies-read",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.policies-read",
+      "order": 8
+    },
+    {
+      "id": "policy-requirement",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.policy-requirement",
+      "order": 9
+    },
+    {
+      "id": "policy-optional-approval",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.policy-optional-approval",
+      "order": 10
+    },
+    {
+      "id": "payment-status",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.payment-status",
+      "order": 11
+    },
+    {
+      "id": "payment-method",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.payment-method",
+      "order": 12
+    },
+    {
+      "id": "image-gallery-expand",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.image-gallery-expand",
+      "order": 13
+    },
+    {
+      "id": "event-capacity-min",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-capacity-min",
+      "order": 14
+    },
+    {
+      "id": "event-capacity-max",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-capacity-max",
+      "order": 15
+    },
+    {
+      "id": "event-blind-mode",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-blind-mode",
+      "order": 16
+    },
+    {
+      "id": "event-ticketing",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-ticketing",
+      "order": 17
+    },
+    {
+      "id": "event-approval-required",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-approval-required",
+      "order": 18
+    },
+    {
+      "id": "event-source-link",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-source-link",
+      "order": 19
+    },
+    {
+      "id": "event-mode-locked",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-mode-locked",
+      "order": 20
+    },
+    {
+      "id": "event-mode:trigger",
+      "screenKey": "event.checkout",
+      "group": "menus",
+      "i18nKey": "guide.event.checkout.event-mode.trigger",
+      "order": 21
+    },
+    {
+      "id": "event-stage-view:trigger",
+      "screenKey": "event.checkout",
+      "group": "menus",
+      "i18nKey": "guide.event.checkout.event-stage-view.trigger",
+      "order": 22
+    },
+    {
+      "id": "event-title",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-title",
+      "order": 23
+    },
+    {
+      "id": "event-location",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-location",
+      "order": 24
+    },
+    {
+      "id": "event-description",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-description",
+      "order": 25
+    },
+    {
+      "id": "event-definitions",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-definitions",
+      "order": 26
+    },
+    {
+      "id": "event-date",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.event-date",
+      "order": 27
+    },
+    {
+      "id": "checkout-basket-edit",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.checkout-basket-edit",
+      "order": 28
+    },
+    {
+      "id": "checkout-basket-item",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.checkout-basket-item",
+      "order": 29
+    },
+    {
+      "id": "close",
+      "screenKey": "event.checkout",
+      "group": "fields",
+      "i18nKey": "guide.event.checkout.close",
+      "order": 30
+    }
+  ],
+  "event.resources": [
+    {
+      "id": "resource-filter:trigger",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.resource-filter.trigger",
+      "order": 0
+    },
+    {
+      "id": "resource-list",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.event.resources.resource-list",
+      "order": 1
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.event.resources.resource-card-start",
+      "order": 2
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.event.resources.resource-card-end",
+      "order": 3
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.event.resources.resource-card-actions",
+      "order": 4
+    },
+    {
+      "id": "card-actions:editAsset",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editAsset",
+      "order": 5
+    },
+    {
+      "id": "card-actions:viewAsset",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewAsset",
+      "order": 6
+    },
+    {
+      "id": "card-actions:borrowAsset",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.borrowAsset",
+      "order": 7
+    },
+    {
+      "id": "card-actions:assetAvailability",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.assetAvailability",
+      "order": 8
+    },
+    {
+      "id": "card-actions:capacity",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.capacity",
+      "order": 9
+    },
+    {
+      "id": "card-actions:route",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.route",
+      "order": 10
+    },
+    {
+      "id": "card-actions:contactOwner",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.contactOwner",
+      "order": 11
+    },
+    {
+      "id": "card-actions:shareAsset",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareAsset",
+      "order": 12
+    },
+    {
+      "id": "card-actions:reportOwner",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOwner",
+      "order": 13
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 14
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 15
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.card.action.delete",
+      "order": 16
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 17
+    },
+    {
+      "id": "resource-actions:trigger",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.resource-actions.trigger",
+      "order": 18
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 19
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.edit",
+      "order": 20
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.event.resources.card-pending-count",
+      "order": 21
+    },
+    {
+      "id": "card-status",
+      "screenKey": "event.resources",
+      "group": "card",
+      "i18nKey": "guide.event.resources.card-status",
+      "order": 22
+    },
+    {
+      "id": "card-actions:joinResource",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.joinResource",
+      "order": 23
+    },
+    {
+      "id": "card-actions:askAssetOwner",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.askAssetOwner",
+      "order": 24
+    },
+    {
+      "id": "card-actions:reportManager",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.reportManager",
+      "order": 25
+    },
+    {
+      "id": "card-actions:removeAssignment",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.removeAssignment",
+      "order": 26
+    },
+    {
+      "id": "card-actions:paymentSummary",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.paymentSummary",
+      "order": 27
+    },
+    {
+      "id": "card-actions:leaveResource",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.event.resources.card-actions.leaveResource",
+      "order": 28
+    },
+    {
+      "id": "close",
+      "screenKey": "event.resources",
+      "group": "popup",
+      "i18nKey": "guide.event.resources.close",
+      "order": 29
+    }
+  ],
+  "event.subevents": [
+    {
+      "id": "subevent-list",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.subevent-list",
+      "order": 0
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.subevent-card-start",
+      "order": 1
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.subevent-card-end",
+      "order": 2
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.subevent-card-actions",
+      "order": 3
+    },
+    {
+      "id": "order:trigger",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.event.subevents.order.trigger",
+      "order": 4
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 5
+    },
+    {
+      "id": "view:trigger",
+      "screenKey": "event.subevents",
+      "group": "view",
+      "i18nKey": "guide.event.subevents.view.trigger",
+      "order": 6
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 7
+    },
+    {
+      "id": "card-actions:groups",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.event.subevents.card-actions.groups",
+      "order": 8
+    },
+    {
+      "id": "card-actions:members",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.event.subevents.card-actions.members",
+      "order": 9
+    },
+    {
+      "id": "card-actions:transport",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.event.subevents.card-actions.transport",
+      "order": 10
+    },
+    {
+      "id": "card-actions:accommodation",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.event.subevents.card-actions.accommodation",
+      "order": 11
+    },
+    {
+      "id": "card-actions:supplies",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.event.subevents.card-actions.supplies",
+      "order": 12
+    },
+    {
+      "id": "context:participant-filter",
+      "screenKey": "event.subevents",
+      "group": "fields",
+      "i18nKey": "guide.event.subevents.context.participant-filter",
+      "order": 13
+    },
+    {
+      "id": "context:edit",
+      "screenKey": "event.subevents",
+      "group": "fields",
+      "i18nKey": "guide.event.subevents.context.edit",
+      "order": 14
+    },
+    {
+      "id": "context:manage",
+      "screenKey": "event.subevents",
+      "group": "fields",
+      "i18nKey": "guide.event.subevents.context.manage",
+      "order": 15
+    },
+    {
+      "id": "context:view",
+      "screenKey": "event.subevents",
+      "group": "fields",
+      "i18nKey": "guide.event.subevents.context.view",
+      "order": 16
+    },
+    {
+      "id": "context:members",
+      "screenKey": "event.subevents",
+      "group": "fields",
+      "i18nKey": "guide.event.subevents.context.members",
+      "order": 17
+    },
+    {
+      "id": "card-pending-count",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.card-pending-count",
+      "order": 18
+    },
+    {
+      "id": "card-status",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.card-status",
+      "order": 19
+    },
+    {
+      "id": "card-static-state",
+      "screenKey": "event.subevents",
+      "group": "card",
+      "i18nKey": "guide.event.subevents.card-static-state",
+      "order": 20
+    },
+    {
+      "id": "close",
+      "screenKey": "event.subevents",
+      "group": "popup",
+      "i18nKey": "guide.event.subevents.close",
+      "order": 21
+    }
+  ],
+  "event.feedback.detail": [
+    {
+      "id": "feedback-detail",
+      "screenKey": "event.feedback.detail",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.detail.feedback-detail",
+      "order": 0
+    },
+    {
+      "id": "feedback-answer-primary",
+      "screenKey": "event.feedback.detail",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.detail.feedback-answer-primary",
+      "order": 1
+    },
+    {
+      "id": "feedback-answer-secondary",
+      "screenKey": "event.feedback.detail",
+      "group": "card",
+      "i18nKey": "guide.event.feedback.detail.feedback-answer-secondary",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "event.feedback.detail",
+      "group": "popup",
+      "i18nKey": "guide.event.feedback.detail.close",
+      "order": 3
+    }
+  ],
+  "home.filters": [
+    {
+      "id": "home-filter-basics",
+      "screenKey": "home.filters",
+      "group": "form",
+      "i18nKey": "guide.home.filters.basics",
+      "order": 0
+    },
+    {
+      "id": "home-filter-horoscopes:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.horoscopes",
+      "order": 1
+    },
+    {
+      "id": "home-filter-languages:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.languages",
+      "order": 2
+    },
+    {
+      "id": "home-filter-values:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.values",
+      "order": 3
+    },
+    {
+      "id": "home-filter-religions:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.religions",
+      "order": 4
+    },
+    {
+      "id": "home-filter-interests:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.interests",
+      "order": 5
+    },
+    {
+      "id": "home-filter-physiques:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.physiques",
+      "order": 6
+    },
+    {
+      "id": "home-filter-smoking:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.smoking",
+      "order": 7
+    },
+    {
+      "id": "home-filter-drinking:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.drinking",
+      "order": 8
+    },
+    {
+      "id": "home-filter-workout:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.workout",
+      "order": 9
+    },
+    {
+      "id": "home-filter-pets:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.pets",
+      "order": 10
+    },
+    {
+      "id": "home-filter-genders:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.genders",
+      "order": 11
+    },
+    {
+      "id": "home-filter-traitLabels:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.traitLabels",
+      "order": 12
+    },
+    {
+      "id": "home-filter-familyPlans:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.familyPlans",
+      "order": 13
+    },
+    {
+      "id": "home-filter-children:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.children",
+      "order": 14
+    },
+    {
+      "id": "home-filter-loveStyles:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.loveStyles",
+      "order": 15
+    },
+    {
+      "id": "home-filter-communicationStyles:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.communicationStyles",
+      "order": 16
+    },
+    {
+      "id": "home-filter-sexualOrientations:trigger",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.sexualOrientations",
+      "order": 17
+    },
+    {
+      "id": "game-filter-apply",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.home.filters.apply",
+      "order": 18
+    },
+    {
+      "id": "close",
+      "screenKey": "home.filters",
+      "group": "popup",
+      "i18nKey": "guide.home.filters.close",
+      "order": 19
+    }
+  ],
+  "community.group.editor": [
+    {
+      "id": "visibility:trigger",
+      "screenKey": "community.group.editor",
+      "group": "menus",
+      "i18nKey": "guide.community.group.editor.visibility.trigger",
+      "order": 0
+    },
+    {
+      "id": "save",
+      "screenKey": "community.group.editor",
+      "group": "menus",
+      "i18nKey": "guide.community.group.editor.save",
+      "order": 1
+    },
+    {
+      "id": "image",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.image",
+      "order": 2
+    },
+    {
+      "id": "name",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.name",
+      "order": 3
+    },
+    {
+      "id": "description",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.description",
+      "order": 4
+    },
+    {
+      "id": "category",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.category",
+      "order": 5
+    },
+    {
+      "id": "members-visible",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.members-visible",
+      "order": 6
+    },
+    {
+      "id": "rules-enabled",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.rules-enabled",
+      "order": 7
+    },
+    {
+      "id": "rules-open",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.rules-open",
+      "order": 8
+    },
+    {
+      "id": "rules-table",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.rules-table",
+      "order": 9
+    },
+    {
+      "id": "group-policies",
+      "screenKey": "community.group.editor",
+      "group": "form",
+      "i18nKey": "guide.community.group.editor.group-policies",
+      "order": 10
+    },
+    {
+      "id": "close",
+      "screenKey": "community.group.editor",
+      "group": "popup",
+      "i18nKey": "guide.community.group.editor.close",
+      "order": 11
+    },
+    {
+      "id": "image-gallery-expand",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-gallery-expand",
+      "order": 12
+    },
+    {
+      "id": "image-preview",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-preview",
+      "order": 13
+    },
+    {
+      "id": "image-upload",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-upload",
+      "order": 14
+    },
+    {
+      "id": "image-replace",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-replace",
+      "order": 15
+    },
+    {
+      "id": "image-copy",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-copy",
+      "order": 16
+    },
+    {
+      "id": "image-remove",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-remove",
+      "order": 17
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-pages",
+      "order": 18
+    },
+    {
+      "id": "image-details",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-details",
+      "order": 19
+    },
+    {
+      "id": "image-location",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-location",
+      "order": 20
+    },
+    {
+      "id": "image-caption",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-caption",
+      "order": 21
+    },
+    {
+      "id": "image-details-save",
+      "screenKey": "community.group.editor",
+      "group": "fields",
+      "i18nKey": "guide.community.group.editor.image-details-save",
+      "order": 22
+    },
+    {
+      "id": "image-view",
+      "screenKey": "community.group.editor",
+      "group": "card",
+      "i18nKey": "guide.common.image-view",
+      "order": 23
+    }
+  ],
+  "community.group.policy": [
+    {
+      "id": "policy-fields",
+      "screenKey": "community.group.policy",
+      "group": "form",
+      "i18nKey": "guide.community.group.policy.policy-fields",
+      "order": 0
+    },
+    {
+      "id": "done",
+      "screenKey": "community.group.policy",
+      "group": "menus",
+      "i18nKey": "guide.community.group.policy.done",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "community.group.policy",
+      "group": "popup",
+      "i18nKey": "guide.community.group.policy.close",
+      "order": 2
+    }
+  ],
+  "event.tournament.groups": [
+    {
+      "id": "tournament-stage:trigger",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-stage.trigger",
+      "order": 0
+    },
+    {
+      "id": "tournament-actions:trigger",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-actions.trigger",
+      "order": 1
+    },
+    {
+      "id": "add-group",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.add-group",
+      "order": 2
+    },
+    {
+      "id": "tournament-group-list",
+      "screenKey": "event.tournament.groups",
+      "group": "card",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-list",
+      "order": 3
+    },
+    {
+      "id": "tournament-group-accordion",
+      "screenKey": "event.tournament.groups",
+      "group": "card",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-accordion",
+      "order": 4
+    },
+    {
+      "id": "mingle-table-seats",
+      "screenKey": "event.tournament.groups",
+      "group": "card",
+      "i18nKey": "guide.event.tournament.groups.mingle-table-seats",
+      "order": 5
+    },
+    {
+      "id": "tournament-group-tabs",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-tabs",
+      "order": 6
+    },
+    {
+      "id": "tournament-tab-standings",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-tab-standings",
+      "order": 7
+    },
+    {
+      "id": "tournament-tab-history",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-tab-history",
+      "order": 8
+    },
+    {
+      "id": "tournament-standing-row",
+      "screenKey": "event.tournament.groups",
+      "group": "card",
+      "i18nKey": "guide.event.tournament.groups.tournament-standing-row",
+      "order": 9
+    },
+    {
+      "id": "tournament-history",
+      "screenKey": "event.tournament.groups",
+      "group": "card",
+      "i18nKey": "guide.event.tournament.groups.tournament-history",
+      "order": 10
+    },
+    {
+      "id": "tournament-history-row",
+      "screenKey": "event.tournament.groups",
+      "group": "card",
+      "i18nKey": "guide.event.tournament.groups.tournament-history-row",
+      "order": 11
+    },
+    {
+      "id": "tournament-entry-save",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-entry-save",
+      "order": 12
+    },
+    {
+      "id": "close",
+      "screenKey": "event.tournament.groups",
+      "group": "popup",
+      "i18nKey": "guide.event.tournament.groups.close",
+      "order": 13
+    },
+    {
+      "id": "tournament-group-actions:trigger",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.trigger",
+      "order": 14
+    },
+    {
+      "id": "tournament-group-actions:add-entry",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.add-entry",
+      "order": 15
+    },
+    {
+      "id": "tournament-group-actions:edit-group",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.edit-group",
+      "order": 16
+    },
+    {
+      "id": "tournament-group-actions:delete-group",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.delete-group",
+      "order": 17
+    },
+    {
+      "id": "tournament-group-actions:members",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.members",
+      "order": 18
+    },
+    {
+      "id": "tournament-group-actions:transport",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.transport",
+      "order": 19
+    },
+    {
+      "id": "tournament-group-actions:accommodation",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.accommodation",
+      "order": 20
+    },
+    {
+      "id": "tournament-group-actions:supplies",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.event.tournament.groups.tournament-group-actions.supplies",
+      "order": 21
+    }
+  ],
+  "event.mingle.configuration": [
+    {
+      "id": "mingle-groupSize",
+      "screenKey": "event.mingle.configuration",
+      "group": "form",
+      "i18nKey": "guide.event.mingle.configuration.mingle-groupSize",
+      "order": 0
+    },
+    {
+      "id": "mingle-plannedRounds",
+      "screenKey": "event.mingle.configuration",
+      "group": "form",
+      "i18nKey": "guide.event.mingle.configuration.mingle-plannedRounds",
+      "order": 1
+    },
+    {
+      "id": "mingle-roundDurationMinutes",
+      "screenKey": "event.mingle.configuration",
+      "group": "form",
+      "i18nKey": "guide.event.mingle.configuration.mingle-roundDurationMinutes",
+      "order": 2
+    },
+    {
+      "id": "mingle-breakDurationMinutes",
+      "screenKey": "event.mingle.configuration",
+      "group": "form",
+      "i18nKey": "guide.event.mingle.configuration.mingle-breakDurationMinutes",
+      "order": 3
+    },
+    {
+      "id": "mingle-require-gender-balance",
+      "screenKey": "event.mingle.configuration",
+      "group": "form",
+      "i18nKey": "guide.event.mingle.configuration.mingle-require-gender-balance",
+      "order": 4
+    },
+    {
+      "id": "save",
+      "screenKey": "event.mingle.configuration",
+      "group": "menus",
+      "i18nKey": "guide.event.mingle.configuration.save",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "event.mingle.configuration",
+      "group": "popup",
+      "i18nKey": "guide.event.mingle.configuration.close",
+      "order": 6
+    }
+  ],
+  "assets.checkout": [
+    {
+      "id": "asset-checkout-basket",
+      "screenKey": "assets.checkout",
+      "group": "card",
+      "i18nKey": "guide.assets.checkout.asset-checkout-basket",
+      "order": 0
+    },
+    {
+      "id": "asset-checkout-payment",
+      "screenKey": "assets.checkout",
+      "group": "form",
+      "i18nKey": "guide.assets.checkout.asset-checkout-payment",
+      "order": 1
+    },
+    {
+      "id": "checkoutDateRange",
+      "screenKey": "assets.checkout",
+      "group": "form",
+      "i18nKey": "guide.assets.checkout.checkoutDateRange",
+      "order": 2
+    },
+    {
+      "id": "asset-checkout-refund-policy",
+      "screenKey": "assets.checkout",
+      "group": "card",
+      "i18nKey": "guide.assets.checkout.asset-checkout-refund-policy",
+      "order": 3
+    },
+    {
+      "id": "asset-checkout-actions",
+      "screenKey": "assets.checkout",
+      "group": "menus",
+      "i18nKey": "guide.assets.checkout.asset-checkout-actions",
+      "order": 4
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.checkout",
+      "group": "popup",
+      "i18nKey": "guide.assets.checkout.close",
+      "order": 5
+    },
+    {
+      "id": "title",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.title",
+      "order": 6
+    },
+    {
+      "id": "capacityTotal",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.capacityTotal",
+      "order": 7
+    },
+    {
+      "id": "quantity",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.quantity",
+      "order": 8
+    },
+    {
+      "id": "details",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.details",
+      "order": 9
+    },
+    {
+      "id": "pricing",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.pricing",
+      "order": 10
+    },
+    {
+      "id": "policies",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.policies",
+      "order": 11
+    },
+    {
+      "id": "routeLocation",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.routeLocation",
+      "order": 12
+    },
+    {
+      "id": "pricing-breakdown",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.pricing-breakdown",
+      "order": 13
+    },
+    {
+      "id": "pricing-total",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.pricing-total",
+      "order": 14
+    },
+    {
+      "id": "policies-read",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.policies-read",
+      "order": 15
+    },
+    {
+      "id": "policy-requirement",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.policy-requirement",
+      "order": 16
+    },
+    {
+      "id": "policy-optional-approval",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.policy-optional-approval",
+      "order": 17
+    },
+    {
+      "id": "payment-status",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.payment-status",
+      "order": 18
+    },
+    {
+      "id": "payment-method",
+      "screenKey": "assets.checkout",
+      "group": "fields",
+      "i18nKey": "guide.assets.checkout.payment-method",
+      "order": 19
+    }
+  ],
+  "profile.integrations": [
+    {
+      "id": "affiliate-link",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.affiliate-link",
+      "order": 0
+    },
+    {
+      "id": "integration-base-url",
+      "screenKey": "profile.integrations",
+      "group": "card",
+      "i18nKey": "guide.profile.integrations.integration-base-url",
+      "order": 1
+    },
+    {
+      "id": "integration-tokens",
+      "screenKey": "profile.integrations",
+      "group": "card",
+      "i18nKey": "guide.profile.integrations.integration-tokens",
+      "order": 2
+    },
+    {
+      "id": "generate-integration-token",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.generate-integration-token",
+      "order": 3
+    },
+    {
+      "id": "integration-token-row",
+      "screenKey": "profile.integrations",
+      "group": "card",
+      "i18nKey": "guide.profile.integrations.integration-token-row",
+      "order": 4
+    },
+    {
+      "id": "integration-token-actions",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.integration-token-actions",
+      "order": 5
+    },
+    {
+      "id": "mcp-purpose",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-purpose",
+      "order": 6
+    },
+    {
+      "id": "mcp-url",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-url",
+      "order": 7
+    },
+    {
+      "id": "mcp-permissions",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-permissions",
+      "order": 8
+    },
+    {
+      "id": "mcp-connection",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-connection",
+      "order": 9
+    },
+    {
+      "id": "mcp-connection-actions",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-connection-actions",
+      "order": 10
+    },
+    {
+      "id": "mcp-advanced",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-advanced",
+      "order": 11
+    },
+    {
+      "id": "mcp-manual-keys",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-manual-keys",
+      "order": 12
+    },
+    {
+      "id": "mcp-generate",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.mcp-generate",
+      "order": 13
+    },
+    {
+      "id": "integration-help",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.integration-help",
+      "order": 14
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.integrations",
+      "group": "popup",
+      "i18nKey": "guide.profile.integrations.close",
+      "order": 15
+    },
+    {
+      "id": "affiliate-revenue",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.affiliate-revenue",
+      "order": 16
+    },
+    {
+      "id": "revenue-purchases",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.revenue-purchases",
+      "order": 17
+    },
+    {
+      "id": "revenue-bookings",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.revenue-bookings",
+      "order": 18
+    },
+    {
+      "id": "revenue-gross",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.revenue-gross",
+      "order": 19
+    },
+    {
+      "id": "revenue-refunds",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.revenue-refunds",
+      "order": 20
+    },
+    {
+      "id": "revenue-net",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.revenue-net",
+      "order": 21
+    },
+    {
+      "id": "revenue-commission",
+      "screenKey": "profile.integrations",
+      "group": "fields",
+      "i18nKey": "guide.profile.integrations.revenue-commission",
+      "order": 22
+    }
+  ],
+  "payment.cash.receipt": [
+    {
+      "id": "payer",
+      "screenKey": "payment.cash.receipt",
+      "group": "popup",
+      "i18nKey": "guide.payment.cash.receipt.payer",
+      "order": 0
+    },
+    {
+      "id": "amount",
+      "screenKey": "payment.cash.receipt",
+      "group": "popup",
+      "i18nKey": "guide.payment.cash.receipt.amount",
+      "order": 1
+    },
+    {
+      "id": "currency",
+      "screenKey": "payment.cash.receipt",
+      "group": "popup",
+      "i18nKey": "guide.payment.cash.receipt.currency",
+      "order": 2
+    },
+    {
+      "id": "note",
+      "screenKey": "payment.cash.receipt",
+      "group": "popup",
+      "i18nKey": "guide.payment.cash.receipt.note",
+      "order": 3
+    },
+    {
+      "id": "cash-save",
+      "screenKey": "payment.cash.receipt",
+      "group": "popup",
+      "i18nKey": "guide.payment.cash.receipt.save",
+      "order": 4
+    },
+    {
+      "id": "close",
+      "screenKey": "payment.cash.receipt",
+      "group": "popup",
+      "i18nKey": "guide.payment.cash.receipt.close",
+      "order": 5
+    }
+  ],
+  "navigation.menu": [
+    {
+      "id": "navigation-profile",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.navigation-profile",
+      "order": 0
+    },
+    {
+      "id": "navigation-workspace",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.navigation-workspace",
+      "order": 1
+    },
+    {
+      "id": "notifications",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.notifications",
+      "order": 2
+    },
+    {
+      "id": "explanations",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.explanations",
+      "order": 3
+    },
+    {
+      "id": "settings",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.settings",
+      "order": 4
+    },
+    {
+      "id": "feed",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.feed",
+      "order": 5
+    },
+    {
+      "id": "followed",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.followed",
+      "order": 6
+    },
+    {
+      "id": "groups",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.groups",
+      "order": 7
+    },
+    {
+      "id": "impressions",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.impressions",
+      "order": 8
+    },
+    {
+      "id": "navigation-feedback",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.feedback",
+      "order": 9
+    },
+    {
+      "id": "rates",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.rates",
+      "order": 10
+    },
+    {
+      "id": "chat",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.chat",
+      "order": 11
+    },
+    {
+      "id": "invitations",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.invitations",
+      "order": 12
+    },
+    {
+      "id": "events",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.events",
+      "order": 13
+    },
+    {
+      "id": "payment-history",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.payment-history",
+      "order": 14
+    },
+    {
+      "id": "transport",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.transport",
+      "order": 15
+    },
+    {
+      "id": "accommodation",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.accommodation",
+      "order": 16
+    },
+    {
+      "id": "supplies",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.supplies",
+      "order": 17
+    },
+    {
+      "id": "tickets",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.tickets",
+      "order": 18
+    },
+    {
+      "id": "contacts",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.contacts",
+      "order": 19
+    },
+    {
+      "id": "close",
+      "screenKey": "navigation.menu",
+      "group": "fields",
+      "i18nKey": "guide.navigation.menu.close",
+      "order": 20
+    },
+    {
+      "id": "settings:permissions",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.permissions",
+      "order": 21
+    },
+    {
+      "id": "settings:share",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.share",
+      "order": 22
+    },
+    {
+      "id": "settings:help",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.help",
+      "order": 23
+    },
+    {
+      "id": "settings:feedback",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.feedback",
+      "order": 24
+    },
+    {
+      "id": "settings:report-bugs",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.report-bugs",
+      "order": 25
+    },
+    {
+      "id": "settings:privacy",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.privacy",
+      "order": 26
+    },
+    {
+      "id": "settings:terms",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.terms",
+      "order": 27
+    },
+    {
+      "id": "settings:delete-account",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.delete-account",
+      "order": 28
+    },
+    {
+      "id": "settings:logout",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.settings.logout",
+      "order": 29
+    }
+  ],
+  "members": [
+    {
+      "id": "members-list",
+      "screenKey": "members",
+      "group": "card",
+      "i18nKey": "guide.members.members-list",
+      "order": 0
+    },
+    {
+      "id": "pending-only",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.pending-only",
+      "order": 1
+    },
+    {
+      "id": "invite",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.invite",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "members",
+      "group": "popup",
+      "i18nKey": "guide.members.members-close",
+      "order": 3
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions",
+      "order": 4
+    },
+    {
+      "id": "card-actions:member-involvement",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-involvement",
+      "order": 5
+    },
+    {
+      "id": "card-actions:member-toggleOrganizerParticipation",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-toggleOrganizerParticipation",
+      "order": 6
+    },
+    {
+      "id": "card-actions:member-promoteAdmin",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-promoteAdmin",
+      "order": 7
+    },
+    {
+      "id": "card-actions:member-revokeManager",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-revokeManager",
+      "order": 8
+    },
+    {
+      "id": "card-actions:member-stepDownAdmin",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-stepDownAdmin",
+      "order": 9
+    },
+    {
+      "id": "card-actions:member-approve",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-approve",
+      "order": 10
+    },
+    {
+      "id": "card-actions:member-remove",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-remove",
+      "order": 11
+    },
+    {
+      "id": "card-actions:member-leave",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-leave",
+      "order": 12
+    },
+    {
+      "id": "card-actions:member-disqualify",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-disqualify",
+      "order": 13
+    },
+    {
+      "id": "card-actions:member-reinstate",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-reinstate",
+      "order": 14
+    },
+    {
+      "id": "card-actions:member-report",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.members.card-actions.member-report",
+      "order": 15
+    },
+    {
+      "id": "card-status",
+      "screenKey": "members",
+      "group": "card",
+      "i18nKey": "guide.members.card-status",
+      "order": 16
+    },
+    {
+      "id": "card-state-detail",
+      "screenKey": "members",
+      "group": "card",
+      "i18nKey": "guide.members.card-state-detail",
+      "order": 17
+    },
+    {
+      "id": "member-profile",
+      "screenKey": "members",
+      "group": "card",
+      "i18nKey": "guide.members.member-profile",
+      "order": 18
+    }
+  ],
+  "assets.availability": [
+    {
+      "id": "order:trigger",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.order.trigger",
+      "order": 0
+    },
+    {
+      "id": "view:trigger",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.view.trigger",
+      "order": 1
+    },
+    {
+      "id": "filter:trigger",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.filter.trigger",
+      "order": 2
+    },
+    {
+      "id": "day-list-filter:trigger",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.day-list-filter.trigger",
+      "order": 3
+    },
+    {
+      "id": "day-list-date-range",
+      "screenKey": "assets.availability",
+      "group": "card",
+      "i18nKey": "guide.assets.availability.day-list-date-range",
+      "order": 4
+    },
+    {
+      "id": "availability-list",
+      "screenKey": "assets.availability",
+      "group": "card",
+      "i18nKey": "guide.assets.availability.availability-list",
+      "order": 5
+    },
+    {
+      "id": "availability-row",
+      "screenKey": "assets.availability",
+      "group": "card",
+      "i18nKey": "guide.assets.availability.availability-row",
+      "order": 6
+    },
+    {
+      "id": "row-status",
+      "screenKey": "assets.availability",
+      "group": "card",
+      "i18nKey": "guide.assets.availability.row-status",
+      "order": 7
+    },
+    {
+      "id": "card-actions",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.card-actions",
+      "order": 8
+    },
+    {
+      "id": "card-actions:manage",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.card-actions.manage",
+      "order": 9
+    },
+    {
+      "id": "card-actions:accept",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.card-actions.accept",
+      "order": 10
+    },
+    {
+      "id": "card-actions:remove",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.card-actions.remove",
+      "order": 11
+    },
+    {
+      "id": "card-actions:makeManager",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.card-actions.makeManager",
+      "order": 12
+    },
+    {
+      "id": "card-actions:revokeManager",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.assets.availability.card-actions.revokeManager",
+      "order": 13
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.availability",
+      "group": "card",
+      "i18nKey": "guide.assets.availability.close",
+      "order": 14
+    }
+  ],
+  "assets.explore": [
+    {
+      "id": "card-actions",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.card-actions",
+      "order": 0
+    },
+    {
+      "id": "card-actions:editAsset",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.editAsset",
+      "order": 1
+    },
+    {
+      "id": "card-actions:viewAsset",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.viewAsset",
+      "order": 2
+    },
+    {
+      "id": "card-actions:borrowAsset",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.borrowAsset",
+      "order": 3
+    },
+    {
+      "id": "card-actions:assetAvailability",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.assetAvailability",
+      "order": 4
+    },
+    {
+      "id": "card-actions:capacity",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.capacity",
+      "order": 5
+    },
+    {
+      "id": "card-actions:route",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.route",
+      "order": 6
+    },
+    {
+      "id": "card-actions:contactOwner",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.contactOwner",
+      "order": 7
+    },
+    {
+      "id": "card-actions:shareAsset",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.shareAsset",
+      "order": 8
+    },
+    {
+      "id": "card-actions:reportOwner",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.reportOwner",
+      "order": 9
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.publish",
+      "order": 10
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.unpublish",
+      "order": 11
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.card.action.delete",
+      "order": 12
+    },
+    {
+      "id": "pagination-prev",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.prev",
+      "order": 13
+    },
+    {
+      "id": "pagination-next",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.common.pagination.next",
+      "order": 14
+    },
+    {
+      "id": "close",
+      "screenKey": "assets.explore",
+      "group": "popup",
+      "i18nKey": "guide.common.close",
+      "order": 15
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.card-actions.edit",
+      "order": 16
+    },
+    {
+      "id": "card-actions:externalInfo",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.card-actions.externalInfo",
+      "order": 17
+    },
+    {
+      "id": "card-actions:takeOver",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.assets.transport.card-actions.takeOver",
+      "order": 18
+    },
+    {
+      "id": "asset-explore-order:trigger",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.assets.explore.asset-explore-order.trigger",
+      "order": 19
+    },
+    {
+      "id": "asset-explore-category:trigger",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.assets.explore.asset-explore-category.trigger",
+      "order": 20
+    },
+    {
+      "id": "asset-explore-date-range",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.explore.asset-explore-date-range",
+      "order": 21
+    },
+    {
+      "id": "asset-list",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.explore.asset-list",
+      "order": 22
+    },
+    {
+      "id": "card-badge-start",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.explore.card-badge-start",
+      "order": 23
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.explore.card-badge-end",
+      "order": 24
+    },
+    {
+      "id": "card-static-state",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.explore.card-static-state",
+      "order": 25
+    },
+    {
+      "id": "borrow-basket",
+      "screenKey": "assets.explore",
+      "group": "card",
+      "i18nKey": "guide.assets.explore.borrow-basket",
+      "order": 26
+    }
+  ],
+  "landing.home": [
+    {
+      "id": "login",
+      "screenKey": "landing.home",
+      "group": "fields",
+      "i18nKey": "guide.landing.home.login",
+      "order": 0
+    },
+    {
+      "id": "explore",
+      "screenKey": "landing.home",
+      "group": "fields",
+      "i18nKey": "guide.landing.home.explore",
+      "order": 1
+    },
+    {
+      "id": "join",
+      "screenKey": "landing.home",
+      "group": "fields",
+      "i18nKey": "guide.landing.home.join",
+      "order": 2
+    }
+  ],
+  "landing.setup": [
+    {
+      "id": "help",
+      "screenKey": "landing.setup",
+      "group": "fields",
+      "i18nKey": "guide.landing.setup.help",
+      "order": 0
+    },
+    {
+      "id": "location",
+      "screenKey": "landing.setup",
+      "group": "fields",
+      "i18nKey": "guide.landing.setup.location",
+      "order": 1
+    },
+    {
+      "id": "notifications",
+      "screenKey": "landing.setup",
+      "group": "fields",
+      "i18nKey": "guide.landing.setup.notifications",
+      "order": 2
+    },
+    {
+      "id": "permissions-save",
+      "screenKey": "landing.setup",
+      "group": "fields",
+      "i18nKey": "guide.landing.setup.permissions-save",
+      "order": 3
+    },
+    {
+      "id": "install",
+      "screenKey": "landing.setup",
+      "group": "fields",
+      "i18nKey": "guide.landing.setup.install",
+      "order": 4
+    }
+  ],
+  "landing.demo": [
+    {
+      "id": "new-profile",
+      "screenKey": "landing.demo",
+      "group": "fields",
+      "i18nKey": "guide.landing.demo.new-profile",
+      "order": 0
+    },
+    {
+      "id": "selector-role:trigger",
+      "screenKey": "landing.demo",
+      "group": "menus",
+      "i18nKey": "guide.landing.demo.selector-role.trigger",
+      "order": 1
+    },
+    {
+      "id": "selector-role:member",
+      "screenKey": "landing.demo",
+      "group": "menus",
+      "i18nKey": "guide.landing.demo.selector-role.member",
+      "order": 2
+    },
+    {
+      "id": "selector-role:admin",
+      "screenKey": "landing.demo",
+      "group": "menus",
+      "i18nKey": "guide.landing.demo.selector-role.admin",
+      "order": 3
+    },
+    {
+      "id": "selector-role:operator",
+      "screenKey": "landing.demo",
+      "group": "menus",
+      "i18nKey": "guide.landing.demo.selector-role.operator",
+      "order": 4
+    },
+    {
+      "id": "member-card",
+      "screenKey": "landing.demo",
+      "group": "fields",
+      "i18nKey": "guide.landing.demo.member-card",
+      "order": 5
+    }
+  ],
+  "landing.auth": [
+    {
+      "id": "providers",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.providers",
+      "order": 0
+    },
+    {
+      "id": "account-mode",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.account-mode",
+      "order": 1
+    },
+    {
+      "id": "email",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.email",
+      "order": 2
+    },
+    {
+      "id": "password",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.password",
+      "order": 3
+    },
+    {
+      "id": "password-rules",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.password-rules",
+      "order": 4
+    },
+    {
+      "id": "confirmation",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.confirmation",
+      "order": 5
+    },
+    {
+      "id": "submit",
+      "screenKey": "landing.auth",
+      "group": "fields",
+      "i18nKey": "guide.landing.auth.submit",
+      "order": 6
+    }
+  ],
+  "landing.registration": [
+    {
+      "id": "form-progress",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.form-progress",
+      "order": 0
+    },
+    {
+      "id": "full-name",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.full-name",
+      "order": 1
+    },
+    {
+      "id": "birthday",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.birthday",
+      "order": 2
+    },
+    {
+      "id": "city",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.city",
+      "order": 3
+    },
+    {
+      "id": "height",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.height",
+      "order": 4
+    },
+    {
+      "id": "physique",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.physique",
+      "order": 5
+    },
+    {
+      "id": "gender",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.gender",
+      "order": 6
+    },
+    {
+      "id": "languages",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.languages",
+      "order": 7
+    },
+    {
+      "id": "images",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.images",
+      "order": 8
+    },
+    {
+      "id": "form-navigation",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.form-navigation",
+      "order": 9
+    },
+    {
+      "id": "form-save",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.landing.registration.form-save",
+      "order": 10
+    },
+    {
+      "id": "about",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.about",
+      "order": 11
+    },
+    {
+      "id": "profession",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.profession",
+      "order": 12
+    },
+    {
+      "id": "workspace",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.workspace",
+      "order": 13
+    },
+    {
+      "id": "school",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.school",
+      "order": 14
+    },
+    {
+      "id": "interests",
+      "screenKey": "landing.registration",
+      "group": "card",
+      "i18nKey": "guide.profile.editor.profile-experience",
+      "order": 15
+    },
+    {
+      "id": "drinking",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.drinking",
+      "order": 16
+    },
+    {
+      "id": "smoking",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.smoking",
+      "order": 17
+    },
+    {
+      "id": "workout",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.workout",
+      "order": 18
+    },
+    {
+      "id": "pets",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.pets",
+      "order": 19
+    },
+    {
+      "id": "familyPlans",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.familyPlans",
+      "order": 20
+    },
+    {
+      "id": "children",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.children",
+      "order": 21
+    },
+    {
+      "id": "loveStyle",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.loveStyle",
+      "order": 22
+    },
+    {
+      "id": "communicationStyle",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.communicationStyle",
+      "order": 23
+    },
+    {
+      "id": "sexualOrientation",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.sexualOrientation",
+      "order": 24
+    },
+    {
+      "id": "religion",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.religion",
+      "order": 25
+    },
+    {
+      "id": "values",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.values",
+      "order": 26
+    },
+    {
+      "id": "image-upload",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-upload",
+      "order": 27
+    },
+    {
+      "id": "image-replace",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-replace",
+      "order": 28
+    },
+    {
+      "id": "image-copy",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-copy",
+      "order": 29
+    },
+    {
+      "id": "image-remove",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-remove",
+      "order": 30
+    },
+    {
+      "id": "image-pages",
+      "screenKey": "landing.registration",
+      "group": "fields",
+      "i18nKey": "guide.profile.editor.image-pages",
+      "order": 31
+    }
+  ]
+}

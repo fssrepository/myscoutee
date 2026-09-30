@@ -1023,3 +1023,51 @@
     grid-column: 1 / -1;
   }
 }
+
+// Both retained panels keep their size and compositing hints. Switching only
+// changes stacking and interaction; neither panel is hidden or transparent.
+.smart-list__surface--retained-fullscreen {
+  margin-inline: 0;
+
+  .smart-list__stage-list-shell,
+  .smart-list__stage-overlay {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  .smart-list__stage-list-shell {
+    z-index: 1;
+    background: var(--smart-list-retained-list-background, #fff);
+
+    &.is-occluded {
+      opacity: 1;
+    }
+  }
+
+  .smart-list__stage-overlay {
+    --smart-list-fullscreen-top-offset: 0.42rem;
+    --smart-list-fullscreen-bottom-offset: 0px;
+    background: var(--smart-list-retained-fullscreen-background, #fff);
+
+    &.is-inactive {
+      z-index: 0;
+    }
+  }
+
+  .smart-list__stage-overlay--with-rating-bar {
+    --smart-list-fullscreen-bottom-offset: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .smart-list__rating-outlet {
+    pointer-events: auto;
+  }
+
+  @media (max-width: 760px) {
+    .smart-list__stage-overlay:has(app-pair-card) {
+      .smart-list__fullscreen-surface,
+      .smart-list__rating-outlet {
+        margin-inline: var(--smart-list-fullscreen-mobile-surface-margin, 0.72rem);
+      }
+    }
+  }
+}

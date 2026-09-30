@@ -87,7 +87,7 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  display: grid;
+  display: none;
   place-items: center;
   pointer-events: none;
   opacity: 0;
@@ -101,6 +101,7 @@
 
 .activities-rate-pair-inline-layer.lazy-bg-loading .activities-rate-image-loader,
 .activities-rate-profile-layer.lazy-bg-loading .activities-rate-image-loader {
+  display: grid;
   opacity: 1;
 }
 
@@ -109,6 +110,32 @@
 .activities-rate-pair-inline-layer.lazy-bg-error .activities-rate-image-loader,
 .activities-rate-profile-layer.lazy-bg-error .activities-rate-image-loader {
   opacity: 0;
+}
+
+// The retained list preserves its scroll/cursor state beneath fullscreen.
+// Its invisible loading indicators must not keep animating behind the overlay.
+:host-context(.smart-list__stage-list-shell.is-occluded) .activities-rate-image-loader {
+  display: none;
+}
+
+// Photo controls follow the same per-image suspension as the cached photo.
+// Keep the card frame and text in place while it passes outside the viewport.
+@media (max-width: 760px) {
+  :is(.activities-rate-profile-stack, .activities-rate-pair-inline-card):has(
+    > :is(.activities-rate-profile-layer, .activities-rate-pair-inline-layer).lazy-bg-suspended
+  ) > :is(
+    .activities-rate-profile-indicators,
+    .shared-card-profile-view-btn,
+    .shared-card-status-badge,
+    .shared-card-context-avatar-badge,
+    .activities-rate-score-badge
+  ),
+  .activities-rate-profile-stack:has(.activities-rate-pair-inline-layer.lazy-bg-suspended):not(
+    :has(.activities-rate-pair-inline-layer:not(.lazy-bg-suspended))
+  ) > .activities-rate-score-badge {
+    visibility: hidden;
+    pointer-events: none;
+  }
 }
 
 .activities-rate-pair-inline-layer::after,
@@ -489,7 +516,7 @@ button.activities-rate-score-badge:has(> .activities-rate-score-chevron) {
 .activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between {
   --activities-rate-badge-between-y: 0;
   top: auto;
-  bottom: clamp(3.2rem, 18%, 4.2rem);
+  bottom: calc(clamp(3.2rem, 18%, 4.2rem) + 0.75rem);
   left: 50% !important;
   right: auto !important;
   transform: translate(-50%, var(--activities-rate-badge-between-y)) !important;

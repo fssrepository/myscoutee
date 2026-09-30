@@ -52,6 +52,7 @@ import {
   ChatsService,
   ChatVoiceClipsService,
   DeploymentConfigurationService,
+  ExplanationGuideService,
   EventsService,
   I18nService,
   MediaService,
@@ -477,8 +478,26 @@ export class EventChatPopupComponent implements OnDestroy {
   private contactInviteLoading = false;
   private destroyed = false;
   private readonly chatShare = inject(ChatShareStore);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
+  private registeredExplanationContextKey: string | null = null;
 
   constructor() {
+    effect(() => {
+      const chat = this.session()?.item ?? null;
+      const eventChat = Boolean(chat && (
+        chat.serviceContext === 'event'
+        || chat.eventId
+        || ['mainEvent', 'optionalSubEvent', 'groupSubEvent', 'serviceEvent'].includes(`${chat.channelType ?? ''}`)
+      ));
+      const contextKey = chat ? (eventChat ? 'event.chat' : 'chats') : null;
+      if (contextKey === this.registeredExplanationContextKey) return;
+      this.unregisterExplanationContext?.();
+      this.unregisterExplanationContext = contextKey
+        ? this.explanationGuide.registerContext(contextKey)
+        : null;
+      this.registeredExplanationContextKey = contextKey;
+    });
     effect(() => {
       const request = this.chatShare.applyRequest();
       const session = this.session();
@@ -578,6 +597,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
+    this.registeredExplanationContextKey = null;
     this.chatShare.cancelForChat(this.session()?.item.id ?? '');
     this.chatHeaderPollScheduler.destroy();
     this.clearChatComposeResizeObserver();

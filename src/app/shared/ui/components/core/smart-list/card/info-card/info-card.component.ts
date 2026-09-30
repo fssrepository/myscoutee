@@ -82,6 +82,7 @@ export class InfoCardComponent implements OnDestroy, OnChanges {
   @Input() useSharedMenu = false;
   @Input() useSharedMenuTrigger = false;
   @Input() sharedMenuContext: Record<string, unknown> | null = null;
+  @Input() sharedMenuGuideField: string | null = 'card-actions';
 
   @Output() readonly selectionChange = new EventEmitter<void>();
   @Output() readonly cardClick = new EventEmitter<CardClickEvent<InfoCardData>>();

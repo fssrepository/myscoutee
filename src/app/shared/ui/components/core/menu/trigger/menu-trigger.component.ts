@@ -28,7 +28,7 @@ import type {
   AppMenuTriggerLayout,
   AppMenuValueMap
 } from '../menu.types';
-import { appMenuAlertCounter, appMenuModelSummary } from '../menu-summary';
+import { appMenuGuideItemIds, appMenuAlertCounter, appMenuModelSummary } from '../menu-summary';
 
 @Component({
   selector: 'app-menu-trigger',
@@ -48,6 +48,8 @@ import { appMenuAlertCounter, appMenuModelSummary } from '../menu-summary';
         [class.app-menu__trigger--layout-pill]="triggerLayout() === 'pill'"
         [class.app-menu__trigger--layout-icon]="triggerLayout() === 'icon'"
         [disabled]="triggerDisabled()"
+        [attr.data-guide-field]="guideField"
+        [attr.data-guide-items]="guideItemIds()"
         [attr.aria-expanded]="isOpen()"
         [attr.aria-haspopup]="triggerAriaHasPopup()"
         [attr.aria-label]="triggerAriaLabel()"
@@ -112,11 +114,16 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   @Input() value: AppMenuValueMap<TId> | null = null;
   @Input() trigger: AppMenuTrigger | null = null;
   @Input() context: TContext | null = null;
+  @Input() guideField: string | null = null;
   @Input() openUp = false;
   @Input() panelAlign: AppMenuPanelAlign | null = null;
   @Input() panelMode: AppMenuPanelMode | null = null;
   @Input() mobileBreakpointPx = 760;
   @Input() closeOnSelect = true;
+
+  protected guideItemIds(): string {
+    return appMenuGuideItemIds(this.items, this.model, this.groups);
+  }
 
   constructor() {
     this.syncMobileViewport();

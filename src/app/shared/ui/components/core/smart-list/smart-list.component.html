@@ -1,5 +1,6 @@
 <div
   class="smart-list__surface"
+  [class.smart-list__surface--retained-fullscreen]="retainsFullscreenView()"
   [class.smart-list__surface--horizontal]="isHorizontalList()"
   [class.smart-list__surface--timeline]="isTimelineMode()"
   [class.smart-list__surface--compact-horizontal]="shouldUseCompactHorizontal()"
@@ -7,7 +8,9 @@
   [class.smart-list__surface--fullscreen-with-rating-bar]="resolvedPresentation() === 'fullscreen' && shouldRenderPaginationRatingBar()"
 >
   <div class="smart-list__stage">
-    <div class="smart-list__stage-list-shell" [class.is-occluded]="shouldRenderHostedFullscreenOverlay()">
+    <div class="smart-list__stage-list-shell" [class.is-occluded]="shouldRenderHostedFullscreenOverlay()"
+      [attr.aria-hidden]="shouldRenderHostedFullscreenOverlay() ? 'true' : null"
+      [attr.inert]="shouldRenderHostedFullscreenOverlay() ? '' : null">
       @if (isPageMode()) {
         <div
           class="smart-list__page-shell"
@@ -42,6 +45,7 @@
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
+                    data-guide-field="pagination-prev"
                     (click)="navigatePageHeader(-1, $event)"
                     aria-label="Previous period"
                   >
@@ -50,6 +54,7 @@
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
+                    data-guide-field="pagination-next"
                     (click)="navigatePageHeader(1, $event)"
                     aria-label="Next period"
                   >
@@ -69,6 +74,7 @@
                 <button
                   type="button"
                   class="smart-list__sticky-action-btn"
+                  data-guide-field="pagination-prev"
                   [disabled]="!canMovePagination(-1)"
                   (click)="onPaginationPrev($event)"
                   aria-label="Previous page"
@@ -78,6 +84,7 @@
                 <button
                   type="button"
                   class="smart-list__sticky-action-btn"
+                  data-guide-field="pagination-next"
                   [disabled]="!canMovePagination(1)"
                   (click)="onPaginationNext($event)"
                   aria-label="Next page"
@@ -135,6 +142,7 @@
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
+                    data-guide-field="pagination-prev"
                     [disabled]="!canMovePagination(-1)"
                     (click)="onPaginationPrev($event)"
                     aria-label="Previous page"
@@ -144,6 +152,7 @@
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
+                    data-guide-field="pagination-next"
                     [disabled]="!canMovePagination(1)"
                     (click)="onPaginationNext($event)"
                     aria-label="Next page"
@@ -218,10 +227,13 @@
       }
     </div>
 
-    @if (shouldRenderHostedFullscreenOverlay()) {
+    @if (shouldMountHostedFullscreenOverlay()) {
       <div
         class="smart-list__stage-overlay"
-        [class.smart-list__stage-overlay--with-rating-bar]="shouldRenderPaginationRatingBar()"
+        [class.is-inactive]="!shouldRenderHostedFullscreenOverlay()"
+        [attr.inert]="!shouldRenderHostedFullscreenOverlay() ? '' : null"
+        [attr.aria-hidden]="!shouldRenderHostedFullscreenOverlay() ? 'true' : null"
+        [class.smart-list__stage-overlay--with-rating-bar]="paginationRatingMenu() !== null"
       >
         @if (resolvedFullscreenItemTemplate(); as fullscreenTemplateRef) {
           <div #fullscreenSurface class="smart-list__fullscreen-surface">
@@ -293,6 +305,9 @@
             }
           </div>
         }
+        @if (retainsFullscreenView()) {
+          <ng-container [ngTemplateOutlet]="paginationRatingOutlet"></ng-container>
+        }
       </div>
     }
   </div>
@@ -315,6 +330,7 @@
       <button
         type="button"
         class="smart-list__pagination-arrow smart-list__pagination-arrow--prev motion-static"
+        data-guide-field="pagination-prev"
         [disabled]="!canMovePagination(-1)"
         (click)="onPaginationPrev($event)"
         aria-label="Previous item"
@@ -324,6 +340,7 @@
       <button
         type="button"
         class="smart-list__pagination-arrow smart-list__pagination-arrow--next motion-static"
+        data-guide-field="pagination-next"
         [disabled]="!canMovePagination(1)"
         (click)="onPaginationNext($event)"
         aria-label="Next item"
@@ -344,13 +361,15 @@
     </div>
   }
 
-  @let ratingPaginationMenu = paginationRatingMenu();
-  <app-menu-outlet
-    #paginationMenuOutlet
-    [menu]="ratingPaginationMenu"
-    [items]="ratingPaginationMenu ? paginationRatingMenuItems() : dispatchedMenuItems()"
-    (itemSelect)="onMenuOutletItemSelect($event)"
-  ></app-menu-outlet>
+  @if (!retainsFullscreenView()) {
+    <ng-container [ngTemplateOutlet]="paginationRatingOutlet"></ng-container>
+  }
+  @if (!shouldRenderPaginationRatingBar()) {
+    <app-menu-outlet
+      [items]="dispatchedMenuItems()"
+      (itemSelect)="onMenuOutletItemSelect($event)"
+    ></app-menu-outlet>
+  }
 </div>
 
 <ng-template #fullscreenEmptyState>
@@ -372,5 +391,18 @@
         <p>{{ emptyDescription() | i18n }}</p>
       }
     </div>
+  }
+</ng-template>
+
+<ng-template #paginationRatingOutlet>
+  @let ratingPaginationMenu = paginationRatingMenu();
+  @if (ratingPaginationMenu) {
+    <app-menu-outlet
+      #paginationMenuOutlet
+      class="smart-list__rating-outlet"
+      [menu]="ratingPaginationMenu"
+      [items]="paginationRatingMenuItems()"
+      (itemSelect)="onMenuOutletItemSelect($event)"
+    ></app-menu-outlet>
   }
 </ng-template>

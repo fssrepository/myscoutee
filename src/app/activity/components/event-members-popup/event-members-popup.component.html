@@ -5,6 +5,7 @@
         <app-smart-list
           #membersSmartList
           class="activity-members-smart-list"
+          data-guide-field="members-list"
           [config]="membersSmartListConfig"
           [loaders]="membersSmartListLoaders"
           [itemTemplate]="membersItemTemplateRef ?? null"
@@ -14,6 +15,7 @@
         ></app-smart-list>
         <ng-template #memberItemTemplate let-member>
           <app-image-card
+            data-guide-field="member-actions"
             [card]="memberImageCard(member)"
             [mediaActions]="memberImageCardMediaActions(member)"
             [menuId]="memberActionMenuId(member)"

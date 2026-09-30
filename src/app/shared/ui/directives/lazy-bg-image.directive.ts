@@ -16,12 +16,23 @@ import {
 import { I18nService } from '../../core';
 import { IndicatorComponent } from '../components/core/indicator';
 
+interface LazyImageScrollState {
+  element: Element;
+  x: number;
+  y: number;
+  time: number;
+  fast: boolean;
+  timer: ReturnType<typeof setTimeout> | null;
+  deferred: Set<LazyBgImageDirective>;
+}
+
 @Directive({
   selector: '[appLazyBgImage]',
   standalone: true
 })
 export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy {
   @Input() appLazyBgImage: string | null = null;
+  @Input() appLazyImageEnabled = true;
   @Input() appLazyHtmlImages: boolean | string | null = false;
   @Input() appLazyImageFallback: string | null = null;
 
@@ -42,6 +53,67 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   <text x="480" y="444" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#5c7595">No image</text>
 </svg>
 `)}`;
+  private static scrollUsers = 0;
+  private static scrollDocument: Document | null = null;
+  private static scrollStates = new WeakMap<EventTarget, LazyImageScrollState>();
+  private static readonly activeScrollStates = new Set<LazyImageScrollState>();
+  private static readonly onScroll = (event: Event): void => {
+    const target = event.target;
+    if (!target) return;
+    const element = target instanceof Document ? target.scrollingElement : target as HTMLElement;
+    if (!element) return;
+    const now = performance.now();
+    let state = LazyBgImageDirective.scrollStates.get(target);
+    if (!state) {
+      state = { element, x: element.scrollLeft, y: element.scrollTop, time: now, fast: true,
+        timer: null, deferred: new Set() };
+      LazyBgImageDirective.scrollStates.set(target, state);
+    } else {
+      const elapsed = now - state.time;
+      const distance = Math.hypot(element.scrollLeft - state.x, element.scrollTop - state.y);
+      // First movement after idle waits for the next sample. Slow scrolling
+      // then resumes; hysteresis avoids flickering photos near the 1px/ms threshold.
+      state.fast = elapsed <= 0 || elapsed > 120 || distance / elapsed > (state.fast ? .5 : 1);
+      state.x = element.scrollLeft;
+      state.y = element.scrollTop;
+      state.time = now;
+    }
+    if (state.element.hasAttribute('data-lazy-image-scroll-fast') !== state.fast) {
+      state.element.toggleAttribute('data-lazy-image-scroll-fast', state.fast);
+    }
+    if (state.timer) clearTimeout(state.timer);
+    LazyBgImageDirective.activeScrollStates.add(state);
+    state.timer = setTimeout(() => LazyBgImageDirective.finishScroll(state!), 120);
+    if (!state.fast) LazyBgImageDirective.flushDeferredImages(state);
+  };
+  private static readonly onScrollEnd = (event: Event): void => {
+    const state = event.target ? LazyBgImageDirective.scrollStates.get(event.target) : null;
+    if (state) LazyBgImageDirective.finishScroll(state);
+  };
+
+  private static finishScroll(state: LazyImageScrollState): void {
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = null;
+    state.fast = false;
+    state.element.removeAttribute('data-lazy-image-scroll-fast');
+    this.activeScrollStates.delete(state);
+    this.flushDeferredImages(state);
+  }
+
+  private static flushDeferredImages(state: LazyImageScrollState): void {
+    // Recheck the current viewport, not the pictures passed during the fling.
+    // Batch reads before loading classes/background writes.
+    const images = [...state.deferred].map(image => ({ image,
+      visible: image.isViewReady && image.appLazyImageEnabled && image.isElementWithinPreloadRange() }));
+    state.deferred.clear();
+    for (const { image, visible } of images) {
+      image.deferredScroll = null;
+      if (!image.isViewReady || !image.currentUrl || !image.appLazyImageEnabled) continue;
+      if (visible) image.loadBackgroundUrl(image.currentUrl);
+      else image.setupObserver();
+    }
+  }
+
   private static readonly loadedUrls = new Set<string>();
   private static readonly loadingPromises = new Map<string, Promise<boolean>>();
   private static readonly localizedSvgUrls = new Map<string, string>();
@@ -61,6 +133,8 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private hasLoaded = false;
   private isViewReady = false;
   private currentUrl: string | null = null;
+  private pendingUrl: string | null = null;
+  private deferredScroll: LazyImageScrollState | null = null;
   private appliedUrl: string | null = null;
   private readonly i18nRevisionEffect = effect(() => {
     this.i18n.revision();
@@ -186,6 +260,12 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   ngAfterViewInit(): void {
+    if (LazyBgImageDirective.scrollUsers++ === 0) {
+      const document = this.elementRef.nativeElement.ownerDocument;
+      LazyBgImageDirective.scrollDocument = document;
+      document.addEventListener('scroll', LazyBgImageDirective.onScroll, { capture: true, passive: true });
+      document.addEventListener('scrollend', LazyBgImageDirective.onScrollEnd, { capture: true, passive: true });
+    }
     this.isViewReady = true;
     this.currentUrl = this.normalizeUrl(this.appLazyBgImage);
     this.syncHtmlImageMode();
@@ -209,6 +289,22 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   ngOnDestroy(): void {
+    const wasReady = this.isViewReady;
+    this.isViewReady = false;
+    this.deferredScroll?.deferred.delete(this);
+    if (wasReady && --LazyBgImageDirective.scrollUsers === 0) {
+      const document = LazyBgImageDirective.scrollDocument;
+      document?.removeEventListener('scroll', LazyBgImageDirective.onScroll, true);
+      document?.removeEventListener('scrollend', LazyBgImageDirective.onScrollEnd, true);
+      for (const state of LazyBgImageDirective.activeScrollStates) {
+        if (state.timer) clearTimeout(state.timer);
+        state.element.removeAttribute('data-lazy-image-scroll-fast');
+        state.deferred.clear();
+      }
+      LazyBgImageDirective.activeScrollStates.clear();
+      LazyBgImageDirective.scrollStates = new WeakMap();
+      LazyBgImageDirective.scrollDocument = null;
+    }
     this.i18nRevisionEffect.destroy();
     this.disconnectObserver();
     this.cancelBackgroundVisibilityCheck();
@@ -230,28 +326,36 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private setupObserver(): void {
     this.disconnectObserver();
     this.cancelBackgroundVisibilityCheck();
-    this.renderer.addClass(this.elementRef.nativeElement, this.loadingClass);
-    this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
-    this.renderer.removeClass(this.elementRef.nativeElement, this.errorClass);
-
     const url = this.currentUrl;
-    if (!url) {
-      this.applyLoadError();
-      return;
-    }
-
-    const renderedUrl = this.renderedImageUrl(url);
-    if (LazyBgImageDirective.loadedUrls.has(renderedUrl)) {
-      this.applyBackground(renderedUrl);
-      return;
-    }
-
+    const renderedUrl = url ? this.renderedImageUrl(url) : null;
     if (this.hasLoaded && this.appliedUrl === renderedUrl) {
       this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
       this.renderer.addClass(this.elementRef.nativeElement, this.loadedClass);
+      if (this.appLazyImageEnabled && url) this.observeBackgroundVisibility(url);
       return;
     }
 
+    // A retained view can receive a new row while hidden. Never display the
+    // preceding row's picture, but do not start its replacement until visible.
+    if (!this.appLazyImageEnabled) {
+      this.renderer.removeStyle(this.elementRef.nativeElement, 'background-image');
+      this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
+      return;
+    }
+    if (this.pendingUrl !== url) this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
+    this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
+    this.renderer.removeClass(this.elementRef.nativeElement, this.errorClass);
+    if (!url || !renderedUrl) {
+      this.applyLoadError();
+      return;
+    }
+    if (LazyBgImageDirective.loadedUrls.has(renderedUrl)) {
+      this.applyBackground(renderedUrl);
+    }
+    this.observeBackgroundVisibility(url);
+  }
+
+  private observeBackgroundVisibility(url: string): void {
     if (typeof IntersectionObserver === 'undefined') {
       this.loadBackgroundUrl(url);
       return;
@@ -260,10 +364,12 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     this.observer = new IntersectionObserver(
       entries => {
         if (!entries.some(entry => entry.isIntersecting)) {
+          // Suspend only a photo that has actually left the viewport. A picture
+          // still on screen must not blink when scrolling speed changes.
+          this.renderer.addClass(this.elementRef.nativeElement, 'lazy-bg-suspended');
           return;
         }
         this.loadBackgroundUrl(url);
-        this.disconnectObserver();
       },
       { rootMargin: LazyBgImageDirective.PRELOAD_ROOT_MARGIN }
     );
@@ -273,6 +379,27 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private loadBackgroundUrl(url: string): void {
+    if (!this.appLazyImageEnabled || this.currentUrl !== url) return;
+    const element = this.elementRef.nativeElement;
+    const ready = this.hasLoaded;
+    if (ready && !element.classList.contains('lazy-bg-suspended')) return;
+    let ancestor: Node | null = this.elementRef.nativeElement;
+    while (ancestor) {
+      const scroll = LazyBgImageDirective.scrollStates.get(ancestor);
+      if (scroll?.fast) {
+        this.deferredScroll?.deferred.delete(this);
+        this.deferredScroll = scroll;
+        scroll.deferred.add(this);
+        return;
+      }
+      ancestor = ancestor.parentNode;
+    }
+    this.renderer.removeClass(element, 'lazy-bg-suspended');
+    if (ready || this.pendingUrl === url) return;
+    this.pendingUrl = url;
+    // Waiting outside the viewport is not an active load: do not animate a
+    // spinner for every offscreen card. Start it only with the actual request.
+    this.renderer.addClass(this.elementRef.nativeElement, this.loadingClass);
     LazyBgImageDirective.withImageLoadTimeout(this.loadRenderableUrl(url), null).then(loadedUrl => {
       if (this.currentUrl !== url) {
         return;
@@ -282,6 +409,8 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         return;
       }
       this.applyBackgroundFallback();
+    }).finally(() => {
+      if (this.pendingUrl === url) this.pendingUrl = null;
     });
   }
 
@@ -289,11 +418,10 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     this.cancelBackgroundVisibilityCheck();
     this.backgroundVisibilityCheckId = window.setTimeout(() => {
       this.backgroundVisibilityCheckId = null;
-      if (this.currentUrl !== url || this.hasLoaded || !this.isElementWithinPreloadRange()) {
+      if (this.currentUrl !== url || !this.isElementWithinPreloadRange()) {
         return;
       }
       this.loadBackgroundUrl(url);
-      this.disconnectObserver();
     });
   }
 

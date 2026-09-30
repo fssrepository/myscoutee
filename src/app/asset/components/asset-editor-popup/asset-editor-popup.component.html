@@ -8,10 +8,11 @@
         ></app-indicator>
       </div>
     } @else {
-      <div class="asset-editor-popup-body" [class.asset-editor-popup-body--checkout]="assetCheckout()">
+      <div class="asset-editor-popup-body" data-guide-field="asset-form" [class.asset-editor-popup-body--checkout]="assetCheckout()">
         @if (assetCheckout()?.phase === 'payment') {
           <div class="asset-editor-checkout-payment-stack">
             <app-event-basket-input
+              data-guide-field="asset-checkout-basket"
               [config]="checkoutPaymentBasketConfig"
               [contextTitle]="checkoutPaymentContextTitle()"
               [contextMeta]="checkoutPaymentContextMeta()"
@@ -23,6 +24,7 @@
               tone="payment"
             ></app-event-basket-input>
             <app-event-payment-input
+              data-guide-field="asset-checkout-payment"
               [config]="checkoutPaymentInputConfig"
               [totalAmount]="checkoutPaymentTotal()"
               [currency]="checkoutPaymentCurrency()"
@@ -41,6 +43,7 @@
         } @else {
           <app-form-flow
             class="asset-editor-flow"
+            data-guide-field="asset-flow"
             [class.is-saving]="isSavePending"
             [model]="assetEditorFlowModel()"
             [(ngModel)]="assetEditorFlowBinding"
@@ -52,6 +55,7 @@
         @if (assetCheckout(); as checkout) {
           @if (checkoutPaymentTotal() > 0) {
             <app-payment-refund-policy
+              data-guide-field="asset-checkout-refund-policy"
               [policy]="checkout.cancellationPolicy ?? null"
               [bookingStartAtIso]="checkout.dateRange.startAt"
               [totalAmount]="checkoutPaymentTotal()"
@@ -68,7 +72,7 @@
       </div>
 
       @if (checkoutFooterItems().length > 0) {
-        <div class="asset-editor-checkout-footer">
+        <div class="asset-editor-checkout-footer" data-guide-field="asset-checkout-actions">
           <app-menu
             kind="inline"
             layout="row"

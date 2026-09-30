@@ -411,20 +411,52 @@ const DOCUMENT_VIEWER_HEADER_PALETTES = [
   'teal'
 ] as const;
 const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
+  { key: 'landing.home', label: 'Getting started', icon: 'help_outline', owner: 'route', order: 1, enabled: true },
+  { key: 'landing.setup', label: 'Device setup', icon: 'help_outline', owner: 'popup', order: 2, enabled: true },
+  { key: 'landing.demo', label: 'Choose a demo identity', icon: 'help_outline', owner: 'popup', order: 4, enabled: true },
+  { key: 'landing.auth', label: 'Sign in or register', icon: 'help_outline', owner: 'popup', order: 5, enabled: true },
+  { key: 'landing.registration', label: 'Complete your profile', icon: 'help_outline', owner: 'popup', order: 6, enabled: true },
+
+  { key: 'navigation.menu', label: 'Avatar menu', icon: 'menu', owner: 'popup', order: 9, enabled: true },
   { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
+  { key: 'home.filters', label: 'Profile filters', icon: 'filter_alt', owner: 'popup', order: 11, enabled: true },
+  { key: 'notifications', label: 'Notifications', icon: 'notifications', owner: 'popup', order: 15, enabled: true },
   { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
   { key: 'chats', label: 'Chats', icon: 'forum', owner: 'popup', order: 25, enabled: true },
+  { key: 'payment.history', label: 'Payment history', icon: 'receipt_long', owner: 'popup', order: 27, enabled: true },
+  { key: 'payment.cash.receipt', label: 'Cash receipt', icon: 'payments', owner: 'popup', order: 27.5, enabled: true },
   { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
   { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
+  { key: 'profile.impressions', label: 'Profile impressions', icon: 'psychology', owner: 'popup', order: 42, enabled: true },
+  { key: 'profile.integrations', label: 'Integrations', icon: 'hub', owner: 'popup', order: 43, enabled: true },
   { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
+  { key: 'community.groups', label: 'Community groups', icon: 'groups', owner: 'popup', order: 46, enabled: true },
+  { key: 'community.group.editor', label: 'Group editor', icon: 'edit', owner: 'popup', order: 46.5, enabled: true },
+  { key: 'community.group.policy', label: 'Group privacy rules', icon: 'badge', owner: 'popup', order: 46.6, enabled: true },
+  { key: 'community.groups.explore', label: 'Explore groups', icon: 'explore', owner: 'popup', order: 47, enabled: true },
+  { key: 'community.feed', label: 'Photo feed', icon: 'photo_library', owner: 'popup', order: 48, enabled: true },
   { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: true },
   { key: 'assets.transport', label: 'Assets · Transport', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
   { key: 'assets.accommodation', label: 'Assets · Accommodation', icon: 'apartment', owner: 'popup', order: 52, enabled: true },
   { key: 'assets.supplies', label: 'Assets · Supplies', icon: 'inventory_2', owner: 'popup', order: 53, enabled: true },
   { key: 'assets.tickets', label: 'Assets · Tickets', icon: 'qr_code_2', owner: 'popup', order: 54, enabled: true },
+  { key: 'assets.explore', label: 'Explore assets', icon: 'travel_explore', owner: 'popup', order: 54.4, enabled: true },
+  { key: 'assets.availability', label: 'Asset availability and requests', icon: 'event_available', owner: 'popup', order: 54.5, enabled: true },
+  { key: 'assets.checkout', label: 'Asset checkout', icon: 'shopping_bag', owner: 'popup', order: 55, enabled: true },
   { key: 'events', label: 'Events', icon: 'event_note', owner: 'popup', order: 60, enabled: true },
-  { key: 'event.editor', label: 'Event editor', icon: 'edit_calendar', owner: 'popup', order: 65, enabled: true },
-  { key: 'event.feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 70, enabled: true }
+  { key: 'events.followed', label: 'Followed events', icon: 'rss_feed', owner: 'popup', order: 61, enabled: true },
+  { key: 'event.explore', label: 'Event discovery', icon: 'travel_explore', owner: 'popup', order: 62, enabled: true },
+  { key: 'event.chat', label: 'Event chat', icon: 'forum', owner: 'popup', order: 63, enabled: true },
+  { key: 'members', label: 'Group and asset members', icon: 'groups', owner: 'popup', order: 63.5, enabled: true },
+  { key: 'event.members', label: 'Event members', icon: 'groups', owner: 'popup', order: 64, enabled: true },
+  { key: 'event.checkout', label: 'Event checkout', icon: 'shopping_cart_checkout', owner: 'popup', order: 65, enabled: true },
+  { key: 'event.resources', label: 'Event resources', icon: 'inventory_2', owner: 'popup', order: 66, enabled: true },
+  { key: 'event.subevents', label: 'Event stages and groups', icon: 'account_tree', owner: 'popup', order: 67, enabled: true },
+  { key: 'event.tournament.groups', label: 'Tournament groups', icon: 'leaderboard', owner: 'popup', order: 68, enabled: true },
+  { key: 'event.editor', label: 'Event editor', icon: 'edit_calendar', owner: 'popup', order: 75, enabled: true },
+  { key: 'event.mingle.configuration', label: 'Mingle setup', icon: 'shuffle', owner: 'popup', order: 76, enabled: true },
+  { key: 'event.feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 80, enabled: true },
+  { key: 'event.feedback.detail', label: 'Event feedback details', icon: 'rate_review', owner: 'popup', order: 81, enabled: true }
 ];
 const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'public', icon: 'public' },
@@ -2983,6 +3015,10 @@ export const APP_STATIC_DATA = {
     hu: DEFAULT_TERMS_CENTER_REVISION_HU
   },
   defaultExplanationHomeRevision: DEFAULT_EXPLANATION_HOME_REVISION,
+  legacyActivityRatesRevisionsByLang: {
+    en: DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION,
+    hu: DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU
+  },
   defaultExplanationHomeRevisionsByLang: {
     en: DEFAULT_EXPLANATION_HOME_REVISION,
     hu: DEFAULT_EXPLANATION_HOME_REVISION_HU

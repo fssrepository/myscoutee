@@ -344,10 +344,11 @@
 }
 
 .image-carousel__slot-action .mat-icon {
-  width: 13px;
-  height: 13px;
-  font-size: 13px;
-  line-height: 13px;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
 }
 
 .image-carousel__upload-ring {
@@ -677,6 +678,9 @@
   box-sizing: border-box;
   border: 1px solid rgba(17, 33, 56, .2);
   cursor: pointer;
+}
+.image-carousel__expand .mat-icon {
+  width: 16px; height: 16px; font-size: 16px; line-height: 16px;
 }
 .image-carousel__empty { padding: 2rem; text-align: center; }
 :host(.image-carousel-host--slideshow) {

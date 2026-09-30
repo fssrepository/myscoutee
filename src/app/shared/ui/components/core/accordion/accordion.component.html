@@ -11,6 +11,9 @@
       >
         <header
           class="ui-accordion__header"
+          [attr.data-guide-field]="item.guideFieldId ?? null"
+          [attr.data-guide-activate-on-step]="item.guideActivateOnStep ? 'true' : null"
+          [attr.data-guide-active]="item.guideActivateOnStep ? (isOpen(item) ? 'true' : 'false') : null"
           data-motion="none"
           role="button"
           tabindex="0"
@@ -75,6 +78,7 @@
             >
               <app-menu
                 class="ui-accordion__action-menu"
+                [attr.data-guide-control]="menu.guideControlId ?? null"
                 [kind]="menu.kind ?? 'select'"
                 [trigger]="menu.trigger ?? null"
                 [items]="menu.items ?? []"

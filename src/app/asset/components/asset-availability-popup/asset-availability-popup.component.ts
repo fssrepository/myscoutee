@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -7,7 +8,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import { from, map } from 'rxjs';
 
@@ -219,6 +221,11 @@ export class AssetAvailabilityPopupComponent {
   protected rowBusyKey = '';
 
   constructor() {
+    const guide = inject(ExplanationGuideService);
+    effect(onCleanup => {
+      if (!this.isAnyAvailabilityPopupOpen()) return;
+      onCleanup(untracked(() => guide.registerContext('assets.availability')));
+    });
     effect(() => {
       const request = this.resourcePopupStore.subEventResourcePopupRequest();
       if (!request || !this.isAnyAvailabilityPopupOpen()) {

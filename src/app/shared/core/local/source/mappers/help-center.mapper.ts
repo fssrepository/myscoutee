@@ -61,6 +61,7 @@ export class LocalHelpCenterMapper {
       summary: record.summary,
       description: record.description,
       headerColor: this.toHeaderColor(record.headerColor),
+      presentation: record.presentation === 'tour' ? 'tour' : 'document',
       sections: record.sections.map(section => this.toSectionDTO(section)),
       active: record.active,
       createdAtIso: record.createdAtIso,
@@ -82,6 +83,7 @@ export class LocalHelpCenterMapper {
       summary: dto.summary,
       description: dto.description,
       headerColor: dto.headerColor,
+      presentation: dto.presentation,
       sections: dto.sections.map(section => this.toSectionRecord(section)),
       active: dto.active,
       createdAtIso: dto.createdAtIso,
@@ -157,6 +159,7 @@ export class LocalHelpCenterMapper {
       imageUrls: record.imageUrls ? [...record.imageUrls] : record.imageUrls,
       panelSpan: this.toSectionPanelSpan(record.panelSpan),
       optional: record.optional,
+      guideStepId: record.guideStepId,
       details: record.details ? [...record.details] : record.details,
       points: record.points ? [...record.points] : record.points
     };
@@ -172,6 +175,7 @@ export class LocalHelpCenterMapper {
       imageUrls: dto.imageUrls ? [...dto.imageUrls] : dto.imageUrls,
       panelSpan: dto.panelSpan,
       optional: dto.optional,
+      guideStepId: dto.guideStepId,
       details: dto.details ? [...dto.details] : dto.details,
       points: dto.points ? [...dto.points] : dto.points
     };

@@ -1,3 +1,5 @@
+import { ExplanationLauncherComponent } from '../explanation-popup/explanation-launcher.component';
+import { FloatingLauncherComponent } from '../core/floating-launcher/floating-launcher.component';
 import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
 import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
@@ -19,15 +21,14 @@ import {
 } from '@angular/common';
 import {
   Component,
-  ElementRef,
   HostListener,
   Injector,
   OnDestroy,
-  ViewChild,
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import {
   MatIconModule
@@ -40,7 +41,6 @@ import type { Subscription } from 'rxjs';
 import type {
   ActivityCounters,
   ActivityCounterKey,
-  AppMenuDragEvent,
   AppMenuDragPosition,
   AppMenuItem,
   AppMenuItemSelectEvent,
@@ -228,6 +228,8 @@ type NavigatorHeaderActionMenuItemId =
   selector: 'app-side-menu',
   standalone: true,
   imports: [
+    FloatingLauncherComponent,
+    ExplanationLauncherComponent,
     ImageGalleryPopupComponent,
     PhotoFeedPopupComponent,
     CommunityGroupsPopupComponent,
@@ -258,12 +260,6 @@ export class SideMenuComponent implements OnDestroy {
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
-  private static readonly FLOATING_LAUNCHER_DRAG_ACTIVATION_DELAY_MS = 350;
-  private static readonly FLOATING_LAUNCHER_DISMISS_TARGET_PADDING_PX = 10;
-
-  @ViewChild('floatingLauncherDismissTarget')
-  private floatingLauncherDismissTargetRef?: ElementRef<HTMLElement>;
-
   private readonly router = inject(Router);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly runtimeStore = inject(AppRuntimeStore);
@@ -363,8 +359,6 @@ export class SideMenuComponent implements OnDestroy {
   private openingPartnerInvitePromise: Promise<void> | null = null;
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
-  private readonly floatingLauncherDismissDraggingRef = signal(false);
-  private readonly floatingLauncherDismissTargetedRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
   private readonly activeUserLoadState = computed(() => this.isAdminWorkspaceRoute()
     ? this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY) : this.usersService.profileExtLoadState());
@@ -406,14 +400,9 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
-  protected readonly floatingLauncherDismissDragging = this.floatingLauncherDismissDraggingRef.asReadonly();
-  protected readonly floatingLauncherDismissTargeted = this.floatingLauncherDismissTargetedRef.asReadonly();
-  protected readonly floatingLauncherDragActivationDelayMs =
-    SideMenuComponent.FLOATING_LAUNCHER_DRAG_ACTIVATION_DELAY_MS;
   protected readonly floatingLauncherZIndex = computed(() =>
-    Math.max(23000, this.popupPresenceStore.topLayer() + 2)
+    Math.max(24060, this.popupPresenceStore.topLayer() + 2)
   );
-  protected readonly explanationGuideDragPosition = signal<AppMenuDragPosition>({ x: 0, y: 0 });
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
     const activeUserId = this.userProfileStore.activeUserId().trim();
@@ -564,14 +553,6 @@ export class SideMenuComponent implements OnDestroy {
       ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false) + (offline ? ' — Offline' : '')
     };
   });
-  protected readonly explanationGuideTrigger: AppMenuTrigger = {
-    id: 'explanation-guide',
-    icon: 'tips_and_updates',
-    palette: 'neutral-strong',
-    action: 'custom',
-    hideLabel: true,
-    ariaLabel: 'explanations'
-  };
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
     const activeUser = this.userProfileStore.activeUserProfile();
     if (!activeUser) {
@@ -851,6 +832,7 @@ export class SideMenuComponent implements OnDestroy {
               label: 'Feedback',
               icon: 'rate_review',
               palette: 'purple',
+              guideId: 'navigation-feedback',
               ariaLabel: 'Open feedback',
               disabled: primaryDisabled
             }
@@ -1107,6 +1089,8 @@ export class SideMenuComponent implements OnDestroy {
         this.closeSideMenu();
         return;
       }
+      const unregisterGuide = untracked(() => this.explanationGuide.registerContext('navigation.menu'));
+      onCleanup(unregisterGuide);
       const token = overlayNavigation.register(() => this.closeSideMenu());
       onCleanup(() => overlayNavigation.unregister(token));
     });
@@ -1442,12 +1426,7 @@ export class SideMenuComponent implements OnDestroy {
       void this.openEventFeedbackPopupFromNavigatorRequest();
     });
 
-    effect(() => {
-      const isVisible = this.explanationGuide.launcherVisible();
-      if (isVisible) {
-        void this.profileStore.ensureExplanationPopupLoaded();
-      }
-    });
+
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -1496,68 +1475,13 @@ export class SideMenuComponent implements OnDestroy {
     this.openNotificationCenter(event.sourceEvent);
   }
 
-  protected onExplanationGuideSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id !== 'explanation-guide') {
-      return;
-    }
-    event.sourceEvent.stopPropagation();
-    this.closeSideMenu();
-    this.explanationGuide.openCurrent();
-  }
-
   protected onNotificationDragPositionChange(position: AppMenuDragPosition): void {
     this.notificationCenterStore.setDragPosition(position);
   }
 
-  protected onFloatingLauncherDragStateChange(launcher: 'notification' | 'guide', event: AppMenuDragEvent): void {
-    switch (event.phase) {
-      case 'start':
-        this.floatingLauncherDismissDraggingRef.set(true);
-        this.floatingLauncherDismissTargetedRef.set(false);
-        return;
-      case 'move':
-        this.floatingLauncherDismissTargetedRef.set(this.isFloatingLauncherDismissTargetHit(event));
-        return;
-      case 'cancel':
-        this.clearFloatingLauncherDismissDragState();
-        return;
-      case 'end': {
-        const shouldDismiss = this.isFloatingLauncherDismissTargetHit(event);
-        this.clearFloatingLauncherDismissDragState();
-        if (!shouldDismiss) {
-          return;
-        }
-        if (launcher === 'guide') {
-          this.explanationGuideDragPosition.set({ x: 0, y: 0 });
-          this.explanationGuide.dismissLauncher();
-          return;
-        }
-        this.notificationCenterStore.setDragPosition({ x: 0, y: 0 });
-        this.notificationCenterStore.dismissAttention();
-        this.offlineAttentionDismissed.set(true);
-      }
-    }
-  }
-
-  private isFloatingLauncherDismissTargetHit(event: AppMenuDragEvent): boolean {
-    const target = this.floatingLauncherDismissTargetRef?.nativeElement;
-    if (!target) {
-      return false;
-    }
-    const rect = target.getBoundingClientRect();
-    const targetCenterX = rect.left + (rect.width / 2);
-    const targetCenterY = rect.top + (rect.height / 2);
-    const hitRadius = (Math.max(rect.width, rect.height) / 2)
-      + SideMenuComponent.FLOATING_LAUNCHER_DISMISS_TARGET_PADDING_PX;
-    return Math.hypot(
-      event.centerX - targetCenterX,
-      event.centerY - targetCenterY
-    ) <= hitRadius;
-  }
-
-  private clearFloatingLauncherDismissDragState(): void {
-    this.floatingLauncherDismissDraggingRef.set(false);
-    this.floatingLauncherDismissTargetedRef.set(false);
+  protected dismissNotificationLauncher(): void {
+    this.notificationCenterStore.dismissAttention();
+    this.offlineAttentionDismissed.set(true);
   }
 
   protected onCloseMenu(): void {

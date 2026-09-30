@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { UserLocationEligibilityResponseDto } from '../../../contracts/user.interface';
-import type { LandingContentStateDto } from '../../../contracts';
+import type { HelpCenterStateDto, LandingContentStateDto } from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
 import { LocalHelpCenterService } from './help-center.service';
 import { LocalIdeaPostsService } from './idea-posts.service';
@@ -24,6 +24,10 @@ export class LocalLandingContentService {
   private readonly ideaPosts = inject(LocalIdeaPostsService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly countryPartitions = inject(LocalCountryPartitionsRepository);
+
+  async loadExplanationState(contextKey: string, language: string): Promise<HelpCenterStateDto> {
+    return this.helpCenter.loadState('explanation', language, contextKey);
+  }
 
   async loadContent(): Promise<LandingContentStateDto> {
     const [privacy, terms, ideaPreview] = await Promise.all([

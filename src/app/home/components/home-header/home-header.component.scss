@@ -51,6 +51,10 @@
 }
 
 
+@media (min-width: 761px) {
+  .game-header { justify-content: flex-start; align-items: center; }
+}
+
 @media (max-width: 760px) {
   .game-header { flex-direction: column; }
   .game-actions { justify-content: flex-end; }

@@ -138,6 +138,7 @@ export interface FormFlowCompletionModel {
 
 export interface FormFlowControlModel {
   id: string;
+  guideFieldId?: string;
   bind?: string | readonly (string | number)[];
   kind: FormFlowControlKind;
   layout?: 'default' | 'half' | 'wide';

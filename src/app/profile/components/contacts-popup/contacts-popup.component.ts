@@ -373,6 +373,7 @@ export class ContactsPopupComponent implements OnDestroy {
       backdropTone: 'dim',
       headerActions: [{
         id: 'create-contact',
+        guideFieldId: 'contact-add',
         icon: 'person_add',
         label: 'Create contact',
         ariaLabel: 'Create contact',

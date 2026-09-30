@@ -1,3 +1,4 @@
+import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -25,7 +26,7 @@ type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Worksp
 @Component({
   selector: 'app-profile-onboarding-popup',
   standalone: true,
-  imports: [
+  imports: [LandingGuideSurfaceDirective,
     CommonModule,
     FormsModule,
     MatIconModule,

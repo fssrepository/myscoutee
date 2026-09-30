@@ -34,6 +34,7 @@ import {
   ActivityInviteCandidatesService,
   AssetsService,
   ChatsService,
+  ExplanationGuideService,
   EventsService,
   I18nService,
   UsersService
@@ -167,6 +168,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private unregisterExplanationContext: (() => void) | null = null;
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly assetsService = inject(AssetsService);
   private readonly chatsService = inject(ChatsService);
@@ -504,6 +507,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     this.membersListPollScheduler.stop({ abort: true });
     this.isOpen = false;
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = null;
     this.setMingleLive(false);
     this.ownerId = '';
     this.ownerRef = null;
@@ -756,7 +761,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         context: { menu: 'member-action', member: entry, action: 'report' }
       });
     }
-    return items;
+    return items.map(item => ({ ...item, guideId: `member-${item.context?.action}` }));
   }
 
   protected onMemberActionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -1204,6 +1209,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     return [{
       id: 'view-profile',
+      guideFieldId: 'member-profile',
       icon: 'visibility',
       ariaLabel: 'View profile',
       position: 'bottom-right',
@@ -1717,6 +1723,10 @@ export class EventMembersPopupComponent implements OnDestroy {
         ? providedInitialMembers
         : null;
     this.isOpen = true;
+    this.unregisterExplanationContext?.();
+    this.unregisterExplanationContext = ownerType === 'event' && !this.followedOrganizers && lookup?.type !== 'chat'
+      ? this.explanationGuide.registerContext('event.members')
+      : this.explanationGuide.registerContext('members');
     this.membersListPollScheduler.stop({ abort: true });
     this.ownerId = normalizedOwnerId;
     this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();

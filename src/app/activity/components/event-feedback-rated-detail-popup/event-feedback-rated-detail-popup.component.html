@@ -1,6 +1,6 @@
 @if (session(); as activeSession) {
   <app-popup [model]="popupModel(activeSession)" [zIndex]="popupZIndex()">
-    <section class="rated-feedback-popup">
+    <section class="rated-feedback-popup" data-guide-field="feedback-detail">
       @if (loading()) {
         <div class="rated-feedback-state">
           <app-indicator kind="load-ring" state="loading"></app-indicator>
@@ -33,11 +33,11 @@
               </header>
 
               <div class="rated-feedback-answer-grid">
-                <div class="rated-feedback-answer">
+                <div class="rated-feedback-answer" data-guide-field="feedback-answer-primary">
                   <span>{{ card.questionPrimary }}</span>
                   <strong>{{ primaryAnswerLabel(card) }}</strong>
                 </div>
-                <div class="rated-feedback-answer">
+                <div class="rated-feedback-answer" data-guide-field="feedback-answer-secondary">
                   <span>{{ card.questionSecondary }}</span>
                   <strong>{{ secondaryAnswerLabel(card) }}</strong>
                 </div>

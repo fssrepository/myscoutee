@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../../shared/core/base/services/explanation-guide.service';
 import { ChatShareStore } from '../../../../shared/ui/context/stores/chat-share.store';
 import {
   CommonModule
@@ -453,6 +454,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   protected readonly chatShare = inject(ChatShareStore);
 
   constructor() {
+    const guide = inject(ExplanationGuideService);
+    const guideOpen = computed(() => this.popupViewState() !== null);
+    effect(onCleanup => {
+      if (guideOpen()) onCleanup(untracked(() => guide.registerContext('assets.explore')));
+    });
     effect(() => {
       const completed = this.chatShare.completed();
       if (completed?.kind === 'asset' && completed.id === this.chatShare.session()?.id) {

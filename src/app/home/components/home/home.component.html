@@ -1,8 +1,9 @@
 @if (isAccountReactivationPending) {
   <div class="game-page game-page-reactivation-pending" aria-hidden="true"></div>
 } @else {
-<div class="game-page" [ngClass]="gamePageStatusClass()">
+<div class="game-page" data-guide-surface [ngClass]="gamePageStatusClass()">
   <app-home-header
+    data-guide-field="home-header"
     [branding]="deploymentBranding()"
     [items]="homeHeaderMenuItems()"
     [showControls]="memberActionsAvailable && (!isAvatarProfileSettled || homeHeaderControlsReady)"
@@ -14,6 +15,7 @@
       <label class="game-social-query-field">
         <input
           type="text"
+          data-guide-field="social-query-left"
           [value]="leftSocialQuery"
           [attr.list]="'home-social-left-suggestions'"
           [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
@@ -25,6 +27,7 @@
       <label class="game-social-query-field">
         <input
           type="text"
+          data-guide-field="social-query-right"
           [value]="rightSocialQuery"
           [attr.list]="'home-social-right-suggestions'"
           [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
@@ -46,7 +49,7 @@
     </section>
   }
 
-  <section class="game-layout-single">
+  <section class="game-layout-single" data-guide-field="home-cards">
     @if (hasAvatarProfileLoadError) {
       <div class="game-blocked-panel game-profile-load-error" role="alert">
         <mat-icon aria-hidden="true">error_outline</mat-icon>

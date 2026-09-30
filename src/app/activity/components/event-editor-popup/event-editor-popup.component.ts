@@ -220,7 +220,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       const sourceEvent: any = this.eventEditorStore.sourceEvent();
       const isOpen = this.eventEditorStore.isOpen();
       const mode = this.eventEditorStore.mode();
-      this.setEventEditorExplanationContext(isOpen ? 'event.editor' : null);
+      this.setEventEditorExplanationContext(isOpen
+        ? this.checkoutReviewMode() ? 'event.checkout' : 'event.editor'
+        : null);
 
       if (!isOpen) {
         this.slotOverrideEditor = null;

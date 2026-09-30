@@ -29,11 +29,11 @@
     [class.activities-rate-profile-stack-pair-fullscreen]="resolvedPresentation() === 'fullscreen'"
     [class.is-resizing]="isResizing"
     [ngClass]="resolvedStackClasses()"
-    [style.--activities-pair-split]="resolvedSplitCssValue()"
     >
     <div
       #splitContainer
       class="activities-rate-pair-inline-grid"
+      data-guide-repeat-scope
       [class.activities-rate-pair-fullscreen-grid]="resolvedPresentation() === 'fullscreen'"
       >
       @for (slot of resolvedSlots(); track trackBySlot($index, slot); let slotIndex = $index) {
@@ -45,6 +45,7 @@
           [class.activities-rate-pair-inline-card-man]="slot.tone === 'man'"
           [class.is-pane-loading]="isLoading(slot)"
           [class.is-collapsed]="isSlotCollapsed(slot, slotIndex)"
+          [style.flex-basis]="slotFlexBasis(slotIndex)"
           >
           @if (slot.slides.length > 1) {
             <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators">
@@ -68,7 +69,11 @@
               }
             </div>
           }
-          <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="currentSlideImageUrl(slot)">
+          <div
+            class="activities-rate-pair-inline-layer"
+            [appLazyBgImage]="currentSlideImageUrl(slot)"
+            [appLazyImageEnabled]="imagesEnabled"
+            >
             @if (currentSlideImageUrl(slot)) {
               <span class="activities-rate-image-loader" aria-hidden="true">
                 <app-indicator kind="spinner-ring"></app-indicator>
@@ -85,6 +90,7 @@
                 <button
                   type="button"
                   class="image-stack-hit-segment"
+                  [attr.data-guide-field]="isImageSwitchButtonTarget(imageIndex) ? 'pair-images' : null"
                   (click)="onSlotSelect(slot, imageIndex, $event)"
                   [attr.aria-label]="'Select ' + slot.label.toLowerCase() + ' profile image'"
                 ></button>
@@ -105,6 +111,7 @@
             <button
               type="button"
               class="shared-card-profile-view-btn"
+              [attr.data-guide-field]="isInteractive() ? 'pair-profiles' : null"
               (click)="onProfileClick(profileView, $event)"
               [attr.aria-label]="'View ' + (profileView.label || slot.label + ' profile')"
               >
@@ -114,10 +121,17 @@
         </div>
       }
 
+      @if (resolvedPresentation() === 'fullscreen') {
+        <span class="activities-rates-pair-fullscreen-divider" aria-hidden="true"
+          [style.left]="resolvedSplitCssValue()"></span>
+      }
       @if (isSplitHandleVisible()) {
         <button
           type="button"
           class="activities-rates-pair-fullscreen-resize-handle"
+          data-motion="none"
+          data-guide-field="pair-resize"
+          [style.left]="resolvedSplitCssValue()"
           aria-label="Resize pair cards"
           (pointerdown)="onSplitHandlePointerDown($event, splitContainer)"
           (touchstart)="onSplitHandleTouchStart($event, splitContainer)"
@@ -133,6 +147,7 @@
         <button
           type="button"
           class="activities-rate-score-badge"
+          [attr.data-guide-field]="cardBadge.disabled ? 'pair-score-received' : 'score'"
           [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
           [class.activities-rate-score-badge-between]="usesBetweenBadge()"
           [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
@@ -156,6 +171,7 @@
       } @else {
         <span
           class="activities-rate-score-badge"
+          [attr.data-guide-field]="cardBadge.disabled ? 'pair-score-received' : 'pair-score-summary'"
           [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
           [class.activities-rate-score-badge-between]="usesBetweenBadge()"
           [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"

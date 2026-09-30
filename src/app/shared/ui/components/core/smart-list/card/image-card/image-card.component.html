@@ -50,6 +50,7 @@
 
     @if (resolvedStatusChip(); as chip) {
       <span
+        data-guide-field="card-status"
         [ngClass]="statusChipClassList(chip)"
         [attr.aria-label]="chip.ariaLabel || null"
         [attr.title]="chip.title || null"
@@ -65,6 +66,7 @@
 
     @if (resolvedBadge(); as badge) {
       <span
+        data-guide-field="card-state-detail"
         [ngClass]="badgeClassList(badge)"
         [attr.aria-label]="badge.ariaLabel || null"
         [attr.title]="badge.ariaLabel || null"
@@ -82,6 +84,7 @@
           @for (action of mediaActionsFor(position); track action.id) {
             <button
               type="button"
+              [attr.data-guide-field]="action.guideFieldId ?? null"
               [ngClass]="mediaActionClassList(action)"
               [disabled]="action.disabled"
               [attr.aria-label]="action.ariaLabel || null"
@@ -93,6 +96,7 @@
           }
           @if (hasMenuAt(position)) {
             <app-menu-trigger
+              guideField="card-actions"
               class="ui-image-card__menu-trigger"
               [menuId]="sharedMenuId()"
               kind="select"
