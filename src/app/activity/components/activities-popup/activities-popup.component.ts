@@ -428,14 +428,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
       state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
     pagination: {
+      retainFullscreen: () => this.shouldShowRatesFullscreenToggle(),
       mode: () => {
-        if (this.activitiesPrimaryFilter !== 'rates') {
+        if (!this.shouldShowRatesFullscreenToggle()) {
           return 'scroll';
         }
-        if (this.activitiesRates.isFullscreenModeActive()) {
-          return this.activitiesRates.isFullscreenReadOnlyNavigation() ? 'arrows' : 'rating-stars';
-        }
-        return 'scroll';
+        return this.activitiesRateFilter === 'pair-received' ? 'arrows' : 'rating-stars';
       },
       ratingBarConfig: row => row ? this.activitiesRates.ratingBarConfig() : null,
       ratingBarValue: () => this.activitiesRates.ratingBarValue(),
@@ -652,14 +650,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitySmartListMenuItems(
     context: SmartListMenuItemsContext<ActivityListItem, ActivitiesSmartListFilters>
   ): readonly AppMenuItem<string, unknown>[] {
-    const subject = this.activityEventMenuSubjectFromRow(context.item);
-    if (!subject) {
-      return context.menu.items;
-    }
+    return this.activityEventMenuItems(context.item, context.menu.items);
+  }
+
+  protected activityEventGuideMenuIds(row: ActivityListItem): string {
+    return this.activityEventMenuItems(row).map(item => item.id).join('\n');
+  }
+
+  private activityEventMenuItems(row: ActivityListItem | null, fallback: readonly AppMenuItem<string, unknown>[] = []): readonly AppMenuItem<string, unknown>[] {
+    const subject = this.activityEventMenuSubjectFromRow(row);
+    if (!subject) return fallback;
     const activeUserId = this.userProfileStore.activeUserId().trim() || this.activeUser.id;
-    return ActivityEventInfoCardMenuConverter.convert(subject, {
-      activeUserId
-    });
+    return ActivityEventInfoCardMenuConverter.convert(subject, { activeUserId });
   }
 
   protected onActivityEventSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -1419,6 +1421,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.shouldShowRatesFullscreenToggle()) {
       controls.push({
         id: 'rates-fullscreen-toggle',
+        guideFieldId: 'fullscreen',
+        guideActivateOnStep: true,
         align: 'end',
         icon: this.isRatesFullscreenModeActive() ? 'fullscreen_exit' : 'fullscreen',
         ariaLabel: this.isRatesFullscreenModeActive() ? 'Exit rates fullscreen mode' : 'Open rates fullscreen mode',
@@ -1564,6 +1568,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       headerActions?: AppMenuItem<string, ActivitiesPopupMenuContext>[];
     };
     const nodes: RateMenuNode[] = [];
+    const rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id);
     let currentNode: RateMenuNode | null = null;
     for (const option of APP_STATIC_DATA.rateFilterEntries as RateFilterEntry[]) {
       if (option.kind === 'group') {
@@ -1594,7 +1599,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         label: this.rateFilterOptionLabel(option.key),
         icon: this.activitiesRateFilterIcon(option.key),
         palette: this.activitiesRatePalette(option.key),
-        counter: this.rateFilterCount(option.key),
+        counter: this.rateFilterCount(option.key, rateItems),
         active: option.key === this.activitiesRateFilter,
         context: { menu: 'rate', value: option.key }
       }));
@@ -2034,7 +2039,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesToolbarPrimaryCounts(): Partial<Record<ContractTypes.ActivitiesPrimaryFilter, number>> {
     return {
       chats: this.chatBadge,
-      events: this.eventsBadge,
+      events: this.allEventsScopeBadge,
       rates: this.gameBadge
     };
   }
@@ -2861,8 +2866,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : this.activitiesSecondaryFilter;
   }
 
-  rateFilterCount(filter: ContractTypes.RateFilterKey): number {
-    return this.ratesService.peekRateItemsByUser(this.activeUser.id)
+  rateFilterCount(
+    filter: ContractTypes.RateFilterKey,
+    items: ActivityRateDTO[] = this.ratesService.peekRateItemsByUser(this.activeUser.id)
+  ): number {
+    return items
       .filter((item: ActivityRateDTO) => this.activitiesRates.matchesFilter(item, filter)).length;
   }
 

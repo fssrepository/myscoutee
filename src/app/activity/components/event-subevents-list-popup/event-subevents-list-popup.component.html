@@ -3,6 +3,7 @@
     <app-smart-list
       #subeventsSmartList
       class="event-subevents-list-smart-list"
+      data-guide-field="subevent-list"
       [config]="smartListConfig"
       [loadPage]="loadSubEventsPage"
       [itemTemplate]="slotSectionTemplate"
@@ -26,6 +27,7 @@
     <ng-template #subEventTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
       <app-info-card
         [card]="cardFor(item, groupLabel)"
+        [attr.data-guide-menu-items]="subEventGuideMenuIds(item)"
         [useSharedMenu]="true"
         [useSharedMenuTrigger]="false"
         [sharedMenuContext]="subEventMenuContext(item)"

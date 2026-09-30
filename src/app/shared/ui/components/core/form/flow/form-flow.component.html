@@ -8,11 +8,11 @@
   [attr.aria-busy]="loading || preparing()"
 >
   <ng-template #progressControls>
-    <div class="form-flow__progress" [attr.aria-label]="pageCounterLabel()">
+    <div class="form-flow__progress" data-guide-field="form-progress" [attr.aria-label]="pageCounterLabel()">
       @if (showSaveAction()) {
         <button
           type="button"
-          class="form-flow__save"
+          class="form-flow__save" data-guide-field="form-save"
           [class.is-missing]="totalMissingRequiredCount() > 0"
           [class.is-saving]="saving"
           [disabled]="!canSave()"
@@ -57,7 +57,7 @@
       </button>
       <button
         type="button"
-        class="form-flow__nav form-flow__nav--next"
+        class="form-flow__nav form-flow__nav--next" data-guide-field="form-navigation"
         data-motion="none"
         [class.is-blocked]="nextStepBlocked()"
         [disabled]="isDisabled() || visiblePageIndex() >= totalPageCount() - 1 || nextStepBlocked()"
@@ -213,6 +213,7 @@
                   <div
                     class="form-flow__control"
                     [attr.data-control-id]="control.id"
+                    [attr.data-guide-field]="control.guideFieldId ?? null"
                     [class.form-flow__control--align-end]="control.align === 'end'"
                     [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
                     [class.form-flow__control--half]="control.layout === 'half'"
@@ -518,7 +519,7 @@
       @if (!isCarouselLayout()) {
         <button
           type="button"
-          class="form-flow__nav form-flow__nav--next"
+          class="form-flow__nav form-flow__nav--next" data-guide-field="form-navigation"
           data-motion="none"
           [class.is-blocked]="nextStepBlocked()"
           [disabled]="isDisabled() || visiblePageIndex() >= totalPageCount() - 1 || nextStepBlocked()"

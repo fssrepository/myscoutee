@@ -371,3 +371,9 @@
     transform: rotate(270deg);
   }
 }
+
+// A fast-scrolling image surface keeps its pictures but does not animate loaders.
+:host-context(.lazy-bg-suspended).app-indicator-host--kind-spinner-ring,
+:host-context([data-lazy-image-scroll-fast]):host-context(.lazy-bg-loading).app-indicator-host--kind-spinner-ring {
+  display: none;
+}

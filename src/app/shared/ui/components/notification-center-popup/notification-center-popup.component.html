@@ -3,6 +3,7 @@
     <section class="notification-center-popup__body">
       <app-smart-list
         #notificationsSmartList
+        data-guide-field="notification-list"
         class="notification-center-popup__list"
         [config]="smartListConfig"
         [loadPage]="loadPage"
@@ -17,6 +18,7 @@
         let-openMenu="openMenu"
       >
         <single-row
+          data-guide-field="notification-row-actions"
           [row]="notificationRow(notification)"
           [useSharedMenu]="true"
           [sharedMenuContext]="rowMenuContext(notification)"

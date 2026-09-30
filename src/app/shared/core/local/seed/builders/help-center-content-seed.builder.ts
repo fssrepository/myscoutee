@@ -1,5 +1,8 @@
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../contracts';
+import type { HelpCenterDocumentKind, HelpCenterGuideFieldDto, HelpCenterRevisionDto } from '../../../contracts';
+import GUIDE_FIELDS_BY_PAGE from '../data/help-center-guide-fields.json';
+
+const GUIDE_FIELDS_BY_SCREEN = GUIDE_FIELDS_BY_PAGE as Record<string, HelpCenterGuideFieldDto[]>;
 
 export class SeedHelpCenterContentBuilder {
   static explanationBootstrapContextKeys(): string[] {
@@ -9,10 +12,53 @@ export class SeedHelpCenterContentBuilder {
       .filter((contextKey): contextKey is string => Boolean(contextKey));
   }
 
-  static defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto {
+  static defaultRevision(
+    kind: HelpCenterDocumentKind,
+    lang = 'en',
+    contextKey?: string | null,
+    translate: (key: string) => string = key => key
+  ): HelpCenterRevisionDto {
     const language = this.normalizeLang(lang);
+    const context = this.normalizeContextKey(kind, contextKey, false);
+    if (kind === 'explanation' && context) {
+      return this.explanationTourRevision(context, language, translate);
+    }
     const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
     return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en);
+  }
+
+  private static explanationTourRevision(
+    context: string,
+    lang: string,
+    translate: (key: string) => string
+  ): HelpCenterRevisionDto {
+    const original = this.explanationRevision(context, lang, translate);
+    const fields = GUIDE_FIELDS_BY_SCREEN[context] ?? [];
+    if (!fields.length) throw new Error(`No guide fields are seeded for ${context}.`);
+    return {
+      ...original,
+      id: original.id.replace(/v\d+$/, 'v4'),
+      version: 4,
+      presentation: 'tour',
+      title: context === 'activities.rates' ? translate('guide.activities.rates.title') : original.title,
+      sections: fields.map(field => ({
+        id: `guide-${field.id.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        guideStepId: field.id,
+        icon: field.group === 'card' ? 'touch_app' : field.group === 'popup' ? 'close' : 'help_outline',
+        title: translate(`${field.i18nKey}.label`),
+        blurb: '',
+        contentHtml: `<p>${this.escapeHtml(translate(`${field.i18nKey}.description`))}</p>`
+      }))
+    };
+  }
+
+  private static escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   static documentLabel(kind: HelpCenterDocumentKind): string {
@@ -40,15 +86,42 @@ export class SeedHelpCenterContentBuilder {
     }
     if (kind === 'explanation') {
       const context = this.normalizeContextKey(kind, contextKey, false) ?? 'home.game';
-      const revisionsByLang = APP_STATIC_DATA.defaultExplanationRevisionsByContext[
-        context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext
-      ];
-      if (!revisionsByLang) {
-        throw new Error(`No default explanation revision exists for ${context}.`);
-      }
-      return revisionsByLang;
+      return {
+        en: this.explanationRevision(context, 'en', key => key),
+        hu: this.explanationRevision(context, 'hu', key => key)
+      };
     }
     return APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
+  }
+
+  private static explanationRevision(
+    context: string,
+    lang: string,
+    translate: (key: string) => string
+  ): HelpCenterRevisionDto {
+    const configured = context === 'activities.rates'
+      ? APP_STATIC_DATA.legacyActivityRatesRevisionsByLang
+      : APP_STATIC_DATA.defaultExplanationRevisionsByContext[
+        context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext
+      ];
+    const language = lang === 'hu' ? 'hu' : 'en';
+    if (configured) {
+      return this.cloneRevision(language === 'hu' ? configured.hu : configured.en);
+    }
+
+    const base = APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang[language];
+    const translationKey = `guide.context.${context}`;
+    return {
+      ...this.cloneRevision(base),
+      id: `explanation-${context.replace(/[^a-z0-9]+/gi, '-')}-default-${language}-v1`,
+      contextKey: context,
+      lang: language,
+      languageLabel: language === 'hu' ? 'Magyar' : 'English',
+      title: translate(`${translationKey}.title`),
+      summary: translate(`${translationKey}.summary`),
+      description: translate(`${translationKey}.description`),
+      sections: []
+    };
   }
 
   private static cloneRevision(revision: HelpCenterRevisionDto): HelpCenterRevisionDto {

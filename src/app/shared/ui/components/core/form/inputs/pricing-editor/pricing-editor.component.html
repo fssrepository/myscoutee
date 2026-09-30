@@ -100,7 +100,7 @@
 <ng-template #pricingEditorSurfaces>
   <section class="pricing-editor__surface">
     <div class="pricing-editor__grid">
-      <label class="pricing-editor__field pricing-editor__field--money">
+      <label data-guide-field="pricing-basePrice" class="pricing-editor__field pricing-editor__field--money">
         <span>{{ basePriceFieldLabel() | i18n }}</span>
         <div class="pricing-editor__money-field">
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
@@ -117,7 +117,7 @@
         </div>
       </label>
 
-      <label class="pricing-editor__field">
+      <label data-guide-field="pricing-currency" class="pricing-editor__field">
         <span>{{ 'currency' | i18n }}</span>
         <div class="pricing-editor__select-shell">
           <mat-select
@@ -135,7 +135,7 @@
         </div>
       </label>
 
-      <label class="pricing-editor__field">
+      <label data-guide-field="pricing-taxMode" class="pricing-editor__field">
         <span>{{ 'tax' | i18n }}</span>
         <div class="pricing-editor__select-shell">
           <mat-select
@@ -153,7 +153,7 @@
         </div>
       </label>
 
-      <label class="pricing-editor__field">
+      <label data-guide-field="pricing-chargeType" class="pricing-editor__field">
         <span>{{ chargeTypeFieldLabel() | i18n }}</span>
         <div class="pricing-editor__select-shell">
           <mat-select
@@ -214,7 +214,7 @@
       }
       </label>
 
-      <label class="pricing-editor__field">
+      <label data-guide-field="pricing-rounding" class="pricing-editor__field">
         <span>{{ 'pricing.rounding' | i18n }}</span>
         <div class="pricing-editor__select-shell">
           <mat-select
@@ -879,12 +879,12 @@
       <mat-icon>query_stats</mat-icon>
     </div>
     @if (runtimePreviewState(); as runtimePreview) {
-      <div class="pricing-editor__preview-line">
+      <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
         <span>{{ runtimeBaseLabel(runtimePreview) }}</span>
         <strong>{{ runtimeMoneyLabel(runtimeBaseAmount(runtimePreview), runtimePreviewCurrency(runtimePreview)) }}</strong>
       </div>
       @for (row of runtimeAdjustmentRows(runtimePreview); track runtimeRowTrackId($index, row)) {
-        <div class="pricing-editor__preview-line">
+        <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
           <span>{{ runtimeRowLabel(row) }}</span>
           @if (runtimeRowAmount(row, runtimePreviewCurrency(runtimePreview))) {
             <strong [class.positive]="(row.amount ?? 0) > 0" [class.negative]="(row.amount ?? 0) < 0">
@@ -901,17 +901,17 @@
           {{ billingExplanation }}
         </p>
       }
-      <div class="pricing-editor__preview-total">
+      <div data-guide-field="pricing-total" class="pricing-editor__preview-total">
         <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
         <strong>{{ runtimeTotalLabel(runtimePreview) }}</strong>
       </div>
     } @else {
-      <div class="pricing-editor__preview-line">
+      <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
         <span>{{ pricingBaseSummaryLabel() | i18n }}</span>
         <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
       </div>
       @if (currentPreview.quantityDelta !== 0) {
-        <div class="pricing-editor__preview-line">
+        <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
           <span>{{ currentPreview.quantityLabel || 'Quantity pricing' }}</span>
           <strong [class.positive]="currentPreview.quantityDelta > 0" [class.negative]="currentPreview.quantityDelta < 0">
             {{ currentPreview.quantityDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.quantityDelta | number:'1.0-2' }}
@@ -919,7 +919,7 @@
         </div>
       }
       @if (currentPreview.demandDelta !== 0) {
-        <div class="pricing-editor__preview-line">
+        <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
           <span>{{ 'pricing.demand.adjustment' | i18n }}</span>
           <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
             {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
@@ -927,7 +927,7 @@
         </div>
       }
       @if (currentPreview.timeDelta !== 0) {
-        <div class="pricing-editor__preview-line">
+        <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
           <span>{{ 'pricing.time.adjustment' | i18n }}</span>
           <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
             {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
@@ -947,7 +947,7 @@
           </article>
         }
       </div>
-      <div class="pricing-editor__preview-total">
+      <div data-guide-field="pricing-total" class="pricing-editor__preview-total">
         <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
         <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
       </div>

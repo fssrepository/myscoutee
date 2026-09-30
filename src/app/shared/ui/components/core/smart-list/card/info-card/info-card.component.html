@@ -46,6 +46,7 @@
           <button
             type="button"
             class="ui-info-card__overlay-action ui-info-card__overlay-action--start"
+            data-guide-field="card-badge-start"
             [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaStart) === 'avatar'"
             [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaStart) === 'badge'"
             [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaStart) === 'toggle'"
@@ -138,6 +139,7 @@
           <button
             type="button"
             class="ui-info-card__overlay-action ui-info-card__overlay-action--end asset-occupancy-badge"
+            [attr.data-guide-field]="mediaEnd.guideFieldId ?? 'card-badge-end'"
             [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaEnd) === 'avatar'"
             [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaEnd) === 'badge'"
             [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaEnd) === 'toggle'"
@@ -189,7 +191,7 @@
             >
             <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd, interactive: true }"></ng-container>
             @if ((mediaEnd.pendingCount ?? 0) > 0) {
-              <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ mediaEnd.pendingCount | counterBadge }}</span>
+              <span data-guide-field="card-pending-count" class="ui-info-card__pending-badge card-badge asset-request-badge">{{ mediaEnd.pendingCount | counterBadge }}</span>
             }
             @if (overlayProgressRing(mediaEnd)) {
               <span class="ui-info-card__overlay-action-ring" aria-hidden="true">
@@ -199,7 +201,7 @@
           </button>
         } @else {
           <span
-            class="ui-info-card__overlay-action ui-info-card__overlay-action--end asset-occupancy-badge asset-occupancy-badge-static"
+            data-guide-field="card-static-state" class="ui-info-card__overlay-action ui-info-card__overlay-action--end asset-occupancy-badge asset-occupancy-badge-static"
             [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaEnd) === 'avatar'"
             [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaEnd) === 'badge'"
             [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaEnd) === 'toggle'"
@@ -248,7 +250,7 @@
             >
             <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd }"></ng-container>
             @if ((mediaEnd.pendingCount ?? 0) > 0) {
-              <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ mediaEnd.pendingCount | counterBadge }}</span>
+              <span data-guide-field="card-pending-count" class="ui-info-card__pending-badge card-badge asset-request-badge">{{ mediaEnd.pendingCount | counterBadge }}</span>
             }
           </span>
         }
@@ -265,6 +267,7 @@
           [class.ui-info-card__overlay-action--shape-circle]="overlayShape(mediaBottom) === 'circle'"
           [class.ui-info-card__overlay-action--layout-avatar-metric]="overlayLayout(mediaBottom) === 'avatar-metric'"
           [class.ui-info-card__overlay-action--layout-badge-with-leading-accessory]="overlayLayout(mediaBottom) === 'badge-with-leading-accessory'"
+          [attr.data-guide-field]="position === 'start' ? 'card-state-start' : 'card-state-end'"
           [class.ui-info-card__overlay-action--tone-stage-scheduled]="overlayTone(mediaBottom) === 'stage-scheduled'"
           [class.ui-info-card__overlay-action--tone-stage-review]="overlayTone(mediaBottom) === 'stage-review'"
           [class.ui-info-card__overlay-action--tone-neutral]="overlayTone(mediaBottom) === 'neutral'"
@@ -283,6 +286,7 @@
       }
         @if (card?.selection; as selection) {
           <button type="button" class="ui-info-card__selection ui-info-card__overlay-action--toggle"
+            data-guide-field="card-selection"
             [class.ui-info-card__overlay-action--tone-selected]="selection.selected"
             [disabled]="selection.disabled" [attr.aria-pressed]="selection.selected"
             [attr.aria-label]="selection.ariaLabel | i18n"
@@ -335,11 +339,14 @@
             [trigger]="sharedMenuTrigger()"
             [items]="sharedMenuItems()"
             [context]="sharedMenuContext"
+            [guideField]="sharedMenuGuideField"
           ></app-menu-trigger>
         } @else {
           <button
             type="button"
             class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger motion-static"
+            data-guide-field="card-actions"
+            [attr.data-guide-items]="card?.menuActions?.join('\n') ?? ''"
             [class.is-open]="menuTriggerOpen"
             [attr.aria-label]="'open.card.actions' | i18n"
             [attr.aria-expanded]="menuTriggerOpen"
@@ -350,7 +357,7 @@
             <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>
           </button>
           @if ((card?.menuBadgeCount ?? 0) > 0) {
-            <span class="ui-info-card__menu-counter ui-info-card__pending-badge card-badge asset-request-badge">
+            <span data-guide-field="card-pending-count" class="ui-info-card__menu-counter ui-info-card__pending-badge card-badge asset-request-badge">
               {{ card?.menuBadgeCount | counterBadge }}
             </span>
           }
@@ -376,6 +383,7 @@
                 <button
                   type="button"
                   class="ui-info-card__menu-action item-action-menu-btn"
+                  [attr.data-guide-item]="action"
                   [ngClass]="'ui-info-card__menu-action--' + (menuAction.tone ?? 'default')"
                   [class.item-action-menu-btn-publish]="menuAction.tone === 'accent'"
                   [class.item-action-menu-btn-review]="menuAction.tone === 'review'"
@@ -436,6 +444,7 @@
           </button>
         } @else {
           <span
+            data-guide-field="card-status"
             class="ui-info-card__footer-chip"
             [ngClass]="footerChipClassList(chip)"
             >

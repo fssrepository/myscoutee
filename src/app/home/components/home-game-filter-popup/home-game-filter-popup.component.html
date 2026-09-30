@@ -6,7 +6,7 @@
     <div class="game-filter-body">
       <div class="game-filter-layout-columns">
           <div class="game-filter-layout-col game-filter-layout-col-basics">
-            <section class="game-filter-group game-filter-group-basics">
+            <section class="game-filter-group game-filter-group-basics" data-guide-field="home-filter-basics">
               <div class="game-filter-group-head">
                 <h3>{{ 'basics' | i18n }}</h3>
               </div>
@@ -51,6 +51,7 @@
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
+                    [attr.data-guide-control]="'home-filter-' + kind"
                     kind="select"
                     [title]="filterMenuTitle(kind)"
                     [filterable]="filterMenuSearchable(kind)"
@@ -70,6 +71,7 @@
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
+                    [attr.data-guide-control]="'home-filter-' + kind"
                     kind="select"
                     [title]="filterMenuTitle(kind)"
                     [filterable]="filterMenuSearchable(kind)"
@@ -91,6 +93,7 @@
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
+                    [attr.data-guide-control]="'home-filter-' + kind"
                     kind="select"
                     [title]="filterMenuTitle(kind)"
                     [filterable]="filterMenuSearchable(kind)"
@@ -112,6 +115,7 @@
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
+                    [attr.data-guide-control]="'home-filter-' + kind"
                     kind="select"
                     [title]="filterMenuTitle(kind)"
                     [filterable]="filterMenuSearchable(kind)"

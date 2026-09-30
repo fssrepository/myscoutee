@@ -1,4 +1,5 @@
 @use '../../../styles/media-badge' as mediaBadge;
+@use './popup-close-button' as popupClose;
 
 app-popup {
   display: contents;
@@ -611,7 +612,6 @@ app-popup {
   box-shadow: 0 4px 12px rgba(186, 65, 86, 0.2);
 }
 
-.ui-popup__close,
 .ui-popup__header-actions > .ui-popup__action--icon-only {
   flex: 0 0 auto;
   width: 34px;
@@ -621,60 +621,7 @@ app-popup {
   box-sizing: border-box;
 }
 
-.ui-popup__close {
-  border: 1px solid rgba(47, 86, 139, 0.2);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(38, 67, 105, 0.92);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  line-height: 0;
-  box-sizing: border-box;
-  box-shadow: 0 8px 18px rgba(37, 62, 95, 0.12);
-  --mdc-icon-button-state-layer-size: 34px;
-}
-
-.ui-popup__close .mat-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 21px;
-  height: 21px;
-  font-size: 21px;
-  line-height: 21px;
-  margin: 0;
-}
-
-.ui-popup__close:not(:disabled):not([aria-disabled='true']):hover {
-  border-color: rgba(47, 86, 139, 0.32);
-  background: #fff;
-  color: rgba(24, 50, 84, 0.98);
-}
-
-.ui-popup__close:not(:disabled):not([aria-disabled='true']):active {
-  background: rgba(239, 245, 252, 0.96);
-}
-
-.ui-popup__close:focus-visible {
-  outline: 2px solid rgba(61, 108, 186, 0.35);
-  outline-offset: 1px;
-}
-
-.ui-popup__close--floating {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 20;
-}
-
-.ui-popup__close:disabled,
-.ui-popup__close[aria-disabled='true'] {
-  opacity: 0.56;
-  cursor: default;
-}
+@include popupClose.styles('.ui-popup__close');
 
 @media (max-width: 760px) {
   .ui-popup {

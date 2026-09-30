@@ -339,8 +339,8 @@ export class ProfileFormFlowConverter {
     const profileSize = options.profileSize ?? 'big';
     const steps: FormFlowStepModel[] = [{
       id: 'basics',
-      title: 'Alapadatok',
-      subtitle: 'Alap profiladatok.',
+      title: 'basics',
+      subtitle: 'profile.editor.basics.description',
       icon: 'badge',
       controls: this.profileBasicsControls(profile, experienceEntries, options, profileSize)
     }];

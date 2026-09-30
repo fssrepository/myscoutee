@@ -172,9 +172,11 @@
   text-align: center;
 }
 
-.event-tournament-table th:last-child,
-.event-tournament-table td:last-child {
-  width: 2rem;
+.event-tournament-table:not(.event-tournament-table-history) th:last-child,
+.event-tournament-table:not(.event-tournament-table-history) td:last-child {
+  box-sizing: border-box;
+  width: 1.5rem;
+  padding-inline: 0.125rem;
   text-align: center;
 }
 

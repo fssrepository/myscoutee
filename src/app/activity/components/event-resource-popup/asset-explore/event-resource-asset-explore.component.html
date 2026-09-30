@@ -34,7 +34,7 @@
           } @else {
             <app-smart-list
               #assetExploreSmartList
-              class="asset-explore-smart-list"
+              data-guide-field="asset-list" class="asset-explore-smart-list"
               [config]="smartListConfig"
               [loadPage]="smartListLoadPage"
               [itemTemplate]="assetExploreItemTemplate"
@@ -47,7 +47,7 @@
 
       @if (borrowDraftCount() > 0) {
         <app-menu
-          class="asset-explore-basket-menu"
+          data-guide-field="borrow-basket" class="asset-explore-basket-menu"
           kind="fab"
           title="Borrow Basket"
           [trigger]="borrowDraftMenuTrigger()"

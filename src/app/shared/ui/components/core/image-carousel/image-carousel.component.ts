@@ -81,7 +81,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges, 
       title: 'image.details.title', size: 'small', mobilePresentation: 'compact',
       backdropTone: 'dim',
       onClose: () => this.detailsDraft = null,
-      headerActions: this.readOnly ? [] : [{ id: 'save', icon: 'check', ariaLabel: 'save', palette: this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id ? 'danger' : 'success',
+      headerActions: this.readOnly ? [] : [{ id: 'save', guideFieldId: 'image-details-save', icon: 'check', ariaLabel: 'save', palette: this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id ? 'danger' : 'success',
         disabled: this.isDisabled() || (this.detailsDraft?.location.length ?? 0) > 240
           || (this.detailsConfig.eventRequired && !this.detailsDraft?.event?.id) }],
       onAction: () => this.saveDetails()

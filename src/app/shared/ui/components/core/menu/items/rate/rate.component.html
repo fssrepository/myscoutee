@@ -1,5 +1,6 @@
 <div
   class="rate"
+  data-guide-order-group
   [class.rate--list]="resolvedPresentation === 'list'"
   [class.rate--fullscreen]="resolvedPresentation === 'fullscreen'"
   [class.rate--blink]="resolvedAnimation === 'blink'"
@@ -20,6 +21,7 @@
         <button
           type="button"
           class="rate__commit"
+          [attr.data-guide-field]="config?.guideFields?.action ?? null"
           (click)="commitScore($event)"
           [attr.aria-label]="resolvedActionLabel | i18n"
           >
@@ -37,6 +39,7 @@
     <input
       type="range"
       class="rate__slider"
+      [attr.data-guide-field]="config?.guideFields?.slider ?? null"
       [min]="minimumScore"
       [max]="maximumScore"
       step="1"

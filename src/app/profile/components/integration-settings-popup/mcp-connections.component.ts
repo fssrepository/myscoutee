@@ -15,23 +15,23 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
   template: `
     <section class="integration-settings-section">
       <div class="integration-section-heading">
-        <h3>{{ 'mcp.connections' | i18n }}</h3>
-        <app-menu kind="inline" layout="row" [items]="advancedActions()" (itemSelect)="advanced.set(true)"></app-menu>
+        <h3 data-guide-field="mcp-purpose">{{ 'mcp.connections' | i18n }}</h3>
+        <app-menu data-guide-field="mcp-advanced" kind="inline" layout="row" [items]="advancedActions()" (itemSelect)="advanced.set(true)"></app-menu>
       </div>
       @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
       @if (store.settings(); as config) {
         <span class="integration-endpoint-label">{{ 'mcp.url' | i18n }}</span>
-        <app-copy-link [value]="config.resource" label="mcp.url" copyLabel="mcp.copy.url"></app-copy-link>
+        <app-copy-link data-guide-field="mcp-url" [value]="config.resource" label="mcp.url" copyLabel="mcp.copy.url"></app-copy-link>
         <h4 class="integration-endpoint-label">{{ 'mcp.oauth.permissions' | i18n }}</h4>
-        <div class="integration-token-list">
+        <div class="integration-token-list" data-guide-field="mcp-permissions">
           @for (client of oauthClients(); track client.token.id) {
-            <article class="integration-token-row">
+            <article class="integration-token-row" data-guide-field="mcp-connection">
               <div class="integration-token-main">
                 <strong>{{ client.token.name }}</strong>
                 <small>{{ 'integration.token.expires' | i18n }} {{ client.token.expiresAt | date:'mediumDate' }}</small>
                 @if (client.token.lastUsedAt) { <small>{{ 'mcp.last.used' | i18n }} {{ client.token.lastUsedAt | date:'short' }}</small> }
               </div>
-              <app-menu kind="inline" [items]="connectionActions(client.token.id)" (itemSelect)="$event.id === 'details' ? detailsId.set(client.token.id) : revoke(client.token.id)"></app-menu>
+              <app-menu data-guide-field="mcp-connection-actions" kind="inline" [items]="connectionActions(client.token.id)" (itemSelect)="$event.id === 'details' ? detailsId.set(client.token.id) : revoke(client.token.id)"></app-menu>
             </article>
           } @empty { <p>{{ 'mcp.empty' | i18n }}</p> }
         </div>
@@ -39,13 +39,13 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
     </section>
     @if (advanced()) {
       <app-popup [model]="advancedModel()" [zIndex]="2510">
-        <section class="integration-settings-section">
+        <section class="integration-settings-section" data-guide-field="mcp-manual-keys">
           <div class="integration-section-heading">
             <div>
               <h3>{{ 'integration.client.keys' | i18n }}</h3>
               <small>{{ manualClients().length }} / {{ store.settings()?.maxClients }} {{ 'integration.token.active' | i18n }}</small>
             </div>
-            <app-menu class="integration-generate-action" kind="inline" layout="row"
+            <app-menu data-guide-field="mcp-generate" class="integration-generate-action" kind="inline" layout="row"
               [items]="createActions()" (itemSelect)="generate()"></app-menu>
           </div>
           @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }

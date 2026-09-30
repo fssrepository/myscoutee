@@ -1,7 +1,7 @@
 @if (isOpen()) {
   @let vm = viewModel();
   <app-popup [model]="tournamentGroupsPopupModel(vm)" [zIndex]="2440">
-      <div class="popup-body event-tournament-groups-body">
+      <div class="popup-body event-tournament-groups-body" data-guide-field="tournament-group-list">
         @if (isLoading) {
           <div class="event-tournament-groups-loading">
             <app-indicator kind="load-ring" state="loading" tone="accent"></app-indicator>
@@ -33,7 +33,7 @@
           @if (selectedGroupFromItem(item); as group) {
             <section class="event-tournament-group-content">
               @if (isMingleMode()) {
-                <div class="event-mingle-member-grid" role="list" aria-label="Table members">
+                <div class="event-mingle-member-grid" role="list" aria-label="Table members" data-guide-field="mingle-table-seats">
                   @for (seat of mingleSeats(group); track seat.id) {
                     <article
                       class="event-mingle-member"
@@ -60,9 +60,10 @@
                   }
                 </div>
               } @else {
-              <nav class="event-tournament-group-tabs" aria-label="Group view">
+              <nav class="event-tournament-group-tabs" aria-label="Group view" data-guide-field="tournament-group-tabs">
                 <button
                   type="button"
+                  data-guide-field="tournament-tab-standings"
                   [class.is-active]="tabFor(group.id) === 'standings'"
                   (click)="selectTab(group.id, 'standings', $event)"
                 >
@@ -71,6 +72,7 @@
                 </button>
                 <button
                   type="button"
+                  data-guide-field="tournament-tab-history"
                   [class.is-active]="tabFor(group.id) === 'history'"
                   (click)="selectTab(group.id, 'history', $event)"
                 >
@@ -95,6 +97,7 @@
                       <tbody>
                         @for (row of scoreRows(group); track trackByMemberId($index, row)) {
                           <tr
+                            data-guide-field="tournament-standing-row"
                             [class.is-advance]="isAdvanceRow(group, row)"
                             [attr.data-member-palette]="leaderboardMemberPalette(group, row.memberId)"
                             [attr.data-participant-state]="row.participantState"
@@ -132,6 +135,7 @@
                       <tbody>
                         @for (row of fifaRows(group); track trackByMemberId($index, row)) {
                           <tr
+                            data-guide-field="tournament-standing-row"
                             [class.is-advance]="isAdvanceRow(group, row)"
                             [attr.data-member-palette]="leaderboardMemberPalette(group, row.memberId)"
                             [attr.data-participant-state]="row.participantState"
@@ -156,7 +160,7 @@
                   </div>
                 }
               } @else {
-                <section class="event-tournament-history">
+                <section class="event-tournament-history" data-guide-field="tournament-history">
                   <header>
                     <strong>{{ detailMemberName(group) }}</strong>
                   </header>
@@ -173,7 +177,7 @@
                           </thead>
                           <tbody>
                             @for (entry of scoreHistory(group); track trackById($index, entry)) {
-                              <tr>
+                              <tr data-guide-field="tournament-history-row">
                                 <td>{{ scoreValueLabel(entry.value) }}</td>
                                 <td>{{ entry.note || 'No note' }}</td>
                                 <td>{{ entry.createdAtMs | date:'MM/dd HH:mm' }}</td>
@@ -198,7 +202,7 @@
                           </thead>
                           <tbody>
                             @for (match of fifaHistory(group); track trackById($index, match)) {
-                              <tr>
+                              <tr data-guide-field="tournament-history-row">
                                 <td>{{ memberName(group, match.homeMemberId) }} - {{ memberName(group, match.awayMemberId) }}</td>
                                 <td>{{ match.homeScore }} : {{ match.awayScore }}</td>
                                 <td>{{ match.createdAtMs | date:'MM/dd HH:mm' }}</td>

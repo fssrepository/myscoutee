@@ -81,6 +81,14 @@ select,
   border-radius: 6px;
 }
 
+// Skip only offscreen/passed mobile photos. Keep inline URLs and loaded state;
+// the existing observer reveals cached photos once, without rebuilding cards.
+@media (max-width: 760px) {
+  .lazy-bg-suspended {
+    background-image: none !important;
+  }
+}
+
 :where(.lazy-image-frame-loading) {
   position: relative;
   isolation: isolate;

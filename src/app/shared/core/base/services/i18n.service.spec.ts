@@ -431,6 +431,97 @@ describe('I18nService', () => {
     expect(service.translate('greeting')).toBe('Demo greeting');
   });
 
+  describe('incremental DOM translation', () => {
+    let dom: {
+      installDomObserver(): void;
+      applySourceBundle(messages: Record<string, string>): void;
+      applyBundle(lang: string, version: string, messages: Record<string, string>): void;
+      domObserver: MutationObserver | null;
+      translateTextNode(node: Text): void;
+    };
+    let frames: FrameRequestCallback[];
+
+    beforeEach(() => {
+      frames = [];
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+        frames.push(callback);
+        return frames.length;
+      });
+      dom = TestBed.inject(I18nService) as unknown as typeof dom;
+      dom.applySourceBundle({ save: 'Save', cancel: 'Cancel' });
+      dom.applyBundle('hu', 'test', { save: 'Mentés', cancel: 'Mégse' });
+      dom.installDomObserver();
+    });
+
+    afterEach(() => dom.domObserver?.disconnect());
+
+    async function flushDom(): Promise<void> {
+      await Promise.resolve();
+      const pending = frames.splice(0);
+      pending.forEach(callback => callback(0));
+      await Promise.resolve();
+    }
+
+    it('translates inserted descendants and attributes without rescanning unchanged text', async () => {
+      const document = TestBed.inject(DOCUMENT);
+      document.body.innerHTML = '<span id="retained">Save</span>';
+      await flushDom();
+      await flushDom();
+      const retained = document.getElementById('retained')!.firstChild as Text;
+      const translate = vi.spyOn(dom, 'translateTextNode');
+      const added = document.createElement('section');
+      added.innerHTML = '<button title="Cancel"><span>Save</span></button>';
+      document.body.append(added);
+      await flushDom();
+      expect(added.textContent).toBe('Mentés');
+      expect(added.querySelector('button')!.title).toBe('Mégse');
+      expect(translate.mock.calls.some(([node]) => node === retained)).toBe(false);
+    });
+
+    it('updates changed text and attributes and ignores a removed subtree', async () => {
+      const document = TestBed.inject(DOCUMENT);
+      document.body.innerHTML = '<button title="Save">Save</button>';
+      await flushDom();
+      await flushDom();
+      const button = document.querySelector('button')!;
+      button.firstChild!.textContent = 'Cancel';
+      button.title = 'Cancel';
+      const removed = document.createElement('span');
+      removed.textContent = 'Save';
+      document.body.append(removed);
+      removed.remove();
+      await flushDom();
+      expect(button.textContent).toBe('Mégse');
+      expect(button.title).toBe('Mégse');
+      expect(removed.textContent).toBe('Save');
+    });
+
+    it('visits overlapping inserted subtrees once', async () => {
+      const document = TestBed.inject(DOCUMENT);
+      await flushDom();
+      const translate = vi.spyOn(dom, 'translateTextNode');
+      const parent = document.createElement('section');
+      document.body.append(parent);
+      const child = document.createElement('span');
+      parent.append(child);
+      child.textContent = 'Save';
+      await flushDom();
+      expect(child.textContent).toBe('Mentés');
+      expect(translate.mock.calls.filter(([node]) => node === child.firstChild)).toHaveLength(1);
+    });
+
+    it('retranslates unchanged content when the language bundle changes', async () => {
+      const document = TestBed.inject(DOCUMENT);
+      document.body.innerHTML = '<button title="Cancel">Save</button>';
+      await flushDom();
+      await flushDom();
+      dom.applyBundle('en', 'test', { save: 'Save', cancel: 'Cancel' });
+      await flushDom();
+      expect(document.querySelector('button')!.textContent).toBe('Save');
+      expect(document.querySelector('button')!.title).toBe('Cancel');
+    });
+  });
+
   function apiRequestCount(): number {
     return get.mock.calls.filter(
       ([url]) => url === `${environment.apiBaseUrl ?? '/api'}/i18n/bundle`

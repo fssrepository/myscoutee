@@ -369,6 +369,8 @@ export class AppMemoryDb {
         revisionIds: [],
         auditById: {},
         auditIds: [],
+        guideFieldsById: {},
+        guideFieldIds: [],
         privacyConsentsById: {},
         privacyConsentIds: []
       },
@@ -501,6 +503,14 @@ export class AppMemoryDb {
         privacyConsentIds: [...new Set([
           ...mergedPrivacyConsentIds,
           ...Object.keys(mergedPrivacyConsentsById)
+        ])],
+        guideFieldsById: {
+          ...(currentHelpCenter.guideFieldsById ?? {}),
+          ...(incomingHelpCenter.guideFieldsById ?? {})
+        },
+        guideFieldIds: [...new Set([
+          ...(currentHelpCenter.guideFieldIds ?? []),
+          ...(incomingHelpCenter.guideFieldIds ?? [])
         ])]
       }
     };
@@ -1046,6 +1056,12 @@ export class AppMemoryDb {
         auditIds: Array.isArray(helpCenterSource?.auditIds)
           ? helpCenterSource.auditIds.map(id => String(id))
           : [...fallback[HELP_CENTER_TABLE_NAME].auditIds],
+        guideFieldsById: helpCenterSource?.guideFieldsById && typeof helpCenterSource.guideFieldsById === 'object'
+          ? { ...helpCenterSource.guideFieldsById }
+          : { ...(fallback[HELP_CENTER_TABLE_NAME].guideFieldsById ?? {}) },
+        guideFieldIds: Array.isArray(helpCenterSource?.guideFieldIds)
+          ? helpCenterSource.guideFieldIds.map(id => String(id))
+          : [...(fallback[HELP_CENTER_TABLE_NAME].guideFieldIds ?? [])],
         privacyConsentsById: helpCenterSource?.privacyConsentsById && typeof helpCenterSource.privacyConsentsById === 'object'
           ? { ...helpCenterSource.privacyConsentsById }
           : { ...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentsById ?? {}) },

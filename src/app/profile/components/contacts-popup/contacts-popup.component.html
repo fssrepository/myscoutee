@@ -3,7 +3,7 @@
     <div class="contacts-popup-content">
       @if (chatAccess.error()) { <p class="contact-form-error" role="alert">{{ 'contact.chat.error' | i18n }}</p> }
       <section class="contacts-toolbar">
-        <label class="contacts-search-field">
+        <label class="contacts-search-field" data-guide-field="contact-search">
           <mat-icon>search</mat-icon>
           <input
             type="text"
@@ -18,13 +18,14 @@
             </button>
           }
         </label>
-        <app-menu class="contacts-bucket-menu" kind="select"
+        <app-menu class="contacts-bucket-menu" data-guide-control="contacts-buckets" kind="select"
           [trigger]="bucketMenuTrigger()" [items]="bucketMenuItems()"
           (itemSelect)="selectBucket($event)"></app-menu>
       </section>
 
       <app-smart-list
         #contactsSmartList
+        data-guide-field="contacts-list"
         class="contacts-smart-list"
         [config]="contactSmartListConfig()"
         [loadPage]="contactSmartListLoadPage"
@@ -34,7 +35,7 @@
       ></app-smart-list>
 
       <ng-template #contactItemTemplate let-contact>
-        <article class="contact-card" [class.contact-card--request]="chatAccess.requestsOnly()" [class.is-menu-open]="isActionMenuOpen(contact)">
+        <article class="contact-card" data-guide-field="contact-list" [class.contact-card--request]="chatAccess.requestsOnly()" [class.is-menu-open]="isActionMenuOpen(contact)">
           <div class="contact-avatar-shell">
             <span
               class="contact-avatar"
@@ -62,7 +63,8 @@
               <div class="contact-menu-anchor">
                 <button
                   type="button"
-                  class="experience-action-btn contact-profile-trigger"
+                class="experience-action-btn contact-profile-trigger"
+                data-guide-field="contact-card-start"
                   aria-label="View profile"
                   (click)="viewContactProfile(contact, $event)"
                   >
@@ -70,6 +72,8 @@
                 </button>
                 <app-menu-trigger
                   class="contact-action-menu-trigger"
+                  data-guide-control="contact-actions"
+                  data-guide-field="contact-card-actions"
                   [menuId]="contactActionMenuId(contact)"
                   kind="select"
                   [title]="contact.name"

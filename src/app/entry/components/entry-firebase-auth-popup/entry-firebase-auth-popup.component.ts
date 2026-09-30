@@ -1,3 +1,4 @@
+import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
@@ -13,7 +14,7 @@ import { I18nPipe } from '../../../shared/ui';
 @Component({
   selector: 'app-entry-firebase-auth-popup',
   standalone: true,
-  imports: [
+  imports: [LandingGuideSurfaceDirective,
     FormsModule,
     MatRippleModule,
     MatIconModule,

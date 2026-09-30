@@ -757,7 +757,7 @@
   cursor: grabbing;
 }
 
-:host(.app-menu-host--dragging) .app-menu__trigger--layout-icon:active {
+:host(.app-menu-host--draggable) .app-menu__trigger--layout-icon:active {
   transform: none;
 }
 
@@ -1616,6 +1616,12 @@
   animation-name: app-menu-panel-up-in;
 }
 
+.app-menu__panel--has-branch-header {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
 .app-menu__panel--dropdown-list {
   top: calc(100% + var(--app-menu-panel-gap, 0.26rem));
   gap: 0.16rem;
@@ -1730,6 +1736,11 @@
   box-shadow: 0 -8px 22px rgba(13, 24, 40, 0.14);
 }
 
+// A permanent rating bar is part of the fullscreen view, not an opening menu.
+:host(.app-menu-host--panel-fixed) .app-menu__panel {
+  animation: none;
+}
+
 :host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__items,
 :host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__item-row {
   width: 100%;
@@ -1738,8 +1749,7 @@
 }
 
 :host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__item,
-:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__branch-back,
-:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__branch-action {
+:host(.app-menu-host--layout-mobile) .app-menu__panel--dropdown-list:not(.app-menu__panel--open-up) .app-menu__branch-action:not(.app-menu__branch-action--icon-only) {
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -1770,6 +1780,14 @@
   width: max-content;
   min-width: 100%;
   max-width: min(28rem, calc(100vw - 1.2rem));
+}
+
+.app-menu__panel--has-branch-header > .app-menu__items {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .app-menu__rate-item {

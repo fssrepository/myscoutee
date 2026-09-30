@@ -36,48 +36,22 @@
     [class.is-checkout-open]="eventEditorStore.isOpen() && eventEditorStore.presentation().mode === 'checkout-review'"
     [class.is-popup-open]="popupPresenceStore.visible()"
   >
-    <div class="floating-launcher-slot">
+    <div class="floating-launcher-slot floating-launcher-slot--guide">
       @if (explanationGuide.launcherVisible()) {
-        <app-menu
-          class="explanation-guide-menu"
-          kind="fab"
-          [draggable]="true"
-          [dragActivationDelayMs]="floatingLauncherDragActivationDelayMs"
-          [dragPosition]="explanationGuideDragPosition()"
-          [trigger]="explanationGuideTrigger"
-          (dragPositionChange)="explanationGuideDragPosition.set($event)"
-          (dragStateChange)="onFloatingLauncherDragStateChange('guide', $event)"
-          (itemSelect)="onExplanationGuideSelect($event)"
-        ></app-menu>
+        <app-explanation-launcher [embedded]="true"></app-explanation-launcher>
       }
     </div>
     <div class="floating-launcher-slot">
       @if (notificationAttentionVisible()) {
-        <app-menu
-          class="notification-attention-menu"
-          kind="fab"
-          [draggable]="true"
-          [dragActivationDelayMs]="floatingLauncherDragActivationDelayMs"
-          [dragPosition]="notificationCenterStore.dragPosition()"
-          [trigger]="notificationAttentionTrigger()"
-          (dragPositionChange)="onNotificationDragPositionChange($event)"
-          (dragStateChange)="onFloatingLauncherDragStateChange('notification', $event)"
-          (itemSelect)="onNotificationAttentionSelect($event)"
-        ></app-menu>
+        <app-floating-launcher class="notification-attention-menu"
+          [position]="notificationCenterStore.dragPosition()" [trigger]="notificationAttentionTrigger()" [layer]="floatingLauncherZIndex()"
+          (positionChange)="onNotificationDragPositionChange($event)"
+          (dismissed)="dismissNotificationLauncher()"
+          (itemSelect)="onNotificationAttentionSelect($event)"></app-floating-launcher>
       }
     </div>
   </div>
-  @if (floatingLauncherDismissDragging()) {
-    <div
-      #floatingLauncherDismissTarget
-      class="floating-launcher-dismiss-target"
-      [style.z-index]="floatingLauncherZIndex() - 1"
-      [class.is-over]="floatingLauncherDismissTargeted()"
-      aria-hidden="true"
-    >
-      <mat-icon>close</mat-icon>
-    </div>
-  }
+
 }
 
 @if (menuUser(); as user) {
@@ -87,18 +61,20 @@
     }
     <aside
       class="user-menu-panel"
+      [attr.data-guide-surface]="ui.open ? 'navigation.menu' : null"
       [class.open]="ui.open"
     >
       <div class="navigator-menu-header">
         <app-header-card
           class="navigator-menu-header-card"
+          editGuideField="navigation-profile"
           [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
         ></app-header-card>
         @if (groupWorkspaces.error()) { <p role="alert">{{ groupWorkspaces.error() | i18n }}</p> }
         <div class="navigator-header-toolbar">
           @if (!isAdminMode() && !isOperatorMode()) {
-            <app-menu class="navigator-workspace-selector" kind="select" panelAlign="start"
+            <app-menu data-guide-field="navigation-workspace" class="navigator-workspace-selector" kind="select" panelAlign="start"
               [model]="{ density: 'compact' }"
               [trigger]="workspaceTrigger()" [items]="workspaceItems()"
               (itemSelect)="selectWorkspace($event)"></app-menu>
@@ -112,7 +88,7 @@
             ></app-menu>
             <button
               type="button"
-              class="user-menu-close-btn"
+              class="user-menu-close-btn" data-guide-field="close"
               aria-label="Close menu"
               (click)="$event.stopPropagation(); onCloseMenu()"
             >
@@ -239,10 +215,6 @@
 
 @if (assetPopupStore.assetPopupComponent(); as assetComponent) {
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>
-}
-
-@if (profileStore.explanationPopupComponent(); as explanationComponent) {
-  <ng-container *ngComponentOutlet="explanationComponent"></ng-container>
 }
 
 @defer (when imageGalleryStore.request()) {

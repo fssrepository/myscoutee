@@ -1,4 +1,4 @@
-import { Component, ViewChild, effect, inject } from '@angular/core';
+import { Component, OnDestroy, ViewChild, effect, inject } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
@@ -17,6 +17,7 @@ import type { ImageEventReference } from '../../../core/contracts/image-gallery.
 import { DialogStore } from '../../context/stores/dialog.store';
 import type { AppMenuItem } from '../core/menu';
 import { ViewportSeenDirective } from '../../directives/viewport-seen.directive';
+import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 
 @Component({
   selector: 'app-photo-feed-popup', standalone: true,
@@ -24,7 +25,7 @@ import { ViewportSeenDirective } from '../../directives/viewport-seen.directive'
   providers: [AppMenuDispatcher],
   template: `
     <app-popup [model]="popupModel()">
-      <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"></app-smart-list>
+      <app-smart-list data-guide-field="feed-list" [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"></app-smart-list>
       <ng-template #cardTemplate let-card>
         <app-info-card [card]="card" [useSharedMenu]="true"
           [appViewportSeen]="status === 'public'" (viewportSeen)="store.seen(card.eagerDetail)"
@@ -40,8 +41,10 @@ import { ViewportSeenDirective } from '../../directives/viewport-seen.directive'
     }
   `
 })
-export class PhotoFeedPopupComponent {
+export class PhotoFeedPopupComponent implements OnDestroy {
   protected readonly store = inject(PhotoFeedStore);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly unregisterExplanationContext = this.explanationGuide.registerContext('community.feed');
   protected readonly profiles = inject(ProfileStore);
   private readonly i18n = inject(I18nService);
   private readonly followingStore = inject(FollowingStore);
@@ -71,6 +74,7 @@ export class PhotoFeedPopupComponent {
       }
     });
   }
+  ngOnDestroy(): void { this.unregisterExplanationContext(); }
   protected openCardMenu(post: PhotoFeedPost, request: CardMenuRequestEvent<InfoCardData>): void {
     const event = post.imageDetails[request.imageUrl ?? post.imageUrls[0]]?.event;
     const items: AppMenuItem[] = [];

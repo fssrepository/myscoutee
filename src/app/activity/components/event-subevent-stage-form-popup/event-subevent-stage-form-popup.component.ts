@@ -198,6 +198,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       controls.push({
         kind: 'menu',
         id: 'subevent-save',
+        guideFieldId: 'subevent-save',
         menuKind: 'inline',
         items: this.stageSaveMenuItems(),
         closeOnSelect: false

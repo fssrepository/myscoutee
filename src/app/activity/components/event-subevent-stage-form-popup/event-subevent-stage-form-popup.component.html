@@ -2,7 +2,7 @@
   <app-popup [model]="stagePopupModel()" [zIndex]="4600">
       <section class="experience-form-panel subevent-form-panel" [ngClass]="draftModeClass()">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
-          <label class="experience-title-field subevent-name-field">
+          <label data-guide-field="stage-name" class="experience-title-field subevent-name-field">
             <span>{{ 'name' | i18n }} <span class="required-star">*</span></span>
             <input
               #nameInput
@@ -16,7 +16,7 @@
             />
           </label>
           @if (draftModel.optional) {
-            <label class="subevent-capacity-range-field">
+            <label data-guide-field="stage-capacity" class="subevent-capacity-range-field">
               <span>{{ 'capacity' | i18n }}</span>
               <div class="subevent-capacity-range">
                 <input
@@ -47,7 +47,7 @@
                   </div>
                 </div>
                 <div class="subevent-position-panel__grid">
-                  <label class="subevent-position-field subevent-position-field--placement">
+                  <label data-guide-field="stage-placement" class="subevent-position-field subevent-position-field--placement">
                     <span>{{ 'placement' | i18n }}</span>
                     <app-menu
                       class="subevent-stage-insert-placement-menu"
@@ -58,7 +58,7 @@
                       (itemSelect)="onStageFormMenuSelect($event)"
                     ></app-menu>
                   </label>
-                  <label class="subevent-position-field subevent-position-field--anchor">
+                  <label data-guide-field="stage-anchor" class="subevent-position-field subevent-position-field--anchor">
                     <span>{{ 'event.anchor' | i18n }}</span>
                     <app-menu
                       class="subevent-stage-insert-target-menu"
@@ -69,7 +69,7 @@
                       (itemSelect)="onStageFormMenuSelect($event)"
                     ></app-menu>
                   </label>
-                  <label class="subevent-position-field subevent-position-field--offset">
+                  <label data-guide-field="stage-offset" class="subevent-position-field subevent-position-field--offset">
                     <span>{{ 'offset' | i18n }}</span>
                     <div class="subevent-stage-insert-offset">
                       <input
@@ -87,7 +87,7 @@
               </section>
             </div>
           }
-          <label class="experience-description-field">
+          <label data-guide-field="stage-description" class="experience-description-field">
             <span>{{ 'description' | i18n }} <span class="required-star">*</span></span>
             <textarea
               #descriptionInput
@@ -102,7 +102,7 @@
           </label>
           @if (usesDurationInput()) {
             <div class="subevent-duration-row">
-              <label class="subevent-duration-field">
+              <label data-guide-field="stage-duration" class="subevent-duration-field">
                 <span>{{ 'duration' | i18n }} <span class="required-star">*</span></span>
                 <div class="subevent-duration-control">
                   <input
@@ -116,7 +116,7 @@
                 </div>
               </label>
               @if (!view.showInsertControls) {
-                <label class="subevent-duration-field subevent-offset-field">
+                <label data-guide-field="stage-offset" class="subevent-duration-field subevent-offset-field">
                   <span>{{ 'offset' | i18n }}</span>
                   <div class="subevent-duration-control">
                     <input
@@ -133,26 +133,26 @@
             </div>
           } @else {
             <app-date-input
-              class="experience-description-field subevent-date-input"
+              data-guide-field="stage-date" class="experience-description-field subevent-date-input"
               [model]="view.dateInput ?? null"
               [(ngModel)]="draftModel.dateRange"
             ></app-date-input>
           }
           <app-location-input
-            class="experience-description-field subevent-location-field"
+            data-guide-field="stage-location" class="experience-description-field subevent-location-field"
             [(ngModel)]="draftModel.location"
             [config]="subeventLocationInputConfig"
             [readOnly]="view.readOnly"
           ></app-location-input>
           @if (draftModel.optional) {
             <app-pricing-editor-input
-              class="experience-description-field subevent-pricing-field"
+              data-guide-field="stage-pricing" class="experience-description-field subevent-pricing-field"
               [(ngModel)]="draftModel.pricing"
               [config]="subeventPricingEditorConfig"
               [readOnly]="view.readOnly"
             ></app-pricing-editor-input>
           } @else {
-            <div class="experience-description-field subevent-pricing-note">
+            <div data-guide-field="stage-price-included" class="experience-description-field subevent-pricing-note">
               <mat-icon>info</mat-icon>
               <span>{{ 'event.editor.subevents.mandatory.price.note' | i18n }}</span>
             </div>
@@ -171,7 +171,7 @@
                       type="number"
                       min="0"
                       step="1"
-                      [(ngModel)]="draftModel.tournamentGroupCapacityMin"
+                      data-guide-field="stage-group-min" [(ngModel)]="draftModel.tournamentGroupCapacityMin"
                       [placeholder]="'min' | i18n"
                       />
                   </label>
@@ -182,7 +182,7 @@
                       type="number"
                       min="0"
                       step="1"
-                      [(ngModel)]="draftModel.tournamentGroupCapacityMax"
+                      data-guide-field="stage-group-max" [(ngModel)]="draftModel.tournamentGroupCapacityMax"
                       [placeholder]="'max' | i18n"
                       />
                   </label>
@@ -191,7 +191,7 @@
                   <label class="subevent-tournament-field">
                     <span>{{ 'event.editor.subevents.leaderboard.type' | i18n }}</span>
                     <app-menu
-                      class="subevent-tournament-type-menu"
+                      data-guide-field="stage-ranking" class="subevent-tournament-type-menu"
                       kind="select"
                       [trigger]="tournamentLeaderboardMenuTrigger()"
                       [items]="tournamentLeaderboardMenuItems()"
@@ -205,12 +205,12 @@
                       type="number"
                       min="0"
                       step="1"
-                      [(ngModel)]="draftModel.tournamentAdvancePerGroup"
+                      data-guide-field="stage-advance" [(ngModel)]="draftModel.tournamentAdvancePerGroup"
                       placeholder="0"
                       />
                   </label>
                 </div>
-                <label class="subevent-tournament-field subevent-tournament-field-readonly">
+                <label data-guide-field="stage-group-estimate" class="subevent-tournament-field subevent-tournament-field-readonly">
                   <span>{{ 'event.editor.subevents.estimated.group.count' | i18n }}</span>
                   <input type="text" [value]="draftTournamentEstimatedGroupCountLabel()" readonly />
                 </label>

@@ -56,6 +56,7 @@
     <div
       class="activities-rate-profile-layer activities-rate-profile-layer-active"
       [appLazyBgImage]="currentSlideImageUrl()"
+            [appLazyImageEnabled]="imagesEnabled"
       >
       @if (currentSlideImageUrl()) {
         <span class="activities-rate-image-loader" aria-hidden="true">
@@ -76,6 +77,7 @@
           <button
             type="button"
             class="image-stack-hit-segment"
+            [attr.data-guide-field]="imageIndex === 0 && (card?.guideImageSwitch !== true || resolvedState() === 'active') ? 'image-switch' : null"
             (click)="onSlideSelect(imageIndex, $event)"
             aria-label="Select profile image"
           ></button>
@@ -94,6 +96,7 @@
         <button
           type="button"
           class="shared-card-context-avatar-badge"
+          data-guide-field="related-profile"
           [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'View related profile'"
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           (click)="onContextBadgeClick(contextBadge, $event)"
@@ -122,6 +125,7 @@
       <button
         type="button"
         class="shared-card-profile-view-btn"
+        [attr.data-guide-field]="isInteractive() ? 'profile' : null"
         (click)="onProfileClick(profileView, $event)"
         [attr.aria-label]="'View ' + (profileView.label || 'profile')"
         >
@@ -134,6 +138,7 @@
         <button
           type="button"
           class="activities-rate-score-badge"
+          data-guide-field="score"
           [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
           [class.activities-rate-score-badge-between]="usesBetweenBadge()"
           [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"

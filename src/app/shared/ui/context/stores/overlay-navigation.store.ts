@@ -56,6 +56,14 @@ export class OverlayNavigationStore {
     return token;
   }
 
+  /** Keep a controlling overlay above presentation menus it opens itself. */
+  bringToFront(token: symbol): void {
+    const close = this.surfaces.get(token);
+    if (!close || Array.from(this.surfaces.keys()).at(-1) === token) return;
+    this.surfaces.delete(token);
+    this.surfaces.set(token, close);
+  }
+
   unregister(token: symbol): void {
     this.surfaces.delete(token);
     this.scheduleReconcile();

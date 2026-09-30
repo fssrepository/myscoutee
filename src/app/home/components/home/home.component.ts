@@ -68,6 +68,7 @@ import {
   getGameUserInterests,
   getGameUserValues,
   isGameFilterActive,
+  countGameFilterSelections,
   normalizeGameFilter,
   parseGameHeightCm
 } from '../../shared/home-game-filter.shared';
@@ -612,6 +613,10 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get filterBadgeCount(): number {
+    return countGameFilterSelections(this.gameFilter);
+  }
+
+  protected get remainingCandidateCount(): number {
     const overrideTotal = this.gameService.peekUserGameCardsStackSnapshot(this.activeUser.id).filterCount;
     if (this.gameInitialCardsLoadPending) {
       if (overrideTotal === null) {
@@ -627,7 +632,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get hasRemainingCandidatesForCurrentMode(): boolean {
-    return this.filterBadgeCount > 0;
+    return this.remainingCandidateCount > 0;
   }
 
   protected get isAwaitingMoreGameCards(): boolean {
@@ -673,6 +678,7 @@ export class HomeComponent implements OnDestroy {
       scale: this.ratingScale,
       label: 'Affinity',
       actionLabel: 'Go',
+      guideFields: { slider: 'rating-input', action: 'pagination-next' },
       presentation: 'fullscreen',
       blinkOnSelect: false,
       readonly: !this.memberActionsAvailable || this.isBlockedUser,
@@ -802,6 +808,7 @@ export class HomeComponent implements OnDestroy {
     return {
       rowId: row?.id ?? 'home-single-empty',
       slides: this.homeCandidateSlides(candidate, row?.mode === 'single' ? row.socialCard : undefined),
+      guideImageSwitch: true,
       statusBadgeLabel: this.candidateActivityBadge(candidate),
       profileView: candidate
         ? {
@@ -827,6 +834,7 @@ export class HomeComponent implements OnDestroy {
     return {
       rowId: row?.id ?? 'home-pair-empty',
       stackClasses: ['activities-rate-profile-stack-pair'],
+      guideImageSwitch: true,
       slots: [
         this.homePairCardSlot(
           'woman',

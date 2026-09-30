@@ -30,6 +30,7 @@ export interface HeaderCardModel {
   styleUrl: './header-card.component.scss'
 })
 export class HeaderCardComponent {
+  @Input() editGuideField: string | null = null;
   @Input() model: HeaderCardModel | null = null;
 
   @Output() edit = new EventEmitter<Event>();

@@ -154,7 +154,16 @@ export class HttpHelpCenterService {
       activeRevision,
       revisions: revisions.sort((left, right) => right.version - left.version),
       auditTrail: auditTrail.sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso)),
-      availableLanguages: this.normalizeAvailableLanguages(response?.availableLanguages)
+      availableLanguages: this.normalizeAvailableLanguages(response?.availableLanguages),
+      guideFields: Array.isArray(response?.guideFields)
+        ? response.guideFields.map(field => ({
+            id: `${field?.id ?? ''}`.trim(),
+            screenKey: `${field?.screenKey ?? ''}`.trim(),
+            group: `${field?.group ?? ''}`.trim(),
+            i18nKey: `${field?.i18nKey ?? ''}`.trim(),
+            order: Math.max(0, Math.trunc(Number(field?.order) || 0))
+          })).filter(field => field.id && field.screenKey && field.group && field.i18nKey)
+        : []
     };
   }
 
@@ -176,6 +185,7 @@ export class HttpHelpCenterService {
       description: `${value?.description ?? ''}`.trim()
         || this.defaultDescription(kind),
       headerColor: this.normalizeHeaderColor(value?.headerColor),
+      presentation: kind === 'explanation' && value?.presentation === 'tour' ? 'tour' : 'document',
       sections: Array.isArray(value?.sections)
         ? value.sections.map(section => this.normalizeSection(section)).filter((section): section is HelpCenterSectionDto => Boolean(section))
         : [],
@@ -196,6 +206,7 @@ export class HttpHelpCenterService {
     }
     return {
       id,
+      guideStepId: `${value?.guideStepId ?? ''}`.trim() || undefined,
       icon: `${value?.icon ?? 'help_outline'}`.trim() || 'help_outline',
       title,
       blurb: `${value?.blurb ?? ''}`.trim(),

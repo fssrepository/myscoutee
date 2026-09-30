@@ -1,5 +1,6 @@
 import type {
   HelpCenterAuditRecord,
+  HelpCenterGuideFieldRecord,
   HelpCenterRevisionRecord,
   HelpCenterTable,
   PrivacyConsentLocalRecord
@@ -152,6 +153,7 @@ export class LocalHelpCenterService {
       summary: this.nonEmptyText(request.summary, ''),
       description: this.nonEmptyText(request.description, ''),
       headerColor: this.normalizeHeaderColor(request.headerColor),
+      presentation: documentKind === 'explanation' && request.presentation === 'tour' ? 'tour' : 'document',
       sections: this.normalizeSections(request.sections, documentKind),
       active: false,
       createdAtIso: nowIso,
@@ -411,7 +413,13 @@ export class LocalHelpCenterService {
       activeRevision: activeRevision ? this.cloneRevision(activeRevision, kind) : null,
       revisions,
       auditTrail: auditTrail.filter(entry => this.normalizeLang(entry.lang) === language),
-      availableLanguages: this.availableLanguages()
+      availableLanguages: this.availableLanguages(),
+      guideFields: kind === 'explanation' && context
+        ? (table.guideFieldIds ?? [])
+          .map(id => table.guideFieldsById?.[id])
+          .filter((field): field is HelpCenterGuideFieldRecord => field !== undefined && field.screenKey === context)
+          .map(field => ({ ...field }))
+        : []
     };
   }
 
@@ -532,7 +540,8 @@ export class LocalHelpCenterService {
       contentHtml,
       imageUrls: this.normalizeImageUrls(section?.imageUrls),
       panelSpan: this.normalizePanelSpan(section?.panelSpan),
-      optional: kind === 'privacy' && section?.optional === true
+      optional: kind === 'privacy' && section?.optional === true,
+      guideStepId: kind === 'explanation' ? (section?.guideStepId?.trim() || null) : null
     };
   }
 
@@ -657,6 +666,7 @@ export class LocalHelpCenterService {
       languageLabel: this.languageLabel(lang),
       description: this.nonEmptyText(revision.description, this.defaultDescription(kind, lang)),
       headerColor: this.normalizeHeaderColor(revision.headerColor),
+      presentation: kind === 'explanation' && revision.presentation === 'tour' ? 'tour' : 'document',
       sections: this.normalizeSections(revision.sections, kind)
     };
   }

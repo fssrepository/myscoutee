@@ -97,6 +97,7 @@ export interface HelpCenterSectionDto {
   imageUrls?: string[];
   panelSpan?: HelpCenterSectionPanelSpan;
   optional?: boolean;
+  guideStepId?: string | null;
   details?: string[];
   points?: string[];
 }
@@ -104,6 +105,7 @@ export interface HelpCenterSectionDto {
 export type HelpCenterSectionPanelSpan = 'span-1' | 'span-2' | 'span-3';
 
 export type HelpCenterDocumentKind = 'help' | 'privacy' | 'terms' | 'explanation';
+export type HelpCenterPresentation = 'document' | 'tour';
 export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
 
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
@@ -133,6 +135,7 @@ export interface HelpCenterRevisionDto {
   summary: string;
   description: string;
   headerColor?: HelpCenterHeaderColor;
+  presentation?: HelpCenterPresentation;
   sections: HelpCenterSectionDto[];
   active: boolean;
   createdAtIso: string;
@@ -154,11 +157,20 @@ export interface HelpCenterAuditEntryDto {
   message: string;
 }
 
+export interface HelpCenterGuideFieldDto {
+  id: string;
+  screenKey: string;
+  group: string;
+  i18nKey: string;
+  order: number;
+}
+
 export interface HelpCenterStateDto {
   activeRevision: HelpCenterRevisionDto | null;
   revisions: HelpCenterRevisionDto[];
   auditTrail: HelpCenterAuditEntryDto[];
   availableLanguages: ContentLanguage[];
+  guideFields: HelpCenterGuideFieldDto[];
 }
 
 export type PrivacyConsentSource = 'entry' | 'settings';
@@ -191,6 +203,7 @@ export interface HelpCenterRevisionSaveRequestDto {
   summary: string;
   description: string;
   headerColor?: HelpCenterHeaderColor;
+  presentation?: HelpCenterPresentation;
   sections: HelpCenterSectionDto[];
 }
 

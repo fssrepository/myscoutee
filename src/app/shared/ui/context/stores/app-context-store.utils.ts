@@ -305,7 +305,8 @@ export function cloneHelpCenterState(state: HelpCenterStateDto): HelpCenterState
     activeRevision: state.activeRevision ? cloneHelpCenterRevision(state.activeRevision) : null,
     revisions: state.revisions.map(revision => cloneHelpCenterRevision(revision)),
     auditTrail: state.auditTrail.map(entry => ({ ...entry })),
-    availableLanguages: state.availableLanguages.map(language => ({ ...language }))
+    availableLanguages: state.availableLanguages.map(language => ({ ...language })),
+    guideFields: state.guideFields.map(field => ({ ...field }))
   };
 }
 

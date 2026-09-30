@@ -1,5 +1,6 @@
 import { HELP_CENTER_TABLE_NAME } from '../../source/entity/content.entity';
 import type {
+  HelpCenterGuideFieldRecord,
   HelpCenterRevisionRecord,
   HelpCenterTable
 } from '../../source/entity/content.entity';
@@ -11,43 +12,97 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import type { HelpCenterAuditEntryDto, HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../contracts';
 import { LocalHelpCenterMapper } from '../../source/mappers';
 import { SeedHelpCenterContentBuilder } from '../builders';
+import GUIDE_FIELDS_BY_PAGE from '../data/help-center-guide-fields.json';
+import { I18nService } from '../../../base/services/i18n.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SeedHelpCenterRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly i18n = inject(I18nService);
 
   async seedDefaults(): Promise<boolean> {
     await this.memoryDb.whenReady();
     let changed = false;
     for (const option of this.availableLanguages()) {
       const language = option.lang;
-      changed = this.ensureSeeded('help', language) || changed;
-      changed = this.ensureSeeded('privacy', language) || changed;
-      changed = this.ensureSeeded('terms', language) || changed;
+      await this.i18n.ensureLanguageLoaded(language);
+      changed = await this.ensureSeeded('help', language) || changed;
+      changed = await this.ensureSeeded('privacy', language) || changed;
+      changed = await this.ensureSeeded('terms', language) || changed;
       for (const contextKey of SeedHelpCenterContentBuilder.explanationBootstrapContextKeys()) {
-        changed = this.ensureSeeded('explanation', language, contextKey) || changed;
+        changed = await this.ensureSeeded('explanation', language, contextKey) || changed;
       }
     }
+    changed = this.ensureGuideFields() || changed;
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
     return changed;
   }
 
-  private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): boolean {
+  private ensureGuideFields(): boolean {
+    const table = this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
+    const fields = Object.values(GUIDE_FIELDS_BY_PAGE).flat();
+    const nextById = Object.fromEntries(fields.map(field => {
+      const id = `${field.screenKey}:${field.id}`;
+      const record: HelpCenterGuideFieldRecord = { ...field };
+      return [id, record];
+    }));
+    const nextIds = fields.map(field => `${field.screenKey}:${field.id}`);
+    if (JSON.stringify(table.guideFieldIds ?? []) === JSON.stringify(nextIds)
+      && JSON.stringify(table.guideFieldsById ?? {}) === JSON.stringify(nextById)) {
+      return false;
+    }
+    this.memoryDb.write(state => ({
+      ...state,
+      [HELP_CENTER_TABLE_NAME]: {
+        ...state[HELP_CENTER_TABLE_NAME],
+        guideFieldsById: nextById,
+        guideFieldIds: nextIds
+      }
+    }));
+    return true;
+  }
+
+  private async ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): Promise<boolean> {
     const table = this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey);
     const existingRevisions = this.revisionsForKind(table, kind, language, context);
-    const revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(kind, language, context), kind);
-    const upgradeSystemHelp = kind === 'help' && existingRevisions.length > 0
+    const revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(
+      kind,
+      language,
+      context,
+      key => this.i18n.translateForLanguage(key, language)
+    ), kind);
+    const upgradeSystemRevision = kind === 'help' && existingRevisions.length > 0
       && existingRevisions.every(value => value.version < revision.version
         && value.createdByUserId === 'system' && value.updatedByUserId === 'system');
-    if (existingRevisions.length > 0 && !upgradeSystemHelp) {
+    const activeKey = this.activeRevisionKey(kind, language, context);
+    const activeExisting = existingRevisions.find(value => value.active)
+      ?? existingRevisions.find(value => value.id === (table.activeRevisionIdsByKind?.[activeKey] ?? ''));
+    const shouldSeedExplanationTour = kind === 'explanation'
+      && !existingRevisions.some(value => value.id === revision.id || value.version === revision.version);
+    const activeExistingIsSystemSeed = activeExisting?.createdByUserId === 'system'
+      && activeExisting.updatedByUserId === 'system';
+    const shouldActivateExplanationTour = shouldSeedExplanationTour
+      && (!activeExisting || activeExistingIsSystemSeed);
+    if (existingRevisions.length > 0 && !upgradeSystemRevision && !shouldSeedExplanationTour) {
       return this.ensureActiveRevision(table, kind, language, context, existingRevisions);
     }
+
+    const legacy = kind === 'explanation' && context === 'activities.rates' && existingRevisions.length === 0
+      ? this.cloneRevision(language === 'hu'
+        ? APP_STATIC_DATA.legacyActivityRatesRevisionsByLang.hu
+        : APP_STATIC_DATA.legacyActivityRatesRevisionsByLang.en, kind)
+      : null;
+    if (legacy) legacy.active = false;
+    if (kind === 'explanation') revision.active = shouldActivateExplanationTour || existingRevisions.length === 0;
+    const shouldSetActiveRevision = shouldActivateExplanationTour || existingRevisions.length === 0
+      || upgradeSystemRevision;
+    const activeRevisionIdToSet = revision.id;
 
     const revisionContextKey = this.revisionContextKey(revision);
     const audit = this.auditEntry({
@@ -66,18 +121,21 @@ export class SeedHelpCenterRepository {
           seeded: current.seeded || kind === 'help',
           seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
           activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
-          activeRevisionIdsByKind: {
-            ...(current.activeRevisionIdsByKind ?? {}),
-            [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
-          },
+          activeRevisionIdsByKind: shouldSetActiveRevision
+            ? { ...(current.activeRevisionIdsByKind ?? {}), [this.activeRevisionKey(kind, language, revisionContextKey)]: activeRevisionIdToSet }
+            : { ...(current.activeRevisionIdsByKind ?? {}) },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
-            ...Object.fromEntries(upgradeSystemHelp
+            ...Object.fromEntries(upgradeSystemRevision
               ? existingRevisions.map(value => [value.id, LocalHelpCenterMapper.toRecord({ ...value, active: false })])
               : []),
+            ...Object.fromEntries(shouldActivateExplanationTour && activeExistingIsSystemSeed
+              ? [[activeExisting.id, LocalHelpCenterMapper.toRecord({ ...activeExisting, active: false })]]
+              : []),
+            ...(legacy ? { [legacy.id]: LocalHelpCenterMapper.toRecord(legacy) } : {}),
             [revision.id]: LocalHelpCenterMapper.toRecord(revision)
           },
-          revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
+          revisionIds: [...current.revisionIds.filter(id => id !== revision.id), ...(legacy ? [legacy.id] : []), revision.id],
           auditById: {
             ...current.auditById,
             [audit.id]: LocalHelpCenterMapper.toRecord(audit)

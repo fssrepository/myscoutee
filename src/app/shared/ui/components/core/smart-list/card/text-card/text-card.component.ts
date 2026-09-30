@@ -75,6 +75,8 @@ export class TextCardComponent {
   @Input() accentHue: number | null = null;
   @Input() disabled = false;
   @Input() badge = '';
+  @Input() badgeGuideField: string | null = null;
+  @Input() statusGuideField: string | null = null;
   @Input() badgeIcon = '';
   @Input() badgeAriaLabel: string | null = null;
   @Input() badgeTone: TextCardBadgeTone = 'default';

@@ -69,7 +69,6 @@ export class ProfileStore {
   readonly profileEditorLoadFailed = signal(false);
   private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly explanationPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
@@ -88,7 +87,6 @@ export class ProfileStore {
   readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
   readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
   readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
-  readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
 
   registerBindings(bindings: ProfileBindings): void {
     this.bindingsRef.set(bindings);
@@ -251,11 +249,5 @@ export class ProfileStore {
     this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
   }
 
-  async ensureExplanationPopupLoaded(): Promise<void> {
-    if (this.explanationPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../components/explanation-popup/explanation-popup.component');
-    this.explanationPopupComponentRef.set(module.ExplanationPopupComponent);
-  }
+
 }
