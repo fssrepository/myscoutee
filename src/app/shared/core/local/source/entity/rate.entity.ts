@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../../contracts/rating-snapshot';
 import type { EventExploreFilterPreferences } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
@@ -6,6 +7,8 @@ export const USER_RATES_OUTBOX_TABLE_NAME = APP_INDEXED_DB_KEYS.userRatesOutbox;
 export const USER_FILTER_PREFERENCES_TABLE_NAME = APP_INDEXED_DB_KEYS.userFilterPreferences;
 
 export interface UserRateRecord {
+  ratingSnapshot?: RatingSnapshot;
+  ratingSnapshots?: Record<string, RatingSnapshot>;
   id: string;
   fromUserId: string;
   toUserId: string;

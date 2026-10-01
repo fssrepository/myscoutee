@@ -1,3 +1,4 @@
+import { DATING_RATING_CRITERIA, type RatingSnapshot } from '../../../shared/core/contracts/rating-snapshot';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {
   ChangeDetectionStrategy,
@@ -280,9 +281,9 @@ export class HomeComponent implements OnDestroy {
     emptyDescription: () => this.noCandidateDescription,
     pagination: {
       mode: 'rating-stars',
-      ratingBarConfig: row => row ? this.gameRatingBarConfig : null,
+      ratingBarConfig: row => row ? { ...this.gameRatingBarConfig, subjectKey: `${this.activeUserId}:${row.id}` } : null,
       ratingBarValue: () => this.selectedRating,
-      onRatingSelect: (row, score) => this.onHomeSmartListRatingSelect(row, score)
+      onRatingSelect: (row, score, _query, snapshot) => this.onHomeSmartListRatingSelect(row, score, snapshot)
     }
   };
   protected readonly homeSmartListLoadPage: SmartListLoadPage<HomeSmartListRow, HomeSmartListFilters>
@@ -675,6 +676,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get gameRatingBarConfig(): AppMenuRateConfig {
     return {
+      criteriaDefinition: DATING_RATING_CRITERIA,
       scale: this.ratingScale,
       label: 'Affinity',
       actionLabel: 'Go',
@@ -1826,7 +1828,7 @@ export class HomeComponent implements OnDestroy {
       }));
   }
 
-  private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number): Promise<void> {
+  private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number, ratingSnapshot?: RatingSnapshot): Promise<void> {
     if (!this.memberActionsAvailable || this.isBlockedUser) return;
     if (!row || this.ratingAdvanceTimer) {
       return;
@@ -1842,7 +1844,8 @@ export class HomeComponent implements OnDestroy {
         woman.id,
         man.id,
         score,
-        row.round.socialCard?.socialContext === 'separated-friends' ? 'separated-friends' : undefined
+        row.round.socialCard?.socialContext === 'separated-friends' ? 'separated-friends' : undefined,
+        ratingSnapshot
       );
     } else {
       this.gameService.recordUserGameCardRating(
@@ -1852,7 +1855,8 @@ export class HomeComponent implements OnDestroy {
         'single',
         row.socialCard?.socialContext === 'friends-in-common' ? 'friends-in-common' : undefined,
         row.socialCard?.bridgeUserId,
-        row.socialCard?.bridgeCount
+        row.socialCard?.bridgeCount,
+        ratingSnapshot
       );
     }
     const ratedRowId = row.id;

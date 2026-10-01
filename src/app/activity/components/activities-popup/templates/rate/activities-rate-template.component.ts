@@ -1,3 +1,4 @@
+import { DATING_RATING_CRITERIA, type RatingSnapshot } from '../../../../../shared/core/contracts/rating-snapshot';
 
 import {
   ChangeDetectionStrategy,
@@ -223,7 +224,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 
   private activityOwnRatingLabel(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): string {
     const value = this.activityOwnRatingValue(row, context, item);
-    return value > 0 ? `${value}` : '';
+    return value > 0 ? `${Math.round(value * 100) / 100}` : '';
   }
 
   private isActivityRatePending(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): boolean {
@@ -304,7 +305,7 @@ interface ActivitiesRatesControllerDeps {
   getActivityRateBlinkTimeoutByRowId: () => Record<string, ReturnType<typeof setTimeout> | null>;
   setSelectedRateIdInContext: (value: string | null) => void;
   setFullscreenModeInContext: (value: boolean) => void;
-  recordActivityRate: (item: ActivityRateDTO, score: number, direction: ActivityRateDTO['direction']) => void;
+  recordActivityRate: (item: ActivityRateDTO, score: number, direction: ActivityRateDTO['direction'], snapshot?: RatingSnapshot) => void;
   syncVisibleRateItem: (item: ActivityRateDTO) => void;
   refreshRateCards: (rowId?: string | null) => void;
   markForCheck: () => void;
@@ -355,7 +356,11 @@ export class ActivitiesRatesController {
   }
 
   ratingBarConfig(): AppMenuRateConfig {
+    const row = this.isFullscreenModeActive() ? this.currentFullscreenRow() : this.selectedRow();
     return {
+      subjectKey: row?.id,
+      criteriaDefinition: DATING_RATING_CRITERIA,
+      ratingSnapshot: row ? this.rateItemForRow(row)?.ratingSnapshot : undefined,
       ...this.rateEditorPresenter.barConfig(),
       blinkOnSelect: false,
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
@@ -365,6 +370,9 @@ export class ActivitiesRatesController {
   ratingMenuConfig(row: ImageCardData): AppMenuRateConfig {
     const modeLabel = row.mode === 'pair' ? 'Pair' : 'Single';
     return {
+      subjectKey: row.id,
+      criteriaDefinition: DATING_RATING_CRITERIA,
+      ratingSnapshot: this.rateItemForRow(row)?.ratingSnapshot,
       scale: this.deps.getRatingScale(),
       value: this.ownRatingValue(row),
       guideFields: { slider: 'rating-input', action: 'rating-save' },
@@ -394,7 +402,7 @@ export class ActivitiesRatesController {
     if (!selection) {
       return false;
     }
-    this.setOwnRatingForRowId(selection.rowId, selection.value);
+    this.setOwnRatingForRowId(selection.rowId, selection.value, selection.ratingSnapshot);
     return true;
   }
 
@@ -501,17 +509,17 @@ export class ActivitiesRatesController {
     return this.isEditorOpen() && this.selectedRateId() === row.id;
   }
 
-  setSelectedOwnRating(score: number): void {
+  setSelectedOwnRating(score: number, snapshot?: RatingSnapshot): void {
     const row = this.isFullscreenModeActive()
       ? this.currentFullscreenRow()
       : this.selectedRow();
     if (!row) {
       return;
     }
-    this.recordOwnRatingForRow(row, score, true);
+    this.recordOwnRatingForRow(row, score, true, snapshot);
   }
 
-  setOwnRatingForRowId(rowId: string, score: number): void {
+  setOwnRatingForRowId(rowId: string, score: number, snapshot?: RatingSnapshot): void {
     const normalizedRowId = rowId.trim();
     if (!normalizedRowId) {
       return;
@@ -521,13 +529,14 @@ export class ActivitiesRatesController {
     if (!row) {
       return;
     }
-    this.recordOwnRatingForRow(row, score, false);
+    this.recordOwnRatingForRow(row, score, false, snapshot);
   }
 
   private recordOwnRatingForRow(
     row: ImageCardData,
     score: number,
-    syncSelectedEditor: boolean
+    syncSelectedEditor: boolean,
+    snapshot?: RatingSnapshot
   ): void {
     if (this.isPairReceivedRow(row)) {
       return;
@@ -545,12 +554,14 @@ export class ActivitiesRatesController {
     this.deps.recordActivityRate(
       rateItem,
       normalized,
-      nextDirection ?? rateItem.direction
+      nextDirection ?? rateItem.direction,
+      snapshot
     );
     const syncedRateItem = this.rateItemById(rateItem.id) ?? {
       ...rateItem,
       direction: nextDirection ?? rateItem.direction,
-      scoreGiven: normalized
+      scoreGiven: normalized,
+      ratingSnapshot: snapshot
     };
     this.deps.syncVisibleRateItem(syncedRateItem);
     this.refreshRateCards(row.id);

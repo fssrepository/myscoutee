@@ -59,7 +59,7 @@ export function selectedActivitiesRateRow(
 }
 
 export function normalizeActivitiesRateScore(value: number): number {
-  return Math.min(10, Math.max(1, Math.round(value)));
+  return Math.min(10, Math.max(1, value));
 }
 
 export function activitiesRateOwnScore(item: ActivityRateDTO): number {

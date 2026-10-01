@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.09.30.11",
+  "version": "2026.10.01.1",
   "messages": {
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
@@ -5792,6 +5792,16 @@
     "guide.common.pair-profiles.label": "Bármelyik személy profilja megnyitható",
     "guide.common.pair-profiles.description": "Mindkét szem a saját oldalán látható személy profilját nyitja. A popup bezárásával ehhez a párhoz térsz vissza. A megtekintés nem módosít értékelést és nem fogad el ajánlást.",
     "guide.common.pair-score-summary.label": "A páros aktuális értékelése",
-    "guide.common.pair-score-summary.description": "A középső jelölő a pár jelenlegi pontszámát mutatja. Teljes képernyőn összesítő: a lenti csúszkával és Mentés gombbal módosíthatod. Listanézetben a jelölő nyitja a szerkesztőt."
+    "guide.common.pair-score-summary.description": "A középső jelölő a pár jelenlegi pontszámát mutatja. Teljes képernyőn összesítő: a lenti csúszkával és Mentés gombbal módosíthatod. Listanézetben a jelölő nyitja a szerkesztőt.",
+    "rating.details": "Részletes értékelés",
+    "rating.average": "Átlag",
+    "rating.criteria.attraction": "Vonzalom",
+    "rating.criteria.personality": "Személyiség",
+    "rating.criteria.interests": "Közös érdeklődés",
+    "rating.criteria.values": "Közös értékrend",
+    "guide.home.game.rating-details.label": "Az értékelés finomhangolása",
+    "guide.home.game.rating-details.description": "A Go előtti szám és nyíl gomb nyitja a részértékeket. A részcsúszkák átlaga adja az értékelést; a főcsúszka együtt mozgatja őket. Zárd be a panelt, majd a Go gombbal rögzítsd.",
+    "guide.activities.rates.rating-details.label": "Az értékelés finomhangolása",
+    "guide.activities.rates.rating-details.description": "A Mentés előtti szám és nyíl gomb nyitja a részértékeket. A részcsúszkák átlaga adja az értékelést; a főcsúszka együtt mozgatja őket. Zárd be a panelt, majd a Mentés gombbal rögzítsd."
   }
 }

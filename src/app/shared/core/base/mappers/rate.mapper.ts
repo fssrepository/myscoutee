@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../contracts/rating-snapshot';
 import type {
   ActivityRateDTO,
   UserRateSyncPayloadDTO
@@ -9,6 +10,7 @@ export interface UserRateGameCardRecordDTO {
   raterUserId: string;
   ratedUserId: string;
   rating: number;
+  ratingSnapshot?: RatingSnapshot;
   mode?: 'single' | 'pair';
   socialContext?: ActivityRateDTO['socialContext'];
   bridgeUserId?: string;
@@ -21,6 +23,7 @@ export interface UserRateGameCardPairRecordDTO {
   firstRatedUserId: string;
   secondRatedUserId: string;
   rating: number;
+  ratingSnapshot?: RatingSnapshot;
   socialContext?: ActivityRateDTO['socialContext'];
 }
 
@@ -29,6 +32,7 @@ export interface UserRateActivityRecordDTO {
   ownerUserId: string;
   item: ActivityRateDTO;
   rating: number;
+  ratingSnapshot?: RatingSnapshot;
   direction?: ActivityRateDTO['direction'] | null;
 }
 
@@ -97,6 +101,7 @@ export class BaseUserRatesMapper {
       socialContext: item.socialContext,
       bridgeUserId: item.bridgeUserId,
       bridgeCount: item.bridgeCount,
+      ratingSnapshot: item.ratingSnapshot,
       scoreGiven,
       scoreReceived,
       eventName: item.eventName,
@@ -133,6 +138,7 @@ export class BaseUserRatesMapper {
       socialContext: normalizedSocialContext ?? undefined,
       ...(normalizedBridgeUserId ? { bridgeUserId: normalizedBridgeUserId } : {}),
       ...(normalizedBridgeCount ? { bridgeCount: normalizedBridgeCount } : {}),
+      ratingSnapshot: input.ratingSnapshot,
       scoreGiven: normalizedRating,
       scoreReceived: 0,
       eventName: 'Single rate',
@@ -168,6 +174,7 @@ export class BaseUserRatesMapper {
       mode: 'pair',
       direction: 'given',
       socialContext: this.normalizeRateSocialContext('pair', input.socialContext) ?? undefined,
+      ratingSnapshot: input.ratingSnapshot,
       scoreGiven: normalizedRating,
       scoreReceived: 0,
       eventName: 'Pair rate',
@@ -194,6 +201,7 @@ export class BaseUserRatesMapper {
       socialContext: input.item.socialContext,
       bridgeUserId: input.item.bridgeUserId?.trim() || undefined,
       bridgeCount: Number.isFinite(input.item.bridgeCount) ? Math.max(0, Math.trunc(Number(input.item.bridgeCount))) : undefined,
+      ratingSnapshot: input.ratingSnapshot,
       scoreGiven: this.normalizeRequiredRateScore(input.rating),
       scoreReceived: this.normalizeOptionalRateScore(input.item.scoreReceived),
       eventName: input.item.eventName?.trim() || 'Rate',
@@ -229,6 +237,7 @@ export class BaseUserRatesMapper {
             socialContext,
             bridgeUserId: record.bridgeUserId,
             bridgeCount: record.bridgeCount,
+            ratingSnapshot: record.ratingSnapshot,
             scoreGiven: this.normalizeRateScore(record.scoreGiven),
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
@@ -247,6 +256,7 @@ export class BaseUserRatesMapper {
             socialContext,
             bridgeUserId: record.bridgeUserId,
             bridgeCount: record.bridgeCount,
+            ratingSnapshot: record.ratingSnapshot,
             scoreGiven: this.normalizeRateScore(record.scoreGiven),
             scoreReceived: this.normalizeRateScore(record.scoreReceived),
             eventName: record.eventName?.trim() || 'Rate',
@@ -267,6 +277,7 @@ export class BaseUserRatesMapper {
         socialContext,
         bridgeUserId: record.bridgeUserId,
         bridgeCount: record.bridgeCount,
+        ratingSnapshot: record.ratingSnapshot,
         scoreGiven: this.normalizeRateScore(record.scoreGiven),
         scoreReceived: this.normalizeRateScore(record.scoreReceived),
         eventName: record.eventName?.trim() || 'Rate',
@@ -286,6 +297,7 @@ export class BaseUserRatesMapper {
       socialContext: record.socialContext,
       bridgeUserId: record.bridgeUserId,
       bridgeCount: record.bridgeCount,
+      ratingSnapshot: record.ratingSnapshot,
       scoreGiven: this.normalizeRateScore(record.scoreGiven),
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
@@ -352,6 +364,7 @@ export class BaseUserRatesMapper {
     if (Number.isFinite(Number(record.distanceMetersExact))) {
       payload.distanceMetersExact = Math.max(0, Math.trunc(Number(record.distanceMetersExact)));
     }
+    payload.ratingSnapshot = record.ratingSnapshot;
     return payload;
   }
 
@@ -368,18 +381,18 @@ export class BaseUserRatesMapper {
     if (!Number.isFinite(Number(value))) {
       return 0;
     }
-    return Math.max(0, Math.min(10, Math.trunc(Number(value))));
+    return Math.max(0, Math.min(10, Number(value)));
   }
 
   static normalizeOptionalRateScore(value: unknown): number {
     if (!Number.isFinite(Number(value))) {
       return 0;
     }
-    return Math.max(0, Math.min(10, Math.trunc(Number(value))));
+    return Math.max(0, Math.min(10, Number(value)));
   }
 
   private static normalizeRequiredRateScore(value: unknown): number {
-    return Math.max(1, Math.min(10, Math.trunc(Number(value) || 0)));
+    return Math.max(1, Math.min(10, Number(value) || 0));
   }
 
   static normalizeRateSocialContext(

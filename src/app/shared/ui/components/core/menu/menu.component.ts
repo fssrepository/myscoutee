@@ -1208,17 +1208,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     item.value = value;
   }
 
-  protected selectRateItem(item: AppMenuItem<TId, TContext>, score: number): void {
+  protected selectRateItem(item: AppMenuItem<TId, TContext>, selection: number | { score: number; ratingSnapshot?: import('../../../../core/contracts/rating-snapshot').RatingSnapshot }): void {
     if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
       return;
     }
-    this.updateRateItemValue(item, score);
+    this.updateRateItemValue(item, typeof selection === 'number' ? selection : selection.score);
     const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: new Event('ratingScoreSelect'),
+      ratingSnapshot: typeof selection === 'number' ? undefined : selection.ratingSnapshot,
       value: item.value,
       controlValue,
       action: 'select'

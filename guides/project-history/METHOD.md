@@ -15,3 +15,20 @@ Model date sources: [GPT-5.3-Codex](https://openai.com/index/introducing-gpt-5-3
 
 - Four independent Projects separate MyScoutee, the manually developed legacy archive, e-kozig and mathematical research. Shared account tokens are allocated once across all four; a Project total is never an additional account total. Historical legacy AI usage is unverified and left blank. The current AI-assisted Project-administration task is measured separately. A final shared maintenance-run measurement is apportioned by snapshot ownership; its overlap with MSC-108 is removed and its net allocation uses the unassigned account allowance, without exact daily billing reconciliation.
 - Mathematical experiments and videos do not establish a solution of the continuous Navier–Stokes problem. The claim withdrawal is a first-class task.
+
+## MSC-113 measurement boundary
+
+The completed rating implementation/QA turn records 16,498,993 tokens and
+0.7463375 hours from 2026-10-01T01:27:06.471Z to 2026-10-01T02:11:53.286Z.
+Use unique response IDs; cached input is within input and reasoning is within
+output. The subsequent commit/Project/roadmap administration is excluded.
+The frozen 2026-10-01 rate card gives a $23.80 Standard API equivalent estimate,
+not an invoice. Backend/frontend snapshots share one task measurement; there
+is no observed per-repository split, so their copies must not be added together.
+
+The historical account control and September-30 daily heatmap remain unchanged.
+This independently recorded October-1 task is listed under
+`post_control_task_usage`; Project/task totals include it once. It is not
+subtracted from the older unassigned-account allowance or represented as a new
+account-wide daily measurement. Final consolidated commit mappings are retained
+in the canonical roadmap backup to avoid self-referential source commit hashes.

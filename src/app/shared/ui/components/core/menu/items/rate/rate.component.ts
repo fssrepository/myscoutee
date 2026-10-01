@@ -1,5 +1,9 @@
 
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnChanges, OnDestroy, ElementRef, Output, inject } from '@angular/core';
+import { DecimalPipe, NgTemplateOutlet, NgStyle } from '@angular/common';
+import { PopupComponent } from '../../../popup/popup.component';
+import type { PopupModel } from '../../../popup/popup.types';
+import { ratingAverage, shiftRatingCriteria, type RatingSnapshot } from '../../../../../../core/contracts/rating-snapshot';
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../../../../pipes';
@@ -13,12 +17,73 @@ import type {
 @Component({
   selector: 'app-menu-rate',
   standalone: true,
-  imports: [MatIconModule, I18nPipe],
+  imports: [MatIconModule, I18nPipe, DecimalPipe, NgTemplateOutlet, NgStyle, PopupComponent],
   templateUrl: './rate.component.html',
   styleUrl: './rate.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RateComponent implements OnDestroy {
+export class RateComponent implements OnDestroy, OnChanges {
+  private readonly host = inject(ElementRef<HTMLElement>);
+  protected detailModel: PopupModel | null = null;
+  protected criterionValues: number[] = [];
+  // Keep the unrounded group shape while successive base-slider ticks distribute whole units.
+  private criterionShiftOrigin: number[] | null = null;
+  private subjectKey: string | undefined;
+  private profileType: string | undefined;
+
+  ngOnChanges(): void {
+    if (this.subjectKey !== this.config?.subjectKey || this.profileType !== this.config?.criteriaDefinition?.profileType) {
+      this.subjectKey = this.config?.subjectKey;
+      this.profileType = this.config?.criteriaDefinition?.profileType;
+      this.dirty = false;
+      this.detailModel = null;
+      this.criterionValues = [];
+      this.criterionShiftOrigin = null;
+    }
+  }
+
+  protected get criteria() { return this.config?.criteriaDefinition?.criteria ?? []; }
+  protected get baseStep(): number { return 1 / Math.max(1, this.criteria.length); }
+
+  protected openDetails(event: Event): void {
+    event.stopPropagation();
+    if (this.resolvedReadonly) return;
+    if (this.detailModel) { this.detailModel = null; return; }
+    this.ensureCriteria();
+    const rect = (this.host.nativeElement.closest('.app-menu__panel') ?? this.host.nativeElement).getBoundingClientRect();
+    this.detailModel = { title: 'rating.details', ariaLabel: 'rating.details', size: 'default',
+      backdrop: false, hideFloatingControls: true, closeOnBackdrop: false, mobilePresentation: 'compact',
+      anchorRect: { left: rect.left, top: rect.top, width: rect.width } };
+  }
+
+  private ensureCriteria(): void {
+    if (this.criterionValues.length === this.criteria.length) return;
+    const snapshot = this.config?.ratingSnapshot;
+    const values = this.criteria.map(criterion => {
+      const value = snapshot && snapshot.profileType === this.profileType ? snapshot.criteria[criterion.id] : undefined;
+      return Number.isFinite(value) ? Math.min(this.maximumScore, Math.max(this.minimumScore, value!)) : this.displayValue;
+    });
+    this.criterionValues = shiftRatingCriteria(values, ratingAverage(values), this.minimumScore, this.maximumScore);
+  }
+
+  protected changeCriterion(index: number, event: Event): void {
+    event.stopPropagation();
+    if (this.resolvedReadonly || !(event.target instanceof HTMLInputElement)) return;
+    this.criterionValues = this.criterionValues.map((value, i) => i === index ? Math.round(Number((event.target as HTMLInputElement).value)) : value);
+    this.criterionShiftOrigin = null;
+    this.stagedValue = ratingAverage(this.criterionValues);
+    this.dirty = true;
+    this.valueChange.emit(this.stagedValue);
+  }
+
+  private snapshot(): RatingSnapshot | undefined {
+    if (!this.config?.criteriaDefinition || !this.criteria.length) return undefined;
+    this.ensureCriteria();
+    return { version: 1, profileType: this.config.criteriaDefinition.profileType,
+      criteria: Object.fromEntries(this.criteria.map((criterion, index) => [criterion.id, this.criterionValues[index]])),
+      average: ratingAverage(this.criterionValues) };
+  }
+
   private readonly cdr = inject(ChangeDetectorRef);
   private blinkTimer: ReturnType<typeof setTimeout> | null = null;
   private transientBlink = false;
@@ -62,7 +127,7 @@ export class RateComponent implements OnDestroy {
   @Input() value = 0;
 
   @Output() readonly valueChange = new EventEmitter<number>();
-  @Output() readonly scoreSelect = new EventEmitter<number>();
+  @Output() readonly scoreSelect = new EventEmitter<{ score: number; ratingSnapshot?: RatingSnapshot }>();
 
   protected get resolvedScale(): readonly number[] {
     return this.config?.scale ?? [];
@@ -118,29 +183,21 @@ export class RateComponent implements OnDestroy {
     return normalizedValue > 0 ? normalizedValue : this.defaultScore();
   }
 
-  protected get valuePercent(): number {
-    const range = Math.max(1, this.maximumScore - this.minimumScore);
-    return ((this.displayValue - this.minimumScore) / range) * 100;
+  protected percent(score: number): number {
+    return ((score - this.minimumScore) / Math.max(1, this.maximumScore - this.minimumScore)) * 100;
   }
 
-  protected get sliderAccentColor(): string {
-    const hue = Math.round(210 - (this.valuePercent / 100) * 230);
-    return `hsl(${hue} 82% 48%)`;
-  }
-
-  protected get sliderAccentShadow(): string {
-    const hue = Math.round(210 - (this.valuePercent / 100) * 230);
-    return `hsla(${hue}, 82%, 42%, 0.28)`;
-  }
-
-  protected get sliderAccentTextColor(): string {
-    return this.valuePercent >= 38 && this.valuePercent <= 82 ? '#172033' : '#ffffff';
-  }
-
-  protected get sliderAccentTextShadow(): string {
-    return this.sliderAccentTextColor === '#ffffff'
-      ? '0 1px 1px rgba(0, 0, 0, 0.34)'
-      : '0 1px 1px rgba(255, 255, 255, 0.42)';
+  protected sliderStyle(score: number): Record<string, string> {
+    const percent = this.percent(score);
+    const hue = Math.round(210 - (percent / 100) * 230);
+    const darkText = percent >= 38 && percent <= 82;
+    return {
+      '--rate-slider-accent': `hsl(${hue} 82% 48%)`,
+      '--rate-slider-accent-shadow': `hsla(${hue}, 82%, 42%, 0.28)`,
+      '--rate-slider-accent-text': darkText ? '#172033' : '#ffffff',
+      '--rate-slider-accent-text-shadow': darkText
+        ? '0 1px 1px rgba(255, 255, 255, 0.42)' : '0 1px 1px rgba(0, 0, 0, 0.34)'
+    };
   }
 
   protected get shouldShowCommitButton(): boolean {
@@ -153,7 +210,11 @@ export class RateComponent implements OnDestroy {
       return;
     }
     const input = event.target instanceof HTMLInputElement ? inputValue(event.target) : this.defaultScore();
-    this.stagedValue = this.normalizeScore(input) || this.defaultScore();
+    this.ensureCriteria();
+    this.stagedValue = Math.min(this.maximumScore, Math.max(this.minimumScore, input));
+    this.criterionShiftOrigin ??= [...this.criterionValues];
+    this.criterionValues = shiftRatingCriteria(this.criterionShiftOrigin, this.stagedValue, this.minimumScore, this.maximumScore);
+    this.stagedValue = this.criterionValues.length ? ratingAverage(this.criterionValues) : Math.round(this.stagedValue);
     this.dirty = true;
     this.valueChange.emit(this.stagedValue);
     this.cdr.markForCheck();
@@ -164,12 +225,14 @@ export class RateComponent implements OnDestroy {
     if (this.resolvedReadonly) {
       return;
     }
-    const score = this.normalizeScore(this.dirty ? this.stagedValue : this.displayValue) || this.defaultScore();
+    const ratingSnapshot = this.snapshot();
+    const score = ratingSnapshot?.average ?? (this.normalizeScore(this.displayValue) || this.defaultScore());
     if (this.config?.blinkOnSelect !== false) {
       this.triggerTransientBlink();
     }
+    this.detailModel = null;
     this.dirty = false;
-    this.scoreSelect.emit(score);
+    this.scoreSelect.emit({ score, ratingSnapshot });
   }
 
   protected isFilled(score: number): boolean {
@@ -211,14 +274,11 @@ export class RateComponent implements OnDestroy {
   }
 
   private normalizeScore(value: number | string | null | undefined): number {
-    const numeric = Math.round(Number(value) || 0);
+    const numeric = Number(value) || 0;
     if (!Number.isFinite(numeric)) {
       return 0;
     }
-    const scale = this.resolvedScale.length > 0 ? this.resolvedScale : Array.from({ length: 10 }, (_, index) => index + 1);
-    return scale.includes(numeric)
-      ? numeric
-      : Math.min(this.maximumScore, Math.max(this.minimumScore, numeric));
+    return Math.min(this.maximumScore, Math.max(this.minimumScore, numeric));
   }
 
   private defaultScore(): number {

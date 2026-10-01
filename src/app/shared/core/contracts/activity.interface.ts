@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from './rating-snapshot';
 import { ImageDetailsMap, normalizeImageDetails } from './image-gallery.interface';
 import * as AppConstants from '../common/constants';
 import type * as AssetContracts from './asset.interface';
@@ -28,6 +29,7 @@ export type ActivityRateDTODirection = 'given' | 'received' | 'mutual' | 'met';
 export type ActivityRateDTOSocialContext = 'separated-friends' | 'friends-in-common';
 
 export interface ActivityRateDTO {
+  ratingSnapshot?: RatingSnapshot;
   id: string;
   userId: string;
   secondaryUserId?: string;
@@ -53,6 +55,7 @@ export interface ActivityRatePageResultDTO {
 }
 
 export interface UserRateSyncPayloadDTO {
+  ratingSnapshot?: RatingSnapshot;
   id: string;
   fromUserId: string;
   toUserId: string;

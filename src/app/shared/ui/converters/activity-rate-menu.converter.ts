@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../core/contracts/rating-snapshot';
 import type {
   AppMenuItem,
   AppMenuItemSelectEvent,
@@ -20,6 +21,7 @@ export interface ActivityRateMenuContext {
 }
 
 export interface ActivityRateMenuSelection {
+  ratingSnapshot?: RatingSnapshot;
   rowId: string;
   value: number;
 }
@@ -56,6 +58,7 @@ export class ActivityRateMenuSelectionConverter {
     }
     return {
       rowId: context.subject.id,
+      ratingSnapshot: event.ratingSnapshot,
       value
     };
   }

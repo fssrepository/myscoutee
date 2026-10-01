@@ -5,18 +5,24 @@
   [class.rate--fullscreen]="resolvedPresentation === 'fullscreen'"
   [class.rate--blink]="resolvedAnimation === 'blink'"
   [class.rate--readonly]="resolvedReadonly"
-  [style.--rate-slider-accent]="sliderAccentColor"
-  [style.--rate-slider-accent-shadow]="sliderAccentShadow"
-  [style.--rate-slider-accent-text]="sliderAccentTextColor"
-  [style.--rate-slider-accent-text-shadow]="sliderAccentTextShadow"
+  [ngStyle]="sliderStyle(displayValue)"
   >
   @if (resolvedLabel) {
     <div class="rate__head">
       <span class="rate__label">
         <span>{{ resolvedLabel | i18n }}</span>
-        <span aria-hidden="true">:</span>
-        <span class="rate__value" aria-live="polite">{{ displayValue }}</span>
       </span>
+      <div class="rate__actions">
+        @if (criteria.length && !resolvedReadonly) {
+          <button type="button" class="rate__details" data-guide-field="rating-details"
+            [attr.aria-label]="'rating.details' | i18n" [attr.aria-expanded]="detailModel !== null"
+            aria-haspopup="dialog" (click)="openDetails($event)">
+            <span class="rate__value" aria-live="polite">{{ displayValue | number:'1.0-2' }}</span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        } @else {
+          <span class="rate__value" aria-live="polite">{{ displayValue | number:'1.0-2' }}</span>
+        }
       @if (shouldShowCommitButton) {
         <button
           type="button"
@@ -29,25 +35,48 @@
           <mat-icon>arrow_forward</mat-icon>
         </button>
       }
+      </div>
     </div>
   }
 
+  <ng-container *ngTemplateOutlet="slider; context: { $implicit: displayValue, label: resolvedLabel || 'Affinity rating' }"></ng-container>
+</div>
+
+@defer (when detailModel) {
+@if (detailModel) {
+  <app-popup [model]="detailModel" (close)="detailModel = null">
+    <div class="rate__criteria" data-guide-field="rating-criteria">
+      @for (criterion of criteria; track criterion.id; let index = $index) {
+        <div class="rate" [ngStyle]="sliderStyle(criterionValues[index])">
+          <div class="rate__head">
+            <span class="rate__label">{{ criterion.label | i18n }}</span>
+            <span class="rate__value">{{ criterionValues[index] | number:'1.0-0' }}</span>
+          </div>
+          <ng-container *ngTemplateOutlet="slider; context: { $implicit: criterionValues[index], label: criterion.label, criterionIndex: index }"></ng-container>
+        </div>
+      }
+    </div>
+  </app-popup>
+}
+}
+
+<ng-template #slider let-score let-label="label" let-criterionIndex="criterionIndex">
   <div class="rate__slider-shell">
     <div class="rate__track" aria-hidden="true">
-      <span class="rate__track-fill" [style.width.%]="valuePercent"></span>
+      <span class="rate__track-fill" [style.width.%]="percent(score)"></span>
     </div>
     <input
       type="range"
       class="rate__slider"
-      [attr.data-guide-field]="config?.guideFields?.slider ?? null"
+      [attr.data-guide-field]="criterionIndex === undefined ? config?.guideFields?.slider : null"
       [min]="minimumScore"
       [max]="maximumScore"
-      step="1"
-      [value]="displayValue"
+      [step]="criterionIndex === undefined ? baseStep : 1"
+      [value]="score"
       [disabled]="resolvedReadonly"
-      (input)="onSliderInput($event)"
+      (input)="criterionIndex === undefined ? onSliderInput($event) : changeCriterion(criterionIndex, $event)"
       (click)="$event.stopPropagation()"
-      [attr.aria-label]="resolvedLabel || 'Affinity rating'"
+      [attr.aria-label]="label | i18n"
     />
   </div>
-</div>
+</ng-template>

@@ -2,6 +2,10 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  AfterViewInit,
+  ElementRef,
+  ViewChild,
+  HostListener,
   EventEmitter,
   Input,
   OnDestroy,
@@ -38,7 +42,10 @@ import type {
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, OnDestroy {
+export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, OnDestroy, AfterViewInit {
+  @ViewChild('surface') private surface?: ElementRef<HTMLElement>;
+  private detachedSurface: HTMLElement | null = null;
+
   private readonly popupPresenceStore = inject(PopupPresenceStore);
   private readonly overlayNavigation = inject(OverlayNavigationStore);
   private navigationToken: symbol | null = null;
@@ -65,7 +72,7 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
 
   private syncPresence(): void {
     if (this.active && !this.presenceToken) {
-      this.presenceToken = this.popupPresenceStore.register(this.zIndex);
+      this.presenceToken = this.popupPresenceStore.register(this.zIndex, this.popupModel.backdrop !== false);
       this.registeredZIndex = this.popupPresenceStore.layer(this.presenceToken) ?? this.registeredZIndex;
       this.navigationToken = this.overlayNavigation.register(() => {
         if (this.showClose || this.closeOnBackdrop) this.emitClose(new Event('back'));
@@ -75,7 +82,33 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
     }
   }
 
+  ngAfterViewInit(): void {
+    // Anchored non-modal panels must escape clipping and transformed menu ancestors.
+    if (this.popupModel.backdrop === false && this.surface) {
+      this.detachedSurface = this.surface.nativeElement;
+      this.detachedSurface.ownerDocument.body.appendChild(this.detachedSurface);
+    }
+  }
+
+  @HostListener('window:resize')
+  protected onResize(): void {
+    if (this.popupModel.anchorRect) this.emitClose(new Event('resize'));
+  }
+
+  protected get anchorStyle(): Record<string, string> | null {
+    const anchor = this.popupModel.anchorRect;
+    if (!anchor || typeof window === 'undefined') return null;
+    const width = Math.min(anchor.width, window.innerWidth);
+    const left = Math.max(0, Math.min(anchor.left + anchor.width - width, window.innerWidth - width));
+    const bottom = Math.max(8, window.innerHeight - anchor.top + 8);
+    return { position: 'fixed', left: `${left}px`, bottom: `${bottom}px`, width: `${width}px`,
+      '--app-popup-anchor-width': `${width}px`,
+      '--app-popup-anchor-max-height': `${Math.max(80, window.innerHeight - bottom - 8)}px`,
+      'max-height': `${Math.max(80, window.innerHeight - bottom - 8)}px` };
+  }
+
   ngOnDestroy(): void {
+    this.detachedSurface?.remove();
     this.clearPresence();
   }
 

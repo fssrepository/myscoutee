@@ -102,7 +102,7 @@ function activityRateDistanceBucketMeters(distanceMeters: number): number {
 
 function normalizeActivityRateScore(value: unknown): number {
   return Number.isFinite(Number(value))
-    ? Math.max(0, Math.min(10, Math.round(Number(value))))
+    ? Math.max(0, Math.min(10, Number(value)))
     : 0;
 }
 

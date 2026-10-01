@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../contracts/rating-snapshot';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
@@ -39,14 +40,16 @@ export class RateOutboxService extends BaseRouteModeService {
     ownerUserId: string,
     item: ActivityRateDTO,
     rating: number,
-    direction?: ActivityRateDTO['direction'] | null
+    direction?: ActivityRateDTO['direction'] | null,
+    ratingSnapshot?: RatingSnapshot
   ): void {
     const nextRecord = BaseUserRatesMapper.toRecord({
       kind: 'activity-rate',
       ownerUserId,
       item,
       rating,
-      direction
+      direction,
+      ratingSnapshot
     });
     if (nextRecord) {
       this.rateOutboxRepository.enqueueUserRateOutbox(nextRecord);

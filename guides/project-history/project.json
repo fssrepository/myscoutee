@@ -17,8 +17,8 @@
     "title": "MyScoutee",
     "url": "https://github.com/users/fssrepository/projects/2",
     "public": true,
-    "shortDescription": "108 tasks \u00b7 36,249.2M tokens \u00b7 889.2h AI activity \u00b7 API equivalent $26,809 (estimates)",
-    "readme": "# MyScoutee\n\n108 retrospective tasks. This Project is separate from the other portfolio Projects.\n\n[Complete Git backup](https://github.com/fssrepository/myscoutee-roadmap/tree/master/guides/project-history/myscoutee) \u00b7 [Measurement method](https://github.com/fssrepository/myscoutee-roadmap#measurement-method)\n\nEstimated task allocation: 36.249 B tokens, 889.2 h of activity after removing observed overlap, approximately $26,809 at Standard API rates. These are estimates, not human hours or an invoice.\n\n## Budget by workstream\n\n| Workstream | Tokens (M) | Allocated activity (h) | API equivalent (USD) |\n| --- | ---: | ---: | ---: |\n| Product | 23,857.34 | 525.69 | $15,993.22 |\n| QA and release | 8,574.35 | 235.94 | $7,729.87 |\n| Operations | 1,311.95 | 29.69 | $1,070.12 |\n| Marketing | 245.45 | 8.83 | $210.41 |\n| Creative | 2,185.29 | 86.59 | $1,727.15 |\n| Tooling | 62.85 | 1.69 | $59.45 |\n| Project administration (AI-assisted) | 12.00 | 0.75 | $18.47 |\n\n## Repositories\n\n- [myscoutee-backend](https://github.com/fssrepository/myscoutee-backend)\n- [myscoutee](https://github.com/fssrepository/myscoutee)\n- [myscoutee-registry](https://github.com/fssrepository/myscoutee-registry)\n- [myscoutee-payment-simulator](https://github.com/fssrepository/myscoutee-payment-simulator)\n- [myscoutee-client](https://github.com/fssrepository/myscoutee-client)\n- [myscoutee-client-admin](https://github.com/fssrepository/myscoutee-client-admin)\n- [myscoutee-mcp](https://github.com/fssrepository/myscoutee-mcp)\n- [myscoutee-agent](https://github.com/fssrepository/myscoutee-agent)\n- [myscoutee-roadmap](https://github.com/fssrepository/myscoutee-roadmap)\n"
+    "shortDescription": "111 tasks \u00b7 36,272.8M tokens \u00b7 890.3h AI activity \u00b7 API equivalent $26,844 (estimates)",
+    "readme": "# MyScoutee\n\n111 completed and retrospective tasks. This Project is separate from the other portfolio Projects.\n\n[Complete Git backup](https://github.com/fssrepository/myscoutee-roadmap/tree/master/guides/project-history/myscoutee) \u00b7 [Measurement method](https://github.com/fssrepository/myscoutee-roadmap#measurement-method)\n\nTask allocation: 36.273 B tokens, 890.3 h of allocated activity, approximately $26,844 at the frozen Standard API rates. Historical allocations include estimates; these are not human hours or an invoice.\n\nLatest completed task: [MSC-113 \u2014 granular profile ratings and fractional affinity](https://github.com/fssrepository/myscoutee-roadmap/issues/151). Recorded implementation/QA: 16,498,993 tokens, 0.746337 h, estimated API equivalent $23.80; publishing tail excluded. Rating sync/save/reload and desktop/mobile checks passed.\n\n## Budget by workstream\n\n| Workstream | Tokens (M) | Allocated activity (h) | API equivalent (USD) |\n| --- | ---: | ---: | ---: |\n| Product | 23,873.84 | 526.43 | $16,017.02 |\n| QA and release | 8,574.35 | 235.94 | $7,729.87 |\n| Operations | 1,311.95 | 29.69 | $1,070.12 |\n| Marketing | 245.45 | 8.83 | $210.41 |\n| Creative | 2,185.29 | 86.59 | $1,727.15 |\n| Tooling | 62.85 | 1.69 | $59.45 |\n| Project administration (AI-assisted) | 18.52 | 1.07 | $29.25 |\n| Documentation (AI-assisted) | 0.58 | 0.04 | $0.90 |\n\n## Repositories\n\n- [myscoutee-backend](https://github.com/fssrepository/myscoutee-backend)\n- [myscoutee](https://github.com/fssrepository/myscoutee)\n- [myscoutee-registry](https://github.com/fssrepository/myscoutee-registry)\n- [myscoutee-payment-simulator](https://github.com/fssrepository/myscoutee-payment-simulator)\n- [myscoutee-client](https://github.com/fssrepository/myscoutee-client)\n- [myscoutee-client-admin](https://github.com/fssrepository/myscoutee-client-admin)\n- [myscoutee-mcp](https://github.com/fssrepository/myscoutee-mcp)\n- [myscoutee-agent](https://github.com/fssrepository/myscoutee-agent)\n- [myscoutee-roadmap](https://github.com/fssrepository/myscoutee-roadmap)\n"
   },
   "fields": [
     {
@@ -2318,6 +2318,33 @@
         "Models": "gpt-6-astra",
         "Reasoning": "high",
         "Evidence": "Measured run; estimated project split",
+        "Status": "Done"
+      }
+    },
+    {
+      "task_id": "MSC-113",
+      "title": "MSC-113: Add granular profile ratings and preserve fractional affinity",
+      "body": "Add profile-specific detailed ratings to the existing Home and Activities rating bars. The number/chevron button opens a same-width popup above the base bar without a backdrop; it sits immediately before Go/Save at the same height. Mobile floating controls follow the existing menu visibility rule.\n\nDetail criteria use whole numbers. The base slider step is derived from the criterion count (1/N); its mean is preserved through the existing outbox, JSON, Mongo and affinity calculations on the original 1\u201310 scale. Successive base-slider ticks retain the group shape. Actor-owned detail snapshots accompany the score. Dating criteria and Home/Activities guide steps are translated in English and Hungarian; the configuration can supply different criteria for future profile types. Residential profiles themselves are not implemented by this task.\n\nList and base badges retain fractional values, displayed to at most two decimals. The generated nginx frontend directory is ignored in the repository; tracked development artifacts remain locally hidden with skip-worktree until a deliberate snapshot update.\n\nValidation:\n- Managed CDP: Home, Activity list and Activity fullscreen at 1280\u00d7900 and 390\u00d7844; geometry, layering, integer details, coupled movement and mobile launcher restoration.\n- HTTP save/reload: scalar6.75 and criteria3/8/8/8; mismatched average rejected; captured pre-test value/snapshot restored and read back.\n- Eight criterion counts and 8,000 bounded-shift cases; decimal mapper/outbox and relevance ordering.\n- Existing watcher-compiled Java: fractional single/pair and reciprocal harmonic affinity; legacy integer Mongo reads; decimal JSON/Mongo round trips.\n- EN/HU parity: 11,602 i18n messages and three Mongo seeds. Evidence appended to the existing CLOSED guide pass; full Angular/JUnit suites and full local-storage reload were not run.\n\n| Recorded implementation and QA activity | Value |\n| --- | ---: |\n| Tokens, including cached input | 16,498,993 |\n| Active task interval | 0.746337 h (44m47s) |\n| Standard API equivalent, estimated | $23.80 USD |\n| Model / reasoning | gpt-6-astra / xhigh |\n\nMeasurement: 2026-10-01T01:27:06.471Z\u20132026-10-01T02:11:53.286Z; 122 unique response IDs in the completed implementation/QA turn. Cached input is included in input; reasoning is included in output. Activity includes tool/network waits and is not human labor time. The current commit/Project/roadmap publishing tail is excluded. API equivalent uses the repository's frozen 2026-10-01 Standard rate card; it is not an invoice. This task is counted once across the backend/frontend repositories; no measured repository-specific split is claimed.\n\n[QA evidence](https://github.com/fssrepository/myscoutee-backend/blob/master/guides/qa/evidence/general/EXPLANATION-GUIDE-001-20260930.md) \u00b7 [Project](https://github.com/users/fssrepository/projects/2)\n",
+      "state": "CLOSED",
+      "state_reason": "completed",
+      "issue": {
+        "repository": "fssrepository/myscoutee-roadmap",
+        "number": 151,
+        "url": "https://github.com/fssrepository/myscoutee-roadmap/issues/151",
+        "node_id": "I_kwDOU1_9-s8AAAABURzKNg"
+      },
+      "values": {
+        "Task ID": "MSC-113",
+        "Workstream": "Product",
+        "Started": "2026-10-01",
+        "Finished": "2026-10-01",
+        "Tokens M": 16.498993,
+        "API equiv USD": 23.8,
+        "Active h": 0.746337,
+        "Allocated h": 0.746337,
+        "Models": "gpt-6-astra",
+        "Reasoning": "xhigh",
+        "Evidence": "Measured completed implementation/QA turn; publishing tail excluded",
         "Status": "Done"
       }
     }

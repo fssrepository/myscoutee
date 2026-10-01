@@ -303,6 +303,7 @@ export class LocalRatesRepository {
       }
       return [{
         id: record.displayId?.trim() || record.id,
+        ratingSnapshot: record.ratingSnapshots?.[normalizedUserId] ?? (record.ownerUserId === normalizedUserId ? record.ratingSnapshot : undefined),
         userId: relatedUserId,
         mode: 'individual',
         direction,
@@ -336,6 +337,7 @@ export class LocalRatesRepository {
     }
     return [{
       id: record.displayId?.trim() || record.id,
+      ratingSnapshot: record.ratingSnapshots?.[normalizedUserId] ?? (record.ownerUserId === normalizedUserId ? record.ratingSnapshot : undefined),
       userId: ownerUserId,
       mode: 'individual',
       direction: participantDirection,
@@ -374,6 +376,7 @@ export class LocalRatesRepository {
       if (scoreGiven > 0 || scoreReceived > 0) {
         items.push({
           id: record.displayId?.trim() || record.id,
+          ratingSnapshot: record.ratingSnapshots?.[normalizedUserId] ?? (record.ownerUserId === normalizedUserId ? record.ratingSnapshot : undefined),
           userId: pairUserIds[0],
           secondaryUserId: pairUserIds[1],
           mode: 'pair',
@@ -629,7 +632,7 @@ export class LocalRatesRepository {
   }
 
   private normalizeDynamicRateScore(value: number): number {
-    return Math.min(10, Math.max(0, Math.round(Number(value) || 0)));
+    return Math.min(10, Math.max(0, Number(value) || 0));
   }
 
   private resolveDynamicRateCursorId(cursor: string | null | undefined): string | null {
@@ -727,6 +730,11 @@ export class LocalRatesRepository {
               record, this.dynamicScoreGiven(record), this.dynamicScoreReceived(record)) ?? record.displayDirection;
           }
         }
+        const snapshots = { ...previous?.ratingSnapshots };
+        const ownerId = record.ownerUserId!;
+        if (record.ratingSnapshot) snapshots[ownerId] = record.ratingSnapshot;
+        else delete snapshots[ownerId];
+        record.ratingSnapshots = snapshots;
         byId[record.id] = record;
         if (!existingIds.has(record.id)) {
           existingIds.add(record.id);
@@ -830,7 +838,8 @@ export class LocalRatesRepository {
       rating: Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
         ? Number(record.scoreGiven)
         : record.rate,
-      direction: record.displayDirection ?? item.direction
+      direction: record.displayDirection ?? item.direction,
+      ratingSnapshot: record.ratingSnapshot
     });
     if (!normalized) {
       return null;

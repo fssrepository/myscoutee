@@ -1,3 +1,4 @@
+import type { RatingCriteriaDefinition, RatingSnapshot } from '../../../../core/contracts/rating-snapshot';
 import type { Signal } from '@angular/core';
 import type {
   IndicatorShape,
@@ -104,6 +105,9 @@ export interface AppMenuRateDockConfig {
 }
 
 export interface AppMenuRateConfig {
+  subjectKey?: string;
+  criteriaDefinition?: RatingCriteriaDefinition;
+  ratingSnapshot?: RatingSnapshot;
   scale?: readonly number[];
   value?: number | null;
   readonly?: boolean;
@@ -268,6 +272,7 @@ export interface AppMenuItemSelectEvent<TId extends string = string, TContext = 
   item: AppMenuItem<TId, TContext>;
   context?: TContext;
   sourceEvent: Event;
+  ratingSnapshot?: RatingSnapshot;
   value?: unknown;
   controlValue?: unknown;
   action?: AppMenuItemSelectAction;

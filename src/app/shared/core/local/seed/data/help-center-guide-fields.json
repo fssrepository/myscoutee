@@ -211,67 +211,74 @@
       "order": 29
     },
     {
+      "id": "rating-details",
+      "screenKey": "activities.rates",
+      "group": "ratings",
+      "i18nKey": "guide.activities.rates.rating-details",
+      "order": 30
+    },
+    {
       "id": "rating-save",
       "screenKey": "activities.rates",
       "group": "ratings",
       "i18nKey": "guide.activities.rates.rating-save",
-      "order": 30
+      "order": 31
     },
     {
       "id": "card-badge-start",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.activities.rates.card-badge-start",
-      "order": 31
+      "order": 32
     },
     {
       "id": "card-badge-end",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.activities.rates.card-badge-end",
-      "order": 32
+      "order": 33
     },
     {
       "id": "card-actions",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.activities.rates.card-actions",
-      "order": 33
+      "order": 34
     },
     {
       "id": "close",
       "screenKey": "activities.rates",
       "group": "popup",
       "i18nKey": "guide.activities.rates.close",
-      "order": 34
+      "order": 35
     },
     {
       "id": "pair-score-received",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.common.pair-score-received",
-      "order": 35
+      "order": 36
     },
     {
       "id": "pair-images",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.common.pair-images",
-      "order": 36
+      "order": 37
     },
     {
       "id": "pair-profiles",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.common.pair-profiles",
-      "order": 37
+      "order": 38
     },
     {
       "id": "pair-score-summary",
       "screenKey": "activities.rates",
       "group": "card",
       "i18nKey": "guide.common.pair-score-summary",
-      "order": 38
+      "order": 39
     }
   ],
   "home.game": [
@@ -346,46 +353,53 @@
       "order": 9
     },
     {
+      "id": "rating-details",
+      "screenKey": "home.game",
+      "group": "ratings",
+      "i18nKey": "guide.home.game.rating-details",
+      "order": 10
+    },
+    {
       "id": "image-switch",
       "screenKey": "home.game",
       "group": "card",
       "i18nKey": "guide.home.game.image-switch",
-      "order": 10
+      "order": 11
     },
     {
       "id": "profile",
       "screenKey": "home.game",
       "group": "card",
       "i18nKey": "guide.home.game.profile",
-      "order": 11
+      "order": 12
     },
     {
       "id": "pagination-next",
       "screenKey": "home.game",
       "group": "card",
       "i18nKey": "guide.home.game.pagination-next",
-      "order": 12
+      "order": 13
     },
     {
       "id": "pair-resize",
       "screenKey": "home.game",
       "group": "card",
       "i18nKey": "guide.activities.rates.pair.resize",
-      "order": 13
+      "order": 14
     },
     {
       "id": "pair-images",
       "screenKey": "home.game",
       "group": "card",
       "i18nKey": "guide.common.pair-images",
-      "order": 14
+      "order": 15
     },
     {
       "id": "pair-profiles",
       "screenKey": "home.game",
       "group": "card",
       "i18nKey": "guide.common.pair-profiles",
-      "order": 15
+      "order": 16
     }
   ],
   "chats": [

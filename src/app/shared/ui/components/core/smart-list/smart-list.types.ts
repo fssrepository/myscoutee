@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../../../core/contracts/rating-snapshot';
 import { Observable } from 'rxjs';
 import type {
   IndicatorPlacement,
@@ -435,6 +436,6 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
     autoplayMs?: SmartListConfigValue<number | null, TFilters>;
     ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => AppMenuRateConfig | null;
     ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;
-    onRatingSelect?: (item: T | null, score: number, query: ListQuery<TFilters>) => void | Promise<void>;
+    onRatingSelect?: (item: T | null, score: number, query: ListQuery<TFilters>, ratingSnapshot?: RatingSnapshot) => void | Promise<void>;
   };
 }

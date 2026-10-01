@@ -278,7 +278,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getActivityRateBlinkTimeoutByRowId: () => this.activityRateBlinkTimeoutByRowId,
     setSelectedRateIdInContext: value => this.activitiesStore.setActivitiesSelectedRateId(value),
     setFullscreenModeInContext: value => this.activitiesStore.setActivitiesRatesFullscreenMode(value),
-    recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
+    recordActivityRate: (item, score, direction, snapshot) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction, snapshot),
     syncVisibleRateItem: item => this.syncVisibleRateItem(item),
     refreshRateCards: rowId => this.refreshActivitiesRateCards(rowId),
     markForCheck: () => this.cdr.markForCheck(),
@@ -437,7 +437,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       },
       ratingBarConfig: row => row ? this.activitiesRates.ratingBarConfig() : null,
       ratingBarValue: () => this.activitiesRates.ratingBarValue(),
-      onRatingSelect: (_item, score) => this.activitiesRates.setSelectedOwnRating(score)
+      onRatingSelect: (_item, score, _query, snapshot) => this.activitiesRates.setSelectedOwnRating(score, snapshot)
     },
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'counter' : 'default',
     views: [

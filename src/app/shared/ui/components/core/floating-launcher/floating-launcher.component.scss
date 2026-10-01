@@ -64,6 +64,7 @@
 // Hide only the launchers, including during a tour; the guide panel is a
 // sibling and keeps explaining the open menu. Desktop has room for both.
 @media (max-width: 760px) {
+  :host-context(body:has(.ui-popup--hides-floating-controls)),
   :host-context(body:has(.app-menu__heading > .popup-close, .app-menu__branch-close)),
   :host-context(body:has(.app-menu-host--open:not(.app-menu-host--panel-bottom-docked) > .app-menu > .app-menu__panel:not(.app-menu__panel--inline))) {
     visibility: hidden;
