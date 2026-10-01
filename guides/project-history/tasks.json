@@ -1139,12 +1139,12 @@
     "workstream": "Product",
     "started": "2026-10-01",
     "finished": "2026-10-01",
-    "tokens_million": 16.498993,
-    "api_equivalent_usd_estimate": 23.8,
-    "active_hours": 0.7463375,
-    "allocated_hours": 0.7463375,
+    "tokens_million": 28.648921,
+    "api_equivalent_usd_estimate": 42.63,
+    "active_hours": 1.3695547221766577,
+    "allocated_hours": 1.3695547221766577,
     "models": "gpt-6-astra",
-    "reasoning": "xhigh",
-    "evidence": "Measured completed implementation/QA turn; publishing tail excluded"
+    "reasoning": "xhigh / high",
+    "evidence": "Measured implementation, QA, migration, commits and v1.3.3 Netcup release; timestamped final accounting cutoff"
   }
 ]

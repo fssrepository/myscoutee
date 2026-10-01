@@ -2,15 +2,15 @@
   "schema_version": 1,
   "project_totals": {
     "tasks": 111,
-    "tokens_estimate": 36272836830,
-    "api_standard_usd_estimate": 26844.17,
-    "allocated_hours_estimate": 890.2887470482209,
+    "tokens_estimate": 36284986758,
+    "api_standard_usd_estimate": 26863.0,
+    "allocated_hours_estimate": 890.9119642703976,
     "manual_effort_unknown": false,
     "workstreams": {
       "Product": {
-        "tokens": 23873842145,
-        "api_equivalent_usd": 16017.02,
-        "hours": 526.4323921780293
+        "tokens": 23885992073,
+        "api_equivalent_usd": 16035.85,
+        "hours": 527.055609400206
       },
       "QA and release": {
         "tokens": 8574348656,
@@ -3218,13 +3218,13 @@
     },
     {
       "task_id": "MSC-113",
-      "tokens": 16498993,
-      "api_standard_usd_estimate": 23.8,
-      "active_hours": 0.7463375,
-      "allocated_hours": 0.7463375,
+      "tokens": 28648921,
+      "api_standard_usd_estimate": 42.63,
+      "active_hours": 1.3695547221766577,
+      "allocated_hours": 1.3695547221766577,
       "manual_effort_unknown": false,
-      "token_basis": "Unique response IDs in the completed rating implementation/QA turn. Includes cached input; reasoning is inside output. Excludes subsequent commit, Project and roadmap administration. Recorded task interval includes tool/network waits; not human labor.",
-      "duration_basis": "Recorded completed root-task interval, including tool/network waits; not human labor",
+      "token_basis": "Unique response IDs across all MSC-113 task turns, including implementation, QA, commits, Project/roadmap, migration, image packaging, Netcup release and verifier follow-up through the stated cutoff. Cached input is inside input; reasoning is inside output. Final accounting writes after cutoff cannot be self-counted.",
+      "duration_basis": "Recorded task intervals including implementation, QA, migration, publication, release and verifier follow-up through the stated cutoff; tool waits included, not human labor",
       "allocated_time_basis": "One shared backend/frontend task interval, counted once in the Project",
       "models": {
         "gpt-6-astra|xhigh": {
@@ -3234,6 +3234,14 @@
           "output_tokens": 78332,
           "reasoning_output_tokens": 25448,
           "total_tokens": 16498993
+        },
+        "gpt-6-astra|high": {
+          "input_tokens": 12087128,
+          "cached_input_tokens": 11686784,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 62800,
+          "reasoning_output_tokens": 16418,
+          "total_tokens": 12149928
         }
       },
       "repository_allocations": {},
@@ -3244,8 +3252,8 @@
       "repository_allocation_basis": "No measured repository split; repository snapshots duplicate the same shared task, not separate effort.",
       "frozen_phase": {
         "start_utc": "2026-10-01T01:27:06.471Z",
-        "cutoff_utc": "2026-10-01T02:11:53.286Z",
-        "unique_responses": 122
+        "cutoff_utc": "2026-10-01T02:49:50.004Z",
+        "unique_responses": 227
       }
     }
   ],
@@ -3277,9 +3285,9 @@
   "post_control_task_usage": [
     {
       "task_id": "MSC-113",
-      "tokens": 16498993,
+      "tokens": 28648921,
       "start_utc": "2026-10-01T01:27:06.471Z",
-      "cutoff_utc": "2026-10-01T02:11:53.286Z",
+      "cutoff_utc": "2026-10-01T02:49:50.004Z",
       "note": "Supplemental measured task usage after the historical daily control cutoff; account_control remains the frozen calibration."
     }
   ]
