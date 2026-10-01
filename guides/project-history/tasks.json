@@ -1132,5 +1132,19 @@
     "models": "gpt-6-astra",
     "reasoning": "high",
     "evidence": "Measured maintenance-session tokens; estimated allocation by backup snapshot ownership (9:2:2:2 across four Projects)"
+  },
+  {
+    "task_id": "MSC-113",
+    "title": "Add granular profile ratings and preserve fractional affinity",
+    "workstream": "Product",
+    "started": "2026-10-01",
+    "finished": "2026-10-01",
+    "tokens_million": 28.648921,
+    "api_equivalent_usd_estimate": 42.63,
+    "active_hours": 1.3695547221766577,
+    "allocated_hours": 1.3695547221766577,
+    "models": "gpt-6-astra",
+    "reasoning": "xhigh / high",
+    "evidence": "Measured implementation, QA, migration, commits and v1.3.3 Netcup release; timestamped final accounting cutoff"
   }
 ]

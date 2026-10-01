@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../contracts/rating-snapshot';
 import {
   Injectable,
   inject
@@ -132,7 +133,8 @@ export class GameService extends BaseRouteModeService {
     mode: 'single' | 'pair' = 'single',
     socialContext?: UserGameSocialCard['socialContext'],
     bridgeUserId?: string,
-    bridgeCount?: number
+    bridgeCount?: number,
+    ratingSnapshot?: RatingSnapshot
   ): void {
     this.rateOutboxService.enqueueGameCardRatingOutbox({
       kind: 'game-card',
@@ -142,7 +144,8 @@ export class GameService extends BaseRouteModeService {
       mode,
       socialContext,
       bridgeUserId,
-      bridgeCount
+      bridgeCount,
+      ratingSnapshot
     });
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
@@ -153,7 +156,8 @@ export class GameService extends BaseRouteModeService {
     firstRatedUserId: string,
     secondRatedUserId: string,
     rating: number,
-    socialContext?: UserGameSocialCard['socialContext']
+    socialContext?: UserGameSocialCard['socialContext'],
+    ratingSnapshot?: RatingSnapshot
   ): void {
     const normalizedFirstId = firstRatedUserId.trim();
     const normalizedSecondId = secondRatedUserId.trim();
@@ -166,7 +170,8 @@ export class GameService extends BaseRouteModeService {
       firstRatedUserId: normalizedFirstId,
       secondRatedUserId: normalizedSecondId,
       rating,
-      socialContext
+      socialContext,
+      ratingSnapshot
     });
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();

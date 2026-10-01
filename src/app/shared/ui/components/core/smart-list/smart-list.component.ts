@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../../../core/contracts/rating-snapshot';
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
@@ -193,7 +194,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.isPaginationRatingMenuSelect(event)) {
       const score = Number(event.value);
       if (Number.isFinite(score)) {
-        this.onPaginationRatingSelect(score);
+        this.onPaginationRatingSelect(score, event.ratingSnapshot);
       }
       return;
     }
@@ -781,12 +782,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     void this.moveCursor(this.paginationCursorDelta(1));
   }
 
-  protected onPaginationRatingSelect(score: number): void {
+  protected onPaginationRatingSelect(score: number, ratingSnapshot?: RatingSnapshot): void {
     if (this.shouldUseHostedFullscreenPagination()) {
-      void this.handleHostedFullscreenRatingSelect(score);
+      void this.handleHostedFullscreenRatingSelect(score, ratingSnapshot);
       return;
     }
-    void this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
+    void this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery(), ratingSnapshot);
   }
 
   private isPaginationRatingMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): boolean {
@@ -4005,9 +4006,9 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private ratingAdvanceInFlight = false;
 
-  private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
+  private async handleHostedFullscreenRatingSelect(score: number, ratingSnapshot?: RatingSnapshot): Promise<void> {
     this.interruptHostedFullscreenTransition();
-    await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
+    await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery(), ratingSnapshot);
     if (!this.shouldUseHostedFullscreenPagination()) {
       return;
     }

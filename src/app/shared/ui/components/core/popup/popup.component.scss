@@ -817,3 +817,16 @@ app-popup {
   @include mediaBadge.surface;
   min-height: 25px;
 }
+
+.ui-popup--nonmodal {
+  pointer-events: none;
+  .ui-popup__panel { pointer-events: auto; }
+}
+
+.ui-popup--anchored .ui-popup__panel {
+  width: var(--app-popup-anchor-width) !important;
+  max-width: var(--app-popup-anchor-width) !important;
+  height: auto !important;
+  max-height: var(--app-popup-anchor-max-height) !important;
+  min-height: 0;
+}

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.09.30.11",
+  "version": "2026.10.01.1",
   "messages": {
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
@@ -5792,6 +5792,16 @@
     "guide.common.pair-profiles.label": "Open either person’s profile",
     "guide.common.pair-profiles.description": "Each eye opens the profile on its own side. Close that popup to return to this pair. Viewing a profile does not change a rating or accept a suggestion.",
     "guide.common.pair-score-summary.label": "Your current pair rating",
-    "guide.common.pair-score-summary.description": "The middle badge shows this pair’s current score. In fullscreen it is a summary; use the slider and Save below to change it. The list’s badge opens the editor."
+    "guide.common.pair-score-summary.description": "The middle badge shows this pair’s current score. In fullscreen it is a summary; use the slider and Save below to change it. The list’s badge opens the editor.",
+    "rating.details": "Detailed rating",
+    "rating.average": "Average",
+    "rating.criteria.attraction": "Attraction",
+    "rating.criteria.personality": "Personality",
+    "rating.criteria.interests": "Shared interests",
+    "rating.criteria.values": "Shared values",
+    "guide.home.game.rating-details.label": "Fine-tune the rating",
+    "guide.home.game.rating-details.description": "Open the number and arrow button beside Go. Adjust the individual criteria; their average sets your rating. The main slider moves them together. Close the panel, then confirm with Go.",
+    "guide.activities.rates.rating-details.label": "Fine-tune the rating",
+    "guide.activities.rates.rating-details.description": "Open the number and arrow button beside Save. Adjust the individual criteria; their average sets your rating. The main slider moves them together. Close the panel, then confirm with Save."
   }
 }

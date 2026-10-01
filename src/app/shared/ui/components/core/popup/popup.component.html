@@ -1,6 +1,10 @@
 <div
+  #surface
   class="ui-popup"
   [class.ui-popup]="active"
+  [class.ui-popup--hides-floating-controls]="active && popupModel.hideFloatingControls === true"
+  [class.ui-popup--anchored]="!!popupModel.anchorRect"
+  [class.ui-popup--nonmodal]="popupModel.backdrop === false"
   [style.display]="active ? null : 'none'"
   [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
   [class.ui-popup--height-full]="popupModel.height === 'full' && popupModel.size !== 'fullscreen'"
@@ -8,14 +12,18 @@
   [class.ui-popup--mobile-compact]="popupModel.mobilePresentation === 'compact'"
   [style.z-index]="effectiveZIndex"
 >
-  <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>
+  @if (popupModel.backdrop !== false) {
+    <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>
+  }
   <section
     class="ui-popup__panel"
     [ngClass]="[panelSizeClass(), panelHeightClass()]"
     [class.ui-popup__panel--overflow-visible]="popupModel.bodyLayout === 'overflow'"
     role="dialog"
-    aria-modal="true"
-    [attr.aria-label]="ariaLabel"
+    [attr.aria-modal]="popupModel.backdrop === false ? null : 'true'"
+    [ngStyle]="anchorStyle"
+    (pointerdown)="popupModel.backdrop === false && $event.stopPropagation()"
+    [attr.aria-label]="ariaLabel | i18n"
     (click)="onPanelClick($event)"
   >
     @if (hasHeader) {

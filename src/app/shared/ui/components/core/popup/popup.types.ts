@@ -94,6 +94,10 @@ export interface PopupModel<TContext = unknown> {
   translateTitle?: boolean;
   translateSubtitle?: boolean;
   translateSecondarySubtitle?: boolean;
+  /** Non-modal panels keep the underlying page visible and interactive. */
+  backdrop?: boolean;
+  hideFloatingControls?: boolean;
+  anchorRect?: { left: number; top: number; width: number };
   closeOnBackdrop?: boolean;
   showHeader?: boolean;
   showClose?: boolean;

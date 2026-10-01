@@ -1,3 +1,4 @@
+import type { RatingSnapshot } from '../../contracts/rating-snapshot';
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
@@ -26,9 +27,10 @@ export class RatesService extends BaseRouteModeService implements IRatesService 
     ownerUserId: string,
     item: ActivityRateDTO,
     rating: number,
-    direction?: ActivityRateDTO['direction'] | null
+    direction?: ActivityRateDTO['direction'] | null,
+    ratingSnapshot?: RatingSnapshot
   ): void {
-    this.rateOutboxService.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
+    this.rateOutboxService.enqueueActivityRateOutbox(ownerUserId, item, rating, direction, ratingSnapshot);
     this.gameService.resetUserGameCardsStack(ownerUserId);
     this.gameService.kickUserRatesOutboxSync();
   }

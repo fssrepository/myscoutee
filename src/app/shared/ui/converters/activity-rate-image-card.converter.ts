@@ -245,7 +245,7 @@ export class ActivityRateImageCardConverter {
 
   private static rateOwnScore(dto: ActivityRateDTO): number {
     if (Number.isFinite(dto.scoreGiven) && dto.scoreGiven > 0) {
-      return Math.min(10, Math.max(1, Math.round(dto.scoreGiven)));
+      return Math.min(10, Math.max(1, dto.scoreGiven));
     }
     return 5;
   }

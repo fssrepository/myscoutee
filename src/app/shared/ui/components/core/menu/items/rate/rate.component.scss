@@ -284,3 +284,24 @@
     border-radius: 10px;
   }
 }
+
+.rate__details {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 31px;
+  box-sizing: border-box;
+  padding: 0 5px 0 2px;
+  border: 1px solid rgba(31, 54, 88, 0.22);
+  border-radius: 11px;
+  color: inherit;
+  background: #fff;
+  cursor: pointer;
+  .rate__value { height: 25px; min-width: 3.8ch; padding: 0 0.35rem; border-radius: 999px; box-sizing: border-box; font-variant-numeric: tabular-nums; }
+  .mat-icon { width: 20px; height: 20px; font-size: 20px; }
+}
+.rate__criteria { display: grid; gap: 0.75rem; padding: 0.15rem 0.1rem 0.35rem; }
+
+.rate__actions { display: inline-flex; align-items: center; gap: 0.42rem; flex: 0 0 auto; }
+
+@media (max-width: 760px) { .rate__details { height: 30px; border-radius: 10px; } }

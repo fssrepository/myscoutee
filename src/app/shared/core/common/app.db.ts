@@ -851,7 +851,7 @@ export class AppMemoryDb {
         id,
         happenedAtMs: Number.isFinite(parsed.happenedAtMs) ? Math.max(0, Math.trunc(Number(parsed.happenedAtMs))) : 0,
         distanceMeters: Number.isFinite(parsed.distanceMeters) ? Math.max(0, Math.trunc(Number(parsed.distanceMeters))) : 0,
-        relevanceScore: Number.isFinite(parsed.relevanceScore) ? Math.max(0, Math.trunc(Number(parsed.relevanceScore))) : 0
+        relevanceScore: Number.isFinite(parsed.relevanceScore) ? Math.max(0, Number(parsed.relevanceScore)) : 0
       };
     } catch {
       return null;
@@ -1310,6 +1310,8 @@ export class AppMemoryDb {
     if (source.met === true) {
       normalized.met = true;
     }
+    if (source.ratingSnapshot) normalized.ratingSnapshot = source.ratingSnapshot;
+    if (source.ratingSnapshots) normalized.ratingSnapshots = source.ratingSnapshots;
     return normalized;
   }
 
@@ -1321,7 +1323,7 @@ export class AppMemoryDb {
     if (!Number.isFinite(Number(value))) {
       return 0;
     }
-    return Math.trunc(Number(value));
+    return Number(value);
   }
 
   private normalizeProfileExperiencesByUserId(
@@ -1708,10 +1710,10 @@ export class AppMemoryDb {
 
   private userRateRelevanceScore(record: UserRateRecord | null | undefined): number {
     const scoreGiven = Number.isFinite(record?.scoreGiven)
-      ? Math.max(0, Math.round(Number(record?.scoreGiven)))
-      : (Number.isFinite(record?.rate) ? Math.max(0, Math.round(Number(record?.rate))) : 0);
+      ? Math.max(0, Number(record?.scoreGiven))
+      : (Number.isFinite(record?.rate) ? Math.max(0, Number(record?.rate)) : 0);
     const scoreReceived = Number.isFinite(record?.scoreReceived)
-      ? Math.max(0, Math.round(Number(record?.scoreReceived)))
+      ? Math.max(0, Number(record?.scoreReceived))
       : 0;
 
     if (record?.displayDirection === 'mutual') {
