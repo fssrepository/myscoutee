@@ -8,6 +8,7 @@ import type {
 } from '../../../contracts/integration.interface';
 import type { LocalIntegrationTokenRecord } from '../entity/integration.entity';
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
+import { secureRandomUuid } from '../../../common/secure-random';
 import type { PricingCancellationPolicy } from '../../../contracts/pricing.interface';
 import type { PaymentRefundPreviewDto } from '../../../contracts/payment-method.interface';
 
@@ -29,7 +30,7 @@ export class LocalIntegrationRepository {
     let user = this.requireUser(userId);
     if (admin && !user.admin) throw new Error('admin.api.denied');
     if (!admin && !user.affiliateCode) {
-      const code = globalThis.crypto.randomUUID();
+      const code = secureRandomUuid();
       this.memoryDb.write(state => ({ ...state, [USERS_TABLE_NAME]: {
         ...state[USERS_TABLE_NAME], byId: { ...state[USERS_TABLE_NAME].byId,
           [userId]: { ...state[USERS_TABLE_NAME].byId[userId], affiliateCode: code }
@@ -467,7 +468,6 @@ export class LocalIntegrationRepository {
   }
 
   private uuid(): string {
-    return globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return secureRandomUuid();
   }
 }

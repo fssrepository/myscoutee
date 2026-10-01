@@ -5,6 +5,7 @@ import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
+import { secureRandomUuid } from '../../common/secure-random';
 import {
   isFirebaseLoginEnabled,
   resolveRuntimeAuthMode
@@ -823,11 +824,7 @@ export class SessionService {
   }
 
   private newOpaqueId(prefix: 'session' | 'attempt'): string {
-    const randomUuid = typeof crypto !== 'undefined'
-      && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    return `${prefix}:${randomUuid}`;
+    return `${prefix}:${secureRandomUuid()}`;
   }
 
   private normalizeSupportContext(

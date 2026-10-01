@@ -56,31 +56,6 @@ export class FirebaseAuthService {
     return isFirebaseLoginEnabled();
   }
 
-  loadStoredProfile(): FirebaseAuthProfileDto | null {
-    if (!this.enabled || typeof localStorage === 'undefined') {
-      return null;
-    }
-    const raw = localStorage.getItem(FirebaseAuthService.FIREBASE_AUTH_PROFILE_KEY);
-    if (!raw) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(raw) as Partial<FirebaseAuthProfileDto>;
-      if (!parsed.id || !parsed.name || !parsed.email || !parsed.initials) {
-        return null;
-      }
-      return {
-        id: parsed.id,
-        name: parsed.name,
-        email: parsed.email,
-        initials: parsed.initials,
-        imageUrl: typeof parsed.imageUrl === 'string' ? parsed.imageUrl : undefined
-      };
-    } catch {
-      return null;
-    }
-  }
-
   async signInWithGoogle(): Promise<FirebaseAuthProfileDto | null> {
     return (await this.signIn({ provider: 'google' })).profile;
   }
@@ -127,7 +102,8 @@ export class FirebaseAuthService {
           return { profile: null, errorMessage: 'firebase.auth.link.failed' };
         }
       }
-      return { profile: this.persistProfile(result.user) };
+      this.clearStoredProfile();
+      return { profile: this.toFirebaseAuthProfile(result.user) };
     } catch (error) {
       if (this.firebaseErrorCode(error) === 'auth/account-exists-with-different-credential') {
         // Keep the original provider proof if the user selects another conflicting provider.
@@ -179,7 +155,8 @@ export class FirebaseAuthService {
       this.clearStoredProfile();
       return null;
     }
-    return this.persistProfile(currentUser);
+    this.clearStoredProfile();
+    return this.toFirebaseAuthProfile(currentUser);
   }
 
   async getIdToken(): Promise<string | null> {
@@ -269,14 +246,6 @@ export class FirebaseAuthService {
         }
       );
     });
-  }
-
-  private persistProfile(user: User): FirebaseAuthProfileDto {
-    const profile = this.toFirebaseAuthProfile(user);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(FirebaseAuthService.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
-    }
-    return profile;
   }
 
   private clearStoredProfile(): void {

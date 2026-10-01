@@ -4,6 +4,7 @@ import { FacebookAuthProvider, GoogleAuthProvider, browserLocalPersistence, brow
   type Auth, type User, type UserCredential } from 'firebase/auth';
 import { FirebaseAppService } from './firebase-app.service';
 import { FirebaseAuthService } from './firebase-auth.service';
+import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 
 vi.mock('firebase/auth', async importOriginal => Object.assign(
   {}, await importOriginal<typeof import('firebase/auth')>(), {
@@ -50,8 +51,10 @@ describe('FirebaseAuthService provider linking', () => {
   }
 
   it('signs in an already linked social account directly', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.firebaseAuthProfile, 'obsolete profile');
     vi.mocked(signInWithPopup).mockResolvedValueOnce({ user } as UserCredential);
     expect((await service.signIn({ provider: 'google' })).profile?.id).toBe('existing-user');
+    expect(localStorage.getItem(APP_STORAGE_KEYS.firebaseAuthProfile)).toBeNull();
     expect(linkWithCredential).not.toHaveBeenCalled();
     expect(signInWithPopup).toHaveBeenCalledWith(auth, expect.any(GoogleAuthProvider), browserPopupRedirectResolver);
   });
@@ -191,7 +194,9 @@ describe('FirebaseAuthService startup', () => {
   afterEach(() => { vi.restoreAllMocks(); TestBed.resetTestingModule(); localStorage.clear(); });
 
   it('initializes directly with local persistence and no proactive popup resolver', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.firebaseAuthProfile, 'obsolete profile');
     expect((await service.restoreSessionProfile())?.id).toBe('restored-user');
+    expect(localStorage.getItem(APP_STORAGE_KEYS.firebaseAuthProfile)).toBeNull();
     expect(initializeAuth).toHaveBeenCalledWith(app, { persistence: browserLocalPersistence });
     expect(auth.authStateReady).toHaveBeenCalledOnce();
     // Keep explicit validation: Firebase itself tolerates a network error during startup.
