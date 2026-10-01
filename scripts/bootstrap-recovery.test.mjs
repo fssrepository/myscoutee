@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
 
 const html = readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
-const source = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
-  .map(match => match[1]).find(script => script.includes('function recoverDeployment'));
+const document = new JSDOM(html).window.document;
+const source = [...document.querySelectorAll('script:not([src])')]
+  .map(script => script.textContent).find(script => script?.includes('function recoverDeployment'));
 assert.ok(source, 'The production bootstrap recovery script must be exercised');
 
 function runtime({ bootstrapped = false, online = true, worker = true,
