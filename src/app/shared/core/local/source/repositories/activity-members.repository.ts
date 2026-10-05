@@ -803,7 +803,7 @@ export class LocalActivityMembersRepository {
         || normalizedRecords.some(member => {
           const previous = table.byId[member.id];
           return !previous || member.updatedAtIso !== previous.updatedAtIso || member.status !== previous.status
-            || member.role !== previous.role || member.organizerOnly !== previous.organizerOnly;
+            || member.role !== previous.role || member.organizerOnly !== previous.organizerOnly || member.votingEligible !== previous.votingEligible;
         }));
       return {
         ...state,

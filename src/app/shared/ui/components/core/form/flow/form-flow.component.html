@@ -155,6 +155,7 @@
                         [disabled]="isControlDisabled(control)" [label]="control.label || ''"
                         (enabledChange)="updateControlValue(control, $event)"></app-on-off-toggle>
                     } @else {
+                    @if (control.bind !== undefined) {
                     <app-menu class="form-flow__group-header-menu"
                       [title]="menuTitle(control)"
                       [kind]="menuKind(control)" [layout]="menuLayout(control)"
@@ -163,6 +164,15 @@
                       (ngModelChange)="updateControlValue(control, $event)"
                       (itemSelect)="emitControlAction(control, $event)"
                       [closeOnSelect]="menuCloseOnSelect(control)"></app-menu>
+                    } @else {
+                    <app-menu class="form-flow__group-header-menu"
+                      [title]="menuTitle(control)"
+                      [kind]="menuKind(control)" [layout]="menuLayout(control)"
+                      [trigger]="menuTrigger(control)" [items]="menuItems(control)" [model]="menuModel(control)"
+                      [disabled]="isControlDisabled(control)"
+                      (itemSelect)="emitControlAction(control, $event)"
+                      [closeOnSelect]="menuCloseOnSelect(control)"></app-menu>
+                    }
                     }
                   }
                 </div>
@@ -230,12 +240,15 @@
                           <p>{{ control.description }}</p>
                         }
                       </div>
+                    } @else if (control.kind === 'text-cards') {
+                      <app-text-cards-input [config]="textCardsConfig(control)" (menuSelect)="emitControlAction(control, $event)"></app-text-cards-input>
                     } @else if (control.kind === 'menu') {
                       @if (control.label) {
                         <label class="form-flow__label">
                           <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
                         </label>
                       }
+                      @if (control.bind !== undefined) {
                       <app-menu
                         class="form-flow__menu"
                         [kind]="menuKind(control)"
@@ -252,6 +265,22 @@
                         (itemSelect)="emitControlAction(control, $event)"
                         [closeOnSelect]="menuCloseOnSelect(control)"
                       ></app-menu>
+                      } @else {
+                      <app-menu
+                        class="form-flow__menu"
+                        [kind]="menuKind(control)"
+                        [layout]="menuLayout(control)"
+                        [title]="menuTitle(control)"
+                        [filterable]="menuFilterable(control)"
+                        [trigger]="menuTrigger(control)"
+                        [model]="menuModel(control)"
+                        [items]="menuItems(control)"
+                        [panelMode]="menuPanelMode(control)"
+                        [disabled]="isControlDisabled(control)"
+                        (itemSelect)="emitControlAction(control, $event)"
+                        [closeOnSelect]="menuCloseOnSelect(control)"
+                      ></app-menu>
+                      }
                     } @else if (control.kind === 'image-carousel') {
                       @if (control.label) {
                         <label class="form-flow__label">
@@ -259,6 +288,11 @@
                         </label>
                       }
                       @let image = imageConfig(control);
+                      @if (image.gallery) {
+                        <app-image-gallery [images]="controlStringArrayValue(control)" [readOnly]="isControlDisabled(control)"
+                          [slotCount]="image.slotCount ?? 8" [uploadOwnerId]="image.uploadOwnerId || ''" [uploadEntityId]="image.uploadEntityId || 'image'"
+                          (imagesChange)="updateControlValue(control, $event)"></app-image-gallery>
+                      } @else {
                       <app-image-carousel
                         [slotCount]="image.slotCount ?? 8"
                         [compact]="image.compact === true"
@@ -272,6 +306,7 @@
                         [ngModel]="controlStringArrayValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-image-carousel>
+                      }
                     } @else if (control.kind === 'checkbox') {
                       <label class="form-flow__checkbox">
                         <input
@@ -302,9 +337,13 @@
                     } @else if (control.kind === 'table') {
                       <table class="form-flow__table">
                         <tbody>
-                          @for (row of tableRows(control); track row.label) {
+                          @for (row of tableRows(control); track row.id ?? row.label) {
                             <tr [attr.data-palette]="row.palette ?? null"><th scope="row">{{ row.label | i18n }}</th>
-                              <td><span [class.form-flow__table-badge]="!!row.badgeTone" [class.form-flow__table-badge--danger]="row.badgeTone === 'danger'">@if (row.icon) { <mat-icon>{{ row.icon }}</mat-icon> }{{ row.value | i18n }}</span></td></tr>
+                              <td><span [class.form-flow__table-badge]="!!row.badgeTone" [class.form-flow__table-badge--danger]="row.badgeTone === 'danger'">@if (row.icon) { <mat-icon>{{ row.icon }}</mat-icon> }{{ row.value | i18n }}</span>
+                                @if (row.actions?.length) {
+                                  <app-menu class="form-flow__table-actions" kind="inline" [items]="row.actions!" (itemSelect)="emitControlAction(control, $event)"></app-menu>
+                                }
+                              </td></tr>
                           }
                         </tbody>
                       </table>

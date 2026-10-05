@@ -1,5 +1,7 @@
+@if (!eventCheckoutSlotPickerStore.popup()?.selectionAdapter) {
 @if (eventCheckoutSlotPickerStore.slotPickerPopupComponent(); as slotPickerComponent) {
   <ng-container *ngComponentOutlet="slotPickerComponent"></ng-container>
+}
 }
 
 <app-event-promo-code-popup

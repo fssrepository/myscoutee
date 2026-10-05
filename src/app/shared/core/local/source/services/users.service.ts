@@ -1,3 +1,6 @@
+import { LocalCommunityAccessService } from './community-access.service';
+import { LocalCommunityCasesRepository } from '../repositories/community-cases.repository';
+import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
 import { LocalCommunityGroupsService } from './community-groups.service';
 import { LocalContentModerationRepository } from '../repositories/content-moderation.repository';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
@@ -60,6 +63,9 @@ import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
   providedIn: 'root'
 })
 export class LocalUsersService extends LocalRouteDelayService implements UserService {
+  private readonly communityCases = inject(LocalCommunityCasesRepository);
+  private readonly communityAccess = inject(LocalCommunityAccessService);
+  private readonly communityGroups = inject(LocalCommunityGroupsRepository);
   private readonly groups = inject(LocalCommunityGroupsService);
   private readonly contentModeration = inject(LocalContentModerationRepository);
   private readonly integrationRepository = inject(LocalIntegrationRepository);
@@ -92,8 +98,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const users = LocalUsersMapper.toSelectorListItemList(
       this.usersRepository.queryAvailableDemoUsers(selectorRole)
     );
+    const baseGroups = this.usersRepository.queryDemoBaseGroupTypes(users.map(user => user.id));
     return users.map(user => ({
       ...user,
+      baseGroupTypes: baseGroups.get(user.id) ?? [],
       locationRequired: selectorRole === 'member'
         && !this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(user.locationCoordinates)
     }));
@@ -675,6 +683,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'contacts',
       'feedback',
       'notifications',
+      'cases',
       'paymentRefundsPending',
       'contactRequestsPending',
       'adminJobs',
@@ -720,6 +729,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'contacts',
       'feedback',
       'notifications',
+      'cases',
       'paymentRefundsPending',
       'contactRequestsPending',
       'adminJobs',
@@ -754,7 +764,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterPatch(
       current,
       patch,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport', 'campaign', 'cases']
     );
   }
 
@@ -765,7 +775,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.applyNestedCounterDeltas(
       current,
       deltas,
-      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport']
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport', 'contacts', 'groupSupport', 'campaign', 'cases']
     );
   }
 
@@ -880,7 +890,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
 
     const activities = user.activities;
-    const accountId = this.usersRepository.queryUserById(user.id)?.accountUserId;
+    const profile = this.usersRepository.queryUserById(user.id);
+    const accountId = profile?.accountUserId;
     const notificationActivities = accountId ? this.usersRepository.queryUserById(accountId)?.activities : activities;
     const events = normalizeCounter(activities?.events);
     const invitations = normalizeCounter(activities?.invitations);
@@ -906,8 +917,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       supplies,
       tickets,
       contacts: normalizeCounter(notificationActivities?.contacts),
-      feedback,
+      feedback:feedback+(profile?.workspaceGroupId==='myscoutee-community'?this.communityCases.countFeedback(accountId??user.id):0),
       notifications: normalizeCounter(notificationActivities?.notifications),
+      cases: profile?.workspaceGroupId && this.communityGroups.find(profile.workspaceGroupId)?.groupType === 'community'
+        ? this.communityCases.countVisible(accountId ?? user.id, this.communityAccess.managedGroups(accountId ?? user.id)) : 0,
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
       contactRequestsPending: normalizeCounter(notificationActivities?.contactRequestsPending),
       chat: {
@@ -918,6 +931,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         service: normalizeCounter(chat?.service),
         appSupport: normalizeCounter(chat?.appSupport),
         contacts: normalizeCounter(chat?.contacts),
+        campaign: normalizeCounter(chat?.campaign),
+        cases: normalizeCounter(chat?.cases),
         groupSupport: normalizeCounter(chat?.groupSupport)
       },
       event: {

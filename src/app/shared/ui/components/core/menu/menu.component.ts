@@ -97,6 +97,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private readonly i18n = inject(I18nService);
 
   @Input() kind: AppMenuKind = 'inline';
+  @Input() disabled = false;
   @Input() layout: AppMenuLayout = 'row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() filterable = false;
@@ -821,7 +822,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected triggerDisabled(): boolean {
-    return this.controlDisabled || this.resolveBoolean(this.trigger?.disabled);
+    return this.disabled || this.controlDisabled || this.resolveBoolean(this.trigger?.disabled);
   }
 
   protected triggerPalette(): AppMenuPalette {
@@ -1267,7 +1268,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
     return this.itemVisualLayout(item) === 'big'
-      || this.isSelectTriggerItem(item)
+      || (this.isSelectTriggerItem(item) && !(this.kind === 'inline' && item.compactOnMobile && this.isMobileViewport))
       || this.itemVisualLayout(item) === 'pill'
       || (this.itemVisualLayout(item) === 'action' && !!this.actionRowItemLabel(item));
   }
@@ -1679,7 +1680,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isItemDisabled(item: AppMenuItem<TId, TContext>): boolean {
-    return this.controlDisabled || this.resolveBoolean(item.disabled) || this.isMaxSelectedLimitDisablingItem(item);
+    return this.disabled || this.controlDisabled || this.resolveBoolean(item.disabled) || this.isMaxSelectedLimitDisablingItem(item);
   }
 
   protected isItemRemovable(item: AppMenuItem<TId, TContext>): boolean {
@@ -2433,7 +2434,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private selectControlItem(item: AppMenuItem<TId, TContext>): unknown {
-    if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
+    if (!this.controlAttached || this.disabled || this.controlDisabled || this.isPassiveItem(item)) {
       return undefined;
     }
     this.markControlTouched();
@@ -2443,7 +2444,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private removeControlItem(item: AppMenuItem<TId, TContext>): unknown {
-    if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
+    if (!this.controlAttached || this.disabled || this.controlDisabled || this.isPassiveItem(item)) {
       return this.currentControlEventValue();
     }
     this.markControlTouched();

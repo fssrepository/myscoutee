@@ -1,3 +1,4 @@
+import { TextCardsInputComponent, type TextCardsConfig } from '../inputs/text-cards-input/text-cards-input.component';
 import { OnOffToggleComponent } from '../../on-off-toggle/on-off-toggle.component';
 import { CommonModule } from '@angular/common';
 import {
@@ -32,6 +33,7 @@ import type {
   AppMenuTrigger,
   AppMenuValueKey
 } from '../../menu/menu.types';
+import { ImageGalleryComponent } from '../../image-gallery/image-gallery.component';
 import { ImageCarouselComponent } from '../../image-carousel';
 import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
@@ -79,6 +81,7 @@ interface FormFlowSelectedMenuItem {
   imports: [
     CommonModule,
     OnOffToggleComponent,
+    TextCardsInputComponent,
     FormsModule,
     MatIconModule,
     AppMenuComponent,
@@ -89,6 +92,7 @@ interface FormFlowSelectedMenuItem {
     PricingEditorInputComponent,
     RouteInputComponent,
     ImageCarouselComponent,
+    ImageGalleryComponent,
     IndicatorComponent,
     ImageCardComponent,
     InfoCardComponent,
@@ -502,6 +506,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected menuModel(control: FormFlowControlModel): AppMenuModel<string, unknown> | null {
     return this.menuConfig(control).model ?? null;
+  }
+
+  protected textCardsConfig(control: FormFlowControlModel): TextCardsConfig {
+    return control.config as TextCardsConfig;
   }
 
   protected tableRows(control: FormFlowControlModel): import('./form-flow.types').FormFlowTableControlConfig['rows'] {

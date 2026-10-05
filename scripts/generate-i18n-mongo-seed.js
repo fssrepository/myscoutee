@@ -42,6 +42,10 @@ function readBundle(filePath) {
 }
 
 function writeJson(filePath, data) {
+  if (fs.existsSync(filePath)) {
+    const order = new Map(JSON.parse(fs.readFileSync(filePath, 'utf8')).map((row,index) => [row._id,index]));
+    data = [...data].sort((a,b) => (order.get(a._id) ?? Infinity) - (order.get(b._id) ?? Infinity) || a._id.localeCompare(b._id));
+  }
   const content = `${JSON.stringify(data, null, 2)}\n`;
   // The dev seed watcher replaces changed collections. Do not trigger an
   // unnecessary message import when only the published bundle version changed.

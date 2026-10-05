@@ -1,3 +1,4 @@
+import { UserProfileStore } from "../../../shared/ui/context/stores/user-profile.store";
 import {
   CommonModule,
   DOCUMENT
@@ -35,9 +36,6 @@ import {
   DeploymentConfigurationService
 } from '../../../shared/core/base/services/deployment-configuration.service';
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
-import {
-  DialogComponent
-} from '../../../shared/ui/components/core/dialog/dialog.component';
 import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   AdminMenuStore
@@ -57,7 +55,7 @@ import {
     DeploymentBrandComponent,
     MatIconModule,
     MatRippleModule,
-    DialogComponent
+
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
@@ -68,6 +66,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly workspace = inject(AdminWorkspaceStore);
   protected readonly adminMenu = inject(AdminMenuStore);
   protected readonly sessionService = inject(SessionService);
+  private readonly userProfiles = inject(UserProfileStore);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly document = inject(DOCUMENT);
@@ -97,8 +96,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly paymentSimulatorPopupComponent = this.paymentSimulatorPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
-  protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
+
 
   constructor() {
     this.document.documentElement.classList.add('admin-document-no-scroll');
@@ -150,7 +148,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       if (session) {
         this.restoringWorkspace.set(true);
         const dashboard = await this.bootstrapAdmin(
-          session.kind === 'demo' ? session.userId : undefined
+          this.userProfiles.activeUserProfile()?.admin ? this.userProfiles.activeUserId() : session.kind === 'demo' ? session.userId : undefined
         );
         this.restoringWorkspace.set(false);
         if (dashboard) {
@@ -218,7 +216,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       }
       this.workspace.prepareSelectedAdminSession(adminId);
       return Boolean(await this.bootstrapAdmin(
-        session.kind === 'demo' ? session.userId : undefined
+        this.userProfiles.activeUserProfile()?.admin ? this.userProfiles.activeUserId() : session.kind === 'demo' ? session.userId : undefined
       ));
     } catch {
       this.clearAdminSession();

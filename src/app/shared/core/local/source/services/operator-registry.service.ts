@@ -2,8 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { OperatorConfigurationMapper } from '../../../base/mappers/operator-configuration.mapper';
 import {
-  DEFAULT_DEPLOYMENT_BRANDING,
-  DEPLOYMENT_THEME_PRESETS
+  DEFAULT_DEPLOYMENT_BRANDING
 } from '../../../contracts/deployment-configuration.interface';
 import type { ListQuery } from '../../../contracts/list.interface';
 import type {
@@ -947,7 +946,6 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         )
       : current.configuration.integration?.publicBaseUrl ?? null;
     const previousPaymentProvider = current.configuration.payment.providerId;
-    const themePreset = this.deploymentThemePreset(request.branding.themePreset);
     const productName = `${request.branding.productName ?? ''}`.trim().slice(0, 80);
     const logoUrl = `${request.branding.logoUrl ?? ''}`.trim();
     if (!productName) {
@@ -1060,7 +1058,6 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         homeLabel: current.configuration.branding.homeLabel,
         logoUrl,
         logoCharacterIndex,
-        themePreset,
         revision: current.configuration.branding.revision + 1
       },
       integration: {
@@ -1429,13 +1426,6 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     };
   }
 
-  private deploymentThemePreset(
-    value: OperatorConfigurationSaveRequestDto['branding']['themePreset']
-  ): OperatorConfigurationSaveRequestDto['branding']['themePreset'] {
-    return DEPLOYMENT_THEME_PRESETS.includes(value)
-      ? value
-      : DEFAULT_DEPLOYMENT_BRANDING.themePreset;
-  }
 
   private requireClaimVerificationRequest(
     request: OperatorClaimRequestDto

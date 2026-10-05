@@ -702,6 +702,8 @@ export class UsersService extends BaseRouteModeService {
         appSupport: chatAppSupport ?? 0,
         contacts: normalizeWithFallback(counterOverrides.chat?.contacts, fallbackActivities.chat?.contacts) ?? 0,
         groupSupport: chatGroupSupport ?? 0,
+        campaign: normalizeWithFallback(counterOverrides.chat?.campaign, fallbackActivities.chat?.campaign) ?? 0,
+        cases: normalizeWithFallback(counterOverrides.chat?.cases, fallbackActivities.chat?.cases) ?? 0,
         supportCases: {
           pending: normalizeWithFallback(supportCases?.pending, 0) ?? 0,
           warned: normalizeWithFallback(supportCases?.warned, 0) ?? 0,
@@ -811,6 +813,8 @@ export class UsersService extends BaseRouteModeService {
           service: Math.max(0, Math.trunc(Number(user.activities?.chat?.service) || 0)),
           appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0)),
           contacts: Math.max(0, Math.trunc(Number(user.activities?.chat?.contacts) || 0)),
+          campaign: Math.max(0, Math.trunc(Number(user.activities?.chat?.campaign) || 0)),
+          cases: Math.max(0, Math.trunc(Number(user.activities?.chat?.cases) || 0)),
           groupSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.groupSupport) || 0)),
           supportCases: {
             pending: Math.max(0, Math.trunc(Number(user.activities?.chat?.supportCases?.pending) || 0)),

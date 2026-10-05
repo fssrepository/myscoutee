@@ -1,5 +1,5 @@
 @if (popupState()) {
-  <app-popup [model]="popupModel()" [zIndex]="4920">
+  <app-popup [model]="popupModel()" [zIndex]="popupState()?.zIndex ?? 4920">
     <div class="event-checkout-slot-picker" [class.is-saving]="saving" [class.is-month-view]="isMonthView()">
       @if (errorMessage) {
         <p class="event-checkout-slot-picker__error">{{ errorMessage }}</p>
@@ -7,7 +7,7 @@
 
       <div class="event-checkout-slot-picker__viewport">
         <app-smart-list
-          class="event-checkout-slot-picker__slots"
+          class="event-checkout-slot-picker__slots" data-guide-field="appointment-slots"
           [config]="slotListConfig"
           [loadPage]="slotLoadPage"
           [itemTemplate]="slotItemTemplate"
@@ -72,7 +72,7 @@
 }
 
 @if (pricingSummarySlot) {
-  <app-popup [model]="pricingSummaryPopupModel()" [zIndex]="4930">
+  <app-popup [model]="pricingSummaryPopupModel()" [zIndex]="(popupState()?.zIndex ?? 4920) + 10">
     <app-event-basket-input
       class="event-checkout-slot-picker__pricing-summary"
       [config]="pricingSummaryBasketConfig"

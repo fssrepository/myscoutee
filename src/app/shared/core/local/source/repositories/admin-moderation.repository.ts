@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../../common/app.db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { AdminModerationStore, AdminReportDto } from '../../../contracts/admin.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
@@ -8,7 +8,7 @@ import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
   providedIn: 'root'
 })
 export class LocalAdminModerationRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(LocalMemoryDb);
 
   async whenReady(): Promise<void> {
     await this.memoryDb.whenReady();

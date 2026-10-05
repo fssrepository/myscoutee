@@ -1,12 +1,18 @@
 @if (isAccountReactivationPending) {
   <div class="game-page game-page-reactivation-pending" aria-hidden="true"></div>
+} @else if (workspace.isCommunity() && workspace.active()?.groupId !== 'myscoutee-community' && memberActionsAvailable && isAvatarProfileSettled && !isBlockedUser && !isGameVisibilityPaused) {
+  @defer (on immediate) { <app-community-announcements [inline]="true" [branding]="deploymentBranding()"></app-community-announcements> }
+ } @else if (workspace.isCommunity() && workspace.active()?.groupId === 'myscoutee-community' && memberActionsAvailable && isAvatarProfileSettled && !isBlockedUser && !isGameVisibilityPaused) {
+  @defer (on immediate) { <app-community-services-home [branding]="deploymentBranding()"></app-community-services-home> }
+} @else if (workspace.isWork() && memberActionsAvailable && isAvatarProfileSettled && !isBlockedUser && !isGameVisibilityPaused) {
+  @defer (on immediate) { <app-work-home [branding]="deploymentBranding()"></app-work-home> }
 } @else {
 <div class="game-page" data-guide-surface [ngClass]="gamePageStatusClass()">
   <app-home-header
     data-guide-field="home-header"
     [branding]="deploymentBranding()"
     [items]="homeHeaderMenuItems()"
-    [showControls]="memberActionsAvailable && (!isAvatarProfileSettled || homeHeaderControlsReady)"
+    [showControls]="homeHeaderControlsReady"
     (itemSelect)="onHomeHeaderMenuSelect($event)"
   ></app-home-header>
 

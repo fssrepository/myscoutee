@@ -13,6 +13,7 @@ import type { LocationInputConfig } from '../inputs/location-input';
 import type { PoliciesInputConfig } from '../inputs/policies-input';
 import type { PricingEditorConfig } from '../inputs/pricing-editor';
 import type { RouteInputConfig } from '../inputs/route-input';
+import type { TextCardsConfig } from '../inputs/text-cards-input/text-cards-input.component';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
 
 export interface FormFlowDraft<TData> {
@@ -42,7 +43,8 @@ export type FormFlowControlKind =
   | 'static'
   | 'table'
   | 'text'
-  | 'textarea';
+  | 'textarea'
+  | 'text-cards';
 
 export interface FormFlowHeaderModel {
   title?: string;
@@ -67,6 +69,7 @@ export interface FormFlowMenuControlConfig {
 }
 
 export interface FormFlowImageCarouselControlConfig {
+  gallery?: boolean;
   slotCount?: number;
   compact?: boolean;
   autoSize?: boolean;
@@ -105,7 +108,7 @@ export interface FormFlowPoliciesControlConfig {
 }
 
 export interface FormFlowTableControlConfig {
-  rows: readonly { label: string; value: string; icon?: string; badgeTone?: 'danger'; palette?: import('../../menu').AppMenuPalette }[];
+  rows: readonly { id?: string; label: string; value: string; icon?: string; badgeTone?: 'danger'; palette?: import('../../menu').AppMenuPalette; actions?: readonly AppMenuItem<string, unknown>[] }[];
 }
 
 export interface FormFlowControlSummaryConfig {
@@ -166,6 +169,7 @@ export interface FormFlowControlModel {
     | FormFlowLinkControlConfig
     | FormFlowLocationControlConfig
     | FormFlowTableControlConfig
+    | TextCardsConfig
     | FormFlowPoliciesControlConfig
     | FormFlowPricingControlConfig
     | FormFlowRouteControlConfig

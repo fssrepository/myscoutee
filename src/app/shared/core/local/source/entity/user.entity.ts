@@ -65,6 +65,7 @@ export interface UserEventCountersRecord {
 }
 
 export interface UserChatCountersRecord {
+  supportCases?: import('../../../contracts/user.interface').UserSupportCaseCountersDto;
   all?: number;
   event?: number;
   subEvent?: number;
@@ -72,6 +73,8 @@ export interface UserChatCountersRecord {
   service?: number;
   appSupport?: number;
   contacts?: number;
+  campaign?: number;
+  cases?: number;
   groupSupport?: number;
 }
 
@@ -104,7 +107,8 @@ export interface UserRecord {
   affiliateRegistrations?: { userId: string; registeredAtIso: string }[];
   affiliateReferrerUserId?: string;
   affiliateRevenue?: import('../../../contracts/integration.interface').AffiliateRevenueDto;
-  affiliatePayments?: Record<string, { receiptNote?: string; receiptPayerName?: string; receiptRecipientName?: string; manualCash?: boolean; manualCashDeleted?: boolean; provider?: string; ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean; sourceId?: string; recipientUserId?: string; createdAtIso?: string; bookingStartAtIso?: string; cancellationPolicy?: import('../../../contracts/pricing.interface').PricingCancellationPolicy; eventRefundEligible?: boolean; refundRequest?: { id: string; amount: number; target: number; status: 'pending' | 'approved'; requestedAtIso: string }; refundOperations?: { id: string; amount: number; createdAtIso: string }[] }>;
+  savedPaymentMethods?: import('../../../contracts/payment-method.interface').SavedPaymentMethodDto[];
+  affiliatePayments?: Record<string, { paymentMethodId?: string; paymentStatus?:string; fulfillmentKind?:string; checkoutSessionId?:string; bookingStatus?:string; receiptNote?: string; receiptPayerName?: string; receiptRecipientName?: string; manualCash?: boolean; manualCashDeleted?: boolean; provider?: string; ownerId: string; currency: string; gross: number; refunded: number; eventBooking: boolean; sourceId?: string; recipientUserId?: string; createdAtIso?: string; bookingStartAtIso?: string; cancellationPolicy?: import('../../../contracts/pricing.interface').PricingCancellationPolicy; eventRefundEligible?: boolean; refundRequest?: { id: string; amount: number; target: number; status: 'pending' | 'approved'; requestedAtIso: string }; refundOperations?: { id: string; amount: number; createdAtIso: string }[] }>;
   devices?: DeviceRegistrationRecord[];
   id: string;
   name: string;

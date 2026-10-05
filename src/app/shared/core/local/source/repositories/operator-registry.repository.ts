@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 import type { OperatorRegistryStateRecord } from '../entity/operator.entity';
+import type { DeploymentConfigurationDto } from '../../../contracts/deployment-configuration.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -26,6 +27,24 @@ export class LocalOperatorRegistryRepository {
   async read(): Promise<OperatorRegistryStateRecord | null> {
     await this.whenReady();
     return this.cloneRecord(this.cachedRecord);
+  }
+
+  async readPublicConfiguration(): Promise<DeploymentConfigurationDto> {
+    await this.whenReady();
+    if (this.cachedRecord) {
+      const configuration = this.cachedRecord.configuration;
+      return structuredClone({
+        ...configuration.branding,
+        paymentProviderId: configuration.payment.providerId,
+        firebaseMessagingConfigured: configuration.firebase.messagingCredentialConfigured,
+        socialLinks: configuration.socialLinks,
+        privacyContact: configuration.privacyContact
+      });
+    }
+    // The public local site has its own small catalog before any operator demo exists.
+    // Reading it does not create an operator, ledger or registry record.
+    const { default: configurationData } = await import('../../seed/data/deployment-configuration.json');
+    return structuredClone(configurationData);
   }
 
   async write(record: OperatorRegistryStateRecord): Promise<void> {

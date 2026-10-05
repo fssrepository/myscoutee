@@ -207,12 +207,14 @@ export class LocalEventCheckoutBasketsRepository {
 
   async purgeExpiredReservations(
     expireMembership: (userId: string, sourceId: string) => void,
-    now = Date.now()
+    now = Date.now(),
+    belongsToGroup: (userId: string, sourceId: string) => boolean = () => true
   ): Promise<number> {
     const table = await this.readTable();
     let count = 0;
     const updatedAtIso = new Date(now).toISOString();
     for (const basket of Object.values(table.byKey)) {
+      if (!belongsToGroup(basket.userId, basket.sourceId)) continue;
       const due = basket.items.filter(item =>
         ['draft', 'confirmed', 'waiting', 'approval-pending', 'approved'].includes(item.status)
         && this.isReservationResultState(item.resultState)

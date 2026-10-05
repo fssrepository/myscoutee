@@ -81,13 +81,17 @@ describe('FirebaseAppService reconciliation', () => {
     expect(deleteApp).toHaveBeenCalledWith(firstRuntime?.app);
   });
 
-  it('retries after an unavailable configuration instead of caching null', async () => {
+  it('handles disabled Firebase without parsing an empty body and can activate later', async () => {
+    const disabledResponse = new Response(null, { status: 204 });
+    const parseBody = vi.spyOn(disabledResponse, 'json');
     fetchMock
-      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(disabledResponse)
       .mockResolvedValueOnce(jsonResponse(firebaseConfiguration(3)));
     const service = TestBed.inject(FirebaseAppService);
 
     expect(await service.ensureFirebaseRuntime()).toBeNull();
+    expect(parseBody).not.toHaveBeenCalled();
+    expect(initializeApp).not.toHaveBeenCalled();
     expect(setFirebaseRuntimeAvailable).toHaveBeenLastCalledWith(false);
     expect((await service.ensureFirebaseRuntime())?.config.revision).toBe(3);
     expect(setFirebaseRuntimeAvailable).toHaveBeenLastCalledWith(true);

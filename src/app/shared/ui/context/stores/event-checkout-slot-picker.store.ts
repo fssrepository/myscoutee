@@ -3,12 +3,19 @@ import { Injectable, Type, signal } from '@angular/core';
 import type {
   ActivityEventRecord,
   EventCheckoutBasket,
+  EventCheckoutSlotsQuery, EventCheckoutSlotsResult,
   EventCheckoutBasketItem
 } from '../../../core/contracts/activity.interface';
 
+export type SlotPickerRecord = Pick<ActivityEventRecord, 'id' | 'title' | 'timeframe' | 'startAtIso' | 'endAtIso' | 'pricing' | 'upcomingSlots'>;
 export interface EventCheckoutSlotPickerRequest {
+  zIndex?: number;
+  selectionAdapter?: {
+    loadSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null>;
+    saveSlots(slotIds: string[]): Promise<void>;
+  };
   userId: string;
-  record: ActivityEventRecord;
+  record: SlotPickerRecord;
   checkoutBasket?: EventCheckoutBasket | null;
   selectedDateKey?: string | null;
   checkoutSessionId?: string | null;

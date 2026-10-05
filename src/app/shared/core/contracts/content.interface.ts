@@ -2,6 +2,7 @@ import { ImageDetailsMap } from './image-gallery.interface';
 import type * as UserContracts from './user.interface';
 
 export interface IdeaPostDto {
+  workspaceGroupId?: string | null;
   id: string;
   contentKey: string;
   lang: string;
@@ -25,6 +26,7 @@ export interface IdeaPostDto {
 }
 
 export interface IdeaPostPublicPageQueryDto {
+  groupId?: string | null;
   page?: number | null;
   pageSize?: number | null;
   cursor?: string | null;
@@ -212,7 +214,22 @@ export interface SupportedCountryDto {
   countryName: string;
 }
 
+export interface LandingSlideDto {
+  id: string;
+  index: string;
+  titleKey: string;
+  title: string;
+  messageKey: string;
+  message: string;
+  imageUrl: string;
+  tone?: 'blue' | 'purple' | 'pink' | 'orange' | null;
+  sliceX?: string | null;
+  sliceY?: string | null;
+}
+
 export interface LandingContentStateDto {
+  groupId?: string | null;
+  slides?: LandingSlideDto[];
   privacy: HelpCenterStateDto;
   terms: HelpCenterStateDto;
   ideas: IdeaPostDto[];

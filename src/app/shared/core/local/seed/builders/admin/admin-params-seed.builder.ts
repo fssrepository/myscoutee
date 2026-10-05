@@ -7,6 +7,10 @@ import type {
 } from './admin-seed.models';
 
 export class AdminParamsSeedBuilder {
+  static buildScopedParamsStore(): AdminSeedParamsStore & { baseGroups: Record<string, AdminSeedParamsStore> } {
+    return { ...this.buildDefaultParamsStore(), baseGroups: { 'myscoutee-work': this.buildDefaultParamsStore(), 'myscoutee-community': this.buildDefaultParamsStore() } };
+  }
+
   static buildDefaultParamsStore(): AdminSeedParamsStore {
     const changedDate = '2026-05-01T09:00:00.000Z';
     const sections: AdminSeedParamsSectionDto[] = [

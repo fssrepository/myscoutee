@@ -1,18 +1,3 @@
-export const DEPLOYMENT_THEME_PRESETS = [
-  'AURORA',
-  'OCEAN',
-  'FOREST',
-  'SUNSET',
-  'VIOLET',
-  'ROSE',
-  'AMBER',
-  'SLATE',
-  'AQUARIUS',
-  'MONOCHROME'
-] as const;
-
-export type DeploymentThemePreset = typeof DEPLOYMENT_THEME_PRESETS[number];
-
 export interface DeploymentSocialLinkDto {
   provider: string;
   label: string;
@@ -32,7 +17,6 @@ export interface DeploymentBrandingDto {
   homeLabel: string;
   logoUrl: string;
   logoCharacterIndex: number | null;
-  themePreset: DeploymentThemePreset;
   revision: number;
 }
 
@@ -41,7 +25,6 @@ export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
   homeLabel: 'Your preferences come first',
   logoUrl: 'assets/logo/heart.webp',
   logoCharacterIndex: 0,
-  themePreset: 'VIOLET',
   revision: 0
 };
 

@@ -149,7 +149,7 @@ describe('DeploymentConfigurationService', () => {
       homeLabel: 'Meet locally',
       logoUrl: 'https://cdn.example.test/community-hub.webp',
       logoCharacterIndex: null,
-      themePreset: 'OCEAN',
+
       paymentProviderId: 'stripe',
       socialLinks: [{
         provider: 'community',
@@ -174,7 +174,7 @@ describe('DeploymentConfigurationService', () => {
       homeLabel: 'Meet locally',
       logoUrl: 'https://cdn.example.test/community-hub.webp',
       logoCharacterIndex: 0,
-      themePreset: 'OCEAN',
+
       revision: 4
     });
     expect(service.branding()).toEqual(branding);
@@ -192,7 +192,7 @@ describe('DeploymentConfigurationService', () => {
     });
     expect(service.paymentProviderId()).toBe('stripe');
     expect(TestBed.inject(DOCUMENT).documentElement.dataset['deploymentTheme'])
-      .toBe('ocean');
+      .toBeUndefined();
     expect(TestBed.inject(DOCUMENT).title).toBe('Community Hub');
     expect(metaContent('meta[name="description"]')).toBe('Meet locally');
     expect(metaContent('meta[property="og:title"]')).toBe('Community Hub');
@@ -261,7 +261,7 @@ describe('DeploymentConfigurationService', () => {
       homeLabel: 'Meet locally',
       logoUrl: '',
       logoCharacterIndex: -1,
-      themePreset: 'OCEAN',
+
       paymentProviderId: null,
       socialLinks: [],
       privacyContact: {
@@ -293,7 +293,7 @@ describe('DeploymentConfigurationService', () => {
       homeLabel: 'Meet locally',
       logoUrl: 'assets/logo/heart.png',
       logoCharacterIndex: 3,
-      themePreset: 'OCEAN',
+
       paymentProviderId: null,
       socialLinks: [],
       privacyContact: {

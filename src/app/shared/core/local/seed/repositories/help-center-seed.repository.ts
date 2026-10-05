@@ -1,3 +1,5 @@
+import WORK_HELP from '../data/work-help-center.json';
+import COMMUNITY_HELP from '../data/community-help-center.json';
 import { HELP_CENTER_TABLE_NAME } from '../../source/entity/content.entity';
 import type {
   HelpCenterGuideFieldRecord,
@@ -10,8 +12,8 @@ import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import type { HelpCenterAuditEntryDto, HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../contracts';
-import { LocalHelpCenterMapper } from '../../source/mappers';
-import { SeedHelpCenterContentBuilder } from '../builders';
+import { LocalHelpCenterMapper } from '../../source/mappers/help-center.mapper';
+import { SeedHelpCenterContentBuilder } from '../builders/help-center-content-seed.builder';
 import GUIDE_FIELDS_BY_PAGE from '../data/help-center-guide-fields.json';
 import { I18nService } from '../../../base/services/i18n.service';
 
@@ -36,10 +38,62 @@ export class SeedHelpCenterRepository {
       }
     }
     changed = this.ensureGuideFields() || changed;
+    changed = this.ensureBaseSeeded('myscoutee-work', WORK_HELP) || changed;
+    changed = this.ensureBaseSeeded('myscoutee-community', COMMUNITY_HELP) || changed;
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
     return changed;
+  }
+
+  private ensureBaseSeeded(baseId: string, sourceRows: typeof WORK_HELP): boolean {
+    const current = this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
+    const existing = current.baseGroups?.[baseId];
+    const revisions = sourceRows.map(source => LocalHelpCenterMapper.toRecord({
+      id: source._id, documentKind: source.documentType as HelpCenterDocumentKind,
+      contextKey: 'contextKey' in source ? String(source.contextKey) : null,
+      lang: source.lang, languageLabel: source.languageLabel, version: source.version,
+      title: source.title, summary: source.summary, description: source.description,
+      headerColor: source.headerColor,
+      presentation: 'presentation' in source && source.presentation === 'tour' ? 'tour' : 'document',
+      sections: source.sections, active: source.active,
+      createdAtIso: source.createdDate, createdByUserId: source.createdUser,
+      updatedAtIso: source.updatedDate, updatedByUserId: source.updatedUser
+    } as HelpCenterRevisionDto));
+    const table: HelpCenterTable = {
+      seeded: true, seededKinds: { help: true, privacy: true, terms: true, explanation: true },
+      activeRevisionId: revisions.find(row => row.documentKind === 'help' && row.lang === 'en')?.id ?? null,
+      activeRevisionIdsByKind: Object.fromEntries(revisions.map(row => [
+        this.activeRevisionKey(row.documentKind as HelpCenterDocumentKind, row.lang ?? 'en', row.contextKey), row.id])),
+      revisionsById: Object.fromEntries(revisions.map(row => [row.id, row])), revisionIds: revisions.map(row => row.id),
+      auditById: {}, auditIds: [], guideFieldsById: current.guideFieldsById, guideFieldIds: current.guideFieldIds,
+      privacyConsentsById: {}, privacyConsentIds: []
+    };
+    const missing = revisions.filter(row => !existing?.revisionsById[row.id]);
+    if (existing && !missing.length && existing.guideFieldsById === current.guideFieldsById) return false;
+    const merged = existing ? { ...existing,
+      revisionsById: { ...existing.revisionsById, ...Object.fromEntries(missing.map(row => [row.id, row])) },
+      revisionIds: [...existing.revisionIds, ...missing.map(row => row.id)],
+      activeRevisionIdsByKind: { ...table.activeRevisionIdsByKind, ...existing.activeRevisionIdsByKind },
+      guideFieldsById: current.guideFieldsById, guideFieldIds: current.guideFieldIds
+    } : table;
+    // Advance shipped guides without replacing a revision edited by an administrator.
+    if (existing) for (const row of missing) {
+      const key = this.activeRevisionKey(row.documentKind as HelpCenterDocumentKind, row.lang ?? 'en', row.contextKey);
+      const previousId = existing.activeRevisionIdsByKind?.[key];
+      const previous = previousId ? existing.revisionsById[previousId] : undefined;
+      const activate = !previous || previous.createdByUserId === 'system' && previous.updatedByUserId === 'system'
+        && previous.version < row.version;
+      merged.revisionsById[row.id] = { ...row, active: activate };
+      if (activate) {
+        merged.activeRevisionIdsByKind![key] = row.id;
+        if (previous) merged.revisionsById[previous.id] = { ...previous, active: false };
+      }
+    }
+    this.memoryDb.write(state => ({ ...state, [HELP_CENTER_TABLE_NAME]: {
+      ...state[HELP_CENTER_TABLE_NAME], baseGroups: { ...state[HELP_CENTER_TABLE_NAME].baseGroups, [baseId]: merged }
+    } }));
+    return true;
   }
 
   private ensureGuideFields(): boolean {

@@ -1,7 +1,11 @@
+import { PopupPresenceStore } from '../../../shared/ui/context/stores/popup-presence.store';
+import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
+import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
+import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/group-type-menu';
 import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, effect, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
@@ -73,6 +77,8 @@ interface PartnerRoleOverview {
 export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly landingContent = inject(LandingContentService);
+  protected readonly landingMode = this.landingContent.mode;
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly i18n = inject(I18nService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
@@ -81,7 +87,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.deploymentConfiguration.socialLinks;
   protected readonly heroGraphText = computed(() => {
     this.i18n.revision();
-    const text = this.i18n.translate('landing.hero.graph', '6 people · 6 priority lists → 1 team');
+    const text = this.i18n.translate(this.heroKey('graph'), '6 people · 6 priority lists → 1 team');
     const splitAt = text.lastIndexOf('→') + 1;
     return { prefix: text.slice(0, splitAt), result: text.slice(splitAt).trim() };
   });
@@ -97,58 +103,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input() networkUnavailable = false;
   @Input() networkUnavailableLabel = 'No network';
 
+  @Output() readonly modeSelected = new EventEmitter<GroupType>();
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
   @Output() readonly operatorRequested = new EventEmitter<void>();
   @Output() readonly consentRequested = new EventEmitter<void>();
   @Output() readonly termsRequested = new EventEmitter<void>();
 
-  protected readonly howSlides: readonly HowStepSlide[] = [
-    {
-      id: 'priority-feedback',
-      index: '01',
-      titleKey: 'set.priorities.and.feedback',
-      title: 'Set priorities and feedback',
-      messageKey: '1.10.score.not.just.yes.no.show.real.interest.level.from.low.to.high.with.clearer.signals',
-      message: '1-10 score, not just yes/no. Show real interest level from low to high with clearer signals.',
-      tone: 'blue',
-      sliceX: '0%',
-      sliceY: '0%'
-    },
-    {
-      id: 'matched-group-chat',
-      index: '02',
-      titleKey: 'start.in.a.matched.group.chat',
-      title: 'Start in a matched group chat',
-      messageKey: 'group.first.chat.join.top.matches.where.interest.matches.both.ways',
-      message: 'Group-first chat. Join top matches where interest matches both ways.',
-      tone: 'purple',
-      sliceX: '100%',
-      sliceY: '0%'
-    },
-    {
-      id: 'meet-through-events',
-      index: '03',
-      titleKey: 'meet.through.events',
-      title: 'Meet through events',
-      messageKey: 'live.updates.change.priorities.anytime.then.meet.through.events.and.go.offline',
-      message: 'Live updates. Change priorities anytime, then meet through events and go offline.',
-      tone: 'pink',
-      sliceX: '0%',
-      sliceY: '100%'
-    },
-    {
-      id: 'host-events',
-      index: '04',
-      titleKey: 'host.your.own.events',
-      title: 'Host your own events',
-      messageKey: 'create.events.for.everyone.friends.or.invite.only',
-      message: 'Create events for everyone, friends, or invite-only.',
-      tone: 'orange',
-      sliceX: '100%',
-      sliceY: '100%'
-    }
-  ];
+  @Input() howSlides: readonly HowStepSlide[] = [];
 
   protected readonly partnerRoles: readonly PartnerRoleOverview[] = [
     {
@@ -233,7 +195,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     },
     pagination: {
       mode: 'arrows',
-      autoplayMs: 5000
+      autoplayMs: () => this.popupPresence.visible() ? null : 5000
     },
     containerClass: {
       'entry-how-card-list': true
@@ -262,6 +224,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
   protected readonly appVersionLabel = inject(PwaService).appVersionLabel;
+  protected howSmartListFilters = { signature: '' };
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
   private readonly articlesReadySignal = new BehaviorSubject<number>(0);
   private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;
@@ -345,13 +308,45 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private landingPopupScrollLocked = false;
   private previousBodyOverflow = '';
   private partnersPopupTrigger: HTMLElement | null = null;
+  private readonly popupPresence = inject(PopupPresenceStore);
   private partnersPopupFocusTimer: ReturnType<typeof setTimeout> | null = null;
 
+  protected heroKey(part: string): string {
+    return `landing.${this.landingMode() === 'dating' ? '' : `${this.landingMode()}.`}hero.${part}`;
+  }
+
+  protected readonly usageModeItems = computed<AppMenuItem[]>(() => {
+    const selected = this.landingMode();
+    const trigger = groupTypeTrigger(selected);
+    return [{ id: 'usage-mode', kind: 'select-trigger', label: trigger.label, icon: trigger.icon,
+      palette: trigger.palette, compactOnMobile: true, layout: 'pill', surface: 'tinted',
+      items: groupTypeMenuItems(selected) }];
+  });
+
+  protected selectUsageMode(event: AppMenuItemSelectEvent): void {
+    if (event.item.id === 'dating' || event.item.id === 'work' || event.item.id === 'community') this.modeSelected.emit(event.item.id);
+  }
+
+  constructor() {
+    effect(onCleanup => {
+      const root = this.documentRef.documentElement;
+      const mode = this.landingMode();
+      root.dataset['landingMode'] = mode;
+      onCleanup(() => { if (root.dataset['landingMode'] === mode) delete root.dataset['landingMode']; });
+    });
+  }
+
   ngOnInit(): void {
+    void this.deploymentConfiguration.initialize();
     this.updateFeaturedIdeaSmartListFilters();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['networkUnavailable'] && !this.networkUnavailable) void this.deploymentConfiguration.initialize();
+    if (changes['howSlides']) {
+      this.howSmartListFilters = { signature: JSON.stringify(this.howSlides) };
+      this.ideasPopupLoadGeneration++;
+    }
     if (changes['ideaCards'] || changes['articlesLoading']) {
       this.updateFeaturedIdeaSmartListFilters();
       this.articlesReadySignal.next(Date.now());
@@ -884,7 +879,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     const result = await this.ideaPosts.loadPublishedIdeaCardsPage({
       page: Math.max(0, Math.trunc(Number(query.page) || 0)),
       pageSize,
-      cursor: query.cursor ?? null
+      cursor: query.cursor ?? null,
+      groupId: baseGroupId(this.landingMode())
     }, { signal });
     if (this.ideasPopupOpen && loadGeneration === this.ideasPopupLoadGeneration) {
       this.ideasPopupArticleCount = result.total;

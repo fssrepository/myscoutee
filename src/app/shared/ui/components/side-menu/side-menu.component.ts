@@ -1,3 +1,9 @@
+import { ServiceFeedbackStore } from '../../context/stores/service-feedback.store';
+import { EventCheckoutSlotPickerStore } from '../../context/stores/event-checkout-slot-picker.store';
+import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
+import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
+import { CommunityCasesStore } from '../../context/stores/community-cases.store';
+import { CampaignsStore } from '../../context/stores/campaigns.store';
 import { ExplanationLauncherComponent } from '../explanation-popup/explanation-launcher.component';
 import { FloatingLauncherComponent } from '../core/floating-launcher/floating-launcher.component';
 import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
@@ -97,9 +103,6 @@ import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
 import * as AppConstants from '../../../core/common/constants';
-import {
-  DialogComponent
-} from '../core/dialog/dialog.component';
 import {
   ProfileSettingsPopupsComponent
 } from '../../../../profile/components/settings-popups/settings-popups.component';
@@ -238,7 +241,7 @@ type NavigatorHeaderActionMenuItemId =
     AppMenuComponent,
     HeaderCardComponent,
     ProfileSettingsPopupsComponent,
-    DialogComponent,
+
     NotificationCenterPopupComponent,
     PopupComponent,
     IndicatorComponent,
@@ -309,6 +312,7 @@ export class SideMenuComponent implements OnDestroy {
       imageFallback: workspace ? AppUtils.initialsFromText(workspace.name) : '',
       imageShape: 'circle',
       palette: workspace ? this.groupWorkspaces.palette(workspace.groupId) : 'green',
+      counter: { value: this.groupWorkspaces.avatarBadgeCount(), max: 99 },
       layout: 'pill', disabled: ['idle', 'loading'].includes(this.activeUserLoadState().status) };
   });
   protected readonly workspaceItems = computed(() => this.groupWorkspaces.menuItems(this.groupWorkspaces.context.active()?.groupId ?? 'main'));
@@ -327,6 +331,12 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
+  protected readonly campaigns = inject(CampaignsStore);
+  protected readonly announcements = inject(CommunityAnnouncementsStore);
+  protected readonly services = inject(ServiceOfferingsStore);
+  protected readonly caseSlotPicker = inject(EventCheckoutSlotPickerStore);
+  protected readonly serviceFeedback=inject(ServiceFeedbackStore);
+  protected readonly cases = inject(CommunityCasesStore);
   protected readonly communityGroups = inject(CommunityGroupsStore);
   protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
     this.communityGroups.counters().hosting + this.communityGroups.counters().participation + this.communityGroups.counters().pending + this.communityGroups.counters().invitations));
@@ -340,10 +350,13 @@ export class SideMenuComponent implements OnDestroy {
       id: 'community', label: 'navigator.community', icon: 'diversity_2', palette: 'lime',
       items: [
         ...(this.mingleStore.visible() ? [this.navigatorTableMenuModel()] : []),
-        this.navigatorFeedMenuModel(), this.navigatorFollowedMenuModel(), this.navigatorGroupsMenuModel()
+        this.navigatorFeedMenuModel(), this.navigatorFollowedMenuModel(), this.navigatorGroupsMenuModel(),
+        ...(this.groupWorkspaces.context.isWork() ? [navigatorContentMenuModel('campaigns', 0)] : []),
+        ...(this.groupWorkspaces.context.isCommunity() ? [navigatorContentMenuModel('cases', this.cases.count()), navigatorContentMenuModel('services', 0)] : [])
       ].flatMap(model => model.nodes?.flatMap(node => node.items ?? []) ?? [])
     }]
   }));
+  protected readonly navigatorCommunityColumnCount = computed(() => this.navigatorCommunityMenuModel().nodes?.[0]?.items?.length ?? 3);
   protected readonly imageGalleryStore = inject(ImageGalleryStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
@@ -583,6 +596,8 @@ export class SideMenuComponent implements OnDestroy {
         service: activityOverrides.chat?.service ?? activeUser.activities?.chat?.service ?? 0,
         appSupport: activityOverrides.chat?.appSupport ?? activeUser.activities?.chat?.appSupport ?? 0,
         contacts: activityOverrides.chat?.contacts ?? activeUser.activities?.chat?.contacts ?? 0,
+        campaign: activityOverrides.chat?.campaign ?? activeUser.activities?.chat?.campaign ?? 0,
+        cases: activityOverrides.chat?.cases ?? activeUser.activities?.chat?.cases ?? 0,
         groupSupport: activityOverrides.chat?.groupSupport ?? activeUser.activities?.chat?.groupSupport ?? 0,
         supportCases: cloneSupportCaseCounters(
           activityOverrides.chat?.supportCases ?? activeUser.activities?.chat?.supportCases
@@ -760,7 +775,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
     return {
-      adminModeration: this.moderationStore.snapshot()?.pendingCount ?? 0,
+      adminModeration: this.moderationStore.forScope(this.groupWorkspaces.context.active()?.groupId)?.pendingCount ?? 0,
       adminReports: reviewCounts.reports,
       adminFeedback: reviewCounts.feedback,
       adminChat: this.adminSupportCaseMenuCount(user.activities.chat),
@@ -782,7 +797,8 @@ export class SideMenuComponent implements OnDestroy {
     activities: AdminNavigatorBadgeActivities
   ): number {
     const reviewCounts = this.adminWorkspaceStore.menuReviewCounts();
-    return reviewCounts.reports
+    return (this.moderationStore.forScope(this.groupWorkspaces.context.active()?.groupId)?.pendingCount ?? 0)
+      + reviewCounts.reports
       + reviewCounts.feedback
       + this.adminSupportCaseMenuCount(activities.chat)
       + activities.adminJobs
@@ -797,7 +813,7 @@ export class SideMenuComponent implements OnDestroy {
     const hostTierPresentation = resolveSideMenuPresentation('hostTier', user.hostTier);
     const traitPresentation = resolveSideMenuPresentation('trait', user.traitLabel);
     const primaryDisabled = this.isPrimaryMenuDisabled(user);
-    return {
+    const model: AppMenuModel<NavigatorMenuShortcutId> = {
       nodes: [
         {
           id: 'impressions',
@@ -829,7 +845,7 @@ export class SideMenuComponent implements OnDestroy {
             },
             {
               id: 'feedback',
-              label: 'Feedback',
+              label: 'feedback.list.title',
               icon: 'rate_review',
               palette: 'purple',
               guideId: 'navigation-feedback',
@@ -846,10 +862,10 @@ export class SideMenuComponent implements OnDestroy {
           items: [
             {
               id: 'rates',
-              label: 'Rates',
-              icon: 'star',
+              label: this.announcements.groupId() ? 'announcement.title' : 'Rates',
+              icon: this.announcements.groupId() ? 'how_to_vote' : 'star',
               palette: 'gold',
-              ariaLabel: 'Open rates',
+              ariaLabel: this.announcements.groupId() ? 'announcement.title' : 'Open rates',
               disabled: primaryDisabled
             },
             {
@@ -939,6 +955,7 @@ export class SideMenuComponent implements OnDestroy {
         }
       ]
     };
+    return model;
   });
   protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
     const disabled = this.serverActionsUnavailable();
@@ -1099,8 +1116,9 @@ export class SideMenuComponent implements OnDestroy {
     effect(() => {
       const adminId = this.adminWorkspaceStore.dashboard()?.activeAdmin.id;
       this.moderationStore.clearGlobal();
-      if (adminId) void this.moderationService.snapshot(adminId).then(snapshot => {
-        if (this.adminWorkspaceStore.dashboard()?.activeAdmin.id === adminId) this.moderationStore.apply(snapshot);
+      const groupId = this.groupWorkspaces.context.active()?.groupId;
+      if (adminId) void this.moderationService.snapshot(adminId, groupId).then(snapshot => {
+        if (this.adminWorkspaceStore.dashboard()?.activeAdmin.id === adminId) this.moderationStore.apply(snapshot, groupId);
       }).catch(() => {});
     });
     effect(() => this.mingleStore.activate(this.userProfileStore.activeUserId()));
@@ -1400,6 +1418,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       this.lastHandledActivitiesRequestMs = request.updatedMs;
+      this.campaigns.activityCampaign.set(null);
       this.activitiesStore.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
         adminServiceOnly: request.adminServiceOnly === true
       });
@@ -1527,6 +1546,9 @@ export class SideMenuComponent implements OnDestroy {
       case 'table': this.openCurrentMingleTable(event.sourceEvent); return;
       case 'feed': this.photoFeedStore.open(); return;
       case 'followed': this.openFollowedEvents(event.sourceEvent); return;
+      case 'campaigns': void this.campaigns.open(); return;
+      case 'services': void this.services.open(); return;
+      case 'cases': void this.cases.open(); return;
       case 'groups': this.communityGroups.open(); return;
     }
   }
@@ -1540,6 +1562,7 @@ export class SideMenuComponent implements OnDestroy {
         this.openEventFeedbackPopup(event.sourceEvent);
         return;
       case 'rates':
+        if (this.announcements.groupId()) { void this.announcements.open(); return; }
         this.openRatesShortcut(event.sourceEvent);
         return;
       case 'chat':
@@ -2442,7 +2465,7 @@ export class SideMenuComponent implements OnDestroy {
   private async openNotificationRoute(url: string): Promise<void> {
     if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingNotificationRoute === url) return;
     const params = this.router.parseUrl(url).queryParams;
-    if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId']) return;
+    if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId'] && !params['caseId'] && !params['announcementId'] && !params['payments'] && !params['ratings'] && !params['serviceFeedback']) return;
     const accountId = this.groupWorkspaces.context.accountUserId();
     this.openingNotificationRoute = url;
     try {
@@ -2459,6 +2482,25 @@ export class SideMenuComponent implements OnDestroy {
       if (!await this.groupWorkspaces.select(groupId) || this.router.url !== url
           || this.groupWorkspaces.context.accountUserId() !== accountId) return;
       const userId = this.userProfileStore.activeUserId();
+      if (params['caseId'] || params['announcementId'] || params['payments'] || params['ratings'] || params['serviceFeedback']) {
+        if(params['serviceFeedback'])await this.serviceFeedback.open();
+        else if(params['payments'])await this.paymentMethodsPopupStore.openHistory();
+        else if (params['announcementId']) await this.announcements.openReference(`${params['announcementId']}`);
+        else if (params['caseId']) await this.cases.openReference(`${params['caseId']}`);
+        else {
+          const id = `${params['campaignId'] ?? ''}`;
+          if (id) await this.campaigns.loadReference(id);
+          this.campaigns.activityCampaign.set(id ? this.campaigns.known()[id] ?? null : null);
+          await this.activitiesStore.ensureActivitiesPopupLoaded();
+          this.activitiesStore.openActivities('rates');
+        }
+        if (this.router.url === url && this.userProfileStore.activeUserId() === userId) {
+          const tree = this.router.parseUrl(url);
+          for (const key of ['serviceFeedback', 'caseId', 'announcementId', 'payments', 'ratings', 'campaignId', 'workspaceGroupId']) delete tree.queryParams[key];
+          await this.router.navigateByUrl(tree, { replaceUrl: true });
+        }
+        return;
+      }
       await this.openNotificationChatTarget(url, userId);
       await this.openNotificationMingleTarget(url, userId);
     } finally {

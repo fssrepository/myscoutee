@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { compiledDevModules } from './compiled-dev-modules.mjs';
+// Consume the existing dev build; isolate storage and never change user fixtures.
+const compiled=compiledDevModules(process.argv[2]);
+const Service=await compiled.symbol('LocalCampaignsService');
+const Repository=await compiled.symbol('LocalCampaignsRepository');
+let state={campaigns:{ids:[],byId:{}},userRates:{ids:[],byId:{}}};
+const repository=Object.create(Repository.prototype);
+repository.db={read:()=>state,write:fn=>state=fn(state)};
+const service=Object.create(Service.prototype);
+const actor={id:'author',workspaceGroupId:'work',name:'Author',images:[],city:'',locationCoordinates:null};
+Object.assign(service,{actor:async id=>({...actor,id}),campaigns:repository,users:{queryUserById:()=>actor}});
+const files=[{name:'Brief.txt',mimeType:'text/plain',sizeBytes:2,url:'data:text/plain;base64,SGk='},
+ {name:'Terms.txt',mimeType:'text/plain',sizeBytes:2,url:'data:text/plain;base64,SGk='}];
+let saved=await service.save({userId:'author',title:'An invitation',description:'Full details',kind:'business',category:'technology',imageUrls:[],attachments:files});
+files[0].name='Changed outside';assert.equal(saved.attachments[0].name,'Brief.txt');
+state=JSON.parse(JSON.stringify(state));
+assert.deepEqual((await service.detail('author',saved.id)).attachments.map(f=>f.name),['Brief.txt','Terms.txt']);
+await assert.rejects(service.detail('peer',saved.id),/not found/);
+await assert.rejects(service.save({...saved,userId:'author',attachments:[{...files[0],url:'https://other.invalid/file.txt'}]}),/Invalid campaign/);
+await assert.rejects(service.save({...saved,userId:'author',attachments:Array(11).fill(files[0])}),/Invalid campaign/);
+const published=await service.action('author',saved.id,'publish',saved.version);
+assert.deepEqual(published.attachments,saved.attachments,'Publishing preserves attachments');
+await assert.rejects(service.save({...published,userId:'peer'}),/Forbidden/);
+saved=await service.save({...published,userId:'author',attachments:[published.attachments[1]]});
+state=JSON.parse(JSON.stringify(state));
+assert.deepEqual((await service.detail('author',saved.id)).attachments.map(f=>f.name),['Terms.txt']);
+saved=await service.save({...saved,userId:'author',attachments:[]});assert.deepEqual(saved.attachments,[]);
+for(const key of ['capacity','languages','maxDistanceKm'])assert.equal(Object.hasOwn(state.campaigns.byId[saved.id],key),false);
+console.log('PASS campaign document save/reload/publish/remove/clear, snapshot isolation, count/URL validation, owner authorization and simplified persisted fields');

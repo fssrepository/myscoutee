@@ -1,3 +1,6 @@
+import { groupPriorityEnabled } from '../../../shared/core/contracts/group-type';
+import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
 import {
   ChangeDetectionStrategy,
@@ -178,6 +181,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly routeDelay = inject(RouteDelayService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
+  protected readonly campaigns = inject(CampaignsStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private openSubscription?: Subscription;
   private closeSubscription?: Subscription;
   private editorTarget: ContractTypes.EventEditorTarget = 'events';
@@ -276,6 +281,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.openSubscription = this.eventEditorStore.onOpen$.subscribe(() => {
       this.slotOverrideEditor = null;
+      if (this.eventDetailDTO.campaignId) void this.campaigns.loadReference(this.eventDetailDTO.campaignId);
     });
 
     this.closeSubscription = this.eventEditorStore.onClose$.subscribe(() => {
@@ -1053,8 +1059,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }));
   }
 
+  private priorityEnabled(): boolean {
+    const active = this.workspace.active();
+    return groupPriorityEnabled(active ? { id: active.groupId, groupType: active.groupType } : null);
+  }
+
   protected eventIntelMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
-    return [
+    const items: AppMenuItem<string, EventEditorMenuContext>[] = [
+      ...(this.workspace.isWork() ? [{ id: 'event-campaign', label: this.eventDetailDTO.campaignId
+        ? this.campaigns.known()[this.eventDetailDTO.campaignId]?.title ?? 'campaign.title' : 'campaign.select',
+        icon: 'campaign', kind: 'action' as const, layout: 'big' as const, palette: 'blue' as const,
+        disabled: this.eventStructureReadOnly(), active: !!this.eventDetailDTO.campaignId }] : []),
       {
         id: 'event-blind-mode',
         label: this.eventDetailDTO.blindMode,
@@ -1127,6 +1142,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         context: { menu: 'event-intel', action: 'toggle-approval-required' }
       }
     ];
+    return items.filter(item => item.id !== 'event-auto-inviter' || this.priorityEnabled());
   }
 
   private eventTopicsMenuModel(): AppMenuModel<string, EventEditorMenuContext> {
@@ -1264,6 +1280,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected onEventEditorMenuSelect(event: AppMenuItemSelectEvent<string, EventEditorMenuContext>): void {
+    if (event.id === 'event-campaign' && !this.eventStructureReadOnly()) {
+      const draft = this.eventDetailDTO;
+      void this.campaigns.open(campaign => {
+        if (draft !== this.eventDetailDTO) return;
+        this.eventDetailDTO.campaignId = campaign?.id ?? null;
+        if (campaign) {
+          this.campaigns.known.update(known => ({ ...known, [campaign.id]: campaign }));
+
+        }
+      }, draft.campaignId, 'own');
+      return;
+    }
     if (!event.context) {
       return;
     }
@@ -2089,7 +2117,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   toggleEventAutoInviter(event: Event): void {
     event.preventDefault();
-    if (this.eventStructureReadOnly()) {
+    if (this.eventStructureReadOnly() || !this.priorityEnabled()) {
       return;
     }
     this.eventDetailDTO.autoInviter = !this.eventDetailDTO.autoInviter;
@@ -2454,6 +2482,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.currentSourcePublished = this.eventEditorStore.mode() === 'edit' && dto.status === 'A';
     this.publishedCapacityOccupancyFloor = this.acceptedCapacityFloor(dto);
     this.eventDetailDTO = dto;
+    if (dto.campaignId) void this.campaigns.loadReference(dto.campaignId);
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange('start');
     this.eventVisibilityReady.set(true);

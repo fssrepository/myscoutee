@@ -736,3 +736,16 @@ span.activities-rate-score-badge {
 .activities-rates-fullscreen-card-active .activities-rate-profile-layer {
   background-color: #d3ddea;
 }
+
+.shared-card-context-category {
+  gap: .3rem;
+  padding: .25rem .55rem;
+  font-size: .75rem;
+  font-weight: 700;
+  color: hsl(var(--context-hue, 190) 48% 30%);
+  background: linear-gradient(180deg, hsl(var(--context-hue, 190) 80% 97%), hsl(var(--context-hue, 190) 74% 90%));
+  border-color: hsl(var(--context-hue, 190) 48% 70%);
+  mat-icon { width: 1rem; height: 1rem; font-size: 1rem; }
+}
+
+.activities-rate-profile-line-clamped { display: -webkit-box; -webkit-line-clamp: var(--description-lines, 2); -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere; padding-right: 2.2rem; }

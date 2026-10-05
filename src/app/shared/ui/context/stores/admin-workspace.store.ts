@@ -323,7 +323,7 @@ export class AdminWorkspaceStore {
     this.userProfileStore.setActiveUserId(user.id);
     this.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
     this.activityStore.patchUserCounterOverrides(user.id, {
-      game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
+      game: dashboard.reviewCounts?.reportsUnresolved ?? 0,
       chats: user.activities.chats,
       chat: {
         all: this.nonNegativeInteger(user.activities.chat?.all ?? user.activities.chats),
@@ -333,6 +333,8 @@ export class AdminWorkspaceStore {
         service: this.nonNegativeInteger(user.activities.chat?.service),
         appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport),
         contacts: this.nonNegativeInteger(user.activities.chat?.contacts),
+        campaign: this.nonNegativeInteger(user.activities.chat?.campaign),
+        cases: this.nonNegativeInteger(user.activities.chat?.cases),
         groupSupport: this.nonNegativeInteger(user.activities.chat?.groupSupport),
         supportCases: {
           pending: this.nonNegativeInteger(user.activities.chat?.supportCases?.pending),
@@ -347,7 +349,7 @@ export class AdminWorkspaceStore {
       hosting: 0,
       invitations: 0,
       tickets: 0,
-      feedback: dashboard.feedback.length,
+      feedback: dashboard.reviewCounts?.feedbackUnresolved ?? 0,
       adminJobs: user.activities.adminJobs ?? 0,
       adminMetrics: user.activities.adminMetrics ?? 0
     });
@@ -363,6 +365,7 @@ export class AdminWorkspaceStore {
       .map(image => `${image ?? ''}`.trim())
       .filter(image => image.length > 0);
     return {
+      ...existingAdminProfile,
       id: admin.id,
       name,
       age: 0,
@@ -384,7 +387,7 @@ export class AdminWorkspaceStore {
       profileStatus: 'public',
       admin: true,
       activities: {
-        game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
+        game: dashboard.reviewCounts?.reportsUnresolved ?? 0,
         chats: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.chats) || 0)),
         chat: existingAdminProfile?.activities?.chat
           ? { ...existingAdminProfile.activities.chat }
@@ -395,6 +398,8 @@ export class AdminWorkspaceStore {
               group: 0,
               service: 0,
               contacts: 0,
+              campaign: 0,
+              cases: 0,
               groupSupport: 0,
               appSupport: 0
             },
@@ -406,7 +411,7 @@ export class AdminWorkspaceStore {
         supplies: 0,
         tickets: 0,
         contacts: 0,
-        feedback: dashboard.feedback.length,
+        feedback: dashboard.reviewCounts?.feedbackUnresolved ?? 0,
         adminJobs: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminMetrics) || 0))
       }

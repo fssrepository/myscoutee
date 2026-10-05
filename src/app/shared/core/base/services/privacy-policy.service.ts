@@ -11,6 +11,14 @@ import type {
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';
 
+/** These v1 records were byte-identical copies of the website policy. */
+export function canonicalPrivacyRevisionId(id: string): string {
+  return id.replace(/^(work|community):(privacy-default(?:-hu)?-v1)$/, '$2');
+}
+export function canonicalEntryConsentVersion(version: string): string {
+  return version.replace(/^privacy:(work|community):(privacy-default(?:-hu)?-v1:v1)$/, 'privacy:$2');
+}
+
 export interface PrivacyPolicyOpenOptions {
   lazy?: boolean;
 }
@@ -51,7 +59,8 @@ export class PrivacyPolicyService {
   }
 
   async loadConsent(userId: string, revisionId: string, revisionVersion?: number): Promise<PrivacyConsentDto | null> {
-    return this.helpCenter.loadPrivacyConsent(userId, revisionId, revisionVersion);
+    const consent = await this.helpCenter.loadPrivacyConsent(userId, revisionId, revisionVersion);
+    return consent ? { ...consent, revisionId: canonicalPrivacyRevisionId(consent.revisionId) } : null;
   }
 
   async saveConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
@@ -80,7 +89,7 @@ export class PrivacyPolicyService {
     try {
       const raw = localStorage.getItem(PrivacyPolicyService.OPTIONAL_PRIVACY_APPROVAL_KEY);
       const parsed = raw ? JSON.parse(raw) as { revisionKey?: unknown; approvedSectionIds?: unknown } : null;
-      if (!parsed || parsed.revisionKey !== this.revisionKey(revision) || !Array.isArray(parsed.approvedSectionIds)) {
+      if (!parsed || canonicalEntryConsentVersion(`privacy:${parsed.revisionKey}`) !== `privacy:${this.revisionKey(revision)}` || !Array.isArray(parsed.approvedSectionIds)) {
         return new Set();
       }
       const optionalSectionIds = this.optionalSectionIds(revision.sections);
@@ -125,7 +134,7 @@ export class PrivacyPolicyService {
     try {
       const parsed = JSON.parse(raw) as Partial<EntryConsentStateDto>;
       if (
-        parsed.version !== this.entryConsentVersion(revision) ||
+        canonicalEntryConsentVersion(parsed.version ?? '') !== this.entryConsentVersion(revision) ||
         parsed.accepted !== true ||
         typeof parsed.acceptedAtIso !== 'string' ||
         parsed.acceptedAtIso.trim().length === 0
@@ -133,7 +142,7 @@ export class PrivacyPolicyService {
         return null;
       }
       return {
-        version: parsed.version,
+        version: this.entryConsentVersion(revision),
         accepted: true,
         acceptedAtIso: parsed.acceptedAtIso
       };

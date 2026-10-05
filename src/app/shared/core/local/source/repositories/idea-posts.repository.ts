@@ -77,7 +77,7 @@ export class LocalIdeaPostsRepository {
     const requestedLang = this.normalizeLang(lang);
     const cursor = this.pageCursor(query.cursor, requestedLang);
     const effectiveLang = cursor?.lang ?? requestedLang;
-    const records = this.publishedPosts(effectiveLang);
+    const records = this.publishedPosts(effectiveLang, query.groupId);
     const pageSize = Math.max(1, Math.min(50, Math.trunc(Number(query.pageSize) || 10)));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const startIndex = Math.min(records.length, cursor?.offset ?? page * pageSize);
@@ -91,11 +91,12 @@ export class LocalIdeaPostsRepository {
 
   queryAdminPostPage(
     lang: string,
-    query: IdeaPostAdminPageQueryDto = {}
+    query: IdeaPostAdminPageQueryDto = {},
+    groupId: string | null = null
   ): LocalIdeaPostAdminRecordPage {
     const normalizedLang = this.normalizeLang(lang);
     const status = this.normalizeAdminStatus(query.status);
-    const allPosts = this.posts(normalizedLang);
+    const allPosts = this.posts(normalizedLang).filter(post => (post.workspaceGroupId ?? null) === groupId);
     const filtered = allPosts.filter(post => this.matchesAdminStatus(post, status));
     const cursor = this.parseAdminCursor(query.cursor);
     const remaining = cursor
@@ -116,9 +117,10 @@ export class LocalIdeaPostsRepository {
 
   queryPublishedFeaturedPostPreview(
     lang: string,
-    limit = 8
+    limit = 8,
+    groupId: string | null = null
   ): LocalIdeaPostRecordPage {
-    const published = this.publishedPosts(lang);
+    const published = this.publishedPosts(lang, groupId);
     const normalizedLimit = Math.max(1, Math.trunc(Number(limit) || 8));
     return {
       records: published
@@ -145,18 +147,19 @@ export class LocalIdeaPostsRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  private publishedPosts(lang: string): IdeaPostDto[] {
-    return this.posts(lang)
+  private publishedPosts(lang: string, groupId: string | null = null): IdeaPostDto[] {
+    return this.posts(lang, groupId)
       .filter(post => post.published === true && post.trashed !== true)
       .sort((left, right) => this.compareAdminPosts(left, right));
   }
 
-  private posts(lang: string): IdeaPostDto[] {
+  private posts(lang: string, groupId: string | null = null): IdeaPostDto[] {
     const normalizedLang = this.normalizeLang(lang);
     const table = this.readTable();
     return table.ids
       .map(id => table.byId[id])
       .filter((post): post is IdeaPostDto => Boolean(post))
+      .filter(post => (post.workspaceGroupId ?? null) === groupId)
       .filter(post => `${post.lang ?? ''}`.trim().toLowerCase().split('-')[0] === normalizedLang)
       .sort((left, right) => this.compareAdminPosts(left, right));
   }

@@ -1,3 +1,7 @@
+import { validRatingSnapshot, type RatingDomain } from '../../../contracts/rating-snapshot';
+import { LocalNotificationsRepository } from './notifications.repository';
+import { CAMPAIGNS_TABLE_NAME } from "../entity/campaign.entity";
+import { aggregateCampaignRatings } from '../../../base/campaign-rate-aggregation';
 import type {
   ActivityRateRecordQuery,
   UserRateRecord,
@@ -24,6 +28,7 @@ import { LocalUserRatesMapper } from '../mappers';
 })
 export class LocalRatesRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly notifications = inject(LocalNotificationsRepository);
   private readonly rateOutboxRepository = inject(RateOutboxRepository);
 
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
@@ -174,8 +179,8 @@ export class LocalRatesRepository {
     return this.buildRateItemsByUserId(userId);
   }
 
-  peekRateItemsByUserId(userId: string): ActivityRateDTO[] {
-    return this.buildRateItemsByUserId(userId);
+  peekRateItemsByUserId(userId: string, campaignId?: string | null): ActivityRateDTO[] {
+    return this.buildRateItemsByUserId(userId, campaignId);
   }
 
   async queryRateItemsByUserId(userId: string): Promise<ActivityRateDTO[]> {
@@ -192,7 +197,7 @@ export class LocalRatesRepository {
       };
     }
     const mode = query.mode === 'pair' ? 'pair' : 'individual';
-    const filtered = this.buildRateItemsByUserId(normalizedOwnerUserId)
+    const filtered = this.buildRateItemsByUserId(normalizedOwnerUserId, query.campaignId)
       .filter(item => item.mode === mode)
       .filter(item => item.direction === query.displayDirection)
       .filter(item => this.matchesDynamicRateRange(item, query))
@@ -216,7 +221,7 @@ export class LocalRatesRepository {
     };
   }
 
-  private buildRateItemsByUserId(userId: string): ActivityRateDTO[] {
+  private buildRateItemsByUserId(userId: string, campaignId?: string | null): ActivityRateDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -234,10 +239,20 @@ export class LocalRatesRepository {
     for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
       recordsById.set(record.id, record);
     }
-    return [...recordsById.values()]
+    const summaries = campaignId ? [] : ratesTable.campaignProjection?.[normalizedUserId] ?? [];
+    const people = new Set(summaries.map(row => row.fromUserId === normalizedUserId ? row.toUserId : row.fromUserId));
+    const source = [...recordsById.values()].filter(record => campaignId ? record.campaignId === campaignId
+      : !record.campaignId && !(record.mode === 'single' && people.has(record.fromUserId === normalizedUserId ? record.toUserId : record.fromUserId)));
+    const state = this.memoryDb.read();
+    const workspaceId = state.users.byId[normalizedUserId]?.workspaceGroupId;
+    const groupType = workspaceId ? state.communityGroups.byId[workspaceId]?.groupType : 'dating';
+    const items = [...source, ...summaries]
       .filter((record): record is UserRateRecord => Boolean(record))
-      .flatMap(record => this.buildDynamicRateItemsForUser(record, normalizedUserId))
-      .filter(item => this.activityRateItemUsersAreVisible(item, normalizedUserId, usersById))
+      .flatMap(record => this.buildDynamicRateItemsForUser(record, normalizedUserId).map(item => ({ ...item,
+        ratingDomain: record.ratingDomain ?? (record.campaignId ? 'campaign' : (groupType === 'work' ? 'work' : groupType === 'community' ? 'service-interest' : record.mode === 'pair' ? 'dating-pair' : 'dating')) as RatingDomain })))
+      .map(item => people.has(item.userId) && item.mode === 'individual' ? { ...item, id: `game-card:${normalizedUserId}:${item.userId}` } : item)
+      .filter(item => this.activityRateItemUsersAreVisible(item, normalizedUserId, usersById));
+    return (campaignId ? aggregateCampaignRatings(items, normalizedUserId, campaignId) : items)
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
   }
 
@@ -303,6 +318,7 @@ export class LocalRatesRepository {
       }
       return [{
         id: record.displayId?.trim() || record.id,
+        campaignId: record.campaignId ?? null,
         ratingSnapshot: record.ratingSnapshots?.[normalizedUserId] ?? (record.ownerUserId === normalizedUserId ? record.ratingSnapshot : undefined),
         userId: relatedUserId,
         mode: 'individual',
@@ -337,6 +353,7 @@ export class LocalRatesRepository {
     }
     return [{
       id: record.displayId?.trim() || record.id,
+        campaignId: record.campaignId ?? null,
       ratingSnapshot: record.ratingSnapshots?.[normalizedUserId] ?? (record.ownerUserId === normalizedUserId ? record.ratingSnapshot : undefined),
       userId: ownerUserId,
       mode: 'individual',
@@ -376,6 +393,7 @@ export class LocalRatesRepository {
       if (scoreGiven > 0 || scoreReceived > 0) {
         items.push({
           id: record.displayId?.trim() || record.id,
+        campaignId: record.campaignId ?? null,
           ratingSnapshot: record.ratingSnapshots?.[normalizedUserId] ?? (record.ownerUserId === normalizedUserId ? record.ratingSnapshot : undefined),
           userId: pairUserIds[0],
           secondaryUserId: pairUserIds[1],
@@ -707,7 +725,18 @@ export class LocalRatesRepository {
   }
 
   upsertGameCardRatings(records: readonly UserRateRecord[]): string[] {
+    const state = this.memoryDb.read();
     const normalizedRecords = records
+      .filter(record => {
+        if (!record.campaignId) return true;
+        const campaign = state[CAMPAIGNS_TABLE_NAME].byId[record.campaignId];
+        const actor = state[USERS_TABLE_NAME].byId[record.ownerUserId ?? ''];
+        const targetId = record.toUserId === record.ownerUserId ? record.fromUserId : record.toUserId;
+        const target = state[USERS_TABLE_NAME].byId[targetId];
+        return !!campaign && campaign.status === 'published' && record.mode === 'single'
+          && actor?.workspaceGroupId === campaign.workspaceGroupId && target?.workspaceGroupId === campaign.workspaceGroupId
+          && (campaign.ownerUserId === actor?.id || campaign.ownerUserId === target?.id);
+      })
       .map(record => this.normalizeIncomingRateRecord(record))
       .filter((record): record is UserRateRecord => Boolean(record));
     if (normalizedRecords.length === 0) {
@@ -806,8 +835,27 @@ export class LocalRatesRepository {
         error: null
       };
     }
+    const before = this.memoryDb.read()[USER_RATES_TABLE_NAME].byId;
+    const previousScores = new Map(rates.map(rate => [rate.id, before[rate.id] ? this.dynamicScoreGiven(before[rate.id]) : 0]));
     const syncedRateIds = this.upsertGameCardRatings(rates);
     const syncedIds = new Set(syncedRateIds);
+    const state = this.memoryDb.read();
+    for (const rate of rates) {
+      const score = this.dynamicScoreGiven(rate), sender = state[USERS_TABLE_NAME].byId[rate.ownerUserId ?? ''];
+      if (!syncedIds.has(rate.id) || !sender || score <= 0 || score === previousScores.get(rate.id)) continue;
+      const recipients = [...new Set([rate.fromUserId, rate.toUserId])].filter(id => {
+        const recipient = state[USERS_TABLE_NAME].byId[id];
+        return recipient && (recipient.accountUserId ?? recipient.id) !== (sender.accountUserId ?? sender.id);
+      });
+      this.notifications.append(recipients.map(id => ({
+        id: `user-rated:${rate.id}:${rate.updatedAtIso}:${id}`, recipientUserId: id, kind: 'user-rated', category: 'user',
+        title: 'New rating', message: 'You received a new rating.', createdAtIso: rate.updatedAtIso ?? new Date().toISOString(),
+        senderUserId: sender.id, senderName: sender.name, senderAvatarUrl: sender.images?.[0], sourceType: 'user-rate', sourceId: rate.id,
+        actionPath: `/game?ratings=1${rate.campaignId ? `&campaignId=${encodeURIComponent(rate.campaignId)}` : ''}${sender.workspaceGroupId ? `&workspaceGroupId=${encodeURIComponent(sender.workspaceGroupId)}` : ''}`,
+        payload: { notification_message_key: 'notification.kind.user-rated.message', ...(sender.workspaceGroupId ? { workspaceGroupId: sender.workspaceGroupId } : {}),
+          ...(rate.campaignId ? { campaignId: rate.campaignId } : {}) }
+      })));
+    }
     const failedRateIds = rates
       .map(rate => rate.id.trim())
       .filter(rateId => rateId.length > 0 && !syncedIds.has(rateId));
@@ -824,7 +872,8 @@ export class LocalRatesRepository {
 
   private normalizeIncomingActivityRateRecord(record: UserRateRecord): UserRateRecord | null {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
-    if (!ownerUserId) {
+    if (!ownerUserId || !validRatingSnapshot(record.ratingSnapshot, record.scoreGiven ?? record.rate)
+      || (record.campaignId && record.ratingSnapshot && record.ratingSnapshot.profileType !== 'campaign')) {
       return null;
     }
     const item = LocalUserRatesMapper.toDto(record);

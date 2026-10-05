@@ -1,3 +1,4 @@
+import { CommunityCasesStore } from '../../../shared/ui/context/stores/community-cases.store';
 import { ContactsService } from '../../../shared/core/base/services/contacts.service';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat-share.store';
@@ -168,8 +169,8 @@ type ChatMenuContext =
   | { menu: 'chat-header'; action: 'pins' }
   | { menu: 'chat-header'; action: 'history' }
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
-  | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
-  | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' | 'resend' };
+  | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' | 'recommend' }
+  | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'invite-provider' | 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' | 'resend' };
 
 interface SelectedChatGroupState {
   id: string;
@@ -244,6 +245,7 @@ interface ChatHeaderPollState {
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly communityCases = inject(CommunityCasesStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
@@ -483,6 +485,12 @@ export class EventChatPopupComponent implements OnDestroy {
   private registeredExplanationContextKey: string | null = null;
 
   constructor() {
+    let loadedCaseChat='';
+    effect(() => {
+      const chat=this.session()?.item, key=chat?.channelType==='case'?`${this.activeUserId()}:${chat.id}`:'';
+      if(key===loadedCaseChat)return;loadedCaseChat=key;
+      if(key)untracked(()=>void this.communityCases.loadChatContext(chat!.ownerId??''));
+    });
     effect(() => {
       const chat = this.session()?.item ?? null;
       const eventChat = Boolean(chat && (
@@ -830,6 +838,7 @@ export class EventChatPopupComponent implements OnDestroy {
       contextEndAtIso: header.contextEndAtIso ?? null,
       channelType: header.channelType ?? undefined,
       serviceContext: header.serviceContext ?? undefined,
+      caseOfferId: header.caseOfferId ?? undefined,
       assetId: `${header.assetId ?? ''}`.trim() || undefined,
       ownerId: ownerId || undefined,
       eventId: `${header.eventId ?? ''}`.trim() || undefined,
@@ -1080,6 +1089,8 @@ export class EventChatPopupComponent implements OnDestroy {
     if (control.id !== 'members') {
       return;
     }
+    const caseChat = this.session()?.item;
+    if (caseChat?.channelType === 'case' && !caseChat.caseOfferId) { void this.communityCases.fromChat(caseChat.ownerId ?? '', 'members'); return; }
     const lookup = control.lookup;
     const ownerId = `${lookup?.id ?? ''}`.trim();
     if (!ownerId) {
@@ -1094,6 +1105,7 @@ export class EventChatPopupComponent implements OnDestroy {
       parentZIndex: this.currentChatPopupZIndex(),
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
       viewOnly: true,
+      snapshotOnly: caseChat?.channelType === 'case',
       acceptedMembers: memberCount,
       pendingMembers: 0,
       capacityTotal: memberCount,
@@ -1315,15 +1327,14 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  protected composerMenuItems(): readonly AppMenuItem<string, ChatMenuContext>[] {
-    return [
+  protected readonly composerMenuItems = computed<readonly AppMenuItem<string, ChatMenuContext>[]>(() => [
+      ...(this.session()?.item.channelType === 'case' ? [{id:'case-recommend',label:'case.action.recommend',icon:'person_add',palette:'violet' as const,surface:'tinted' as const,context:{menu:'composer' as const,action:'recommend' as const}}] : []),
       { id: 'chat-composer-image', label: 'Upload image', icon: 'image', palette: 'sky', surface: 'tinted', context: { menu: 'composer', action: 'image' } },
       { id: 'chat-composer-voice', label: 'Send a voice clip', icon: 'mic', palette: 'violet', surface: 'tinted', context: { menu: 'composer', action: 'voice' } },
       { id: 'chat-composer-poll', label: 'Create a poll', icon: 'poll', palette: 'green', surface: 'tinted', context: { menu: 'composer', action: 'poll' } },
       { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'blue', surface: 'tinted', context: { menu: 'composer', action: 'event' } },
       { id: 'chat-composer-asset', label: 'Share asset', icon: 'inventory_2', palette: 'brown', surface: 'tinted', context: { menu: 'composer', action: 'asset' } }
-    ];
-  }
+    ]);
 
   protected onInlineChatMenuSelect(event: AppMenuItemSelectEvent<string, ChatMenuContext>): void {
     const context = event.context;
@@ -1348,6 +1359,10 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (context.menu === 'composer') {
       switch (context.action) {
+        case 'recommend': {
+          const chat=this.session()?.item;if(chat?.channelType==='case')void this.communityCases.fromChat(chat.ownerId ?? '', 'recommend', attachment=>{if(this.session()?.item.id===chat.id)this.sendLocalAttachmentMessage(attachment,'');});
+          break;
+        }
         case 'image':
           this.openImageAttachmentPicker(event.sourceEvent);
           break;
@@ -1446,6 +1461,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected messageActionMenuItems(message: ContractTypes.ChatMessageDto): readonly AppMenuItem<string, ChatMenuContext>[] {
     const items: AppMenuItem<string, ChatMenuContext>[] = [];
+    if(this.session()?.item.channelType==='case' && (message.attachments??[]).some(a=>this.communityCases.canInviteRecommendation(a)))items.push({
+      id:`chat-invite-provider-${message.id}`,label:'case.action.invite-provider',icon:'person_add',palette:'violet',surface:'tinted',
+      context:{menu:'message-action',message,action:'invite-provider'}});
     if (this.messageHasViewableAttachment(message)) {
       items.push({
         id: `chat-message-view-${message.id}`,
@@ -1525,6 +1543,11 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     switch (context.action) {
+      case 'invite-provider': {
+        const attachment=context.message.attachments?.find(a=>this.communityCases.canInviteRecommendation(a));
+        if(attachment)void this.communityCases.inviteRecommendation(attachment);
+        break;
+      }
       case 'view':
         this.viewSharedMessage(context.message, event.sourceEvent);
         break;
@@ -1561,6 +1584,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatPrimaryContext(event?: Event): void {
+    const caseChat = this.session()?.item;
+    if (caseChat?.channelType === 'case') { event?.stopPropagation(); void this.communityCases.openReference(caseChat.ownerId ?? ''); return; }
     if (this.isServiceChat()) {
       event?.stopPropagation();
       return;
@@ -2427,6 +2452,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected chatAttachmentIcon(attachment: ContractTypes.ChatMessageAttachment): string {
     switch (attachment.type) {
+      case 'service':
+        return 'home_repair_service';
       case 'event':
         return 'event';
       case 'asset':
@@ -2442,6 +2469,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected chatAttachmentTypeLabel(attachment: ContractTypes.ChatMessageAttachment): string {
     switch (attachment.type) {
+      case 'service':
+        return this.i18n.translate('service.view');
       case 'event':
         return 'Event';
       case 'asset':
@@ -2486,6 +2515,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.openExternalAttachmentUrl(attachment);
       return;
     }
+    if (attachment.type === 'service') { void this.communityCases.offerings.openReference(attachment.entityId??''); return; }
     if (attachment.type === 'event') {
       const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
       const contextEventId = `${this.selectedChatNavigationState?.eventId ?? this.selectedChatOwnerParts().eventId}`.trim();
@@ -3517,7 +3547,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     return (message.attachments ?? []).find(attachment =>
-      (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link')
+      (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'service' || attachment.type === 'link')
         && !this.isAttachmentUnavailable(attachment)
     ) ?? null;
   }
@@ -5089,12 +5119,12 @@ export class EventChatPopupComponent implements OnDestroy {
     state: SelectedChatNavigationState | null
   ): AppUiTypes.PopupHeaderControl {
     const channelType = state?.channelType ?? this.chatChannelType(chat);
-    const label = channelType === 'groupSubEvent'
+    const label = channelType === 'case' ? 'case.action.view' : channelType === 'groupSubEvent'
       ? this.selectedChatGroupDisplayLabel(chat, state)
       : channelType === 'optionalSubEvent'
         ? (state?.subEvent?.name ?? 'Sub-event')
         : 'View Event';
-    const icon = channelType === 'groupSubEvent'
+    const icon = channelType === 'case' ? 'view_kanban' : channelType === 'groupSubEvent'
       ? 'groups'
       : channelType === 'optionalSubEvent'
         ? 'event_available'
@@ -5335,6 +5365,7 @@ export class EventChatPopupComponent implements OnDestroy {
       || channelType === 'serviceEvent'
       || channelType === 'appSupport'
       || channelType === 'supportCase'
+      || channelType === 'campaign' || channelType === 'case'
     ) {
       return channelType;
     }

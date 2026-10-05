@@ -1,15 +1,13 @@
+import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/group-type';
+import type { LandingSlideDto } from '../../../shared/core/contracts/content.interface';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
 import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
 import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
 import {
-  NgComponentOutlet
-} from '@angular/common';
-import {
   ChangeDetectorRef,
   Component,
   HostListener,
-  Injector,
   NgZone,
   OnDestroy,
   OnInit,
@@ -69,7 +67,7 @@ import {
   LandingContentService
 } from '../../../shared/core/base/services/landing-content.service';
 import {
-  PrivacyPolicyService
+  PrivacyPolicyService, canonicalEntryConsentVersion
 } from '../../../shared/core/base/services/privacy-policy.service';
 import {
   SessionService,
@@ -81,9 +79,6 @@ import {
 import {
   UsersService
 } from '../../../shared/core/base/services/users.service';
-import {
-  DialogComponent
-} from '../../../shared/ui/components/core/dialog/dialog.component';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
@@ -134,11 +129,10 @@ interface EntryDemoNewProfileRequestEvent {
   standalone: true,
   imports: [
     ExplanationLauncherComponent,
-    NgComponentOutlet,
     EntryLandingComponent,
     DocumentViewerComponent,
     EntryFirebaseAuthPopupComponent,
-    DialogComponent,
+
     ProfileOnboardingPopupComponent
   ],
   templateUrl: './entry-page.component.html',
@@ -151,7 +145,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
@@ -183,6 +176,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryPrivacySaveMessage = '';
   protected entryPrivacySaveError = '';
   protected landingArticlesLoading = true;
+  protected landingSlides: LandingSlideDto[] = [];
   protected landingIdeaCards: InfoCardData[] = [];
   protected landingIdeaCount = 0;
   protected landingSupportedCountries: SupportedCountryDto[] = [];
@@ -192,8 +186,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
-  protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
+
+
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
@@ -237,6 +231,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.queryParamSubscription = this.route.queryParamMap.subscribe(queryParams => {
       this.affiliateReferral.capture(queryParams.get('affiliate'));
       const redirect = queryParams.get('redirect');
+      const redirectParams = redirect?.startsWith('/') && !redirect.startsWith('//')
+        ? this.router.parseUrl(redirect).queryParams : {};
+      // An invite keeps its context inside the existing authentication redirect.
+      // The hint only selects public landing content; claiming the token owns
+      // authorization and group membership after login.
+      const sharedMode = redirectParams['partnerInvite'] ? redirectParams['mode'] : queryParams.get('mode');
+      this.changeLandingMode(groupType(sharedMode));
       if (redirect?.startsWith('/') && !redirect.startsWith('//')) {
         this.affiliateReferral.capture(this.router.parseUrl(redirect).queryParams['affiliate'] ?? null);
       }
@@ -605,6 +606,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode,
       selectableModes,
+      groupType: this.landingContent.mode(),
       onSelect: (userId, mode, user) => new Promise<boolean | string>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({
@@ -680,9 +682,21 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           selection.fail();
           return;
         }
+        if (selection.user?.baseGroupTypes?.includes(this.landingContent.mode()) && this.landingContent.mode() !== 'dating') {
+          if (!await this.usersService.loadProfileExtById(normalizedUserId, undefined, baseGroupId(this.landingContent.mode()))) {
+            selection.fail();
+            return;
+          }
+        }
         await this.runPostSessionGate(session, this.memberRedirectUrl(), user);
         selection.complete();
         return;
+      }
+      {
+        if (!await this.usersService.loadProfileExtById(normalizedUserId, undefined, baseGroupId(this.landingContent.mode()))) {
+            selection.fail();
+            return;
+          }
       }
       const navigated = await this.router.navigateByUrl(this.memberRedirectUrl());
       if (!navigated) {
@@ -730,6 +744,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     try {
+      const profile = await this.usersService.loadProfileExtById(normalizedAdminUserId, undefined, baseGroupId(this.landingContent.mode()));
+      if (!profile) { selection.fail(); return; }
       const navigated = await this.router.navigateByUrl('/admin');
       if (!navigated) {
         selection.fail();
@@ -1197,7 +1213,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     try {
       const parsed = JSON.parse(raw) as Partial<EntryConsentStateDto>;
       if (
-        parsed.version !== expectedVersion ||
+        canonicalEntryConsentVersion(parsed.version ?? '') !== expectedVersion ||
         parsed.accepted !== true ||
         typeof parsed.acceptedAtIso !== 'string' ||
         parsed.acceptedAtIso.length === 0
@@ -1205,7 +1221,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         return null;
       }
       return {
-        version: parsed.version,
+        version: expectedVersion,
         accepted: true,
         acceptedAtIso: parsed.acceptedAtIso
       };
@@ -1245,24 +1261,34 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return this.entryConsentVersion().length > 0 && this.loadEntryConsentState() === null;
   }
 
+  protected changeLandingMode(mode: GroupType): void {
+    if (mode === this.landingContent.mode()) return;
+    this.landingContent.mode.set(mode);
+    this.landingContentRequestToken++;
+    this.entryContentLoadPromise = null;
+    this.landingIdeaCards = [];
+    this.landingIdeaCount = 0;
+    this.landingSlides = [];
+    void this.loadEntryContent();
+  }
+
   private async loadEntryContent(): Promise<void> {
     if (this.entryContentLoadPromise) {
       return this.entryContentLoadPromise;
     }
     const requestToken = ++this.landingContentRequestToken;
+    const groupId = baseGroupId(this.landingContent.mode());
     this.startEntryPrivacyLoadingWindow();
     this.startLandingArticlesLoadingWindow();
     this.entryContentLoadPromise = (async () => {
       try {
-        if (this.landingContent.usesLocalContent()) {
-          await this.ensureLocalStaticContentReady();
-        }
-        const displayState = await this.landingContent.loadDisplayState();
+        const displayState = await this.landingContent.loadDisplayState(groupId);
         this.ngZone.run(() => {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
           this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
+          this.landingSlides = displayState.state.slides ?? [];
           this.landingIdeaCards = displayState.ideaCards;
           this.landingIdeaCount = displayState.state.ideasTotal;
           this.landingSupportedCountries = displayState.state.supportedCountries ?? [];
@@ -1298,13 +1324,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       }
     });
     return this.entryContentLoadPromise;
-  }
-
-  private async ensureLocalStaticContentReady(): Promise<void> {
-    const { SeedStaticContentService } = await import(
-      '../../../shared/core/local/seed/services/static-content.service'
-    );
-    await this.injector.get(SeedStaticContentService).ensureReady();
   }
 
   private finishEntryPrivacyLoad(requestToken: number): void {

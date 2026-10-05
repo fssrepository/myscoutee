@@ -13,15 +13,15 @@ export class LocalAdminAffinityGraphService {
   private readonly repository = inject(LocalAdminAffinityGraphRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async readGraphSnapshot(options?: { waitForRouteDelay?: boolean; signal?: AbortSignal }): Promise<AdminAffinityGraphDto | null> {
+  async readGraphSnapshot(options?: { adminUserId?: string | null; waitForRouteDelay?: boolean; signal?: AbortSignal }): Promise<AdminAffinityGraphDto | null> {
     if (options?.waitForRouteDelay !== true) {
       this.throwIfAborted(options?.signal);
-      return await this.repository.readGraphSnapshot();
+      return await this.repository.readGraphSnapshot(options?.adminUserId);
     }
     const delay = this.routeDelay.waitForRouteDelay(ADMIN_AFFINITY_GRAPH_ROUTE, options.signal);
     try {
       const [snapshot] = await Promise.all([
-        this.repository.readGraphSnapshot(),
+        this.repository.readGraphSnapshot(options?.adminUserId),
         delay
       ]);
       this.throwIfAborted(options.signal);

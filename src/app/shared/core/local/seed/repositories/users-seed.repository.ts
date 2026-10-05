@@ -259,6 +259,11 @@ export class SeedUsersRepository {
         };
         changed = true;
       }
+      if (existing.locationCoordinates == null && seededUser.locationCoordinates) {
+        nextById[userId] = { ...(nextById[userId] ?? existing),
+          locationCoordinates: { ...seededUser.locationCoordinates } };
+        changed = true;
+      }
       if (existing.profileDetails == null && seededUser.profileDetails) {
         nextById[userId] = { ...(nextById[userId] ?? existing),
           profileDetails: structuredClone(seededUser.profileDetails) };
@@ -354,6 +359,8 @@ export class SeedUsersRepository {
             service: 0,
             appSupport: 0,
             contacts: 0,
+            campaign: 0,
+            cases: 0,
             groupSupport: 0,
           },
           event: {
@@ -418,6 +425,8 @@ export class SeedUsersRepository {
       service: normalizeCounter(activities.chat?.service),
       appSupport: normalizeCounter(activities.chat?.appSupport),
       contacts: normalizeCounter(activities.chat?.contacts),
+      campaign: normalizeCounter(activities.chat?.campaign),
+      cases: normalizeCounter(activities.chat?.cases),
       groupSupport: normalizeCounter(activities.chat?.groupSupport)
     };
     const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;

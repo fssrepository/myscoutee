@@ -71,7 +71,7 @@ export interface ChatMessageReaction {
   reactedAtIso: string;
 }
 
-export type ChatMessageAttachmentType = 'image' | 'event' | 'asset' | 'link' | 'poll' | 'voice';
+export type ChatMessageAttachmentType = 'image' | 'event' | 'asset' | 'link' | 'poll' | 'voice' | 'service';
 
 export interface ChatMessageAttachment {
   id: string;
@@ -116,8 +116,8 @@ export type ChatLiveEvent =
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
   | { type: 'reconnected'; chatId: string };
 
-export type ChatChannelType = 'general' | 'contact' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'groupSupport' | 'appSupport' | 'supportCase';
-export type ActivitiesChatContextFilter = 'all' | 'contacts' | 'event' | 'subEvent' | 'group' | 'service' | 'groupSupport' | 'appSupport';
+export type ChatChannelType = 'general' | 'contact' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'groupSupport' | 'appSupport' | 'supportCase' | 'campaign' | 'case';
+export type ActivitiesChatContextFilter = 'all' | 'contacts' | 'event' | 'subEvent' | 'group' | 'service' | 'groupSupport' | 'appSupport' | 'campaign' | 'cases';
 export type SupportCaseStatus = 'pending' | 'warned' | 'picked' | 'solved' | 'blocked';
 export type SupportCaseFilter = 'all' | SupportCaseStatus;
 export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';
@@ -182,9 +182,10 @@ export interface ChatDTO {
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
-  serviceContext?: 'event' | 'asset' | 'notification';
+  serviceContext?: 'event' | 'asset' | 'notification' | 'campaign' | 'case';
   assetId?: string;
   ownerId?: string;
+  caseOfferId?: string;
   eventId?: string;
   subEventId?: string;
   groupId?: string;
@@ -211,8 +212,12 @@ export interface ChatHeaderSyncResponseDTO {
 }
 
 export interface ChatServiceEnsureInput {
-  serviceContext: 'event' | 'asset';
-  eventId: string;
+  serviceContext: 'event' | 'asset' | 'campaign' | 'case' | 'groupSupport';
+  eventId?: string;
+  campaignId?: string;
+  caseId?: string;
+  caseOfferId?: string;
+  announcementId?: string;
   subEventId?: string | null;
   assetId?: string | null;
   targetUserId: string;

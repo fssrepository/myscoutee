@@ -98,7 +98,7 @@ function brand(logoCharacterIndex: number | null): DeploymentBrandingDto {
     homeLabel: 'Community',
     logoUrl: 'assets/logo/heart.webp',
     logoCharacterIndex,
-    themePreset: 'AURORA',
+
     revision: 1
   };
 }

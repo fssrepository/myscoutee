@@ -8,6 +8,7 @@ export interface ActivityMemberImageCardConverterOptions {
   ownerType?: ActivityMemberOwnerType | null;
   menuOpen?: boolean;
   checkedInLabel?: string;
+  voterLabel?: string;
   paymentPendingLabel?: string;
   formatCheckedInAt?: (value: string) => string;
 }
@@ -17,6 +18,8 @@ export class ActivityMemberImageCardConverter {
     dto: ActivityMemberDTO,
     options: ActivityMemberImageCardConverterOptions = {}
   ): ImageCardData {
+    const voterLabel = options.voterLabel || 'Voter';
+    const voter = options.ownerType === 'community' && dto.status === 'accepted' && dto.votingEligible === true;
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
     const statusLabel = this.statusLabel(dto, options.ownerType);
     const checkedIn = this.isCheckedIn(dto);
@@ -60,12 +63,12 @@ export class ActivityMemberImageCardConverter {
         options.menuOpen === true ? 'menu-open' : ''
       ].filter(Boolean).join(' '),
       statusChip: {
-        icon: this.statusIcon(dto),
-        label: checkedIn ? checkedInLabel : null,
-        title: statusChipLabel,
-        ariaLabel: statusChipLabel,
-        palette: this.statusPalette(dto),
-        className: this.statusClass(dto)
+        icon: voter ? 'how_to_vote' : this.statusIcon(dto),
+        label: voter ? voterLabel : checkedIn ? checkedInLabel : null,
+        title: voter ? voterLabel : statusChipLabel,
+        ariaLabel: voter ? voterLabel : statusChipLabel,
+        palette: voter ? 'violet' : this.statusPalette(dto),
+        className: voter ? '' : this.statusClass(dto)
       },
       badge: paymentPending
         ? { label: paymentPendingLabel, ariaLabel: paymentPendingLabel, pending: true,

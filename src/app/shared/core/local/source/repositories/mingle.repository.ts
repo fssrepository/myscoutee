@@ -1,3 +1,4 @@
+import {groupPriorityEnabled} from '../../../contracts/group-type';
 import { LocalUserRatesMapper } from '../mappers/rate.mapper';
 import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
@@ -56,10 +57,10 @@ export class LocalMingleRepository {
     if (expectedRevision != null && expectedRevision !== (session?.revision ?? 0)) {
       return this.fail('MINGLE_STATE_CHANGED');
     }
-    return this.toState(event, this.mutate(event, session, action.trim().toLowerCase(), Date.now()), actorId);
+    return this.toState(event, this.mutate(event, session, action.trim().toLowerCase(), Date.now(),actorId), actorId);
   }
 
-  private mutate(event: ActivityEventRecord, current: LocalMingleSession | null, action: string, now: number): LocalMingleSession {
+  private mutate(event: ActivityEventRecord, current: LocalMingleSession | null, action: string, now: number, actorId='system'): LocalMingleSession {
     if (!event.mingleConfiguration) return this.fail('MINGLE_CONFIGURATION_REQUIRED');
     const config = ActivityEventDetailDTO.normalizeMingleConfiguration(event.mingleConfiguration)!;
     if (!current && action !== 'start') return this.fail('MINGLE_SESSION_NOT_STARTED');
@@ -94,7 +95,12 @@ export class LocalMingleRepository {
       if (members.length < 2) return this.fail('MINGLE_MEMBERS_INSUFFICIENT', { required: 2, accepted: members.length });
       const scores = new Map<string, number>();
       const rates = this.db.read()[USER_RATES_TABLE_NAME];
-      for (const rate of Object.values(rates.byId)) {
+      const priorityEnabled=groupPriorityEnabled(this.db.read().communityGroups.byId[this.db.read().users.byId[event.creatorUserId??event.userId]?.workspaceGroupId??'']);
+      const summaries = Object.values(rates.campaignProjection ?? {}).flat();
+      const summarizedPairs = new Set(summaries.map(rate => [rate.fromUserId, rate.toUserId].sort().join('\n')));
+      const evidence = event.campaignId ? Object.values(rates.byId).filter(rate => rate.campaignId === event.campaignId)
+        : [...Object.values(rates.byId).filter(rate => rate.mode !== 'single' || !summarizedPairs.has([rate.fromUserId, rate.toUserId].sort().join('\n'))), ...summaries];
+      for (const rate of priorityEnabled?evidence:[]) {
         const key = [rate.fromUserId, rate.toUserId].sort().join('\n');
         scores.set(key, Math.max(scores.get(key) ?? 0, LocalUserRatesMapper.affinityWeight(rate)));
       }
@@ -104,6 +110,7 @@ export class LocalMingleRepository {
         groupSize: config.groupSize, roundNumber: next.roundNumber + 1,
         requireGenderBalance: config.requireGenderBalance,
         previousTables: next.rounds.filter(round => round.completedAtIso).flatMap(round => round.tables),
+        randomMixing:!priorityEnabled,
         affinity: (left, right) => scores.get([left, right].sort().join('\n')) ?? 0
       });
       if (!tables.length) return this.fail(config.requireGenderBalance
@@ -142,12 +149,12 @@ export class LocalMingleRepository {
       byId: { ...state[MINGLE_SESSIONS_TABLE_NAME].byId, [event.id]: next },
       ids: [...new Set([...state[MINGLE_SESSIONS_TABLE_NAME].ids, event.id])]
     } }));
-    if (createdRound) this.installMembers(event, createdRound, iso);
+    if (createdRound) this.installMembers(event, createdRound, iso,actorId);
     if (completedRound) this.rates.projectMetTables((completedRound as LocalMingleRound).tables, event.title, iso);
     return next;
   }
 
-  private installMembers(event: ActivityEventRecord, round: LocalMingleRound, iso: string): void {
+  private installMembers(event: ActivityEventRecord, round: LocalMingleRound, iso: string,actorId:string): void {
     const members = this.acceptedMembers(event.id);
     const byUser = new Map(members.map(member => [member.userId, member]));
     this.db.write(state => {
@@ -168,14 +175,14 @@ export class LocalMingleRepository {
       return { ...state, [ACTIVITY_MEMBERS_TABLE_NAME]: { ...table, byId, ids: [...ids], idsByOwnerKey } };
     });
     const assignments = new Map(round.tables.flatMap(table => table.memberUserIds.map(id => [id, table.tableNumber] as const)));
-    this.notifications.append(members.map(member => {
+    this.notifications.append(members.filter(member=>member.userId!==actorId).map(member => {
       const table = assignments.get(member.userId);
       return {
         id: `mingle:${event.id}:${round.roundNumber}:${member.userId}`, recipientUserId: member.userId,
         kind: table ? 'mingle-table-assignment' : 'mingle-table-waiting', category: 'event',
         title: table ? 'Your Speed meeting table is ready' : 'Speed meeting round started',
         message: table ? `Go to Table ${table} for round ${round.roundNumber}.` : 'Waiting for a table assignment.',
-        createdAtIso: iso, sourceType: 'event', sourceId: event.id, actionPath: `/game?mingleEventId=${event.id}`,
+        senderUserId:actorId, createdAtIso: iso, sourceType: 'event', sourceId: event.id, actionPath: `/game?mingleEventId=${event.id}`,
         payload: { eventId: event.id, roundNumber: String(round.roundNumber), tableNumber: table ? String(table) : '', mingle: 'true' }
       };
     }));

@@ -1,3 +1,5 @@
+import { caseOfferChatParticipantIds, caseChatParticipantIds, COMMUNITY_CASES_TABLE_NAME, type CommunityCaseRecord } from '../entity/community-case.entity';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { LocalUsersRepository } from './users.repository';
 import { LocalContactsRepository } from './contacts.repository';
 import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
@@ -41,7 +43,26 @@ export class LocalChatsRepository {
       ? table.byId[LocalChatThreadMapper.buildRecordKey(accountId, normalizedChatId)] : null;
     const record = contact?.channelType === 'contact' && contact.memberIds.includes(accountId)
       ? contact : table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
-    return record ? LocalChatThreadMapper.cloneRecord(record) : null;
+    return record && this.hasCaseChatAccess(record, normalizedUserId) ? LocalChatThreadMapper.cloneRecord(record) : null;
+  }
+
+  syncCaseChat(c: CommunityCaseRecord): void {
+    const threads = [{ id: `c-case-${c.id}`, caseOfferId: undefined as string | undefined, title: c.title, accounts: caseChatParticipantIds(c) },
+      ...c.offers.map(offer => ({ id: `c-case-offer-${c.id}-${offer.id}`, caseOfferId: offer.id,
+        title: `${c.title} · ${offer.amount} ${offer.currency}`, accounts: caseOfferChatParticipantIds(c, offer.id) }))];
+    for (const thread of threads) {
+      const members = thread.accounts.map(id => `group:${COMMUNITY_BASE_GROUP_ID}:${id}`).filter(id => !!this.users.queryUserById(id));
+      this.writeContactChat(thread.id, members, { id: thread.id, channelType: 'case', serviceContext: 'case',
+        caseOfferId: thread.caseOfferId, title: thread.title, avatar: 'C', ownerId: c.id, memberIds: members, unread: 0, lastMessage: '', lastSenderId: '' });
+    }
+  }
+
+  private hasCaseChatAccess(chat: ChatRecord, profileId: string): boolean {
+    if (chat.channelType !== 'case') return true;
+    const state = this.memoryDb.read(), profile = state[USERS_TABLE_NAME].byId[profileId];
+    const c = state[COMMUNITY_CASES_TABLE_NAME].byId[chat.ownerId ?? ''];
+    return !!c && profile?.workspaceGroupId === COMMUNITY_BASE_GROUP_ID
+      && (chat.caseOfferId ? caseOfferChatParticipantIds(c, chat.caseOfferId) : caseChatParticipantIds(c)).includes(profile.accountUserId ?? profile.id);
   }
 
   ensureContactChat(actorId: string, targetUserId: string): ChatThreadRecord {
@@ -85,13 +106,22 @@ export class LocalChatsRepository {
     if (!this.contacts.isChatApproved(actor, peer)) throw new Error('Direct chat access requires approval.');
   }
 
-  private writeContactChat(id: string, memberIds: string[]): void {
+  private writeContactChat(id: string, memberIds: string[], resource?: ChatRecord): void {
     this.memoryDb.write(state => {
       const table = state[CHATS_TABLE_NAME];
       const byId = { ...table.byId }; const ids = new Set(table.ids);
       let messages = state[CHAT_MESSAGES_TABLE_NAME];
       const existing = table.ids.map(key => table.byId[key]).find(chat => chat.id === id);
-      const participants = [...new Set([...(existing?.memberIds ?? []), ...memberIds])];
+      const participants = [...new Set(resource ? memberIds : [...(existing?.memberIds ?? []), ...memberIds])];
+      let users = state[USERS_TABLE_NAME];
+      if (resource) for (const key of table.ids) {
+        const prior = byId[key];
+        if (prior.id === id && !participants.includes(prior.ownerUserId)) {
+          const context = this.chatCounterKey(prior.channelType);
+          if (context) users = this.applyStoredChatCounterDelta(users, prior.ownerUserId, context, -this.normalizeCounter(prior.unread));
+          delete byId[key]; ids.delete(key);
+        }
+      }
       for (const ownerUserId of participants) {
         const key = LocalChatThreadMapper.buildRecordKey(ownerUserId, id);
         const current = byId[key];
@@ -101,6 +131,7 @@ export class LocalChatsRepository {
           ...(current ?? { id, ownerUserId, avatar: AppUtils.initialsFromText(otherNames), title: otherNames,
             lastMessage: existing?.lastMessage ?? '', lastSenderId: existing?.lastSenderId ?? '', unread: 0,
             dateIso: existing?.dateIso ?? new Date().toISOString(), channelType: 'contact' as const }),
+          ...(resource ? { channelType: resource.channelType, serviceContext: resource.serviceContext, ownerId: resource.ownerId, caseOfferId: resource.caseOfferId, title: resource.title, avatar: resource.avatar } : {}),
           memberIds: participants,
           revision: current && participants.length !== current.memberIds.length ? this.nextChatRevision(current.revision) : current?.revision ?? 1
         };
@@ -116,11 +147,15 @@ export class LocalChatsRepository {
         }
         ids.add(key);
       }
-      return { ...state, [CHATS_TABLE_NAME]: { ...table, ids: [...ids], byId }, [CHAT_MESSAGES_TABLE_NAME]: messages };
+      return { ...state, [CHATS_TABLE_NAME]: { ...table, ids: [...ids], byId }, [CHAT_MESSAGES_TABLE_NAME]: messages, [USERS_TABLE_NAME]: users };
     });
   }
 
   ensureServiceChat(chat: ChatRecord & { ownerUserId?: string | null }): ChatThreadRecord | null {
+    if (chat.channelType === 'campaign' || chat.channelType === 'case' || chat.channelType === 'groupSupport') {
+      this.writeContactChat(chat.id, chat.memberIds, chat);
+      return this.queryChatItemById(chat.ownerUserId ?? chat.memberIds[0], chat.id);
+    }
     const record = this.resolveChatRecord(chat);
     if (!record) {
       return null;
@@ -496,6 +531,26 @@ export class LocalChatsRepository {
       .sort((left, right) => left.localeCompare(right));
   }
 
+  private withSupportCaseCounters(state: AppMemorySchema): AppMemorySchema {
+    const byBase = new Map<string, Map<string, ContractTypes.SupportCaseStatus>>();
+    for (const chat of Object.values(state.chats.byId)) {
+      if (!this.isSupportCaseRecord(chat) || !chat.supportCase) continue;
+      const base = chat.supportBaseGroupId ?? '';
+      const cases = byBase.get(base) ?? new Map<string, ContractTypes.SupportCaseStatus>();
+      cases.set(chat.id, chat.supportCase.status); byBase.set(base, cases);
+    }
+    const byId = { ...state.users.byId };
+    for (const user of Object.values(byId)) {
+      if (!user.admin) continue;
+      const counters = { pending: 0, warned: 0, picked: 0, solved: 0, blocked: 0, all: 0 };
+      for (const status of byBase.get(user.workspaceGroupId ?? '')?.values() ?? []) {
+        counters[status]++; counters.all++;
+      }
+      byId[user.id] = { ...user, activities: { ...user.activities, chat: { ...user.activities?.chat, supportCases: counters } } };
+    }
+    return { ...state, users: { ...state.users, byId } };
+  }
+
   private querySupportCaseRecordsForAdmin(
     normalizedUserId: string,
     filter: ContractTypes.SupportCaseFilter = 'all'
@@ -508,7 +563,8 @@ export class LocalChatsRepository {
     const byChatId = new Map<string, ChatThreadRecord>();
     for (const id of table.ids) {
       const record = table.byId[id];
-      if (!record || !this.isSupportCaseRecord(record)) {
+      if (!record || !this.isSupportCaseRecord(record)
+          || (record.supportBaseGroupId ?? null) !== (this.memoryDb.read().users.byId[normalizedUserId]?.workspaceGroupId ?? null)) {
         continue;
       }
       const chatId = `${record.id ?? ''}`.trim();
@@ -655,6 +711,8 @@ export class LocalChatsRepository {
                     service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
                     appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
                     contacts: this.normalizeCounter((currentChatCounters.contacts ?? 0) + (chatCounterKey === 'contacts' ? unreadDelta : 0)),
+                    campaign: this.normalizeCounter((currentChatCounters.campaign ?? 0) + (chatCounterKey === 'campaign' ? unreadDelta : 0)),
+                    cases: this.normalizeCounter((currentChatCounters.cases ?? 0) + (chatCounterKey === 'cases' ? unreadDelta : 0)),
                     groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
                   }
                 }
@@ -662,7 +720,7 @@ export class LocalChatsRepository {
             }
           }
         : currentUsersTable;
-      return {
+      return this.withSupportCaseCounters({
         ...currentState,
         [CHATS_TABLE_NAME]: {
           byId: {
@@ -675,7 +733,7 @@ export class LocalChatsRepository {
         },
         [CHAT_MESSAGES_TABLE_NAME]: this.upsertMessageRecord(currentMessagesTable, messageRecord),
         [USERS_TABLE_NAME]: nextUsersTable
-      };
+      });
     });
   }
 
@@ -839,6 +897,8 @@ export class LocalChatsRepository {
         service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
         appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
         contacts: this.normalizeCounter((currentChatCounters.contacts ?? 0) + (chatCounterKey === 'contacts' ? unreadDelta : 0)),
+        campaign: this.normalizeCounter((currentChatCounters.campaign ?? 0) + (chatCounterKey === 'campaign' ? unreadDelta : 0)),
+        cases: this.normalizeCounter((currentChatCounters.cases ?? 0) + (chatCounterKey === 'cases' ? unreadDelta : 0)),
         groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
       };
       const nextUsersTable = currentUser && unreadDelta !== 0
@@ -887,7 +947,7 @@ export class LocalChatsRepository {
   private applyStoredChatCounterDelta(
     table: AppMemorySchema[typeof USERS_TABLE_NAME],
     userId: string,
-    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport',
+    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | 'campaign' | 'cases',
     delta: number
   ): AppMemorySchema[typeof USERS_TABLE_NAME] {
     const currentUser = table.byId[userId] ?? null;
@@ -913,6 +973,8 @@ export class LocalChatsRepository {
               service: this.normalizeCounter((currentChat.service ?? 0) + (context === 'service' ? delta : 0)),
               appSupport: this.normalizeCounter((currentChat.appSupport ?? 0) + (context === 'appSupport' ? delta : 0)),
               contacts: this.normalizeCounter((currentChat.contacts ?? 0) + (context === 'contacts' ? delta : 0)),
+              campaign: this.normalizeCounter((currentChat.campaign ?? 0) + (context === 'campaign' ? delta : 0)),
+              cases: this.normalizeCounter((currentChat.cases ?? 0) + (context === 'cases' ? delta : 0)),
               groupSupport: this.normalizeCounter((currentChat.groupSupport ?? 0) + (context === 'groupSupport' ? delta : 0))
             }
           }
@@ -931,6 +993,9 @@ export class LocalChatsRepository {
         ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
         : ''
     );
+    const selectedId = (chat as ChatThreadRecord).ownerUserId;
+    if (!this.isDemoAdminUser(selectedId)) return null;
+    const actorGroupId = this.memoryDb.read().users.byId[selectedId]?.workspaceGroupId ?? null;
     const state = this.nextSupportCaseState(action, actor);
     if (!state) {
       return null;
@@ -942,7 +1007,7 @@ export class LocalChatsRepository {
       let changed = false;
       for (const id of currentTable.ids) {
         const record = currentTable.byId[id];
-        if (!record || record.id !== sourceId || !this.isSupportCaseRecord(record)) {
+        if (!record || record.id !== sourceId || !this.isSupportCaseRecord(record) || (record.supportBaseGroupId ?? null) !== actorGroupId) {
           continue;
         }
         const nextRecord: ChatThreadRecord = {
@@ -968,13 +1033,13 @@ export class LocalChatsRepository {
       if (!changed) {
         return currentState;
       }
-      return {
+      return this.withSupportCaseCounters({
         ...currentState,
         [CHATS_TABLE_NAME]: {
           ...currentTable,
           byId: nextById
         }
-      };
+      });
     });
     return updated ? LocalChatThreadMapper.cloneRecord(updated) : null;
   }
@@ -1015,6 +1080,8 @@ export class LocalChatsRepository {
   private activityChatContextFilterKey(
     record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
+    if (record.channelType === 'campaign') return 'campaign';
+    if (record.channelType === 'case') return 'cases';
     if (record.channelType === 'contact') return 'contacts';
     if (record.channelType === 'groupSupport') return 'groupSupport';
     if (record.channelType === 'appSupport' || record.channelType === 'supportCase') {
@@ -1042,7 +1109,7 @@ export class LocalChatsRepository {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport'
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport' || value === 'campaign' || value === 'cases'
       ? value
       : 'all';
   }
@@ -1247,7 +1314,7 @@ export class LocalChatsRepository {
   }
 
   private isDemoAdminUser(userId: string): boolean {
-    return userId === 'admin-demo-ava' || userId === 'admin-demo-noel';
+    return this.memoryDb.read().users.byId[userId]?.admin === true || userId === 'admin-demo-ava' || userId === 'admin-demo-noel';
   }
 
   private isSupportCaseRecord(record: ChatRecord): boolean {
@@ -1272,6 +1339,8 @@ export class LocalChatsRepository {
   }
 
   private resolveDemoAdminActor(ownerUserId: string): { id: string; name: string; initials: string } {
+    const profile = this.memoryDb.read().users.byId[ownerUserId];
+    if (profile?.admin) return { id: profile.id, name: profile.name, initials: profile.initials };
     if (ownerUserId === 'admin-demo-noel') {
       return {
         id: 'admin-demo-noel',
@@ -1373,7 +1442,7 @@ export class LocalChatsRepository {
     if (ownerUserId) {
       const record = table.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
       if (record) {
-        return record;
+        return this.hasCaseChatAccess(record, ownerUserId) ? record : null;
       }
       if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
         return this.createServiceChatRecord(ownerUserId, chat);
@@ -1546,12 +1615,14 @@ export class LocalChatsRepository {
 
   private chatCounterKey(
     channelType: ContractTypes.ChatChannelType | null | undefined
-  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | null {
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | 'campaign' | 'cases' | null {
     switch (channelType) {
       case 'mainEvent': return 'event';
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'campaign': return 'campaign';
+      case 'case': return 'cases';
       case 'contact': return 'contacts';
       case 'groupSupport': return 'groupSupport';
       case 'appSupport':

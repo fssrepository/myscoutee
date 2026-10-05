@@ -1,4 +1,8 @@
-import { DATING_RATING_CRITERIA, type RatingSnapshot } from '../../../shared/core/contracts/rating-snapshot';
+import { CommunityServicesHomeComponent } from '../community-services-home/community-services-home.component';
+import { CommunityAnnouncementsComponent } from '../../../shared/ui/components/community-announcements/community-announcements.component';
+import { WorkHomeComponent } from '../work-home/work-home.component';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { ratingCriteriaFor, type RatingSnapshot } from '../../../shared/core/contracts/rating-snapshot';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {
   ChangeDetectionStrategy,
@@ -167,6 +171,9 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
 
     MatIconModule,
     HomeHeaderComponent,
+    WorkHomeComponent,
+    CommunityAnnouncementsComponent,
+    CommunityServicesHomeComponent,
     SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
@@ -177,6 +184,7 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnDestroy {
+  protected readonly workspace = inject(GroupWorkspaceContextService);
   protected readonly deploymentBranding =
     inject(DeploymentConfigurationService).branding;
   private readonly userProfileStore = inject(UserProfileStore);
@@ -281,7 +289,7 @@ export class HomeComponent implements OnDestroy {
     emptyDescription: () => this.noCandidateDescription,
     pagination: {
       mode: 'rating-stars',
-      ratingBarConfig: row => row ? { ...this.gameRatingBarConfig, subjectKey: `${this.activeUserId}:${row.id}` } : null,
+      ratingBarConfig: row => row ? { ...this.gameRatingBarConfig, criteriaDefinition: ratingCriteriaFor(row.mode === 'pair' ? 'dating-pair' : 'dating'), subjectKey: `${this.activeUserId}:${row.id}` } : null,
       ratingBarValue: () => this.selectedRating,
       onRatingSelect: (row, score, _query, snapshot) => this.onHomeSmartListRatingSelect(row, score, snapshot)
     }
@@ -425,6 +433,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get homeHeaderControlsReady(): boolean {
     return !this.isAccountReactivationPending
+      && this.memberActionsAvailable
       && this.isAvatarProfileSettled
       && !this.isBlockedUser
       && !this.isGameVisibilityPaused
@@ -676,7 +685,6 @@ export class HomeComponent implements OnDestroy {
 
   protected get gameRatingBarConfig(): AppMenuRateConfig {
     return {
-      criteriaDefinition: DATING_RATING_CRITERIA,
       scale: this.ratingScale,
       label: 'Affinity',
       actionLabel: 'Go',
@@ -1499,6 +1507,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async reloadServiceCardStack(): Promise<void> {
+    if (this.workspace.isWork() || this.workspace.isCommunity()) return;
     if (!this.isAvatarProfileSettled || !this.memberActionsAvailable) return;
     const reloadKey = this.serviceCardStackReloadKey();
     if (this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {

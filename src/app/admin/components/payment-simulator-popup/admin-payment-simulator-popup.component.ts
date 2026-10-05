@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +20,8 @@ import { I18nPipe } from '../../../shared/ui/pipes';
 })
 export class AdminPaymentSimulatorPopupComponent {
   protected readonly admin = inject(AdminMenuStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  private activeProfile = '';
   private readonly simulator = inject(HttpPaymentSimulatorAdminService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -45,9 +48,11 @@ export class AdminPaymentSimulatorPopupComponent {
       const surface = activePopup === 'payment-simulator' || activePopup === 'payment-authorizations'
         ? activePopup
         : null;
-      if (surface === this.activeSurface) {
+      const profile = this.workspace.active()?.profileId ?? this.workspace.accountUserId();
+      if (surface === this.activeSurface && profile === this.activeProfile) {
         return;
       }
+      this.activeProfile = profile;
       this.activeSurface = surface;
       this.requestGeneration += 1;
       this.sourceUrl.set(null);

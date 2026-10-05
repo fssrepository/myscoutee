@@ -63,13 +63,13 @@ describe('Group member badge access', () => {
 
 
 describe('Group Trash cards', () => {
-  it('shows Deleted on the right for both roles but Restore only when permitted', () => {
+  it('shows Deleted at the lower left for both roles but Restore only when permitted', () => {
     for (const canRestoreGroup of [false, true]) {
       const dto = group({ lifecycleStatus: 'deleted', membershipStatus: 'deleted',
         role: canRestoreGroup ? 'Admin' : 'Member', requestKind: null, canRestoreGroup });
       const card = CommunityGroupConverter.card(dto, key => key);
-      expect(card.mediaBottomEnd).toMatchObject({ label: 'deleted', icon: 'delete', interactive: false });
-      expect(card.mediaBottomStart).toBeNull();
+      expect(card.mediaBottomStart).toMatchObject({ label: 'deleted', icon: 'delete', interactive: false });
+      expect(card.mediaBottomEnd).toBeUndefined();
       expect(card.hasMenuOptions).toBe(canRestoreGroup);
       expect(CommunityGroupConverter.menu(dto).map(item => item.id)).toEqual(canRestoreGroup ? ['restore'] : []);
     }
@@ -78,7 +78,8 @@ describe('Group Trash cards', () => {
   it.each(['deleted', 'blocked'] as const)('shows a restore action without roster access or change badges for %s', membershipStatus => {
     const dto = group({ membershipStatus, requestKind: null, hideMembers: false, activity: 0 });
     const card = CommunityGroupConverter.card(dto, key => key);
-    expect(card.surfaceTone).toBe('deleted');
+    expect(card.surfaceTone).toBe('subevent-light');
+    expect(card.mediaBottomStart).toMatchObject({ label: membershipStatus, tone: 'danger', interactive: false });
     expect(card.menuBadgeCount).toBe(0);
     expect(card.mediaEnd).toMatchObject({ disabled: true, interactive: false, pendingCount: 0 });
     expect(CommunityGroupConverter.menu(dto).map(item => item.id)).toEqual(['restore']);

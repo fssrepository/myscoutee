@@ -703,6 +703,8 @@ export class HttpUsersService implements UserService {
           service: 0,
           appSupport: 0,
           contacts: 0,
+          campaign: 0,
+          cases: 0,
           groupSupport: 0,
           supportCases: { pending: 0, warned: 0, picked: 0, solved: 0, blocked: 0, all: 0 }
         },
@@ -754,6 +756,7 @@ export class HttpUsersService implements UserService {
       contacts: this.normalizeInitialCounterValue(overrides?.contacts, user.activities?.contacts),
       feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback),
       notifications: this.normalizeInitialCounterValue(overrides?.notifications, user.activities?.notifications),
+      cases: this.normalizeInitialCounterValue(overrides?.cases, user.activities?.cases),
       paymentRefundsPending: this.normalizeInitialCounterValue(
         overrides?.paymentRefundsPending,
         user.activities?.paymentRefundsPending
@@ -770,6 +773,8 @@ export class HttpUsersService implements UserService {
         service: this.normalizeInitialCounterValue(overrides?.chat?.service, user.activities?.chat?.service),
         appSupport: this.normalizeInitialCounterValue(overrides?.chat?.appSupport, user.activities?.chat?.appSupport),
         contacts: this.normalizeInitialCounterValue(overrides?.chat?.contacts, user.activities?.chat?.contacts),
+        campaign: this.normalizeInitialCounterValue(overrides?.chat?.campaign, user.activities?.chat?.campaign),
+        cases: this.normalizeInitialCounterValue(overrides?.chat?.cases, user.activities?.chat?.cases),
         groupSupport: this.normalizeInitialCounterValue(overrides?.chat?.groupSupport, user.activities?.chat?.groupSupport),
         supportCases: {
           pending: this.normalizeInitialCounterValue(overrides?.chat?.supportCases?.pending, user.activities?.chat?.supportCases?.pending),
@@ -881,6 +886,7 @@ export class HttpUsersService implements UserService {
       id,
       locationCoordinates: user.locationCoordinates ?? null,
       locationRequired: user.locationRequired === true,
+      baseGroupTypes: (user.baseGroupTypes ?? []).filter(type => type === 'dating' || type === 'work' || type === 'community'),
       name: `${user.name ?? ''}`.trim(),
       city: `${user.city ?? ''}`.trim(),
       initials: `${user.initials ?? ''}`.trim(),

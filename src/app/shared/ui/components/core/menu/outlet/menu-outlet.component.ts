@@ -116,6 +116,15 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
       : rect.bottom + AppMenuOutletComponent.DESKTOP_PANEL_GAP_PX;
   }
 
+  @HostBinding('style.--app-menu-panel-available-height')
+  protected get hostPanelAvailableHeight(): string | null {
+    const menu=this.activeMenu();
+    if(!menu || this.isBottomMenu(menu) || this.isMobileMenu(menu) || !menu.triggerRect)return null;
+    const bounds=this.layoutBounds(menu),rect=menu.triggerRect;
+    const space=this.resolvedOpenUp(menu)?rect.top-bounds.top:bounds.bottom-rect.bottom;
+    return `${Math.max(0,Math.floor(space-AppMenuOutletComponent.DESKTOP_PANEL_GAP_PX-AppMenuOutletComponent.DESKTOP_MARGIN_PX))}px`;
+  }
+
   @HostListener('window:resize')
   protected onViewportResize(): void {
     this.dispatcher.refreshActiveRect();
@@ -288,6 +297,13 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
       return viewport;
     }
     const triggerElement = menu.triggerElement ?? this.hostRef.nativeElement;
+    // Shared menus render outside the list scroller. A popup constrains their
+    // horizontal placement; vertical placement can use the visible screen.
+    const popup=triggerElement.closest('.ui-popup__panel') as HTMLElement | null;
+    if(popup){
+      const rect=popup.getBoundingClientRect();
+      return {...viewport,left:Math.max(viewport.left,rect.left),right:Math.min(viewport.right,rect.right)};
+    }
     let parent = triggerElement.parentElement;
     while (parent && parent !== document.body && parent !== document.documentElement) {
       const style = window.getComputedStyle(parent);

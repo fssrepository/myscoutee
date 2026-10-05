@@ -99,6 +99,8 @@ type MemberMenuAction =
   | 'leave'
   | 'disqualify'
   | 'reinstate'
+  | 'grantVote'
+  | 'revokeVote'
   | 'promoteAdmin'
   | 'revokeManager'
   | 'leaveAsset'
@@ -114,6 +116,8 @@ type PersistedMemberAction =
   | 'remove'
   | 'disqualify'
   | 'reinstate'
+  | 'grant-vote'
+  | 'revoke-vote'
   | 'promote-admin'
   | 'revoke-admin' | 'take-over' | 'step-down-admin'
   | 'set-organizer-only'
@@ -319,6 +323,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       this.setMingleLive(request.type === 'members' && request.mingleLive === true);
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
+          snapshotOnly: request.snapshotOnly,
           parentZIndex: request.parentZIndex,
           followedOrganizers: request.followedOrganizers,
           ownerUserId: request.ownerUserId,
@@ -581,6 +586,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       || this.canLeaveEvent(entry)
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
+      || this.canManageVoting(entry)
       || this.canPromoteAdmin(entry)
       || this.canRevokeAssetManager(entry)
       || this.canLeaveAssetOwner(entry)
@@ -660,6 +666,12 @@ export class EventMembersPopupComponent implements OnDestroy {
         palette: entry.organizerOnly === true ? 'success' : 'warning',
         context: { menu: 'member-action', member: entry, action: 'toggleOrganizerParticipation' }
       });
+    }
+    if (this.canManageVoting(entry)) {
+      const revoke = entry.votingEligible === true;
+      items.push({ id: `member-vote-${entry.id}`, label: revoke ? 'groups.voting.revoke' : 'groups.voting.grant',
+        icon: revoke ? 'do_not_disturb_on' : 'how_to_vote', palette: revoke ? 'warning' : 'violet', surface: 'tinted',
+        context: { menu: 'member-action', member: entry, action: revoke ? 'revokeVote' : 'grantVote' } });
     }
     if (this.canPromoteAdmin(entry)) {
       items.push({
@@ -796,6 +808,9 @@ export class EventMembersPopupComponent implements OnDestroy {
         break;
       case 'reinstate':
         this.requestReinstateMember(context.member, event.sourceEvent);
+        break;
+      case 'grantVote': case 'revokeVote':
+        this.requestVotingRight(context.member, context.action === 'grantVote');
         break;
       case 'promoteAdmin':
         this.requestPromoteAdmin(context.member, event.sourceEvent);
@@ -1161,6 +1176,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   protected memberInvolvementIcon(entry: ActivityContracts.ActivityMemberInvolvementDTO): string {
     switch (entry.ownerType) {
+      case 'case': return 'view_kanban';
       case 'event':
         return 'event';
       case 'subEvent':
@@ -1197,6 +1213,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     return ActivityMemberImageCardConverter.convert(entry, {
       ownerType: this.ownerRef?.ownerType ?? 'event',
       menuOpen: this.isActionMenuOpen(entry),
+      voterLabel: this.i18n.translate('groups.voting.member'),
       checkedInLabel: this.i18n.translate('asset.ticket.checked.in', 'Checked in'),
       paymentPendingLabel: this.i18n.translate('event.member.payment.pending', 'Waiting for payment'),
       formatCheckedInAt: value => this.formatAttendanceDate(value)
@@ -1692,6 +1709,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       capacityTotal?: number;
       metricIdentity?: string;
       initialMembers?: readonly ActivityContracts.ActivityMemberDTO[];
+      snapshotOnly?: boolean;
       onMembersChanged?: (
         members: readonly ActivityContracts.ActivityMemberDTO[],
         statusChange?: AssetMemberStatusChangeDTO
@@ -1711,20 +1729,21 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.followedOrganizers = options?.followedOrganizers === true;
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
-    const providedInitialMembers = (ownerType !== 'event' || lookup?.type === 'chat') && Array.isArray(options?.initialMembers)
+    const snapshotOnly = options?.snapshotOnly === true;
+    const providedInitialMembers = (snapshotOnly || ownerType !== 'event' || lookup?.type === 'chat') && Array.isArray(options?.initialMembers)
       ? [...options.initialMembers]
       : null;
     const isScopedAssetOwner = ownerType === 'asset'
       && `${options?.eventId ?? ''}`.trim().length > 0
       && `${options?.subEventId ?? ''}`.trim().length > 0;
-    const initialMembers = lookup?.type === 'chat'
+    const initialMembers = snapshotOnly ? providedInitialMembers ?? [] : lookup?.type === 'chat'
       ? providedInitialMembers
       : this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
         ? providedInitialMembers
         : null;
     this.isOpen = true;
     this.unregisterExplanationContext?.();
-    this.unregisterExplanationContext = ownerType === 'event' && !this.followedOrganizers && lookup?.type !== 'chat'
+    this.unregisterExplanationContext = !snapshotOnly && ownerType === 'event' && !this.followedOrganizers && lookup?.type !== 'chat'
       ? this.explanationGuide.registerContext('event.members')
       : this.explanationGuide.registerContext('members');
     this.membersListPollScheduler.stop({ abort: true });
@@ -1732,7 +1751,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();
     this.lastEmittedMemberMetricBucketSignature = '';
     this.lookupRef = lookup ? { ...lookup } : null;
-    this.ownerRef = this.followedOrganizers || lookup?.type === 'chat'
+    this.ownerRef = snapshotOnly || this.followedOrganizers || lookup?.type === 'chat'
       ? null
       : {
           ownerType,
@@ -1765,7 +1784,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.invalidateMembersCacheForOwner(normalizedOwnerId);
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
-    this.viewOnlyMode = options?.viewOnly === true;
+    this.viewOnlyMode = snapshotOnly || options?.viewOnly === true;
     this.canManageMembers = !this.viewOnlyMode
       && lookup?.type !== 'chat'
       && !this.scopedBorrowAsset
@@ -1778,7 +1797,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         this.membersCacheKey(normalizedOwnerId, true),
         initialMembers.filter(member => member.status === 'pending')
       );
-      if (lookup?.type === 'chat') {
+      if (snapshotOnly || lookup?.type === 'chat') {
         this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
       } else {
         this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
@@ -1821,7 +1840,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       }
 
       this.syncMembersSmartListQuery();
-      if (!this.followedOrganizers && !this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group' && options?.ownerType !== 'community') {
+      if (!snapshotOnly && !this.followedOrganizers && !this.mingleLive && this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group' && options?.ownerType !== 'community' && options?.ownerType !== 'case') {
         void this.resolveOwnerPresentation(normalizedOwnerId, options);
       }
       this.cdr.markForCheck();
@@ -2211,6 +2230,8 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canDeleteMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.ownerRef?.ownerType === 'case') return !this.viewOnlyMode && (this.isCurrentUser(entry)
+      ? ['accepted', 'pending'].includes(entry.status) : this.canManageMembers);
     if (this.ownerRef?.ownerType === 'community') {
       return !this.viewOnlyMode && (this.isCurrentUser(entry)
         || this.canManageMembers && entry.role !== 'Admin' && entry.userId !== this.communityOwnerUserId);
@@ -2280,7 +2301,22 @@ export class EventMembersPopupComponent implements OnDestroy {
     return entry.status === 'disqualified';
   }
 
+  private canManageVoting(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.ownerRef?.ownerType === 'community' && !this.viewOnlyMode && this.canManageMembers
+      && !this.communityUnderReview && entry.status === 'accepted';
+  }
+
+  private requestVotingRight(entry: ActivityContracts.ActivityMemberDTO, grant: boolean): void {
+    if (!this.canManageVoting(entry)) return;
+    this.membersSmartList?.closeMenu();
+    const key = grant ? 'groups.voting.grant' : 'groups.voting.revoke';
+    this.dialogStore.open({ title: `${key}.title`, message: this.i18n.translateParams(`${key}.message`, { name: entry.name }),
+      cancelLabel: 'Cancel', confirmLabel: key, confirmPalette: this.memberActionPalette(entry, grant ? 'grantVote' : 'revokeVote'),
+      failureMessage: 'groups.voting.failed', onConfirm: () => this.confirmMemberAction(entry, grant ? 'grant-vote' : 'revoke-vote') });
+  }
+
   protected canPromoteAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.ownerRef?.ownerType === 'case') return false;
     if (this.viewOnlyMode
         || !this.ownerRef
         || (this.ownerRef.ownerType === 'asset' && this.scopedBorrowAsset)
@@ -2298,6 +2334,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canToggleOrganizerParticipation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.ownerRef?.ownerType === 'case') return false;
     if (this.ownerRef?.ownerType === 'group' || this.ownerRef?.ownerType === 'subEvent') {
       const event = this.eventsService.peekKnownRecordById(this.activeUserId(), this.memberEventId);
       const stage = event?.subEvents?.find(item => item.id === this.memberSubEventId);
@@ -2370,6 +2407,7 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   protected canStepDownAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.ownerRef?.ownerType === 'case') return false;
     if (this.viewOnlyMode
         || !this.ownerRef
         || entry.status !== 'accepted'
@@ -2435,7 +2473,7 @@ export class EventMembersPopupComponent implements OnDestroy {
         ? canManageScopedAssetMembers(activeUserId, members)
         : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers
-      || (this.ownerRef?.ownerType !== 'community') && (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
+      || (this.ownerRef?.ownerType !== 'community' && this.ownerRef?.ownerType !== 'case') && (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
@@ -2672,7 +2710,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private activeUserId(): string {
     const profileId = this.userProfileStore.activeUserId().trim();
-    return this.ownerRef?.ownerType === 'community' ? this.workspace.accountId(profileId) : profileId;
+    return ['community', 'case'].includes(this.ownerRef?.ownerType ?? '') ? this.workspace.accountId(profileId) : profileId;
   }
 
   private resetSummaryState(): void {

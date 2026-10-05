@@ -1,0 +1,10 @@
+[
+  {
+    "ruleKey": "community-scheduled-cases",
+    "intervalSeconds": 60
+  },
+  {
+    "ruleKey": "community-voting-close",
+    "intervalSeconds": 60
+  }
+]

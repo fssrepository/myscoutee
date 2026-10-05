@@ -35,8 +35,8 @@ export class RatesService extends BaseRouteModeService implements IRatesService 
     this.gameService.kickUserRatesOutboxSync();
   }
 
-  peekRateItemsByUser(userId: string): ActivityRateDTO[] {
-    return this.ratesService.peekRateItemsByUser(userId);
+  peekRateItemsByUser(userId: string, campaignId?: string | null): ActivityRateDTO[] {
+    return this.ratesService.peekRateItemsByUser(userId, campaignId);
   }
 
   async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {

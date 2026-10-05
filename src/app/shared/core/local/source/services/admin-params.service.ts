@@ -25,8 +25,8 @@ export interface LocalAdminParamsDelayOptions {
 export class LocalAdminParamsService extends LocalRouteDelayService {
   private readonly repository = inject(LocalAdminParamsRepository);
 
-  async loadParamsState(options?: LocalAdminParamsDelayOptions): Promise<AdminParamsStateDto> {
-    return await this.withAdminParamsDelay(this.readParamsStore(), ADMIN_PARAMS_LOAD_ROUTE, options);
+  async loadParamsState(options?: LocalAdminParamsDelayOptions, adminUserId?: string | null): Promise<AdminParamsStateDto> {
+    return await this.withAdminParamsDelay(this.readParamsStore(adminUserId), ADMIN_PARAMS_LOAD_ROUTE, options);
   }
 
   async saveParamsSection(
@@ -45,10 +45,11 @@ export class LocalAdminParamsService extends LocalRouteDelayService {
 
   async loadParamsHistory(
     sectionKey: string,
-    options?: LocalAdminParamsDelayOptions
+    options?: LocalAdminParamsDelayOptions,
+    adminUserId?: string | null
   ): Promise<AdminParamsHistoryDto> {
     return await this.withAdminParamsDelay(
-      this.loadParamsHistorySnapshot(sectionKey),
+      this.loadParamsHistorySnapshot(sectionKey, adminUserId),
       ADMIN_PARAMS_HISTORY_ROUTE,
       options
     );
@@ -72,7 +73,7 @@ export class LocalAdminParamsService extends LocalRouteDelayService {
     adminUserId?: string | null
   ): Promise<AdminParamsStateDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
-    const store = await this.readParamsStore();
+    const store = await this.readParamsStore(adminUserId);
     const nowIso = new Date().toISOString();
     const version = this.nextParamsVersion(store);
     const changedBy = `${adminUserId ?? ''}`.trim() || 'demo-admin';
@@ -108,13 +109,13 @@ export class LocalAdminParamsService extends LocalRouteDelayService {
           : store.historyBySection[normalizedSectionKey] ?? []
       }
     };
-    await this.repository.writeStore(nextStore);
+    await this.repository.writeStore(nextStore, adminUserId);
     return nextStore;
   }
 
-  private async loadParamsHistorySnapshot(sectionKey: string): Promise<AdminParamsHistoryDto> {
+  private async loadParamsHistorySnapshot(sectionKey: string, adminUserId?: string | null): Promise<AdminParamsHistoryDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
-    const store = await this.readParamsStore();
+    const store = await this.readParamsStore(adminUserId);
     const section = store.sections.find(item => item.key === normalizedSectionKey);
     return {
       sectionKey: normalizedSectionKey,
@@ -131,10 +132,10 @@ export class LocalAdminParamsService extends LocalRouteDelayService {
   ): Promise<AdminParamsStateDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     const normalizedVersion = Math.max(1, Math.trunc(Number(version) || 0));
-    const history = await this.loadParamsHistorySnapshot(normalizedSectionKey);
+    const history = await this.loadParamsHistorySnapshot(normalizedSectionKey, adminUserId);
     const selected = history.versions.find(item => item.version === normalizedVersion);
     if (!selected) {
-      return await this.readParamsStore();
+      return await this.readParamsStore(adminUserId);
     }
     return await this.saveParamsSectionSnapshot(
       normalizedSectionKey,
@@ -144,9 +145,9 @@ export class LocalAdminParamsService extends LocalRouteDelayService {
     );
   }
 
-  private async readParamsStore(): Promise<AdminParamsDemoStore> {
+  private async readParamsStore(adminUserId?: string | null): Promise<AdminParamsDemoStore> {
     await this.repository.whenReady();
-    const existing = await this.repository.readStore<AdminParamsDemoStore>();
+    const existing = await this.repository.readStore<AdminParamsDemoStore>(adminUserId);
     if (!existing?.sections?.length) {
       throw new Error('Demo params store is not bootstrapped.');
     }

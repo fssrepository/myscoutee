@@ -55,7 +55,7 @@ describe('OperatorPageComponent', () => {
               homeLabel: 'Community',
               logoUrl: 'assets/logo/heart.webp',
               logoCharacterIndex: null,
-              themePreset: 'AURORA',
+
               revision: 1
             }).asReadonly()
           }

@@ -69,12 +69,13 @@ export class TextCardComponent {
   @Input() title = '';
   @Input() subtitle = '';
   @Input() meta = '';
-  @Input() detail = '';
+  @Input() detail: string | readonly string[] = '';
   @Input() icon = '';
   @Input() tone: TextCardTone = 'neutral';
   @Input() accentHue: number | null = null;
   @Input() disabled = false;
   @Input() badge = '';
+  @Input() badgePosition: 'start' | 'end' = 'start';
   @Input() badgeGuideField: string | null = null;
   @Input() statusGuideField: string | null = null;
   @Input() badgeIcon = '';
@@ -112,6 +113,7 @@ export class TextCardComponent {
       this.selected ? 'ui-text-card--selected' : '',
       this.hasActions() ? 'ui-text-card--with-actions' : '',
       this.resolvedBadge() ? 'ui-text-card--with-badge' : '',
+      this.resolvedBadge() && this.badgePosition === 'end' ? 'ui-text-card--badge-end' : '',
       this.resolvedBadge() ? `ui-text-card--badge-${this.badgeTone || 'default'}` : '',
       this.resolvedStatusBadge() ? 'ui-text-card--with-status-badge' : '',
       this.resolvedStatusBadge() ? `ui-text-card--status-${this.statusBadgeTone || 'default'}` : ''
@@ -130,8 +132,9 @@ export class TextCardComponent {
     return `${this.meta ?? ''}`.trim();
   }
 
-  protected resolvedDetail(): string {
-    return `${this.detail ?? ''}`.trim();
+  protected resolvedDetails(): string[] {
+    const values = Array.isArray(this.detail) ? this.detail : [this.detail];
+    return values.map(value => `${value ?? ''}`.trim()).filter(Boolean);
   }
 
   protected resolvedIcon(): string {

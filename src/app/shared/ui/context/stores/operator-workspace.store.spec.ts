@@ -1218,7 +1218,7 @@ function operatorConfiguration(): OperatorConfigurationDto {
       homeLabel: 'Your preferences come first',
       logoUrl: 'assets/logo/heart.webp',
       logoCharacterIndex: null,
-      themePreset: 'AURORA',
+
       revision: 1
     },
     payment: {

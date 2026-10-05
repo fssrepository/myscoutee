@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, input, resource, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
@@ -15,7 +15,7 @@ import {
   type ProfileDetailFormRow,
   type UserDto
 } from '../../../shared/core';
-import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
+import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile.store';
 
 interface ProfileViewRow {
   label: string;
@@ -45,7 +45,9 @@ export class ProfileViewPopupComponent implements OnDestroy {
   private unregisterExplanationContext: (() => void) | null = null;
   private explanationContextActive = false;
 
-  protected readonly target = this.profileStore.profileViewTarget;
+  readonly embedded = input(false);
+  readonly profileTarget = input<ProfileViewTarget | null>(null);
+  protected readonly target = computed(() => this.profileTarget() ?? this.profileStore.profileViewTarget());
   private readonly targetUserId = computed(() => this.target()?.userId?.trim() || undefined);
   private readonly profileResource = resource<ProfileViewData, string | undefined>({
     params: () => this.targetUserId(),
@@ -106,7 +108,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.target()) {
+    if (this.embedded() || !this.target()) {
       return;
     }
     event.preventDefault();

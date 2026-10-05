@@ -44,6 +44,8 @@ export class AdminProfileSeedBuilder {
           service: 0,
           appSupport: 1,
           contacts: 0,
+          campaign: 1,
+          cases: 1,
           groupSupport: 1
         },
         adminJobs: 0,

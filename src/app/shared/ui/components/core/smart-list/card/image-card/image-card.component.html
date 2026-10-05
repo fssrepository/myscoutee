@@ -1,5 +1,9 @@
 <article
   [ngClass]="rootClassList()"
+  [style.--image-card-hue]="card?.accentHue ?? null"
+  [class.ui-image-card--category]="card?.accentHue != null"
+  [style.--description-lines]="card?.descriptionLines ?? null"
+  [class.ui-image-card--clamped]="!!card?.descriptionLines"
   [style.aspect-ratio]="resolvedAspectRatio()"
   [appLazyBgImage]="resolvedLayout() === 'overlay' ? (resolvedImageUrl() || null) : null"
   >

@@ -17,8 +17,8 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly ratesRepository = inject(LocalRatesRepository);
 
-  peekRateItemsByUser(userId: string): ActivityRateDTO[] {
-    return this.ratesRepository.peekRateItemsByUserId(userId);
+  peekRateItemsByUser(userId: string, campaignId?: string | null): ActivityRateDTO[] {
+    return this.ratesRepository.peekRateItemsByUserId(userId, campaignId);
   }
 
   async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {
@@ -83,6 +83,7 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
 
     return {
       ownerUserId: userId,
+      campaignId: query.filters?.campaignId,
       mode: mode === 'pair' ? 'pair' : 'single',
       displayDirection,
       socialBadgeEnabled: query.filters?.rateSocialBadgeEnabled === true,

@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { LocalLandingContentRepository } from '../repositories/landing-content.repository';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type { UserLocationEligibilityResponseDto } from '../../../contracts/user.interface';
 import type { HelpCenterStateDto, LandingContentStateDto } from '../../../contracts';
@@ -20,23 +21,30 @@ export class LocalLandingContentService {
     locationRequired: false
   };
 
+  private readonly content = inject(LocalLandingContentRepository);
+  private readonly injector = inject(Injector);
   private readonly helpCenter = inject(LocalHelpCenterService);
   private readonly ideaPosts = inject(LocalIdeaPostsService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly countryPartitions = inject(LocalCountryPartitionsRepository);
 
-  async loadExplanationState(contextKey: string, language: string): Promise<HelpCenterStateDto> {
-    return this.helpCenter.loadState('explanation', language, contextKey);
+  async loadExplanationState(contextKey: string, language: string, groupId: string | null = null): Promise<HelpCenterStateDto> {
+    return this.helpCenter.loadState('explanation', language, contextKey, groupId);
   }
 
-  async loadContent(): Promise<LandingContentStateDto> {
-    const [privacy, terms, ideaPreview] = await Promise.all([
-      this.helpCenter.loadState('privacy'),
-      this.helpCenter.loadState('terms'),
-      this.ideaPosts.loadPublishedFeaturedPostPreview(),
+  async loadContent(groupId: string | null = null): Promise<LandingContentStateDto> {
+    const { SeedStaticContentService } = await import('../../seed/services/static-content.service');
+    await this.injector.get(SeedStaticContentService).ensureReady();
+    const [privacy, terms, ideaPreview, slides] = await Promise.all([
+      this.helpCenter.loadState('privacy', undefined, undefined, groupId),
+      this.helpCenter.loadState('terms', undefined, undefined, groupId),
+      this.ideaPosts.loadPublishedFeaturedPostPreview(undefined, groupId),
+      this.content.querySlides(groupId),
       this.routeDelay.waitForRouteDelay(LocalLandingContentService.LANDING_CONTENT_ROUTE)
     ]);
     return {
+      groupId,
+      slides,
       privacy,
       terms,
       ideas: ideaPreview.records,

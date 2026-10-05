@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { UserDto } from '../../../contracts/user.interface';
+import type { UserRecord } from '../entity/user.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 
 import { LocalUsersRepository } from './users.repository';
@@ -103,7 +103,7 @@ describe('LocalUsersRepository demo selector', () => {
       .toEqual(['operator-presentation-only', 'regular-member']);
   });
 
-  function seedUsers(users: UserDto[]): void {
+  function seedUsers(users: UserRecord[]): void {
     memoryDb.write(state => ({
       ...state,
       [USERS_TABLE_NAME]: {
@@ -113,7 +113,7 @@ describe('LocalUsersRepository demo selector', () => {
     }));
   }
 
-  function user(id: string, name: string, overrides: Partial<UserDto> = {}): UserDto {
+  function user(id: string, name: string, overrides: Partial<UserRecord> = {}): UserRecord {
     return {
       id,
       name,

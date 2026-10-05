@@ -1,3 +1,8 @@
+import {PaymentMethodsPopupStore} from '../../context/stores/payment-methods-popup.store';
+import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
+import { ChatsService } from '../../../core/base/services/chats.service';
+import { CommunityCasesStore } from '../../context/stores/community-cases.store';
+import { CampaignsStore } from '../../context/stores/campaigns.store';
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { ContactChatAccessStore } from '../../context/stores/contact-chat-access.store';
@@ -30,7 +35,7 @@ import {
   NotificationSingleRowConverter
 } from '../../converters/notification-single-row.converter';
 import { DialogStore } from '../../context/stores/dialog.store';
-import { ActivitiesPopupStore } from '../../context/stores/activities-popup.store';
+import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activities-popup.store';
 import { EventSubeventsPopupStore } from '../../context/stores/event-subevents-popup.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
@@ -81,8 +86,13 @@ type NotificationHeaderMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationCenterPopupComponent implements OnDestroy {
+  private readonly paymentHistory=inject(PaymentMethodsPopupStore);
   private readonly contactProfile = inject(ProfileStore);
+  private readonly chats = inject(ChatsService);
   private readonly contactChatAccess = inject(ContactChatAccessStore);
+  private readonly announcements = inject(CommunityAnnouncementsStore);
+  private readonly cases = inject(CommunityCasesStore);
+  private readonly campaigns = inject(CampaignsStore);
   private readonly communityGroups = inject(CommunityGroupsStore);
   private readonly groupWorkspaces = inject(GroupWorkspaceStore);
   @ViewChild('notificationsSmartList')
@@ -332,6 +342,29 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     notification: NotificationDto,
     actionId: string
   ): Promise<void> {
+    if (actionId === 'openNotificationChat') {
+      if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
+      const chat = await this.chats.queryChatById(notification.payload!['chatId']);
+      if (!chat) return;
+      this.store.close();
+      this.activitiesStore.openEventChat({ ...eventChatPopupRequestFromChat(chat), targetMessageId: notification.payload?.['messageId'] }, eventChatHeaderStateFromChat(chat));
+      await this.markRead(notification); return;
+    }
+    if(actionId==='openNotificationPayments'){if(!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId']??''}`.trim()||null))return;this.store.close();await this.paymentHistory.openHistory();await this.markRead(notification);return;}
+    if (actionId === 'openNotificationAnnouncement' || actionId === 'openNotificationCase' || actionId === 'openNotificationRatings') {
+      if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
+      this.store.close();
+      if (actionId === 'openNotificationAnnouncement') await this.announcements.openReference(notification.sourceId!);
+      else if (actionId === 'openNotificationCase') await this.cases.openReference(notification.sourceId!);
+      else {
+        const id = notification.payload?.['campaignId'];
+        if (id) await this.campaigns.loadReference(id);
+        this.campaigns.activityCampaign.set(id ? this.campaigns.known()[id] ?? null : null);
+        await this.activitiesStore.ensureActivitiesPopupLoaded();
+        this.activitiesStore.openActivities('rates');
+      }
+      await this.markRead(notification); return;
+    }
     if (actionId === 'openNotificationGroup') {
       this.store.close();
       await this.communityGroups.openInvitation(notification.sourceId!);

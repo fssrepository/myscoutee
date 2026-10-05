@@ -9,6 +9,7 @@ export type WarpImageCardTone = 'blue' | 'purple' | 'pink' | 'orange';
 
 export interface WarpImageCardData {
   readonly id: string;
+  readonly imageUrl?: string;
   readonly index: string;
   readonly titleKey: string;
   readonly title: string;

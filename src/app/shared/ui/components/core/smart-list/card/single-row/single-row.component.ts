@@ -77,6 +77,7 @@ export class SingleRowComponent {
     if (surfaceTone !== 'default') {
       classes.push(`ui-single-row--tone-${surfaceTone}`);
     }
+    if (this.row?.palette) classes.push(`ui-single-row--palette-${this.row.palette}`);
     if (this.isClickable()) {
       classes.push('ui-single-row--clickable');
     }
