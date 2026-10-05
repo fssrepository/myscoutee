@@ -3,6 +3,7 @@ import type {
   OperatorRevenueDto,
   OperatorSettlementDto
 } from '../../../contracts/operator.interface';
+import publicConfiguration from '../data/deployment-configuration.json';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { USERS_TABLE_NAME, type UserRecord } from '../../source/entity/user.entity';
 import { LocalOperatorRegistryMapper } from '../../source/mappers/operator-registry.mapper';
@@ -115,41 +116,14 @@ export class SeedOperatorRegistryBuilder {
           capability: 'AVAILABLE',
           unavailableReason: null,
           adminEmails: [],
-          privacyContact: {
-            configured: true,
-            dataControllerName: 'MyScoutee Explore Operator',
-            privacyContactEmail: 'privacy@explore.myscoutee.test'
-          },
-          socialLinks: [
-            {
-              provider: 'instagram',
-              label: 'Instagram',
-              url: 'https://www.instagram.com/myscoutee',
-              icon: 'photo_camera',
-              handle: '@myscoutee'
-            },
-            {
-              provider: 'youtube',
-              label: 'YouTube',
-              url: 'https://www.youtube.com/@myscoutee',
-              icon: 'smart_display',
-              handle: '@myscoutee'
-            },
-            {
-              provider: 'facebook',
-              label: 'Facebook',
-              url: 'https://www.facebook.com/myscoutee',
-              icon: 'public',
-              handle: 'MyScoutee'
-            }
-          ],
+          privacyContact: structuredClone(publicConfiguration.privacyContact),
+          socialLinks: structuredClone(publicConfiguration.socialLinks),
           branding: {
-            productName: 'MyScoutee',
-            homeLabel: 'Your preferences come first',
-            logoUrl: 'assets/logo/heart.webp',
-            logoCharacterIndex: 0,
-            themePreset: 'VIOLET',
-            revision: 0
+            productName: publicConfiguration.productName,
+            homeLabel: publicConfiguration.homeLabel,
+            logoUrl: publicConfiguration.logoUrl,
+            logoCharacterIndex: publicConfiguration.logoCharacterIndex,
+            revision: publicConfiguration.revision
           },
           integration: {
             publicBaseUrl: 'http://localhost/api/integrations/v1'
@@ -171,7 +145,7 @@ export class SeedOperatorRegistryBuilder {
                 palette: 'blue'
               }
             ],
-            providerId: 'stripe',
+            providerId: publicConfiguration.paymentProviderId,
             publicBaseUrl: 'https://demo.myscoutee.test',
             merchantAccount: 'explore-demo',
             credentialConfigured: true,
@@ -180,7 +154,7 @@ export class SeedOperatorRegistryBuilder {
           firebase: {
             projectId: 'myscoutee-explore',
             authenticationCredentialConfigured: false,
-            messagingCredentialConfigured: false,
+            messagingCredentialConfigured: publicConfiguration.firebaseMessagingConfigured,
             publicConfiguration: {
               revision: 0,
               apiKey: '',

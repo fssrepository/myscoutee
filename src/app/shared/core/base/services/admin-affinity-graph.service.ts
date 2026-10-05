@@ -45,14 +45,14 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
 
   async loadInitialGraph(adminUserId?: string | null, signal?: AbortSignal): Promise<AdminAffinityGraphDto> {
     if (this.isLocalAffinityGraph()) {
-      return this.normalizeSnapshot(await this.readLocalGraphSnapshot(true, signal), 'demo');
+      return this.normalizeSnapshot(await this.readLocalGraphSnapshot(true, signal, adminUserId), 'demo');
     }
     return this.normalizeSnapshot(await this.loadHttpInitialGraph(adminUserId, signal), 'http');
   }
 
   async loadMeta(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams, signal?: AbortSignal): Promise<AdminAffinityGraphMetaDto> {
     return this.isLocalAffinityGraph()
-      ? this.metaFromSnapshot(await this.demoSnapshot(range, false, signal))
+      ? this.metaFromSnapshot(await this.demoSnapshot(range, false, signal, adminUserId))
       : await this.httpService.loadMeta(adminUserId, range, signal);
   }
 
@@ -60,7 +60,7 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     if (!this.isLocalAffinityGraph()) {
       return await this.httpService.loadForests(adminUserId, range, signal);
     }
-    const snapshot = await this.demoSnapshot(range, true, signal);
+    const snapshot = await this.demoSnapshot(range, true, signal, adminUserId);
     const components = this.components(snapshot.nodes, snapshot.edges);
     const forests = components.map((component, index) => this.forestFromComponent(component, index));
     const page = this.forestPage(forests, range);
@@ -81,7 +81,7 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     if (!this.isLocalAffinityGraph()) {
       return await this.httpService.loadTile(adminUserId, tile, signal);
     }
-    const snapshot = await this.demoSnapshot(tile, true, signal);
+    const snapshot = await this.demoSnapshot(tile, true, signal, adminUserId);
     return {
       generatedAtIso: snapshot.generatedAtIso,
       source: snapshot.source,
@@ -107,7 +107,7 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     if (!this.isLocalAffinityGraph()) {
       return await this.httpService.loadNeighborhood(userId, depth, adminUserId, range, signal);
     }
-    const snapshot = await this.demoSnapshot(range, true, signal);
+    const snapshot = await this.demoSnapshot(range, true, signal, adminUserId);
     const normalizedUserId = `${userId ?? ''}`.trim();
     const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
     if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
@@ -126,7 +126,7 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
 
   async rebuildLayout(adminUserId?: string | null, signal?: AbortSignal): Promise<AdminAffinityGraphMetaDto> {
     return this.isLocalAffinityGraph()
-      ? this.metaFromSnapshot(await this.demoSnapshot(undefined, false, signal))
+      ? this.metaFromSnapshot(await this.demoSnapshot(undefined, false, signal, adminUserId))
       : await this.httpService.rebuildLayout(adminUserId, signal);
   }
 
@@ -164,9 +164,10 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
   private async demoSnapshot(
     range?: AdminAffinityGraphRangeParams | null,
     waitForRouteDelay = false,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    adminUserId?: string | null
   ): Promise<AdminAffinityGraphDto> {
-    const snapshot = await this.readLocalGraphSnapshot(waitForRouteDelay, signal);
+    const snapshot = await this.readLocalGraphSnapshot(waitForRouteDelay, signal, adminUserId);
     this.throwIfAborted(signal);
     return {
       ...snapshot,
@@ -174,8 +175,8 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     };
   }
 
-  private async readLocalGraphSnapshot(waitForRouteDelay = false, signal?: AbortSignal): Promise<AdminAffinityGraphDto> {
-    const snapshot = await this.localService.readGraphSnapshot({ waitForRouteDelay, signal });
+  private async readLocalGraphSnapshot(waitForRouteDelay = false, signal?: AbortSignal, adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
+    const snapshot = await this.localService.readGraphSnapshot({ waitForRouteDelay, signal, adminUserId });
     this.throwIfAborted(signal);
     if (!snapshot) {
       throw new Error('Demo affinity graph snapshot is not bootstrapped.');

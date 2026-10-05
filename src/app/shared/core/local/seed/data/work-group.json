@@ -1,0 +1,39 @@
+{
+  "id": "myscoutee-work",
+  "groupType": "work",
+  "owner": "Alex Turner",
+  "name": "MyScoutee Work",
+  "description": "Meet people through work opportunities, business ideas and professional events.",
+  "memberNames": [
+    "Farkas Anna",
+    "Kiss Balázs",
+    "Nagy Eszter",
+    "Maya Stone",
+    "Lina Park",
+    "Iris Bloom",
+    "Noah Hart",
+    "Evan Reed",
+    "Kai Morgan",
+    "Luca Hale",
+    "Theo Lane",
+    "Milo Grant",
+    "Emma Parker",
+    "Liam Parker",
+    "Sophia Lane",
+    "Noah Lane",
+    "Olivia Rivera",
+    "Ethan Rivera",
+    "Mia Grant",
+    "Mason Grant",
+    "Lina Stone",
+    "Lucas Stone",
+    "Nora Hale",
+    "Owen Hale",
+    "Ivy Stone",
+    "Leo Stone"
+  ],
+  "adminIds": [
+    "admin-demo-ava",
+    "admin-demo-noel"
+  ]
+}

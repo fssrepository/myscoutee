@@ -274,6 +274,7 @@ export class LocalActivityMembersBuilder {
 
   private static ownerTypeLabel(ownerType: ActivityMemberOwnerRef['ownerType']): string {
     switch (ownerType) {
+      case 'case': return 'Case';
       case 'event':
         return 'Event';
       case 'subEvent':

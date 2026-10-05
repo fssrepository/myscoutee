@@ -1,0 +1,62 @@
+import {TestBed} from '@angular/core/testing';
+import {LocalMemoryDb} from '../../../common/app.db';
+import {RouteDelayService} from '../../../base/services/route-delay.service';
+import {SeedUsersRepository} from '../../seed/repositories/users-seed.repository';
+import {SeedCommunityGroupsRepository} from '../../seed/repositories/community-groups-seed.repository';
+import {SeedServiceOfferingsRepository} from '../../seed/repositories/service-offerings-seed.repository';
+import {SeedCommunityCasesRepository} from '../../seed/repositories/community-cases-seed.repository';
+import {LocalCaseAppointmentsService} from './case-appointments.service';
+import {LocalCommunityCasesService} from './community-cases.service';
+import {LocalServiceOfferingsService} from './service-offerings.service';
+import {COMMUNITY_BASE_GROUP_ID} from '../../../contracts/group-type';
+describe('Shared case appointment schedule and notifications',()=>{
+ let db:LocalMemoryDb,service:LocalCaseAppointmentsService,cases:LocalCommunityCasesService,alex:string,maya:string,anna:string;
+ const caseId='community-case-park-meters',serviceId='service-anna-meters';
+ beforeEach(async()=>{vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-05T07:00:00Z'));
+  TestBed.configureTestingModule({providers:[{provide:RouteDelayService,useValue:{waitForRouteDelay:async()=>undefined}}]});
+  db=TestBed.inject(LocalMemoryDb);await db.resetStorage();const users=TestBed.inject(SeedUsersRepository).seedDefaults();TestBed.inject(SeedCommunityGroupsRepository).seedDefaults(users);
+  TestBed.inject(SeedServiceOfferingsRepository).seedDefaults();TestBed.inject(SeedCommunityCasesRepository).seedDefaults();
+  const id=(name:string)=>users.find(u=>u.name===name&&!u.workspaceGroupId)!.id;alex=id('Alex Turner');maya=id('Maya Stone');anna=id('Farkas Anna');
+  service=TestBed.inject(LocalCaseAppointmentsService);cases=TestBed.inject(LocalCommunityCasesService);
+ });
+ afterEach(()=>{TestBed.resetTestingModule();vi.useRealTimers();});
+ const slots=()=>service.slots(caseId,serviceId,anna,{userId:alex,eventId:caseId,rangeStart:'2026-10-12',rangeEnd:'2026-10-12'});
+ const accept=async()=>{const c=await cases.detail(anna,caseId);await cases.action(caseId,{userId:anna,action:'accept-invite',version:c.version});};
+ it('requires an accepted case provider, preserves external isolation and notifies others once per booking operation',async()=>{
+  expect((await slots()).result.slots).toHaveLength(0);await accept();const page=await slots();expect(page.result.slots).toHaveLength(2);
+  const request={userId:alex,serviceId,providerAccountId:anna,slotIds:[page.result.slots[0].id],version:page.version,operationId:'booking-1'};
+  const saved=await service.save(caseId,request);expect(saved.appointments).toHaveLength(1);
+  expect(await service.save(caseId,request)).toEqual(saved);
+  const notifications=Object.values(db.read().notifications.byId).filter(n=>n.kind==='case-appointments-updated');
+  expect(notifications.map(n=>n.recipientUserId)).toContain(anna);expect(notifications.map(n=>n.recipientUserId)).not.toContain(alex);
+  expect(new Set(notifications.map(n=>n.id)).size).toBe(notifications.length);
+  expect(Object.values(db.read().activityMembers.byId).some(m=>m.ownerId==='community-park-court'&&m.userId===anna)).toBe(false);
+ });
+ it('rejects stale writes and double booking across clients, and frees cancelled appointments',async()=>{
+  await accept();const page=await slots(),slotId=page.result.slots[0].id;
+  const first=await service.save(caseId,{userId:alex,serviceId,providerAccountId:anna,slotIds:[slotId],version:null,operationId:'first'});
+  await expect(service.save(caseId,{userId:maya,serviceId,providerAccountId:anna,slotIds:[slotId],version:null,operationId:'stale'})).rejects.toThrow();
+  await expect(service.save(caseId,{userId:maya,serviceId,providerAccountId:anna,slotIds:[slotId],version:first.version,operationId:'occupied'})).rejects.toThrow();
+  const cancelled=await service.save(caseId,{userId:alex,serviceId,providerAccountId:anna,slotIds:[],version:first.version,operationId:'cancel'});
+  expect(cancelled.appointments).toHaveLength(0);
+  const next=await service.save(caseId,{userId:maya,serviceId,providerAccountId:anna,slotIds:[slotId],version:cancelled.version,operationId:'other'});expect(next.appointments).toHaveLength(1);
+  await db.flushToIndexedDb();expect(db.read().serviceProviderCalendars.byId[anna].appointments.map(a=>a.status)).toEqual(['cancelled','booked']);
+ });
+ it('checks overlaps across different cases and services owned by the same provider',async()=>{
+  await accept();const page=await slots();await service.save(caseId,{userId:alex,serviceId,providerAccountId:anna,slotIds:[page.result.slots[0].id],version:null,operationId:'first'});
+  const offerings=TestBed.inject(LocalServiceOfferingsService),original=(await offerings.detail(anna,serviceId)).service;
+  let other=await offerings.save({...original,userId:anna,id:undefined,version:undefined,title:'Another service'});other=await offerings.action(anna,other.service.id,'publish',other.service.version);
+  let c=await cases.detail(alex,'community-case-riverside-leak');c=await cases.action(c.id,{userId:alex,action:'invite-provider',providerAccountId:anna,serviceId:other.service.id,version:c.version});
+  c=await cases.action(c.id,{userId:anna,action:'accept-invite',version:c.version});
+  const otherSlots=await service.slots(c.id,other.service.id,anna,{userId:alex,eventId:c.id,rangeStart:'2026-10-12',rangeEnd:'2026-10-12'});
+  expect(otherSlots.result.slots[0].availableSlots).toBe(0);
+  await expect(service.save(c.id,{userId:alex,serviceId:other.service.id,providerAccountId:anna,slotIds:[otherSlots.result.slots[0].id],version:otherSlots.version,operationId:'overlap'})).rejects.toThrow();
+ });
+ it('respects closed date overrides and keeps calendar data scoped to the provider',async()=>{
+  await accept();const offerings=TestBed.inject(LocalServiceOfferingsService),s=(await offerings.detail(anna,serviceId)).service;
+  await offerings.save({...s,userId:anna,slotTemplates:[...s.slotTemplates,{id:'closed',startAt:'2026-10-12T09:00:00Z',overrideDate:'2026-10-12',closed:true,subEventDefinitions:[]}]});
+  expect((await slots()).result.slots).toHaveLength(0);
+  await expect(service.slots('community-case-riverside-leak',serviceId,anna,{userId:anna,eventId:'x'})).rejects.toThrow();
+  expect(await service.calendar(alex,'2026-10-01','2026-10-31')).toEqual([]);
+ });
+});

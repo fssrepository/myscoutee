@@ -42,6 +42,7 @@ export type ActivityCounterKey =
   | 'tickets'
   | 'contacts'
   | 'feedback'
+  | 'cases'
   | 'notifications'
   | 'paymentRefundsPending'
   | 'contactRequestsPending'
@@ -61,6 +62,7 @@ export interface ActivityCounters {
   contacts: number;
   feedback: number;
   notifications?: number;
+  cases?: number;
   paymentRefundsPending?: number;
   contactRequestsPending?: number;
   chat?: ActivityChatCounters;
@@ -79,6 +81,8 @@ export interface ActivityChatCounters {
   service: number;
   appSupport: number;
   contacts: number;
+  campaign: number;
+  cases: number;
   groupSupport: number;
   supportCases: ActivitySupportCaseCounters;
 }
@@ -196,6 +200,7 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'contacts',
   'feedback',
   'notifications',
+  'cases',
   'paymentRefundsPending',
   'contactRequestsPending',
   'adminJobs',
@@ -336,6 +341,7 @@ export class ActivityStore {
       contacts: normalizeCounterValue(counters.contacts),
       feedback: normalizeCounterValue(counters.feedback),
       notifications: normalizeCounterValue(counters.notifications),
+      cases: normalizeCounterValue(counters.cases),
       chat: cloneChatCounters(counters.chat),
       event: cloneEventCounters(counters.event),
       asset: cloneAssetCounters(counters.asset),

@@ -15,7 +15,6 @@ import { from } from 'rxjs';
 
 import type {
   DeploymentSocialLinkDto,
-  DeploymentThemePreset,
   ListQuery,
   OperatorClaimEligibilityStatus,
   OperatorClaimRequestDto,
@@ -27,9 +26,6 @@ import type {
   OperatorSettlementDto,
   OperatorSettlementFilters,
   OperatorTlsCertificateMode
-} from '../../../shared/core/contracts';
-import {
-  DEPLOYMENT_THEME_PRESETS
 } from '../../../shared/core/contracts';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { ImageCarouselComponent } from '../../../shared/ui/components/core/image-carousel';
@@ -102,7 +98,6 @@ type OperatorPopupAction =
   | 'save-tls'
   | 'synchronize-revenue'
   | 'requeue-revenue-report'
-  | 'set-theme'
   | 'set-payment-provider';
 
 type OperatorClaimPath = 'company' | 'client-code';
@@ -110,7 +105,6 @@ type OperatorClaimPath = 'company' | 'client-code';
 interface OperatorPopupActionContext {
   action: OperatorPopupAction;
   claimPath?: OperatorClaimPath;
-  themePreset?: DeploymentThemePreset;
   providerId?: string | null;
   tlsMode?: OperatorTlsCertificateMode;
   reportId?: string;
@@ -610,24 +604,6 @@ export class OperatorActionPopupComponent {
       this.workspace.configurationDraft()?.privacyContact.privacyContactEmail
       ?? ''
   }));
-  protected readonly configurationThemeItems = computed<
-    readonly AppMenuItem<string, OperatorPopupActionContext>[]
-  >(() => {
-    const selected = this.workspace.configurationDraft()?.branding.themePreset;
-    return DEPLOYMENT_THEME_PRESETS.map(themePreset => ({
-      id: `operator-theme-${themePreset.toLowerCase()}`,
-      label: `operator.configuration.branding.theme.${themePreset.toLowerCase()}`,
-      icon: 'palette',
-      kind: 'radio',
-      palette: this.themePalette(themePreset),
-      active: selected === themePreset,
-      checked: selected === themePreset,
-      context: {
-        action: 'set-theme',
-        themePreset
-      }
-    }));
-  });
   protected readonly configurationTlsModeItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => (['AUTOMATIC', 'MANUAL'] as const).map(tlsMode => ({
@@ -1260,13 +1236,6 @@ export class OperatorActionPopupComponent {
         }
         return;
       }
-      case 'set-theme':
-        if (context.themePreset) {
-          this.workspace.setConfigurationBranding({
-            themePreset: context.themePreset
-          });
-        }
-        return;
       case 'set-payment-provider':
         this.workspace.setConfigurationPayment({
           providerId: context.providerId ?? null,
@@ -1612,19 +1581,6 @@ export class OperatorActionPopupComponent {
       return 'negative';
     }
     return 'stable';
-  }
-
-  protected configurationThemeTrigger(): AppMenuTrigger {
-    const themePreset =
-      this.workspace.configurationDraft()?.branding.themePreset ?? 'VIOLET';
-    return {
-      label: `operator.configuration.branding.theme.${themePreset.toLowerCase()}`,
-      icon: 'palette',
-      palette: this.themePalette(themePreset),
-      layout: 'field',
-      disabled: this.configurationDisabled(),
-      ariaLabel: 'operator.configuration.branding.theme'
-    };
   }
 
   protected configurationPaymentProviderTrigger(): AppMenuTrigger {
@@ -2233,30 +2189,5 @@ export class OperatorActionPopupComponent {
     }
   }
 
-  private themePalette(
-    themePreset: DeploymentThemePreset
-  ): 'blue' | 'teal' | 'green' | 'orange' | 'violet' | 'rose' | 'amber' | 'slate' {
-    switch (themePreset) {
-      case 'OCEAN':
-        return 'blue';
-      case 'FOREST':
-        return 'green';
-      case 'SUNSET':
-        return 'orange';
-      case 'VIOLET':
-        return 'violet';
-      case 'ROSE':
-        return 'rose';
-      case 'AMBER':
-        return 'amber';
-      case 'SLATE':
-      case 'MONOCHROME':
-        return 'slate';
-      case 'AQUARIUS':
-        return 'teal';
-      case 'AURORA':
-      default:
-        return 'violet';
-    }
-  }
+
 }

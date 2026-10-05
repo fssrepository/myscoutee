@@ -241,7 +241,8 @@ export class LocalNotificationsRepository {
     userId: string,
     kind: string,
     sourceType: string,
-    sourceId: string
+    sourceId: string,
+    messageIds?: readonly string[]
   ): number {
     const normalizedUserId = this.accountId(userId);
     const normalizedKind = kind.trim();
@@ -258,7 +259,8 @@ export class LocalNotificationsRepository {
           && !record.readAtIso
           && record.kind === normalizedKind
           && record.sourceType === normalizedSourceType
-          && record.sourceId === normalizedSourceId;
+          && record.sourceId === normalizedSourceId
+          && (!messageIds || messageIds.includes(record.payload?.['messageId'] ?? ''));
       });
     if (matchingIds.length === 0) {
       return 0;

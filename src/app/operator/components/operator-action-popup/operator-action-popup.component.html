@@ -448,16 +448,6 @@
                         </label>
                       </div>
 
-                      <div class="operator-action-popup__select-field operator-action-popup__branding-theme">
-                        <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>
-                        <app-menu
-                          kind="select"
-                          [trigger]="configurationThemeTrigger()"
-                          [items]="configurationThemeItems()"
-                          (itemSelect)="onAction($event)"
-                        ></app-menu>
-                      </div>
-
                       <app-menu
                         class="operator-action-popup__section-actions operator-action-popup__branding-actions operator-action-popup__single-action-menu"
                         [model]="{ actionSizing: 'content' }"

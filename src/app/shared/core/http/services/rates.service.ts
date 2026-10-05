@@ -32,7 +32,7 @@ export class HttpRatesService implements IRatesService {
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedRatesByUserId: Record<string, ActivityRateDTO[]> = {};
 
-  peekRateItemsByUser(userId: string): ActivityRateDTO[] {
+  peekRateItemsByUser(userId: string, campaignId?: string | null): ActivityRateDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -40,12 +40,12 @@ export class HttpRatesService implements IRatesService {
     return this.cloneRateItems(
       this.mergePendingOutboxRateItems(
         normalizedUserId,
-        this.cachedRatesByUserId[normalizedUserId] ?? []
+        this.cachedRatesByUserId[this.cacheKey(normalizedUserId, campaignId)] ?? [], campaignId
       )
     );
   }
 
-  async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {
+  async queryRateItemsByUser(userId: string, campaignId?: string | null): Promise<ActivityRateDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -53,17 +53,18 @@ export class HttpRatesService implements IRatesService {
     try {
       const response = await this.http
         .get<ActivityRateDTO[] | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_ROUTE}`, {
-          params: new HttpParams().set('userId', normalizedUserId)
+          params: campaignId ? new HttpParams().set('userId', normalizedUserId).set('campaignId', campaignId)
+            : new HttpParams().set('userId', normalizedUserId)
         })
         .toPromise();
       const items = this.mergePendingOutboxRateItems(
         normalizedUserId,
-        Array.isArray(response) ? response : []
+        Array.isArray(response) ? response : [], campaignId
       );
-      this.cachedRatesByUserId[normalizedUserId] = this.cloneRateItems(items);
+      this.cachedRatesByUserId[this.cacheKey(normalizedUserId, campaignId)] = this.cloneRateItems(items);
       return this.cloneRateItems(items);
     } catch {
-      return this.peekRateItemsByUser(normalizedUserId);
+      return this.peekRateItemsByUser(normalizedUserId, campaignId);
     }
   }
 
@@ -104,7 +105,7 @@ export class HttpRatesService implements IRatesService {
       // Fall through to the mixed server/cache read below.
     }
     this.throwIfAborted(signal);
-    await this.queryRateItemsByUser(userId);
+    await this.queryRateItemsByUser(userId, query.filters?.campaignId);
     this.throwIfAborted(signal);
     const [mode, direction] = this.activitiesRateFilter(query).split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
     const order = resolveActivityRateOrder(query);
@@ -115,6 +116,7 @@ export class HttpRatesService implements IRatesService {
       .set('sort', order.sort)
       .set('socialBadgeEnabled', query.filters?.rateSocialBadgeEnabled === true ? 'true' : 'false')
       .set('limit', String(Math.max(1, Math.trunc(query.pageSize || 10))));
+    if (query.filters?.campaignId) params = params.set('campaignId', query.filters.campaignId);
     const secondaryFilter = order.secondaryFilter;
     if (secondaryFilter === 'recent' || secondaryFilter === 'past' || secondaryFilter === 'relevant') {
       params = params.set('secondaryFilter', secondaryFilter);
@@ -152,7 +154,7 @@ export class HttpRatesService implements IRatesService {
           ? Math.max(0, Math.trunc(Number(response?.gameCounter)))
           : undefined
       };
-      if (!this.shouldUseCachedActivitiesRatePage(page, userId)) {
+      if (query.filters?.campaignId || !this.shouldUseCachedActivitiesRatePage(page, userId)) {
         return page;
       }
       return {
@@ -160,6 +162,7 @@ export class HttpRatesService implements IRatesService {
         gameCounter: page.gameCounter
       };
     } catch (error) {
+      if (query.filters?.campaignId) throw error;
       if (this.isAbortError(error)) {
         throw error;
       }
@@ -228,7 +231,11 @@ export class HttpRatesService implements IRatesService {
       && this.peekRateItemsByUser(userId).length > 0;
   }
 
-  private mergePendingOutboxRateItems(userId: string, items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
+  private cacheKey(userId: string, campaignId?: string | null): string {
+    return campaignId ? `${userId}:campaign:${campaignId}` : userId;
+  }
+
+  private mergePendingOutboxRateItems(userId: string, items: readonly ActivityRateDTO[], campaignId?: string | null): ActivityRateDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -242,7 +249,7 @@ export class HttpRatesService implements IRatesService {
       itemsById.set(normalizedId, { ...item });
     }
     for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
-      if (record.ownerUserId?.trim() !== normalizedUserId) {
+      if (record.ownerUserId?.trim() !== normalizedUserId || (record.campaignId ?? null) !== (campaignId ?? null)) {
         continue;
       }
       const item = BaseUserRatesMapper.toDto(record);

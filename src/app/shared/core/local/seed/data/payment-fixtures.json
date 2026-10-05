@@ -1,0 +1,243 @@
+{
+  "methods": [
+    {
+      "_id": "pm_demo_alex_visa_4242",
+      "version": 0,
+      "userId": "user:Alex Turner",
+      "provider": "stripe",
+      "providerPaymentMethodRef": "pm_sim_seed_alex_4242",
+      "brand": "Visa",
+      "last4": "4242",
+      "expiryMonth": 12,
+      "expiryYear": 2029,
+      "expiryKey": 202912,
+      "cardholderName": "ALEX TURNER",
+      "artworkKey": "midnight",
+      "status": "active",
+      "createdAtIso": "2026-08-01T10:00:00.000Z",
+      "updatedAtIso": "2026-08-01T10:00:00.000Z"
+    },
+    {
+      "_id": "pm_demo_alex_visa_1881",
+      "version": 0,
+      "userId": "user:Alex Turner",
+      "provider": "stripe",
+      "providerPaymentMethodRef": "pm_sim_seed_alex_1881",
+      "brand": "Visa",
+      "last4": "1881",
+      "expiryMonth": 8,
+      "expiryYear": 2030,
+      "expiryKey": 203008,
+      "cardholderName": "ALEX TURNER",
+      "artworkKey": "emerald",
+      "status": "active",
+      "createdAtIso": "2026-07-20T10:00:00.000Z",
+      "updatedAtIso": "2026-07-20T10:00:00.000Z"
+    },
+    {
+      "_id": "pm_demo_alex_expired_0008",
+      "version": 0,
+      "userId": "user:Alex Turner",
+      "provider": "stripe",
+      "providerPaymentMethodRef": "pm_sim_seed_alex_expired_0008",
+      "brand": "Visa",
+      "last4": "0008",
+      "expiryMonth": 8,
+      "expiryYear": 2026,
+      "expiryKey": 202608,
+      "cardholderName": "ALEX TURNER",
+      "artworkKey": "coral",
+      "status": "expired",
+      "expiredNotifiedAtIso": "2026-09-01T02:15:00.000Z",
+      "createdAtIso": "2026-06-01T10:00:00.000Z",
+      "updatedAtIso": "2026-09-01T02:15:00.000Z"
+    }
+  ],
+  "payments": [
+    {
+      "_id": "payment-demo-alex-event",
+      "userId": "user:Alex Turner",
+      "recipientUserId": "user:Farkas Anna",
+      "sourceId": "event:Snowline Shuttle Briefing",
+      "paymentMethodId": "pm_demo_alex_visa_4242",
+      "provider": "stripe",
+      "status": "captured",
+      "amount": 4900,
+      "accountedSpentAmount": 4900,
+      "currency": "HUF",
+      "checkoutSessionId": "pay_demo_alex_event",
+      "gatewaySessionId": "cs_sim_demo_alex_event",
+      "gatewayAuthorizationId": "pi_sim_demo_alex_event",
+      "gatewayStatus": "succeeded",
+      "fulfillmentStatus": "succeeded",
+      "fulfillmentKind": "event_join",
+      "basketItems": [
+        {
+          "id": "payment-demo-alex-event-item",
+          "kind": "event",
+          "sourceId": "event:Snowline Shuttle Briefing",
+          "label": "Snowline Shuttle Briefing",
+          "detail": "Event participation",
+          "amount": 4900,
+          "currency": "HUF",
+          "quantity": 1,
+          "status": "confirmed",
+          "resultState": "succeeded",
+          "pricingSummaryRows": [
+            {
+              "key": "payment-demo-alex-event-total",
+              "label": "Event participation",
+              "detail": "Snowline Shuttle Briefing",
+              "amount": 4900,
+              "currency": "HUF",
+              "multiplier": 1
+            }
+          ],
+          "checkoutSessionId": "pay_demo_alex_event",
+          "createdAtIso": "2026-08-24T17:30:00.000Z",
+          "updatedAtIso": "2026-08-24T17:30:00.000Z"
+        }
+      ],
+      "pricingSummaryRows": [
+        {
+          "key": "payment-demo-alex-event-total",
+          "label": "Event participation",
+          "detail": "Snowline Shuttle Briefing",
+          "amount": 4900,
+          "currency": "HUF",
+          "multiplier": 1
+        }
+      ],
+      "lineItems": [
+        {
+          "id": "payment-demo-alex-event-line",
+          "kind": "event",
+          "label": "Snowline Shuttle Briefing",
+          "detail": "Event participation",
+          "amount": 4900,
+          "currency": "HUF"
+        }
+      ],
+      "bookingStatus": "joined",
+      "joinedAtIso": "2026-08-24T17:30:00.000Z",
+      "refundStatus": "none",
+      "auditKind": "payment",
+      "createdDate": "2026-08-24T17:30:00.000Z"
+    },
+    {
+      "_id": "payment-demo-alex-asset",
+      "userId": "user:Alex Turner",
+      "recipientUserId": "user:Elijah Brooks",
+      "sourceId": "asset:Elijah Brooks:Trail Access 4x4",
+      "paymentMethodId": "pm_demo_alex_visa_1881",
+      "provider": "stripe",
+      "status": "captured",
+      "amount": 12500,
+      "accountedSpentAmount": 12500,
+      "currency": "HUF",
+      "checkoutSessionId": "pay_demo_alex_asset",
+      "gatewaySessionId": "cs_sim_demo_alex_asset",
+      "gatewayAuthorizationId": "pi_sim_demo_alex_asset",
+      "gatewayStatus": "succeeded",
+      "fulfillmentStatus": "succeeded",
+      "fulfillmentKind": "client",
+      "bookingStartAtIso": "2026-08-17T09:15:00.000Z",
+      "bookingEndAtIso": "2026-08-17T12:15:00.000Z",
+      "bookingQuantity": 1,
+      "basketItems": [
+        {
+          "id": "payment-demo-alex-asset-item",
+          "kind": "resource",
+          "sourceId": "asset:Elijah Brooks:Trail Access 4x4",
+          "resourceType": "Transport",
+          "label": "Trail Access 4x4",
+          "detail": "Aug 17, 2026 \u00b7 11:15 AM - 2:15 PM",
+          "amount": 12500,
+          "currency": "HUF",
+          "quantity": 1,
+          "status": "confirmed",
+          "resultState": "succeeded",
+          "pricingSummaryRows": [
+            {
+              "key": "payment-demo-alex-asset-total",
+              "label": "Trail Access 4x4",
+              "detail": "3 hours",
+              "amount": 12500,
+              "currency": "HUF",
+              "multiplier": 1
+            }
+          ],
+          "checkoutSessionId": "pay_demo_alex_asset",
+          "createdAtIso": "2026-08-17T09:15:00.000Z",
+          "updatedAtIso": "2026-08-17T09:15:00.000Z"
+        }
+      ],
+      "pricingSummaryRows": [
+        {
+          "key": "payment-demo-alex-asset-total",
+          "label": "Trail Access 4x4",
+          "detail": "3 hours",
+          "amount": 12500,
+          "currency": "HUF",
+          "multiplier": 1
+        }
+      ],
+      "lineItems": [
+        {
+          "id": "payment-demo-alex-asset-line",
+          "kind": "resource",
+          "label": "Trail Access 4x4",
+          "detail": "Aug 17, 2026 \u00b7 11:15 AM - 2:15 PM",
+          "amount": 12500,
+          "currency": "HUF"
+        }
+      ],
+      "bookingStatus": "joined",
+      "joinedAtIso": "2026-08-17T09:15:00.000Z",
+      "refundStatus": "none",
+      "auditKind": "payment",
+      "createdDate": "2026-08-17T09:15:00.000Z"
+    },
+    {
+      "_id": "payment-demo-alex-income",
+      "userId": "user:Farkas Anna",
+      "recipientUserId": "user:Alex Turner",
+      "sourceId": "event:Snowline Shuttle Briefing",
+      "provider": "cash",
+      "status": "captured",
+      "amount": 8400,
+      "accountedSpentAmount": 8400,
+      "currency": "HUF",
+      "checkoutSessionId": "pay_demo_alex_income",
+      "gatewayStatus": "cash-recorded",
+      "fulfillmentStatus": "succeeded",
+      "fulfillmentKind": "event_join",
+      "bookingStatus": "joined",
+      "joinedAtIso": "2026-08-10T16:00:00.000Z",
+      "refundStatus": "none",
+      "auditKind": "payment",
+      "createdDate": "2026-08-10T16:00:00.000Z"
+    },
+    {
+      "_id": "payment-demo-alex-failed",
+      "userId": "user:Alex Turner",
+      "recipientUserId": "user:Farkas Anna",
+      "sourceId": "event:Snowline Shuttle Briefing",
+      "paymentMethodId": "pm_demo_alex_visa_1881",
+      "provider": "barion",
+      "status": "failed",
+      "amount": 3200,
+      "currency": "HUF",
+      "checkoutSessionId": "pay_demo_alex_failed",
+      "gatewaySessionId": "barion_sim_demo_alex_failed",
+      "gatewayStatus": "declined",
+      "lastGatewayError": "Bank confirmation was declined.",
+      "fulfillmentStatus": "failed",
+      "fulfillmentKind": "event_join",
+      "bookingStatus": "payment_failed",
+      "refundStatus": "none",
+      "auditKind": "payment",
+      "createdDate": "2026-09-05T08:23:40.000Z"
+    }
+  ]
+}

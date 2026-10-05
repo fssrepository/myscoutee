@@ -150,7 +150,7 @@ describe('application startup loading handoff', () => {
     const fixture = create(url);
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
     expect(fixture.nativeElement.querySelector('.game-startup')).not.toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.game-header button').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.game-header button').length).toBe(0);
     expect(fixture.nativeElement.querySelectorAll('.game-header button:not(:disabled)').length).toBe(0);
     expect(fixture.nativeElement.querySelector('.game-startup-avatar button').disabled).toBe(true);
     events.next(new NavigationStart(2, '/game'));

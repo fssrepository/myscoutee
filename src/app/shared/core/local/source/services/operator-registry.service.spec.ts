@@ -703,7 +703,7 @@ describe('LocalOperatorRegistryService', () => {
         productName: 'Community Hub',
         logoUrl: '',
         logoCharacterIndex: -1,
-        themePreset: 'OCEAN'
+
       },
       payment: {
         providerId: 'stripe',
@@ -750,7 +750,7 @@ describe('LocalOperatorRegistryService', () => {
         homeLabel: initial.branding.homeLabel,
         logoUrl: '',
         logoCharacterIndex: -1,
-        themePreset: 'OCEAN',
+
         revision: 1
       }),
       payment: expect.objectContaining({

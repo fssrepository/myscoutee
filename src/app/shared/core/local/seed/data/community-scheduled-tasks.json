@@ -1,0 +1,17 @@
+[
+  {
+    "id": "community-task-riverside-chimney",
+    "communityId": "community-riverside",
+    "ownerName": "Alex Turner",
+    "title": "Annual chimney inspection",
+    "description": "Arrange a shared visit and give residents enough time to choose an appointment.",
+    "caseType": "chimney-sweep",
+    "audienceAll": true,
+    "audienceNames": [],
+    "nextDueAtIso": "2026-11-19T09:00:00.000Z",
+    "frequency": "yearly",
+    "enabled": true,
+    "startAtIso": "2026-11-19T09:00:00.000Z",
+    "deleted": false
+  }
+]

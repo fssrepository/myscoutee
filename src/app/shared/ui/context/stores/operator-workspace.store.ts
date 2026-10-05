@@ -266,7 +266,7 @@ export class OperatorWorkspaceStore {
       || draft.branding.logoUrl.trim() !== configuration.branding.logoUrl
       || draft.branding.logoCharacterIndex
         !== configuration.branding.logoCharacterIndex
-      || draft.branding.themePreset !== configuration.branding.themePreset
+
       || !OperatorConfigurationMapper.adminEmailsEqual(
         draft.adminEmails,
         configuration.adminEmails
@@ -1461,7 +1461,7 @@ export class OperatorWorkspaceStore {
         productName: configuration.branding.productName,
         logoUrl: configuration.branding.logoUrl,
         logoCharacterIndex: configuration.branding.logoCharacterIndex,
-        themePreset: configuration.branding.themePreset
+
       },
       integration: {
         publicBaseUrl: configuration.integration?.publicBaseUrl ?? ''

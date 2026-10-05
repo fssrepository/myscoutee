@@ -137,7 +137,7 @@ export class FirebaseAppService {
         cache: 'no-store',
         signal: abortController.signal
       });
-      if (!response.ok) {
+      if (response.status === 204 || !response.ok) {
         return null;
       }
       const parsed = await response.json() as Partial<FirebaseConfigFile>;

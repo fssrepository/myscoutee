@@ -35,7 +35,7 @@ export class LocalHelpCenterService {
   private readonly helpCenterRepository = inject(LocalHelpCenterRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null, groupId: string | null = null): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
@@ -43,13 +43,13 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.whenReady(),
       this.routeDelay.waitForRouteDelay(`/${documentKind}/active`)
     ]);
-    const table = this.table();
+    const table = this.table(documentKind === 'privacy' ? null : groupId);
     this.assertBootstrappedState(table, documentKind, language, context);
     return this.stateFromTable(table, documentKind, language, context);
   }
 
   async loadAdminState(
-    _adminUserId: string,
+    adminUserId: string,
     kind: HelpCenterDocumentKind = 'help',
     lang = 'en',
     contextKey?: string | null
@@ -61,7 +61,8 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.whenReady(),
       this.routeDelay.waitForRouteDelay(this.adminRoute(documentKind))
     ]);
-    const table = this.table();
+    const groupId = this.helpCenterRepository.groupForUser(adminUserId);
+    const table = this.table(documentKind === 'privacy' ? null : groupId);
     this.assertBootstrappedState(table, documentKind, language, context);
     return this.stateFromTable(table, documentKind, language, context);
   }
@@ -72,12 +73,13 @@ export class LocalHelpCenterService {
     _revisionVersion?: number
   ): Promise<PrivacyConsentDto | null> {
     await this.helpCenterRepository.whenReady();
-    const normalizedUserId = this.nonEmptyText(userId, '');
+    const groupId = null;
+    const normalizedUserId = this.helpCenterRepository.accountForUser(userId);
     const normalizedRevisionId = this.nonEmptyText(revisionId, '');
     if (!normalizedUserId || !normalizedRevisionId) {
       return null;
     }
-    const table = this.table();
+    const table = this.table(groupId);
     const consentId = this.privacyConsentRecordId(normalizedUserId, normalizedRevisionId);
     const consent = table.privacyConsentsById?.[consentId] ?? null;
     if (consent) {
@@ -88,12 +90,13 @@ export class LocalHelpCenterService {
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
     await this.helpCenterRepository.whenReady();
-    const userId = this.nonEmptyText(request?.userId, '');
+    const groupId = null;
+    const userId = this.helpCenterRepository.accountForUser(request?.userId ?? '');
     const revisionId = this.nonEmptyText(request?.revisionId, '');
     if (!userId || !revisionId) {
       throw new Error('A user and privacy revision are required to save consent.');
     }
-    const table = this.table();
+    const table = this.table(groupId);
     const revision = table.revisionsById[revisionId];
     const revisionDto = revision ? LocalHelpCenterMapper.toDto(revision) : null;
     if (!revisionDto || this.revisionKind(revisionDto) !== 'privacy') {
@@ -124,7 +127,7 @@ export class LocalHelpCenterService {
         privacyConsentsById: consentsById,
         privacyConsentIds: [...new Set([...(currentTable.privacyConsentIds ?? []), id])]
       };
-    });
+    }, groupId);
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay('/privacy/consents')
@@ -134,10 +137,11 @@ export class LocalHelpCenterService {
 
   async saveRevision(request: HelpCenterRevisionSaveRequestDto, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     await this.helpCenterRepository.whenReady();
+    const groupId = kind === 'privacy' ? null : this.helpCenterRepository.groupForUser(request.actorUserId);
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(request?.lang);
     const contextKey = this.normalizeContextKey(documentKind, request?.contextKey, true);
-    const table = this.table();
+    const table = this.table(groupId);
     const nowIso = new Date().toISOString();
     const actorUserId = this.normalizeActor(request.actorUserId);
     const version = this.nextVersion(table, documentKind, language, contextKey);
@@ -187,20 +191,21 @@ export class LocalHelpCenterService {
         },
         auditIds: [...current.auditIds, audit.id]
       };
-    });
+    }, groupId);
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`)
     ]);
-    return this.stateFromTable(this.table(), documentKind, language, contextKey);
+    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     await this.helpCenterRepository.whenReady();
+    const groupId = kind === 'privacy' ? null : this.helpCenterRepository.groupForUser(actorUserId);
     const documentKind = this.normalizeKind(kind);
-    const language = this.normalizeLang(this.table().revisionsById[revisionId.trim()]?.lang);
+    const language = this.normalizeLang(this.table(groupId).revisionsById[revisionId.trim()]?.lang);
     const normalizedRevisionId = revisionId.trim();
-    const table = this.table();
+    const table = this.table(groupId);
     const revision = table.revisionsById[normalizedRevisionId];
     const revisionDto = revision ? LocalHelpCenterMapper.toDto(revision) : null;
     if (!revisionDto || this.revisionKind(revisionDto) !== documentKind) {
@@ -248,25 +253,26 @@ export class LocalHelpCenterService {
         },
         auditIds: [...current.auditIds, audit.id]
       };
-    });
+    }, groupId);
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`)
     ]);
-    return this.stateFromTable(this.table(), documentKind, language, contextKey);
+    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     await this.helpCenterRepository.whenReady();
+    const groupId = kind === 'privacy' ? null : this.helpCenterRepository.groupForUser(actorUserId);
     const documentKind = this.normalizeKind(kind);
     const normalizedRevisionId = revisionId.trim();
-    const table = this.table();
+    const table = this.table(groupId);
     const revision = table.revisionsById[normalizedRevisionId];
     const revisionDto = revision ? LocalHelpCenterMapper.toDto(revision) : null;
     const language = this.normalizeLang(revisionDto?.lang);
     const contextKey = this.revisionContextKey(revisionDto);
     if (!revisionDto || this.revisionKind(revisionDto) !== documentKind) {
-      return this.stateFromTable(table, documentKind);
+      throw new Error(`${this.documentLabel(documentKind)} revision not found.`);
     }
     const remainingIds = table.revisionIds.filter(id => id !== normalizedRevisionId);
     const remainingRevisions = remainingIds
@@ -324,12 +330,12 @@ export class LocalHelpCenterService {
         },
         auditIds: [...current.auditIds, audit.id]
       };
-    });
+    }, groupId);
     await Promise.all([
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`)
     ]);
-    return this.stateFromTable(this.table(), documentKind, language, contextKey);
+    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey);
   }
 
   private assertBootstrappedState(
@@ -349,8 +355,8 @@ export class LocalHelpCenterService {
     throw new Error(`Demo ${this.documentLabel(kind).toLowerCase()} content is not bootstrapped.`);
   }
 
-  private table(): HelpCenterTable {
-    return this.helpCenterRepository.readTable();
+  private table(groupId: string | null = null): HelpCenterTable {
+    return this.helpCenterRepository.readTable(groupId);
   }
 
   private privacyConsentRecordId(userId: string, revisionId: string): string {

@@ -71,6 +71,7 @@ export interface PrivacyConsentLocalRecord {
 }
 
 export interface HelpCenterTable {
+  baseGroups?: Record<string, HelpCenterTable>;
   seeded: boolean;
   activeRevisionId: string | null;
   seededKinds?: Record<string, boolean>;

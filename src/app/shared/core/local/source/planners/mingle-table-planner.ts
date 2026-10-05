@@ -2,6 +2,7 @@ import type { LocalMingleTable } from '../entity/mingle.entity';
 
 /** Local counterpart of EventGeneratorByMingle: repeats, balance, affinity, size, table index. */
 export function planMingleTables(input: {
+  randomMixing?:boolean;
   userIds: readonly string[];
   genders: ReadonlyMap<string, string>;
   groupSize: number;
@@ -49,7 +50,10 @@ export function planMingleTables(input: {
   }
   const tables: string[][] = Array.from({ length: Math.ceil(members.length / size) }, () => []);
   const total = (id: string) => [...(repeats.get(id)?.values() ?? [])].reduce((sum, n) => sum + n, 0);
-  members.sort((a, b) => total(b) - total(a) || (a < b ? -1 : a > b ? 1 : 0));
+  const shuffled=[...members];
+  if(input.randomMixing)for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+  const order=new Map(shuffled.map((id,index)=>[id,index]));
+  members.sort((a,b)=>total(b)-total(a)||(input.randomMixing?order.get(a)!-order.get(b)!:(a<b?-1:a>b?1:0)));
   for (const member of members) {
     const gender = genders.get(member) ?? '';
     const candidates = tables.map((table, index) => ({ table, index }))
@@ -60,7 +64,7 @@ export function planMingleTables(input: {
         return { table, costs: [
           table.reduce((sum, id) => sum + (repeats.get(member)?.get(id) ?? 0), 0),
           input.requireGenderBalance ? Math.max(...counts) - Math.min(...counts) : 0,
-          -table.reduce((sum, id) => sum + input.affinity(member, id), 0),
+          -table.reduce((sum, id) => sum + (input.randomMixing?0:input.affinity(member, id)), 0),
           table.length, index
         ] };
       });

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "community-riverside",
+    "groupType": "community",
+    "owner": "Alex Turner",
+    "name": "Riverside homes",
+    "description": "Private resident workspace for decisions, maintenance and shared appointments.",
+    "category": "neighbourhood",
+    "visibility": "invitation",
+    "hideMembers": true,
+    "requiredFields": [],
+    "imageSlot": null,
+    "members": [
+      {
+        "name": "Maya Stone",
+        "status": "accepted",
+        "votingEligible": true
+      },
+      {
+        "name": "Lina Park",
+        "status": "accepted",
+        "votingEligible": true
+      },
+      {
+        "name": "Noah Hart",
+        "status": "accepted",
+        "votingEligible": false
+      }
+    ],
+    "ownerVotingEligible": true
+  },
+  {
+    "id": "community-park-court",
+    "groupType": "community",
+    "owner": "Alex Turner",
+    "name": "Park Court",
+    "description": "A second community managed by Alex, with separate announcements and cases.",
+    "category": "neighbourhood",
+    "visibility": "invitation",
+    "hideMembers": true,
+    "requiredFields": [],
+    "imageSlot": null,
+    "members": [
+      {
+        "name": "Maya Stone",
+        "status": "accepted",
+        "votingEligible": false
+      },
+      {
+        "name": "Evan Reed",
+        "status": "accepted",
+        "votingEligible": true
+      }
+    ],
+    "ownerVotingEligible": true
+  }
+]

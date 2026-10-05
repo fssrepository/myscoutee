@@ -21,6 +21,8 @@ import { HomeHeaderComponent } from './home/components/home-header/home-header.c
 import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
 import type { AppMenuItem } from './shared/ui/components/core/menu/menu.types';
 import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
+import { DialogComponent } from './shared/ui/components/core/dialog';
+import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/demo-bootstrap-selector.store';
 import { AppUtils } from './shared/app-utils';
 
 @Component({
@@ -31,7 +33,8 @@ import { AppUtils } from './shared/app-utils';
     AppSetupPopupComponent,
     PaymentAuthorizationPopupComponent,
     HomeHeaderComponent,
-    AppMenuComponent
+    AppMenuComponent,
+    DialogComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
@@ -55,6 +58,9 @@ export class App implements OnDestroy {
     'button[data-action-wave="true"]'
   ].join(',');
   private static readonly ACTION_WAVE_DURATION_MS = 520;
+  private readonly demoSelectorStore = inject(DemoBootstrapSelectorStore);
+  protected readonly demoBootstrapSelector = this.demoSelectorStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.demoSelectorStore.demoBootstrapSelectorComponent;
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly offlineCache = inject(OfflineCacheService);
@@ -110,9 +116,10 @@ export class App implements OnDestroy {
     }
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
-        this.syncSideMenuVisibility(event.url);
-        this.syncGameStartup(event.url);
+        // Keep the current page shell until guards and lazy loading commit
+        // the destination. NavigationStart can still cancel or redirect.
         if (this.initialLandingWarmupPending) {
+          this.syncGameStartup(event.url);
           this.showRouteWarmup();
         } else {
           this.hideRouteWarmup(0);
@@ -226,9 +233,14 @@ export class App implements OnDestroy {
   }
 
   protected onRouteActivated(): void {
+    // Match the shell in the same render that inserts the destination page,
+    // without waiting for another change-detection turn after NavigationEnd.
+    const destination = this.router.getCurrentNavigation()?.finalUrl?.toString();
+    if (destination) this.syncSideMenuVisibility(destination);
     // The protected outlet has activated. The real header now takes over from
     // the public loading shell; profile/card loaders belong to the page.
     this.completeInitialLandingWarmup(0);
+    this.changeDetectorRef.detectChanges();
   }
 
   private syncGameStartup(url: string): void {

@@ -533,6 +533,7 @@ export class LocalEventsRepository {
     );
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const normalizedRecords = filteredRecords
+      .filter(record => !query.filters?.campaignId || record.campaignId === query.filters.campaignId)
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
       .filter(record => scopeFilter === 'trash' || this.matchesActivitiesSecondaryFilter(record, secondaryFilter))
       .sort((left, right) => this.compareActivitiesRecords(left, right, pageOptions));

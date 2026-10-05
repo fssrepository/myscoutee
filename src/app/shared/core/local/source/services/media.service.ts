@@ -31,6 +31,19 @@ export class LocalMediaService extends LocalRouteDelayService {
   private readonly mediaRepository = inject(LocalMediaRepository);
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
 
+  async uploadDocument(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; url: string | null }> {
+    await this.waitForRouteDelay('/media/documents');
+    const types = ['application/pdf', 'text/plain', 'text/csv', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.oasis.opendocument.text', 'application/vnd.oasis.opendocument.spreadsheet'];
+    if (!ownerId || !entityId || !file.size || file.size > 10485760 || !types.includes(file.type)) throw new Error('Invalid document');
+    const url = await this.readFileDataUrl(file, file.type); return { uploaded: !!url, url };
+  }
+  async loadDocument(url: string): Promise<Blob> {
+    if (!url.startsWith('data:') && !url.startsWith('/assets/')) throw new Error('Invalid document');
+    return (await fetch(url)).blob();
+  }
+
   async uploadImage(ownerId: string, entityId: string, file: File): Promise<LocalMediaImageUploadResult> {
     await this.waitForRouteDelay(LOCAL_MEDIA_IMAGE_UPLOAD_ROUTE);
     const imageUrl = await this.readFileDataUrl(file, 'image/') ?? this.createLocalObjectUrl(file, 'image/');

@@ -839,7 +839,7 @@ function operatorConfiguration(): OperatorConfigurationDto {
       homeLabel: 'Community',
       logoUrl: 'assets/logo/heart.webp',
       logoCharacterIndex: null,
-      themePreset: 'AURORA',
+
       revision: 1
     },
     payment: {
@@ -904,7 +904,7 @@ function operatorConfigurationDraft(
       productName: 'MyScoutee',
       logoUrl: 'assets/logo/heart.webp',
       logoCharacterIndex: null,
-      themePreset: 'AURORA'
+
     },
     payment: {
       providerId,

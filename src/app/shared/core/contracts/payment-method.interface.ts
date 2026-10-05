@@ -41,6 +41,7 @@ export interface PaymentMethodRegistrationDto {
 }
 
 export interface CashReceiptRequestDto {
+  method?: 'cash' | 'bank-transfer';
   requestId: string;
   payerUserId: string;
   amount: number;
@@ -49,6 +50,7 @@ export interface CashReceiptRequestDto {
 }
 
 export interface PaymentHistoryItemDto {
+  counterpartyUserId?: string | null;
   note?: string | null;
   counterpartyName?: string | null;
   id: string;

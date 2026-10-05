@@ -1,3 +1,6 @@
+import { COMMUNITY_GROUPS_TABLE_NAME } from '../entity/community-group.entity';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
+import { BASE_GROUP_IDS, groupType, type GroupType } from '../../../contracts/group-type';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, type UserFilterPreferencesRecord } from '../entity/rate.entity';
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
@@ -40,6 +43,29 @@ export class LocalUsersRepository {
       .sort((left, right) => this.compareSelectableDemoUsers(left, right));
   }
 
+  queryDemoBaseGroupTypes(accountIds: readonly string[]): Map<string, GroupType[]> {
+    const state = this.memoryDb.read();
+    const result = new Map<string, GroupType[]>(accountIds.map(id => [id, ['dating']]));
+    const profilesByGroup = new Map<string, Set<string>>();
+    for (const id of state[USERS_TABLE_NAME].ids) {
+      const user = state[USERS_TABLE_NAME].byId[id];
+      if (!user?.workspaceGroupId || !user.accountUserId) continue;
+      const accounts = profilesByGroup.get(user.workspaceGroupId) ?? new Set<string>();
+      accounts.add(user.accountUserId); profilesByGroup.set(user.workspaceGroupId, accounts);
+    }
+    const members = state[ACTIVITY_MEMBERS_TABLE_NAME];
+    for (const baseId of BASE_GROUP_IDS) {
+      const group = state[COMMUNITY_GROUPS_TABLE_NAME].byId[baseId];
+      if (!group?.policy.workspace || group.lifecycleStatus === 'deleted') continue;
+      for (const id of members.idsByOwnerKey[`community:${baseId}`] ?? []) {
+        const member = members.byId[id];
+        if (member?.status === 'accepted' && profilesByGroup.get(baseId)?.has(member.userId))
+          result.get(member.userId)?.push(groupType(group.groupType));
+      }
+    }
+    return result;
+  }
+
   private matchesSelectorRole(user: UserRecord, selectorRole: UserSelectorRole): boolean {
     const adminUser = user.admin === true
       || `${user.id ?? ''}`.trim().startsWith('admin-demo-')
@@ -68,6 +94,11 @@ export class LocalUsersRepository {
     return `${name ?? ''}`.trim() || `${userId ?? ''}`.trim();
   }
 
+  queryPaymentMembers(workspaceGroupId:string|null|undefined,currentUserId:string):UserDto[]{
+    return Object.values(this.memoryDb.read()[USERS_TABLE_NAME].byId)
+      .filter(u=>u.id!==currentUserId&&(u.workspaceGroupId??null)===(workspaceGroupId??null)&&!['deleted','blocked','inactive'].includes(u.profileStatus??''))
+      .sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id)).map(u=>LocalUsersMapper.toDto(u));
+  }
   queryAllUsers(): UserDto[] {
     return this.queryUsersFromTable(USERS_TABLE_NAME);
   }

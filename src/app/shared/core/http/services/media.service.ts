@@ -1,3 +1,4 @@
+import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -33,6 +34,17 @@ export class HttpMediaService {
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+
+  async uploadDocument(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; url: string | null }> {
+    const data = new FormData(); data.append('ownerId', ownerId); data.append('entityId', entityId); data.append('document', file, file.name);
+    const result = await this.routeDelay.withRequestTimeout('/media/documents',
+      firstValueFrom(this.http.post<{ uploaded: boolean; url: string | null }>(`${this.apiBaseUrl}/media/documents`, data)), 'Document upload timeout');
+    return { uploaded: result.uploaded, url: this.normalizeReturnedMediaUrl(result.url) };
+  }
+  loadDocument(url: string): Promise<Blob> {
+    if (!url.startsWith(`${this.apiBaseUrl}/media/`) && !url.startsWith('/api/media/')) throw new Error('Invalid media URL');
+    return firstValueFrom(this.http.get(url, { responseType: 'blob' }));
+  }
 
   async uploadImage(
     ownerId: string,

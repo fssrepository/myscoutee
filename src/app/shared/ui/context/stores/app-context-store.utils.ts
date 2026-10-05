@@ -25,6 +25,12 @@ export function profileMenuBadgeCount(
   scope: 'all' | 'group' = 'all'
 ): number {
   const counters = { ...user.activities, ...overrides };
+  if (user.admin) {
+    const cases = counters.chat?.supportCases;
+    return ['game', 'feedback', 'adminJobs', 'adminMetrics'].reduce((total, key) =>
+      total + normalizeCounterValue(counters[key as keyof ActivityCounters]), 0)
+      + [cases?.pending, cases?.warned, cases?.picked, cases?.blocked].reduce<number>((sum, value) => sum + normalizeCounterValue(value), 0);
+  }
   // event.all already contains invitations/hosting; those menu shortcuts must not be added again.
   return Number(impressions.host) + Number(impressions.member)
     + ['game', 'chats', 'feedback', 'paymentRefundsPending',
@@ -177,6 +183,8 @@ export function cloneChatCounters(
     service: normalizeCounterValue(counters?.service),
     appSupport: normalizeCounterValue(counters?.appSupport),
     contacts: normalizeCounterValue(counters?.contacts),
+    campaign: normalizeCounterValue(counters?.campaign),
+    cases: normalizeCounterValue(counters?.cases),
     groupSupport: normalizeCounterValue(counters?.groupSupport),
     supportCases: cloneSupportCaseCounters(counters?.supportCases)
   };

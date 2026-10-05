@@ -74,6 +74,7 @@ export class LocalActivityEventsMapper {
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,
       creatorCity: record.creatorCity,
+      campaignId: record.campaignId ?? null,
       sourceLink: record.sourceLink ?? '',
       organizerUserId: record.organizerUserId ?? record.creatorUserId,
       visibility: record.visibility,
@@ -537,11 +538,12 @@ export class LocalActivityEventsMapper {
       .reduce((maxEnd, entry) => Math.max(maxEnd, entry.startOffsetMinutes + entry.durationMinutes), 0);
   }
 
-  private static generateSlotOccurrenceStarts(
+  static generateSlotOccurrenceStarts(
     frequency: string,
     templateStart: Date,
     horizonStart: Date,
-    horizonEnd: Date
+    horizonEnd: Date,
+    utc = false
   ): Date[] {
     const normalizedFrequency = `${frequency ?? ''}`.trim().toLowerCase();
     if (!normalizedFrequency || normalizedFrequency === 'one-time' || normalizedFrequency === 'custom') {
@@ -551,52 +553,48 @@ export class LocalActivityEventsMapper {
     }
     const starts: Date[] = [];
     const cursor = new Date(horizonStart);
-    cursor.setHours(0, 0, 0, 0);
+    utc ? cursor.setUTCHours(0, 0, 0, 0) : cursor.setHours(0, 0, 0, 0);
     const endDate = new Date(horizonEnd);
-    endDate.setHours(0, 0, 0, 0);
+    utc ? endDate.setUTCHours(0, 0, 0, 0) : endDate.setHours(0, 0, 0, 0);
     while (cursor.getTime() <= endDate.getTime()) {
-      if (this.matchesSlotFrequency(cursor, templateStart, normalizedFrequency)) {
+      if (this.matchesSlotFrequency(cursor, templateStart, normalizedFrequency, utc)) {
         const next = new Date(cursor);
-        next.setHours(
-          templateStart.getHours(),
-          templateStart.getMinutes(),
-          templateStart.getSeconds(),
-          templateStart.getMilliseconds()
-        );
+        if (utc) next.setUTCHours(templateStart.getUTCHours(), templateStart.getUTCMinutes(), templateStart.getUTCSeconds(), templateStart.getUTCMilliseconds());
+        else next.setHours(templateStart.getHours(), templateStart.getMinutes(), templateStart.getSeconds(), templateStart.getMilliseconds());
         if (next.getTime() >= horizonStart.getTime() && next.getTime() <= horizonEnd.getTime()) {
           starts.push(next);
         }
       }
-      cursor.setDate(cursor.getDate() + 1);
+      utc ? cursor.setUTCDate(cursor.getUTCDate() + 1) : cursor.setDate(cursor.getDate() + 1);
     }
     return starts;
   }
 
-  private static matchesSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
+  private static matchesSlotFrequency(date: Date, templateStart: Date, frequency: string, utc = false): boolean {
     if (frequency === 'daily') {
       return true;
     }
     if (frequency === 'weekly') {
-      return date.getDay() === templateStart.getDay();
+      return (utc ? date.getUTCDay() : date.getDay()) === (utc ? templateStart.getUTCDay() : templateStart.getDay());
     }
     if (frequency === 'bi-weekly' || frequency === 'biweekly') {
-      if (date.getDay() !== templateStart.getDay()) {
+      if ((utc ? date.getUTCDay() : date.getDay()) !== (utc ? templateStart.getUTCDay() : templateStart.getDay())) {
         return false;
       }
-      const diffDays = Math.floor((date.getTime() - AppUtils.dateOnly(templateStart).getTime()) / (24 * 60 * 60 * 1000));
+      const diffDays = Math.floor((date.getTime() - (utc ? Date.UTC(templateStart.getUTCFullYear(),templateStart.getUTCMonth(),templateStart.getUTCDate()) : AppUtils.dateOnly(templateStart).getTime())) / (24 * 60 * 60 * 1000));
       const diffWeeks = Math.floor(diffDays / 7);
       return diffWeeks >= 0 && diffWeeks % 2 === 0;
     }
     if (frequency === 'monthly') {
-      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+      const lastDayOfMonth = new Date((utc ? date.getUTCFullYear() : date.getFullYear()), (utc ? date.getUTCMonth() : date.getMonth()) + 1, 0).getDate();
+      return (utc ? date.getUTCDate() : date.getDate()) === Math.min((utc ? templateStart.getUTCDate() : templateStart.getDate()), lastDayOfMonth);
     }
     if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
-      if (date.getMonth() !== templateStart.getMonth()) {
+      if ((utc ? date.getUTCMonth() : date.getMonth()) !== (utc ? templateStart.getUTCMonth() : templateStart.getMonth())) {
         return false;
       }
-      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+      const lastDayOfMonth = new Date((utc ? date.getUTCFullYear() : date.getFullYear()), (utc ? date.getUTCMonth() : date.getMonth()) + 1, 0).getDate();
+      return (utc ? date.getUTCDate() : date.getDate()) === Math.min((utc ? templateStart.getUTCDate() : templateStart.getDate()), lastDayOfMonth);
     }
     return false;
   }
@@ -1118,6 +1116,7 @@ export class LocalActivityEventDetailsMapper {
       imageUrl: ActivityEventDetailDTO.normalizeImageUrls(payload.imageUrls, payload.imageUrl)[0] ?? '',
       imageUrls: ActivityEventDetailDTO.normalizeImageUrls(payload.imageUrls, payload.imageUrl),
       imageDetails: normalizeImageDetails(payload.imageDetails, ActivityEventDetailDTO.normalizeImageUrls(payload.imageUrls, payload.imageUrl)),
+      campaignId: payload.campaignId ?? null,
       sourceLink: payload.sourceLink.trim(),
       location: this.normalizeLocation(payload.location),
       locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates),
@@ -1195,6 +1194,7 @@ export class LocalActivityEventDetailsMapper {
       imageUrl: record.imageUrl,
       imageUrls: ActivityEventDetailDTO.normalizeImageUrls(record.imageUrls, record.imageUrl),
       imageDetails: normalizeImageDetails(record.imageDetails, ActivityEventDetailDTO.normalizeImageUrls(record.imageUrls, record.imageUrl)),
+      campaignId: record.campaignId ?? null,
       sourceLink: record.sourceLink ?? '',
       location: record.location,
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),

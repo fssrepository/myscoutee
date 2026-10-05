@@ -16,6 +16,9 @@ export type SlotsInputConfigValue<TValue> = TValue | (() => TValue);
 export type SlotsInputEditorMode = 'base' | 'date';
 
 export interface SlotsInputConfig {
+  /** Reuse the schedule popup for one recurring task, without event slot rows. */
+  scheduleOnly?: boolean;
+  scheduleChange?: (value: { frequency: string; startAtIso: string }) => void;
   enabled?: SlotsInputConfigValue<boolean | null | undefined>;
   enabledChange?: (enabled: boolean) => void;
   startAtIso?: SlotsInputConfigValue<string | null | undefined>;
@@ -136,8 +139,16 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     }
   }
 
+  private normalizeFrequency(value: unknown): string {
+    if (this.config.scheduleOnly && String(value).toLowerCase() === 'quarterly') return 'Quarterly';
+    return ActivityEventDetailDTO.normalizeFrequency(value);
+  }
+  openScheduleEditor(): void {
+    if (!this.canUpdateSlotsConfig()) return;
+    this.openSchedulePopup(); this.cdr.markForCheck();
+  }
   protected shouldShowPanel(): boolean {
-    return this.canUpdateSlotsConfig() || this.slotsEnabled();
+    return !this.config.scheduleOnly && (this.canUpdateSlotsConfig() || this.slotsEnabled());
   }
 
   protected canUpdateSlotsConfig(): boolean {
@@ -145,7 +156,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected canConfigureSlotsSeries(): boolean {
-    return this.canUpdateSlotsConfig() && this.resolvedConfig.enabled;
+    return this.canUpdateSlotsConfig() && (this.config.scheduleOnly === true || this.resolvedConfig.enabled);
   }
 
   protected slotsEnabled(): boolean {
@@ -187,7 +198,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected slotSummaryCardTone(_slot: ContractTypes.EventSlotTemplateDTO): TextCardTone {
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
+    const frequency = this.normalizeFrequency(this.resolvedConfig.frequency);
     if (frequency === 'Daily') {
       return 'green';
     }
@@ -204,7 +215,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected slotSummaryMenuPalette(_slot: ContractTypes.EventSlotTemplateDTO): AppMenuPalette {
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
+    const frequency = this.normalizeFrequency(this.resolvedConfig.frequency);
     return this.scheduleFrequencyPalette(frequency);
   }
 
@@ -324,10 +335,11 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected schedulePopupTitle(): string {
-    return this.schedulePopupMode === 'edit' ? 'event.editor.schedule.edit' : 'event.editor.schedule.add';
+    return this.config.scheduleOnly ? this.resolvedConfig.title : this.schedulePopupMode === 'edit' ? 'event.editor.schedule.edit' : 'event.editor.schedule.add';
   }
 
   protected schedulePopupSubtitle(): string {
+    if (this.config.scheduleOnly) return '';
     return this.schedulePopupMode === 'edit'
       ? 'event.editor.schedule.edit.description'
       : 'event.editor.schedule.add.description';
@@ -367,7 +379,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected scheduleFrequencyLocked(): boolean {
-    return this.baseSlotTemplates().length > 0;
+    return !this.config.scheduleOnly && this.baseSlotTemplates().length > 0;
   }
 
   protected scheduleFlowModel(): FormFlowModel {
@@ -390,6 +402,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
           controls: [
             {
               id: 'frequency',
+              guideFieldId: 'frequency',
               bind: 'frequency',
               kind: 'menu',
               layout: 'wide',
@@ -415,7 +428,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
 
   private scheduleFlowModelSignature(): string {
     return JSON.stringify({
-      frequency: ActivityEventDetailDTO.normalizeFrequency(this.scheduleFlowValue.frequency),
+      frequency: this.normalizeFrequency(this.scheduleFlowValue.frequency),
       month: this.scheduleFlowValue.month,
       locked: this.scheduleFrequencyLocked(),
       startAtIso: this.resolvedConfig.startAtIso,
@@ -425,13 +438,13 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected onScheduleFlowValueChange(value: unknown): void {
-    const previousFrequency = ActivityEventDetailDTO.normalizeFrequency(this.scheduleFlowValue.frequency);
+    const previousFrequency = this.normalizeFrequency(this.scheduleFlowValue.frequency);
     const nextValue = this.normalizeScheduleFlowValue(value);
     if (this.scheduleFrequencyLocked()) {
       nextValue.frequency = this.scheduleFlowValue.frequency;
     }
-    const nextFrequency = ActivityEventDetailDTO.normalizeFrequency(nextValue.frequency);
-    if (nextFrequency !== previousFrequency) {
+    const nextFrequency = this.normalizeFrequency(nextValue.frequency);
+    if (!this.config.scheduleOnly && nextFrequency !== previousFrequency) {
       const nextStartAt = this.buildScheduleDraftStartAt(nextFrequency, nextValue);
       this.scheduleFlowValue = this.scheduleFlowValueFromDate(nextFrequency, this.parseDateValue(nextStartAt) ?? new Date());
       this.cdr.markForCheck();
@@ -449,7 +462,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected scheduleFrequencyOptions(): readonly string[] {
-    return this.resolvedConfig.frequencyOptions.filter(item => ActivityEventDetailDTO.normalizeFrequency(item) !== 'One-time');
+    return this.config.scheduleOnly ? this.resolvedConfig.frequencyOptions : this.resolvedConfig.frequencyOptions.filter(item => this.normalizeFrequency(item) !== 'One-time');
   }
 
   private createScheduleFromPopup(event?: Event): void {
@@ -459,7 +472,12 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       return;
     }
     const draft = this.normalizeScheduleFlowValue(this.scheduleFlowValue);
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(draft.frequency);
+    const frequency = this.normalizeFrequency(draft.frequency);
+    if (this.config.scheduleOnly) {
+      const startAt = this.parseDateValue(draft.startAt); if (!startAt) return;
+      this.config.scheduleChange?.({ frequency, startAtIso: startAt.toISOString() });
+      this.closeSchedulePopup(); return;
+    }
     if (!this.scheduleFrequencyLocked()) {
       this.setFrequency(frequency);
     }
@@ -566,7 +584,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private resolveConfig(): ResolvedSlotsInputConfig {
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolveConfigValue(this.config.frequency, 'One-time'));
+    const frequency = this.normalizeFrequency(this.resolveConfigValue(this.config.frequency, 'One-time'));
     const frequencyOptions = this.resolveFrequencyOptions(this.resolveConfigValue(this.config.frequencyOptions, null));
     const configuredEnabled = this.resolveConfigValue(this.config.enabled, null);
     return {
@@ -593,7 +611,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
 
   private resolveFrequencyOptions(value: readonly string[] | null | undefined): readonly string[] {
     const options = (value?.length ? value : ['Custom', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'])
-      .map(item => ActivityEventDetailDTO.normalizeFrequency(item));
+      .map(item => this.normalizeFrequency(item));
     return Array.from(new Set(options));
   }
 
@@ -605,7 +623,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     if (!this.canUpdateSlotsConfig()) {
       return;
     }
-    const normalized = ActivityEventDetailDTO.normalizeFrequency(value);
+    const normalized = this.normalizeFrequency(value);
     this.config.frequencyChange?.(normalized);
     this.onModelTouched();
     this.syncResolvedConfig();
@@ -630,12 +648,12 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   private openSchedulePopup(index: number | null = null): void {
     const currentTemplates = this.baseSlotTemplates();
     const editSlot = index !== null ? currentTemplates[index] : null;
-    const seedDate = this.parseDateValue(editSlot?.startAt) ?? this.defaultScheduleDraftDate();
-    const currentFrequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
+    const seedDate = this.parseDateValue(this.config.scheduleOnly ? this.resolvedConfig.startAtIso : editSlot?.startAt) ?? this.defaultScheduleDraftDate();
+    const currentFrequency = this.normalizeFrequency(this.resolvedConfig.frequency);
     this.scheduleEditIndex = editSlot ? index : null;
     this.schedulePopupMode = editSlot ? 'edit' : 'create';
     this.scheduleFlowValue = this.scheduleFlowValueFromDate(
-      currentFrequency === 'One-time' ? this.defaultEnabledFrequency() : currentFrequency,
+      !this.config.scheduleOnly && currentFrequency === 'One-time' ? this.defaultEnabledFrequency() : currentFrequency,
       seedDate
     );
     this.showSchedulePopup = true;
@@ -651,11 +669,11 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
 
   private normalizeScheduleFlowValue(value: unknown): EventSlotScheduleFormValue {
     const record = value && typeof value === 'object' ? value as Record<string, unknown> : {};
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(record['frequency']);
+    const frequency = this.normalizeFrequency(record['frequency']);
     const startAt = `${record['startAt'] ?? ''}`.trim()
       || AppUtils.toIsoDateTimeLocal(this.defaultScheduleDraftDate());
     const baseDate = this.parseDateValue(startAt) ?? this.defaultScheduleDraftDate();
-    const normalizedFrequency = frequency === 'One-time' ? this.defaultEnabledFrequency() : frequency;
+    const normalizedFrequency = !this.config.scheduleOnly && frequency === 'One-time' ? this.defaultEnabledFrequency() : frequency;
     const month = this.normalizeScheduleMonth(record['month'], baseDate);
     const day = this.normalizeScheduleDay(record['day'], normalizedFrequency, month, baseDate);
     return {
@@ -669,10 +687,10 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private scheduleFlowValueFromDate(frequency: string, date: Date): EventSlotScheduleFormValue {
-    const normalizedFrequency = ActivityEventDetailDTO.normalizeFrequency(frequency);
+    const normalizedFrequency = this.normalizeFrequency(frequency);
     const month = `${date.getMonth() + 1}`;
     return {
-      frequency: normalizedFrequency === 'One-time' ? this.defaultEnabledFrequency() : normalizedFrequency,
+      frequency: !this.config.scheduleOnly && normalizedFrequency === 'One-time' ? this.defaultEnabledFrequency() : normalizedFrequency,
       startAt: AppUtils.toIsoDateTimeLocal(date),
       time: this.formatScheduleTimeInput(date),
       weekday: `${date.getDay()}`,
@@ -693,7 +711,9 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private scheduleTimeControls(): FormFlowControlModel[] {
-    switch (ActivityEventDetailDTO.normalizeFrequency(this.scheduleFlowValue.frequency)) {
+    if(this.config.scheduleOnly)return [{id:'startAt',guideFieldId:'startAt',bind:'startAt',kind:'date',layout:'wide',label:'case.task.start.from',required:true,
+      config:{model:{mode:'single',precision:'minute',valueFormat:'iso-date-time',field:{label:'case.task.start.from',required:true}}}}];
+    switch (this.normalizeFrequency(this.scheduleFlowValue.frequency)) {
       case 'Custom':
         return [{
           id: 'startAt',
@@ -948,7 +968,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
 
   private scheduleFrequencyMenuItems(): readonly AppMenuItem<string, unknown>[] {
     return this.scheduleFrequencyOptions().map(frequency => {
-      const normalized = ActivityEventDetailDTO.normalizeFrequency(frequency);
+      const normalized = this.normalizeFrequency(frequency);
       return {
         id: normalized,
         value: normalized,
@@ -962,7 +982,8 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private scheduleFrequencyLabel(frequency: string): string {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+    if(this.config.scheduleOnly)return `case.frequency.${frequency==='One-time'?'once':frequency.toLowerCase()}`;
+    switch (this.normalizeFrequency(frequency)) {
       case 'Custom':
         return 'schedule.frequency.custom';
       case 'Daily':
@@ -981,7 +1002,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private scheduleFrequencyIcon(frequency: string): string {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+    switch (this.normalizeFrequency(frequency)) {
       case 'Custom':
         return 'event';
       case 'Daily':
@@ -1000,7 +1021,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private scheduleFrequencyPalette(frequency: string): AppMenuPalette {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+    switch (this.normalizeFrequency(frequency)) {
       case 'Custom':
         return 'blue';
       case 'Daily':
@@ -1032,7 +1053,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     const draftStart = this.parseDateValue(draft.startAt) ?? eventStart;
     const timeSource = this.parseScheduleTimeInput(draft.time, draftStart);
     let start = new Date(eventStart);
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+    switch (this.normalizeFrequency(frequency)) {
       case 'Custom':
         start = new Date(draftStart);
         break;
@@ -1080,7 +1101,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private scheduleDayMaxFor(frequency: string, month: string): number {
-    if (ActivityEventDetailDTO.normalizeFrequency(frequency) !== 'Yearly') {
+    if (this.normalizeFrequency(frequency) !== 'Yearly') {
       return 31;
     }
     const monthIndex = this.scheduleInteger(month, 1, 1, 12) - 1;

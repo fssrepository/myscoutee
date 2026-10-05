@@ -43,6 +43,7 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   protected readonly actionErrorGradientId = `app-indicator-action-error-gradient-${indicatorId}`;
   protected readonly actionAccentGradientId = `app-indicator-action-accent-gradient-${indicatorId}`;
   private readonly timedLoadPosition = signal(0);
+  protected readonly actionSizeReady = signal(false);
   private readonly actionButtonSize = signal({ width: 104, height: 48 });
   private timedLoadStartedAtMs = 0;
   private timedLoadFrameId: number | null = null;
@@ -368,6 +369,7 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
       if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
         return;
       }
+      this.actionSizeReady.set(true);
       const current = this.actionButtonSize();
       if (current.width === width && current.height === height) {
         return;

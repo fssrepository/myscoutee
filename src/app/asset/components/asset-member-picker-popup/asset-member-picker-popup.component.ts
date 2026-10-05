@@ -1,4 +1,5 @@
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 
 import {
   ChangeDetectionStrategy,
@@ -8,6 +9,7 @@ import {
   TemplateRef,
   ViewChild,
   effect,
+  untracked,
   inject
 } from '@angular/core';
 import {
@@ -64,6 +66,7 @@ interface ActivityInviteFilters {
 type AssetMemberPickerMenuContext =
   | { menu: 'invite-sort'; sort: AppConstants.ActivityInviteSort }
   | { menu: 'invite-basket'; candidate: ActivityContracts.ActivityMemberDTO }
+  | { menu: 'select-all' }
   | { menu: 'confirm' };
 
 @Component({
@@ -79,6 +82,7 @@ type AssetMemberPickerMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AssetMemberPickerPopupComponent {
+  private readonly guide = inject(ExplanationGuideService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
@@ -111,7 +115,9 @@ export class AssetMemberPickerPopupComponent {
   private readonly candidatePagesByKey = new Map<string, ActivityContracts.ActivityInviteCandidatesPage>();
   private localCandidates: ActivityContracts.ActivityMemberDTO[] = [];
   private isLocalCandidateSource = false;
+  private purpose:'payment'|undefined;
   private inviteSelectionHydrated = false;
+  private initialSelectedMembers: ActivityContracts.ActivityMemberDTO[] | null = null;
   private inviteApplyHandler: ((
     selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]
   ) => ActivityContracts.ActivityMembersInviteResultDTO | void | Promise<ActivityContracts.ActivityMembersInviteResultDTO | void>) | null = null;
@@ -203,6 +209,9 @@ export class AssetMemberPickerPopupComponent {
   }
 
   constructor() {
+    effect(onCleanup => {
+      if (this.activityInviteStore.activityInvitePopup()) onCleanup(untracked(() => this.guide.registerContext('members.select')));
+    });
     effect(() => {
       const context = this.activityInviteStore.activityInvitePopup();
       if (!context?.ownerId?.trim()) {
@@ -212,6 +221,7 @@ export class AssetMemberPickerPopupComponent {
       this.isOpen = true;
       this.ownerId = context.ownerId.trim();
       this.ownerType = context.ownerType ?? 'event';
+      this.purpose=context.purpose;
       this.parentOwner = context.parentOwner?.ownerId?.trim()
         ? {
             ownerId: context.parentOwner.ownerId.trim(),
@@ -221,8 +231,9 @@ export class AssetMemberPickerPopupComponent {
       this.title = context.title?.trim() || 'Invite members';
       this.headerTitle = context.headerTitle?.trim() || 'Invite members';
       this.inviteSort = 'recent';
-      this.selectedUserIds = [];
-      this.persistedSelectedUserIds = new Set<string>();
+      this.initialSelectedMembers = Array.isArray(context.initialSelection) ? context.initialSelection.map(m=>({...m})) : null;
+      this.selectedUserIds = [...new Set((context.initialSelection ?? []).map(member => member.userId.trim()).filter(Boolean))];
+      this.persistedSelectedUserIds = new Set(this.selectedUserIds);
       this.confirmErrorMessage = '';
       this.isConfirmPending = false;
       this.currentCandidates = [];
@@ -235,7 +246,7 @@ export class AssetMemberPickerPopupComponent {
         ? context.initialCandidates.map(candidate => ({ ...candidate }))
         : [];
       this.isLocalCandidateSource = Array.isArray(context.initialCandidates);
-      this.inviteSelectionHydrated = false;
+      this.inviteSelectionHydrated = Array.isArray(context.initialSelection);
       this.inviteApplyHandler = context.onApply ?? null;
       this.closeOwnerPopupOnClose = context.closeOwnerPopupOnClose === true;
       this.syncInviteSmartListQuery();
@@ -318,6 +329,12 @@ export class AssetMemberPickerPopupComponent {
     const hasError = !this.isConfirmPending && !!this.confirmErrorMessage;
     const items: AppMenuItem<string, AssetMemberPickerMenuContext>[] = [];
     const count = this.selectedInviteCount();
+    if (this.canSelectAll()) items.push({
+      id: 'invite-all', label: 'all', icon: 'groups', kind: 'toggle', layout: 'pill',
+      palette: 'teal', surface: 'tinted', showToggleIndicator: true, checked: this.allCandidatesSelected(),
+      active: this.allCandidatesSelected(), disabled: this.isConfirmPending || this.localCandidates.length === 0,
+      closeOnSelect: false, context: { menu: 'select-all' }
+    });
     if (count > 0) {
       items.push({
         id: 'invite-basket',
@@ -368,6 +385,15 @@ export class AssetMemberPickerPopupComponent {
   protected onInviteMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as AssetMemberPickerMenuContext | undefined;
     if (!context) {
+      return;
+    }
+    if (context.menu === 'select-all') {
+      if (!this.isConfirmPending && this.canSelectAll()) {
+        const selected = this.allCandidatesSelected();
+        for (const candidate of this.localCandidates) this.candidatesByUserId.set(candidate.userId, candidate);
+        this.selectedUserIds = selected ? [] : [...new Set(this.localCandidates.map(candidate => candidate.userId))];
+        this.cdr.markForCheck();
+      }
       return;
     }
     if (context.menu === 'invite-basket') {
@@ -448,6 +474,16 @@ export class AssetMemberPickerPopupComponent {
 
   protected isInviteCandidateSelected(userId: string): boolean {
     return this.selectedUserIds.includes(userId.trim());
+  }
+
+  private canSelectAll(): boolean {
+    const context = this.activityInviteStore.activityInvitePopup();
+    return context?.allowSelectAll === true && !context.selectionLimit && this.isLocalCandidateSource;
+  }
+
+  private allCandidatesSelected(): boolean {
+    const selected = new Set(this.selectedUserIds);
+    return this.localCandidates.length > 0 && this.localCandidates.every(candidate => selected.has(candidate.userId));
   }
 
   protected isInviteCandidatePersisted(userId: string): boolean {
@@ -546,9 +582,11 @@ export class AssetMemberPickerPopupComponent {
     this.headerTitle = 'Invite members';
     this.ownerId = '';
     this.ownerType = 'event';
+    this.purpose=undefined;
     this.parentOwner = null;
     this.inviteSort = 'recent';
     this.selectedUserIds = [];
+    this.initialSelectedMembers = null;
     this.inviteSmartListQuery = {};
     this.confirmErrorMessage = '';
     this.isConfirmPending = false;
@@ -598,15 +636,18 @@ export class AssetMemberPickerPopupComponent {
       };
     }
     const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
-    const queryKey = `${ownerId}:${this.ownerType}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
+    const queryKey = `${ownerId}:${this.ownerType}:${this.purpose??'invite'}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
       this.currentCandidates = [];
       this.candidatesByUserId.clear();
+      for (const member of this.initialSelectedMembers ?? []) this.candidatesByUserId.set(member.userId, member);
       this.candidatePagesByKey.clear();
       const activeUserId = this.userProfileStore.activeUserId().trim();
       if (this.isLocalCandidateSource) {
-        this.persistedSelectedUserIds = new Set<string>();
         this.currentCandidates = this.sortLocalCandidates(inviteSort);
+        for (const candidate of this.currentCandidates) {
+          this.candidatesByUserId.set(candidate.userId, candidate);
+        }
       } else {
         const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
           ownerType: this.ownerType,
@@ -614,7 +655,7 @@ export class AssetMemberPickerPopupComponent {
         };
         const cachedMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
         const hasCachedMemberState = cachedMembers.length > 0 || !!this.activityMembersService.peekSummaryByOwner(ownerRef);
-        let currentMembers = hasCachedMemberState
+        let currentMembers = this.purpose==='payment'?[]:hasCachedMemberState
           ? cachedMembers
           : await this.activityMembersService.queryMembersByOwner(ownerRef);
 
@@ -623,8 +664,8 @@ export class AssetMemberPickerPopupComponent {
           && member.status === 'pending'
           && member.requestKind === 'invite'
         );
-        this.persistedSelectedUserIds = new Set(persistedMembers.map(member => member.userId));
-        this.pendingInviteUserIds = [...this.persistedSelectedUserIds];
+        if (this.initialSelectedMembers === null) this.persistedSelectedUserIds = new Set(persistedMembers.map(member => member.userId));
+        this.pendingInviteUserIds = persistedMembers.map(member => member.userId);
         this.existingInviteMemberUserIds = [
           ...new Set([
             ...currentMembers.map(member => member.userId),
@@ -667,7 +708,7 @@ export class AssetMemberPickerPopupComponent {
         this.pendingInviteUserIds,
         this.parentOwner,
         page,
-        pageSize
+        pageSize, this.purpose
       );
       this.candidatePagesByKey.set(pageKey, candidatePage);
     }

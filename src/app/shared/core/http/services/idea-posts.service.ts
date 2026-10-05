@@ -25,11 +25,11 @@ export class HttpIdeaPostsService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
+  async loadPublishedPosts(lang?: string | null, groupId: string | null = null): Promise<IdeaPostDto[]> {
     const requestLang = this.requestLang(lang);
     const response = await this.http
       .get<{ ideas?: Array<Partial<IdeaPostDto>> | null } | null>(`${this.apiBaseUrl}/landing/content`, {
-        params: { lang: requestLang }
+        params: { lang: requestLang, ...(groupId ? { groupId } : {}) }
       })
       .toPromise();
     return this.normalizePosts(response?.ideas);
@@ -45,7 +45,8 @@ export class HttpIdeaPostsService {
     const params: Record<string, string> = {
       lang: this.requestLang(lang),
       page: String(page),
-      pageSize: String(pageSize)
+      pageSize: String(pageSize),
+      ...(query.groupId ? { groupId: query.groupId } : {})
     };
     const cursor = `${query.cursor ?? ''}`.trim();
     if (cursor) {
@@ -165,6 +166,7 @@ export class HttpIdeaPostsService {
     }
     return {
       id,
+      workspaceGroupId: value?.workspaceGroupId ?? null,
       contentKey: this.contentKey(value?.contentKey, id),
       lang: this.normalizeLang(value?.lang),
       languageLabel: this.languageLabel(value?.lang, value?.languageLabel),

@@ -1,3 +1,10 @@
+import { LocalCommunityAnnouncementsRepository } from '../repositories/community-announcements.repository';
+import { LocalCommunityAccessService } from './community-access.service';
+import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalCampaignsRepository } from '../repositories/campaigns.repository';
+import { LocalCommunityCasesRepository } from '../repositories/community-cases.repository';
+import { caseChatParticipantIds, caseOfferChatParticipantIds } from '../entity/community-case.entity';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
@@ -50,6 +57,9 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly campaigns = inject(LocalCampaignsRepository);
+  private readonly cases = inject(LocalCommunityCasesRepository);
+  private readonly notifications = inject(LocalNotificationsRepository);
 
   async ensureContactChat(targetUserId: string): Promise<ChatDTO> {
     const userId = this.userProfileStore.activeUserId().trim();
@@ -112,7 +122,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       !targetMessageId && !query.cursor && query.page === 0);
     return {
       ...page,
-      readReceipt
+      readReceipt, notificationUnread: this.notifications.unreadCount(this.userProfileStore.activeUserId())
     };
   }
 
@@ -159,6 +169,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       service: this.countValue(counters?.service),
       appSupport: this.countValue(counters?.appSupport),
       contacts: this.countValue(counters?.contacts),
+      campaign: this.countValue(counters?.campaign),
+      cases: this.countValue(counters?.cases),
       groupSupport: this.countValue(counters?.groupSupport),
       supportCases: {
         pending: this.countValue(counters?.supportCases?.pending),
@@ -171,9 +183,45 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     };
   }
 
+  private readonly communityAnnouncements = inject(LocalCommunityAnnouncementsRepository);
+  private readonly communityAccess = inject(LocalCommunityAccessService);
   async ensureServiceChat(input: ChatServiceEnsureInput): Promise<ChatDTO | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    if (input.serviceContext === 'campaign' || input.serviceContext === 'case') {
+      const profile = this.usersRepository.queryUserById(activeUserId);
+      if (!profile) throw new Error('Chat unavailable');
+      let chat: ChatDTO;
+      if (input.serviceContext === 'campaign') {
+        const campaign = this.campaigns.find(input.campaignId ?? '');
+        if (!campaign || campaign.status !== 'published' || campaign.workspaceGroupId !== profile.workspaceGroupId
+          || campaign.ownerUserId === activeUserId) throw new Error('Campaign unavailable');
+        if ((this.campaigns.ratingsByCampaign(activeUserId).get(campaign.id) ?? 0) <= 0) throw new Error('Rate the campaign before asking its organizer.');
+        chat = { id: `c-campaign-${campaign.id}-${activeUserId}`, channelType: 'campaign', serviceContext: 'campaign',
+          ownerId: campaign.id, title: campaign.title, avatar: 'W', memberIds: [activeUserId, campaign.ownerUserId],
+          unread: 0, lastMessage: '', lastSenderId: '', ownerUserId: activeUserId };
+      } else {
+        const c = this.cases.findCase(input.caseId ?? '');
+        if (!c || profile.workspaceGroupId !== COMMUNITY_BASE_GROUP_ID
+          || !(input.caseOfferId ? caseOfferChatParticipantIds(c, input.caseOfferId) : caseChatParticipantIds(c)).includes(profile.accountUserId ?? profile.id)) throw new Error('Case unavailable');
+        this.chatsRepository.syncCaseChat(c);
+        await this.chatsRepository.flushToIndexedDb();
+        return this.queryChatById(input.caseOfferId ? `c-case-offer-${c.id}-${input.caseOfferId}` : `c-case-${c.id}`);
+      }
+      const record = this.chatsRepository.ensureServiceChat(chat);
+      await this.chatsRepository.flushToIndexedDb();
+      return record ? LocalChatThreadMapper.toDto(record) : null;
+    }
+    if (input.serviceContext === 'groupSupport') {
+      const a = this.communityAnnouncements.find(input.announcementId ?? ''), profile = this.usersRepository.queryUserById(activeUserId);
+      if (!a || a.status !== 'published' || profile?.workspaceGroupId !== a.communityId) throw new Error('Announcement unavailable');
+      const group = this.communityAccess.requireMember(a.communityId, profile.accountUserId ?? profile.id);
+      const admin = `group:${a.communityId}:${group.ownerUserId}`;
+      if (admin === activeUserId || !this.usersRepository.queryUserById(admin) || !this.communityAccess.admin(a.communityId, group.ownerUserId)) throw new Error('Group manager unavailable');
+      const chat = this.chatsRepository.ensureServiceChat({ id: `c-moderation-group-${activeUserId}`, channelType: 'groupSupport',
+        title: group.name, avatar: 'C', ownerUserId: activeUserId, memberIds: [activeUserId, admin], unread: 0, lastMessage: '', lastSenderId: '' });
+      await this.chatsRepository.flushToIndexedDb(); return chat ? LocalChatThreadMapper.toDto(chat) : null;
+    }
     const targetUserId = `${input.targetUserId ?? ''}`.trim();
     const eventId = `${input.eventId ?? ''}`.trim();
     const subEventId = `${input.subEventId ?? ''}`.trim();
@@ -297,6 +345,16 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       replyTo: replyTo ? { ...replyTo } : null,
       attachments: attachments.map(attachment => ({ ...attachment }))
     });
+    if (message && (record.channelType === 'campaign' || record.channelType === 'case' || record.channelType === 'groupSupport')) {
+      this.notifications.append(record.memberIds.filter(id => id !== user.id).map(recipient => ({
+        id: `chat-message:${record.id}:${message.id}:${recipient}`, recipientUserId: recipient,
+        kind: 'chat-message', category: 'chat', title: record.title, message: `${user.name}: ${message.text}`,
+        senderUserId: user.id, senderName: user.name, senderAvatarUrl: user.images?.[0],
+        sourceType: 'chat', sourceId: record.id, createdAtIso: message.sentAtIso,
+        actionPath: `/game?chatId=${encodeURIComponent(record.id)}&messageId=${encodeURIComponent(message.id)}&workspaceGroupId=${encodeURIComponent(user.workspaceGroupId ?? '')}`,
+        payload: { chatId: record.id, messageId: message.id, senderId: user.id, senderName: user.name, chatTitle: record.title, text: message.text }
+      })));
+    }
     await this.chatsRepository.flushToIndexedDb();
     return message;
   }
@@ -376,6 +434,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     if (!update) {
       return null;
     }
+    this.notifications.markUnreadBySource(ownerUserId, 'chat-message', 'chat', chatId, wholeChannel ? undefined : update.messageIds);
     await this.chatsRepository.flushToIndexedDb();
     return {
       userId: update.reader.id,
@@ -681,6 +740,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       || record.channelType === 'optionalSubEvent'
       || record.channelType === 'groupSubEvent'
       || record.channelType === 'serviceEvent'
+      || record.channelType === 'campaign' || record.channelType === 'case'
       || record.channelType === 'contact'
       || record.channelType === 'groupSupport'
       || record.channelType === 'appSupport'

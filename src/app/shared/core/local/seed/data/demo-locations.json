@@ -1,0 +1,226 @@
+{
+  "promptUserIds": [
+    "u47",
+    "u48"
+  ],
+  "cities": {
+    "Budapest": {
+      "latitude": 47.4979,
+      "longitude": 19.0402
+    },
+    "Berlin": {
+      "latitude": 52.52,
+      "longitude": 13.405
+    },
+    "Madrid": {
+      "latitude": 40.4168,
+      "longitude": -3.7038
+    },
+    "London": {
+      "latitude": 51.5074,
+      "longitude": -0.1278
+    }
+  },
+  "accounts": [
+    {
+      "id": "u1",
+      "name": "Farkas Anna"
+    },
+    {
+      "id": "u2",
+      "name": "Kiss Balázs"
+    },
+    {
+      "id": "u3",
+      "name": "Nagy Eszter"
+    },
+    {
+      "id": "u4",
+      "name": "Maya Stone"
+    },
+    {
+      "id": "u5",
+      "name": "Lina Park"
+    },
+    {
+      "id": "u6",
+      "name": "Iris Bloom"
+    },
+    {
+      "id": "u7",
+      "name": "Noah Hart"
+    },
+    {
+      "id": "u8",
+      "name": "Evan Reed"
+    },
+    {
+      "id": "u9",
+      "name": "Kai Morgan"
+    },
+    {
+      "id": "u10",
+      "name": "Luca Hale"
+    },
+    {
+      "id": "u11",
+      "name": "Theo Lane"
+    },
+    {
+      "id": "u12",
+      "name": "Milo Grant"
+    },
+    {
+      "id": "u13",
+      "name": "Emma Parker"
+    },
+    {
+      "id": "u14",
+      "name": "Liam Parker"
+    },
+    {
+      "id": "u15",
+      "name": "Sophia Lane"
+    },
+    {
+      "id": "u16",
+      "name": "Noah Lane"
+    },
+    {
+      "id": "u17",
+      "name": "Olivia Rivera"
+    },
+    {
+      "id": "u18",
+      "name": "Ethan Rivera"
+    },
+    {
+      "id": "u19",
+      "name": "Mia Grant"
+    },
+    {
+      "id": "u20",
+      "name": "Mason Grant"
+    },
+    {
+      "id": "u21",
+      "name": "Lina Stone"
+    },
+    {
+      "id": "u22",
+      "name": "Lucas Stone"
+    },
+    {
+      "id": "u23",
+      "name": "Nora Hale"
+    },
+    {
+      "id": "u24",
+      "name": "Owen Hale"
+    },
+    {
+      "id": "u25",
+      "name": "Chloe Brooks"
+    },
+    {
+      "id": "u26",
+      "name": "Elijah Brooks"
+    },
+    {
+      "id": "u27",
+      "name": "Ivy Reed"
+    },
+    {
+      "id": "u28",
+      "name": "Leo Reed"
+    },
+    {
+      "id": "u29",
+      "name": "Ava Baker"
+    },
+    {
+      "id": "u30",
+      "name": "Ryan Baker"
+    },
+    {
+      "id": "u31",
+      "name": "Zoe Turner"
+    },
+    {
+      "id": "u32",
+      "name": "Alex Turner"
+    },
+    {
+      "id": "u33",
+      "name": "Emma Reed"
+    },
+    {
+      "id": "u34",
+      "name": "Liam Reed"
+    },
+    {
+      "id": "u35",
+      "name": "Sophia Baker"
+    },
+    {
+      "id": "u36",
+      "name": "Noah Baker"
+    },
+    {
+      "id": "u37",
+      "name": "Olivia Turner"
+    },
+    {
+      "id": "u38",
+      "name": "Ethan Turner"
+    },
+    {
+      "id": "u39",
+      "name": "Mia Parker"
+    },
+    {
+      "id": "u40",
+      "name": "Mason Parker"
+    },
+    {
+      "id": "u41",
+      "name": "Lina Lane"
+    },
+    {
+      "id": "u42",
+      "name": "Lucas Lane"
+    },
+    {
+      "id": "u43",
+      "name": "Nora Rivera"
+    },
+    {
+      "id": "u44",
+      "name": "Owen Rivera"
+    },
+    {
+      "id": "u45",
+      "name": "Chloe Grant"
+    },
+    {
+      "id": "u46",
+      "name": "Elijah Grant"
+    },
+    {
+      "id": "u47",
+      "name": "Ivy Stone"
+    },
+    {
+      "id": "u48",
+      "name": "Leo Stone"
+    },
+    {
+      "id": "u49",
+      "name": "Ava Hale"
+    },
+    {
+      "id": "u50",
+      "name": "Ryan Hale"
+    }
+  ]
+}

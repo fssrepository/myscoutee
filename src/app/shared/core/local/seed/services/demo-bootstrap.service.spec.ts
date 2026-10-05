@@ -30,7 +30,6 @@ import {
   SeedDemoBootstrapService,
   SeedEventsRepository,
   SeedOperatorRegistryRepository,
-  SeedStaticContentService,
   SeedUsersRatingsRepository,
   SeedUsersRepository
 } from '..';
@@ -49,6 +48,13 @@ describe('Demo bootstrap seeding', () => {
     TestBed.configureTestingModule({});
     memoryDb = TestBed.inject(LocalMemoryDb);
     await memoryDb.resetStorage();
+    const persisted=new Map<string,unknown>();
+    vi.spyOn(memoryDb,'readIndexedDbTableEntry').mockImplementation(async <T>(key:string)=>structuredClone(persisted.get(key)??null) as T|null);
+    vi.spyOn(memoryDb,'writeIndexedDbTableEntry').mockImplementation(async (key,value)=>{persisted.set(key,structuredClone(value));});
+    vi.spyOn(memoryDb,'deleteIndexedDbTableEntry').mockImplementation(async key=>{persisted.delete(key);});
+    vi.spyOn(memoryDb,'updateIndexedDbTableEntry').mockImplementation(async <T>(key:string,update:(value:T|null)=>T)=>{
+      const next=update(await memoryDb.readIndexedDbTableEntry<T>(key));await memoryDb.writeIndexedDbTableEntry(key,next);return next;
+    });
   });
 
   afterEach(() => {
@@ -122,7 +128,7 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(EVENT_TICKETS_TABLE_NAME);
     expect(flushedTables).toContain(ACTIVITY_RESOURCES_TABLE_NAME);
     expect(flushedTables).toContain(ASSETS_TABLE_NAME);
-    expect(flushedTables.filter(tableName => tableName === EVENTS_TABLE_NAME).length).toBe(2);
+    expect(flushedTables.filter(tableName => tableName === EVENTS_TABLE_NAME).length).toBe(3);
     expect(flushedTables.lastIndexOf(EVENTS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_MEMBERS_TABLE_NAME));
     expect(flushedTables.filter(tableName => tableName === ASSETS_TABLE_NAME).length).toBe(1);
     expect(flushedTables.indexOf(ASSETS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_RESOURCES_TABLE_NAME));
@@ -274,7 +280,7 @@ describe('Demo bootstrap seeding', () => {
       seedOperatorRegistrySpy.mock.invocationCallOrder[0]!
     );
     expect(seedMapperSpy).toHaveBeenCalledTimes(1);
-    expect(seedMapperSpy.mock.calls[0]?.[0]).toBe(bootstrapBuilderSpy.mock.calls[0]?.[0]);
+    expect(seedMapperSpy.mock.calls[0]?.[0].registryRecord).toBe(bootstrapBuilderSpy.mock.calls[0]?.[0].registryRecord);
     expect(bootstrapBuilderSpy.mock.invocationCallOrder[0]!).toBeLessThan(
       memoryWriteSpy.mock.invocationCallOrder[0]!
     );
@@ -406,6 +412,7 @@ describe('Demo bootstrap seeding', () => {
 
     const unchangedContext = await operatorSeed.prepareBootstrap();
     expect(unchangedContext.result.usersChanged).toBe(false);
+    expect(unchangedContext.result.registryRecord).toEqual(unchangedContext.memory.registryRecord);
     expect(unchangedContext.result.registryChanged).toBe(false);
 
     const persistedReadCount = registryReadSpy.mock.calls.length;
@@ -429,10 +436,11 @@ describe('Demo bootstrap seeding', () => {
     expect(broadFlushSpy).not.toHaveBeenCalled();
   });
 
-  it('migrates a v2 payment catalog with one prepare read and targeted v3 writes', async () => {
+  it('migrates a v2 payment catalog with one prepare read and targeted current-version writes', async () => {
     const staleRecord = SeedOperatorRegistryBuilder.buildInitialRecord(
       new Date('2026-07-28T18:00:00.000Z')
     );
+    const currentPayment = structuredClone(staleRecord.configuration.payment);
     staleRecord.seedVersion = 'operator-workspace-v2';
     staleRecord.configuration = {
       ...staleRecord.configuration,
@@ -467,6 +475,7 @@ describe('Demo bootstrap seeding', () => {
 
     const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+    tableWriteSpy.mockClear();
     const broadFlushSpy = vi.spyOn(memoryDb, 'flushToIndexedDb');
     const operatorSeed = TestBed.inject(SeedOperatorRegistryRepository);
     const runtimeRepository = TestBed.inject(LocalOperatorRegistryRepository);
@@ -478,30 +487,9 @@ describe('Demo bootstrap seeding', () => {
     await runtimeRepository.read();
 
     expect(context.result.registryChanged).toBe(true);
-    expect(migrated?.seedVersion).toBe('operator-workspace-v3');
-    expect(migrated?.configuration.payment).toEqual({
-      availableProviders: [
-        {
-          id: 'stripe',
-          label: 'Stripe',
-          logoUrl: 'assets/payment-providers/stripe.svg',
-          logoAlt: 'Stripe',
-          palette: 'violet'
-        },
-        {
-          id: 'barion',
-          label: 'Barion',
-          logoUrl: 'assets/payment-providers/barion.svg',
-          logoAlt: 'Barion',
-          palette: 'blue'
-        }
-      ],
-      providerId: null,
-      publicBaseUrl: null,
-      merchantAccount: null,
-      credentialConfigured: false,
-      credentialMask: null
-    });
+    expect(migrated?.seedVersion).toBe(SeedOperatorRegistryBuilder.SEED_VERSION);
+    // An unsupported legacy provider must not silently activate a different live provider.
+    expect(migrated?.configuration.payment).toEqual({...currentPayment,providerId:null,publicBaseUrl:null,merchantAccount:null,credentialConfigured:false,credentialMask:null});
     expect(registryReadSpy).toHaveBeenCalledTimes(1);
     expect(tableWriteSpy.mock.calls.map(
       ([tableName]: [string, unknown]) => tableName
@@ -540,7 +528,7 @@ describe('Demo bootstrap seeding', () => {
     expect(tableWriteSpy.mock.calls.filter(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
     )).toHaveLength(1);
-    expect(registryReadSpy).toHaveBeenCalledTimes(1);
+    expect(registryReadSpy.mock.calls.filter(([key]) => key === APP_INDEXED_DB_KEYS.operatorRegistry)).toHaveLength(1);
     expect(registryReadSpy.mock.invocationCallOrder[0]!).toBeLessThan(
       tableWriteSpy.mock.invocationCallOrder[0]!
     );
@@ -595,7 +583,7 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).not.toContain(ACTIVITY_RESOURCES_TABLE_NAME);
   });
 
-  it('preboot static content seed does not clear unrelated demo tables', async () => {
+  it('the local landing service prepares public content without clearing unrelated demo tables', async () => {
     memoryDb.write(state => ({
       ...state,
       [USERS_TABLE_NAME]: {
@@ -611,9 +599,6 @@ describe('Demo bootstrap seeding', () => {
       }
     }));
 
-    const staticContentSeed = TestBed.inject(SeedStaticContentService);
-    await staticContentSeed.ensureReady();
-
     const landingContent = TestBed.inject(LocalLandingContentService);
     const content = await landingContent.loadContent();
     const table = memoryDb.read()[IDEA_POSTS_TABLE_NAME];
@@ -625,13 +610,13 @@ describe('Demo bootstrap seeding', () => {
     expect(content.ideas.length).toBeLessThanOrEqual(8);
     expect(content.ideasTotal).toBe(table.ids
       .map(id => table.byId[id])
-      .filter(post => post?.published === true && post.trashed !== true && post.lang === 'en')
+      .filter(post => post?.published === true && post.trashed !== true && post.lang === 'en' && !post.workspaceGroupId)
       .length);
     expect(content.privacy.activeRevision?.documentKind).toBe('privacy');
     expect(content.terms.activeRevision?.documentKind).toBe('terms');
   });
 
-  it('builds the admin affinity graph from bootstrap ratings with two demo clusters', async () => {
+  it('builds the admin affinity graph with two rated clusters covering the 50 active demo profiles', async () => {
     const usersSeed = TestBed.inject(SeedUsersRepository);
     const usersRatingsSeed = TestBed.inject(SeedUsersRatingsRepository);
     const affinityGraphRepository = TestBed.inject(SeedAdminAffinityGraphRepository);
@@ -640,8 +625,8 @@ describe('Demo bootstrap seeding', () => {
     usersRatingsSeed.seedDefaults(seededUsers);
     const snapshot = await affinityGraphRepository.buildGraphSnapshot();
 
-    expect(snapshot.nodes.length).toBe(48);
-    expect(componentSizes(snapshot.nodes.map(node => node.id), snapshot.edges)).toEqual([32, 16]);
+    expect(snapshot.nodes.length).toBe(50);
+    expect(componentSizes(snapshot.nodes.map(node => node.id), snapshot.edges)).toEqual([34, 16]);
   });
 
   it('seeds member rows for event cards that advertise accepted members', async () => {

@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-06",
+  "generator": "builtin image_gen",
+  "briefs": "Topic summaries retained for provenance; these are not verbatim prompts.",
+  "images": [
+    {
+      "file": "professional-network.png",
+      "sha256": "cf0950c51134626736615ab282a4a02eb0271bcfb466cf7c16c2c8dc6e3cfb26",
+      "topic": "professional network",
+      "usage": [
+        "idea-work-professional-network",
+        "idea-work-professional-network-hu"
+      ]
+    },
+    {
+      "file": "work-opportunity.png",
+      "sha256": "4dd31ff648be3b29e955ff96cc52adfc110b5910f9131108b37821e1e8e9017e",
+      "topic": "work opportunity",
+      "usage": [
+        "idea-work-work-opportunity",
+        "idea-work-work-opportunity-hu"
+      ]
+    },
+    {
+      "file": "business-idea.png",
+      "sha256": "9cd96a7d8de0db6124cfc211d81d94d670f9d61d56aa385c2b2144a05d352276",
+      "topic": "business idea",
+      "usage": [
+        "idea-work-business-idea",
+        "idea-work-business-idea-hu"
+      ]
+    },
+    {
+      "file": "team-building.png",
+      "sha256": "7f2adfefcfeb2199a045c8db26bcacb15227d1859a18e67cf68bb7e1e04a6f18",
+      "topic": "team building",
+      "usage": [
+        "idea-work-team-building",
+        "idea-work-team-building-hu"
+      ]
+    },
+    {
+      "file": "community-meter.png",
+      "sha256": "749075e665dfd0848a4d370f8a659a4dc82f4af7942ce907b920f6ba9c0bb43d",
+      "topic": "community meter",
+      "usage": [
+        "idea-community-meter",
+        "idea-community-meter-hu"
+      ]
+    },
+    {
+      "file": "community-fault.png",
+      "sha256": "7701ca6cb9046fde73bdeb64a86f5e87af39b7ddfada26a46bd76e1e902ba09c",
+      "topic": "community fault",
+      "usage": [
+        "idea-community-fault",
+        "idea-community-fault-hu"
+      ]
+    },
+    {
+      "file": "community-decisions.png",
+      "sha256": "b139474133740cb35f37a5ea37272752b79ba24b6c059b11d4e406452e8eb981",
+      "topic": "community decisions",
+      "usage": [
+        "idea-community-decisions",
+        "idea-community-decisions-hu"
+      ]
+    },
+    {
+      "file": "community-local-help.png",
+      "sha256": "9da3f52d3ebeaf1d07c455351c9aaa15ec4a661db5b9242b73ab663f56e5681f",
+      "topic": "community local help",
+      "usage": [
+        "idea-community-local-help",
+        "idea-community-local-help-hu"
+      ]
+    }
+  ]
+}

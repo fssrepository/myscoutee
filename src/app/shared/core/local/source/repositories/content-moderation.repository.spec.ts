@@ -1,3 +1,4 @@
+import { SeedUserBuilder } from '../../seed/builders/user-seed.builder';
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { LocalMemoryDb } from '../../../common/app.db';
@@ -9,6 +10,9 @@ describe('Content moderation canonical writes', () => {
   let repository: LocalContentModerationRepository, feed: LocalPhotoFeedRepository;
   beforeEach(async () => {
     TestBed.configureTestingModule({}); await TestBed.inject(LocalMemoryDb).resetStorage();
+    const fixtures = SeedUserBuilder.buildExpandedDemoUsers(2).map((u, index) => ({ ...u, id: index ? 'bob' : 'alice' }));
+    TestBed.inject(LocalMemoryDb).write(state => ({ ...state, users: { ...state.users,
+      ids: fixtures.map(u => u.id), byId: Object.fromEntries(fixtures.map(u => [u.id, u])) } }));
     repository = TestBed.inject(LocalContentModerationRepository); feed = TestBed.inject(LocalPhotoFeedRepository);
     await repository.saveSettings({ enabled: true, autoApprove: false, delayMinutes: 0, categories: ['asset', 'event', 'feed'] }, repository.snapshot().revision);
   });
@@ -40,7 +44,7 @@ describe('Content moderation canonical writes', () => {
     expect(repository.snapshot().pendingCount).toBe(1);
     expect(await repository.approveDue()).toBe(3);
     expect(repository.snapshot().pendingCount).toBe(0);
-    expect(repository.snapshot().counts.feed).toEqual({ 'under-review': 0, accepted: 3, rejected: 0, blocked: 0 });
+    expect(repository.snapshot().counts['feed']).toEqual({ 'under-review': 0, accepted: 3, rejected: 0, blocked: 0 });
     expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(3);
     const released = repository.item('feed:blocked')!;
     await expect(repository.decide(released.id, { adminUserId: 'admin', commandId: 'blocked-while-off', expectedVersion: released.version,
@@ -56,7 +60,7 @@ describe('Content moderation canonical writes', () => {
     await repository.saveSettings({ enabled: true, autoApprove: true, delayMinutes: 1, categories: ['feed'] }, repository.snapshot().revision);
     await post(); expect(repository.snapshot().pendingCount).toBe(1);
     expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(0);
-    expect(feed.page('alice', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
+    expect(feed.page('alice', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10, filters: { status: 'under-review' } }).total).toBe(1);
     expect(await repository.approveDue(Date.now() + 60001)).toBe(1);
     expect(repository.snapshot().pendingCount).toBe(0);
     expect(feed.page('bob', { latitude: 0, longitude: 0 }, { page: 0, pageSize: 10 }).total).toBe(1);
@@ -67,14 +71,14 @@ describe('Content moderation canonical writes', () => {
     await repository.saveSettings({ enabled: true, autoApprove: true, delayMinutes: 5, categories: ['feed'] }, snapshot.revision);
     expect(await repository.approveDue()).toBe(0);
     expect(await repository.approveDue(Date.now() + 300001)).toBe(1);
-    expect(repository.snapshot().counts.feed.accepted).toBe(1);
+    expect(repository.snapshot().counts['feed']['accepted']).toBe(1);
     expect(repository.page('feed', 'accepted', { page: 0, pageSize: 10 }).total).toBe(1);
-    expect(repository.snapshot().counts.feed.accepted).toBe(1);
+    expect(repository.snapshot().counts['feed']['accepted']).toBe(1);
   });
   it('moves one count, rejects stale admins and treats retries as idempotent', async () => {
     await post(); const request = { adminUserId: 'admin', commandId: 'reject', expectedVersion: 1, status: 'rejected' as const, message: '' };
     await repository.decide('feed:post', request); await repository.decide('feed:post', request);
-    expect(repository.snapshot().counts.feed).toEqual({ 'under-review': 0, rejected: 1 });
+    expect(repository.snapshot().counts['feed']).toEqual({ 'under-review': 0, rejected: 1 });
     await expect(repository.decide('feed:post', { ...request, commandId: 'other-admin', status: 'blocked' })).rejects.toThrow();
     expect(repository.snapshot().pendingCount).toBe(0);
   });
@@ -88,10 +92,10 @@ describe('Content moderation canonical writes', () => {
     expect(repository.state().pendingMessages).toHaveLength(1);
     expect(repository.state().pendingMessages[0].ownerUserId).toBe('alice');
     expect(repository.snapshot()).not.toHaveProperty('pendingMessages');
-    expect(repository.snapshot().counts.feed.rejected).toBe(1);
+    expect(repository.snapshot().counts['feed']['rejected']).toBe(1);
     await repository.acknowledgeMessage(request.commandId);
     expect(repository.state().pendingMessages).toEqual([]);
-    expect(repository.snapshot().counts.feed.rejected).toBe(1);
+    expect(repository.snapshot().counts['feed']['rejected']).toBe(1);
   });
   it('combines category and state filters while bucket moves preserve category totals', async () => {
     await post();

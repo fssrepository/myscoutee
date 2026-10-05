@@ -56,9 +56,9 @@ import {
 import { I18nPipe } from '../../pipes';
 import { ChatPopupHeaderContextConverter } from '../../converters/chat-popup-header-context.converter';
 
-interface PaymentListFilters { revision: number; direction?: PaymentHistoryDirection; }
+interface PaymentListFilters { counterpartyUserId?:string; revision: number; direction?: PaymentHistoryDirection; }
 interface PaymentPopupMenuContext {
-  action: 'record-cash' | 'open-cards' | 'add-card' | 'confirm-card' | 'set-history-direction';
+  action: 'counterparty' | 'summary-currency' | 'record-cash' | 'open-cards' | 'add-card' | 'confirm-card' | 'set-history-direction';
   direction?: PaymentHistoryDirection;
 }
 
@@ -145,7 +145,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     pageSize: 20,
     sort: 'createdDate',
     direction: 'desc',
-    filters: { revision: this.revisionRef(), direction: this.historyDirectionRef() }
+    filters: { revision: this.revisionRef(), direction: this.historyDirectionRef(), counterpartyUserId:this.store.counterparty()?.userId }
   }));
 
   protected readonly cardListConfig: SmartListConfig<SavedPaymentMethodDto, PaymentListFilters> = {
@@ -218,10 +218,17 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     }));
   };
 
-  protected mainPopupModel(): PopupModel<PaymentPopupMenuContext> {
+  protected readonly mainPopupModel = computed<PopupModel<PaymentPopupMenuContext>>(() => {
+    const member = this.store.counterparty();
     return {
       title: 'payment.history.title',
       subtitle: 'payment.history.subtitle',
+      showToolbar:true,
+      toolbarControls:[{...this.headerActionControl({id:'counterparty',action:'custom',icon:member ? null : 'people',label:member?.name||'all',
+        imageUrl:member?.avatarUrl,imageFallback:member?.initials,imageShape:'circle',counter:member?1:null,
+        trailingIcon:'chevron_right',layout:'pill',palette:'blue',context:{action:'counterparty'}}),align:'start'},
+        ...this.historyHeaderTotals().map(total => ({...this.headerActionControl({id:`total-${total.tone}`,action:'custom',label:total.text,
+          trailingIcon:'chevron_right',layout:'pill',palette:total.tone==='expense'?'red':'green',context:{action:'summary-currency'}}),guideFieldId:'payment-history-totals',align:'end' as const}))],
       ariaLabel: 'payment.history.title',
       closeAriaLabel: 'payment.history.close',
       size: 'wide',
@@ -246,7 +253,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       onMenuSelect: event => this.onHeaderMenuSelect(event),
       onClose: () => this.closeAll()
     };
-  }
+  });
 
   protected cardsPopupModel(): PopupModel<PaymentPopupMenuContext> {
     const headerControls: PopupControl<PaymentPopupMenuContext>[] = [this.headerActionControl({
@@ -394,8 +401,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       }`,
       badges: [
         {
-          label: item.provider,
-          icon: item.provider.toLowerCase() === 'stripe' ? 'payment' : 'account_balance_wallet',
+          label: ['cash','bank-transfer'].includes(item.provider)?this.i18n.translate(`payment.manual.method.${item.provider}`):item.provider,
+          icon: item.provider==='bank-transfer'?'account_balance':item.provider.toLowerCase() === 'stripe' ? 'payment' : 'account_balance_wallet',
           tone: item.provider.toLowerCase() === 'stripe' ? 'info' : 'accent',
           position: 'inline'
         },
@@ -501,6 +508,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
     const action = event.itemSelect.context?.action;
+    if(action==='counterparty'){void this.store.chooseCounterparty();return;}
+    if(action==='summary-currency'){this.currencyPickerOpen.set(true);return;}
     if (action === 'record-cash') { this.cashReceiptOpen.set(true); return; }
     if (action === 'set-history-direction') {
       const direction = event.itemSelect.context?.direction;
@@ -919,8 +928,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     const list = this.historyList();
     const direction = this.historyDirectionRef();
     for (const item of mutation.items ?? [mutation.item]) {
-      const matches = direction === 'all'
-        || (direction === 'expenses' ? item.direction === 'expense' : item.direction === 'income');
+      const matches = (direction === 'all' || (direction === 'expenses' ? item.direction === 'expense' : item.direction === 'income'))
+        && (!this.store.counterparty()||this.store.counterparty()?.userId===item.counterpartyUserId);
       if (!matches) {
         list?.removeVisibleItems(row => row.id === item.id);
       } else if (!list?.patchVisibleItem(row => row.id === item.id, () => item)) {

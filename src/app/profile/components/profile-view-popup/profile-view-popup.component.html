@@ -1,5 +1,5 @@
 @if (target(); as currentTarget) {
-  <app-popup [model]="profileViewPopupModel()" [zIndex]="16000">
+  <ng-template #profileBody>
       <div #profileScroll class="profile-view-body">
         @if (user(); as profile) {
           
@@ -167,5 +167,7 @@
           </div>
         }
       </div>
-  </app-popup>
+  </ng-template>
+  @if (embedded()) { <ng-container [ngTemplateOutlet]="profileBody"></ng-container> }
+  @else { <app-popup [model]="profileViewPopupModel()" [zIndex]="16000"><ng-container [ngTemplateOutlet]="profileBody"></ng-container></app-popup> }
 }

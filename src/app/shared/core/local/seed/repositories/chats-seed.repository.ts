@@ -28,10 +28,11 @@ export class SeedChatsRepository {
     }
     const records = SeedChatsBuilder.buildSeedRecordCollection();
     this.seedRecords = this.cloneSeedRecords(records);
+    const missing = this.onlyMissingThreads(records);
     this.memoryDb.write(currentState => ({
       ...currentState,
-      [CHATS_TABLE_NAME]: records.chats,
-      [CHAT_MESSAGES_TABLE_NAME]: records.chatMessages
+      [CHATS_TABLE_NAME]: this.mergeChatTable(currentState[CHATS_TABLE_NAME], missing.chats),
+      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], missing.chatMessages)
     }));
     this.initialized = true;
   }
@@ -42,7 +43,7 @@ export class SeedChatsRepository {
     if (!normalizedUserId) {
       return false;
     }
-    const seeded = SeedChatsBuilder.buildContextualRecordCollectionForUser(normalizedUserId, eventRecords);
+    const seeded = this.onlyMissingThreads(SeedChatsBuilder.buildContextualRecordCollectionForUser(normalizedUserId, eventRecords));
     if (seeded.chats.ids.length === 0) {
       return false;
     }
@@ -50,8 +51,7 @@ export class SeedChatsRepository {
     this.memoryDb.write(currentState => ({
       ...currentState,
       [CHATS_TABLE_NAME]: this.mergeChatTable(currentState[CHATS_TABLE_NAME], seeded.chats),
-      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], seeded.chatMessages),
-      [USERS_TABLE_NAME]: this.applyStoredChatCounterChanges(currentState, normalizedUserId, seeded.chats)
+      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], seeded.chatMessages)
     }));
     return true;
   }
@@ -293,56 +293,54 @@ export class SeedChatsRepository {
     return { byId, ids };
   }
 
-  private applyStoredChatCounterChanges(
-    state: AppMemorySchema,
-    userId: string,
-    incoming: AppMemorySchema[typeof CHATS_TABLE_NAME]
-  ): AppMemorySchema[typeof USERS_TABLE_NAME] {
-    const users = state[USERS_TABLE_NAME];
-    const user = users.byId[userId];
-    if (!user) {
-      return users;
-    }
-    const normalize = (value: unknown): number => {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
-    };
-    const counters: Required<UserChatCountersRecord> = {
-      all: normalize(user.activities.chat?.all ?? user.activities.chats),
-      event: normalize(user.activities.chat?.event),
-      subEvent: normalize(user.activities.chat?.subEvent),
-      group: normalize(user.activities.chat?.group),
-      service: normalize(user.activities.chat?.service),
-      contacts: normalize(user.activities.chat?.contacts),
-      groupSupport: normalize(user.activities.chat?.groupSupport),
-      appSupport: normalize(user.activities.chat?.appSupport)
-    };
-    for (const id of incoming.ids) {
-      const previous = state[CHATS_TABLE_NAME].byId[id];
-      const next = incoming.byId[id];
-      if (previous) {
-        this.addChatUnread(counters, previous, -1);
-      }
-      if (next) {
-        this.addChatUnread(counters, next, 1);
-      }
-    }
-    const nextUser = {
-      ...user,
-      activities: {
-        ...user.activities,
-        chats: counters.all,
-        chat: counters
-      }
-    };
+  // Seed only absent threads. Reopening a demo must retain sent messages and read receipts.
+  private onlyMissingThreads(records: SeedChatRecordCollection): SeedChatRecordCollection {
+    const existing = this.memoryDb.read()[CHATS_TABLE_NAME].byId;
+    const ids = records.chats.ids.filter(id => !existing[id]);
+    const keys = ids.map(id => {
+      const chat = records.chats.byId[id];
+      return LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
+    });
+    const messageIds = keys.flatMap(key => records.chatMessages.idsByChatKey[key] ?? []);
     return {
-      byId: { ...users.byId, [userId]: nextUser },
-      ids: [...users.ids]
+      chats: { ids, byId: Object.fromEntries(ids.map(id => [id, records.chats.byId[id]])) },
+      chatMessages: {
+        ids: messageIds,
+        byId: Object.fromEntries(messageIds.map(id => [id, records.chatMessages.byId[id]])),
+        idsByChatKey: Object.fromEntries(keys.map(key => [key, records.chatMessages.idsByChatKey[key] ?? []]))
+      }
     };
   }
 
+  // Initialize the persisted projection from the actual seeded threads, once at bootstrap.
+  // Runtime send/read operations continue to update it through the existing repository deltas.
+  stampStoredChatCountersForUsers(userIds: readonly string[]): boolean {
+    const state = this.memoryDb.read();
+    const byUser = new Map<string, Required<Omit<UserChatCountersRecord, 'supportCases'>>>(userIds.map(id => [id, {
+      all: 0, event: 0, subEvent: 0, group: 0, service: 0, contacts: 0, groupSupport: 0, appSupport: 0, campaign: 0, cases: 0
+    }]));
+    for (const id of state[CHATS_TABLE_NAME].ids) {
+      const chat = state[CHATS_TABLE_NAME].byId[id];
+      const counters = chat && byUser.get(chat.ownerUserId);
+      if (counters) this.addChatUnread(counters, chat, 1);
+    }
+    const users = state[USERS_TABLE_NAME];
+    const byId = { ...users.byId };
+    let changed = false;
+    for (const [id, counters] of byUser) {
+      const user = users.byId[id];
+      if (!user || (user.activities.chats === counters.all
+        && Object.entries(counters).every(([key, value]) =>
+          user.activities.chat?.[key as keyof UserChatCountersRecord] === value))) continue;
+      byId[id] = { ...user, activities: { ...user.activities, chats: counters.all, chat: { ...user.activities.chat, ...counters } } };
+      changed = true;
+    }
+    if (changed) this.memoryDb.write(current => ({ ...current, [USERS_TABLE_NAME]: { ...users, byId } }));
+    return changed;
+  }
+
   private addChatUnread(
-    counters: Required<UserChatCountersRecord>,
+    counters: Required<Omit<UserChatCountersRecord, 'supportCases'>>,
     chat: ChatThreadRecord,
     direction: -1 | 1
   ): void {
@@ -354,12 +352,14 @@ export class SeedChatsRepository {
     }
   }
 
-  private chatCounterKey(channelType: ChatThreadRecord['channelType']): Exclude<keyof UserChatCountersRecord, 'all'> | null {
+  private chatCounterKey(channelType: ChatThreadRecord['channelType']): Exclude<keyof UserChatCountersRecord, 'all' | 'supportCases'> | null {
     switch (channelType) {
       case 'mainEvent': return 'event';
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'campaign': return 'campaign';
+      case 'case': return 'cases';
       case 'contact': return 'contacts';
       case 'groupSupport': return 'groupSupport';
       case 'appSupport':

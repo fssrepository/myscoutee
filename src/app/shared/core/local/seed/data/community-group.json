@@ -1,0 +1,21 @@
+{
+  "id": "myscoutee-community",
+  "groupType": "community",
+  "owner": "Alex Turner",
+  "name": "MyScoutee Community",
+  "description": "Find local help, coordinate shared work and keep your community informed.",
+  "memberNames": [
+    "Farkas Anna",
+    "Kiss Balázs",
+    "Nagy Eszter",
+    "Maya Stone",
+    "Lina Park",
+    "Noah Hart",
+    "Evan Reed",
+    "Kai Morgan"
+  ],
+  "adminIds": [
+    "admin-demo-ava",
+    "admin-demo-noel"
+  ]
+}

@@ -1,3 +1,5 @@
+import { CommunityCasesService } from './community-cases.service';
+import { CommunityCaseConverter } from '../../../ui/converters/community-case.converter';
 import { CommunityGroupChangesStore } from '../../../ui/context/stores/community-group-changes.store';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
 import { LocalCommunityGroupsService } from '../../local/source/services/community-groups.service';
@@ -33,6 +35,7 @@ import { ActivityStore } from '../../../ui/context/stores/activity.store';
   providedIn: 'root'
 })
 export class ActivityMembersService extends BaseRouteModeService {
+  private readonly cases = inject(CommunityCasesService);
   private readonly groupChanges = inject(CommunityGroupChangesStore);
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
@@ -61,6 +64,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberDTO[] {
+    if (owner.ownerType === 'case') return [];
     if (this.localCommunity(owner)) return this.localGroups.roster(this.groupActor(), owner.ownerId);
     return this.presentMembers(this.activityMembersService.peekMembersByOwner(owner));
   }
@@ -77,6 +81,10 @@ export class ActivityMembersService extends BaseRouteModeService {
     owner: ActivityMemberOwnerRef,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    if (owner.ownerType === 'case') {
+      const value = await this.cases.detail(this.groupActor(), owner.ownerId);
+      return CommunityCaseConverter.members(value).filter(m => !options?.pendingOnly || m.status === 'pending');
+    }
     if (this.localCommunity(owner)) {
       await this.waitForMembersRouteDelay();
       return this.localGroups.roster(this.groupActor(), owner.ownerId, options?.pendingOnly);
@@ -102,7 +110,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     options?: ActivityMembersQueryOptions,
     signal?: AbortSignal
   ): Promise<ActivityMembersSyncResultDTO> {
-    if (this.localCommunity(owner)) {
+    if (owner.ownerType === 'case' || this.localCommunity(owner)) {
       signal?.throwIfAborted();
       const rows = await this.queryMembersByOwner(owner, options); signal?.throwIfAborted();
       const revisions = new Map(knownItems.map(item => [item.id, item.revision]));
@@ -128,6 +136,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
+    if (owner.ownerType === 'case') return null;
     if (this.localCommunity(owner)) return this.localGroups.summary(this.groupActor(), owner.ownerId);
     return this.activityMembersService.peekSummaryByOwner(owner);
   }
@@ -141,9 +150,13 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummaryDto[]> {
+    const caseSummaries: ActivityMembersSummaryDto[] = await Promise.all(owners.filter(o => o.ownerType === 'case').map(async owner => {
+      const members = await this.queryMembersByOwner(owner), accepted = members.filter(m => m.status === 'accepted').map(m => m.userId), pending = members.filter(m => m.status === 'pending').map(m => m.userId);
+      return { ...owner, acceptedMembers: accepted.length, pendingMembers: pending.length, capacityTotal: members.length, acceptedMemberUserIds: accepted, pendingMemberUserIds: pending };
+    }));
     const local = owners.filter(owner => this.localCommunity(owner));
-    const others = owners.filter(owner => !this.localCommunity(owner));
-    return [...local.map(owner => this.localGroups.summary(this.groupActor(), owner.ownerId)),
+    const others = owners.filter(owner => owner.ownerType !== 'case' && !this.localCommunity(owner));
+    return [...caseSummaries, ...local.map(owner => this.localGroups.summary(this.groupActor(), owner.ownerId)),
       ...(others.length ? await this.activityMembersService.querySummariesByOwners(others) : [])];
   }
 
@@ -169,7 +182,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const actorUserId = this.userProfileStore.activeUserId().trim() || this.workspace.accountId(this.userProfileStore.getActiveUserId()).trim();
-    if (owner.ownerType === 'community') throw new Error('Use group membership commands');
+    if (owner.ownerType === 'community' || owner.ownerType === 'case') throw new Error('Use group membership commands');
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
@@ -224,11 +237,19 @@ export class ActivityMembersService extends BaseRouteModeService {
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
-    action: 'restore' | 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'revoke-admin' | 'take-over' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
+    action: 'restore' | 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'grant-vote' | 'revoke-vote' | 'promote-admin' | 'revoke-admin' | 'take-over' | 'step-down-admin' | 'set-organizer-only' | 'set-participant',
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
+    if (owner.ownerType === 'case') {
+      const actor = this.groupActor(), value = await this.cases.detail(actor, owner.ownerId);
+      const self = targetUserId === actor;
+      if (!['accept', 'restore', 'remove'].includes(action) || !self && action !== 'remove') throw new Error('Unsupported case member action');
+      const command = action === 'remove' ? self ? value.membershipStatus === 'invited' ? 'decline' : 'leave' : 'remove-member' : 'join';
+      return CommunityCaseConverter.members(await this.cases.action(value.id, { userId: actor, version: value.version, action: command, memberAccountIds: [targetUserId] }));
+    }
+
     if (!normalizedOwner.ownerId.trim()) {
       return [];
     }

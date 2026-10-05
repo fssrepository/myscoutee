@@ -63,7 +63,7 @@
     @if (monitoringPopupComponent(); as monitoringComponent) {
       <ng-container *ngComponentOutlet="monitoringComponent"></ng-container>
     }
-    <app-dialog></app-dialog>
+
   </section>
 } @else {
   <section class="admin-entry-shell">
@@ -93,10 +93,4 @@
       </section>
     </div>
   </section>
-}
-
-@if (demoBootstrapSelector()) {
-  @if (demoBootstrapSelectorComponent(); as component) {
-    <ng-container *ngComponentOutlet="component"></ng-container>
-  }
 }

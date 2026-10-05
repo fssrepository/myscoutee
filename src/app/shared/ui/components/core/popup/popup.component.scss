@@ -1,3 +1,4 @@
+@use '../../../styles/contextual-colors' as colors;
 @use '../../../styles/media-badge' as mediaBadge;
 @use './popup-close-button' as popupClose;
 
@@ -110,8 +111,8 @@ app-popup {
 .ui-popup__header--layout-article {
   align-items: flex-start;
   gap: 0.72rem;
-  padding: clamp(0.84rem, 2vw, 1.35rem) clamp(0.84rem, 2vw, 1.35rem) 0;
-  border-bottom: 0;
+  padding: clamp(0.64rem, 1.5vw, 1rem) clamp(0.84rem, 2vw, 1.35rem) 0.65rem;
+  border-bottom: 1px solid var(--line-strong);
 }
 
 .ui-popup__header--layout-document {
@@ -276,7 +277,7 @@ app-popup {
 
 .ui-popup__header--layout-article .ui-popup__subtitle {
   max-width: 72ch;
-  margin: 0.54rem 0 0;
+  margin: 0.2rem 0 0;
   color: rgba(31, 54, 88, 0.76);
   font-size: 0.94rem;
   font-weight: 800;
@@ -676,7 +677,7 @@ app-popup {
   }
 
   .ui-popup__header--layout-article {
-    padding: 0.78rem 0.78rem 0;
+    padding: 0.58rem 0.78rem 0.65rem;
   }
 
   .ui-popup__header--layout-document {
@@ -829,4 +830,20 @@ app-popup {
   height: auto !important;
   max-height: var(--app-popup-anchor-max-height) !important;
   min-height: 0;
+}
+
+.ui-popup__error {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  max-width: calc(100% - 1rem);
+  max-height: 5rem;
+  overflow: auto;
+  margin: .35rem .5rem;
+  padding: .45rem .65rem;
+  border: 1px solid colors.$danger-border;
+  border-radius: .5rem;
+  background: colors.$danger-background;
+  color: colors.$danger-foreground;
+  font-size: .8rem;
+  font-weight: 700;
 }

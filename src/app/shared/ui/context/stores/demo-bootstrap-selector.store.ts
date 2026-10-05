@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 
 import type { UserSelectorListItemDto } from '../../../core/contracts/user.interface';
+import type { GroupType } from '../../../core/contracts/group-type';
 
 export type DemoBootstrapSelectorMode = 'member' | 'operator' | 'admin';
 
@@ -12,6 +13,7 @@ export interface DemoBootstrapSelectorState {
   updatedMs: number;
   mode: DemoBootstrapSelectorMode;
   selectableModes: readonly DemoBootstrapSelectorMode[];
+  groupType?: GroupType;
   title?: string;
   subtitle?: string;
   autoSelectUserId?: string;
@@ -38,6 +40,7 @@ export class DemoBootstrapSelectorStore {
   openDemoBootstrapSelector(payload: {
     mode: DemoBootstrapSelectorMode;
     selectableModes?: readonly DemoBootstrapSelectorMode[];
+    groupType?: GroupType;
     title?: string;
     subtitle?: string;
     autoSelectUserId?: string;
@@ -57,6 +60,7 @@ export class DemoBootstrapSelectorStore {
       updatedMs: Date.now(),
       mode,
       selectableModes,
+      groupType: payload.groupType,
       title: payload.title?.trim() || undefined,
       subtitle: payload.subtitle?.trim() || undefined,
       autoSelectUserId: payload.autoSelectUserId?.trim() || undefined,

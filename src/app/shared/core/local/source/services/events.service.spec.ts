@@ -87,6 +87,8 @@ describe('LocalEventsService', () => {
           provide: LocalEventsRepository,
           useValue: {
             queryEventRecordById,
+            isTournamentAdmissionLocked: () => false,
+            queryUserEventCounterSnapshot: () => ({ events: 0, invitations: 0, hosting: 0, event: { all: 0, active: 0, pending: 0, invitations: 0, hosting: 0, drafts: 0, watchlist: 0, trash: 0 } }),
             applyStageAction,
             querySubEventLeaderboard,
             queryAcceptedTournamentStageMemberUserIds,
@@ -469,7 +471,7 @@ describe('LocalEventsService', () => {
       }]
     });
     appendNotifications.mockImplementation(records => records);
-    unreadCount.mockImplementation(userId => userId === 'riley' ? 2 : 1);
+    unreadCount.mockImplementation(userId => userId === 'host' ? 1 : 2);
 
     await TestBed.inject(LocalEventsService).applyStageAction({
       userId: 'host',

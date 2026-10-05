@@ -28,8 +28,9 @@ export interface ChatRecord {
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
-  serviceContext?: 'event' | 'asset' | 'notification';
+  serviceContext?: 'event' | 'asset' | 'notification' | 'campaign' | 'case';
   ownerId?: string;
+  caseOfferId?: string;
   eventId?: string;
   ownerStatus?: ActivityEventStatus | null;
   revision?: number;
@@ -38,6 +39,7 @@ export interface ChatRecord {
 }
 
 export interface ChatThreadRecord extends ChatRecord {
+  supportBaseGroupId?: string | null;
   ownerUserId: string;
 }
 

@@ -1,4 +1,5 @@
 import type { UserDto } from './user.interface';
+import type { GroupType } from './group-type';
 import type { ListQuery, PageResult } from './list.interface';
 export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbies', 'neighbourhood'] as const;
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
@@ -21,6 +22,7 @@ export interface GroupPolicy {
   policies?: import('./event.interface').EventPolicyDTO[];
 }
 export interface CommunityGroup {
+  groupType?: GroupType;
   lifecycleStatus?: 'active' | 'under-review' | 'deleted' | null;
   canTakeOver?: boolean;
   canRestoreGroup?: boolean;
@@ -38,6 +40,7 @@ export interface CommunityGroup {
   acceptedMembers: number; pendingMembers: number; activity: number; distanceKm: number | null;
 }
 export interface SaveCommunityGroup {
+  groupType?: GroupType;
   userId: string; id?: string; name: string; description: string; imageUrl: string | null;
   category: GroupCategory; visibility: GroupVisibility; hideMembers: boolean; policy: GroupPolicy; version?: number;
 }
@@ -52,6 +55,7 @@ export function communityGroupSummary(group: CommunityGroup | CommunityGroupSumm
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
 export interface GroupCounters { hosting: number; participation: number; pending: number; invitations: number; }
 export interface GroupWorkspace {
+  groupType?: GroupType;
   membersActivity?: number;
   moderationPending?: number;
   moderationQueueRevision?: number;

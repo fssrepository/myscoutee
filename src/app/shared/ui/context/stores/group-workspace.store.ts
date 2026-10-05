@@ -1,3 +1,7 @@
+import { isBaseGroupId } from '../../../core/contracts/group-type';
+import { AdminWorkspaceStore } from "./admin-workspace.store";
+import { AdminMenuStore } from "./admin-menu.store";
+import { AdminWorkspaceDataService } from "../../../core/base/services/admin-workspace-data.service";
 import { UsersService } from '../../../core/base/services/users.service';
 import { AppUtils } from '../../../app-utils';
 import { ContentModerationStore } from './content-moderation.store';
@@ -19,6 +23,9 @@ export class GroupWorkspaceStore {
   readonly context = inject(GroupWorkspaceContextService);
   private readonly service = inject(CommunityGroupsService);
   private readonly users = inject(UsersService);
+  private readonly admin = inject(AdminWorkspaceStore);
+  private readonly adminData = inject(AdminWorkspaceDataService);
+  private readonly adminMenu = inject(AdminMenuStore);
   private sessionKey = '';
   private readonly profile = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
@@ -36,7 +43,7 @@ export class GroupWorkspaceStore {
         ? this.moderation.attention(workspace.groupId, previousPending, workspace.moderationQueueRevision)
         : { pending: 0, revision: 0 };
       const activity = workspace.membershipStatus === 'accepted' && active?.groupId === workspace.groupId && profile?.id === workspace.profileId
-        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id), 'group') + (workspace.membersActivity ?? 0)
+        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id), 'group') + (profile.admin ? 0 : workspace.membersActivity ?? 0)
         : Math.max(0, workspace.activity - previousPending);
       return { ...workspace, activity: activity + attention.pending, moderationPending: attention.pending, moderationQueueRevision: attention.revision };
     });
@@ -46,20 +53,22 @@ export class GroupWorkspaceStore {
     const account = this.profile.getUserProfile(this.context.accountUserId());
     if (!account) return 0;
     const flags = this.profile.getUserImpressionChangeFlags(account.id);
-    return profileMenuBadgeCount(account, this.activities.getUserCounterOverrides(account.id), flags);
+    return profileMenuBadgeCount(account, this.activities.getUserCounterOverrides(account.id), flags)
+      + (account.admin ? this.moderation.forScope(null)?.pendingCount ?? 0 : 0);
   });
   readonly avatarBadgeCount = computed(() => this.accountAttention()
-    + this.attentionRows().reduce((sum, workspace) => sum + workspace.activity, 0));
+    + this.attentionRows().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId)).reduce((sum, workspace) => sum + workspace.activity, 0));
   readonly error = signal('');
   readonly counters = computed(() => this.attentionRows().reduce((counts, workspace) => {
     const bucket = groupMembershipBucket(workspace);
     if (bucket !== 'explore' && bucket !== 'trash') counts[bucket] += workspace.activity;
     return counts;
   }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }));
+  private readonly pollCoordinator = inject(UiPollCoordinator);
   private readonly poller = new UiTaskScheduler({
     intervalMs: () => this.context.accountUserId() ? 15000 : 0,
     state: () => this.context.accountUserId(),
-    pollCoordinator: inject(UiPollCoordinator),
+    pollCoordinator: this.pollCoordinator,
     task: ({ state }) => this.refresh(state)
   });
   private readonly changes = inject(CommunityGroupChangesStore);
@@ -81,7 +90,7 @@ export class GroupWorkspaceStore {
           return [...remaining, {
             ...previous, groupId: change.group.id, profileId: previous?.profileId ?? null,
             name: change.group.name, activity: change.group.activity, role: change.group.role ?? '',
-            category: change.group.category, membershipStatus: change.group.membershipStatus,
+            groupType: change.group.groupType, category: change.group.category, membershipStatus: change.group.membershipStatus,
             requestKind: change.group.requestKind,
             policy: change.group.policy, membersActivity: change.group.membersActivity,
             moderationPending: change.group.moderationPending, moderationQueueRevision: change.group.moderationQueueRevision
@@ -108,7 +117,12 @@ export class GroupWorkspaceStore {
           this.poller.stop({ abort: true });
 
         }
-        if (this.context.accountUserId() && profileId) this.poller.restart({ immediate: true });
+        if (this.context.accountUserId() && profileId) {
+          // The initial selector data must load while the login popup is still
+          // closing. Only subsequent badge refreshes are background polling.
+          void this.pollCoordinator.run('foreground', () => this.refresh(accountId));
+          this.poller.restart();
+        }
       });
     });
   }
@@ -127,9 +141,9 @@ export class GroupWorkspaceStore {
     const accountCount = this.accountAttention();
     const items: AppMenuItem[] = [
       ...(includeAll ? [{ id: 'all', label: 'All', icon: 'apps', palette: 'slate' as const }] : []),
-      { id: 'main', label: 'groups.workspace.main', icon: 'public', palette: 'green',
+      { id: 'main', label: this.profile.activeUserProfile()?.admin ? 'group.type.dating' : 'groups.workspace.main', icon: 'public', palette: 'green',
         counter: includeAll ? null : accountCount || null, counterTone: 'alert' },
-      ...this.workspaces().map(workspace => ({
+      ...this.workspaces().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId)).map(workspace => ({
         id: workspace.groupId, label: workspace.name, imageFallback: AppUtils.initialsFromText(workspace.name),
         imageShape: 'circle' as const, palette: this.palette(workspace.groupId), counter: includeAll ? null : workspace.activity || null,
         counterTone: 'alert' as const
@@ -161,12 +175,19 @@ export class GroupWorkspaceStore {
     if ((this.context.active()?.groupId ?? null) === groupId
         && this.users.profileExtLoadState().status === 'success') return true;
     const generation = this.generation;
+    const adminMode = this.profile.activeUserProfile()?.admin === true;
+    if (adminMode) this.adminMenu.closePopup();
     this.error.set(''); this.context.switching.set(true);
     try {
       this.workspaceSnapshots.set(this.attentionRows());
       const selected = await this.users.loadProfileExtById(this.context.accountUserId(), undefined, groupId);
       if (generation !== this.generation) return false;
       if (!selected) { this.error.set('groups.switch.failed'); return false; }
+      if (adminMode && selected.profile.admin) {
+        const dashboard = await this.adminData.loadDashboard(selected.profile.id);
+        if (generation !== this.generation || selected.profile.id !== this.profile.activeUserId()) return false;
+        this.admin.applyDashboard(dashboard);
+      }
       return true;
     } catch { if (generation === this.generation) this.error.set('groups.switch.failed'); return false; }
     finally { if (generation === this.generation) this.context.switching.set(false); }

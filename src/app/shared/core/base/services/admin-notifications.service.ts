@@ -69,7 +69,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
       this.stopWorker?.(); this.stopWorker = undefined; return;
     }
     if (!this.stopWorker) this.stopWorker = this.scheduler.startInterval(ADMIN_NOTIFICATION_ROUTE,
-      () => this.localService.runCheckoutPurgeTick().catch(() => {}), { fallbackIntervalMs: 60000 });
+      async () => { await this.localService.runCheckoutPurgeTick(); await this.localService.runStatsTick(); await this.localService.runCommunityTasksTick(); }, { fallbackIntervalMs: 60000 });
   }
 
 
@@ -86,7 +86,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
     options?: AdminNotificationDelayOptions
   ): Promise<AdminNotificationCenterState> {
     const state = this.notificationService instanceof LocalAdminNotificationsService
-      ? await this.notificationService.loadNotificationCenter(options)
+      ? await this.notificationService.loadNotificationCenter(options, adminUserId)
       : await this.notificationService.loadNotificationCenter(adminUserId, options?.filter);
     return this.normalizeNotificationCenter(state);
   }

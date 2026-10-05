@@ -20,7 +20,7 @@ describe('LocalMingleRepository', () => {
     vi.spyOn(Date, 'now').mockReturnValue(start);
     repository = TestBed.inject(LocalMingleRepository);
     const event = {
-      id: 'event', userId: 'owner', creatorUserId: 'owner', adminIds: [], type: 'hosting', status: 'A',
+      id: 'event', rating: 0, boost: 0, affinity: 0, userId: 'owner', creatorUserId: 'owner', adminIds: [], type: 'hosting', status: 'A',
       title: 'Speed meeting', subtitle: 'Rounds', avatar: 'SM', timeframe: '', inviter: null,
       unread: 0, activity: 0, trashedAtIso: null, creatorName: 'Owner', creatorInitials: 'O',
       creatorGender: 'woman', creatorCity: '', visibility: 'Public', blindMode: 'Open Event',
@@ -36,7 +36,9 @@ describe('LocalMingleRepository', () => {
         breakDurationMinutes: 1, requireGenderBalance: false }
     } as ActivityEventRecord;
     const users = ['owner', 'a', 'b', 'c', 'd'].map((id, index) => ({ id, name: id, initials: id,
-      gender: index % 2 ? 'woman' : 'man', profileStatus: 'public', images: [], age: 30, activities: {} } as UserRecord));
+      gender: index % 2 ? 'woman' : 'man', profileStatus: 'public', images: [], age: 30, birthday: '2000-01-01', city: 'Budapest',
+      height: '', physique: '', languages: [], horoscope: '', statusText: '', hostTier: '', traitLabel: '',
+      completion: 100, headline: '', about: '', activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 } } as UserRecord));
     const members = users.map(user => member(user.id, user.gender, user.id === 'owner'));
     db.write(state => ({ ...state,
       events: { byId: { event }, ids: ['event'] },

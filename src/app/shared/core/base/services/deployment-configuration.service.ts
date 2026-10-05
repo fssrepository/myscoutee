@@ -3,16 +3,13 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
-  DEFAULT_DEPLOYMENT_CONFIGURATION,
   DEFAULT_DEPLOYMENT_PRIVACY_CONTACT,
   DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
-  DEPLOYMENT_THEME_PRESETS,
   type DeploymentBrandingDto,
   type DeploymentConfigurationDto,
   type DeploymentPrivacyContactDto,
   type DeploymentConfigurationServiceContract,
-  type DeploymentSocialLinkDto,
-  type DeploymentThemePreset
+  type DeploymentSocialLinkDto
 } from '../../contracts/deployment-configuration.interface';
 import { OperatorConfigurationMapper } from '../mappers/operator-configuration.mapper';
 import { HttpDeploymentConfigurationService } from '../../http/services/deployment-configuration.service';
@@ -122,8 +119,13 @@ export class DeploymentConfigurationService
       this.loadingRef.set(true);
       this.loadPromise = this.configurationService()
         .loadBranding()
-        .catch(() => structuredClone(DEFAULT_DEPLOYMENT_CONFIGURATION))
         .then(value => this.applyConfiguration(value))
+        .catch(() => {
+          // An unavailable startup response is not an empty saved configuration.
+          // Keep the last value and allow the next ordinary load to try again.
+          this.loadPromise = null;
+          return this.brandingRef();
+        })
         .finally(() => {
           this.loadingRef.set(false);
         });
@@ -154,9 +156,6 @@ export class DeploymentConfigurationService
       || DEFAULT_DEPLOYMENT_BRANDING.productName;
     const homeLabel = `${value?.homeLabel ?? ''}`.trim().slice(0, 120)
       || productName;
-    const themePreset = DEPLOYMENT_THEME_PRESETS.includes(value?.themePreset)
-      ? value.themePreset
-      : DEFAULT_DEPLOYMENT_BRANDING.themePreset;
     const logoCharacterIndex = this.logoCharacterIndex(
       value?.logoCharacterIndex,
       productName
@@ -166,7 +165,7 @@ export class DeploymentConfigurationService
       homeLabel,
       logoUrl: this.safeLogoUrl(value?.logoUrl),
       logoCharacterIndex,
-      themePreset: themePreset as DeploymentThemePreset,
+
       revision: Math.max(0, Math.trunc(Number(value?.revision) || 0))
     };
   }
@@ -209,7 +208,7 @@ export class DeploymentConfigurationService
 
   private applyDocumentBranding(branding: DeploymentBrandingDto): void {
     const documentElement = this.documentRef.documentElement;
-    documentElement.dataset['deploymentTheme'] = branding.themePreset.toLowerCase();
+    delete documentElement.dataset['deploymentTheme'];
     this.documentRef.title = branding.productName;
     this.setMetaContent('meta[name="description"]', branding.homeLabel);
     this.setMetaContent('meta[property="og:title"]', branding.productName);

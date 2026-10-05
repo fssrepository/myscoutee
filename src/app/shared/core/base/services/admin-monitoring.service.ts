@@ -37,7 +37,7 @@ export class AdminMonitoringService extends BaseRouteModeService {
   async loadMonitoringState(adminUserId?: string | null, filter?: string | null): Promise<AdminMonitoringStateDto> {
     const source = this.monitoringService instanceof LocalAdminMonitoringService ? 'demo' : 'http';
     const state = this.monitoringService instanceof LocalAdminMonitoringService
-      ? await this.monitoringService.loadMonitoringState(filter)
+      ? await this.monitoringService.loadMonitoringState(filter, adminUserId)
       : await this.monitoringService.loadMonitoringState(adminUserId, filter);
     return this.normalizeMonitoringState(state, source);
   }

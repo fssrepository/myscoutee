@@ -1,3 +1,4 @@
+import { LocalUsersRepository } from "../repositories/users.repository";
 import type { IdeaPostsTable } from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
@@ -19,17 +20,19 @@ import { LocalIdeaPostsMapper } from '../mappers';
   providedIn: 'root'
 })
 export class LocalIdeaPostsService {
+  private readonly users = inject(LocalUsersRepository);
+  private groupId(actorId: string) { return this.users.queryUserById(actorId)?.workspaceGroupId ?? null; }
   private static readonly ADMIN_IDEAS_ROUTE = '/admin/ideas';
   private static readonly PUBLIC_IDEAS_ROUTE = '/landing/articles';
   private static readonly LANDING_FEATURED_PREVIEW_LIMIT = 8;
   private readonly ideaPostsRepository = inject(LocalIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
+  async loadPublishedPosts(lang?: string | null, groupId: string | null = null): Promise<IdeaPostDto[]> {
     await this.ideaPostsRepository.whenReady();
     const language = this.requestContentLang(lang);
-    const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
-    return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
+    const posts = this.sortedPosts(this.table()).filter(post => (post.workspaceGroupId ?? null) === groupId && post.published && !post.trashed && post.lang === language);
+    return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => (post.workspaceGroupId ?? null) === groupId && post.published && !post.trashed && post.lang === 'en');
   }
 
   async loadPublishedPostsPage(
@@ -48,39 +51,42 @@ export class LocalIdeaPostsService {
   }
 
   async loadPublishedFeaturedPostPreview(
-    lang?: string | null
+    lang?: string | null,
+    groupId: string | null = null
   ): Promise<IdeaPostPublicPageResultDto> {
     await this.ideaPostsRepository.whenReady();
     const language = this.requestContentLang(lang);
     let preview = this.ideaPostsRepository.queryPublishedFeaturedPostPreview(
       language,
-      LocalIdeaPostsService.LANDING_FEATURED_PREVIEW_LIMIT
+      LocalIdeaPostsService.LANDING_FEATURED_PREVIEW_LIMIT,
+      groupId
     );
     if (preview.total === 0 && language !== 'en') {
       preview = this.ideaPostsRepository.queryPublishedFeaturedPostPreview(
         'en',
-        LocalIdeaPostsService.LANDING_FEATURED_PREVIEW_LIMIT
+        LocalIdeaPostsService.LANDING_FEATURED_PREVIEW_LIMIT,
+      groupId
       );
     }
     return LocalIdeaPostsMapper.toDtoPage(preview);
   }
 
-  async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPostDto[]> {
+  async loadAdminPosts(adminUserId = '', lang = 'en'): Promise<IdeaPostDto[]> {
     await this.ideaPostsRepository.whenReady();
     await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const language = this.normalizeLang(lang);
-    return this.sortedPosts(this.table()).filter(post => post.lang === language);
+    return this.sortedPosts(this.table()).filter(post => post.lang === language && (post.workspaceGroupId ?? null) === this.groupId(adminUserId));
   }
 
   async loadAdminPostsPage(
-    _adminUserId = '',
+    adminUserId = '',
     lang = 'en',
     query: IdeaPostAdminPageQueryDto = {}
   ): Promise<IdeaPostAdminPageResultDto> {
     await this.ideaPostsRepository.whenReady();
     await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     return LocalIdeaPostsMapper.toAdminDtoPage(
-      this.ideaPostsRepository.queryAdminPostPage(this.normalizeLang(lang), query)
+      this.ideaPostsRepository.queryAdminPostPage(this.normalizeLang(lang), query, this.groupId(adminUserId))
     );
   }
 
@@ -88,10 +94,14 @@ export class LocalIdeaPostsService {
     await this.ideaPostsRepository.whenReady();
     await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const nowIso = new Date().toISOString();
+    const groupId = this.groupId(request.actorUserId);
+    const existing = request.id ? this.table().byId[request.id] : null;
+    if (existing && (existing.workspaceGroupId ?? null) !== groupId) throw new Error('Forbidden');
     const record = LocalIdeaPostsMapper.toRecord(request, {
       id: request.id?.trim() || this.ideaPostsRepository.createPostId(),
       nowIso
     });
+    record.workspaceGroupId = groupId;
     const saved = this.ideaPostsRepository.savePostSnapshot(record);
     await this.ideaPostsRepository.flushToIndexedDb();
     return LocalIdeaPostsMapper.toDto(saved);
@@ -112,6 +122,7 @@ export class LocalIdeaPostsService {
         if (!post) {
           return table;
         }
+        if ((post.workspaceGroupId ?? null) !== this.groupId(actorUserId)) throw new Error('Forbidden');
         trashed = {
           ...LocalIdeaPostsMapper.toDto(post),
           featured: false,
@@ -150,6 +161,7 @@ export class LocalIdeaPostsService {
         if (!normalizedPostId || !post) {
           return table;
         }
+        if ((post.workspaceGroupId ?? null) !== this.groupId(actorUserId)) throw new Error('Forbidden');
         restored = {
           ...LocalIdeaPostsMapper.toDto(post),
           featured: false,

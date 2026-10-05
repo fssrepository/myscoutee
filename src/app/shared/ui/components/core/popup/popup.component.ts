@@ -226,6 +226,13 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
     event.stopPropagation();
   }
 
+  protected onPanelPointerDown(event: PointerEvent): void {
+    // A false template-listener result cancels native input focus in Angular.
+    if (this.popupModel.backdrop === false) {
+      event.stopPropagation();
+    }
+  }
+
   protected isMenuControl(control: PopupControl<TContext>): control is PopupMenuControl<TContext> {
     return 'kind' in control && control.kind === 'menu';
   }

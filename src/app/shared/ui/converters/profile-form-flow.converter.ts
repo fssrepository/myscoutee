@@ -566,14 +566,7 @@ export class ProfileFormFlowConverter {
         label: 'profile.languages',
         bind: 'profile.languages',
         required: true,
-        config: this.checkboxMenuConfig(
-          'profile.languages',
-          this.languageOptions(profile?.languages ?? []),
-          'language',
-          'blue',
-          'select.languages',
-          2
-        )
+        config: this.languageMenuConfig(profile?.languages ?? [])
       },
       {
         id: 'profession',
@@ -1038,6 +1031,10 @@ export class ProfileFormFlowConverter {
     return Array.isArray(images)
       ? images.filter(image => `${image ?? ''}`.trim().length > 0).length
       : 0;
+  }
+
+  static languageMenuConfig(selected: readonly string[] = []): FormFlowMenuControlConfig {
+    return this.checkboxMenuConfig('profile.languages', this.languageOptions(selected), 'language', 'blue', 'select.languages', 2);
   }
 
   private static languageOptions(selected: readonly string[]): string[] {

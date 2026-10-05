@@ -110,6 +110,7 @@ export interface UserMenuCountersDto {
   contacts?: number;
   feedback?: number;
   notifications?: number;
+  cases?: number;
   paymentRefundsPending?: number;
   contactRequestsPending?: number;
   chat?: UserChatCountersDto;
@@ -133,6 +134,7 @@ export interface UserMenuCounterDeltasDto {
   contacts?: number;
   feedback?: number;
   notifications?: number;
+  cases?: number;
   paymentRefundsPending?: number;
   contactRequestsPending?: number;
   chat?: UserChatCounterDeltasDto;
@@ -151,6 +153,8 @@ export interface UserChatCountersDto {
   service?: number;
   appSupport?: number;
   contacts?: number;
+  campaign?: number;
+  cases?: number;
   groupSupport?: number;
   supportCases?: UserSupportCaseCountersDto;
 }
@@ -172,6 +176,8 @@ export interface UserChatCounterDeltasDto {
   service?: number;
   appSupport?: number;
   contacts?: number;
+  campaign?: number;
+  cases?: number;
   groupSupport?: number;
 }
 
@@ -274,6 +280,7 @@ export interface UserLocationEligibilityResponseDto {
 }
 
 export interface UserSelectorListItemDto {
+  baseGroupTypes?: import('./group-type').GroupType[];
   id: string;
   locationCoordinates?: LocationCoordinates | null;
   locationRequired?: boolean;
@@ -337,6 +344,7 @@ export class UserDto {
     contacts?: number;
     feedback?: number;
     notifications?: number;
+  cases?: number;
     paymentRefundsPending?: number;
     contactRequestsPending?: number;
     chat?: UserChatCountersDto;

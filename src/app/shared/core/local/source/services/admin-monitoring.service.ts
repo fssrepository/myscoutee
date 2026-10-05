@@ -20,11 +20,11 @@ const MONITORING_WORKER_CATEGORIES = new Set(['matching', 'jobs']);
 export class LocalAdminMonitoringService extends LocalRouteDelayService {
   private readonly repository = inject(LocalAdminMonitoringRepository);
 
-  async loadMonitoringState(filter?: string | null): Promise<AdminMonitoringStateDto> {
+  async loadMonitoringState(filter?: string | null, adminUserId?: string | null): Promise<AdminMonitoringStateDto> {
     const delay = this.waitForRouteDelay(ADMIN_MONITORING_LOAD_ROUTE);
     try {
       const [state] = await Promise.all([
-        this.readMonitoringState(),
+        this.readMonitoringState(adminUserId),
         delay
       ]);
       return this.applyMonitoringFilter(state, filter);
@@ -34,9 +34,9 @@ export class LocalAdminMonitoringService extends LocalRouteDelayService {
     }
   }
 
-  private async readMonitoringState(): Promise<AdminMonitoringStateDto> {
+  private async readMonitoringState(adminUserId?: string | null): Promise<AdminMonitoringStateDto> {
     await this.repository.whenReady();
-    const existing = await this.repository.readStore<AdminMonitoringStateDto>();
+    const existing = await this.repository.readStore<AdminMonitoringStateDto>(adminUserId);
     if (!existing?.categories?.length) {
       throw new Error('Demo monitoring state is not bootstrapped.');
     }

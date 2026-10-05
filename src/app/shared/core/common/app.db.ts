@@ -1,3 +1,8 @@
+import { SERVICE_OFFERINGS_TABLE_NAME, SERVICE_PROVIDER_CALENDARS_TABLE_NAME } from '../local/source/entity/service-offering.entity';
+import { COMMUNITY_ANNOUNCEMENTS_TABLE_NAME } from '../local/source/entity/community-announcement.entity';
+import { COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME } from '../local/source/entity/community-case.entity';
+import { CAMPAIGNS_TABLE_NAME } from '../local/source/entity/campaign.entity';
+import { projectCampaignRateRecords } from '../base/campaign-rate-aggregation';
 import { COMMUNITY_GROUPS_TABLE_NAME } from '../local/source/entity/community-group.entity';
 import { CONTENT_MODERATION_TABLE_NAME, emptyContentModeration } from '../local/source/entity/content-moderation.entity';
 import { maintainContentModeration } from '../local/source/builders/content-moderation.builder';
@@ -58,6 +63,12 @@ interface NormalizedActivityRateRecordQuery {
 })
 export class AppMemoryDb {
   private static readonly SCHEMA_TABLE_KEYS = [
+    SERVICE_PROVIDER_CALENDARS_TABLE_NAME,
+    SERVICE_OFFERINGS_TABLE_NAME,
+    COMMUNITY_ANNOUNCEMENTS_TABLE_NAME,
+    COMMUNITY_CASES_TABLE_NAME,
+    COMMUNITY_TASKS_TABLE_NAME,
+    CAMPAIGNS_TABLE_NAME,
     COMMUNITY_GROUPS_TABLE_NAME,
     USERS_TABLE_NAME,
     ASSETS_TABLE_NAME,
@@ -122,7 +133,12 @@ export class AppMemoryDb {
 
   write(updater: (current: AppMemorySchema) => AppMemorySchema): void {
     const previous = this._tables();
-    const next = this.normalizeState(maintainFollowingState(previous, maintainContentModeration(previous, updater(previous))));
+    let updated = maintainFollowingState(previous, maintainContentModeration(previous, updater(previous)));
+    if (updated[USER_RATES_TABLE_NAME] !== previous[USER_RATES_TABLE_NAME]
+      || updated[USER_RATES_OUTBOX_TABLE_NAME] !== previous[USER_RATES_OUTBOX_TABLE_NAME]) {
+      updated = { ...updated, [USER_RATES_TABLE_NAME]: { ...updated[USER_RATES_TABLE_NAME], campaignProjection: undefined } };
+    }
+    const next = this.normalizeState(updated);
     this._tables.set(next);
     if (!this.hydrationComplete || !this.storageEnabled) {
       return;
@@ -330,6 +346,7 @@ export class AppMemoryDb {
         ids: []
       },
       [USER_RATES_TABLE_NAME]: {
+        campaignProjection: {},
         byId: {},
         ids: [],
         idsByRelevantUserId: {}
@@ -376,6 +393,12 @@ export class AppMemoryDb {
       },
       [CONTENT_MODERATION_TABLE_NAME]: emptyContentModeration(),
       [PHOTO_FEED_TABLE_NAME]: { byId: {}, ids: [] },
+      [SERVICE_PROVIDER_CALENDARS_TABLE_NAME]: {byId:{},ids:[]},
+      [SERVICE_OFFERINGS_TABLE_NAME]: { byId: {}, ids: [] },
+      [COMMUNITY_ANNOUNCEMENTS_TABLE_NAME]: { byId: {}, ids: [] },
+      [COMMUNITY_CASES_TABLE_NAME]: { byId: {}, ids: [] },
+      [COMMUNITY_TASKS_TABLE_NAME]: { byId: {}, ids: [] },
+      [CAMPAIGNS_TABLE_NAME]: { byId: {}, ids: [] },
       [COMMUNITY_GROUPS_TABLE_NAME]: { byId: {}, ids: [] },
       [IDEA_POSTS_TABLE_NAME]: {
         seeded: false,
@@ -420,7 +443,7 @@ export class AppMemoryDb {
         return fallback;
       }
       const parsed = JSON.parse(raw) as unknown;
-      return this.initializeCommunityCounters(this.normalizeState(parsed, fallback));
+      return this.initializeCommunityCounters(this.normalizeState(parsed, fallback, true));
     } catch {
       return fallback;
     }
@@ -464,7 +487,7 @@ export class AppMemoryDb {
       if (!snapshot) {
         return;
       }
-      const normalized = this.mergeHydratedStateWithCurrent(this.normalizeState(snapshot), this._tables());
+      const normalized = this.mergeHydratedStateWithCurrent(this.normalizeState(snapshot, this.createEmptyState(), true), this._tables());
       const current = this._tables();
       const currentHasUsers = current[USERS_TABLE_NAME].ids.length > 0;
       const incomingHasUsers = normalized[USERS_TABLE_NAME].ids.length > 0;
@@ -543,7 +566,7 @@ export class AppMemoryDb {
       return null;
     }
 
-    return this.initializeCommunityCounters(this.normalizeState(partialState, this.createEmptyState()));
+    return this.initializeCommunityCounters(this.normalizeState(partialState, this.createEmptyState(), true));
   }
 
   private async persistToIndexedDb(state: AppMemorySchema, force = false): Promise<void> {
@@ -880,7 +903,7 @@ export class AppMemoryDb {
     return { ...state, communityGroups: { ...state.communityGroups, byId } };
   }
 
-  private normalizeState(value: unknown, fallback = this.createEmptyState()): AppMemorySchema {
+  private normalizeState(value: unknown, fallback = this.createEmptyState(), rebuildProjections = false): AppMemorySchema {
     const source = (value && typeof value === 'object') ? value as Partial<AppMemorySchema> : {};
     const usersSource = source[USERS_TABLE_NAME] as Partial<AppMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
     const assetsSource = source[ASSETS_TABLE_NAME] as Partial<AppMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined;
@@ -898,6 +921,12 @@ export class AppMemoryDb {
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const eventTicketsSource = source[EVENT_TICKETS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_TICKETS_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
+    const calendarsSource = source[SERVICE_PROVIDER_CALENDARS_TABLE_NAME] as AppMemorySchema[typeof SERVICE_PROVIDER_CALENDARS_TABLE_NAME] | undefined;
+    const servicesSource = source[SERVICE_OFFERINGS_TABLE_NAME] as AppMemorySchema[typeof SERVICE_OFFERINGS_TABLE_NAME] | undefined;
+    const announcementsSource = source[COMMUNITY_ANNOUNCEMENTS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_ANNOUNCEMENTS_TABLE_NAME] | undefined;
+    const casesSource = source[COMMUNITY_CASES_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_CASES_TABLE_NAME] | undefined;
+    const tasksSource = source[COMMUNITY_TASKS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_TASKS_TABLE_NAME] | undefined;
+    const campaignsSource = source[CAMPAIGNS_TABLE_NAME] as AppMemorySchema[typeof CAMPAIGNS_TABLE_NAME] | undefined;
     const communityGroupsSource = source[COMMUNITY_GROUPS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_GROUPS_TABLE_NAME] | undefined;
     const photoFeedSource = source[PHOTO_FEED_TABLE_NAME] as Partial<AppMemorySchema[typeof PHOTO_FEED_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
@@ -982,6 +1011,10 @@ export class AppMemoryDb {
           : [...fallback[USERS_TABLE_NAME].ids]
       },
       [USER_RATES_TABLE_NAME]: {
+        campaignProjection: (!rebuildProjections && ratesSource?.campaignProjection) || projectCampaignRateRecords(Object.values({
+          ...(ratesSource?.byId ?? fallback[USER_RATES_TABLE_NAME].byId),
+          ...Object.fromEntries(Object.values(userRatesOutboxById).filter(row => row.status === 'pending').map(row => [row.payload.id, row.payload]))
+        })),
         byId: this.normalizeUserRatesById(ratesSource?.byId, fallback[USER_RATES_TABLE_NAME].byId),
         ids: Array.isArray(ratesSource?.ids)
           ? ratesSource.ids.map(id => String(id))
@@ -1034,6 +1067,7 @@ export class AppMemoryDb {
           : [...fallback[EVENT_TICKETS_TABLE_NAME].ids]
       },
       [HELP_CENTER_TABLE_NAME]: {
+        baseGroups: helpCenterSource?.baseGroups ?? {},
         seeded: helpCenterSource?.seeded === true || fallback[HELP_CENTER_TABLE_NAME].seeded === true,
         activeRevisionId: typeof helpCenterSource?.activeRevisionId === 'string'
           ? helpCenterSource.activeRevisionId
@@ -1070,6 +1104,12 @@ export class AppMemoryDb {
           : [...(fallback[HELP_CENTER_TABLE_NAME].privacyConsentIds ?? [])]
       },
       [CONTENT_MODERATION_TABLE_NAME]: source[CONTENT_MODERATION_TABLE_NAME] ?? fallback[CONTENT_MODERATION_TABLE_NAME],
+      [SERVICE_PROVIDER_CALENDARS_TABLE_NAME]: {byId:{...(calendarsSource?.byId??{})},ids:[...(calendarsSource?.ids??[])]},
+      [SERVICE_OFFERINGS_TABLE_NAME]: { byId: { ...(servicesSource?.byId ?? {}) }, ids: [...(servicesSource?.ids ?? [])] },
+      [COMMUNITY_ANNOUNCEMENTS_TABLE_NAME]: { byId: { ...(announcementsSource?.byId ?? {}) }, ids: [...(announcementsSource?.ids ?? [])] },
+      [COMMUNITY_CASES_TABLE_NAME]: { byId: { ...(casesSource?.byId ?? {}) }, ids: [...(casesSource?.ids ?? [])] },
+      [COMMUNITY_TASKS_TABLE_NAME]: { byId: { ...(tasksSource?.byId ?? {}) }, ids: [...(tasksSource?.ids ?? [])] },
+      [CAMPAIGNS_TABLE_NAME]: { byId: { ...(campaignsSource?.byId ?? {}) }, ids: [...(campaignsSource?.ids ?? [])] },
       [COMMUNITY_GROUPS_TABLE_NAME]: { byId: { ...(communityGroupsSource?.byId ?? {}) }, ids: [...(communityGroupsSource?.ids ?? [])] },
       [PHOTO_FEED_TABLE_NAME]: {
         byId: { ...(photoFeedSource?.byId ?? fallback[PHOTO_FEED_TABLE_NAME].byId) },
@@ -1254,6 +1294,7 @@ export class AppMemoryDb {
     }
     const source = value as Partial<UserRateRecord>;
     const normalized: UserRateRecord = {
+      campaignId: typeof source.campaignId === 'string' ? source.campaignId.trim() || null : null,
       id: this.normalizeRateText(source.id),
       fromUserId: this.normalizeRateText(source.fromUserId),
       toUserId: this.normalizeRateText(source.toUserId),

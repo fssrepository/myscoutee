@@ -84,10 +84,10 @@ describe('Local demo selector location hint', () => {
     ];
     const service = Object.assign(Object.create(LocalUsersService.prototype), {
       waitForRouteDelay: vi.fn().mockResolvedValue(undefined),
-      usersRepository: { queryAvailableDemoUsers: () => records },
+      usersRepository: { queryAvailableDemoUsers: () => records, queryDemoBaseGroupTypes: () => new Map() },
       countryPartitionsRepository: new LocalCountryPartitionsRepository()
     });
-    expect((await service.queryAvailableDemoUsers('member')).map(user => user.locationRequired)).toEqual([true, true, false]);
-    expect((await service.queryAvailableDemoUsers('admin')).map(user => user.locationRequired)).toEqual([false, false, false]);
+    expect((await service.queryAvailableDemoUsers('member')).map((user: import('../../../contracts/user.interface').UserSelectorListItemDto) => user.locationRequired)).toEqual([true, true, false]);
+    expect((await service.queryAvailableDemoUsers('admin')).map((user: import('../../../contracts/user.interface').UserSelectorListItemDto) => user.locationRequired)).toEqual([false, false, false]);
   });
 });

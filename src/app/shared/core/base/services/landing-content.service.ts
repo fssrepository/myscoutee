@@ -1,3 +1,5 @@
+import { HelpCenterService } from './help-center.service';
+import { baseGroupId, type GroupType } from '../../contracts/group-type';
 import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalLandingContentService } from '../../local/source/services/landing-content.service';
@@ -23,60 +25,50 @@ export class LandingContentService extends BaseRouteModeService {
   private readonly httpLandingContentService = inject(HttpLandingContentService);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly helpCenter = inject(HelpCenterService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly stateRef = signal<LandingContentStateDto | null>(null);
-  private loadPromise: Promise<LandingContentStateDto> | null = null;
-  private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
+  private readonly states = new Map<string, LandingContentStateDto>();
+  private readonly loads = new Map<string, Promise<LandingContentStateDto>>();
+  readonly mode = signal<GroupType>('dating');
 
   readonly state = this.stateRef.asReadonly();
 
   async loadExplanationState(contextKey: string, language: string): Promise<HelpCenterStateDto> {
-    return this.landingService().loadExplanationState(contextKey, language);
+    return this.landingService().loadExplanationState(contextKey, language, baseGroupId(this.mode()));
   }
 
-  async loadOnce(): Promise<LandingContentStateDto> {
-    const current = this.stateRef();
-    if (current) {
-      return this.cloneState(current);
+  async loadOnce(groupId: string | null = baseGroupId(this.mode())): Promise<LandingContentStateDto> {
+    const key = groupId ?? 'dating';
+    const cached = this.states.get(key);
+    if (cached) return this.cloneState(cached);
+    let pending = this.loads.get(key);
+    if (!pending) {
+      pending = this.landingService().loadContent(groupId).then(state => {
+        const cloned = this.cloneState(state);
+        this.states.set(key, cloned);
+
+        return cloned;
+      }).finally(() => this.loads.delete(key));
+      this.loads.set(key, pending);
     }
-    if (!this.loadPromise) {
-      this.loadPromise = this.landingService().loadContent()
-        .then(state => {
-          const cloned = this.cloneState(state);
-          this.stateRef.set(cloned);
-          this.privacyPolicy.applyState(cloned.privacy);
-          this.termsPolicy.applyState(cloned.terms);
-          this.ideaPosts.applyPublishedPosts(cloned.ideas);
-          return this.cloneState(cloned);
-        })
-        .finally(() => {
-          this.loadPromise = null;
-        });
-    }
-    return this.cloneState(await this.loadPromise);
+    return this.cloneState(await pending);
   }
 
-  async loadDisplayState(): Promise<LandingContentDisplayState> {
-    const current = this.stateRef();
-    if (current) {
-      return this.cloneDisplayState(current);
+  async loadDisplayState(groupId: string | null = baseGroupId(this.mode())): Promise<LandingContentDisplayState> {
+    this.helpCenter.landingGroupId.set(groupId);
+    const state = await this.loadOnce(groupId);
+    if (groupId === baseGroupId(this.mode())) {
+      this.privacyPolicy.applyState(state.privacy);
+      this.termsPolicy.applyState(state.terms);
+      this.stateRef.set(state);
+      this.ideaPosts.applyPublishedPosts(state.ideas);
     }
-    if (!this.displayLoadPromise) {
-      this.displayLoadPromise = this.loadOnce()
-        .then(state => this.cloneDisplayState(state))
-        .finally(() => {
-          this.displayLoadPromise = null;
-        });
-    }
-    return this.cloneDisplayState((await this.displayLoadPromise).state);
+    return this.cloneDisplayState(state);
   }
 
   ideaInfoCards(): InfoCardData[] {
     return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
-  }
-
-  usesLocalContent(): boolean {
-    return this.isLocalRouteEnabled(LandingContentService.LANDING_CONTENT_ROUTE);
   }
 
   private landingService(): LocalLandingContentService | HttpLandingContentService {
@@ -90,12 +82,14 @@ export class LandingContentService extends BaseRouteModeService {
   private cloneDisplayState(state: LandingContentStateDto): LandingContentDisplayState {
     return {
       state: this.cloneState(state),
-      ideaCards: this.ideaInfoCards()
+      ideaCards: this.ideaPosts.publishedIdeaInfoCards(state.ideas)
     };
   }
 
   private cloneState(state: LandingContentStateDto): LandingContentStateDto {
     return {
+      groupId: state.groupId ?? null,
+      slides: (state.slides ?? []).map(slide => ({ ...slide })),
       supportedCountries: (state.supportedCountries ?? []).map(country => ({ ...country })),
       privacy: {
         activeRevision: state.privacy.activeRevision

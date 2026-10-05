@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
 
-import { SeedIdeaPostsBuilder } from '../builders';
+import { SeedIdeaPostsBuilder } from '../builders/idea-posts-seed.builder';
 
 @Injectable({
   providedIn: 'root'

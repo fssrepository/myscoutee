@@ -7,11 +7,11 @@ describe('Local feedback mode isolation', () => {
     .map(id => ({ id, name: id, initials: id, images: [] } as unknown as UserDto));
   const peers = users.filter(user => user.id.startsWith('peer-')).map(user => user.id);
   function detail(mode: 'Casual' | 'Tournament' | 'Mingle', includePeers = true) {
-    const event = { id: 'event', type: 'events', userId: 'viewer', creatorUserId: 'host', mode,
+    const event: Partial<ActivityEventDTO> = { id: 'event', type: 'events', userId: 'viewer', creatorUserId: 'host', mode,
       title: 'Event', status: 'A', startAtIso: '2030-01-01T10:00:00Z', endAtIso: '2030-01-01T11:00:00Z',
-      acceptedMemberUserIds: ['viewer', 'outsider'], pendingMemberUserIds: [] } as ActivityEventDTO;
+      acceptedMemberUserIds: ['viewer', 'outsider'], pendingMemberUserIds: [] };
     return LocalEventFeedbackMapper.toDetail({ query: { eventId: 'event', userId: 'viewer' },
-      events: [event], activeUser: users[0], users, nowMs: Date.parse('2030-01-01T14:00:00Z'),
+      events: [event as ActivityEventDTO], activeUser: users[0], users, nowMs: Date.parse('2030-01-01T14:00:00Z'),
       minglePeersByEventId: mode === 'Mingle' ? { event: includePeers ? peers : [] } : {} });
   }
   for (const mode of ['Casual', 'Tournament'] as const) {

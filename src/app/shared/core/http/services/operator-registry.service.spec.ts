@@ -1292,7 +1292,7 @@ describe('HttpOperatorRegistryService', () => {
         productName: 'Community Hub',
         logoUrl: '/api/media/operator/logo.webp',
         logoCharacterIndex: null,
-        themePreset: 'OCEAN' as const
+
       },
       payment: {
         providerId: 'stripe',
@@ -1775,7 +1775,7 @@ function operatorConfiguration() {
       homeLabel: 'Your preferences come first',
       logoUrl: 'assets/logo/heart.webp',
       logoCharacterIndex: null,
-      themePreset: 'AURORA' as const,
+
       revision: 1
     },
     payment: {

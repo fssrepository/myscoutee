@@ -73,7 +73,7 @@
         ></app-header-card>
         @if (groupWorkspaces.error()) { <p role="alert">{{ groupWorkspaces.error() | i18n }}</p> }
         <div class="navigator-header-toolbar">
-          @if (!isAdminMode() && !isOperatorMode()) {
+          @if (!isOperatorMode()) {
             <app-menu data-guide-field="navigation-workspace" class="navigator-workspace-selector" kind="select" panelAlign="start"
               [model]="{ density: 'compact' }"
               [trigger]="workspaceTrigger()" [items]="workspaceItems()"
@@ -110,7 +110,7 @@
           <app-menu
             kind="inline"
             layout="grid"
-            [style.--app-menu-grid-columns]="mingleStore.visible() ? 4 : 3"
+            [style.--app-menu-grid-columns]="navigatorCommunityColumnCount()"
             [model]="navigatorCommunityMenuModel()"
             (itemSelect)="onNavigatorCommunityMenuSelect($event)"
           ></app-menu>
@@ -151,8 +151,6 @@
 @if (profileStore.profileViewPopupComponent(); as profileViewComponent) {
   <ng-container *ngComponentOutlet="profileViewComponent"></ng-container>
 }
-
-<app-dialog [zIndex]="notificationCenterStore.isOpen() || paymentMethodsPopupStore.isOpen() ? 24000 : null"></app-dialog>
 
 @defer (when notificationCenterStore.isOpen()) {
   <app-notification-center-popup></app-notification-center-popup>
@@ -238,3 +236,25 @@
 @if (activityInviteStore.externalInvite() && activityInviteStore.externalInviteComponent(); as externalInviteComponent) {
   <ng-container *ngComponentOutlet="externalInviteComponent"></ng-container>
 }
+
+@if (campaigns.session() || campaigns.editor() || campaigns.historyTarget()) {
+  @if (campaigns.component(); as campaignComponent) { <ng-container *ngComponentOutlet="campaignComponent"></ng-container> }
+}
+
+@if (cases.session()) {
+  @if (cases.component(); as caseComponent) { <ng-container *ngComponentOutlet="caseComponent"></ng-container> }
+}
+
+@if (announcements.popup()) {
+  @if (announcements.component(); as component) { <ng-container *ngComponentOutlet="component"></ng-container> }
+}
+
+@if (services.session()) {
+  @if (services.component(); as component) { <ng-container *ngComponentOutlet="component"></ng-container> }
+}
+
+@if(caseSlotPicker.popup()?.selectionAdapter){
+  @if(caseSlotPicker.slotPickerPopupComponent(); as component){<ng-container *ngComponentOutlet="component"></ng-container>}
+}
+
+@if(serviceFeedback.opened()) { @if(serviceFeedback.component(); as component) {<ng-container *ngComponentOutlet="component"></ng-container>} }

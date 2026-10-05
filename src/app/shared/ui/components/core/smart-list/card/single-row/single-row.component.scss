@@ -1,3 +1,4 @@
+@use '../../../../../styles/contextual-colors' as colors;
 :host {
   display: block;
   min-width: 0;
@@ -532,3 +533,5 @@
     justify-content: flex-end;
   }
 }
+
+.ui-single-row--palette-gold { border-color: colors.$gold-border; background: colors.$gold-background; }

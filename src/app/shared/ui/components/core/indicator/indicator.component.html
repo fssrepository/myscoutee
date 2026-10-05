@@ -42,7 +42,7 @@
     </svg>
   </span>
 } @else if (isActionRingKind) {
-  <span class="app-indicator app-indicator--action-ring">
+  <span class="app-indicator app-indicator--action-ring" [style.visibility]="actionSizeReady() ? null : 'hidden'">
     @if (isActionPathShape) {
       <svg [attr.viewBox]="actionButtonViewBox()" preserveAspectRatio="none" class="app-indicator__action-ring-svg">
         <defs>

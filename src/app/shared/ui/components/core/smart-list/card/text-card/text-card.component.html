@@ -48,8 +48,8 @@
       @if (resolvedMeta()) {
         <span class="ui-text-card__meta">{{ resolvedMeta() }}</span>
       }
-      @if (resolvedDetail()) {
-        <span class="ui-text-card__detail">{{ resolvedDetail() }}</span>
+      @for (detail of resolvedDetails(); track $index) {
+        <span class="ui-text-card__detail">{{ detail }}</span>
       }
     </span>
   </div>

@@ -69,12 +69,12 @@ function resolveMemberImpressionTitle(traitLabel: string): string {
     : defaultTitle;
 }
 
-export function navigatorContentMenuModel(id: 'feed' | 'followed' | 'groups', count: number): AppMenuModel {
+export function navigatorContentMenuModel(id: 'feed' | 'followed' | 'groups' | 'campaigns' | 'cases' | 'services', count: number): AppMenuModel {
   return {
     layout: 'row', density: 'compact', nodes: [{ id, items: [{
-      id, label: id === 'feed' ? 'feed.title' : id === 'groups' ? 'groups.title' : 'event.following',
-      icon: id === 'feed' ? 'photo_library' : id === 'groups' ? 'groups' : 'rss_feed', layout: 'pill',
-      palette: id === 'feed' ? 'orange' : id === 'groups' ? 'lime' : 'cyan', surface: 'tinted', counterTone: 'alert',
+      id, label: id === 'services' ? 'service.title' : id === 'cases' ? 'case.title' : id === 'campaigns' ? 'campaign.title' : id === 'feed' ? 'feed.title' : id === 'groups' ? 'groups.title' : 'event.following',
+      icon: id === 'services' ? 'handyman' : id === 'cases' ? 'home_repair_service' : id === 'campaigns' ? 'campaign' : id === 'feed' ? 'photo_library' : id === 'groups' ? 'groups' : 'rss_feed', layout: 'pill',
+      palette: id === 'services' ? 'violet' : id === 'cases' ? 'teal' : id === 'campaigns' ? 'blue' : id === 'feed' ? 'orange' : id === 'groups' ? 'lime' : 'cyan', surface: 'tinted', counterTone: 'alert',
       counter: count > 0 ? { value: count, max: 99 } : null
     }] }]
   };

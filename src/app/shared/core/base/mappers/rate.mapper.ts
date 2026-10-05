@@ -6,6 +6,7 @@ import type {
 import type { UserRateRecord } from '../../local/source/entity/rate.entity';
 
 export interface UserRateGameCardRecordDTO {
+  campaignId?: string | null;
   kind: 'game-card';
   raterUserId: string;
   ratedUserId: string;
@@ -89,6 +90,7 @@ export class BaseUserRatesMapper {
     const happenedAtIso = item.happenedAt?.trim() || new Date().toISOString();
     return {
       id: activityRateId,
+      campaignId: item.campaignId?.trim() || null,
       fromUserId,
       toUserId,
       rate,
@@ -131,7 +133,8 @@ export class BaseUserRatesMapper {
       ? Math.max(1, Math.trunc(Number(input.bridgeCount)))
       : undefined;
     return this.toActivityRateRecord(normalizedRaterId, {
-      id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}`,
+      id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}${input.campaignId ? `:campaign:${input.campaignId}` : ''}`,
+      campaignId: input.campaignId,
       userId: normalizedRatedUserId,
       mode: mode === 'pair' ? 'pair' : 'individual',
       direction: 'given',
@@ -230,6 +233,7 @@ export class BaseUserRatesMapper {
         if (firstUserId === ownerUserId) {
           return {
             id: record.displayId?.trim() || record.id,
+            campaignId: record.campaignId ?? null,
             userId: secondUserId,
             secondaryUserId: firstUserId,
             mode: 'pair',
@@ -249,6 +253,7 @@ export class BaseUserRatesMapper {
         if (secondUserId === ownerUserId) {
           return {
             id: record.displayId?.trim() || record.id,
+            campaignId: record.campaignId ?? null,
             userId: firstUserId,
             secondaryUserId: secondUserId,
             mode: 'pair',
@@ -270,6 +275,7 @@ export class BaseUserRatesMapper {
       }
       return {
         id: record.displayId?.trim() || record.id,
+            campaignId: record.campaignId ?? null,
         userId: firstUserId,
         secondaryUserId: secondUserId,
         mode: 'pair',
@@ -291,6 +297,7 @@ export class BaseUserRatesMapper {
       : record.fromUserId;
     return {
       id: record.displayId?.trim() || record.id,
+            campaignId: record.campaignId ?? null,
       userId: counterpartyUserId,
       mode: 'individual',
       direction,
@@ -321,6 +328,7 @@ export class BaseUserRatesMapper {
     const updatedAtIso = record.updatedAtIso?.trim() || createdAtIso;
     const payload: UserRateSyncPayloadDTO = {
       id,
+      campaignId: record.campaignId?.trim() || null,
       fromUserId,
       toUserId,
       rate: this.normalizeOptionalRateScore(record.rate),

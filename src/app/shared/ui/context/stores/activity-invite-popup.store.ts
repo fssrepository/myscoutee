@@ -11,12 +11,14 @@ import type { ActivityMembersInviteResultDTO } from '../../../core/contracts/act
 export interface ActivityInvitePopupState {
   updatedMs: number;
   ownerId: string;
+  purpose?:'payment';
   ownerType?: ActivityMemberOwnerType;
   parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
   title?: string;
   headerTitle?: string;
   initialCandidates?: readonly ActivityMemberDTO[];
   selectionLimit?: number;
+  allowSelectAll?: boolean;
   parentZIndex?: number;
   initialSelection?: readonly ActivityMemberDTO[];
   onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => ActivityMembersInviteResultDTO | void | Promise<ActivityMembersInviteResultDTO | void>;
@@ -45,12 +47,14 @@ export class ActivityInvitePopupStore {
 
   openActivityInvitePopup(payload: {
     ownerId: string;
-    ownerType?: ActivityMemberOwnerType;
+    purpose?:'payment';
+  ownerType?: ActivityMemberOwnerType;
     parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
     title?: string;
     headerTitle?: string;
     initialCandidates?: readonly ActivityMemberDTO[];
     selectionLimit?: number;
+    allowSelectAll?: boolean;
     parentZIndex?: number;
     initialSelection?: readonly ActivityMemberDTO[];
     onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => ActivityMembersInviteResultDTO | void | Promise<ActivityMembersInviteResultDTO | void>;
@@ -63,6 +67,7 @@ export class ActivityInvitePopupStore {
     this.activityInvitePopupRef.set({
       updatedMs: Date.now(),
       ownerId: normalizedOwnerId,
+      purpose:payload.purpose,
       ownerType: payload.ownerType === 'community' || payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
         ? payload.ownerType
         : 'event',
@@ -75,6 +80,7 @@ export class ActivityInvitePopupStore {
       title: payload.title?.trim() || undefined,
       headerTitle: payload.headerTitle?.trim() || undefined,
       selectionLimit: payload.selectionLimit,
+      allowSelectAll: payload.allowSelectAll === true,
       parentZIndex: payload.parentZIndex,
       initialCandidates: Array.isArray(payload.initialCandidates)
         ? payload.initialCandidates.map(candidate => ({ ...candidate }))

@@ -67,7 +67,7 @@ describe('Local affiliate summary', () => {
     injector.destroy();
   });
 
-  it('persists cash receipts for both members once without affiliate revenue', () => {
+  it.each(['cash','bank-transfer'] as const)('persists %s receipts for both members once without affiliate revenue', method => {
     let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member', 'recipient'], byId: {
       owner: { id: 'owner' }, member: { id: 'member', name: 'Payer', affiliateReferrerUserId: 'owner' },
       recipient: { id: 'recipient', name: 'Recipient' }
@@ -75,11 +75,11 @@ describe('Local affiliate summary', () => {
     const db = { read: () => state, write: (change: any) => { state = change(state); } };
     const injector = createEnvironmentInjector([{ provide: LocalMemoryDb, useValue: db }], null as any);
     const repo = runInInjectionContext(injector, () => new LocalIntegrationRepository());
-    const request = { requestId: 'b5e0289c-1b09-47ca-8ba1-20cf5e2dcb02', payerUserId: 'member', amount: 20, currency: 'EUR', note: 'Lunch' };
+    const request = { method, requestId: 'b5e0289c-1b09-47ca-8ba1-20cf5e2dcb02', payerUserId: 'member', amount: 20, currency: 'EUR', note: 'Lunch' };
     repo.recordCashReceipt('recipient', request);
     repo.recordCashReceipt('recipient', request);
     expect(repo.paymentHistory('recipient')).toHaveLength(1);
-    expect(repo.paymentHistory('recipient')[0]).toMatchObject({ provider: 'cash', direction: 'income', amount: 20, note: 'Lunch', counterpartyName: 'Payer' });
+    expect(repo.paymentHistory('recipient')[0]).toMatchObject({ provider: method, counterpartyUserId:'member', direction: 'income', amount: 20, note: 'Lunch', counterpartyName: 'Payer' });
     expect(repo.paymentHistory('member')[0]).toMatchObject({ direction: 'expense', canRequestRefund: true, counterpartyName: 'Recipient' });
     expect(repo.settings('owner', '/api').affiliate.revenue?.purchases ?? 0).toBe(0);
     expect(() => repo.recordCashReceipt('recipient', { ...request, amount: 21 })).toThrow();

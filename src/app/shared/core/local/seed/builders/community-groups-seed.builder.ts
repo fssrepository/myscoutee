@@ -1,9 +1,15 @@
+import workGroup from '../data/work-group.json';
+import communityGroup from '../data/community-group.json';
+import communityWorkspaces from '../data/community-workspaces.json';
+import { WORK_BASE_GROUP_ID, isBaseGroupId, type GroupType } from '../../../contracts/group-type';
 import type { CommunityGroupRecord } from '../../source/entity/community-group.entity';
 import type { ActivityMemberRecord } from '../../source/entity/activity.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 
-interface SeedMember { name: string; status: 'accepted' | 'pending'; requestKind?: 'invite' | 'join'; role?: 'Admin' | 'Member'; }
+interface SeedMember { name: string; status: 'accepted' | 'pending'; requestKind?: 'invite' | 'join'; role?: 'Admin' | 'Member'; votingEligible?: boolean; }
 interface SeedDefinition {
+  groupType?: GroupType;
+  ownerVotingEligible?: boolean;
   id: string; owner: string; name: string; description: string;
   category: CommunityGroupRecord['category']; visibility: CommunityGroupRecord['visibility'];
   hideMembers: boolean; requiredFields: readonly string[]; imageSlot: number | null; members: readonly SeedMember[];
@@ -96,10 +102,26 @@ export class SeedCommunityGroupsBuilder {
       if (!user) throw new Error(`Missing community seed account: ${name}`);
       return user;
     };
-    for (const definition of COMMUNITY_GROUP_SEEDS) {
+    const workMembers = users.filter(user => !user.workspaceGroupId && user.name !== 'Alex Turner'
+      && (workGroup.memberNames.includes(user.name) || workGroup.adminIds.includes(user.id)));
+    const work: SeedDefinition = {
+      id: WORK_BASE_GROUP_ID, groupType: 'work', owner: workGroup.owner, name: workGroup.name,
+      description: workGroup.description,
+      category: 'work', visibility: 'public', hideMembers: false, requiredFields: [], imageSlot: null,
+      members: workMembers.map(user => ({ name: user.name, status: 'accepted', role: user.admin ? 'Admin' : 'Member' }))
+    };
+    const community: SeedDefinition = {
+      id: communityGroup.id, groupType: 'community', owner: communityGroup.owner, name: communityGroup.name,
+      description: communityGroup.description, category: 'neighbourhood', visibility: 'public', hideMembers: false,
+      requiredFields: [], imageSlot: null,
+      members: users.filter(user => !user.workspaceGroupId && user.name !== communityGroup.owner
+        && (communityGroup.memberNames.includes(user.name) || communityGroup.adminIds.includes(user.id)))
+        .map(user => ({ name: user.name, status: 'accepted', role: user.admin ? 'Admin' : 'Member' }))
+    };
+    for (const definition of [...COMMUNITY_GROUP_SEEDS, work, community, ...communityWorkspaces as SeedDefinition[]]) {
       const owner = account(definition.owner);
       const group: CommunityGroupRecord = {
-        id: definition.id, ownerUserId: owner.id, name: definition.name, description: definition.description,
+        id: definition.id, groupType: definition.groupType ?? 'dating', ownerUserId: owner.id, name: definition.name, description: definition.description,
         // Slots 1–10 share the existing event image pool with the HTTP seed.
         imageUrl: definition.imageSlot ? `https://picsum.photos/id/${49 + definition.imageSlot}/1200/700` : null,
         category: definition.category, visibility: definition.visibility, hideMembers: definition.hideMembers,
@@ -108,14 +130,14 @@ export class SeedCommunityGroupsBuilder {
         pendingMembers: definition.members.filter(member => member.status === 'pending').length
       };
       groups.push(group);
-      const roster: readonly SeedMember[] = [{ name: definition.owner, status: 'accepted', role: 'Admin' }, ...definition.members];
+      const roster: readonly SeedMember[] = [{ name: definition.owner, status: 'accepted', role: 'Admin', votingEligible: definition.ownerVotingEligible === true }, ...definition.members];
       for (const entry of roster) {
         const user = account(entry.name);
         const ownerKey = `community:${group.id}`;
         members.push({
           id: `${ownerKey}:${user.id}`, ownerKey, ownerType: 'community', ownerId: group.id, userId: user.id,
           name: user.name, initials: user.initials, gender: user.gender, city: user.city, statusText: '',
-          role: entry.role ?? 'Member', status: entry.status, requestKind: entry.requestKind ?? null,
+          role: entry.role ?? 'Member', status: entry.status, votingEligible: entry.votingEligible === true, requestKind: entry.requestKind ?? null,
           pendingSource: entry.requestKind ? entry.requestKind === 'invite' ? 'admin' : 'member' : null,
           invitedByActiveUser: false, invitedByUserId: entry.requestKind === 'invite' ? owner.id : null,
           metWhere: group.name, metAtIso: date, actionAtIso: date, avatarUrl: user.images?.[0] ?? '', organizerOnly: false,
@@ -123,6 +145,7 @@ export class SeedCommunityGroupsBuilder {
         });
         if (entry.status !== 'accepted') continue;
         const profile: UserRecord = {
+          admin: isBaseGroupId(group.id) && user.admin === true,
           id: `group:${group.id}:${user.id}`, workspaceGroupId: group.id, accountUserId: user.id,
           name: user.name, initials: user.initials, age: user.age, birthday: user.birthday, gender: user.gender,
           city: user.city, height: user.height, physique: user.physique, languages: [...user.languages],

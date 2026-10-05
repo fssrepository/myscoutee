@@ -1,3 +1,4 @@
+import type { RatingDomain } from '../../../../../core/contracts/rating-snapshot';
 import type { AppMenuPalette } from '../../menu/menu.types';
 import type { SmartListItemKey } from '../smart-list-item-key';
 import type { SmartListLocalSortKey } from '../smart-list-local-sort';
@@ -99,6 +100,8 @@ export interface CardBadgeConfig {
 
 export interface CardContextBadgeConfig {
   label: string;
+  icon?: string;
+  accentHue?: number;
   ariaLabel?: string | null;
   title?: string | null;
   imageUrl?: string | null;
@@ -129,7 +132,9 @@ export interface PairCardSlot {
 }
 
 export interface SingleCardData {
+  ratingDomain?: RatingDomain;
   rowId: string;
+  descriptionLines?: number;
   groupLabel?: string | null;
   slides: readonly CardImageSlide[];
   guideImageSwitch?: boolean;
@@ -254,7 +259,12 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
   markNotificationRead: { label: 'Mark as read', icon: 'done_all', tone: 'accent' },
   openNotificationAccommodation: { label: 'Open accommodation', icon: 'apartment', tone: 'accent' },
+  openNotificationPayments: {label:'payment.history.title',icon:'receipt_long',tone:'accent'},
   openNotificationContacts: { label: 'Contacts', icon: 'contacts', tone: 'accent' },
+  openNotificationChat: { label: 'chat', icon: 'chat', tone: 'accent' },
+  openNotificationAnnouncement: { label: 'announcement.view', icon: 'campaign', tone: 'accent' },
+  openNotificationCase: { label: 'case.view', icon: 'home_repair_service', tone: 'accent' },
+  openNotificationRatings: { label: 'ratings', icon: 'star', tone: 'accent' },
   openNotificationGroup: { label: 'groups.open', icon: 'groups', tone: 'accent' },
   openNotificationEvent: { label: 'Open event', icon: 'event', tone: 'accent' },
   openNotificationInvitation: { label: 'Open invitation', icon: 'mail', tone: 'accent' },
@@ -415,6 +425,10 @@ export interface ImageCardMediaAction {
 }
 
 export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
+  ratingDomain?: RatingDomain;
+  accentHue?: number | null;
+  descriptionLines?: number | null;
+  imageMenuPosition?: ImageCardMediaActionPosition;
   title: string;
   subtitle?: string | null;
   detail?: string | null;
@@ -476,6 +490,7 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   icon?: string | null;
   toneClass?: string | null;
   surfaceTone?: SingleRowSurfaceTone | null;
+  palette?: AppMenuPalette | null;
   sideLabel?: string | null;
   sideLabelIcon?: string | null;
   sideLabelTone?: SingleRowBadgeTone | null;

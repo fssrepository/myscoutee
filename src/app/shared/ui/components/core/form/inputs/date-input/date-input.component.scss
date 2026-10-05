@@ -52,7 +52,7 @@
 
 .date-input__field {
   display: grid;
-  gap: 0.34rem;
+  gap: var(--date-input-field-gap, 0.34rem);
   min-width: 0;
 }
 
@@ -62,8 +62,8 @@
   gap: 0.18rem;
   color: #203a5d;
   font-weight: 700;
-  font-size: 0.84rem;
-  line-height: 1.2;
+  font-size: var(--date-input-label-font-size, 0.84rem);
+  line-height: var(--date-input-label-line-height, 1.2);
 }
 
 .date-input__label strong {

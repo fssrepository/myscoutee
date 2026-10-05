@@ -1,3 +1,4 @@
+import { baseGroupId, groupType, isBaseGroupId } from '../../../contracts/group-type';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 import type { NotificationRecord } from '../entity/notification.entity';
 import { Injectable, inject } from '@angular/core';
@@ -29,6 +30,16 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
   private readonly groups = inject(LocalCommunityGroupsRepository);
   private readonly users = inject(LocalUsersRepository);
 
+  baseGroupId(userId: string): string | null {
+    const groupId = this.users.queryUserById(userId)?.workspaceGroupId;
+    return isBaseGroupId(groupId) ? groupId! : baseGroupId(groupType(groupId ? this.groups.find(groupId)?.groupType : null));
+  }
+
+  requireScope(adminId: string, userId: string): void {
+    if (this.users.queryUserById(adminId)?.admin !== true) throw new Error('App-admin access required');
+    if (this.baseGroupId(adminId) !== this.baseGroupId(userId)) throw new Error('Case not found in this workspace');
+  }
+
   async warnUser(
     userId: string,
     admin: AdminUserDto | null | undefined,
@@ -43,6 +54,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!resolvedAdmin) {
       return null;
     }
+    this.requireScope(resolvedAdmin.id, normalizedUserId);
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
     const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     const normalizedReportId = `${reportId ?? ''}`.trim();
@@ -70,6 +82,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!resolvedAdmin) {
       return null;
     }
+    this.requireScope(resolvedAdmin.id, normalizedUserId);
     await this.waitForRouteDelay(ADMIN_MODERATION_BLOCK_ROUTE);
     const user = this.supportSession.findUser(normalizedUserId);
     if (user) {
@@ -101,6 +114,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!resolvedAdmin) {
       return null;
     }
+    this.requireScope(resolvedAdmin.id, normalizedUserId);
     await this.waitForRouteDelay(ADMIN_MODERATION_UNBLOCK_ROUTE);
     const user = this.supportSession.findUser(normalizedUserId);
     const nextStatus = user?.previousProfileStatus && user.previousProfileStatus !== 'blocked'
@@ -207,13 +221,15 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     const reportedUser = this.supportSession.findUser(userId);
     const workspaceGroupId = this.users.queryUserById(userId)?.workspaceGroupId;
     const moderator = this.users.queryUserById(admin.id);
-    if (workspaceGroupId && moderator?.workspaceGroupId !== workspaceGroupId) {
+    const appSupport = moderator?.admin === true;
+    if (appSupport) this.requireScope(admin.id, userId);
+    if (!appSupport && workspaceGroupId && moderator?.workspaceGroupId !== workspaceGroupId) {
       throw new Error('Moderator and recipient must belong to the same workspace.');
     }
     const now = new Date();
     const nowIso = now.toISOString();
-    const chatId = `${workspaceGroupId ? 'c-moderation-group-' : 'c-support-admin-'}${userId}`;
-    const chatTitle = workspaceGroupId ? (this.groups.find(workspaceGroupId)?.name ?? workspaceGroupId) : 'MyScoutee Support';
+    const chatId = `${!appSupport && workspaceGroupId ? 'c-moderation-group-' : 'c-support-admin-'}${userId}`;
+    const chatTitle = !appSupport && workspaceGroupId ? (this.groups.find(workspaceGroupId)?.name ?? workspaceGroupId) : 'MyScoutee Support';
     const messageId = stableMessageId || `m-admin-${Date.now()}`;
     const adminAvatar = {
       id: admin.id,
@@ -229,9 +245,10 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       memberIds: [userId, admin.id],
       unread: 1,
       dateIso: nowIso,
-      channelType: workspaceGroupId ? 'groupSupport' : 'appSupport',
+      channelType: !appSupport && workspaceGroupId ? 'groupSupport' : 'appSupport',
       ownerUserId: userId,
-      supportCase: workspaceGroupId ? undefined : this.supportCase(status, admin, nowIso)
+      supportBaseGroupId: appSupport ? this.baseGroupId(admin.id) : null,
+      supportCase: !appSupport && workspaceGroupId ? undefined : this.supportCase(status, admin, nowIso)
     };
     const userMessage: ChatMessageDto = {
       id: messageId,
@@ -252,9 +269,10 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       memberIds: [userId, admin.id],
       unread: 0,
       dateIso: nowIso,
-      channelType: workspaceGroupId ? 'groupSupport' : 'appSupport',
+      channelType: !appSupport && workspaceGroupId ? 'groupSupport' : 'appSupport',
       ownerUserId: admin.id,
-      supportCase: workspaceGroupId ? undefined : this.supportCase(status, admin, nowIso)
+      supportBaseGroupId: appSupport ? this.baseGroupId(admin.id) : null,
+      supportCase: !appSupport && workspaceGroupId ? undefined : this.supportCase(status, admin, nowIso)
     };
     const adminMessage: ChatMessageDto = {
       ...userMessage,

@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from './rating-snapshot';
+import type { RatingDomain, RatingSnapshot } from './rating-snapshot';
 import { ImageDetailsMap, normalizeImageDetails } from './image-gallery.interface';
 import * as AppConstants from '../common/constants';
 import type * as AssetContracts from './asset.interface';
@@ -29,6 +29,8 @@ export type ActivityRateDTODirection = 'given' | 'received' | 'mutual' | 'met';
 export type ActivityRateDTOSocialContext = 'separated-friends' | 'friends-in-common';
 
 export interface ActivityRateDTO {
+  ratingDomain?: RatingDomain;
+  campaignId?: string | null;
   ratingSnapshot?: RatingSnapshot;
   id: string;
   userId: string;
@@ -55,6 +57,7 @@ export interface ActivityRatePageResultDTO {
 }
 
 export interface UserRateSyncPayloadDTO {
+  campaignId?: string | null;
   ratingSnapshot?: RatingSnapshot;
   id: string;
   fromUserId: string;
@@ -213,6 +216,7 @@ export interface IRatesService {
 }
 
 export interface ActivitiesFeedFilters {
+  campaignId?: string | null;
   primaryFilter?: ActivitiesPrimaryFilter;
   eventScopeFilter?: ActivitiesEventScope;
   secondaryFilter?: ActivitiesSecondaryFilter;
@@ -267,6 +271,7 @@ export type ActivityCurrentUserMembershipStatus =
   | 'unchanged';
 
 export interface ActivityEventRecord {
+  campaignId?: string | null;
   cancelled?: boolean;
   cancellationRefundsPending?: boolean;
   canCancelForFullRefund?: boolean;
@@ -549,6 +554,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
 }
 
 export interface ActivityEventDTO {
+  campaignId?: string | null;
   cancelled?: boolean;
   cancellationRefundsPending?: boolean;
   canCancelForFullRefund?: boolean;
@@ -676,6 +682,7 @@ export interface MingleConfigurationDTO {
 }
 
 export class ActivityEventDetailDTO {
+  campaignId: string | null = null;
   id = '';
   userId = '';
   type: ActivityEventRepositoryItemType = 'events';
@@ -783,6 +790,7 @@ export class ActivityEventDetailDTO {
     });
     this.startAtIso = this.dateRange.startAt;
     this.endAtIso = this.dateRange.endAt;
+    if (update.campaignId !== undefined) this.campaignId = update.campaignId?.trim() || null;
     this.distanceKm = Number.isFinite(update.distanceKm) ? Number(update.distanceKm) : this.distanceKm;
     if (update.imageUrls !== undefined || update.imageUrl !== undefined) {
       this.imageUrls = ActivityEventDetailDTO.normalizeImageUrls(update.imageUrls, update.imageUrl ?? this.imageUrl);
@@ -1415,6 +1423,7 @@ export interface ActivityMemberDTO {
   checkedInTicketId?: string | null;
   managerGrantedByUserId?: string | null;
   organizerOnly?: boolean;
+  votingEligible?: boolean;
 }
 
 export interface ActivityMemberOwnerRef {
@@ -1492,6 +1501,7 @@ export interface ActivityInviteOwnerContext {
 }
 
 export interface ActivityInviteCandidatesQuery {
+  purpose?:'payment';
   activeUserId: string;
   owner: ActivityInviteOwnerContext;
   parentOwner: ActivityMemberOwnerRef | null;
@@ -1870,6 +1880,7 @@ export interface EventFeedbackStateDto {
 }
 
 export interface EventFeedbackPageQueryDto {
+  campaignId?: string | null;
   userId: string;
   filter: AppConstants.EventFeedbackListFilter;
   page: number;

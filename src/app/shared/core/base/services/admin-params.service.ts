@@ -32,7 +32,7 @@ export class AdminParamsService extends BaseRouteModeService {
 
   async loadParamsState(adminUserId?: string | null, options?: AdminParamsDelayOptions): Promise<AdminParamsStateDto> {
     const state = this.paramsService instanceof LocalAdminParamsService
-      ? await this.paramsService.loadParamsState(options)
+      ? await this.paramsService.loadParamsState(options, adminUserId)
       : await this.paramsService.loadParamsState(adminUserId);
     return this.normalizeParamsState(state);
   }
@@ -59,7 +59,7 @@ export class AdminParamsService extends BaseRouteModeService {
   ): Promise<AdminParamsHistoryDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     const history = this.paramsService instanceof LocalAdminParamsService
-      ? await this.paramsService.loadParamsHistory(normalizedSectionKey, options)
+      ? await this.paramsService.loadParamsHistory(normalizedSectionKey, options, adminUserId)
       : await this.paramsService.loadParamsHistory(normalizedSectionKey, adminUserId);
     return this.normalizeParamsHistory(history);
   }

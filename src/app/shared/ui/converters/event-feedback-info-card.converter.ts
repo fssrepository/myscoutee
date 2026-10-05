@@ -4,6 +4,13 @@ import type {
 } from '../../core/contracts/activity.interface';
 import type { InfoCardData, CardMenuActionId } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
+import type { ServiceFeedbackItem } from '../../core/contracts/service-feedback.interface';
+
+export interface ServiceFeedbackCardDetail {
+  kind: 'service-feedback';
+  item: ServiceFeedbackItem;
+  received: boolean;
+}
 
 export interface EventFeedbackInfoCardConverterOptions {
   state?: EventFeedbackPageStateSnapshotDto | null;
@@ -62,6 +69,36 @@ export class EventFeedbackOrganizerInfoCardConverter {
 }
 
 export class EventFeedbackInfoCardConverter {
+  static serviceItem(card: InfoCardData): ServiceFeedbackCardDetail | null {
+    const detail = card.eagerDetail as ServiceFeedbackCardDetail | undefined;
+    return detail?.kind === 'service-feedback' ? detail : null;
+  }
+
+  static convertService(item: ServiceFeedbackItem, received: boolean): InfoCardData<ServiceFeedbackCardDetail> {
+    const feedback = item.feedback;
+    const pending = !received && feedback.status === 'pending';
+    return {
+      id: `service-feedback:${feedback.id}`,
+      eagerDetail: { kind: 'service-feedback', item, received },
+      status: received ? 'own-event' : feedback.status,
+      title: item.providerName,
+      mediaTitle: feedback.caseTitle,
+      mediaMode: 'title', mediaIcon: 'home_repair_service',
+      dateIso: feedback.submittedAtIso ?? feedback.createdAtIso,
+      metaRows: received ? [item.reviewerName] : [feedback.caseTitle],
+      detailRows: feedback.average == null ? [] : [`${feedback.average.toFixed(2)} / 10`],
+      description: feedback.comment, descriptionLines: 2,
+      leadingIcon: { icon: 'home_repair_service', palette: 'orange' },
+      surfaceTone: 'subevent-light', accentHue: 42,
+      mediaEnd: { variant: 'badge', tone: 'default',
+        label: received ? 'View Feedbacks' : pending ? 'Start Feedback' : feedback.status === 'removed' ? 'Removed' : 'Feedbacked',
+        interactive: received || pending },
+      menuActions: received ? ['viewSubmittedFeedback'] : pending ? ['startFeedback', 'removeFeedback']
+        : feedback.status === 'removed' ? ['restoreFeedback'] : ['viewSubmittedFeedback'],
+      clickable: false
+    };
+  }
+
   static convert(
     item: EventFeedbackDto,
     options: EventFeedbackInfoCardConverterOptions = {}

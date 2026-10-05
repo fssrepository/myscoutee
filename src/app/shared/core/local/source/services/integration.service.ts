@@ -39,13 +39,18 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     const user = this.users.queryUserById(request.userId);
     if (!user || request.ownerType === 'asset') throw new Error('Invalid invite target');
     const actor = request.ownerType === 'community' ? user.accountUserId ?? user.id : user.id;
+    let landingType = 'dating';
     if (request.ownerType === 'community') {
       const group = await this.groups.detail(actor, request.entityId);
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') throw new Error('Forbidden');
+      landingType = group.groupType ?? 'dating';
     } else this.requireEventInvite(actor, request.entityId);
+    if (request.ownerType === 'event' && user.workspaceGroupId) {
+      landingType = (await this.groups.detail(user.accountUserId ?? user.id, user.workspaceGroupId)).groupType ?? 'dating';
+    }
     const result = this.repository.externalInvite(actor, request.ownerType, request.entityId);
     await this.repository.flushToIndexedDb();
-    return result;
+    return { url: `${result.url}&mode=${landingType}` };
   }
 
   async claimExternalInvite(userId: string, token: string) {
@@ -62,6 +67,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
       if (group.membershipStatus !== 'accepted') {
         await this.groups.action(group.requestKind === 'invite' ? actor : invite.ownerUserId, invite.entityId, actor, 'accept');
       }
+      await this.groups.joinWorkspaceBase(actor, invite.entityId);
       await this.users.selectWorkspace(actor, invite.entityId);
       await this.repository.flushToIndexedDb();
       return {groupId: invite.entityId, invitationAvailable: true};
@@ -72,6 +78,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, workspaceGroupId, invitationAvailable: false};
     if (workspaceGroupId) {
       user = await this.groups.claimEventInvite(workspaceGroupId, invite.ownerUserId, user.accountUserId ?? user.id);
+      await this.groups.joinWorkspaceBase(user.accountUserId!, workspaceGroupId);
     }
     if (!workspaceGroupId && user.accountUserId) {
       user = this.users.queryUserById(user.accountUserId);

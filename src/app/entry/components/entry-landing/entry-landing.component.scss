@@ -7,7 +7,7 @@
   min-height: 100vh;
   padding: 1rem;
   overflow-x: clip;
-  background: transparent;
+  background: var(--deployment-page-background);
   color: var(--deployment-text-main);
 }
 
@@ -24,8 +24,8 @@
 
 .entry-shell-header {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
   align-items: center;
   gap: 0.8rem;
   padding: 0.25rem 0.2rem 0.8rem;
@@ -458,6 +458,29 @@
   cursor: default;
 }
 
+// The shared card can stretch, but its ordinary grid packs content at the top.
+// Article cards need the final action aligned across titles of different lengths.
+:host ::ng-deep .entry-idea-info-card .ui-info-card {
+  display: flex;
+  flex-direction: column;
+}
+
+:host ::ng-deep .entry-idea-info-card .ui-info-card__title {
+  // Reserve both lines even when the title fits on one, aligning dates below.
+  line-height: 1.4;
+  height: 2.8em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+:host ::ng-deep .entry-idea-info-card .ui-info-card__footer-chips {
+  margin-top: auto;
+  padding-top: 0.32rem;
+}
+
 .entry-ideas-more-row {
   display: flex;
   align-items: center;
@@ -568,7 +591,7 @@
 
 .entry-about-card p {
   margin: 0.36rem 0 0;
-  color: rgba(31, 54, 88, 0.78);
+  color: var(--deployment-text-muted);
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.46;
@@ -576,7 +599,7 @@
 
 .entry-preview-guide-body p {
   margin: 0.58rem 0 0;
-  color: rgba(31, 54, 88, 0.78);
+  color: var(--deployment-text-muted);
   font-size: 0.92rem;
   font-weight: 800;
   line-height: 1.44;
@@ -590,7 +613,7 @@
   display: flex;
   align-items: flex-start;
   gap: 0.58rem;
-  background: #f7f9fc;
+  background: var(--deployment-surface-muted);
   color: #203553;
 }
 
@@ -736,7 +759,7 @@
 .entry-partner-exit p,
 .entry-partner-economics p {
   margin: 0.34rem 0 0;
-  color: rgba(31, 54, 88, 0.78);
+  color: var(--deployment-text-muted);
   font-size: 0.79rem;
   font-weight: 700;
   line-height: 1.42;
@@ -749,7 +772,7 @@
   border: 1px solid rgba(44, 75, 115, 0.14);
   border-radius: 14px;
   padding: 0.72rem;
-  background: #f7f9fc;
+  background: var(--deployment-surface-muted);
 }
 
 .entry-partners-section-heading {
@@ -944,7 +967,7 @@
   border: 1px solid rgba(49, 95, 207, 0.22);
   border-radius: 14px;
   padding: 0.68rem;
-  background: linear-gradient(135deg, #eef4ff 0%, #f5f0ff 100%);
+  background: var(--deployment-card-background);
 }
 
 .entry-partner-operator-access > span {
@@ -964,14 +987,14 @@
 }
 
 .entry-partner-operator-access strong {
-  color: #173456;
+  color: var(--deployment-text-main);
   font-size: 0.86rem;
   font-weight: 900;
 }
 
 .entry-partner-operator-access p {
   margin: 0.18rem 0 0;
-  color: rgba(31, 54, 88, 0.76);
+  color: var(--deployment-text-muted);
   font-size: 0.76rem;
   font-weight: 700;
   line-height: 1.38;
@@ -1007,7 +1030,7 @@
   min-height: 0;
   box-sizing: border-box;
   padding: 0.58rem;
-  background: #f8faff;
+  background: var(--deployment-surface-background);
   overflow: hidden;
 }
 
@@ -1040,7 +1063,7 @@
   box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 clamp(0.84rem, 2vw, 1.35rem) clamp(0.84rem, 2vw, 1.35rem);
+  padding: 0.65rem clamp(0.84rem, 2vw, 1.35rem) clamp(0.84rem, 2vw, 1.35rem);
 }
 
 .entry-ideas-article-html {
@@ -1061,7 +1084,7 @@
 
 :host ::ng-deep .entry-ideas-article-html :is(h2, h3, h4) {
   margin: 1rem 0 0;
-  color: #173456;
+  color: var(--deployment-text-main);
 }
 
 :host ::ng-deep .entry-ideas-article-html ul,
@@ -1414,6 +1437,17 @@
 
   .entry-shell-header {
     padding: 0.25rem 0.1rem 0.8rem;
+    gap: 0.4rem;
+  }
+
+  .entry-usage-menu,
+  .entry-header-actions {
+    flex-shrink: 0;
+  }
+
+  .entry-auth-btn {
+    padding-inline: 0.55rem;
+    font-size: 0.76rem;
   }
 
   .entry-header-actions {
@@ -1512,7 +1546,7 @@
   }
 
   .entry-ideas-article-body {
-    padding: 0 0.78rem 0.78rem;
+    padding: 0.65rem 0.78rem 0.78rem;
   }
 
   .entry-partner-exit-row {
@@ -1526,8 +1560,8 @@
   }
 
   .entry-brand app-deployment-brand {
-    font-size: 2rem;
-    --deployment-brand-logo-size: 34px;
+    font-size: 1.45rem;
+    --deployment-brand-logo-size: 28px;
   }
 
   .entry-heritage-title {

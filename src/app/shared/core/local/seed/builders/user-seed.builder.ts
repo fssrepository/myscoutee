@@ -1,3 +1,4 @@
+import demoLocations from '../data/demo-locations.json';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
@@ -296,11 +297,10 @@ const BASE_DEMO_USERS: UserRecord[] = [
 ];
 
 export class SeedUserBuilder {
-  // Pre-registered demo members start near Budapest, inside country:hu.
-  // The profile's city text is independent of its last accepted GPS sample.
-  private static readonly DEMO_LOCATION_COORDINATES: LocationCoordinates = {
-    latitude: 47.4979, longitude: 19.0402
-  };
+  // Only these two active demo accounts exercise browser location acquisition.
+  // Everyone else starts with an accepted sample inside a supported country.
+  static readonly LOCATION_PROMPT_USER_IDS: readonly string[] = demoLocations.promptUserIds;
+  private static readonly DEMO_CITIES: Readonly<Record<string, LocationCoordinates>> = demoLocations.cities;
 
   // These are seed values only. Runtime readers consume repository profileDetails.
   private static readonly DEFAULT_GAME_USER_FACET = {
@@ -335,7 +335,11 @@ export class SeedUserBuilder {
   }
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
-    const normalizedBaseUsers = baseUsers.map(user => this.withStoredChatCounters(this.withResolvedLocationCoordinates(user)));
+    const normalizedBaseUsers = baseUsers.map((user, index) => this.withStoredChatCounters(
+      this.withResolvedLocationCoordinates(baseUsers === BASE_DEMO_USERS
+        ? { ...user, city: Object.keys(this.DEMO_CITIES)[Math.floor(index / 4) % 4] }
+        : user)
+    ));
     if (baseUsers.length >= totalCount) {
       return this.withUniqueDemoPortraitUrls(normalizedBaseUsers.slice(0, totalCount));
     }
@@ -343,7 +347,7 @@ export class SeedUserBuilder {
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
     const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
     const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
-    const cities = ['Austin', 'Seattle', 'Chicago', 'Denver', 'Miami', 'Boston', 'Phoenix', 'Nashville', 'San Diego', 'Portland'];
+    const cities = Object.keys(this.DEMO_CITIES);
     const usedPrimaryPortraitUrls = new Set(
       expanded
         .map(user => user.images?.[0]?.trim() ?? '')
@@ -371,7 +375,8 @@ export class SeedUserBuilder {
         name,
         age,
         birthday: birthday.toISOString().slice(0, 10),
-        city: cities[index % cities.length],
+        city: cities[Math.floor(index / 4) % cities.length],
+        locationCoordinates: undefined,
         initials,
         gender,
         images,
@@ -490,7 +495,7 @@ export class SeedUserBuilder {
   }
 
   static resolveDemoLocationCoordinates(city: string, seedKey: string): LocationCoordinates {
-    const base = this.DEMO_LOCATION_COORDINATES;
+    const base = this.DEMO_CITIES[city] ?? this.DEMO_CITIES['Budapest'];
     const normalizedSeedKey = seedKey.trim() || city.trim() || 'demo-user';
     const seed = AppUtils.hashText(normalizedSeedKey);
     const latitudeOffset = (((seed % 29) - 14) * 0.0012);
@@ -542,7 +547,8 @@ export class SeedUserBuilder {
       ...user,
       profileFormVersion: this.resolveSeedProfileFormVersion(user.profileFormVersion),
       locationCoordinates: this.cloneLocationCoordinates(user.locationCoordinates)
-        ?? this.resolveDemoLocationCoordinates(user.city, user.id)
+        ?? (this.LOCATION_PROMPT_USER_IDS.includes(user.id)
+          ? undefined : this.resolveDemoLocationCoordinates(user.city, user.id))
     };
     return {
       ...nextUser,
@@ -582,6 +588,8 @@ export class SeedUserBuilder {
           service: normalize(user.activities?.chat?.service),
           appSupport: normalize(user.activities?.chat?.appSupport),
           contacts: normalize(user.activities?.chat?.contacts),
+          campaign: normalize(user.activities?.chat?.campaign),
+          cases: normalize(user.activities?.chat?.cases),
           groupSupport: normalize(user.activities?.chat?.groupSupport)
         }
       }

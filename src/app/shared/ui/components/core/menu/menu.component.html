@@ -82,9 +82,9 @@
                   </span>
                 }
               </span>
-              @if (hasNestedItems(item)) {
+              @if (hasNestedItems(item) || item.trailingIcon) {
                 <span class="app-menu__button-row-trailing">
-                  <mat-icon class="app-menu__button-row-caret">chevron_right</mat-icon>
+                  <mat-icon class="app-menu__button-row-caret">{{ item.trailingIcon || 'chevron_right' }}</mat-icon>
                 </span>
               }
               @if (hasActionRowItemSummaryCounter(item)) {
@@ -108,7 +108,18 @@
             } @else {
               @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
                 <span class="app-menu__button-row-main">
-                  @if (actionRowItemIcon(item)) {
+                  @if (itemImageUrl(item) || itemImageFallback(item)) {
+                    <span class="app-menu__item-image" [class.app-menu__item-image--circle]="item.imageShape === 'circle'">
+                      @if (itemImageUrl(item); as imageUrl) {
+                        <img [src]="imageUrl" [alt]="itemImageAlt(item)" (error)="revealImageFallback($event)" (load)="hideImageFallback($event)" />
+                        @if (itemImageFallback(item); as imageFallback) {
+                          <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+                        }
+                      } @else {
+                        <span>{{ itemImageFallback(item) }}</span>
+                      }
+                    </span>
+                  } @else if (actionRowItemIcon(item)) {
                     <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
                   }
                   <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
@@ -135,8 +146,8 @@
                   {{ itemCounterLabel(item) }}
                 </span>
               }
-              @if (isLabeledActionRowItem(item) && hasNestedItems(item)) {
-                <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
+              @if (isLabeledActionRowItem(item) && (hasNestedItems(item) || item.trailingIcon)) {
+                <mat-icon class="app-menu__button-row-caret" aria-hidden="true">{{ item.trailingIcon || 'expand_more' }}</mat-icon>
               }
             }
           </button>

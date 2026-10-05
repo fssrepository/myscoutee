@@ -26,9 +26,7 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly artworkRepository = inject(LocalPaymentCardArtworkRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
-  private readonly deletedPaymentMethodIds = new Set<string>();
   private readonly affiliateRepository = inject(LocalIntegrationRepository);
-  private readonly refundRequestStatusByPaymentId = new Map<string, 'pending' | 'approved'>();
 
   async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
@@ -54,13 +52,12 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   async recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
     const item = this.affiliateRepository.recordCashReceipt(userId, request);
+    const kind=request.method==='bank-transfer'?'payment-transfer-received':'payment-cash-received';
+    const groupId=this.usersRepository.queryUserById(userId)?.workspaceGroupId;
     this.notificationsRepository.append([{
-      id: `payment-cash-received:${item.id}`, recipientUserId: request.payerUserId, kind: 'payment-cash-received',
-      category: 'event', title: 'Cash receipt recorded', message: 'A member recorded receiving cash from you.',
-      createdAtIso: item.createdAtIso, readAtIso: null, senderUserId: userId,
-      sourceType: 'payment', sourceId: item.id, actionPath: '/game',
-      payload: { paymentId: item.id, notification_title_key: 'notification.kind.payment-cash-received.title',
-        notification_message_key: 'notification.kind.payment-cash-received.message' }
+      id:`${kind}:${item.id}`,recipientUserId:request.payerUserId,kind,category:'event',title:'Receipt recorded',message:'A member recorded receiving your payment.',
+      createdAtIso:item.createdAtIso,readAtIso:null,senderUserId:userId,sourceType:'payment',sourceId:item.id,actionPath:'/game?payments=1',
+      payload:{paymentId:item.id,...(groupId?{workspaceGroupId:groupId}:{}),notification_title_key:`notification.kind.${kind}.title`,notification_message_key:`notification.kind.${kind}.message`}
     }]);
     await this.affiliateRepository.flushToIndexedDb();
     return this.localMutation(userId, item);
@@ -69,7 +66,6 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
     const all = await Promise.all(this.seedMethods(userId)
-      .filter(method => !this.deletedPaymentMethodIds.has(method.id))
       .map(async method => ({
       ...method,
       artworkUrl: await this.artworkRepository.resolveUrl(method.artworkKey)
@@ -110,7 +106,9 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     if (!owned) {
       throw new Error('Payment card was not found.');
     }
-    this.deletedPaymentMethodIds.add(methodId);
+    const owner=this.usersRepository.queryUserById(ownerId)!;
+    this.usersRepository.upsertUser({...owner,savedPaymentMethods:this.seedMethods(ownerId).filter(m=>m.id!==methodId)});
+    await this.usersRepository.flushToIndexedDb();
   }
 
   async queryHistory(
@@ -121,7 +119,8 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   ): Promise<PaymentHistoryPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
     const card = this.seedMethods(userId).find(item => item.id === paymentMethodId);
-    const all = card ? this.seedHistory(card).map(item => this.withRefundState(item)) : [];
+    const recorded = this.affiliateRepository.paymentHistory(userId);
+    const all = card ? recorded.filter(item=>item.paymentMethodId===paymentMethodId).sort((a,b)=>b.createdAtIso.localeCompare(a.createdAtIso)) : [];
     const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const from = Math.min(all.length, page * pageSize);
@@ -130,22 +129,22 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       items,
       total: all.length,
       nextCursor: from + items.length < all.length ? `${page + 1}` : null,
-      euroSummary: this.summary(userId, all),
-      spendingTotals: this.paymentTotals(all, 'expense'),
-      incomeTotals: {},
+      euroSummary: this.summary(userId, recorded),
+      spendingTotals: this.paymentTotals(recorded, 'expense'),
+      incomeTotals: this.paymentTotals(recorded, 'income'),
       pendingRefundCount: this.pendingRefundCount(userId)
     };
   }
 
   async queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto> {
     await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const expenses = this.seedMethods(userId).flatMap(card => this.seedHistory(card)).map(item => this.withRefundState(item));
-    const income = this.seedIncomeHistory(userId).map(item => this.withRefundState(item));
     const recorded = this.affiliateRepository.paymentHistory(userId);
-    expenses.push(...recorded.filter(item => item.direction === 'expense'));
-    income.push(...recorded.filter(item => item.direction === 'income'));
+    const expenses=recorded.filter(item=>item.direction==='expense');
+    const income=recorded.filter(item=>item.direction==='income');
     const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? 'all'}`.trim();
+    const counterparty=(query.filters as {counterpartyUserId?:string}|undefined)?.counterpartyUserId?.trim();
     const all = (direction === 'expenses' ? expenses : direction === 'income' ? income : [...expenses, ...income])
+      .filter(item=>!counterparty||item.counterpartyUserId===counterparty)
       .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
     const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
@@ -168,17 +167,15 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       await this.affiliateRepository.flushToIndexedDb();
       const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
       if (!recorded) throw new Error('Refund history was not recorded.');
+      const pending=this.affiliateRepository.paymentHistory(userId).find(row=>row.checkoutSessionId===recorded.checkoutSessionId&&row.refundRequestStatus==='pending');
+      if(pending&&recorded.recipientUserId&&recorded.recipientUserId!==userId){
+        const group=this.usersRepository.queryUserById(recorded.recipientUserId)?.workspaceGroupId;
+        this.notificationsRepository.append([{id:`payment-refund-requested:${pending.id}`,recipientUserId:recorded.recipientUserId,kind:'payment-refund-requested',category:'event',title:'Refund requested',message:'A member requested a refund.',createdAtIso:pending.createdAtIso,readAtIso:null,senderUserId:userId,sourceType:'payment',sourceId:pending.id,actionPath:'/game?payments=1',payload:{paymentId:pending.id,...(group?{workspaceGroupId:group}:{}),notification_title_key:'notification.kind.payment-refund-requested.title',notification_message_key:'notification.kind.payment-refund-requested.message'}}]);
+        await this.affiliateRepository.flushToIndexedDb();
+      }
       return this.localMutation(userId, recorded);
     }
-    const item = this.seedMethods(userId)
-      .flatMap(card => this.seedHistory(card))
-      .find(candidate => candidate.id === paymentId && candidate.direction === 'expense');
-    if (!item || !this.withRefundState(item).canRequestRefund) {
-      throw new Error('This payment can no longer be refunded.');
-    }
-    this.refundRequestStatusByPaymentId.set(paymentId, 'pending');
-    await this.patchPendingRefundCounter(item.recipientUserId ?? '', 1);
-    return this.localMutation(userId, this.withRefundState(item));
+    throw new Error('This payment can no longer be refunded.');
   }
 
   async approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
@@ -186,12 +183,12 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     const wasPending = this.affiliateRepository.paymentHistory(userId).some(item => item.id === paymentId && item.refundRequestStatus === 'pending');
     const payerId = this.affiliateRepository.approveChangedTermsRefund(userId, paymentId);
     if (payerId) {
-      if (wasPending) this.notificationsRepository.append([{
+      if (wasPending&&payerId!==userId) this.notificationsRepository.append([{
         id: `payment-refund-approved:${paymentId}`, recipientUserId: payerId, kind: 'payment-refund-approved',
         category: 'event' as const, title: 'Refund approved', message: 'Your refund request was approved.',
         createdAtIso: new Date().toISOString(), readAtIso: null, senderUserId: userId,
-        sourceType: 'payment', sourceId: paymentId, actionPath: '/game',
-        payload: { paymentId, notification_title_key: 'notification.kind.payment-refund-approved.title',
+        sourceType: 'payment', sourceId: paymentId, actionPath: '/game?payments=1',
+        payload: { paymentId, ...(this.usersRepository.queryUserById(payerId)?.workspaceGroupId?{workspaceGroupId:this.usersRepository.queryUserById(payerId)!.workspaceGroupId}:{}), notification_title_key: 'notification.kind.payment-refund-approved.title',
           notification_message_key: 'notification.kind.payment-refund-approved.message' }
       }]);
       await this.affiliateRepository.flushToIndexedDb();
@@ -199,112 +196,10 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
       if (!recorded) throw new Error('Refund history was not recorded.');
       return this.localMutation(userId, recorded);
     }
-    const item = this.seedIncomeHistory(userId).find(candidate => candidate.id === paymentId);
-    if (!item || this.refundRequestStatusByPaymentId.get(paymentId) !== 'pending') {
-      throw new Error('There is no pending refund request for this payment.');
-    }
-    this.refundRequestStatusByPaymentId.set(paymentId, 'approved');
-    this.affiliateRepository.refundPayment(paymentId);
-    await this.affiliateRepository.flushToIndexedDb();
-    await this.patchPendingRefundCounter(userId, -1);
-    return this.localMutation(userId, this.withRefundState({ ...item, status: 'refunded' }));
+    throw new Error('There is no pending refund request for this payment.');
   }
 
-  private seedMethods(userId: string): SavedPaymentMethodDto[] {
-    const owner = userId.trim() || 'local-user';
-    const now = new Date();
-    const expiryYear = now.getFullYear() + 3;
-    const createdAtIso = new Date(now.getTime() - 86_400_000 * 30).toISOString();
-    return [
-      this.method(owner, 'midnight', 'stripe', 'Visa', '4242', 12, expiryYear, 'ALEX MORGAN', createdAtIso),
-      this.method(owner, 'emerald', 'barion', 'Mastercard', '4444', 8, expiryYear + 1, 'ALEX MORGAN', createdAtIso),
-      {
-        ...this.method(owner, 'coral', 'stripe', 'Visa', '0008', 8, now.getFullYear() - 1, 'ALEX MORGAN', createdAtIso),
-        status: 'expired'
-      }
-    ];
-  }
-
-  private method(
-    owner: string,
-    artworkKey: string,
-    provider: 'stripe' | 'barion',
-    brand: string,
-    last4: string,
-    expiryMonth: number,
-    expiryYear: number,
-    cardholderName: string,
-    createdAtIso: string
-  ): SavedPaymentMethodDto {
-    return {
-      id: `local-pm-${owner}-${artworkKey}`,
-      provider,
-      brand,
-      last4,
-      expiryMonth,
-      expiryYear,
-      cardholderName,
-      artworkKey,
-      artworkUrl: '',
-      status: 'active',
-      createdAtIso,
-      updatedAtIso: createdAtIso
-    };
-  }
-
-  private seedHistory(card: SavedPaymentMethodDto): PaymentHistoryItemDto[] {
-    const now = Date.now();
-    const ownerPrefix = 'local-pm-';
-    const artworkSuffix = `-${card.artworkKey}`;
-    const owner = card.id.startsWith(ownerPrefix) && card.id.endsWith(artworkSuffix)
-      ? card.id.slice(ownerPrefix.length, -artworkSuffix.length)
-      : 'local-user';
-    return [0, 1, 2].map((offset, index) => ({
-      id: `${card.id}-payment-${index + 1}`,
-      sourceId: index === 1 ? `${owner}:asset-transport-1` : 'e1',
-      direction: 'expense' as const,
-      paymentMethodId: card.id,
-      provider: card.provider,
-      status: index === 2 ? 'released' : 'captured',
-      amount: [4900, 12500, 3200][index],
-      currency: 'HUF',
-      bookingStatus: index === 2 ? 'cancelled' : 'joined',
-      auditKind: 'payment',
-      fulfillmentKind: index === 1 ? 'client' : 'event_join',
-      checkoutSessionId: `${card.id}-checkout-${index + 1}`,
-      recipientUserId: index === 1 ? 'local-asset-owner' : 'local-event-organizer',
-      serviceContext: index === 1 ? 'asset' : 'event',
-      contextEventId: 'e1',
-      contextSubEventId: index === 1 ? 'se1' : null,
-      contextAssetId: index === 1 ? `${owner}:asset-transport-1` : null,
-      createdAtIso: new Date(now - (offset + 1) * 86_400_000 * 7).toISOString()
-    }));
-  }
-
-  private seedIncomeHistory(userId: string): PaymentHistoryItemDto[] {
-    const owner = userId.trim() || 'local-user';
-    const now = Date.now();
-    return [0, 1].map((offset, index) => ({
-      id: `local-income-${owner}-${index + 1}`,
-      sourceId: index === 0 ? 'e1' : `${owner}:asset-transport-1`,
-      direction: 'income' as const,
-      paymentMethodId: null,
-      provider: index === 0 ? 'stripe' : 'cash',
-      status: 'captured',
-      amount: [8400, 5600][index],
-      currency: 'HUF',
-      bookingStatus: 'joined',
-      auditKind: 'payment',
-      fulfillmentKind: index === 0 ? 'event_join' : 'client',
-      checkoutSessionId: `local-income-${owner}-checkout-${index + 1}`,
-      recipientUserId: owner,
-      serviceContext: index === 1 ? 'asset' : 'event',
-      contextEventId: 'e1',
-      contextSubEventId: index === 1 ? 'se1' : null,
-      contextAssetId: index === 1 ? `${owner}:asset-transport-1` : null,
-      createdAtIso: new Date(now - (offset + 1) * 86_400_000 * 7).toISOString()
-    }));
-  }
+  private seedMethods(userId:string):SavedPaymentMethodDto[]{return this.usersRepository.queryUserById(userId)?.savedPaymentMethods??[];}
 
   private paymentTotals(
     items: readonly PaymentHistoryItemDto[],
@@ -318,28 +213,9 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     }, {});
   }
 
-  private withRefundState(item: PaymentHistoryItemDto): PaymentHistoryItemDto {
-    const requestStatus = this.refundRequestStatusByPaymentId.get(item.id) ?? 'none';
-    const refundableStatus = item.status === 'authorized' || item.status === 'captured'
-      || item.status === 'approved' || item.status === 'partially_refunded';
-    return {
-      ...item,
-      refundRequestStatus: requestStatus,
-      canRequestRefund: item.direction === 'expense' && requestStatus === 'none' && refundableStatus,
-      canApproveRefund: item.direction === 'income' && requestStatus === 'pending'
-    };
-  }
-
   private localMutation(userId: string, item: PaymentHistoryItemDto): PaymentHistoryMutationDto {
-    const expenses = this.seedMethods(userId).flatMap(card => this.seedHistory(card)).map(candidate =>
-      candidate.id === item.id ? item : this.withRefundState(candidate)
-    );
-    const income = this.seedIncomeHistory(userId).map(candidate =>
-      candidate.id === item.id ? item : this.withRefundState(candidate)
-    );
-    const recorded = this.affiliateRepository.paymentHistory(userId);
-    expenses.push(...recorded.filter(row => row.direction === 'expense'));
-    income.push(...recorded.filter(row => row.direction === 'income'));
+    const recorded=this.affiliateRepository.paymentHistory(userId);
+    const expenses=recorded.filter(row=>row.direction==='expense'),income=recorded.filter(row=>row.direction==='income');
     return {
       item,
       items: item.checkoutSessionId ? recorded.filter(row => row.checkoutSessionId === item.checkoutSessionId) : [item],
@@ -354,23 +230,6 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     return Math.max(0, Math.trunc(Number(
       this.usersRepository.queryUserById(userId.trim())?.activities?.paymentRefundsPending
     ) || 0));
-  }
-
-  private async patchPendingRefundCounter(userId: string, delta: number): Promise<void> {
-    const normalizedUserId = userId.trim();
-    const current = this.usersRepository.queryUserById(normalizedUserId);
-    if (!current) return;
-    this.usersRepository.upsertUser({
-      ...current,
-      activities: {
-        ...current.activities,
-        paymentRefundsPending: Math.max(
-          0,
-          Math.trunc(Number(current.activities.paymentRefundsPending) || 0) + Math.trunc(delta)
-        )
-      }
-    });
-    await this.usersRepository.flushToIndexedDb();
   }
 
 }

@@ -95,6 +95,7 @@ export class ActivityChatSingleRowConverter {
       icon: systemSender && !systemAvatarUrl ? 'auto_awesome' : null,
       memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),
+      palette: channelType === 'case' ? 'gold' : null,
       surfaceTone: showSupportControls
         ? this.supportCaseSurfaceTone(supportStatus)
         : this.chatSurfaceTone(dto),
@@ -265,6 +266,7 @@ export class ActivityChatSingleRowConverter {
       || dto.channelType === 'optionalSubEvent'
       || dto.channelType === 'groupSubEvent'
       || dto.channelType === 'serviceEvent'
+      || dto.channelType === 'campaign' || dto.channelType === 'case'
       || dto.channelType === 'contact'
       || dto.channelType === 'groupSupport'
       || dto.channelType === 'appSupport'
@@ -280,6 +282,7 @@ export class ActivityChatSingleRowConverter {
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'
       || channelType === 'serviceEvent'
+      || channelType === 'campaign' || channelType === 'case'
       || channelType === 'contact'
       || channelType === 'groupSupport'
       || channelType === 'appSupport'

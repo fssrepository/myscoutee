@@ -75,6 +75,7 @@ import type {
 import type { IEventsService } from '../../contracts/activity.interface';
 
 interface HttpEventsFilterRequest {
+  campaignId?: string | null;
   userId: string;
   filter: ActivityEventScopeFilter;
   hostingPublicationFilter: 'all' | 'drafts';
@@ -216,6 +217,7 @@ export class HttpEventsService implements IEventsService {
     return {
       userId,
       filter: this.activitiesEventScopeFilter(query),
+      campaignId: query.filters?.campaignId,
       hostingPublicationFilter: this.activitiesHostingPublicationFilter(query),
       secondaryFilter,
       sort: this.activitiesSort(query, view, secondaryFilter),
@@ -1785,6 +1787,7 @@ export class HttpEventsService implements IEventsService {
         imageUrl: `${record.imageUrl ?? ''}`.trim(),
         imageUrls: record.imageUrls ? [...record.imageUrls] : undefined,
         imageDetails: record.imageDetails,
+        campaignId: record.campaignId ?? null,
         sourceLink: `${record.sourceLink ?? ''}`.trim(),
         location: `${record.location ?? ''}`.trim(),
         locationCoordinates: record.locationCoordinates ?? null,

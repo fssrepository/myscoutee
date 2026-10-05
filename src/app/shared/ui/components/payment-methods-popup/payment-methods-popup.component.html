@@ -5,20 +5,6 @@
       @if (error()) {
         <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
       }
-      @if (historyHeaderTotals(); as totals) {
-        @if (totals.length) {
-          <div class="payment-methods-popup__history-totals" data-guide-field="payment-history-totals" role="group" [attr.aria-label]="'payment.history.totals' | i18n">
-            @for (total of totals; track total.tone + ':' + total.text) {
-              <button type="button" (click)="currencyPickerOpen.set(true)"
-                class="payment-methods-popup__history-total motion-static"
-                [class.payment-methods-popup__history-total--expense]="total.tone === 'expense'"
-                [class.payment-methods-popup__history-total--income]="total.tone === 'income'"
-              >{{ total.text }} ›</button>
-            }
-          </div>
-        }
-      }
-
       <app-smart-list #historyList
         data-guide-field="payment-history-list"
         class="payment-methods-popup__list"

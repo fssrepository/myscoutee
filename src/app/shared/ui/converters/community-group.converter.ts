@@ -1,17 +1,17 @@
 import { AppUtils } from '../../app-utils';
-import { canPreviewGroupMembers, communityGroupSummary, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../core/contracts/community-group.interface';
-import type { InfoCardData } from '../components/core/smart-list/card';
+import { canPreviewGroupMembers, communityGroupSummary, groupMembershipBucket, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../core/contracts/community-group.interface';
+import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
 import { appMenuAlertCounter, appMenuResolveLiveValue } from '../components/core/menu';
 import { contentModerationBadge } from './content-moderation-badge';
 import { ActivityEventInfoCardMenuConverter } from './activity-event-info-card-menu.converter';
 import { CARD_MENU_ACTIONS } from '../components/core/smart-list/card';
-export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette }> = {
-  hosting: { icon: 'event_seat', palette: 'green' }, participation: { icon: 'groups', palette: 'orange' },
-  invitations: { icon: 'mail', palette: 'violet' },
-  pending: { icon: 'pending_actions', palette: 'amber' },
-  trash: { icon: 'delete', palette: 'danger' },
-  explore: { icon: 'explore', palette: 'violet' }
+export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette; tone: InfoCardOverlayTone }> = {
+  hosting: { icon: 'event_seat', palette: 'green', tone: 'stage-finalized' }, participation: { icon: 'groups', palette: 'orange', tone: 'orange' },
+  invitations: { icon: 'mail', palette: 'violet', tone: 'purple' },
+  pending: { icon: 'pending_actions', palette: 'amber', tone: 'stage-review' },
+  trash: { icon: 'delete', palette: 'danger', tone: 'danger' },
+  explore: { icon: 'explore', palette: 'violet', tone: 'purple' }
 };
 export const GROUP_VISIBILITY_STYLE: Record<GroupVisibility, { icon: string; palette: AppMenuPalette }> = {
   public: { icon: 'public', palette: 'green' }, private: { icon: 'lock', palette: 'blue' },
@@ -23,6 +23,9 @@ export const GROUP_CATEGORY_ICON: Record<GroupCategory, string> = {
 export const GROUP_CATEGORY_PALETTE = {
   friends: 'teal', work: 'blue', sport: 'orange', learning: 'violet', hobbies: 'rose', neighbourhood: 'green'
 } as const satisfies Record<GroupCategory, AppMenuPalette>;
+const GROUP_CATEGORY_HUE: Record<GroupCategory, number> = {
+  friends: 175, work: 215, sport: 28, learning: 265, hobbies: 340, neighbourhood: 140
+};
 export class CommunityGroupConverter {
   static card(group: CommunityGroupSummary, translate: (key: string) => string): InfoCardData<CommunityGroupSummary> {
     const membersVisible = canPreviewGroupMembers(group);
@@ -37,13 +40,11 @@ export class CommunityGroupConverter {
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
       metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
       leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
-      surfaceTone: (group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked') ? 'deleted' : group.moderationStatus === 'under-review' || group.lifecycleStatus === 'under-review' ? 'review' : group.membershipStatus === 'pending' ? 'pending' : group.role === 'Admin' ? 'published' : 'default',
+      surfaceTone: 'subevent-light', accentHue: GROUP_CATEGORY_HUE[group.category],
       mediaStart: { variant: 'badge', layout: 'avatar-metric', tone: 'cool',
         leadingAccessory: { label: AppUtils.initialsFromText(group.ownerName), tone: 'default' },
         ariaLabel: group.ownerName, interactive: true },
-      mediaBottomStart: group.lifecycleStatus === 'deleted' ? null : contentModerationBadge(group.moderationStatus),
-      mediaBottomEnd: group.lifecycleStatus === 'deleted'
-        ? { variant: 'badge', tone: 'danger', icon: 'delete', label: 'deleted', ariaLabel: 'deleted', interactive: false } : null,
+      mediaBottomStart: this.statusBadge(group),
       mediaEnd: { variant: 'badge', layout: 'badge-with-leading-accessory', label: `${group.acceptedMembers}`,
         ariaLabel: membersVisible ? 'open.members' : 'groups.member.list',
         interactive: membersVisible, disabled: !membersVisible,
@@ -51,6 +52,18 @@ export class CommunityGroupConverter {
         leadingAccessory: { icon: membersVisible ? 'groups' : 'visibility_off', tone: membersVisible ? 'positive' : 'negative' },
         pendingCount: membersVisible ? group.membersActivity ?? group.pendingMembers : 0 },
       hasMenuOptions: this.menu(group).length > 0, menuBadgeCount, clickable: false, state: 'default', eagerDetail: communityGroupSummary(group) };
+  }
+  private static statusBadge(group: CommunityGroupSummary): InfoCardOverlayAction {
+    if (group.lifecycleStatus === 'deleted' || group.membershipStatus === 'deleted')
+      return { variant: 'badge', tone: 'danger', icon: 'delete', label: 'deleted', ariaLabel: 'deleted', interactive: false };
+    if (group.membershipStatus === 'blocked')
+      return { variant: 'badge', tone: 'danger', icon: 'block', label: 'blocked', ariaLabel: 'blocked', interactive: false };
+    const moderation = contentModerationBadge(group.moderationStatus)
+      ?? (group.lifecycleStatus === 'under-review' ? contentModerationBadge('under-review') : null);
+    if (moderation) return moderation;
+    const bucket = groupMembershipBucket(group), style = GROUP_BUCKET_STYLE[bucket];
+    const label = bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`;
+    return { variant: 'badge', tone: style.tone, icon: style.icon, label, ariaLabel: label, interactive: false };
   }
   static menu(group: CommunityGroupSummary, userId?: string | null): AppMenuItem[] {
     if ((group.membershipStatus === 'deleted' || group.membershipStatus === 'blocked')) return group.lifecycleStatus === 'deleted' && !group.canRestoreGroup ? [] : [{

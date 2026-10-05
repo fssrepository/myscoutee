@@ -1,3 +1,4 @@
+import { GroupWorkspaceContextService } from "../../../shared/core/base/services/group-workspace-context.service";
 import { ChangeDetectionStrategy, Component, DestroyRef, ViewChild, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
@@ -36,11 +37,12 @@ const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: 
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ContentModerationPopupComponent {
+  private readonly baseWorkspace = inject(GroupWorkspaceContextService);
   readonly groupContext = input<{ groupId: string; name: string; actor: AdminUserDto } | null>(null);
-  protected readonly snapshot = computed(() => this.state.forScope(this.groupContext()?.groupId));
+  protected readonly snapshot = computed(() => this.state.forScope(this.groupId));
   protected readonly isOpen = computed(() => !!this.groupContext() || this.adminMenu.activePopup() === 'content-moderation');
-  private get groupId() { return this.groupContext()?.groupId; }
-  private get categories() { return this.groupId ? GROUP_MODERATION_CATEGORIES : MODERATION_CATEGORIES; }
+  private get groupId() { return this.groupContext()?.groupId ?? this.baseWorkspace.active()?.groupId; }
+  private get categories() { return this.groupContext() ? GROUP_MODERATION_CATEGORIES : MODERATION_CATEGORIES; }
   protected readonly adminMenu = inject(AdminMenuStore);
   protected readonly state = inject(ContentModerationStore);
   private readonly workspace = inject(AdminWorkspaceStore);
@@ -80,7 +82,7 @@ export class ContentModerationPopupComponent {
     effect(() => {
       if (this.isOpen()) {
         this.settingsDraft.set(null); this.saving.set(false); this.settingsError.set(false);
-        if (this.groupId && this.category === 'group') this.category = 'all';
+        if (this.groupContext() && this.category === 'group') this.category = 'all';
         this.query = { filters: { category: this.category, status: this.status } }; this.error.set(false);
       }
     });
@@ -112,9 +114,9 @@ export class ContentModerationPopupComponent {
           items: MODERATION_STATUSES.map(id => ({ id: `status:${id}`, label: `moderation.status.${id}`, ...STATUS_STYLE[id], surface: 'tinted', active: id === this.status,
             counter: { value: moderationCount(this.snapshot(), this.category, id), max: 9999 } })) },
         { kind: 'menu', id: 'category', align: 'end', menuKind: 'select', trigger: { label: `moderation.category.${this.category}`, ...CATEGORY_STYLE[this.category] },
-          items: CATEGORY_FILTERS.filter(category => !this.groupId || category !== 'group').map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', active: id === this.category,
+          items: CATEGORY_FILTERS.filter(category => !this.groupContext() || category !== 'group').map(id => ({ id: `category:${id}`, label: `moderation.category.${id}`, ...CATEGORY_STYLE[id], surface: 'tinted', active: id === this.category,
             counter: { value: moderationCount(this.snapshot(), id, this.status), max: 9999 } })) }
-      ], onClose: () => this.groupId ? this.groups.moderationContext.set(null) : this.adminMenu.closePopup(), onAction: () => this.openSettings(),
+      ], onClose: () => this.groupContext() ? this.groups.moderationContext.set(null) : this.adminMenu.closePopup(), onAction: () => this.openSettings(),
       onMenuSelect: event => {
         const id = String(event.itemSelect.id);
         if (id.startsWith('category:')) this.category = id.slice(9) as ModerationCategoryFilter;
@@ -139,7 +141,7 @@ export class ContentModerationPopupComponent {
     this.dialogs.open({ title: `${this.decisionLabel(item, status)}.question`, message: item.title,
       cancelLabel: 'cancel', confirmLabel: 'confirm', busyConfirmLabel: 'saving', failureMessage: 'moderation.failed',
       confirmPalette: STATUS_STYLE[status].palette,
-      input: ['rejected', 'blocked'].includes(status) ? { label: groupId ? 'moderation.group.message' : 'moderation.message', maxLength: 1000 } : null,
+      input: ['rejected', 'blocked'].includes(status) ? { label: this.groupContext() ? 'moderation.group.message' : 'moderation.message', maxLength: 1000 } : null,
       onConfirm: async message => {
         if (!this.currentScope(groupId, actor?.id)) throw new Error('moderation.changed');
         const result = await this.service.decide(item.id, { adminUserId: actor?.id ?? '', commandId,

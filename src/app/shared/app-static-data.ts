@@ -430,6 +430,24 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'profile.impressions', label: 'Profile impressions', icon: 'psychology', owner: 'popup', order: 42, enabled: true },
   { key: 'profile.integrations', label: 'Integrations', icon: 'hub', owner: 'popup', order: 43, enabled: true },
   { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
+  { key: 'community.services.home', label: 'Service priorities', icon: 'home_repair_service', owner: 'popup', order: 71, enabled: true },
+  { key: 'community.services', label: 'Your services', icon: 'home_repair_service', owner: 'popup', order: 72, enabled: true },
+  { key: 'community.service.editor', label: 'Service details and availability', icon: 'home_repair_service', owner: 'popup', order: 73, enabled: true },
+  { key: 'community.service.calendar', label: 'Your appointment calendar', icon: 'home_repair_service', owner: 'popup', order: 74, enabled: true },
+  { key: 'community.case.appointments', label: 'Choose appointment slots', icon: 'home_repair_service', owner: 'popup', order: 75, enabled: true },
+  { key: 'community.home', label: 'Community noticeboard', icon: 'help_outline', owner: 'popup', order: 66, enabled: true },
+  { key: 'community.voting', label: 'Announcements and results', icon: 'help_outline', owner: 'popup', order: 67, enabled: true },
+  { key: 'community.announcement.editor', label: 'Prepare the announcement', icon: 'help_outline', owner: 'popup', order: 68, enabled: true },
+  { key: 'work.home', label: 'Choose the opportunity type', icon: 'help_outline', owner: 'popup', order: 70, enabled: true },
+  { key: 'community.cases', label: 'Cases', icon: 'home_repair_service', owner: 'popup', order: 60, enabled: true },
+  { key: 'community.tasks', label: 'Scheduled tasks', icon: 'home_repair_service', owner: 'popup', order: 61, enabled: true },
+  { key: 'community.case.editor', label: 'Case details', icon: 'home_repair_service', owner: 'popup', order: 62, enabled: true },
+  { key: 'community.task.editor', label: 'Schedule a task', icon: 'home_repair_service', owner: 'popup', order: 63, enabled: true },
+  { key: 'work.campaigns', label: 'Campaigns', icon: 'campaign', owner: 'popup', order: 64, enabled: true },
+  { key: 'members.select', label: 'Choose members', icon: 'groups', owner: 'popup', order: 64, enabled: true },
+  { key: 'work.campaign.select', label: 'Choose campaign', icon: 'campaign', owner: 'popup', order: 64, enabled: true },
+  { key: 'work.campaign.history', label: 'Campaign interaction history', icon: 'history', owner: 'popup', order: 65, enabled: true },
+  { key: 'work.campaign.editor', label: 'Campaign details', icon: 'campaign', owner: 'popup', order: 65, enabled: true },
   { key: 'community.groups', label: 'Community groups', icon: 'groups', owner: 'popup', order: 46, enabled: true },
   { key: 'community.group.editor', label: 'Group editor', icon: 'edit', owner: 'popup', order: 46.5, enabled: true },
   { key: 'community.group.policy', label: 'Group privacy rules', icon: 'badge', owner: 'popup', order: 46.6, enabled: true },
@@ -736,6 +754,8 @@ const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter;
   { key: 'group', label: 'group', icon: 'groups' },
   { key: 'service', label: 'service', icon: 'support_agent' },
   { key: 'contacts', label: 'chat.contacts', icon: 'contacts' },
+  { key: 'campaign', label: 'campaign.title', icon: 'campaign' },
+  { key: 'cases', label: 'case.title', icon: 'home_repair_service' },
   { key: 'groupSupport', label: 'group.support', icon: 'forum' },
   { key: 'appSupport', label: 'app.support', icon: 'admin_panel_settings' }
 ];
@@ -1102,7 +1122,7 @@ const EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS: EventFeedbackOption[] = [
   { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
 ];
 const EVENT_FEEDBACK_LIST_FILTER_META: Record<EventFeedbackListFilter, { label: string; icon: string }> = {
-  'own-events': { label: 'Own Events', icon: 'stadium' },
+  'own-events': { label: 'feedback.own', icon: 'stadium' },
   pending: { label: 'Pending', icon: 'schedule' },
   feedbacked: { label: 'Feedbacked', icon: 'task_alt' },
   removed: { label: 'Removed', icon: 'delete_outline' }
@@ -2151,7 +2171,7 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'rate_review',
     title: 'Feedback lists',
     blurb: 'Choose the feedback state you want to see.',
-    contentHtml: '<p><strong>Pending</strong> holds events waiting for your feedback, <strong>Feedbacked</strong> holds submitted items, and <strong>Removed</strong> holds skipped items that can be restored. <strong>Own Events</strong> shows feedback received for events you organized.</p>'
+    contentHtml: '<p><strong>Pending</strong> holds events and completed-case providers waiting for your feedback, <strong>Feedbacked</strong> holds submitted items, and <strong>Removed</strong> holds skipped items that can be restored. <strong>Own</strong> shows feedback received for events you organized and services you provided. Service cards have a different background color.</p>'
   },
   {
     id: 'event-feedback-categories',

@@ -23,7 +23,7 @@ export class HttpActivityInviteCandidatesService implements IActivityInviteCandi
         .post<ActivityInviteCandidatesPage | null>(
           `${this.apiBaseUrl}/activities/events/invite-candidates`,
           {
-            activeUserId: query.activeUserId,
+            activeUserId: query.activeUserId, purpose:query.purpose,
             ownerId: query.owner.ownerId,
             ownerType: query.owner.ownerType,
             parentOwnerId: query.parentOwner?.ownerId ?? null,

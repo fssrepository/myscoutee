@@ -2,8 +2,7 @@ import type { ListQuery, PageResult } from './list.interface';
 import type {
   DeploymentBrandingDto,
   DeploymentPrivacyContactDto,
-  DeploymentSocialLinkDto,
-  DeploymentThemePreset
+  DeploymentSocialLinkDto
 } from './deployment-configuration.interface';
 
 export type OperatorRegistryMode = 'DEMO' | 'REAL';
@@ -472,7 +471,7 @@ export interface OperatorConfigurationSaveRequestDto {
     productName: string;
     logoUrl: string;
     logoCharacterIndex: number | null;
-    themePreset: DeploymentThemePreset;
+
   };
   integration?: {
     publicBaseUrl: string;

@@ -67,6 +67,28 @@ describe('Community membership writes and recipient attention', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('joins the Work base after a Work invitation, once, without an approval request', async () => {
+    state.communityGroups.byId['group'].groupType = 'work';
+    state.communityGroups.byId['myscoutee-work'] = {
+      ...state.communityGroups.byId['group'], id: 'myscoutee-work', name: 'MyScoutee Work',
+      policy: { workspace: true, enabled: false, requiredFields: [] }
+    };
+    state.communityGroups.ids.push('myscoutee-work');
+    await service.joinWorkspaceBase('member', 'group');
+    await service.joinWorkspaceBase('member', 'group');
+    const membership = Object.values(state[ACTIVITY_MEMBERS_TABLE_NAME].byId)
+      .filter(row => row.ownerId === 'myscoutee-work' && row.userId === 'member');
+    expect(membership).toHaveLength(1);
+    expect(membership[0]).toMatchObject({ status: 'accepted', role: 'Member', requestKind: null });
+    expect(state[USERS_TABLE_NAME].byId['group:myscoutee-work:member']).toMatchObject({
+      accountUserId: 'member', workspaceGroupId: 'myscoutee-work'
+    });
+    expect(notices()).toHaveLength(0);
+    await expect(service.joinWorkspaceBase('guest', 'group')).rejects.toThrow('Forbidden');
+    membership[0].status = 'blocked';
+    await expect(service.joinWorkspaceBase('member', 'group')).rejects.toThrow('Forbidden');
+  });
+
   function eventInviter(): string {
     state.communityGroups.byId['group'].policy.workspace = true;
     const id = 'group:group:member';
@@ -99,7 +121,7 @@ describe('Community membership writes and recipient attention', () => {
   });
 
   const page = (userId: string, bucket: 'trash' | 'participation' | 'pending' | 'explore') =>
-    service.page(userId, { filters: { bucket }, pageSize: 20 });
+    service.page(userId, { page: 0, filters: { bucket }, pageSize: 20 });
 
   it('keeps a voluntary leave in Trash and restores accepted membership without admission', async () => {
     const left = await service.action('member', 'group', 'member', 'remove');

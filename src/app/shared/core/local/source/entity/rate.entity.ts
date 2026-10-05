@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '../../../contracts/rating-snapshot';
+import type { RatingDomain, RatingSnapshot } from '../../../contracts/rating-snapshot';
 import type { EventExploreFilterPreferences } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
@@ -7,6 +7,8 @@ export const USER_RATES_OUTBOX_TABLE_NAME = APP_INDEXED_DB_KEYS.userRatesOutbox;
 export const USER_FILTER_PREFERENCES_TABLE_NAME = APP_INDEXED_DB_KEYS.userFilterPreferences;
 
 export interface UserRateRecord {
+  ratingDomain?: RatingDomain;
+  campaignId?: string | null;
   ratingSnapshot?: RatingSnapshot;
   ratingSnapshots?: Record<string, RatingSnapshot>;
   id: string;
@@ -33,6 +35,7 @@ export interface UserRateRecord {
 export type ActivityRateRecordSort = 'happenedAt' | 'distance' | 'relevance';
 
 export interface ActivityRateRecordQuery {
+  campaignId?: string | null;
   ownerUserId: string;
   mode: 'single' | 'pair';
   displayDirection: 'given' | 'received' | 'mutual' | 'met';
@@ -68,6 +71,7 @@ export interface UserRateOutboxRecord {
 }
 
 export interface UserRatesRecordCollection {
+  campaignProjection?: Record<string, UserRateRecord[]>;
   byId: Record<string, UserRateRecord>;
   ids: string[];
   idsByRelevantUserId: Record<string, string[]>;

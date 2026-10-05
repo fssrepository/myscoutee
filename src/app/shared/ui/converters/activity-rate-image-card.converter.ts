@@ -31,6 +31,7 @@ export class ActivityRateImageCardConverter {
 
     return {
       id: dto.id,
+      ratingDomain: dto.ratingDomain,
       smartListKey: `rates:${dto.id}`,
       status: direction,
       dateIso: dto.happenedAt ?? '',

@@ -1,4 +1,4 @@
-import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect, untracked } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { defer, map } from 'rxjs';
 import { PopupComponent, PopupModel, PopupControl } from '../core/popup';
@@ -92,14 +92,14 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
     effect(() => {
       const change = this.store.attentionDelta();
       if (!change || change.accountId !== this.store.openUserId()) return;
-      this.list?.patchVisibleItem(card => card.id === change.groupId, card => card.eagerDetail ? this.card({
+      untracked(() => this.list?.patchVisibleItem(card => card.id === change.groupId, card => card.eagerDetail ? this.card({
         ...card.eagerDetail, activity: Math.max(0, card.eagerDetail.activity + change.delta),
         membersActivity: Math.max(0, (card.eagerDetail.membersActivity ?? 0) + change.delta)
-      }) : card);
+      }) : card));
     });
     effect(() => {
       for (const groupId of Object.keys(this.moderation.groupSnapshots())) {
-        this.list?.patchVisibleItem(card => card.id === groupId, card => card.eagerDetail ? this.card(card.eagerDetail) : card);
+        untracked(() => this.list?.patchVisibleItem(card => card.id === groupId, card => card.eagerDetail ? this.card(card.eagerDetail) : card));
       }
     });
     effect(() => {
@@ -109,9 +109,9 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
       const matches = (group.lifecycleStatus !== 'deleted' || bucket === 'trash') && (!category || category === group.category) && groupMembershipBucket(group) === bucket
         && (bucket !== 'explore' || group.lifecycleStatus !== 'under-review' && group.ownerUserId !== this.store.openUserId() && group.visibility !== 'invitation'
           && (!group.moderationStatus || group.moderationStatus === 'accepted'));
-      if (!matches) this.list?.removeVisibleItems(item => item.id === group.id);
-      else if (!this.list?.patchVisibleItem(item => item.id === group.id, () => card)) {
-        this.list?.reinsertVisibleItem(card, { loadedRange: 'before-or-within' });
+      if (!matches) untracked(() => this.list?.removeVisibleItems(item => item.id === group.id));
+      else if (!untracked(() => this.list?.patchVisibleItem(item => item.id === group.id, () => card))) {
+        untracked(() => this.list?.reinsertVisibleItem(card, { loadedRange: 'before-or-within' }));
       }
     });
   }

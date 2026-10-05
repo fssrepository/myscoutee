@@ -1,12 +1,16 @@
+import { ServiceFeedbackStore } from '../../../shared/ui/context/stores/service-feedback.store';
+import { AppUtils } from '../../../shared/app-utils';
+import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   Component,
   OnDestroy,
-  TemplateRef,
   ViewChild,
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import {
   CommonModule
@@ -50,7 +54,6 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   type SmartListConfig,
-  type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
@@ -75,6 +78,7 @@ import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activiti
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
 interface EventFeedbackListFilters {
+  campaignId?: string | null;
   filter: EventFeedbackListFilter;
   userId: string;
 }
@@ -106,6 +110,10 @@ interface EventFeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'o
   styleUrl: './event-feedback-popup.component.scss'
 })
 export class EventFeedbackPopupComponent implements OnDestroy {
+  private readonly serviceFeedback = inject(ServiceFeedbackStore);
+  private readonly serviceFeedbackCounts = signal<Record<string, number>>({});
+  private readonly campaigns = inject(CampaignsStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
@@ -119,6 +127,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
   private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
   private eventFeedbackRealtimeContextKey = '';
+  private feedbackPendingCounter: number | null | undefined;
   private eventFeedbackRealtimeCounters: ActivityEventFeedbackCounters | undefined;
   private eventFeedbackRealtimeRefreshInFlight = false;
   private eventFeedbackRealtimeRefreshQueued = false;
@@ -151,7 +160,13 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   protected readonly eventFeedbackFilterMenu = computed(() => EventFeedbackFilterMenuConverter.convert({
     result: this.eventFeedbackPageResult(),
     activeFilter: this.eventFeedbackListFilter(),
-    delta: this.eventFeedbackFilterCountDelta()
+    delta: {
+      ...this.eventFeedbackFilterCountDelta(),
+      pending: (this.eventFeedbackFilterCountDelta().pending ?? 0) + (this.serviceFeedbackCounts()['pending'] ?? 0),
+      feedbacked: (this.eventFeedbackFilterCountDelta().feedbacked ?? 0) + (this.serviceFeedbackCounts()['feedbacked'] ?? 0),
+      removed: (this.eventFeedbackFilterCountDelta().removed ?? 0) + (this.serviceFeedbackCounts()['removed'] ?? 0),
+      'own-events': (this.eventFeedbackFilterCountDelta()['own-events'] ?? 0) + (this.serviceFeedbackCounts()['received'] ?? 0)
+    }
   }));
   protected readonly organizerEventFeedbackItems = computed<EventFeedbackOrganizerItemData[]>(() => {
     const result = this.eventFeedbackPageResult();
@@ -195,17 +210,6 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     }
   };
 
-  protected eventFeedbackItemTemplateRef?: TemplateRef<
-    SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>
-  >;
-
-  @ViewChild('eventFeedbackItemTemplate', { read: TemplateRef })
-  protected set eventFeedbackItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>> | undefined
-  ) {
-    this.eventFeedbackItemTemplateRef = value;
-  }
-
   @ViewChild('eventFeedbackSmartList')
   private eventFeedbackSmartList?: SmartListComponent<InfoCardData, EventFeedbackListFilters>;
 
@@ -224,14 +228,16 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       enabled: true,
       state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
     },
-    emptyLabel: 'Event Feedback',
+    emptyLabel: 'feedback.list.title',
     emptyDescription: (query) => EventFeedbackListPresentationConverter.convert({
       result: this.eventFeedbackPageResult(),
       filter: query.filters?.filter ?? 'pending'
     }).emptyDescription,
     showStickyHeader: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
-    groupBy: (item, query) => EventFeedbackListPresentationConverter.convert({
+    groupBy: (item, query) => EventFeedbackInfoCardConverter.serviceItem(item)
+      ? AppUtils.weekdayMonthDayYearLabel(new Date(item.dateIso!))
+      : EventFeedbackListPresentationConverter.convert({
       result: this.eventFeedbackPageResult(),
       itemId: item.id,
       filter: query.filters?.filter ?? this.eventFeedbackListFilter()
@@ -251,8 +257,10 @@ export class EventFeedbackPopupComponent implements OnDestroy {
 
   protected eventFeedbackPopupModel(): PopupModel<EventFeedbackMenuContext> {
     return {
-      title: 'Event Feedback',
-      ariaLabel: 'Event Feedback',
+      title: 'feedback.list.title',
+      subtitle: this.campaigns.feedbackCampaign()?.title ?? '',
+      onAction: event => { if (event.action.id === 'campaign-filter') void this.campaigns.open(c => this.campaigns.feedbackCampaign.set(c), this.campaigns.feedbackCampaign()?.id); },
+      ariaLabel: 'feedback.list.title',
       closeAriaLabel: 'Close',
       size: 'wide',
       height: 'full',
@@ -291,7 +299,8 @@ export class EventFeedbackPopupComponent implements OnDestroy {
 
   private eventFeedbackPopupHeaderControls(): PopupControl<EventFeedbackMenuContext>[] {
     const filterMenu = this.eventFeedbackFilterMenu();
-    return [{
+    return [...(this.workspace.isWork() ? [{ id: 'campaign-filter', icon: 'campaign', ariaLabel: 'campaign.select', palette: 'blue' as const,
+      counter: this.campaigns.feedbackCampaign() ? 1 : 0, active: !!this.campaigns.feedbackCampaign() }] : []), {
       kind: 'menu',
       id: 'event-feedback-filter',
       trigger: filterMenu.trigger,
@@ -303,7 +312,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   private eventFeedbackStackedPopupTitle(): string {
     switch (this.stackedPopupMode()) {
       case 'eventFeedback':
-        return 'Event Feedback';
+        return 'feedback.list.title';
       case 'organizerEventFeedback':
         return 'Own Event Feedback';
       default:
@@ -344,6 +353,10 @@ export class EventFeedbackPopupComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      const changed = this.serviceFeedback.changed();
+      if (changed?.userId === this.activeUserId() && this.isPopupOpen()) untracked(() => this.queueEventFeedbackRealtimeRefresh());
+    });
+    effect(() => {
       this.setExplanationContext(this.isPopupOpen());
     });
 
@@ -360,14 +373,16 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     effect(() => {
       const filter = this.eventFeedbackListFilter();
       const userId = this.userProfileStore.activeUserId().trim();
+      const campaignId = this.campaigns.feedbackCampaign()?.id ?? null;
       const currentFilters = this.eventFeedbackSmartListQuery.filters;
-      if (currentFilters?.filter === filter && currentFilters?.userId === userId) {
+      if (currentFilters?.campaignId === campaignId && currentFilters?.filter === filter && currentFilters?.userId === userId) {
         return;
       }
 
       this.eventFeedbackSmartListQuery = {
         filters: {
           filter,
+          campaignId,
           userId
         }
       };
@@ -400,13 +415,16 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       const isOpen = this.isPopupOpen();
       const userId = this.activeUserId();
       const counters = this.activityStore.counterOverridesByUserId()[userId]?.eventFeedback;
+      const pending = this.activityStore.getUserCounterOverride(userId, 'feedback');
       const contextKey = `${isOpen ? 'open' : 'closed'}:${userId}`;
+      const pendingChanged = this.feedbackPendingCounter !== pending;
+      this.feedbackPendingCounter = pending;
       if (contextKey !== this.eventFeedbackRealtimeContextKey) {
         this.eventFeedbackRealtimeContextKey = contextKey;
         this.eventFeedbackRealtimeCounters = counters;
         return;
       }
-      if (!isOpen || !userId || counters === this.eventFeedbackRealtimeCounters) {
+      if (!isOpen || !userId || (counters === this.eventFeedbackRealtimeCounters && !pendingChanged)) {
         this.eventFeedbackRealtimeCounters = counters;
         return;
       }
@@ -460,6 +478,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     this.selectedOrganizerEventFeedbackEventId.set(null);
     this.clearOrganizerEventFeedbackStat();
     this.eventFeedbackPageResult.set(null);
+    this.serviceFeedbackCounts.set({});
     this.eventFeedbackFilterCountDelta.set({});
     this.isPopupOpen.set(true);
   }
@@ -587,6 +606,8 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   }
 
   protected onEventFeedbackCardPrimaryAction(card: InfoCardData): void {
+    const service = EventFeedbackInfoCardConverter.serviceItem(card);
+    if (service) { void this.serviceFeedback.openDetail(service.item, service.received); return; }
     const item = this.eventFeedbackPageResult()?.itemById(card.id) ?? null;
     if (!item) {
       return;
@@ -602,6 +623,14 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   }
 
   protected onEventFeedbackCardMenuAction(card: InfoCardData, event: CardMenuActionEvent<InfoCardData>): void {
+    const service = EventFeedbackInfoCardConverter.serviceItem(card);
+    if (service) {
+      if (!service.received && (event.actionId === 'removeFeedback' || event.actionId === 'restoreFeedback')) {
+        const action = event.actionId === 'removeFeedback' ? 'remove' : 'restore';
+        this.openEventFeedbackDialog(this.eventFeedbackDialogContent(action), () => this.serviceFeedback.action(service.item, { action }));
+      } else { void this.serviceFeedback.openDetail(service.item, service.received); }
+      return;
+    }
     const item = this.eventFeedbackPageResult()?.itemById(card.id) ?? null;
     if (!item) {
       return;
@@ -723,21 +752,22 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       this.eventFeedbackPageResult.set(null);
       return { items: [], total: 0 };
     }
-    const result = await this.eventsService.loadEventFeedbackPage({
-      userId: normalizedUserId,
-      filter,
-      page,
-      pageSize
-    });
-    if (this.activeUserId() !== normalizedUserId) {
+    const request = { userId: normalizedUserId, campaignId: query.filters?.campaignId, filter, page, pageSize };
+    const result = await this.eventsService.loadEventFeedbackPage(request);
+    const services = await this.serviceFeedback.pageAfterEvents(request, result.total, result.items.length);
+    if (this.activeUserId() !== normalizedUserId || this.eventFeedbackListFilter() !== filter) {
       return { items: [], total: 0 };
     }
     const pageResult = new ActivityContracts.EventFeedbackPageResultDto(result);
     this.eventFeedbackPageResult.set(pageResult);
+    this.serviceFeedbackCounts.set(services.context ?? {});
     this.eventFeedbackFilterCountDelta.set({});
     return {
-      items: EventFeedbackInfoCardConverter.convertList(pageResult.items, { state: pageResult.state }),
-      total: result.total
+      items: [
+        ...EventFeedbackInfoCardConverter.convertList(pageResult.items, { state: pageResult.state }),
+        ...services.items.map(item => EventFeedbackInfoCardConverter.convertService(item, filter === 'own-events'))
+      ],
+      total: result.total + services.total
     };
   }
 

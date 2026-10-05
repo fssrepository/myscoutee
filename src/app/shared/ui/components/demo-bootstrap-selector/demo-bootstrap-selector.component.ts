@@ -315,7 +315,9 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected visibleUsers(): readonly UserSelectorListItemDto[] {
-    return this.users.filter(user => !this.isNewProfile(user));
+    const groupType = this.contextRequest?.groupType;
+    return this.users.filter(user => !this.isNewProfile(user)
+      && (!groupType || this.selectedMode === 'operator' || user.baseGroupTypes?.includes(groupType)));
   }
 
   protected selectedUser(): UserSelectorListItemDto | null {

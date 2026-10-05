@@ -42,3 +42,11 @@
     <span class="app-route-warmup__label">{{ deploymentBranding().productName }}</span>
   </section>
 }
+
+<!-- Store-owned overlays keep one instance across route transitions. -->
+<app-dialog></app-dialog>
+@if (demoBootstrapSelector()) {
+  @if (demoBootstrapSelectorComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
+}

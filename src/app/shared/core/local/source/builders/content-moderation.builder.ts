@@ -1,3 +1,4 @@
+import { baseGroupId, groupType } from '../../../contracts/group-type';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { moderationHasBeenPublic, type ContentModerationItem, type ModerationCategory } from '../../../contracts/content-moderation.interface';
 import { CONTENT_MODERATION_TABLE_NAME, contentModerationSnapshot, type ContentModerationTable } from '../entity/content-moderation.entity';
@@ -41,7 +42,7 @@ export function maintainContentModeration(previous: AppMemorySchema, next: AppMe
       let item = moderation.items[id];
       if (!item && old[key] !== value && !['T', 'D', 'I'].includes(String(value['status'] ?? 'A'))) {
         const ownerUserId = String(value['creatorUserId'] ?? value['ownerUserId'] ?? value['userId'] ?? '');
-        const workspaceGroupId = category === 'group' ? null : next[USERS_TABLE_NAME].byId[ownerUserId]?.workspaceGroupId ?? null;
+        const workspaceGroupId = category === 'group' ? baseGroupId(groupType(value['groupType'])) : next[USERS_TABLE_NAME].byId[ownerUserId]?.workspaceGroupId ?? null;
         const settings = contentModerationSnapshot(moderation, workspaceGroupId).settings;
         const status = !settings.enabled || (settings.autoApprove && settings.delayMinutes === 0 && settings.categories.includes(category))
           ? 'accepted' : 'under-review';

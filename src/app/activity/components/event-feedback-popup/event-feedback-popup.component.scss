@@ -206,17 +206,17 @@ app-smart-list.event-feedback-list-surface {
   z-index: 8;
 }
 
-:host ::ng-deep .event-feedback-info-card-shell .ui-info-card {
+:host ::ng-deep .event-feedback-info-card-shell:not(.is-service-feedback) .ui-info-card {
   background: linear-gradient(180deg, #f8faff 0%, #f1f6ff 100%);
   border-color: rgba(53, 89, 139, 0.22);
 }
 
-:host ::ng-deep .event-feedback-info-card-shell.is-feedbacked .ui-info-card {
+:host ::ng-deep .event-feedback-info-card-shell.is-feedbacked:not(.is-service-feedback) .ui-info-card {
   background: linear-gradient(180deg, #edf8ef 0%, #e3f3e7 100%);
   border-color: rgba(57, 127, 77, 0.26);
 }
 
-:host ::ng-deep .event-feedback-info-card-shell.is-removed .ui-info-card {
+:host ::ng-deep .event-feedback-info-card-shell.is-removed:not(.is-service-feedback) .ui-info-card {
   background: linear-gradient(180deg, #fff2f2 0%, #fce7e7 100%);
   border-color: rgba(170, 80, 80, 0.28);
 }

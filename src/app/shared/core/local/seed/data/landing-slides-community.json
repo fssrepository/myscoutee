@@ -1,0 +1,50 @@
+[
+  {
+    "id": "community-discover",
+    "index": "01",
+    "titleKey": "landing.community.how.discover.title",
+    "title": "Find help close to home",
+    "messageKey": "landing.community.how.discover.message",
+    "message": "Explore services, read useful details and prioritize the people you would like to work with.",
+    "tone": "blue",
+    "sliceX": "0%",
+    "sliceY": "0%",
+    "imageUrl": "assets/logo/community_cards_no_edges.png"
+  },
+  {
+    "id": "community-case",
+    "index": "02",
+    "titleKey": "landing.community.how.case.title",
+    "title": "Give the task a shared place",
+    "messageKey": "landing.community.how.case.message",
+    "message": "Open a case, involve the right people and keep the discussion together.",
+    "tone": "purple",
+    "sliceX": "100%",
+    "sliceY": "0%",
+    "imageUrl": "assets/logo/community_cards_no_edges.png"
+  },
+  {
+    "id": "community-decide",
+    "index": "03",
+    "titleKey": "landing.community.how.decide.title",
+    "title": "Decide together",
+    "messageKey": "landing.community.how.decide.message",
+    "message": "Read your community’s announcements and take part in its decisions.",
+    "tone": "pink",
+    "sliceX": "0%",
+    "sliceY": "100%",
+    "imageUrl": "assets/logo/community_cards_no_edges.png"
+  },
+  {
+    "id": "community-visit",
+    "index": "04",
+    "titleKey": "landing.community.how.visit.title",
+    "title": "Make room for the work",
+    "messageKey": "landing.community.how.visit.message",
+    "message": "Choose an appointment with the assigned provider and follow the case to completion.",
+    "tone": "orange",
+    "sliceX": "100%",
+    "sliceY": "100%",
+    "imageUrl": "assets/logo/community_cards_no_edges.png"
+  }
+]

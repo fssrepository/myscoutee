@@ -27,8 +27,9 @@ export interface EventChatHeaderState extends EventChatPopupRequest {
   lastMessage?: string | null;
   lastSenderId?: string | null;
   ownerUserId?: string | null;
-  serviceContext?: 'event' | 'asset' | 'notification' | null;
+  serviceContext?: 'event' | 'asset' | 'notification' | 'campaign' | 'case' | null;
   assetId?: string | null;
+  caseOfferId?: string | null;
   eventId?: string | null;
   subEventId?: string | null;
   groupId?: string | null;
@@ -78,6 +79,7 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     ownerUserId: chat.ownerUserId ?? null,
     serviceContext: chat.serviceContext ?? null,
     assetId: chat.assetId ?? null,
+    caseOfferId: chat.caseOfferId ?? null,
     eventId: chat.eventId ?? null,
     subEventId: chat.subEventId ?? null,
     groupId: chat.groupId ?? null,
@@ -596,6 +598,8 @@ export class ActivitiesPopupStore {
       service: this.normalizeEventChatCounter((currentContexts.service ?? 0) + (contextKey === 'service' ? unreadDelta : 0)),
       appSupport: this.normalizeEventChatCounter((currentContexts.appSupport ?? 0) + (contextKey === 'appSupport' ? unreadDelta : 0)),
       contacts: this.normalizeEventChatCounter((currentContexts.contacts ?? 0) + (contextKey === 'contacts' ? unreadDelta : 0)),
+      campaign: this.normalizeEventChatCounter((currentContexts.campaign ?? 0) + (contextKey === 'campaign' ? unreadDelta : 0)),
+      cases: this.normalizeEventChatCounter((currentContexts.cases ?? 0) + (contextKey === 'cases' ? unreadDelta : 0)),
       groupSupport: this.normalizeEventChatCounter((currentContexts.groupSupport ?? 0) + (contextKey === 'groupSupport' ? unreadDelta : 0)),
       supportCases: cloneSupportCaseCounters(currentContexts.supportCases)
     };
@@ -606,12 +610,14 @@ export class ActivitiesPopupStore {
 
   private chatContextCounterKey(
     channelType: EventChatRowPatch['channelType']
-  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | null {
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | 'campaign' | 'cases' | null {
     switch (channelType) {
       case 'mainEvent': return 'event';
       case 'optionalSubEvent': return 'subEvent';
       case 'groupSubEvent': return 'group';
       case 'serviceEvent': return 'service';
+      case 'campaign': return 'campaign';
+      case 'case': return 'cases';
       case 'contact': return 'contacts';
       case 'groupSupport': return 'groupSupport';
       case 'appSupport':

@@ -364,12 +364,10 @@
   @if (!retainsFullscreenView()) {
     <ng-container [ngTemplateOutlet]="paginationRatingOutlet"></ng-container>
   }
-  @if (!shouldRenderPaginationRatingBar()) {
-    <app-menu-outlet
-      [items]="dispatchedMenuItems()"
-      (itemSelect)="onMenuOutletItemSelect($event)"
-    ></app-menu-outlet>
-  }
+  <app-menu-outlet
+    [items]="dispatchedMenuItems()"
+    (itemSelect)="onMenuOutletItemSelect($event)"
+  ></app-menu-outlet>
 </div>
 
 <ng-template #fullscreenEmptyState>

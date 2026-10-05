@@ -1,5 +1,7 @@
-import { Injectable, Type, computed, inject, signal } from '@angular/core';
+import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 
+import {ActivityInvitePopupStore} from './activity-invite-popup.store';
+import type {ActivityMemberDTO} from '../../../core/contracts/activity.interface';
 import type { PaymentHistoryPageDto, SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
 import { ActivityStore } from './activity.store';
 import { UserProfileStore } from './user-profile.store';
@@ -13,6 +15,8 @@ export interface PaymentMethodPickerRequest {
 
 @Injectable({ providedIn: 'root' })
 export class PaymentMethodsPopupStore {
+  private readonly memberPicker=inject(ActivityInvitePopupStore);
+  readonly counterparty=signal<ActivityMemberDTO|null>(null);
   private readonly profiles = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
   private readonly historySummaryRef = signal<HistorySummary | null>(null);
@@ -27,6 +31,13 @@ export class PaymentMethodsPopupStore {
   readonly euroSummary = computed(() => this.historySummaryRef()?.euroSummary ?? null);
   readonly pendingRefundCount = computed(() => this.historySummaryRef()?.pendingRefundCount ?? 0);
 
+  private identity=this.profiles.activeUserId();
+  constructor(){effect(()=>{const id=this.profiles.activeUserId();if(id!==this.identity){this.identity=id;this.counterparty.set(null);this.close();}});}
+  async chooseCounterparty():Promise<void>{const userId=this.profiles.activeUserId();await this.memberPicker.ensureAssetMemberPickerPopupLoaded();
+    if(userId!==this.profiles.activeUserId()||!this.isOpen())return;
+    this.memberPicker.openActivityInvitePopup({ownerId:userId,ownerType:'asset',purpose:'payment',headerTitle:'payment.history.counterparty',selectionLimit:1,parentZIndex:22600,closeOwnerPopupOnClose:false,
+      initialSelection:this.counterparty()?[this.counterparty()!]:[],onApply:selected=>{if(userId===this.profiles.activeUserId()&&this.isOpen())this.counterparty.set(selected[0]??null);}});
+  }
   applyHistorySummary(userId: string, summary: HistorySummary): void {
     if (this.profiles.activeUserId() !== userId) return;
     const spendingTotals = { ...summary.spendingTotals };
@@ -73,6 +84,7 @@ export class PaymentMethodsPopupStore {
     this.openRef.set(false);
     this.pickerRef.set(null);
     this.historySummaryRef.set(null);
+    this.counterparty.set(null);
   }
 
   togglePickerSelection(paymentMethodId: string): void {

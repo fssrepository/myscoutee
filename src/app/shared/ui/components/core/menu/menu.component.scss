@@ -427,10 +427,10 @@
 }
 
 .app-menu__palette--gold {
-  --app-menu-bg: linear-gradient(180deg, #fff7df 0%, #ffedbb 100%);
+  --app-menu-bg: #{colors.$gold-background};
   --app-menu-bg-hover: linear-gradient(180deg, #fffaf0 0%, #ffe6a8 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #dfb13f 0%, #bf8b22 100%);
-  --app-menu-border: rgba(189, 141, 51, 0.42);
+  --app-menu-border: #{colors.$gold-border};
   --app-menu-fg: #835d14;
   --app-menu-icon: #c8921e;
   --app-menu-line: rgba(189, 141, 51, 0.34);
@@ -887,6 +887,15 @@
   white-space: nowrap;
 }
 
+@supports (text-box: trim-both cap alphabetic) {
+  .app-menu__trigger-label {
+    // Center the visible letter height with the icons. Keep room for accents
+    // and descenders inside the ellipsis clipping box.
+    text-box: trim-both cap alphabetic;
+    padding-block: 0.25em;
+  }
+}
+
 .app-menu__trigger-caret {
   transition: transform 0.16s ease;
 }
@@ -1333,6 +1342,7 @@
 .app-menu__button-row-label {
   flex: 1 1 auto;
   min-width: 0;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1780,6 +1790,27 @@
   width: max-content;
   min-width: 100%;
   max-width: min(28rem, calc(100vw - 1.2rem));
+}
+
+// A dropdown heading stays outside the scrolling action list.
+.app-menu__panel--dropdown-list:not(.app-menu__panel--inline) {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.app-menu__panel--dropdown-list > .app-menu__heading,
+.app-menu__panel--dropdown-list > .app-menu__branch-header {
+  flex: 0 0 auto;
+}
+
+.app-menu__panel--dropdown-list > .app-menu__items {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .app-menu__panel--has-branch-header > .app-menu__items {

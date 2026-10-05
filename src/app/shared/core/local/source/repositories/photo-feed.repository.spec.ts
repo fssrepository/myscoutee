@@ -38,6 +38,6 @@ describe('Photo feed local persistence and distance paging', () => {
     const dto = repository.page('alice', origin, { page: 0, pageSize: 10 }).items[0];
     const card = PhotoFeedConverter.convert(dto);
     expect(card.imageUrls).toEqual(['first', 'second']); expect(card.title).toBe('First caption');
-    expect(card.eagerDetail?.imageDetails.first.location).toBe('Park');
+    expect(card.eagerDetail?.imageDetails['first'].location).toBe('Park');
   });
 });

@@ -101,7 +101,7 @@ export class LocalIntegrationRepository {
       const payer = table.byId[userId];
       const previous = payer?.affiliatePayments?.[paymentId];
       const paymentProvider = previous?.provider ?? provider?.trim().toLowerCase() ?? 'dummy';
-      const ownerId = paymentProvider === 'cash' ? null : previous?.ownerId ?? payer?.affiliateReferrerUserId;
+      const ownerId = ['cash','bank-transfer'].includes(paymentProvider) ? null : previous?.ownerId ?? payer?.affiliateReferrerUserId;
       const owner = ownerId ? table.byId[ownerId] : null;
       if (!payer || (previous && (previous.currency !== currency || previous.gross !== grossMinor / 100))) return state;
       const refundMinor = Math.max(requestedRefundMinor, Math.round((previous?.refunded ?? 0) * 100));
@@ -154,6 +154,7 @@ export class LocalIntegrationRepository {
       || !/^[A-Z]{3}$/.test(request.currency) || request.note.length > 1000 || request.payerUserId === recipientId) {
       throw new Error('Invalid cash receipt');
     }
+    const method=request.method??'cash';if(!['cash','bank-transfer'].includes(method))throw new Error('Invalid receipt method');
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     const payer = users.byId[request.payerUserId];
     const recipient = users.byId[recipientId];
@@ -166,9 +167,9 @@ export class LocalIntegrationRepository {
     const previous = payer.affiliatePayments?.[id];
     if (previous?.manualCashDeleted) throw new Error('Receipt was deleted');
     if (previous && (previous.recipientUserId !== recipientId || previous.gross !== request.amount
-      || previous.currency !== request.currency || previous.receiptNote !== note)) throw new Error('Receipt request already used');
+      || previous.currency !== request.currency || previous.receiptNote !== note || previous.provider !== method)) throw new Error('Receipt request already used');
     if (!previous) {
-      this.recordPayment(payer.id, id, request.currency, request.amount, 0, false, id, recipientId, undefined, undefined, 'cash');
+      this.recordPayment(payer.id, id, request.currency, request.amount, 0, false, id, recipientId, undefined, undefined, method);
       this.memoryDb.write(state => {
         const table = state[USERS_TABLE_NAME];
         const currentPayer = table.byId[payer.id];
@@ -203,13 +204,14 @@ export class LocalIntegrationRepository {
     return users.ids.flatMap(payerId => Object.entries(users.byId[payerId].affiliatePayments ?? {}).flatMap(([id, payment]) => {
       if (!payment.sourceId || (payerId !== userId && payment.recipientUserId !== userId)) return [];
       const direction = payerId === userId ? 'expense' as const : 'income' as const;
-      const base = { note: payment.receiptNote, counterpartyName: payerId === userId ? payment.receiptRecipientName : payment.receiptPayerName,
-        fulfillmentKind: payment.manualCash ? 'cash-receipt' : null, sourceId: payment.sourceId, checkoutSessionId: id, provider: payment.provider ?? 'dummy', currency: payment.currency,
-        recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : 'joined',
+      const base = { counterpartyUserId:payerId===userId?payment.recipientUserId:payerId, note: payment.receiptNote, counterpartyName: payerId === userId ? payment.receiptRecipientName : payment.receiptPayerName,
+        serviceContext:payment.manualCash?null:payment.fulfillmentKind==='client'?'asset' as const:'event' as const,contextEventId:payment.manualCash||payment.fulfillmentKind==='client'?null:payment.sourceId,contextAssetId:payment.fulfillmentKind==='client'?payment.sourceId:null,
+        fulfillmentKind: payment.manualCash ? 'cash-receipt' : payment.fulfillmentKind ?? null, sourceId: payment.sourceId, paymentMethodId:payment.paymentMethodId, checkoutSessionId: payment.checkoutSessionId??id, provider: payment.provider ?? 'dummy', currency: payment.currency,
+        recipientUserId: payment.recipientUserId, bookingStatus: payment.refunded >= payment.gross ? 'cancelled' : payment.bookingStatus??'joined',
         canRequestRefund: false, canApproveRefund: false };
       const refundPreview = this.refundPreview(payment);
-      return [{ ...base, id, direction, amount: payment.gross, status: payment.manualCashDeleted ? 'deleted' : 'approved', auditKind: 'payment',
-          fulfillmentKind: payment.manualCash ? 'cash-receipt' : null,
+      return [{ ...base, id, direction, amount: payment.gross, status: payment.manualCashDeleted ? 'deleted' : payment.paymentStatus??'approved', auditKind: 'payment',
+          fulfillmentKind: payment.manualCash ? 'cash-receipt' : payment.fulfillmentKind ?? null,
           note: payment.receiptNote, counterpartyName: direction === 'income' ? payment.receiptPayerName : payment.receiptRecipientName,
           refundPreview, canRequestRefund: payerId === userId && !payment.refundRequest
             && payment.refunded === 0 && (refundPreview?.refundableAmount ?? 0) > 0,
@@ -229,6 +231,7 @@ export class LocalIntegrationRepository {
     const payment = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId]?.affiliatePayments?.[paymentId];
     if (!payment) return false;
     if (payment.manualCashDeleted) throw new Error('Receipt was deleted');
+    if(payment.refundRequest)return true;
     const preview = this.refundPreview(payment);
     if (payment.refundRequest || payment.refunded > 0 || preview.refundableAmount <= 0) {
       throw new Error('This payment can no longer be refunded.');
@@ -239,6 +242,7 @@ export class LocalIntegrationRepository {
 
   private refundPreview(payment: NonNullable<UserRecord['affiliatePayments']>[string]): PaymentRefundPreviewDto {
     const paid = payment.gross;
+    if(payment.paymentStatus&&!['approved','captured','authorized','partially_refunded'].includes(payment.paymentStatus))return {paidAmount:paid,refundableAmount:0,retainedAmount:paid,currency:payment.currency,status:'not_eligible'};
     if (payment.manualCash) {
       const remaining = payment.manualCashDeleted ? 0 : Math.max(0, paid - payment.refunded);
       return { paidAmount: paid, refundableAmount: remaining, retainedAmount: paid - remaining,

@@ -1,3 +1,6 @@
+import backgroundJobs from '../../data/background-job-definitions.json';
+import communityJobs from '../../data/community-job-definitions.json';
+import workJobKeys from '../../data/work-job-keys.json';
 import type {
   AdminNotificationCenterState,
   AdminNotificationIntervalUnit,
@@ -30,9 +33,34 @@ const ADMIN_NOTIFICATION_INTERVAL_SECONDS: Record<AdminNotificationIntervalUnit,
 };
 
 export class AdminNotificationsSeedBuilder {
+  static buildScopedNotificationCenter(): AdminNotificationCenterState & { baseGroups: Record<string, AdminNotificationCenterState> } {
+    const work = this.buildDefaultNotificationCenter();
+    work.rules = work.rules.filter(rule => workJobKeys.includes(rule.ruleKey)).map(rule => ({ ...rule,
+      runState: { ...rule.runState, currentStatus: 'ready', progressPercent: 0, progressDetail: '', startedAtIso: '',
+        finishedAtIso: '', durationMillis: 0, lastRunAtIso: '', lastRunStatus: '', lastRunDetail: '', lastRunCount: 0,
+        lastRunUser: '', pendingCount: 0, pendingCountUpdatedAtIso: '' }, runHistory: []
+    }));
+    const community = structuredClone(work);
+    community.rules.push(...communityJobs.map(job => this.defaultNotificationRule({
+      ruleKey: job.ruleKey, label: `admin.jobs.rule.${job.ruleKey}`, category: 'admin.jobs.category.scheduled',
+      description: `admin.jobs.rule.${job.ruleKey}.description`, actionKey: job.ruleKey, triggerKind: 'scheduled_process',
+      enabled: true, manualRunEnabled: false, adminManageable: true, priority: 270, pushEnabled: false, emailEnabled: false,
+      timingMode: 'interval', intervalSeconds: job.intervalSeconds
+    })));
+    return { ...this.buildDefaultNotificationCenter(), baseGroups: { 'myscoutee-work': work, 'myscoutee-community': community } };
+  }
+
   static buildDefaultNotificationCenter(): AdminNotificationCenterState {
     return {
       rules: [
+        ...backgroundJobs.map(job => this.defaultNotificationRule({
+          ruleKey: job.ruleKey, label: `admin.jobs.rule.${job.ruleKey}`, category: 'admin.jobs.category.scheduled',
+          description: `admin.jobs.rule.${job.ruleKey}.description`, actionKey: job.ruleKey,
+          triggerKind: 'scheduled_process', enabled: true, manualRunEnabled: false, adminManageable: true,
+          priority: 200, pushEnabled: false, emailEnabled: false, timingMode: 'interval',
+          intervalSeconds: job.intervalSeconds,
+          startTime: '00:00'
+        })),
         this.defaultNotificationRule({
           ruleKey: 'event-random-groups',
           label: 'admin.jobs.rule.event.random.groups',
@@ -327,6 +355,7 @@ export class AdminNotificationsSeedBuilder {
     emailEnabled: boolean;
     timingMode: AdminNotificationTimingMode;
     intervalMinutes?: number;
+    intervalSeconds?: number;
     startTime?: string;
     month?: number;
     dayOfMonth?: number;
@@ -335,7 +364,9 @@ export class AdminNotificationsSeedBuilder {
     parameters?: AdminNotificationRuleParameter[];
     scheduleSlots?: AdminNotificationScheduleSlot[];
   }): AdminNotificationRule {
-    const interval = this.notificationInterval(options.intervalMinutes ?? 60);
+    const interval = options.intervalSeconds != null
+      ? { seconds: options.intervalSeconds, amount: options.intervalSeconds, unit: 'seconds' as const, minutes: options.intervalSeconds / 60 }
+      : this.notificationInterval(options.intervalMinutes ?? 60);
     const startTime = this.normalizeNotificationTime(options.startTime);
     return {
       ruleKey: options.ruleKey,

@@ -57,7 +57,7 @@ export class EventFeedbackFilterMenuConverter {
     return {
       label: this.filterLabel(filter),
       icon: this.filterIcon(filter),
-      ariaLabel: 'Open event feedback filter',
+      ariaLabel: 'feedback.filter',
       palette: this.filterPalette(filter),
       counter: count > 0 ? { value: count, max: 99 } : null,
       layout: 'pill'
@@ -136,14 +136,14 @@ export class EventFeedbackListPresentationConverter {
   private static emptyDescription(filter: EventFeedbackListFilter): string {
     switch (filter) {
       case 'own-events':
-        return 'No feedback-ready own events yet.';
+        return 'feedback.empty.own';
       case 'feedbacked':
-        return 'No feedbacked events yet.';
+        return 'feedback.empty.feedbacked';
       case 'removed':
-        return 'No removed events.';
+        return 'feedback.empty.removed';
       case 'pending':
       default:
-        return 'No pending events yet. New items appear about 2 hours after event start.';
+        return 'feedback.empty.pending';
     }
   }
 

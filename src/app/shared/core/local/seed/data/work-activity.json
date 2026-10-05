@@ -1,0 +1,71 @@
+{
+  "ratings": [
+    {
+      "campaignId": "work-campaign-product-team",
+      "from": "Farkas Anna",
+      "to": "Alex Turner",
+      "rating": 8
+    },
+    {
+      "campaignId": "work-campaign-product-team",
+      "from": "Alex Turner",
+      "to": "Farkas Anna",
+      "rating": 9
+    },
+    {
+      "campaignId": "work-campaign-company-introductions",
+      "from": "Farkas Anna",
+      "to": "Alex Turner",
+      "rating": 6
+    },
+    {
+      "campaignId": "work-campaign-product-team",
+      "from": "Kiss Balázs",
+      "to": "Alex Turner",
+      "rating": 7
+    },
+    {
+      "campaignId": "work-campaign-product-team",
+      "from": "Alex Turner",
+      "to": "Kiss Balázs",
+      "rating": 8
+    }
+  ],
+  "events": [
+    {
+      "id": "work-event-product-team",
+      "campaignId": "work-campaign-product-team",
+      "title": "Product team introductions",
+      "startAtIso": "2026-11-12T17:00:00.000Z",
+      "endAtIso": "2026-11-12T18:30:00.000Z",
+      "participants": [
+        "Farkas Anna",
+        "Kiss Balázs"
+      ],
+      "capacity": 6
+    },
+    {
+      "id": "work-event-company-introductions",
+      "campaignId": "work-campaign-company-introductions",
+      "title": "Meet the company",
+      "startAtIso": "2026-11-14T16:00:00.000Z",
+      "endAtIso": "2026-11-14T17:30:00.000Z",
+      "participants": [
+        "Farkas Anna"
+      ],
+      "capacity": 12
+    },
+    {
+      "id": "work-event-product-recap",
+      "campaignId": "work-campaign-product-team",
+      "title": "Product idea roundtable",
+      "startAtIso": "2026-10-02T16:00:00.000Z",
+      "endAtIso": "2026-10-02T17:30:00.000Z",
+      "participants": [
+        "Farkas Anna",
+        "Kiss Balázs"
+      ],
+      "capacity": 6
+    }
+  ]
+}
