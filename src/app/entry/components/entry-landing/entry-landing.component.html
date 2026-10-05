@@ -2,7 +2,6 @@
 
 <section
   class="entry-shell" appLandingGuideSurface="landing.home"
-  [attr.data-deployment-theme]="branding.themePreset.toLowerCase()"
   [attr.inert]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? '' : null"
   [attr.aria-hidden]="(aboutPopupOpen || partnersPopupOpen || countriesPopupOpen) ? 'true' : null"
 >
@@ -15,6 +14,8 @@
           ></app-deployment-brand>
         </span>
       </div>
+      <app-menu class="entry-usage-menu" data-guide-field="usage-mode" kind="inline" layout="row"
+        [items]="usageModeItems()" (itemSelect)="selectUsageMode($event)"></app-menu>
       <div class="entry-header-actions">
         <button
           type="button"
@@ -43,17 +44,17 @@
         <div class="entry-hero-content">
           <div class="entry-heritage-statement">
             <h1 class="entry-heritage-title">
-              <span>{{ 'landing.hero.history' | i18n: 'Meeting people was once social.' }}</span>
+              <span>{{ heroKey('history') | i18n: 'Meeting people was once social.' }}</span>
             </h1>
           </div>
           <p class="entry-heritage-return">
-            {{ 'landing.hero.return' | i18n: 'We’re making it social again.' }}
+            {{ heroKey('return') | i18n: 'We’re making it social again.' }}
           </p>
           <p class="entry-hero-thesis">
             {{ heroGraphText().prefix }} <span class="entry-hero-thesis-result">{{ heroGraphText().result }}</span>
           </p>
           <p class="entry-hero-thesis entry-hero-formats">
-            {{ 'landing.hero.event.formats' | i18n }}
+            {{ heroKey('event.formats') | i18n }}
           </p>
           <app-menu
             class="entry-hero-cta-menu" data-guide-control="entry-actions"
@@ -74,6 +75,7 @@
             >
             <app-smart-list
               class="entry-how-smart-list"
+              [filters]="howSmartListFilters"
               [config]="entryHowSmartListConfig"
               [loadPage]="entryHowSmartListLoadPage"
               [itemTemplate]="entryHowCardTemplate"
@@ -135,7 +137,7 @@
               [branding]="branding"
             ></app-deployment-brand>
           </div>
-          <p>Where fast matches turn into real connections.</p>
+          <p>{{ (landingMode() === 'dating' ? 'landing.footer.description' : 'landing.' + landingMode() + '.footer.description') | i18n }}</p>
         </section>
 
         <section class="entry-footer-links">
@@ -164,6 +166,7 @@
             (click)="openPreviewGuide($event)"
             >{{ 'bug.report' | i18n: 'Bug report' }}</button>
           <a
+            data-guide-field="footer-privacy"
             href="#"
             [class.entry-footer-link-disabled]="networkUnavailable"
             [attr.aria-disabled]="networkUnavailable ? 'true' : null"

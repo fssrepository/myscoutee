@@ -1,0 +1,230 @@
+[
+  {
+    "id": "community-case-riverside-leak",
+    "communityId": "community-riverside",
+    "ownerName": "Maya Stone",
+    "title": "Water leak in the entrance hall",
+    "description": "Water is leaking near the lift. Maya can show the damp patch to the assigned technician.",
+    "caseType": "fault",
+    "status": "open",
+    "audienceAll": false,
+    "audienceNames": [
+      "Maya Stone"
+    ],
+    "participantNames": [
+      "Maya Stone",
+      "Alex Turner",
+      "Kiss Balázs"
+    ],
+    "attentionNames": [
+      "Alex Turner"
+    ],
+    "support": [
+      {
+        "name": "Kiss Balázs",
+        "serviceId": "service-balazs-electrical",
+        "status": "accepted"
+      }
+    ],
+    "memberStatuses": {
+      "Maya Stone": "accepted",
+      "Alex Turner": "accepted",
+      "Kiss Balázs": "accepted"
+    },
+    "chatNames": [
+      "Kiss Balázs"
+    ],
+    "offers": [
+      {
+        "id": "leak-safety-quote",
+        "providerName": "Kiss Balázs",
+        "serviceId": "service-balazs-electrical",
+        "amount": 80,
+        "currency": "EUR",
+        "note": "Inspect electrical safety around the damp area. Repair work requires a separate quotation.",
+        "status": "accepted",
+        "createdAtIso": "2026-10-05T10:00:00.000Z",
+        "workPolicies": [
+          {
+            "id": "leak-safety-quote-work",
+            "title": "Work policy",
+            "description": "I can start in the week of 12 October after we agree access with the residents. The price covers the stated work; any additional work needs a separate agreement.",
+            "required": true
+          }
+        ],
+        "refundPolicies": [
+          {
+            "id": "leak-safety-quote-refund",
+            "title": "Refund policy",
+            "description": "No advance payment is required. Cancel before the agreed visit without a charge. Completed work and fitted materials are billed as agreed.",
+            "required": true
+          }
+        ]
+      }
+    ],
+    "boardTasks": [
+      {
+        "id": "leak-inspection",
+        "title": "Inspect electrical safety",
+        "description": "Inspect the electrical fittings near the damp area.",
+        "status": "todo",
+        "assigneeNames": [
+          "Kiss Balázs"
+        ],
+        "dependsOnIds": [],
+        "startAtIso": "2026-10-08T10:00:00.000Z",
+        "endAtIso": "2026-10-08T11:00:00.000Z",
+        "offerIds": [
+          "leak-safety-quote"
+        ]
+      },
+      {
+        "id": "leak-repair",
+        "title": "Arrange the repair",
+        "description": "Request quotations after the inspection.",
+        "status": "todo",
+        "assigneeNames": [
+          "Alex Turner"
+        ],
+        "dependsOnIds": [
+          "leak-inspection"
+        ],
+        "startAtIso": null,
+        "endAtIso": null,
+        "offerIds": []
+      }
+    ]
+  },
+  {
+    "id": "community-case-park-meters",
+    "communityId": "community-park-court",
+    "ownerName": "Alex Turner",
+    "title": "Joint meter replacement",
+    "description": "One shared case for meter replacement. Collect quotations and agree access with the residents.",
+    "caseType": "meter-replacement",
+    "status": "open",
+    "audienceAll": true,
+    "audienceNames": [
+      "Alex Turner",
+      "Maya Stone",
+      "Evan Reed"
+    ],
+    "participantNames": [
+      "Alex Turner",
+      "Maya Stone",
+      "Evan Reed",
+      "Farkas Anna"
+    ],
+    "attentionNames": [
+      "Maya Stone",
+      "Evan Reed",
+      "Farkas Anna"
+    ],
+    "support": [
+      {
+        "name": "Farkas Anna",
+        "serviceId": "service-anna-meters",
+        "status": "accepted"
+      }
+    ],
+    "memberStatuses": {
+      "Alex Turner": "accepted",
+      "Maya Stone": "accepted",
+      "Evan Reed": "accepted",
+      "Farkas Anna": "accepted"
+    },
+    "chatNames": [],
+    "offers": [
+      {
+        "id": "meters-anna-quote",
+        "providerName": "Farkas Anna",
+        "serviceId": "service-anna-meters",
+        "amount": 360,
+        "currency": "EUR",
+        "note": "Replace three water meters, including fittings and installation. The residents agree access and the work date after accepting the quotation.",
+        "status": "accepted",
+        "createdAtIso": "2026-10-06T00:00:00.000Z",
+        "workPolicies": [
+          {
+            "id": "meters-anna-quote-work",
+            "title": "Work policy",
+            "description": "I can start in the week of 12 October after we agree access with the residents. The price covers the stated work; any additional work needs a separate agreement.",
+            "required": true
+          }
+        ],
+        "refundPolicies": [
+          {
+            "id": "meters-anna-quote-refund",
+            "title": "Refund policy",
+            "description": "No advance payment is required. Cancel before the agreed visit without a charge. Completed work and fitted materials are billed as agreed.",
+            "required": true
+          }
+        ]
+      }
+    ],
+    "boardTasks": [
+      {
+        "id": "meters-scope",
+        "title": "Collect meter details",
+        "description": "Record the meter types and access arrangements.",
+        "status": "done",
+        "assigneeNames": [
+          "Evan Reed"
+        ],
+        "dependsOnIds": [],
+        "startAtIso": null,
+        "endAtIso": null,
+        "offerIds": []
+      },
+      {
+        "id": "meters-quotes",
+        "title": "Request quotations",
+        "description": "Compare the proposals with the residents.",
+        "status": "in-progress",
+        "assigneeNames": [
+          "Alex Turner"
+        ],
+        "dependsOnIds": [
+          "meters-scope"
+        ],
+        "startAtIso": null,
+        "endAtIso": null,
+        "offerIds": [
+          "meters-anna-quote"
+        ]
+      },
+      {
+        "id": "meters-access",
+        "title": "Coordinate access",
+        "description": "Collect the residents’ preferred times.",
+        "status": "todo",
+        "assigneeNames": [
+          "Evan Reed",
+          "Maya Stone"
+        ],
+        "dependsOnIds": [
+          "meters-scope"
+        ],
+        "startAtIso": "2026-10-08T08:00:00.000Z",
+        "endAtIso": "2026-10-08T09:00:00.000Z",
+        "offerIds": []
+      },
+      {
+        "id": "meters-install",
+        "title": "Replace the meters",
+        "description": "Assign the agreed technician and time after choosing a quotation.",
+        "status": "todo",
+        "assigneeNames": [],
+        "dependsOnIds": [
+          "meters-quotes",
+          "meters-access"
+        ],
+        "startAtIso": null,
+        "endAtIso": null,
+        "offerIds": [
+          "meters-anna-quote"
+        ]
+      }
+    ]
+  }
+]

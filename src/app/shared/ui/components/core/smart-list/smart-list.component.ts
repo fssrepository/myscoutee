@@ -3787,6 +3787,9 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     }
     this.ngZone.runOutsideAngular(() => {
       this.autoplayTimer = setInterval(() => {
+        // Live autoplay conditions (for example a covering modal) may change
+        // without a list load. Keep the current card until they allow a move.
+        if (this.resolvedPaginationAutoplayMs() === null) return;
         const cursor = this.finiteStepper.state();
         if (cursor.total <= 1) {
           this.clearPaginationAutoplay();

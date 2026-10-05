@@ -1,3 +1,4 @@
+import { isBaseGroupId } from '../../../contracts/group-type';
 import { Injectable, inject } from '@angular/core';
 import type { AdminUserDto } from '../../../contracts/admin.interface';
 import { GROUP_MODERATION_CATEGORIES } from '../../../contracts/content-moderation.interface';
@@ -26,7 +27,10 @@ export class LocalContentModerationService extends LocalRouteDelayService {
   private async prepare(adminUserId: string, groupId?: string | null): Promise<AdminUserDto | undefined> {
     await this.repository.whenReady();
     let moderator: AdminUserDto | undefined;
-    if (groupId) {
+    const profile = this.users.queryUserById(adminUserId);
+    if (isBaseGroupId(groupId) && profile?.admin && profile.workspaceGroupId === groupId) {
+      moderator = { id: profile.id, name: profile.name, initials: profile.initials, email: '', images: [...(profile.images ?? [])] };
+    } else if (groupId) {
       const accountId = this.users.queryUserById(adminUserId)?.accountUserId ?? adminUserId;
       const group = await this.groups.detail(accountId, groupId);
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') throw new Error('groups.forbidden');
@@ -45,12 +49,12 @@ export class LocalContentModerationService extends LocalRouteDelayService {
   async snapshot(adminUserId: string, groupId?: string | null) { await this.prepare(adminUserId, groupId); return this.repository.snapshot(groupId); }
   async page(adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery, groupId?: string | null) {
     await this.prepare(adminUserId, groupId);
-    if (groupId && category === 'group') throw new Error('moderation.changed');
+    if (groupId && !isBaseGroupId(groupId) && category === 'group') throw new Error('moderation.changed');
     return this.repository.page(category, status, query, groupId);
   }
   async settings(adminUserId: string, revision: number, settings: ContentModerationSettings, groupId?: string | null) {
     await this.prepare(adminUserId, groupId);
-    if (groupId && settings.categories.some(category => !GROUP_MODERATION_CATEGORIES.includes(category))) throw new Error('moderation.invalidSettings');
+    if (groupId && !isBaseGroupId(groupId) && settings.categories.some(category => !GROUP_MODERATION_CATEGORIES.includes(category))) throw new Error('moderation.invalidSettings');
     if (!Number.isInteger(settings.delayMinutes) || settings.delayMinutes < 0 || settings.delayMinutes > 43200) throw new Error('moderation.invalidSettings');
     return this.repository.saveSettings(settings, revision, groupId);
   }

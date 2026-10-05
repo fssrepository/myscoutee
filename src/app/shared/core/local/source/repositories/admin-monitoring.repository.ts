@@ -1,20 +1,25 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../../common/app.db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LocalAdminMonitoringRepository {
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly memoryDb = inject(LocalMemoryDb);
 
   async whenReady(): Promise<void> {
     await this.memoryDb.whenReady();
   }
 
-  async readStore<T>(): Promise<T | null> {
-    return await this.memoryDb.readIndexedDbTableEntry<T>(APP_INDEXED_DB_KEYS.adminMonitoring);
+  async readStore<T>(adminUserId?: string | null): Promise<T | null> {
+    const groupId = this.memoryDb.read().users.byId[adminUserId ?? '']?.workspaceGroupId;
+    const store = await this.memoryDb.readIndexedDbTableEntry<T & { baseGroups?: Record<string, T> }>(APP_INDEXED_DB_KEYS.adminMonitoring);
+    if (groupId) return store?.baseGroups?.[groupId] ?? null;
+    if (!store) return null;
+    const { baseGroups: _baseGroups, ...baseStore } = store;
+    return baseStore as T;
   }
 
   async writeStore<T>(store: T): Promise<void> {

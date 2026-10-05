@@ -1,3 +1,11 @@
+import {SeedPaymentsRepository} from '../repositories/payments-seed.repository';
+import { SeedServiceOfferingsRepository } from '../repositories/service-offerings-seed.repository';
+import { SeedCommunityAnnouncementsRepository } from '../repositories/community-announcements-seed.repository';
+import { SeedCommunityCasesRepository } from '../repositories/community-cases-seed.repository';
+import { COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME } from '../../source/entity/community-case.entity';
+import { SeedWorkActivityRepository } from "../repositories/work-activity-seed.repository";
+import { SeedCampaignsRepository } from '../repositories/campaigns-seed.repository';
+import { CAMPAIGNS_TABLE_NAME } from '../../source/entity/campaign.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../source/entity/profile.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
@@ -60,6 +68,12 @@ export class SeedDemoBootstrapService {
   private readonly usersSeed = inject(SeedUsersRepository);
   private readonly notificationsSeed = inject(SeedNotificationsRepository);
   private readonly activityMembersSeed = inject(SeedActivityMembersRepository);
+  private readonly workActivitySeed = inject(SeedWorkActivityRepository);
+  private readonly communityAnnouncementsSeed = inject(SeedCommunityAnnouncementsRepository);
+  private readonly paymentsSeed=inject(SeedPaymentsRepository);
+  private readonly serviceOfferingsSeed = inject(SeedServiceOfferingsRepository);
+  private readonly communityCasesSeed = inject(SeedCommunityCasesRepository);
+  private readonly campaignsSeed = inject(SeedCampaignsRepository);
   private readonly communityGroupsSeed = inject(SeedCommunityGroupsRepository);
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
@@ -188,7 +202,9 @@ export class SeedDemoBootstrapService {
       eventFeedbackChanged = this.seedEventFeedbackState();
     }
 
-    const activityCountersChanged = this.usersSeed.stampSeededActivityCountsForUser(normalizedUserId);
+    const chatCountersChanged = this.chatsSeed.stampStoredChatCountersForUsers([normalizedUserId]);
+    const activityCountersChanged = this.usersSeed.stampSeededActivityCountsForUser(normalizedUserId)
+      || chatCountersChanged;
     const impressionsChanged = this.usersSeed.stampSeededImpressionsForUser(normalizedUserId);
     await this.flushSessionTablesIfChanged(onProgress, {
       filterPreferencesChanged,
@@ -485,6 +501,7 @@ export class SeedDemoBootstrapService {
         seededUserIds = seededUsers
           .map(user => user.id.trim())
           .filter(userId => userId.length > 0);
+        this.chatsSeed.stampStoredChatCountersForUsers(seededUserIds);
         this.registry.registerUsers(seededUsers);
         this.usersSeed.seedDefaultUserFilterPreferencesForUsers(seededUserIds);
         await this.flushBootstrapTables([USERS_TABLE_NAME, USER_FILTER_PREFERENCES_TABLE_NAME]);
@@ -510,16 +527,24 @@ export class SeedDemoBootstrapService {
         await this.flushBootstrapTables([ACTIVITY_MEMBERS_TABLE_NAME, EVENTS_TABLE_NAME]);
       });
       await this.runBootstrapStep('communityGroups', async () => {
-        if (this.communityGroupsSeed.seedDefaults(seededUsers)) {
+        await this.adminSeed.seedDemoAdminUsers();
+        if (this.communityGroupsSeed.seedDefaults(this.usersSeed.seedDefaults())) {
           await this.flushBootstrapTables([COMMUNITY_GROUPS_TABLE_NAME, ACTIVITY_MEMBERS_TABLE_NAME, USERS_TABLE_NAME]);
         }
+        if (this.campaignsSeed.seedDefaults()) await this.flushBootstrapTables([CAMPAIGNS_TABLE_NAME]);
+        if (this.serviceOfferingsSeed.seedDefaults()) await this.flushBootstrapTables(['serviceOfferings']);
+        if (this.communityCasesSeed.seedDefaults()) await this.flushBootstrapTables([COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME, CHATS_TABLE_NAME]);
+        if (this.communityAnnouncementsSeed.seedDefaults()) await this.flushBootstrapTables(['communityAnnouncements']);
+        this.workActivitySeed.seedDefaults();
+        await this.flushBootstrapTables([USER_RATES_TABLE_NAME, EVENTS_TABLE_NAME, ACTIVITY_MEMBERS_TABLE_NAME, USERS_TABLE_NAME]);
       });
       await this.runBootstrapStep('activityResources', async () => {
         const sourceRecordsByUserId = this.registry.getEventsByUserId().size > 0
           ? new Map(this.registry.getEventsByUserId())
           : this.eventsSeed.queryItemsByUsers(seededUserIds);
         this.activityResourcesSeed.seedDefaults(ownerUserIds(), sourceRecordsByUserId, assetsByUserId);
-        await this.flushBootstrapTables([ACTIVITY_RESOURCES_TABLE_NAME, ASSETS_TABLE_NAME]);
+        this.paymentsSeed.seedDefaults();
+        await this.flushBootstrapTables([ACTIVITY_RESOURCES_TABLE_NAME, ASSETS_TABLE_NAME, USERS_TABLE_NAME]);
       });
     } finally {
       this.registry.clear();

@@ -22,7 +22,7 @@
     role="dialog"
     [attr.aria-modal]="popupModel.backdrop === false ? null : 'true'"
     [ngStyle]="anchorStyle"
-    (pointerdown)="popupModel.backdrop === false && $event.stopPropagation()"
+    (pointerdown)="onPanelPointerDown($event)"
     [attr.aria-label]="ariaLabel | i18n"
     (click)="onPanelClick($event)"
   >
@@ -306,6 +306,9 @@
       </div>
     }
 
+    @if (popupModel.errorMessage) {
+      <p class="ui-popup__error" role="alert">{{ popupModel.errorMessage | i18n }}</p>
+    }
     <div class="ui-popup__body" [ngClass]="bodyLayoutClass()">
       <ng-content></ng-content>
     </div>

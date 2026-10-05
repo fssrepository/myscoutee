@@ -1,3 +1,5 @@
+import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
@@ -229,6 +231,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
+  protected readonly campaigns = inject(CampaignsStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly assetStore = inject(AssetStore);
@@ -239,6 +243,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
+    isWork: () => this.workspace.isWork(),
+    campaignMenuItems: row => {
+      const c = this.campaigns.activityCampaign();
+      return c && c.ownerUserId !== this.userProfileStore.activeUserId() && row?.userId === c.ownerUserId && (row.scoreGiven ?? 0) > 0
+        ? [{ id: 'ask-campaign', label: 'campaign.ask', icon: 'chat', palette: 'blue', context: c }] : [];
+    },
     getActiveUserGender: () => this.activeUser.gender,
     getActivitiesPrimaryFilter: () => this.activitiesPrimaryFilter,
     getActivitiesRateFilter: () => this.activitiesRateFilter,
@@ -247,7 +257,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ? this.activitiesPairRateSocialBadgeEnabled
       : this.activitiesIndividualRateSocialBadgeEnabled,
     getFilteredActivityRows: () => this.filteredActivityRows,
-    getRateItems: () => this.ratesService.peekRateItemsByUser(this.activeUser.id),
+    getRateItems: () => this.ratesService.peekRateItemsByUser(this.activeUser.id, this.campaigns.activityCampaign()?.id),
     getSmartListCursorItem: () => this.activitiesSmartList?.cursorItem() ?? null,
     getActivitiesListScrollElement: () => this.activitiesSmartList?.scrollElement() ?? null,
     getPaginationMenuHeight: () => this.activitiesSmartList?.paginationMenuHeightPx() ?? 0,
@@ -665,6 +675,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivityEventSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (event.id === 'ask-campaign') {
+      const campaign = this.campaigns.activityCampaign();
+      if (campaign) void this.campaigns.ask(campaign);
+      return;
+    }
     if (this.activitiesRates.handleMenuSelect(event)) {
       return;
     }
@@ -834,6 +849,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
+    if (this.activitiesPrimaryFilter === 'rates' && this.workspace.isWork()) {
+      void this.campaigns.openHistory(profileView);
+      return;
+    }
     this.profileStore.openProfileView(profileView);
   }
 
@@ -865,8 +884,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesSupportCaseFilter   = store.activitiesSupportCaseFilter() as ContractTypes.SupportCaseFilter;
       this.activitiesSecondaryFilter     = store.activitiesSecondaryFilter() as ContractTypes.ActivitiesSecondaryFilter;
       this.hostingPublicationFilter      = store.activitiesHostingPublicationFilter() as ContractTypes.HostingPublicationFilter;
-      this.activitiesRateFilter          = store.activitiesRateFilter() as ContractTypes.RateFilterKey;
-      this.activitiesRateSocialBadgeEnabled = store.activitiesRateSocialBadgeEnabled();
+      this.activitiesRateFilter          = this.workspace.isWork() && store.activitiesRateFilter().startsWith('pair-') ? 'individual-given' : store.activitiesRateFilter() as ContractTypes.RateFilterKey;
+      this.activitiesRateSocialBadgeEnabled = !this.workspace.isWork() && store.activitiesRateSocialBadgeEnabled();
       this.activitiesIndividualRateSocialBadgeEnabled = store.activitiesIndividualRateSocialBadgeEnabled();
       this.activitiesPairRateSocialBadgeEnabled = store.activitiesPairRateSocialBadgeEnabled();
       this.activitiesView                = store.activitiesView() as ContractTypes.ActivitiesView;
@@ -1272,8 +1291,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesPopupModel(): PopupModel<ActivitiesPopupMenuContext> {
     return {
       title: 'Activities',
-      subtitle: this.activitiesHeaderLineOne(),
-      secondarySubtitle: this.activitiesHeaderLineTwo(),
+      subtitle: this.activitiesHeaderLineTwo() || this.activitiesHeaderLineOne(),
+      secondarySubtitle: this.activitiesHeaderLineTwo() ? this.activitiesHeaderLineOne() : '',
       ariaLabel: 'Activities',
       closeAriaLabel: 'Close activities',
       size: 'wide',
@@ -1465,7 +1484,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesHeaderLineTwo(): string {
-    return '';
+    return this.activitiesPrimaryFilter !== 'chats' ? this.campaigns.activityCampaign()?.title ?? '' : '';
   }
 
   private activitiesSupportCaseMenuTrigger(): AppMenuTrigger {
@@ -1568,9 +1587,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       headerActions?: AppMenuItem<string, ActivitiesPopupMenuContext>[];
     };
     const nodes: RateMenuNode[] = [];
-    const rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id);
+    const rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id, this.campaigns.activityCampaign()?.id);
     let currentNode: RateMenuNode | null = null;
     for (const option of APP_STATIC_DATA.rateFilterEntries as RateFilterEntry[]) {
+      if (this.workspace.isWork() && (option.kind === 'group' ? this.rateSocialGroupForLabel(option.label) === 'pair' : option.key.startsWith('pair-'))) continue;
       if (option.kind === 'group') {
         const groupLabel = option.label;
         const groupPalette = this.activitiesRateGroupPalette(groupLabel);
@@ -1606,7 +1626,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     return {
       nodes,
-      headerActions: [{
+      headerActions: this.workspace.isWork() ? [] : [{
         id: 'rate-social',
         label: 'social',
         icon: 'diversity_3',
@@ -1942,6 +1962,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activitiesChatContextPalette(filter: ContractTypes.ActivitiesChatContextFilter): AppMenuPalette {
     switch (filter) {
+      case 'cases':
+        return 'gold';
       case 'event':
         return 'orange';
       case 'subEvent':
@@ -2105,6 +2127,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       service: this.normalizeBadgeCounter(profile?.service),
       appSupport: this.normalizeBadgeCounter(profile?.appSupport),
       contacts: this.normalizeBadgeCounter(profile?.contacts),
+      campaign: this.normalizeBadgeCounter(profile?.campaign),
+      cases: this.normalizeBadgeCounter(profile?.cases),
       groupSupport: this.normalizeBadgeCounter(profile?.groupSupport)
     };
   }
@@ -2118,6 +2142,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       service: 0,
       appSupport: 0,
       contacts: 0,
+      campaign: 0,
+      cases: 0,
       groupSupport: 0
     };
   }
@@ -2868,14 +2894,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   rateFilterCount(
     filter: ContractTypes.RateFilterKey,
-    items: ActivityRateDTO[] = this.ratesService.peekRateItemsByUser(this.activeUser.id)
+    items: ActivityRateDTO[] = this.ratesService.peekRateItemsByUser(this.activeUser.id, this.campaigns.activityCampaign()?.id)
   ): number {
     return items
       .filter((item: ActivityRateDTO) => this.activitiesRates.matchesFilter(item, filter)).length;
   }
 
   private rateSocialCount(): number {
-    return this.ratesService.peekRateItemsByUser(this.activeUser.id)
+    return this.ratesService.peekRateItemsByUser(this.activeUser.id, this.campaigns.activityCampaign()?.id)
       .filter(item => APP_STATIC_DATA.rateFilters.some(option => matchesActivitiesRateFilter(item, option.key, true))).length;
   }
 
@@ -3839,6 +3865,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private syncActivitiesSmartListQuery(): void {
     const nextFilters: Record<string, unknown> = {
+      campaignId: this.activitiesPrimaryFilter !== 'chats' ? this.campaigns.activityCampaign()?.id ?? null : null,
       primaryFilter: this.activitiesPrimaryFilter,
       eventScopeFilter: this.activitiesEventScope,
       secondaryFilter: this.activitiesSecondaryFilter,
@@ -3851,7 +3878,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
     const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
-      currentFilters['primaryFilter'] === nextFilters['primaryFilter']
+      currentFilters['campaignId'] === nextFilters['campaignId']
+      && currentFilters['primaryFilter'] === nextFilters['primaryFilter']
       && currentFilters['eventScopeFilter'] === nextFilters['eventScopeFilter']
       && currentFilters['secondaryFilter'] === nextFilters['secondaryFilter']
       && currentFilters['chatContextFilter'] === nextFilters['chatContextFilter']

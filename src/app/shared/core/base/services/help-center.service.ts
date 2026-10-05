@@ -1,6 +1,10 @@
+import { GroupWorkspaceContextService } from './group-workspace-context.service';
+import { baseGroupId } from '../../contracts/group-type';
 import {
   Injectable,
   computed,
+  effect,
+  untracked,
   inject,
   signal
 } from '@angular/core';
@@ -32,11 +36,16 @@ export class HelpCenterService extends BaseRouteModeService {
   private readonly localHelpCenterService = inject(LocalHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
   private readonly helpCenterStore = inject(HelpCenterStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  readonly landingGroupId = signal<string | null>(null);
+  private readonly contentGroupId = computed(() => this.workspace.accountUserId()
+    ? baseGroupId(this.workspace.groupType()) : this.landingGroupId());
   private readonly helpStateRef = signal<HelpCenterStateDto | null>(null);
   private readonly privacyStateRef = signal<HelpCenterStateDto | null>(null);
   private readonly termsStateRef = signal<HelpCenterStateDto | null>(null);
   private readonly explanationStateRef = signal<HelpCenterStateDto | null>(null);
-  private preloadPromises: Partial<Record<HelpCenterDocumentKind, Promise<HelpCenterStateDto>>> = {};
+  private readonly stateGroups = new Map<HelpCenterDocumentKind, string | null>();
+  private preloadPromises: Partial<Record<string, Promise<HelpCenterStateDto>>> = {};
 
   readonly state = this.helpStateRef.asReadonly();
   readonly privacyState = this.privacyStateRef.asReadonly();
@@ -55,14 +64,30 @@ export class HelpCenterService extends BaseRouteModeService {
   readonly activeTermsVersionLabel = computed(() => this.versionLabel(this.activeTermsRevision()?.version));
   readonly activeExplanationVersionLabel = computed(() => this.versionLabel(this.activeExplanationRevision()?.version));
 
+  constructor() {
+    super();
+    let current = this.contentGroupId();
+    effect(() => {
+      const next = this.contentGroupId();
+      if (next === current) return;
+      current = next;
+      untracked(() => {
+        if (this.stateGroups.get('help') !== next) this.helpStateRef.set(null);
+        if (this.stateGroups.get('terms') !== next) this.termsStateRef.set(null);
+        if (this.stateGroups.get('explanation') !== next) this.explanationStateRef.set(null);
+      });
+    });
+  }
+
   async preload(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
-    if (!this.preloadPromises[documentKind]) {
-      this.preloadPromises[documentKind] = this.loadState(documentKind).finally(() => {
-        delete this.preloadPromises[documentKind];
+    const key = `${documentKind === 'privacy' ? 'website' : this.contentGroupId() ?? 'dating'}:${documentKind}`;
+    if (!this.preloadPromises[key]) {
+      this.preloadPromises[key] = this.loadState(documentKind).finally(() => {
+        delete this.preloadPromises[key];
       });
     }
-    return this.preloadPromises[documentKind]!;
+    return this.preloadPromises[key]!;
   }
 
   async preloadAll(): Promise<void> {
@@ -99,37 +124,42 @@ export class HelpCenterService extends BaseRouteModeService {
   }
 
   async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterStateDto> {
+    const groupId = this.contentGroupId();
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
     const state = await service.loadAdminState(adminUserId, documentKind, lang, contextKey);
-    this.setState(documentKind, state);
+    if (groupId === this.contentGroupId()) this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
   async saveRevision(request: HelpCenterRevisionSaveRequestDto, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
+    const groupId = this.contentGroupId();
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).saveRevision(request, documentKind);
-    this.setState(documentKind, state);
+    if (groupId === this.contentGroupId()) this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
+    const groupId = this.contentGroupId();
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).activateRevision(revisionId, actorUserId, documentKind);
-    this.setState(documentKind, state);
+    if (groupId === this.contentGroupId()) this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
+    const groupId = this.contentGroupId();
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).deleteRevision(revisionId, actorUserId, documentKind);
-    this.setState(documentKind, state);
+    if (groupId === this.contentGroupId()) this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
   private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
-    const state = await this.helpService(kind).loadState(kind, lang, contextKey);
-    this.setState(kind, state);
+    const groupId = kind === 'privacy' ? null : this.contentGroupId();
+    const state = await this.helpService(kind).loadState(kind, lang, contextKey, groupId);
+    if (kind === 'privacy' || groupId === this.contentGroupId()) this.setState(kind, state);
     return this.cloneState(state);
   }
 
@@ -142,6 +172,7 @@ export class HelpCenterService extends BaseRouteModeService {
   }
 
   private setState(kind: HelpCenterDocumentKind, state: HelpCenterStateDto): void {
+    this.stateGroups.set(kind, kind === 'privacy' ? null : this.contentGroupId());
     const cloned = this.cloneState(state);
     if (kind === 'privacy') {
       this.privacyStateRef.set(cloned);

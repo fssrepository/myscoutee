@@ -135,6 +135,11 @@ export class HttpAdminNotificationsService {
       baseUrl.searchParams.set('adminUserId', normalizedAdminUserId);
       baseUrl.searchParams.set('userId', normalizedAdminUserId);
     }
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'demo') {
+      baseUrl.searchParams.set('sessionKind', 'demo');
+      if (session.sessionId) baseUrl.searchParams.set('sessionId', session.sessionId);
+    }
     if (this.sessionService.authMode === 'firebase') {
       const token = await this.sessionService.getFirebaseIdToken();
       if (!token) {

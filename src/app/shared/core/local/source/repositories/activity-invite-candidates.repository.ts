@@ -42,6 +42,12 @@ export class LocalActivityInviteCandidatesRepository {
       return { items: [], total: 0, page, pageSize };
     }
 
+    if(query.purpose==='payment') {
+      if(ownerId!==activeUserId||query.owner.ownerType!=='asset')return this.toPage([],page,pageSize);
+      const candidates=this.usersRepository.queryPaymentMembers(activeUser.workspaceGroupId,activeUserId)
+        .map(user=>({user,metAtIso:'',metWhere:'',userRateAffinity:0}));
+      return this.toPage(candidates,page,pageSize);
+    }
     if (query.owner.ownerType !== 'event' && query.parentOwner?.ownerId.trim()) {
       const childRecords = this.activityMembersRepository.peekRecordsByOwner({
         ownerType: query.owner.ownerType,

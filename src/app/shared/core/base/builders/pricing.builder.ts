@@ -491,7 +491,7 @@ export class PricingBuilder {
     return Math.round(value * 100) / 100;
   }
 
-  private static applyPricingRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
+  static applyPricingRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
     if (rounding === 'whole') {
       return Math.round(price);
     }

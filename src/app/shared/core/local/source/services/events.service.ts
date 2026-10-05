@@ -1,3 +1,6 @@
+import { baseGroupId, groupType, isBaseGroupId, groupPriorityEnabled } from '../../../contracts/group-type';
+import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
+import { LocalCampaignsService } from './campaigns.service';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { renderCalendarExport } from '../../../common/calendar-export';
@@ -119,6 +122,7 @@ interface LocalEventCounterSnapshot {
   providedIn: 'root'
 })
 export class LocalEventsService extends LocalRouteDelayService implements IEventsService {
+  private readonly campaigns = inject(LocalCampaignsService);
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
@@ -134,6 +138,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly jobGroups = inject(LocalCommunityGroupsRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
   private readonly assetTicketsRepository = inject(LocalAssetTicketsRepository);
   private readonly activityMembersService = inject(LocalActivityMembersService);
@@ -548,7 +553,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
   }
 
-  async purgeExpiredCheckoutBaskets(now = Date.now()): Promise<number> {
+  async purgeExpiredCheckoutBaskets(now = Date.now(), groupId: string | null = null): Promise<number> {
     const count = await this.eventCheckoutBasketsRepository.purgeExpiredReservations((userId, sourceId) => {
       const member = this.activityMembersRepository.peekRecordsByOwner({ ownerType: 'event', ownerId: sourceId })
         .find(item => item.userId === userId);
@@ -556,7 +561,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         this.eventsRepository.leaveEvent(userId, sourceId, { removeMembershipOnly: true });
         this.assetTicketsRepository.synchronizeForMemberChange(sourceId, userId);
       }
-    }, now);
+    }, now, userId => {
+      const workspace = this.usersRepository.queryUserById(userId)?.workspaceGroupId;
+      const base = isBaseGroupId(workspace) ? workspace : baseGroupId(groupType(workspace ? this.jobGroups.find(workspace)?.groupType : null));
+      return base === groupId;
+    });
     if (count) await this.eventsRepository.flushToIndexedDb();
     return count;
   }
@@ -819,8 +828,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return new EventFeedbackPageResultDto();
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId);
-    const organizerRecords = this.eventsRepository.queryHostingItemsByUser(normalizedUserId);
+    const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId)
+      .filter(event => !query.campaignId || event.campaignId === query.campaignId);
+    const organizerRecords = this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
+      .filter(event => !query.campaignId || event.campaignId === query.campaignId);
     const events = LocalActivityEventsMapper.toDtoList(records);
     const organizerEvents = LocalActivityEventsMapper.toDtoList(organizerRecords);
     const users = this.usersRepository.queryAllUsers();
@@ -940,7 +951,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
+    const workspace = this.usersRepository.queryUserById(record.creatorUserId || record.userId)?.workspaceGroupId;
+    if (workspace && !groupPriorityEnabled(this.jobGroups.find(workspace))) record.autoInviter = false;
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
+    if (payload.campaignId && existingRecord?.campaignId !== payload.campaignId) {
+      const campaign = await this.campaigns.detail(payload.userId, payload.campaignId);
+      if (campaign.ownerUserId !== payload.userId || campaign.status !== 'published') throw new Error('Forbidden');
+    }
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
     if (savedRecord) {
       this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
@@ -966,6 +983,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
+    const workspace = this.usersRepository.queryUserById(record.creatorUserId || record.userId)?.workspaceGroupId;
+    if (workspace && !groupPriorityEnabled(this.jobGroups.find(workspace))) record.autoInviter = false;
     const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     if (existingRecord && existingRecord.status !== 'DR') {
       record.imageUrl = existingRecord.imageUrl;
@@ -2269,8 +2288,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }));
   }
 
-  private resolveCheckoutSlotPricing(
-    record: ActivityEventRecord,
+  resolveCheckoutSlotPricing(
+    record: Pick<ActivityEventRecord, 'pricing' | 'slotTemplates'>,
     slot: EventSlotOccurrenceDTO
   ): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
     const normalized = PricingBuilder.compactPricingConfig(record.pricing, {

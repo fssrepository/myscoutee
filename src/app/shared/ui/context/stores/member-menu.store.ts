@@ -69,6 +69,8 @@ export type ActivitiesNavigationRequest =
     }
   | {
       type: 'members';
+      /** Authorized snapshot supplied by the caller; no owner lookup, polling or membership edits. */
+      snapshotOnly?: boolean;
       followedOrganizers?: boolean;
       mingleLive?: boolean;
       ownerId: string;

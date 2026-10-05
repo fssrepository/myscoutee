@@ -30,7 +30,9 @@ describe('LocalAdminNotificationsService', () => {
         { provide: LocalEventsService, useValue: { purgeExpiredCheckoutBaskets } },
         {
           provide: LocalAdminNotificationsRepository,
-          useValue: { whenReady, readStore, writeStore }
+          useValue: { whenReady, readStore, writeStore, updateRule: async (key: string, update: (rule: AdminNotificationRule) => AdminNotificationRule) => {
+            stored = { ...stored, rules: stored.rules.map(rule => rule.ruleKey === key ? update(rule) : rule) };
+          }, groupForAdmin: () => null, groupIds: async () => [null] }
         },
         {
           provide: RouteDelayService,
@@ -71,13 +73,14 @@ describe('LocalAdminNotificationsService', () => {
   });
 
   it('returns local bucket results and counts through the same contract as HTTP', async () => {
+    stored.rules.find(rule => rule.ruleKey === 'event-random-groups')!.enabled = false;
     const state = await TestBed.inject(LocalAdminNotificationsService)
       .loadNotificationCenter({ filter: 'suspended', skipDemoDelay: true });
 
     expect(state.rules.map(rule => rule.ruleKey)).toEqual(['event-random-groups']);
     expect(state.filterCounts).toEqual({
-      all: 9,
-      active: 8,
+      all: 23,
+      active: 22,
       suspended: 1,
       running: 0,
       failed: 0
@@ -98,14 +101,14 @@ describe('LocalAdminNotificationsService', () => {
     const reloaded = await service.loadNotificationCenter({ filter: 'all', skipDemoDelay: true });
 
     expect(filtered.rules).toEqual([updated]);
-    expect(reloaded.rules).toHaveLength(9);
+    expect(reloaded.rules).toHaveLength(23);
     expect(reloaded.rules.find(rule => rule.ruleKey === updated.ruleKey)).toEqual(updated);
-    expect(stored.rules).toHaveLength(9);
+    expect(stored.rules).toHaveLength(23);
     expect(writeStore).toHaveBeenCalledOnce();
   });
 
   it('loads saved runtime state by rule key for polling fallback', async () => {
-    const rule = stored.rules[0];
+    const rule = stored.rules.find(item => item.ruleKey === 'event-random-groups')!;
     rule.runState = {
       ...rule.runState,
       currentStatus: 'completed',

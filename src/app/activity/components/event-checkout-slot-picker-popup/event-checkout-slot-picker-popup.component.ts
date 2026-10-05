@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -40,7 +41,8 @@ import {
   type TextCardStatusTone,
   type TextCardTone
 } from '../../../shared/ui';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { SlotPickerRecord } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
+import type { EventCheckoutSlotsQuery } from '../../../shared/core/contracts/activity.interface';
 import {
   EventBasketInputComponent,
   type EventBasketInputConfig,
@@ -187,6 +189,8 @@ export class EventCheckoutSlotPickerPopupComponent {
     from(this.loadMonthPage(_query));
 
   constructor() {
+    const guide=inject(ExplanationGuideService);
+    effect(onCleanup=>{if(this.store.popup()?.selectionAdapter)onCleanup(guide.registerContext('community.case.appointments'));});
     effect(() => {
       const state = this.store.popup();
       if (!state) {
@@ -515,7 +519,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private initializeFromState(
-    record: ActivityEventRecord,
+    record: SlotPickerRecord,
     basket: EventCheckoutBasket | null,
     selectedDateKey: string | null
   ): void {
@@ -556,12 +560,17 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.refreshMonthQuery();
   }
 
+  private loadSlots(query: EventCheckoutSlotsQuery) {
+    const adapter = this.popupState()?.selectionAdapter;
+    return adapter ? adapter.loadSlots(query) : this.eventsService.loadCheckoutSlots(query);
+  }
+
   private async loadSlotPage(query: ListQuery<SlotPickerFilters>): Promise<PageResult<EventCheckoutSlot>> {
     const state = this.popupState();
     if (!state) {
       return { items: [], total: 0 };
     }
-    const result = await this.eventsService.loadCheckoutSlots({
+    const result = await this.loadSlots({
       userId: state.userId,
       eventId: state.record.id,
       view: 'day',
@@ -584,7 +593,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (!state) {
       return { items: [], total: 0 };
     }
-    const result = await this.eventsService.loadCheckoutSlots({
+    const result = await this.loadSlots({
       userId: state.userId,
       eventId: state.record.id,
       view: 'basket',
@@ -620,7 +629,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private applyCheckoutSlotsContext(
-    record: ActivityEventRecord,
+    record: SlotPickerRecord,
     result: EventCheckoutSlotsResult | null | undefined
   ): void {
     if (Array.isArray(result?.optionalSubEvents)) {
@@ -637,7 +646,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private hydrateSelectionsFromBasket(
-    record: ActivityEventRecord,
+    record: SlotPickerRecord,
     basket: EventCheckoutBasket | null,
     slots: readonly EventCheckoutSlot[]
   ): void {
@@ -678,7 +687,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     const anchor = query.filters?.anchor ?? query.anchorDate ?? this.monthAnchor;
     const rangeStart = query.rangeStart ?? this.monthStart(anchor);
     const rangeEnd = query.rangeEnd ?? this.monthEnd(anchor);
-    const result = await this.eventsService.loadCheckoutSlots({
+    const result = await this.loadSlots({
       userId: state.userId,
       eventId: state.record.id,
       view: 'day',
@@ -1020,6 +1029,11 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.errorMessage = '';
     this.cdr.markForCheck();
     try {
+      if (state.selectionAdapter) {
+        await state.selectionAdapter.saveSlots([...this.selectionsBySlotId.keys()]);
+        if (this.popupState()?.id === state.id) this.store.close();
+        return;
+      }
       const request = this.buildCheckoutRequest(state.userId, state.record);
       const savedBasket = await this.eventsService.saveCheckoutBasket(request);
       this.checkoutDraftStore.save({
@@ -1056,7 +1070,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     }
   }
 
-  private buildCheckoutRequest(userId: string, record: ActivityEventRecord) {
+  private buildCheckoutRequest(userId: string, record: SlotPickerRecord) {
     const items = this.buildBasketItems(record);
     const lineItems = this.lineItemsFromBasketItems(items);
     const currency = items.find(item => item.currency)?.currency ?? record.pricing?.currency ?? 'USD';
@@ -1078,7 +1092,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     };
   }
 
-  private buildBasketItems(record: ActivityEventRecord): EventCheckoutBasketItem[] {
+  private buildBasketItems(record: SlotPickerRecord): EventCheckoutBasketItem[] {
     const nowIso = new Date().toISOString();
     const expiresAtIso = new Date(Date.now() + EventCheckoutSlotPickerPopupComponent.CHECKOUT_BASKET_TTL_MS).toISOString();
     const items: EventCheckoutBasketItem[] = [];
@@ -1210,7 +1224,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.roundMoney(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
   }
 
-  private slotFromBasketItem(record: ActivityEventRecord, item: EventCheckoutBasketItem): EventCheckoutSlot | null {
+  private slotFromBasketItem(record: SlotPickerRecord, item: EventCheckoutBasketItem): EventCheckoutSlot | null {
     const slotId = item.slotSourceId?.trim();
     if (!slotId) {
       return null;
@@ -1280,7 +1294,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private initialSelectedDateKey(
-    record: ActivityEventRecord,
+    record: SlotPickerRecord,
     basket: EventCheckoutBasket | null,
     eventItems: readonly EventCheckoutBasketItem[],
     selectedDateKey: string | null
@@ -1333,7 +1347,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.store.close();
   }
 
-  private formatRecordRange(record: ActivityEventRecord | null): string {
+  private formatRecordRange(record: SlotPickerRecord | null): string {
     if (!record) {
       return '';
     }
@@ -1342,7 +1356,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     return range ? `${timeframe} • ${range}` : timeframe;
   }
 
-  private formatRecordDateRange(record: ActivityEventRecord): string {
+  private formatRecordDateRange(record: SlotPickerRecord): string {
     const start = AppUtils.isoLocalDateTimeToDate(record.startAtIso);
     const end = AppUtils.isoLocalDateTimeToDate(record.endAtIso);
     if (!start || !end) {

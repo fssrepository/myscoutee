@@ -183,6 +183,7 @@ export interface AppMenuImageStackItem {
 }
 
 export interface AppMenuItem<TId extends string = string, TContext = unknown> {
+  trailingIcon?: string | null;
   /** Stable guide target when the action ID contains a row identity. */
   guideId?: string;
   imageShape?: 'circle' | 'rectangle';

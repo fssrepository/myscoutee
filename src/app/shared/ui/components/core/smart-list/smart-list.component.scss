@@ -222,7 +222,7 @@
   scroll-snap-type: none;
 }
 
-.smart-list--list.smart-list--snap-none .smart-list__item-shell,
+.smart-list--list.smart-list--snap-none > .smart-list__item-shell,
 :host ::ng-deep .smart-list--list.smart-list--snap-none .activities-row-item,
 :host ::ng-deep .smart-list--list.smart-list--snap-none .asset-item-card,
 :host ::ng-deep .smart-list--list.smart-list--snap-none .activities-card,
@@ -271,14 +271,14 @@
   scroll-snap-align: start;
 }
 
-.smart-list--list.smart-list--card-grid .smart-list__item-shell {
+.smart-list--list.smart-list--card-grid > .smart-list__item-shell {
   display: flex;
   width: 100%;
   justify-self: stretch;
   align-self: stretch;
 }
 
-:host ::ng-deep .smart-list--list.smart-list--card-grid .smart-list__item-shell > * {
+:host ::ng-deep .smart-list--list.smart-list--card-grid > .smart-list__item-shell > * {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -289,9 +289,9 @@
   align-self: stretch;
 }
 
-.smart-list--list.smart-list--card-grid .smart-list__sticky,
-.smart-list--list.smart-list--card-grid .smart-list__group-marker,
-.smart-list--list.smart-list--card-grid .smart-list__footer-spacer {
+.smart-list--list.smart-list--card-grid > .smart-list__sticky,
+.smart-list--list.smart-list--card-grid > .smart-list__group-marker,
+.smart-list--list.smart-list--card-grid > .smart-list__footer-spacer {
   width: 100%;
   box-sizing: border-box;
 }
@@ -625,11 +625,11 @@
   display: none;
 }
 
-.smart-list--list.smart-list--horizontal.smart-list--compact-horizontal .smart-list__item-shell {
+.smart-list--list.smart-list--horizontal.smart-list--compact-horizontal > .smart-list__item-shell {
   min-height: 0;
 }
 
-.smart-list--list.smart-list--horizontal .smart-list__item-shell {
+.smart-list--list.smart-list--horizontal > .smart-list__item-shell {
   display: flex;
   align-items: stretch;
   flex: 0 0 var(--smart-list-horizontal-item-basis, min(21rem, 78vw));
@@ -639,7 +639,7 @@
   scroll-snap-stop: always;
 }
 
-.smart-list--list.smart-list--horizontal .smart-list__item-shell > * {
+.smart-list--list.smart-list--horizontal > .smart-list__item-shell > * {
   flex: 1 1 auto;
   width: 100%;
   max-width: 100%;
@@ -651,14 +651,19 @@
   touch-action: pan-x pan-y;
 }
 
-.smart-list--list.smart-list--horizontal .smart-list__sticky,
-.smart-list--list.smart-list--horizontal .smart-list__group-marker,
-.smart-list--list.smart-list--horizontal .smart-list__footer-spacer {
+// Nested vertical lists must allow the parent horizontal list's native swipe.
+.smart-list--list.smart-list--horizontal .smart-list--list {
+  touch-action: pan-x pan-y;
+}
+
+.smart-list--list.smart-list--horizontal > .smart-list__sticky,
+.smart-list--list.smart-list--horizontal > .smart-list__group-marker,
+.smart-list--list.smart-list--horizontal > .smart-list__footer-spacer {
   flex: 0 0 100%;
   width: 100%;
 }
 
-.smart-list__surface--horizontal .smart-list__sticky--list-header {
+.smart-list__surface--horizontal > .smart-list__stage > .smart-list__stage-list-shell > .smart-list__sticky--list-header {
   flex: 0 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -932,7 +937,9 @@
 
   .smart-list--list.smart-list--horizontal {
     --smart-list-horizontal-item-basis: 100%;
-    --smart-list-horizontal-end-inset: 0;
+    // Keep the same end gutter as desktop so the final card's border does not
+    // sit on the native scroll viewport's clipping edge.
+    --smart-list-horizontal-end-inset: 0.58rem;
     flex-direction: row;
     gap: 0.72rem;
     padding-bottom: 2rem;

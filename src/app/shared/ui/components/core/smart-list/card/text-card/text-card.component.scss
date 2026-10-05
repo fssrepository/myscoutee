@@ -203,6 +203,10 @@
   line-height: 17px;
 }
 
+.ui-text-card__main:not(:has(.ui-text-card__subtitle, .ui-text-card__meta, .ui-text-card__detail)) {
+  align-items: center;
+}
+
 .ui-text-card__copy {
   display: grid;
   gap: 0.08rem;
@@ -253,6 +257,10 @@
   white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ui-text-card__detail + .ui-text-card__detail {
+  margin-top: .45rem;
 }
 
 .ui-text-card__badge {
@@ -481,6 +489,40 @@
   right: 0.52rem;
 }
 
+// End badges share the top row with the copy; start badges keep their slot layout.
+.ui-text-card--badge-end {
+  min-height: 0;
+  padding-top: 0.62rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  column-gap: 0.62rem;
+  row-gap: 0.42rem;
+}
+
+.ui-text-card--badge-end .ui-text-card__main {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.ui-text-card.ui-text-card--badge-end .ui-text-card__copy {
+  padding-right: 0;
+}
+
+.ui-text-card--badge-end .ui-text-card__badge {
+  position: static;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  max-width: 100%;
+}
+
+.ui-text-card--badge-end .ui-text-card__actions {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.ui-text-card--badge-end .ui-text-card__actions,
 .ui-text-card--with-status-badge .ui-text-card__actions {
   top: 2.35rem;
 }

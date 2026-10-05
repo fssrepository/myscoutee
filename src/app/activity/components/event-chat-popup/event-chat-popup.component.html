@@ -324,11 +324,11 @@
                       </button>
                     </div>
                   }
-                } @else if (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'link') {
+                } @else if (attachment.type === 'event' || attachment.type === 'asset' || attachment.type === 'service' || attachment.type === 'link') {
                   <div
                     class="chat-card-attachment"
                     [class.chat-card-attachment-event]="attachment.type === 'event'"
-                    [class.chat-card-attachment-asset]="attachment.type === 'asset'"
+                    [class.chat-card-attachment-asset]="attachment.type === 'asset' || attachment.type === 'service'"
                     [class.chat-card-attachment-link]="attachment.type === 'link'"
                     [class.chat-card-attachment-unavailable]="isAttachmentUnavailable(attachment)"
                     [attr.aria-disabled]="isAttachmentUnavailable(attachment)"

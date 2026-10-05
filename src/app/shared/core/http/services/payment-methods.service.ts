@@ -175,6 +175,8 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
       .set('size', `${Math.max(1, Math.min(50, Math.trunc(Number(query.pageSize) || 6)))}`);
     const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? ''}`.trim();
     if (direction) params = params.set('direction', direction);
+    const counterparty=(query.filters as {counterpartyUserId?:string}|undefined)?.counterpartyUserId?.trim();
+    if(counterparty)params=params.set('counterpartyUserId',counterparty);
     return params;
   }
 

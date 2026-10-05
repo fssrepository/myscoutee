@@ -1,0 +1,83 @@
+[
+  {
+    "id": "work-campaign-product-team",
+    "ownerName": "Alex Turner",
+    "title": "Build a useful product with a small team",
+    "description": "I am bringing together people who can design, build and introduce a practical digital product. Tell me what you would enjoy contributing. We will prioritise introductions and invite a small team to an initial conversation.",
+    "kind": "business",
+    "category": "technology",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-company-introductions",
+    "ownerName": "Alex Turner",
+    "title": "Meet our team and explore future work",
+    "description": "We would like to meet curious engineers, designers and people who understand customers. This is an introduction to the work we do, with room for different strengths. We will arrange a focused event from our mutual priorities.",
+    "kind": "work",
+    "category": "technology",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-alex-draft",
+    "ownerName": "Alex Turner",
+    "title": "A practical workshop for new collaborators",
+    "description": "Draft an invitation for a small group to explore how we could work together.",
+    "kind": "both",
+    "category": "education",
+    "status": "draft"
+  },
+  {
+    "id": "work-campaign-local-studio",
+    "ownerName": "Farkas Anna",
+    "title": "Find collaborators for a local creative studio",
+    "description": "I am starting a small studio and would like to meet people interested in visual design, storytelling and client work. Share your interest through this campaign; I will invite a few people for a first meeting.",
+    "kind": "business",
+    "category": "creative",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-service-team",
+    "ownerName": "Kiss Balázs",
+    "title": "Introduce yourself to our service team",
+    "description": "We are meeting people who enjoy organising projects and helping customers. Priorities will help us put together a useful introduction event without asking everyone to attend.",
+    "kind": "work",
+    "category": "services",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-learning-circle",
+    "ownerName": "Nagy Eszter",
+    "title": "Help shape a practical learning programme",
+    "description": "I have an idea for short, hands-on workshops and am looking for collaborators with teaching or subject experience. I will invite a small group of interested people to discuss a first session.",
+    "kind": "business",
+    "category": "education",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-design-intro",
+    "ownerName": "Maya Stone",
+    "title": "A design team introduction",
+    "description": "Meet the people behind our design work. We are open to different kinds of experience and will invite a focused group based on mutual interest.",
+    "kind": "work",
+    "category": "creative",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-team-day",
+    "ownerName": "Lina Park",
+    "title": "Bring a new team together",
+    "description": "I am organising an introduction for people who could collaborate on community projects. This campaign helps me understand interest before arranging the event.",
+    "kind": "both",
+    "category": "community",
+    "status": "published"
+  },
+  {
+    "id": "work-campaign-alex-archived",
+    "ownerName": "Alex Turner",
+    "title": "An earlier collaboration idea",
+    "description": "A saved example of a campaign that has been moved to the trash. Restoring it returns it to drafts.",
+    "kind": "business",
+    "category": "other",
+    "status": "trash"
+  }
+]

@@ -51,6 +51,7 @@ export interface ActivityMemberRecord {
   checkedInTicketId?: string | null;
   managerGrantedByUserId?: string | null;
   organizerOnly?: boolean;
+  votingEligible?: boolean;
   updatedUser?: string | null;
   ownerType: ActivityMemberOwnerType;
   ownerId: string;

@@ -17,15 +17,16 @@ export class HttpLandingContentService {
   private readonly ideaPosts = inject(HttpIdeaPostsService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadExplanationState(contextKey: string, language: string): Promise<HelpCenterStateDto> {
+  async loadExplanationState(contextKey: string, language: string, groupId: string | null = null): Promise<HelpCenterStateDto> {
     const response = await this.http.get<HelpCenterStateDto>(`${this.apiBaseUrl}/landing/explanation`, {
-      params: { contextKey, lang: language }
+      params: { contextKey, lang: language, ...(groupId ? { groupId } : {}) }
     }).toPromise();
     return this.helpCenter.normalizeExternalState(response, 'explanation');
   }
 
-  async loadContent(): Promise<LandingContentStateDto> {
+  async loadContent(groupId: string | null = null): Promise<LandingContentStateDto> {
     type LandingContentResponse = {
+      slides?: LandingContentStateDto['slides'];
       privacy?: Partial<HelpCenterStateDto> | null;
       terms?: Partial<HelpCenterStateDto> | null;
       ideas?: unknown;
@@ -36,11 +37,13 @@ export class HttpLandingContentService {
     const lang = this.browserLanguage();
     const response = await this.http
       .get<LandingContentResponse | null>(`${this.apiBaseUrl}/landing/content`, {
-        params: { lang }
+        params: { lang, ...(groupId ? { groupId } : {}) }
       })
       .toPromise();
     const ideas = this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response.ideas : []);
     return {
+      groupId,
+      slides: (response?.slides ?? []).map(slide => ({ ...slide })),
       privacy: this.helpCenter.normalizeExternalState(response?.privacy, 'privacy'),
       terms: this.helpCenter.normalizeExternalState(response?.terms, 'terms'),
       ideas,

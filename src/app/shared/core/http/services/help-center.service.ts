@@ -25,10 +25,10 @@ export class HttpHelpCenterService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null, groupId: string | null = null): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const requestLang = this.requestLang(lang);
-    const params: Record<string, string> = { lang: requestLang };
+    const params: Record<string, string> = { lang: requestLang, ...(groupId && documentKind !== 'privacy' ? { baseGroupId: groupId } : {}) };
     const context = this.normalizeContextKey(documentKind, contextKey);
     if (context) {
       params['contextKey'] = context;

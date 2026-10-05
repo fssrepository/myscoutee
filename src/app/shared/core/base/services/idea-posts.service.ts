@@ -40,8 +40,8 @@ export class IdeaPostsService extends BaseRouteModeService {
       .sort((left, right) => this.sortValue(right) - this.sortValue(left)));
   }
 
-  async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
-    const posts = await this.ideaService().loadPublishedPosts(lang);
+  async loadPublishedPosts(lang?: string | null, groupId: string | null = null): Promise<IdeaPostDto[]> {
+    const posts = await this.ideaService().loadPublishedPosts(lang, groupId);
     this.applyPublishedPosts(posts);
     return this.clonePosts(this.postsRef());
   }

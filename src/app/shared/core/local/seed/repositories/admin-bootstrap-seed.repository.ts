@@ -1,3 +1,5 @@
+import { LocalAdminStatsRepository } from '../../source/repositories/admin-stats.repository';
+import { LocalAdminAffinityGraphRepository } from '../../source/repositories/admin-affinity-graph.repository';
 import type { ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { Location } from '@angular/common';
@@ -27,6 +29,8 @@ export class SeedAdminBootstrapRepository {
   private readonly chatsSeed = inject(SeedChatsRepository);
   private readonly shareTokensSeed = inject(SeedShareTokensRepository);
   private readonly storeSeed = inject(SeedAdminStoreRepository);
+  private readonly statsRepository = inject(LocalAdminStatsRepository);
+  private readonly graphRepository = inject(LocalAdminAffinityGraphRepository);
   private readonly helpCenterSeed = inject(SeedHelpCenterRepository);
   private readonly ideaPostsSeed = inject(SeedIdeaPostsRepository);
 
@@ -84,15 +88,15 @@ export class SeedAdminBootstrapRepository {
     const moderation = this.buildSeedDemoModerationStore();
     return await this.resetAndSeedAdminStores({
       moderation,
-      notificationCenter: AdminNotificationsSeedBuilder.buildDefaultNotificationCenter(),
-      monitoring: AdminMonitoringSeedBuilder.buildDefaultMonitoringState(),
+      notificationCenter: AdminNotificationsSeedBuilder.buildScopedNotificationCenter(),
+      monitoring: AdminMonitoringSeedBuilder.buildScopedMonitoringState(),
       stats: AdminStatsSeedBuilder.buildSeedDemoStatsSnapshot(),
-      params: AdminParamsSeedBuilder.buildDefaultParamsStore()
+      params: AdminParamsSeedBuilder.buildScopedParamsStore()
     });
   }
 
   async seedNotificationCenter(): Promise<void> {
-    await this.storeSeed.seedNotificationCenter(() => AdminNotificationsSeedBuilder.buildDefaultNotificationCenter());
+    await this.storeSeed.seedNotificationCenter(() => AdminNotificationsSeedBuilder.buildScopedNotificationCenter());
   }
 
   async seedDemoAdminMenuCounters(
@@ -202,6 +206,7 @@ export class SeedAdminBootstrapRepository {
 
   async buildAndWriteAffinityGraphSnapshot(): Promise<void> {
     await this.affinityGraphSeed.buildAndWriteGraphSnapshot();
+    for (const groupId of [null, 'myscoutee-work', 'myscoutee-community']) await this.statsRepository.refreshGroup(groupId, await this.graphRepository.readGroupSnapshot(groupId));
   }
 
   private async resetAndSeedAdminStores<

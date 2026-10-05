@@ -13,8 +13,8 @@ export class LocalAdminStatsService extends LocalRouteDelayService {
   readonly source = 'demo' as const;
   private readonly repository = inject(LocalAdminStatsRepository);
 
-  async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
-    const load = this.readStatsSnapshot();
+  async loadStatsDashboard(adminUserId?: string | null): Promise<AdminStatsDashboardDto> {
+    const load = this.readStatsSnapshot(adminUserId);
     const delay = this.waitForRouteDelay(ADMIN_STATS_LOAD_ROUTE);
     try {
       const [dashboard] = await Promise.all([load, delay]);
@@ -25,12 +25,12 @@ export class LocalAdminStatsService extends LocalRouteDelayService {
     }
   }
 
-  private async readStatsSnapshot(): Promise<AdminStatsDashboardDto> {
+  private async readStatsSnapshot(adminUserId?: string | null): Promise<AdminStatsDashboardDto> {
     await this.repository.whenReady();
-    const existing = await this.repository.readStore<AdminStatsDashboardDto>();
+    const existing = await this.repository.readStore<AdminStatsDashboardDto>(this.repository.groupForAdmin(adminUserId));
     if (!existing) {
       throw new Error('Demo stats snapshot is not bootstrapped.');
     }
-    return existing;
+    return structuredClone(existing);
   }
 }

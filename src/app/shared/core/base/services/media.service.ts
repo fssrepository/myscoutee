@@ -39,6 +39,17 @@ export class MediaService extends BaseRouteModeService {
   private readonly localMediaService = inject(LocalMediaService);
   private readonly httpMediaService = inject(HttpMediaService);
 
+  async uploadDocument(ownerId: string, entityId: string, file: File): Promise<{ uploaded: boolean; url: string | null }> {
+    return this.mediaService('/media/documents').uploadDocument(ownerId, entityId, file);
+  }
+
+  async downloadDocument(url: string, fileName: string): Promise<void> {
+    const blob = await this.mediaService('/media/documents').loadDocument(url);
+    const objectUrl = URL.createObjectURL(blob), anchor = document.createElement('a');
+    anchor.href = objectUrl; anchor.download = fileName; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
+
   async uploadImage(ownerId: string, entityId: string, file: File): Promise<MediaImageUploadResult> {
     return this.mediaService(MEDIA_IMAGE_UPLOAD_ROUTE).uploadImage(ownerId, entityId, file);
   }

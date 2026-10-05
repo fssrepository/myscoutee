@@ -10,6 +10,16 @@ import type {
 } from '../../../../contracts/admin.interface';
 
 export class AdminMonitoringSeedBuilder {
+  static buildScopedMonitoringState(): AdminMonitoringStateDto & { baseGroups: Record<string, AdminMonitoringStateDto> } {
+    const dating = this.buildDefaultMonitoringState();
+    const work: AdminMonitoringStateDto = { ...dating, health: 'ok', categories: dating.categories.map(category => ({
+      ...category, total: 0, health: 'ok', edges: category.edges.map(edge => ({ ...edge, volume: 0 })),
+      nodes: category.nodes.map(node => ({ ...node, metrics: node.metrics.map(metric => ({ ...metric,
+        value: 0, valueLabel: '0', status: 'ok', detailRows: metric.detailRows.map(row => ({ ...row, value: 0, valueLabel: '0' })) })) }))
+    })) };
+    return { ...dating, baseGroups: { 'myscoutee-work': work, 'myscoutee-community': structuredClone(work) } };
+  }
+
   static buildDefaultMonitoringState(): AdminMonitoringStateDto {
     const nowIso = new Date().toISOString();
     const node = (

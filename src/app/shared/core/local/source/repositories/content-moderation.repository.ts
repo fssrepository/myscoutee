@@ -54,12 +54,12 @@ export class LocalContentModerationRepository {
       pendingMessages: (state[CONTENT_MODERATION_TABLE_NAME].pendingMessages ?? []).filter(item => item.commandId !== commandId) } }));
     await this.db.flushToIndexedDb();
   }
-  async approveDue(now = Date.now()): Promise<number> {
+  async approveDue(now = Date.now(), groupId: string | null = null): Promise<number> {
     let changed = 0;
     this.db.write(state => {
       let table = state[CONTENT_MODERATION_TABLE_NAME];
       for (const item of Object.values(table.items)) {
-        if (item.deleted) continue;
+        if (item.deleted || (item.workspaceGroupId ?? null) !== groupId) continue;
         if (changed >= 100) break;
         const settings = contentModerationSnapshot(table, item.workspaceGroupId).settings;
         if (settings.enabled && !settings.autoApprove) continue;

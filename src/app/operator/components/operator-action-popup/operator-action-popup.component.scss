@@ -105,7 +105,7 @@
 
 .operator-action-popup__branding-editor {
   grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(40px, 1fr);
+  grid-template-rows: auto minmax(40px, 1fr);
   align-items: start;
 }
 
@@ -122,14 +122,9 @@
   flex: 1 1 180px;
 }
 
-.operator-action-popup__branding-theme {
-  grid-column: 2;
-  grid-row: 2;
-}
-
 .operator-action-popup__branding-actions {
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 2;
   align-self: end;
 }
 
@@ -1422,7 +1417,6 @@
 
   .operator-action-popup__branding-editor .operator-action-popup__logo-field,
   .operator-action-popup__branding-identity,
-  .operator-action-popup__branding-theme,
   .operator-action-popup__branding-actions {
     grid-column: 1;
     grid-row: auto;

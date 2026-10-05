@@ -1,0 +1,56 @@
+[
+  {
+    "ruleKey": "event-mingle-advance",
+    "intervalSeconds": 5,
+    "labelEn": "Advance Mingle rounds",
+    "labelHu": "Mingle-körök léptetése"
+  },
+  {
+    "ruleKey": "event-watchlist",
+    "intervalSeconds": 60,
+    "labelEn": "Event watchlist",
+    "labelHu": "Eseményfigyelő"
+  },
+  {
+    "ruleKey": "event-cancellation",
+    "intervalSeconds": 5,
+    "labelEn": "Event refunds and cancellations",
+    "labelHu": "Események lemondása és visszatérítése"
+  },
+  {
+    "ruleKey": "affiliate-revenue",
+    "intervalSeconds": 30,
+    "labelEn": "Affiliate revenue projection",
+    "labelHu": "Ajánlói bevétel összesítése"
+  },
+  {
+    "ruleKey": "integration-encounters",
+    "intervalSeconds": 5,
+    "labelEn": "Publish completed encounters",
+    "labelHu": "Lezárt találkozások közzététele"
+  },
+  {
+    "ruleKey": "integration-webhooks",
+    "intervalSeconds": 1,
+    "labelEn": "Integration callbacks",
+    "labelHu": "Integrációs visszahívások"
+  },
+  {
+    "ruleKey": "promotional-email-planning",
+    "intervalSeconds": 60,
+    "labelEn": "Promotional message planning",
+    "labelHu": "Promóciós üzenetek tervezése"
+  },
+  {
+    "ruleKey": "promotional-email-delivery",
+    "intervalSeconds": 60,
+    "labelEn": "Promotional email delivery",
+    "labelHu": "Promóciós emailek küldése"
+  },
+  {
+    "ruleKey": "admin-telemetry",
+    "intervalSeconds": 60,
+    "labelEn": "Admin statistics and monitoring",
+    "labelHu": "Admin statisztika és monitorozás"
+  }
+]

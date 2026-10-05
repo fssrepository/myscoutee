@@ -3,6 +3,8 @@
   [firebaseAuthProfile]="firebaseAuthProfile"
   [articlesLoading]="landingArticlesLoading"
   [ideaCards]="landingIdeaCards"
+  [howSlides]="landingSlides"
+  (modeSelected)="changeLandingMode($event)"
   [ideaCount]="landingIdeaCount"
   [supportedCountries]="landingSupportedCountries"
   [authUnavailable]="entryAuthUnavailable"
@@ -34,8 +36,6 @@
   (authRequested)="onRequestFirebaseAuth($event)"
 ></app-entry-firebase-auth-popup>
 
-<app-dialog></app-dialog>
-
 <app-profile-onboarding-popup
   [open]="onboardingOpen"
   [user]="onboardingUser"
@@ -46,10 +46,5 @@
   (dismissed)="onOnboardingDismissed()"
 ></app-profile-onboarding-popup>
 
-@if (demoBootstrapSelector()) {
-  @if (demoBootstrapSelectorComponent(); as component) {
-    <ng-container *ngComponentOutlet="component"></ng-container>
-  }
-}
 
 <app-explanation-launcher></app-explanation-launcher>

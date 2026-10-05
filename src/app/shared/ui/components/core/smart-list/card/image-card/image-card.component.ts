@@ -147,7 +147,7 @@ export class ImageCardComponent {
   }
 
   protected hasMenuAt(position: ImageCardMediaActionPosition): boolean {
-    return this.hasMenuActions() && position === 'top-right';
+    return this.hasMenuActions() && position === (this.card?.imageMenuPosition ?? 'top-right');
   }
 
   protected hasBottomRightControls(): boolean {

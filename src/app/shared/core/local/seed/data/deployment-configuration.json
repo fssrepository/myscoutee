@@ -1,0 +1,37 @@
+{
+  "productName": "MyScoutee",
+  "homeLabel": "Your preferences come first",
+  "logoUrl": "assets/logo/heart.webp",
+  "logoCharacterIndex": 0,
+  "revision": 0,
+  "paymentProviderId": "stripe",
+  "firebaseMessagingConfigured": false,
+  "privacyContact": {
+    "configured": true,
+    "dataControllerName": "MyScoutee Explore Operator",
+    "privacyContactEmail": "privacy@explore.myscoutee.test"
+  },
+  "socialLinks": [
+    {
+      "provider": "instagram",
+      "label": "Instagram",
+      "url": "https://www.instagram.com/myscoutee",
+      "icon": "photo_camera",
+      "handle": "@myscoutee"
+    },
+    {
+      "provider": "youtube",
+      "label": "YouTube",
+      "url": "https://www.youtube.com/@myscoutee",
+      "icon": "smart_display",
+      "handle": "@myscoutee"
+    },
+    {
+      "provider": "facebook",
+      "label": "Facebook",
+      "url": "https://www.facebook.com/myscoutee",
+      "icon": "public",
+      "handle": "MyScoutee"
+    }
+  ]
+}

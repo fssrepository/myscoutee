@@ -1,0 +1,74 @@
+[
+  {
+    "id": "service-anna-meters",
+    "ownerName": "Farkas Anna",
+    "title": "Meter replacement and plumbing",
+    "description": "Shared meter replacement and household plumbing, coordinated through a single case.",
+    "category": "plumbing",
+    "imageUrls": [],
+    "maxDistanceKm": null,
+    "languages": [],
+    "staffNames": [
+      "Farkas Anna"
+    ],
+    "slotsEnabled": false,
+    "startAtIso": null,
+    "endAtIso": null,
+    "frequency": "One-time",
+    "durationMinutes": 60,
+    "slotTemplates": [],
+    "pricing": null,
+    "status": "published",
+    "createdAtIso": "2026-10-05T00:00:00.000Z",
+    "updatedAtIso": "2026-10-05T00:00:00.000Z",
+    "version": 0
+  },
+  {
+    "id": "service-balazs-electrical",
+    "ownerName": "Kiss Balázs",
+    "title": "Electrical repairs",
+    "description": "Fault investigation, lighting repairs and planned community maintenance.",
+    "category": "electrical",
+    "imageUrls": [],
+    "maxDistanceKm": null,
+    "languages": [],
+    "staffNames": [
+      "Kiss Balázs"
+    ],
+    "slotsEnabled": false,
+    "startAtIso": null,
+    "endAtIso": null,
+    "frequency": "One-time",
+    "durationMinutes": 60,
+    "slotTemplates": [],
+    "pricing": null,
+    "status": "published",
+    "createdAtIso": "2026-10-05T00:00:00.000Z",
+    "updatedAtIso": "2026-10-05T00:00:00.000Z",
+    "version": 0
+  },
+  {
+    "id": "service-maya-fitness",
+    "ownerName": "Maya Stone",
+    "title": "Personal fitness coaching",
+    "description": "One-to-one coaching and small-group training sessions coordinated with your community.",
+    "category": "fitness",
+    "imageUrls": [],
+    "maxDistanceKm": null,
+    "languages": [],
+    "staffNames": [
+      "Maya Stone"
+    ],
+    "slotsEnabled": false,
+    "startAtIso": null,
+    "endAtIso": null,
+    "frequency": "One-time",
+    "durationMinutes": 60,
+    "slotTemplates": [],
+    "pricing": null,
+    "status": "published",
+    "createdAtIso": "2026-10-05T00:00:00.000Z",
+    "updatedAtIso": "2026-10-05T00:00:00.000Z",
+    "version": 0
+  }
+]

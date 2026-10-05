@@ -134,7 +134,8 @@ export class GameService extends BaseRouteModeService {
     socialContext?: UserGameSocialCard['socialContext'],
     bridgeUserId?: string,
     bridgeCount?: number,
-    ratingSnapshot?: RatingSnapshot
+    ratingSnapshot?: RatingSnapshot,
+    campaignId?: string | null
   ): void {
     this.rateOutboxService.enqueueGameCardRatingOutbox({
       kind: 'game-card',
@@ -145,9 +146,10 @@ export class GameService extends BaseRouteModeService {
       socialContext,
       bridgeUserId,
       bridgeCount,
-      ratingSnapshot
+      ratingSnapshot,
+      campaignId
     });
-    this.decrementUserGameCardsStackFilterCount(raterUserId);
+    if (!campaignId) this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 

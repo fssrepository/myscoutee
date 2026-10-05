@@ -29,7 +29,7 @@ export class AdminStatsService extends BaseRouteModeService {
   async loadStatsDashboard(adminUserId?: string | null): Promise<AdminStatsDashboardDto> {
     const statsService = this.statsService;
     const dashboard = statsService instanceof LocalAdminStatsService
-      ? await statsService.loadStatsDashboard()
+      ? await statsService.loadStatsDashboard(adminUserId)
       : await statsService.loadStatsDashboard(adminUserId);
     return this.normalizeStatsDashboard(dashboard, statsService.source);
   }

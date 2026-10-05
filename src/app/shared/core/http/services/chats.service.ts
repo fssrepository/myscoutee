@@ -49,7 +49,8 @@ interface HttpChatDto {
   contextStartAtIso?: string | null;
   contextEndAtIso?: string | null;
   channelType?: ContractTypes.ChatChannelType;
-  serviceContext?: 'event' | 'asset' | 'notification';
+  serviceContext?: 'event' | 'asset' | 'notification' | 'campaign' | 'case';
+  caseOfferId?: string | null;
   ownerId?: string;
   eventId?: string;
   subEventId?: string;
@@ -644,7 +645,7 @@ export class HttpChatsService implements IChatsService {
     const userId = this.activeUserId();
     const eventId = `${input.eventId ?? ''}`.trim();
     const targetUserId = `${input.targetUserId ?? ''}`.trim();
-    if (!userId || !eventId || !targetUserId || targetUserId === userId) {
+    if (!userId || (!['campaign', 'case', 'groupSupport'].includes(input.serviceContext) && (!eventId || !targetUserId || targetUserId === userId))) {
       return null;
     }
     try {
@@ -653,6 +654,10 @@ export class HttpChatsService implements IChatsService {
           `${this.apiBaseUrl}/activities/chats/service`,
           {
             serviceContext: input.serviceContext,
+            campaignId: input.campaignId ?? null,
+            caseId: input.caseId ?? null,
+            caseOfferId: input.caseOfferId ?? null,
+            announcementId: input.announcementId ?? null,
             eventId,
             subEventId: `${input.subEventId ?? ''}`.trim() || null,
             assetId: `${input.assetId ?? ''}`.trim() || null,
@@ -668,7 +673,7 @@ export class HttpChatsService implements IChatsService {
       }
       return this.cloneChatDTO({
         ...this.mapChatDTO(response, userId),
-        serviceContext: input.serviceContext
+        serviceContext: input.serviceContext === 'groupSupport' ? undefined : input.serviceContext
       });
     } catch {
       return null;
@@ -783,6 +788,7 @@ export class HttpChatsService implements IChatsService {
       channelType: item.channelType,
       serviceContext: item.serviceContext,
       ownerId: this.normalizeHttpText(item.ownerId) || undefined,
+      caseOfferId: this.normalizeHttpText(item.caseOfferId) || undefined,
       eventId: this.normalizeHttpText(item.eventId) || undefined,
       subEventId: this.normalizeHttpText(item.subEventId) || undefined,
       groupId: this.normalizeHttpText(item.groupId) || undefined,
@@ -922,6 +928,8 @@ export class HttpChatsService implements IChatsService {
       service: Math.max(0, Math.trunc(Number(counters?.service) || 0)),
       appSupport: Math.max(0, Math.trunc(Number(counters?.appSupport) || 0)),
       contacts: Math.max(0, Math.trunc(Number(counters?.contacts) || 0)),
+      campaign: Math.max(0, Math.trunc(Number(counters?.campaign) || 0)),
+      cases: Math.max(0, Math.trunc(Number(counters?.cases) || 0)),
       groupSupport: Math.max(0, Math.trunc(Number(counters?.groupSupport) || 0)),
       supportCases: {
         pending: Math.max(0, Math.trunc(Number(counters?.supportCases?.pending) || 0)),
@@ -984,7 +992,7 @@ export class HttpChatsService implements IChatsService {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport'
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport' || value === 'campaign' || value === 'cases'
       ? value
       : 'all';
   }

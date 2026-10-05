@@ -66,7 +66,7 @@
       @if (hasOverlay(currentSlide())) {
         <div class="activities-rate-profile-overlay">
           <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide()?.primaryLine }}</p>
-          <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ currentSlide()?.secondaryLine }}</p>
+          <p class="activities-rate-profile-line activities-rate-profile-line-secondary" [class.activities-rate-profile-line-clamped]="!!card?.descriptionLines" [style.--description-lines]="card?.descriptionLines ?? null">{{ currentSlide()?.secondaryLine }}</p>
         </div>
       }
     </div>
@@ -96,12 +96,15 @@
         <button
           type="button"
           class="shared-card-context-avatar-badge"
+          [class.shared-card-context-category]="!!contextBadge.icon"
+          [style.--context-hue]="contextBadge.accentHue ?? null"
           data-guide-field="related-profile"
           [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'View related profile'"
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           (click)="onContextBadgeClick(contextBadge, $event)"
           >
-          <span class="shared-card-context-monogram">{{ contextBadgeLabel(contextBadge) }}</span>
+          @if (contextBadge.icon) { <mat-icon>{{ contextBadge.icon }}</mat-icon><span>{{ contextBadge.label }}</span> }
+          @else { <span class="shared-card-context-monogram">{{ contextBadgeLabel(contextBadge) }}</span> }
           <mat-icon class="shared-card-context-chevron" aria-hidden="true">chevron_right</mat-icon>
           @if (contextBadge.counterLabel) {
             <em>{{ contextBadge.counterLabel }}</em>
@@ -110,10 +113,13 @@
       } @else {
         <span
           class="shared-card-context-avatar-badge"
+          [class.shared-card-context-category]="!!contextBadge.icon"
+          [style.--context-hue]="contextBadge.accentHue ?? null"
           [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'Related profile'"
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           >
-          <span class="shared-card-context-monogram">{{ contextBadgeLabel(contextBadge) }}</span>
+          @if (contextBadge.icon) { <mat-icon>{{ contextBadge.icon }}</mat-icon><span>{{ contextBadge.label }}</span> }
+          @else { <span class="shared-card-context-monogram">{{ contextBadgeLabel(contextBadge) }}</span> }
           @if (contextBadge.counterLabel) {
             <em>{{ contextBadge.counterLabel }}</em>
           }

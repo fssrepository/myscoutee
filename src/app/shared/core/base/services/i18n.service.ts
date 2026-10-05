@@ -261,14 +261,10 @@ export class I18nService {
   private startLanguageLoad(scope: I18nBundleScope): void {
     this.activeBundleScope = scope;
     const generation = ++this.bundleLoadGeneration;
-    this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
-    this.messagesSignal.set({});
-    this.sourceMessagesSignal.set({});
+    // Keep the displayed language until its replacement is ready. Clearing the
+    // public dictionaries here flashes raw keys and changes button/ring widths
+    // during login/logout. Generation checks still reject the previous scope.
     this.messagesByLanguageSignal.set({});
-    this.sourceKeyByTextSignal.set({});
-    this.updateDocumentLanguage(I18nService.DEFAULT_LANGUAGE);
-    this.bumpRevision();
-    this.scheduleDomScan();
     void this.loadPreferredLanguage(scope, generation);
   }
 

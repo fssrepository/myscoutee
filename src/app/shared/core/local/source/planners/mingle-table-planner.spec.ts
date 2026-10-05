@@ -33,3 +33,9 @@ function plan(userIds: string[], groupSize: number) {
   return planMingleTables({ userIds, groupSize, roundNumber: 1, previousTables: [],
     genders: new Map(), requireGenderBalance: false, affinity: () => 0 });
 }
+
+ it('random mixing never reads an affinity score',()=>{
+   const affinity=vi.fn(()=>1000);
+   const tables=planMingleTables({userIds:['a','b','c','d','e','f'],genders:new Map(),groupSize:2,roundNumber:1,requireGenderBalance:false,previousTables:[],randomMixing:true,affinity});
+   expect(tables.flatMap(t=>t.memberUserIds).sort()).toEqual(['a','b','c','d','e','f']);expect(affinity).not.toHaveBeenCalled();
+ });

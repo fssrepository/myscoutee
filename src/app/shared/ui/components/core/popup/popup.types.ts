@@ -77,6 +77,8 @@ export type PopupControl<TContext = unknown> =
   | PopupDateInputControl<TContext>;
 
 export interface PopupModel<TContext = unknown> {
+  /** Translated failure notice, fixed immediately below the popup header. */
+  errorMessage?: string | null;
   headerLabel?: string | null;
   headerLabelIcon?: string | null;
   headerBadge?: string | null;

@@ -24,7 +24,7 @@ import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import {
   PopupComponent,
-  DialogComponent,
+
   SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -95,7 +95,7 @@ interface AssetAvailabilityScopedOverride<T> {
   imports: [
     CommonModule,
     PopupComponent,
-    DialogComponent,
+
     SmartListComponent,
     SingleRowComponent
   ],

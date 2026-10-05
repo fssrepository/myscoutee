@@ -4,6 +4,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const ts = require('typescript');
 
 const frontendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendRoot, '..');
@@ -24,6 +25,8 @@ for (const language of languages) {
 if (bundles.size === languages.length) {
   validateSourceKeySets();
   validateLiteralSourceReferences();
+  validateUiModelReferences();
+  validateProductOptionReferences();
   validateLiteralNotificationKeyReferences();
   validateGeneratedNotificationKinds();
   for (const databaseName of seedDatabases) {
@@ -37,19 +40,82 @@ function validateLiteralNotificationKeyReferences() {
     path.join(repoRoot, 'server/projects/profile/src/main/java')
   ];
   const knownKeys = new Set(Object.keys(bundles.get('en').messages));
-  const expression = /['"](notification\.[A-Za-z0-9_.-]+)['"]/g;
+  const expression = /['"](notification\.[A-Za-z0-9_.-]+[A-Za-z0-9])['"]/g;
   for (const root of roots) {
     for (const filePath of sourceFilesByExtension(root, /\.(?:html|java|ts)$/)) {
       const source = fs.readFileSync(filePath, 'utf8');
       expression.lastIndex = 0;
       for (const match of source.matchAll(expression)) {
         const key = match[1];
+        // A telemetry counter, never rendered as UI copy.
+        if (key === 'notification.tokens.removed') continue;
         if (!knownKeys.has(key)) {
           const line = source.slice(0, match.index).split('\n').length;
           issues.push(
             `${relativePath(filePath)}:${line}: notification references missing key ${formatValue(key)}`
           );
         }
+      }
+    }
+  }
+}
+
+// Menu/form/popup models carry translation keys without a pipe or translate()
+// call at the declaration. Parse only; this audit does not compile the app.
+function validateUiModelReferences() {
+  const fields = new Set(['label', 'title', 'description', 'placeholder', 'ariaLabel',
+    'tooltip', 'emptyLabel', 'loadingLabel', 'headerLabel', 'headerBadge', 'subtitle']);
+  const knownKeys = new Set(Object.keys(bundles.get('en').messages));
+  const namespaces = new Set([...knownKeys].map(key => key.split('.')[0]));
+  for (const filePath of sourceFiles(path.join(frontendRoot, 'src')).filter(file => file.endsWith('.ts'))) {
+    const source = ts.createSourceFile(filePath, fs.readFileSync(filePath, 'utf8'), ts.ScriptTarget.Latest, true);
+    function check(value) {
+      if (ts.isConditionalExpression(value)) {
+        check(value.whenTrue); check(value.whenFalse);
+      } else if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) {
+        const key = value.text;
+        if (/^[a-z][a-z0-9-]*(?:\.[A-Za-z0-9_-]+)+$/.test(key)
+            && namespaces.has(key.split('.')[0]) && !knownKeys.has(key)) {
+          const line = source.getLineAndCharacterOfPosition(value.getStart(source)).line + 1;
+          issues.push(`${relativePath(filePath)}:${line}: UI model references missing key ${formatValue(key)}`);
+        }
+      }
+    }
+    function visit(node) {
+      if (ts.isPropertyAssignment(node) && fields.has(node.name.getText(source).replace(/^['"]|['"]$/g, ''))) check(node.initializer);
+      ts.forEachChild(node, visit);
+    }
+    visit(source);
+  }
+}
+
+// These option labels are assembled at runtime. Read their values from the
+// contracts, so extending an option list also requires both translations.
+function validateProductOptionReferences() {
+  const contracts = path.join(frontendRoot, 'src/app/shared/core/contracts');
+  const definitions = [
+    ['group-type.ts', 'GROUP_TYPES', 'group.type.'],
+    ['campaign.interface.ts', 'CAMPAIGN_KINDS', 'campaign.kind.'],
+    ['campaign.interface.ts', 'CAMPAIGN_CATEGORIES', 'campaign.category.'],
+    ['campaign.interface.ts', 'CampaignStatus', 'campaign.status.'],
+    ['campaign.interface.ts', 'CampaignAction', 'campaign.action.'],
+    ['community-case.interface.ts', 'CASE_TYPES', 'case.type.'],
+    ['community-case.interface.ts', 'CaseStatus', 'case.status.'],
+    ['community-case.interface.ts', 'TaskFrequency', 'case.frequency.'],
+    ['service-offering.interface.ts', 'SERVICE_CATEGORIES', 'service.category.'],
+    ['service-offering.interface.ts', 'ServiceStatus', 'service.status.'],
+    ['service-offering.interface.ts', 'ServiceAction', 'service.action.'],
+    ['community-announcement.interface.ts', 'VOTE_CHOICES', 'announcement.choice.'],
+    ['community-announcement.interface.ts', 'AnnouncementStatus', 'announcement.status.']
+  ];
+  for (const [file, name, prefix] of definitions) {
+    const source = fs.readFileSync(path.join(contracts, file), 'utf8');
+    const declaration = source.match(new RegExp(`(?:const|type) ${name}\\b[^=]*=([^;]+);`));
+    if (!declaration) { issues.push(`Cannot audit translation options: ${file} ${name}`); continue; }
+    for (const value of declaration[1].matchAll(/'([^']+)'/g)) {
+      const key = `${prefix}${value[1]}`;
+      for (const language of languages) {
+        if (!Object.hasOwn(bundles.get(language).messages, key)) issues.push(`${file}: ${name} references missing ${language} key ${formatValue(key)}`);
       }
     }
   }
@@ -239,7 +305,7 @@ function sourceFilesByExtension(directory, extensionPattern) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...sourceFiles(entryPath));
+      files.push(...sourceFilesByExtension(entryPath, extensionPattern));
       continue;
     }
     if (!entry.isFile() || !extensionPattern.test(entry.name)) {

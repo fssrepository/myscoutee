@@ -1,3 +1,5 @@
+import { groupType } from '../../../core/contracts/group-type';
+import { groupTypeTrigger, groupTypeMenuItems } from '../../converters/group-type-menu';
 import { Component, Input, OnChanges, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PopupComponent, PopupModel } from '../core/popup';
@@ -92,7 +94,7 @@ export class CommunityGroupEditorComponent implements OnChanges, OnInit, OnDestr
   ngOnChanges(): void {
     const g = this.group;
     this.form = { userId: this.store.openUserId() ?? '', id: g?.id, version: g?.version,
-      name: g?.name ?? '', description: g?.description ?? '', imageUrl: g?.imageUrl ?? null,
+      groupType: groupType(g?.groupType), name: g?.name ?? '', description: g?.description ?? '', imageUrl: g?.imageUrl ?? null,
       images: g?.imageUrl ? [g.imageUrl] : [], category: g?.category ?? 'friends', visibility: g?.visibility ?? 'private',
       hideMembers: g?.hideMembers ?? false, policy: structuredClone(g?.policy ?? { workspace: true, enabled: false, requiredFields: [] }) };
   }
@@ -122,6 +124,8 @@ export class CommunityGroupEditorComponent implements OnChanges, OnInit, OnDestr
         { id: 'image', bind: 'images', kind: 'image-carousel', config: { slotCount: 1, compact: true, autoSize: true, slotImageVariant: 'medium', uploadOwnerId: this.form.userId, uploadEntityId: this.form.id ?? 'group' } },
         { id: 'name', bind: 'name', kind: 'text', label: this.t('name'), required: true, maxLength: 20 },
         { id: 'description', bind: 'description', kind: 'textarea', label: this.t('description'), rows: 3, maxLength: 4000 },
+        { id: 'groupType', bind: 'groupType', kind: 'menu', layout: 'wide', config: { kind: 'select',
+          trigger: groupTypeTrigger(groupType(this.form.groupType)), items: groupTypeMenuItems(groupType(this.form.groupType)) } },
         { id: 'category', bind: 'category', kind: 'menu', layout: 'half', config: { kind: 'select',
           trigger: { label: `groups.category.${this.form.category}`, icon: GROUP_CATEGORY_ICON[this.form.category], palette: GROUP_CATEGORY_PALETTE[this.form.category], layout: 'pill' },
           items: GROUP_CATEGORIES.map(id => ({ id, value: id, label: `groups.category.${id}`, icon: GROUP_CATEGORY_ICON[id], kind: 'radio', showCheck: true, active: this.form.category === id, checked: this.form.category === id, palette: GROUP_CATEGORY_PALETTE[id], surface: 'tinted' })) } },

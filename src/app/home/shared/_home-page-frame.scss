@@ -28,6 +28,15 @@
 }
 
 @media (max-width: 760px) {
+  :host {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .game-card-deck {
+    --rate-card-image-fit: contain;
+  }
+
   .game-page {
     width: 100%;
     min-height: 100%;
@@ -38,4 +47,32 @@
     box-sizing: border-box;
     overflow: hidden;
   }
+}
+
+
+.game-layout-single {
+  margin-top: 0.68rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.56rem;
+  --game-stack-inline-gap: 0.28rem;
+}
+
+.game-card-deck {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.home-smart-list {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+:host ::ng-deep .home-smart-list .smart-list__fullscreen-surface {
+  padding-top: 0;
 }

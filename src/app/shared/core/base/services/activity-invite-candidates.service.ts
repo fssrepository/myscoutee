@@ -57,7 +57,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
     const accountUserId = this.workspace.accountId(query.activeUserId);
     // The Contacts picker uses the account itself as its asset-owner context.
-    const isContactPicker = query.owner.ownerType === 'asset'
+    const isContactPicker = query.purpose !== 'payment' && query.owner.ownerType === 'asset'
       && query.owner.ownerId === accountUserId;
     return this.inviteCandidatesService.queryCandidates(query.owner.ownerType === 'community' || isContactPicker
       ? { ...query, activeUserId: accountUserId }
@@ -73,7 +73,8 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     pendingInviteUserIds: readonly string[] = [],
     parentOwner: ActivityContracts.ActivityMemberOwnerRef | null = null,
     page = 0,
-    pageSize = 16
+    pageSize = 16,
+    purpose?:'payment'
   ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
     const activeUserId = this.activeUserId();
     const normalizedOwnerId = ownerId.trim();
@@ -89,7 +90,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
       ? [...new Set(existingMemberUserIds.map(userId => userId.trim()).filter(Boolean))]
       : [...new Set(this.activityMembersService.peekMembersByOwner(ownerRef).map(member => member.userId.trim()).filter(Boolean))];
     return this.queryCandidates({
-      activeUserId,
+      activeUserId, purpose,
       owner,
       parentOwner,
       existingMemberUserIds: resolvedExistingMemberUserIds,

@@ -1,3 +1,5 @@
+import { isBaseGroupId } from '../../../contracts/group-type';
+import { LocalUsersRepository } from "../repositories/users.repository";
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
@@ -28,6 +30,7 @@ const ADMIN_FEEDBACK_RESOLVE_ROUTE = '/admin/feedback/resolve';
   providedIn: 'root'
 })
 export class LocalAdminWorkspaceService extends LocalRouteDelayService {
+  private readonly users = inject(LocalUsersRepository);
   private readonly moderationRepository = inject(LocalAdminModerationRepository);
   private readonly moderationService = inject(LocalAdminModerationService);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
@@ -70,6 +73,8 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     const normalizedReportId = `${reportId ?? ''}`.trim();
     const storeBefore = await this.moderationRepository.readStore();
     const reportBefore = storeBefore?.reports?.find(report => report.id === normalizedReportId) ?? null;
+    if (!reportBefore) throw new Error('Report not found');
+    this.moderationService.requireScope(admin.id, reportBefore.reporterUserId || reportBefore.targetUserId);
     const wasResolved = this.isReviewResolved(reportBefore);
     const store = await this.moderationRepository.setReportResolved(
       normalizedReportId,
@@ -95,6 +100,8 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     const normalizedFeedbackId = `${feedbackId ?? ''}`.trim();
     const storeBefore = await this.moderationRepository.readStore();
     const feedbackBefore = storeBefore?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
+    if (!feedbackBefore) throw new Error('Feedback not found');
+    this.moderationService.requireScope(admin.id, feedbackBefore.userId);
     const wasResolved = this.isReviewResolved(feedbackBefore);
     const store = await this.moderationRepository.setFeedbackResolved(
       normalizedFeedbackId,
@@ -132,6 +139,11 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
 
   resolveDemoAdmin(adminUserId?: string): AdminUserDto {
     const id = `${adminUserId ?? ''}`.trim();
+    const profile = this.users.queryUserById(id);
+    if (profile?.admin && isBaseGroupId(profile.workspaceGroupId) && profile.accountUserId) {
+      const account = this.resolveDemoAdmin(profile.accountUserId);
+      return { ...account, id: profile.id, name: profile.name, initials: profile.initials, images: profile.images };
+    }
     if (id === 'admin-demo-noel') {
       return {
         id: 'admin-demo-noel',
@@ -161,6 +173,10 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
 
   private buildDemoDashboard(admin: AdminUserDto, store: AdminModerationStore): AdminDashboardDto {
     const activeAdmin = this.mergeStoredAdminProfile(admin);
+    const groupId = this.users.queryUserById(admin.id)?.workspaceGroupId ?? null;
+    const inScope = (userId: string) => this.moderationService.baseGroupId(userId) === groupId;
+    store = { ...store, reports: store.reports.filter(report => inScope(report.reporterUserId || report.targetUserId)),
+      feedback: store.feedback.filter(item => inScope(item.userId)) };
     const reportsByUser = new Map<string, AdminReportDto[]>();
     for (const report of store.reports) {
       const key = report.targetUserId.trim();
@@ -210,9 +226,9 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     reportsByUser: Map<string, AdminReportDto[]>,
     adminId: string
   ): AdminReportedUserDto[] {
-    const reportedBlocked = [...reportsByUser.keys()]
-      .map(userId => this.supportSession.findUser(userId))
-      .filter((user): user is UserDto => user?.profileStatus === 'blocked');
+    const groupId = this.moderationService.baseGroupId(adminId);
+    const reportedBlocked = this.users.queryAllUsers()
+      .filter(user => user.profileStatus === 'blocked' && this.moderationService.baseGroupId(user.id) === groupId);
     return reportedBlocked.map(user => {
       const reports = [...(reportsByUser.get(user.id) ?? [])].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)

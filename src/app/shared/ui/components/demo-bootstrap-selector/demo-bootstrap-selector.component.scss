@@ -16,6 +16,7 @@
   padding: 0.92rem 1rem 1rem;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-content: start;
   gap: 0.45rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -24,6 +25,7 @@
 
 .demo-user-grid-loading {
   grid-template-columns: minmax(0, 1fr);
+  align-content: stretch;
   place-items: center;
   min-height: 0;
   overflow: hidden;

@@ -26,6 +26,7 @@ export class LocalChatThreadMapper {
       channelType: record.channelType,
       serviceContext: record.serviceContext,
       ownerId: record.ownerId,
+      caseOfferId: record.caseOfferId,
       eventId: record.eventId,
       ownerStatus: record.ownerStatus ?? null,
       revision: Math.max(1, Math.trunc(Number(record.revision) || 1)),

@@ -1,3 +1,4 @@
+import GUIDE_VERSIONS from '../data/help-center-guide-versions.json';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import type { HelpCenterDocumentKind, HelpCenterGuideFieldDto, HelpCenterRevisionDto } from '../../../contracts';
 import GUIDE_FIELDS_BY_PAGE from '../data/help-center-guide-fields.json';
@@ -35,10 +36,11 @@ export class SeedHelpCenterContentBuilder {
     const original = this.explanationRevision(context, lang, translate);
     const fields = GUIDE_FIELDS_BY_SCREEN[context] ?? [];
     if (!fields.length) throw new Error(`No guide fields are seeded for ${context}.`);
+    const version = (GUIDE_VERSIONS as Record<string, number>)[context] ?? 4;
     return {
       ...original,
-      id: original.id.replace(/v\d+$/, 'v4'),
-      version: 4,
+      id: original.id.replace(/v\d+$/, `v${version}`),
+      version,
       presentation: 'tour',
       title: context === 'activities.rates' ? translate('guide.activities.rates.title') : original.title,
       sections: fields.map(field => ({

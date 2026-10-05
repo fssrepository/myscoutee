@@ -1,4 +1,4 @@
-import { DATING_RATING_CRITERIA, type RatingSnapshot } from '../../../../../shared/core/contracts/rating-snapshot';
+import { ratingCriteriaFor, type RatingSnapshot } from '../../../../../shared/core/contracts/rating-snapshot';
 
 import {
   ChangeDetectionStrategy,
@@ -77,6 +77,7 @@ export interface ActivitiesRateTemplateContext {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesRateTemplateComponent implements OnChanges {
+
   @Input() row: ImageCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() presentation: SingleCardData['presentation'] | PairCardData['presentation'] = 'list';
@@ -268,6 +269,8 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 }
 
 interface ActivitiesRatesControllerDeps {
+  isWork?: () => boolean;
+  campaignMenuItems?: (row: ActivityRateDTO | null) => readonly AppMenuItem<string, unknown>[];
   getActiveUserGender: () => 'woman' | 'man';
   getActivitiesPrimaryFilter: () => ContractTypes.ActivitiesPrimaryFilter;
   getActivitiesRateFilter: () => ContractTypes.RateFilterKey;
@@ -359,7 +362,7 @@ export class ActivitiesRatesController {
     const row = this.isFullscreenModeActive() ? this.currentFullscreenRow() : this.selectedRow();
     return {
       subjectKey: row?.id,
-      criteriaDefinition: DATING_RATING_CRITERIA,
+      criteriaDefinition: ratingCriteriaFor(row?.ratingDomain),
       ratingSnapshot: row ? this.rateItemForRow(row)?.ratingSnapshot : undefined,
       ...this.rateEditorPresenter.barConfig(),
       blinkOnSelect: false,
@@ -371,7 +374,7 @@ export class ActivitiesRatesController {
     const modeLabel = row.mode === 'pair' ? 'Pair' : 'Single';
     return {
       subjectKey: row.id,
-      criteriaDefinition: DATING_RATING_CRITERIA,
+      criteriaDefinition: ratingCriteriaFor(row?.ratingDomain),
       ratingSnapshot: this.rateItemForRow(row)?.ratingSnapshot,
       scale: this.deps.getRatingScale(),
       value: this.ownRatingValue(row),
@@ -389,12 +392,12 @@ export class ActivitiesRatesController {
     if (this.isPairReceivedRow(row)) {
       return [];
     }
-    return ActivityRateMenuConverter.convert({
+    return [...ActivityRateMenuConverter.convert({
       menu: 'activity-rate-card',
       id: row.id,
       value: this.ownRatingValue(row),
       ratingBarConfig: this.ratingMenuConfig(row)
-    });
+    }), ...(this.deps.campaignMenuItems?.(this.rateItemForRow(row)) ?? [])];
   }
 
   handleMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): boolean {

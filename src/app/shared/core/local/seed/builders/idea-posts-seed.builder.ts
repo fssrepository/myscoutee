@@ -1,3 +1,5 @@
+import workArticles from '../data/work-articles.json';
+import communityArticles from '../data/community-articles.json';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
@@ -169,11 +171,13 @@ export class SeedIdeaPostsBuilder {
         nowIso
       })
     ];
-    return [...enPosts, ...huPosts];
+    return [...enPosts, ...huPosts, ...[...workArticles, ...communityArticles].map(post => this.defaultPost({ ...post, nowIso }))];
   }
 
   private static defaultPost(options: {
     id: string;
+    workspaceGroupId?: string;
+    imageUrl?: string;
     lang: string;
     title: string;
     excerpt: string;
@@ -182,10 +186,11 @@ export class SeedIdeaPostsBuilder {
     submittedAtIso: string;
     nowIso: string;
   }): IdeaPostDto {
-    const imageUrl = this.seedImageUrl(options.id);
+    const imageUrl = options.imageUrl ?? this.seedImageUrl(options.id);
     const contentHtml = this.normalizeHtml(options.contentHtml.replaceAll('@image_url', imageUrl));
     return {
       id: options.id,
+      workspaceGroupId: options.workspaceGroupId ?? null,
       contentKey: this.contentKeyFromId(options.id),
       lang: this.normalizeLang(options.lang),
       languageLabel: this.languageLabel(options.lang),
