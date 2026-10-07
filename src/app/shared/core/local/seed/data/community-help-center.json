@@ -15220,11 +15220,11 @@
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-navigation.menu-en-v8",
+    "_id": "community:explanation-navigation.menu-en-v9",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 8,
+    "version": 9,
     "active": true,
     "title": "Avatar menu",
     "summary": "Choose a workspace or application section.",
@@ -15257,7 +15257,7 @@
         "icon": "help_outline",
         "title": "Updates requiring attention",
         "blurb": "",
-        "contentHtml": "<p>Open notifications here even after hiding the bell. The badge counts unread updates. Drag the bell or lightbulb to move it; drop on the red X to hide it.</p>"
+        "contentHtml": "<p>Open notifications directly. Use the existing mute control in the notification popup to hide or restore the floating alert. Notifications and unread counts are kept.</p>"
       },
       {
         "id": "guide-explanations",
@@ -15498,14 +15498,6 @@
         "title": "Services",
         "blurb": "",
         "contentHtml": "<p>Manage your service offers and staff, or inspect your provider calendar. Publishing makes an offer available in discovery.</p>"
-      },
-      {
-        "id": "guide-notification-launcher",
-        "guideStepId": "notification-launcher",
-        "icon": "help_outline",
-        "title": "Notification button",
-        "blurb": "",
-        "contentHtml": "<p>Show or hide the floating notification button. Your inbox and delivery settings remain available.</p>"
       }
     ],
     "contextKey": "navigation.menu",
@@ -15514,11 +15506,11 @@
     "isSystem": false
   },
   {
-    "_id": "community:explanation-navigation.menu-hu-v8",
+    "_id": "community:explanation-navigation.menu-hu-v9",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 8,
+    "version": 9,
     "active": true,
     "title": "Avatar menü",
     "summary": "Munkatér és alkalmazásfelület választása.",
@@ -15551,7 +15543,7 @@
         "icon": "help_outline",
         "title": "Figyelmet igénylő frissítések",
         "blurb": "",
-        "contentHtml": "<p>Innen a csengő elrejtése után is eléred az értesítéseket. A jelvény az olvasatlanokat számolja. A csengő és a villanykörte húzható; piros X-re ejtve elrejthető.</p>"
+        "contentHtml": "<p>Közvetlenül megnyitja az értesítéseket. A popup meglévő némító gombjával rejtheted el vagy kapcsolhatod vissza a lebegő jelzést. Az értesítések és az olvasatlan darabszám megmaradnak.</p>"
       },
       {
         "id": "guide-explanations",
@@ -15792,14 +15784,6 @@
         "title": "Szolgáltatások",
         "blurb": "",
         "contentHtml": "<p>Kezeld a szolgáltatáshirdetéseidet és közreműködőidet, vagy nézd meg a szolgáltatói naptárat. A közzétett hirdetéseket a kereső felület is megjeleníti.</p>"
-      },
-      {
-        "id": "guide-notification-launcher",
-        "guideStepId": "notification-launcher",
-        "icon": "help_outline",
-        "title": "Értesítési gomb",
-        "blurb": "",
-        "contentHtml": "<p>A lebegő értesítési gomb ki- és bekapcsolása. Az értesítési központ és a kézbesítési beállítások továbbra is elérhetők.</p>"
       }
     ],
     "contextKey": "navigation.menu",
@@ -23806,11 +23790,11 @@
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-operator.home-en-v1",
+    "_id": "community:explanation-operator.home-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operator workspace",
     "summary": "Manage this node from the action buttons. Your avatar menu contains notifications and guide controls.",
@@ -23827,7 +23811,7 @@
         "icon": "help_outline",
         "title": "Updates",
         "blurb": "",
-        "contentHtml": "<p>Check available versions and update progress.</p>"
+        "contentHtml": "<p>Compare the installed release with the available update and see whether rollback is offered. Open this before deciding to change the running deployment.</p>"
       },
       {
         "id": "guide-configuration",
@@ -23835,7 +23819,7 @@
         "icon": "help_outline",
         "title": "Configuration",
         "blurb": "",
-        "contentHtml": "<p>Configure this deployment and its connected services.</p>"
+        "contentHtml": "<p>Set this deployment’s name and logo, administrator access, privacy contact and connected services. Each section shows the data and checks needed for its setup.</p>"
       },
       {
         "id": "guide-registration",
@@ -23843,7 +23827,7 @@
         "icon": "help_outline",
         "title": "Registry connection",
         "blurb": "",
-        "contentHtml": "<p>Manage registration and measurement reporting.</p>"
+        "contentHtml": "<p>Connect this deployment to a Registry and inspect its connection and measurement delivery. Registration and verified operator identity are separate steps.</p>"
       },
       {
         "id": "guide-claim",
@@ -23851,7 +23835,7 @@
         "icon": "help_outline",
         "title": "Operator claim",
         "blurb": "",
-        "contentHtml": "<p>Link the deployment to your verified operator identity.</p>"
+        "contentHtml": "<p>After registration, request company verification or link this deployment to an existing verified operator with a client code. The result and review status appear in this window.</p>"
       },
       {
         "id": "guide-revenue",
@@ -23859,7 +23843,7 @@
         "icon": "help_outline",
         "title": "Revenue",
         "blurb": "",
-        "contentHtml": "<p>Inspect revenue, receipts and synchronization.</p>"
+        "contentHtml": "<p>Compare recorded revenue, Registry delivery and accepted settlements. Use this view to identify pending or blocked reports and inspect the period and currency behind each amount.</p>"
       },
       {
         "id": "guide-leaderboard",
@@ -23867,7 +23851,7 @@
         "icon": "help_outline",
         "title": "Network ranking",
         "blurb": "",
-        "contentHtml": "<p>Select a claimed operator to view its deployments.</p>"
+        "contentHtml": "<p>Select an operator to see which deployments contribute to its position. The deployment list lets you compare their reported state and contribution separately.</p>"
       }
     ],
     "contextKey": "operator.home",
@@ -23876,11 +23860,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.home-hu-v1",
+    "_id": "community:explanation-operator.home-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operátori felület",
     "summary": "A gombokkal kezelheted ezt a node-ot. Az avatar menüben találod az értesítéseket és a guide kapcsolóit.",
@@ -23897,7 +23881,7 @@
         "icon": "help_outline",
         "title": "Frissítések",
         "blurb": "",
-        "contentHtml": "<p>Az elérhető verziót és a frissítés állapotát mutatja.</p>"
+        "contentHtml": "<p>Hasonlítsd össze a telepített és az elérhető verziót, és ellenőrizd, van-e visszaállítási lehetőség. Itt tájékozódj a futó telepítés frissítése előtt.</p>"
       },
       {
         "id": "guide-configuration",
@@ -23905,7 +23889,7 @@
         "icon": "help_outline",
         "title": "Beállítások",
         "blurb": "",
-        "contentHtml": "<p>A telepítés és a kapcsolódó szolgáltatások beállításai.</p>"
+        "contentHtml": "<p>Itt állíthatod be a telepítés nevét, logóját, adminisztrátori hozzáférését, adatvédelmi elérhetőségét és kapcsolódó szolgáltatásait. A szakaszok mutatják a beállításhoz szükséges adatokat és ellenőrzéseket.</p>"
       },
       {
         "id": "guide-registration",
@@ -23913,7 +23897,7 @@
         "icon": "help_outline",
         "title": "Registry-kapcsolat",
         "blurb": "",
-        "contentHtml": "<p>A regisztráció és a mérési jelentések kezelése.</p>"
+        "contentHtml": "<p>Kapcsold ezt a telepítést egy Registryhez, és ellenőrizd a kapcsolatot, valamint a mérési jelentések kézbesítését. A regisztráció és az ellenőrzött üzemeltetői személyazonosság külön lépés.</p>"
       },
       {
         "id": "guide-claim",
@@ -23921,7 +23905,7 @@
         "icon": "help_outline",
         "title": "Operátori igénylés",
         "blurb": "",
-        "contentHtml": "<p>Kapcsold a telepítést az igazolt operátori azonosítódhoz.</p>"
+        "contentHtml": "<p>Regisztráció után kérhetsz céges ellenőrzést, vagy ügyfélkóddal kapcsolhatod a telepítést egy már ellenőrzött üzemeltetőhöz. Az eredmény és az ellenőrzés állapota az ablakban látható.</p>"
       },
       {
         "id": "guide-revenue",
@@ -23929,7 +23913,7 @@
         "icon": "help_outline",
         "title": "Bevételek",
         "blurb": "",
-        "contentHtml": "<p>Bevételek, bizonylatok és szinkronizálás.</p>"
+        "contentHtml": "<p>Hasonlítsd össze a rögzített bevételeket, a Registry felé történő kézbesítést és az elfogadott elszámolásokat. Itt keresheted meg a függő vagy elakadt jelentéseket, és az összegekhez tartozó időszakot, pénznemet.</p>"
       },
       {
         "id": "guide-leaderboard",
@@ -23937,7 +23921,7 @@
         "icon": "help_outline",
         "title": "Hálózati rangsor",
         "blurb": "",
-        "contentHtml": "<p>Egy igazolt operátort kiválasztva láthatod a telepítéseit.</p>"
+        "contentHtml": "<p>Válassz üzemeltetőt a hozzá tartozó telepítések megtekintéséhez. A listában külön összehasonlíthatod az egyes telepítések jelentett állapotát és hozzájárulását.</p>"
       }
     ],
     "contextKey": "operator.home",
@@ -23946,11 +23930,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.updates-en-v1",
+    "_id": "community:explanation-operator.updates-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Updates",
     "summary": "Compare installed and available versions; progress and errors appear here.",
@@ -23967,7 +23951,7 @@
         "icon": "help_outline",
         "title": "Updates",
         "blurb": "",
-        "contentHtml": "<p>Compare installed and available versions; progress and errors appear here.</p>"
+        "contentHtml": "<p>Check the installed version, offered release and rollback target before acting. During an update this window shows the current phase, progress and any failure.</p>"
       },
       {
         "id": "guide-operator-refresh-update",
@@ -23975,7 +23959,7 @@
         "icon": "help_outline",
         "title": "Check",
         "blurb": "",
-        "contentHtml": "<p>Refresh the available signed release information.</p>"
+        "contentHtml": "<p>Fetch the latest release information and update state. This checks what is available; installation starts only with the update action.</p>"
       },
       {
         "id": "guide-operator-apply-update",
@@ -23983,7 +23967,7 @@
         "icon": "help_outline",
         "title": "Install",
         "blurb": "",
-        "contentHtml": "<p>Start the displayed update and follow its progress here.</p>"
+        "contentHtml": "<p>Start installing the offered release on this deployment. Follow its progress here; after successful completion the application reloads to use the installed version.</p>"
       },
       {
         "id": "guide-operator-rollback-update",
@@ -23991,7 +23975,7 @@
         "icon": "help_outline",
         "title": "Restore version",
         "blurb": "",
-        "contentHtml": "<p>Restore the supported previous release when available.</p>"
+        "contentHtml": "<p>Start the supported rollback to the displayed target version. Check that target first; a successful rollback reloads the application just like an update.</p>"
       },
       {
         "id": "guide-close",
@@ -23999,7 +23983,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Close the progress window and return to the operator page. Closing this window does not cancel an update already started.</p>"
       }
     ],
     "contextKey": "operator.updates",
@@ -24008,11 +23992,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.updates-hu-v1",
+    "_id": "community:explanation-operator.updates-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Frissítések",
     "summary": "Itt láthatod a telepített és elérhető verziót, a folyamat állapotát és hibáit.",
@@ -24029,7 +24013,7 @@
         "icon": "help_outline",
         "title": "Frissítések",
         "blurb": "",
-        "contentHtml": "<p>Itt láthatod a telepített és elérhető verziót, a folyamat állapotát és hibáit.</p>"
+        "contentHtml": "<p>Művelet előtt ellenőrizd a telepített verziót, a felajánlott kiadást és a visszaállítás célverzióját. Frissítés közben itt látható az aktuális szakasz, a haladás és az esetleges hiba.</p>"
       },
       {
         "id": "guide-operator-refresh-update",
@@ -24037,7 +24021,7 @@
         "icon": "help_outline",
         "title": "Ellenőrzés",
         "blurb": "",
-        "contentHtml": "<p>Az elérhető, aláírt kiadás adatainak frissítése.</p>"
+        "contentHtml": "<p>Lekéri a legfrissebb kiadási információt és frissítési állapotot. Ezzel az elérhető verziókat ellenőrzöd; a telepítést a frissítési művelet indítja.</p>"
       },
       {
         "id": "guide-operator-apply-update",
@@ -24045,7 +24029,7 @@
         "icon": "help_outline",
         "title": "Telepítés",
         "blurb": "",
-        "contentHtml": "<p>Indítsd a megjelenített frissítést, és itt kövesd az állapotát.</p>"
+        "contentHtml": "<p>Elindítja a felajánlott kiadás telepítését ezen a rendszeren. Itt követheted a haladást; sikeres befejezés után az alkalmazás újratöltődik a telepített verzió használatához.</p>"
       },
       {
         "id": "guide-operator-rollback-update",
@@ -24053,7 +24037,7 @@
         "icon": "help_outline",
         "title": "Verzió visszaállítása",
         "blurb": "",
-        "contentHtml": "<p>Az előző, támogatott kiadás visszaállítása, ha elérhető.</p>"
+        "contentHtml": "<p>Elindítja a támogatott visszaállítást a kijelzett célverzióra. Előbb ellenőrizd ezt a verziót; sikeres visszaállítás után az alkalmazás a frissítéshez hasonlóan újratöltődik.</p>"
       },
       {
         "id": "guide-close",
@@ -24061,7 +24045,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Bezárja a folyamat ablakát, és visszatér az üzemeltetői oldalra. Az ablak bezárása nem szakítja meg a már elindított frissítést.</p>"
       }
     ],
     "contextKey": "operator.updates",
@@ -24070,11 +24054,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.registration-en-v1",
+    "_id": "community:explanation-operator.registration-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Registry connection",
     "summary": "Review registration, heartbeat and measurement delivery for this deployment.",
@@ -24091,7 +24075,7 @@
         "icon": "help_outline",
         "title": "Registry connection",
         "blurb": "",
-        "contentHtml": "<p>Review registration, heartbeat and measurement delivery for this deployment.</p>"
+        "contentHtml": "<p>Check the selected Registry address, registration state, last heartbeat and measurement delivery together. A registered connection does not by itself mean every report has been delivered.</p>"
       },
       {
         "id": "guide-register",
@@ -24099,7 +24083,7 @@
         "icon": "help_outline",
         "title": "Connect",
         "blurb": "",
-        "contentHtml": "<p>Register this deployment with the displayed Registry.</p>"
+        "contentHtml": "<p>Register at the Registry address entered here. If it differs from the active Registry, the existing binding is replaced; verify the destination before starting.</p>"
       },
       {
         "id": "guide-disconnect",
@@ -24107,7 +24091,7 @@
         "icon": "help_outline",
         "title": "Disconnect",
         "blurb": "",
-        "contentHtml": "<p>Disconnect this deployment from the Registry.</p>"
+        "contentHtml": "<p>Deactivate this deployment’s current Registry connection. Use this when you intend to disconnect, rather than merely close the registration window.</p>"
       },
       {
         "id": "guide-synchronize-measurements",
@@ -24115,7 +24099,7 @@
         "icon": "help_outline",
         "title": "Send measurements",
         "blurb": "",
-        "contentHtml": "<p>Synchronize pending measurement reports.</p>"
+        "contentHtml": "<p>Request delivery of pending measurement reports to the connected Registry. Check the returned delivery state to distinguish accepted reports from those still pending or blocked.</p>"
       },
       {
         "id": "guide-refresh",
@@ -24123,7 +24107,7 @@
         "icon": "help_outline",
         "title": "Refresh status",
         "blurb": "",
-        "contentHtml": "<p>Fetch the current registration and delivery state.</p>"
+        "contentHtml": "<p>Reload registration, heartbeat and delivery information after an operation or connection change. Refreshing the view does not register or disconnect the deployment.</p>"
       },
       {
         "id": "guide-close",
@@ -24131,7 +24115,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Return to the operator page. The registered connection remains active; use Disconnect when you intend to deactivate it.</p>"
       }
     ],
     "contextKey": "operator.registration",
@@ -24140,11 +24124,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.registration-hu-v1",
+    "_id": "community:explanation-operator.registration-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Registry-kapcsolat",
     "summary": "A telepítés regisztrációja, életjele és mérési jelentései.",
@@ -24161,7 +24145,7 @@
         "icon": "help_outline",
         "title": "Registry-kapcsolat",
         "blurb": "",
-        "contentHtml": "<p>A telepítés regisztrációja, életjele és mérési jelentései.</p>"
+        "contentHtml": "<p>Együtt ellenőrizd a kiválasztott Registry címét, a regisztrációt, az utolsó életjelet és a mérési jelentések kézbesítését. A regisztrált kapcsolat önmagában nem jelenti minden jelentés sikeres kézbesítését.</p>"
       },
       {
         "id": "guide-register",
@@ -24169,7 +24153,7 @@
         "icon": "help_outline",
         "title": "Csatlakozás",
         "blurb": "",
-        "contentHtml": "<p>Regisztráld ezt a telepítést a megjelenített Registryben.</p>"
+        "contentHtml": "<p>Regisztrál a megadott Registry-címen. Ha ez eltér az aktív Registrytől, a meglévő kapcsolatot lecseréli; indítás előtt ellenőrizd a célcímet.</p>"
       },
       {
         "id": "guide-disconnect",
@@ -24177,7 +24161,7 @@
         "icon": "help_outline",
         "title": "Leválasztás",
         "blurb": "",
-        "contentHtml": "<p>A telepítés leválasztása a Registryről.</p>"
+        "contentHtml": "<p>Deaktiválja ennek a telepítésnek a jelenlegi Registry-kapcsolatát. Akkor használd, ha valóban le szeretnél kapcsolódni, nem csak a regisztrációs ablakot bezárni.</p>"
       },
       {
         "id": "guide-synchronize-measurements",
@@ -24185,7 +24169,7 @@
         "icon": "help_outline",
         "title": "Mérések küldése",
         "blurb": "",
-        "contentHtml": "<p>A függőben lévő mérési jelentések szinkronizálása.</p>"
+        "contentHtml": "<p>Kéri a függő mérési jelentések kézbesítését a kapcsolódó Registrynek. A visszakapott állapotból ellenőrizheted, mely jelentéseket fogadták el, és melyek maradtak függőben vagy elakadtak.</p>"
       },
       {
         "id": "guide-refresh",
@@ -24193,7 +24177,7 @@
         "icon": "help_outline",
         "title": "Állapot frissítése",
         "blurb": "",
-        "contentHtml": "<p>A regisztráció és a jelentésküldés aktuális állapotának lekérése.</p>"
+        "contentHtml": "<p>Újra lekéri a regisztráció, az életjel és a kézbesítés adatait egy művelet vagy kapcsolatváltozás után. A nézet frissítése nem regisztrálja és nem kapcsolja le a telepítést.</p>"
       },
       {
         "id": "guide-close",
@@ -24201,7 +24185,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Visszatér az üzemeltetői oldalra. A regisztrált kapcsolat aktív marad; a deaktiváláshoz a leválasztási műveletet használd.</p>"
       }
     ],
     "contextKey": "operator.registration",
@@ -24210,11 +24194,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.claim-en-v1",
+    "_id": "community:explanation-operator.claim-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operator claim",
     "summary": "Choose company verification or an existing client code. The current review state is shown here.",
@@ -24231,7 +24215,7 @@
         "icon": "help_outline",
         "title": "Operator claim",
         "blurb": "",
-        "contentHtml": "<p>Choose company verification or an existing client code. The current review state is shown here.</p>"
+        "contentHtml": "<p>Choose company verification for a new operator identity, or a client code to join an existing one. Registration is required before submission; pending review and approval are shown separately.</p>"
       },
       {
         "id": "guide-operator-claim-path-company",
@@ -24239,7 +24223,7 @@
         "icon": "help_outline",
         "title": "Company",
         "blurb": "",
-        "contentHtml": "<p>Enter the legal entity and the authorized contact.</p>"
+        "contentHtml": "<p>Prepare the company’s legal details and the authorized representative’s contact information. Submitting sends these for verification; filling the form alone does not approve the operator.</p>"
       },
       {
         "id": "guide-operator-claim-path-client-code",
@@ -24247,7 +24231,7 @@
         "icon": "help_outline",
         "title": "Client code",
         "blurb": "",
-        "contentHtml": "<p>Use the code from an existing verified operator.</p>"
+        "contentHtml": "<p>Use a client code issued by an already verified, active operator to link this deployment to that operator. This is the joining path, not a new company-verification request.</p>"
       },
       {
         "id": "guide-operator-claim-legal-name",
@@ -24255,7 +24239,7 @@
         "icon": "help_outline",
         "title": "Legal name",
         "blurb": "",
-        "contentHtml": "<p>Use the registered legal name of your company.</p>"
+        "contentHtml": "<p>Enter the company’s registered legal name so the verification can identify the legal entity. Use the company details here, rather than the product’s display name.</p>"
       },
       {
         "id": "guide-operator-claim-attestation",
@@ -24263,7 +24247,7 @@
         "icon": "help_outline",
         "title": "Authority",
         "blurb": "",
-        "contentHtml": "<p>Confirm that you may act for this legal entity.</p>"
+        "contentHtml": "<p>Confirm that you are authorized to represent the named legal entity. This declaration is required for the company request; it does not replace the verification decision.</p>"
       },
       {
         "id": "guide-operator-redeem-token",
@@ -24271,7 +24255,7 @@
         "icon": "help_outline",
         "title": "Redeem",
         "blurb": "",
-        "contentHtml": "<p>Submit the entered client code to link this deployment.</p>"
+        "contentHtml": "<p>Submit the entered client code to link this registered deployment to its issuing operator. Read the resulting status to check whether the link was accepted.</p>"
       },
       {
         "id": "guide-close",
@@ -24279,7 +24263,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Return to the operator page. Closing does not submit the form or withdraw a request that has already been sent for review.</p>"
       }
     ],
     "contextKey": "operator.claim",
@@ -24288,11 +24272,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.claim-hu-v1",
+    "_id": "community:explanation-operator.claim-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operátori igénylés",
     "summary": "Válassz céges igazolást vagy meglévő ügyfélkódot. Itt látszik az elbírálás állapota.",
@@ -24309,7 +24293,7 @@
         "icon": "help_outline",
         "title": "Operátori igénylés",
         "blurb": "",
-        "contentHtml": "<p>Válassz céges igazolást vagy meglévő ügyfélkódot. Itt látszik az elbírálás állapota.</p>"
+        "contentHtml": "<p>Új üzemeltetői azonosításhoz válaszd a céges ellenőrzést, meglévőhöz az ügyfélkódot. Beküldés előtt regisztrálni kell a telepítést; az elbírálásra váró és a jóváhagyott állapot külön jelenik meg.</p>"
       },
       {
         "id": "guide-operator-claim-path-company",
@@ -24317,7 +24301,7 @@
         "icon": "help_outline",
         "title": "Cég",
         "blurb": "",
-        "contentHtml": "<p>Add meg a jogi személyt és a meghatalmazott kapcsolattartót.</p>"
+        "contentHtml": "<p>Add meg a cég jogi adatait és a képviseletre jogosult személy elérhetőségét. A beküldés ellenőrzésre továbbítja ezeket; az űrlap kitöltése önmagában nem jelent jóváhagyást.</p>"
       },
       {
         "id": "guide-operator-claim-path-client-code",
@@ -24325,7 +24309,7 @@
         "icon": "help_outline",
         "title": "Ügyfélkód",
         "blurb": "",
-        "contentHtml": "<p>Egy meglévő, igazolt operátortól kapott kód használata.</p>"
+        "contentHtml": "<p>Egy már ellenőrzött, aktív üzemeltető által kiadott ügyfélkóddal kapcsolhatod hozzá ezt a telepítést. Ez csatlakozás a meglévő üzemeltetőhöz, nem új céges ellenőrzési kérelem.</p>"
       },
       {
         "id": "guide-operator-claim-legal-name",
@@ -24333,7 +24317,7 @@
         "icon": "help_outline",
         "title": "Hivatalos név",
         "blurb": "",
-        "contentHtml": "<p>A cég bejegyzett, hivatalos nevét add meg.</p>"
+        "contentHtml": "<p>A cég bejegyzett nevét add meg, hogy az ellenőrzés azonosíthassa a jogi személyt. Ide a cég adata kerül, nem a termék megjelenített neve.</p>"
       },
       {
         "id": "guide-operator-claim-attestation",
@@ -24341,7 +24325,7 @@
         "icon": "help_outline",
         "title": "Jogosultság",
         "blurb": "",
-        "contentHtml": "<p>Igazold, hogy jogosult vagy a jogi személy nevében eljárni.</p>"
+        "contentHtml": "<p>Igazold, hogy jogosult vagy a megnevezett jogi személy képviseletére. Ez a nyilatkozat szükséges a céges kérelemhez, de nem helyettesíti az ellenőrzés eredményét.</p>"
       },
       {
         "id": "guide-operator-redeem-token",
@@ -24349,7 +24333,7 @@
         "icon": "help_outline",
         "title": "Beváltás",
         "blurb": "",
-        "contentHtml": "<p>A megadott ügyfélkóddal kapcsold hozzá a telepítést.</p>"
+        "contentHtml": "<p>Beküldi az ügyfélkódot, hogy a regisztrált telepítést a kódot kiadó üzemeltetőhöz kapcsolja. A visszakapott állapot mutatja, hogy a hozzárendelést elfogadták-e.</p>"
       },
       {
         "id": "guide-close",
@@ -24357,7 +24341,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Visszatér az üzemeltetői oldalra. A bezárás nem küldi be az űrlapot, és nem vonja vissza a már elbírálásra elküldött kérelmet.</p>"
       }
     ],
     "contextKey": "operator.claim",
@@ -24366,11 +24350,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.configuration-en-v1",
+    "_id": "community:explanation-operator.configuration-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Deployment configuration",
     "summary": "Open a section to configure branding, administrators, privacy contacts and service connections. Save changes in that section.",
@@ -24387,7 +24371,7 @@
         "icon": "help_outline",
         "title": "Deployment configuration",
         "blurb": "",
-        "contentHtml": "<p>Open a section to configure branding, administrators, privacy contacts and service connections. Save changes in that section.</p>"
+        "contentHtml": "<p>Expand a section to edit deployment settings. Branding, access and service credentials share a configuration draft, so review other pending edits before saving; TLS has its own save operation.</p>"
       },
       {
         "id": "guide-operator-save-branding",
@@ -24395,7 +24379,7 @@
         "icon": "help_outline",
         "title": "Branding",
         "blurb": "",
-        "contentHtml": "<p>Save the product identity displayed on this deployment.</p>"
+        "contentHtml": "<p>Save the name and logo used by this deployment. This saves the shared configuration draft, including pending edits in its other sections; the updated branding is then applied in the app.</p>"
       },
       {
         "id": "guide-operator-save-admin-emails",
@@ -24403,7 +24387,7 @@
         "icon": "help_outline",
         "title": "Administrators",
         "blurb": "",
-        "contentHtml": "<p>Save the accounts allowed to use app administration.</p>"
+        "contentHtml": "<p>Save the email list that grants app-administration access. Check additions and removals carefully; this also saves other pending changes in the shared configuration draft.</p>"
       },
       {
         "id": "guide-operator-save-privacy-contact",
@@ -24411,7 +24395,7 @@
         "icon": "help_outline",
         "title": "Privacy contact",
         "blurb": "",
-        "contentHtml": "<p>Save the controller and contact shown in privacy information.</p>"
+        "contentHtml": "<p>Save the data controller’s name and privacy contact email shown in the app’s privacy information. Other pending edits in the shared configuration draft are saved with them.</p>"
       },
       {
         "id": "guide-operator-save-firebase",
@@ -24419,7 +24403,7 @@
         "icon": "help_outline",
         "title": "Firebase",
         "blurb": "",
-        "contentHtml": "<p>Save credentials before testing or activating the connection.</p>"
+        "contentHtml": "<p>Save the Firebase configuration, then run its authentication and messaging checks before activation. Saving credentials and activating them are separate actions; other shared configuration edits are also saved.</p>"
       },
       {
         "id": "guide-operator-save-tls",
@@ -24427,7 +24411,7 @@
         "icon": "help_outline",
         "title": "TLS",
         "blurb": "",
-        "contentHtml": "<p>Save certificate settings; use the available checks before activation.</p>"
+        "contentHtml": "<p>Submit the selected TLS mode, domain and certificate settings. Follow the returned job state to confirm completion; a save request alone does not prove the new certificate is already active.</p>"
       },
       {
         "id": "guide-close",
@@ -24435,7 +24419,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Return to the operator page. Use the relevant save action before closing if you want to persist pending configuration changes.</p>"
       }
     ],
     "contextKey": "operator.configuration",
@@ -24444,11 +24428,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.configuration-hu-v1",
+    "_id": "community:explanation-operator.configuration-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Telepítési beállítások",
     "summary": "A szekciókban az arculatot, adminokat, adatvédelmi kapcsolatot és szolgáltatásokat állíthatod be. Szekciónként ments.",
@@ -24465,7 +24449,7 @@
         "icon": "help_outline",
         "title": "Telepítési beállítások",
         "blurb": "",
-        "contentHtml": "<p>A szekciókban az arculatot, adminokat, adatvédelmi kapcsolatot és szolgáltatásokat állíthatod be. Szekciónként ments.</p>"
+        "contentHtml": "<p>Nyisd ki a beállítandó szakaszt. Az arculat, a hozzáférés és a szolgáltatási adatok közös konfigurációs piszkozatot használnak, ezért mentés előtt a többi függő módosítást is nézd át. A TLS mentése külön művelet.</p>"
       },
       {
         "id": "guide-operator-save-branding",
@@ -24473,7 +24457,7 @@
         "icon": "help_outline",
         "title": "Arculat",
         "blurb": "",
-        "contentHtml": "<p>A telepítésen megjelenő arculat mentése.</p>"
+        "contentHtml": "<p>Elmenti a telepítés nevét és logóját. A közös konfigurációs piszkozat többi szakaszának függő módosításait is menti; az új arculat ezután megjelenik az alkalmazásban.</p>"
       },
       {
         "id": "guide-operator-save-admin-emails",
@@ -24481,7 +24465,7 @@
         "icon": "help_outline",
         "title": "Adminisztrátorok",
         "blurb": "",
-        "contentHtml": "<p>Az alkalmazás adminisztrációjára jogosult fiókok mentése.</p>"
+        "contentHtml": "<p>Elmenti az alkalmazás-adminisztrációhoz hozzáférést adó e-mail-listát. Ellenőrizd a felvételeket és törléseket; a közös konfigurációs piszkozat többi függő módosítását is menti.</p>"
       },
       {
         "id": "guide-operator-save-privacy-contact",
@@ -24489,7 +24473,7 @@
         "icon": "help_outline",
         "title": "Adatvédelmi kapcsolat",
         "blurb": "",
-        "contentHtml": "<p>Az adatvédelmi tájékoztató adatkezelőjének és kapcsolatának mentése.</p>"
+        "contentHtml": "<p>Elmenti az adatvédelmi tájékoztatásban megjelenő adatkezelő nevét és kapcsolattartási e-mail-címét. Velük együtt a közös konfigurációs piszkozat többi függő módosítását is menti.</p>"
       },
       {
         "id": "guide-operator-save-firebase",
@@ -24497,7 +24481,7 @@
         "icon": "help_outline",
         "title": "Firebase",
         "blurb": "",
-        "contentHtml": "<p>Mentsd a hitelesítő adatokat a kapcsolat tesztelése vagy aktiválása előtt.</p>"
+        "contentHtml": "<p>Mentsd a Firebase-beállítást, majd aktiválás előtt futtasd a hitelesítési és üzenetküldési ellenőrzéseket. Az adatok mentése és az aktiválás külön művelet; a közös konfiguráció többi módosítása is mentődik.</p>"
       },
       {
         "id": "guide-operator-save-tls",
@@ -24505,7 +24489,7 @@
         "icon": "help_outline",
         "title": "TLS",
         "blurb": "",
-        "contentHtml": "<p>Tanúsítványbeállítások mentése; aktiválás előtt használd az ellenőrzéseket.</p>"
+        "contentHtml": "<p>Beküldi a TLS-módot, a domaint és a tanúsítvány beállításait. A visszakapott feladatállapotból ellenőrizd a befejezést; a mentési kérés önmagában nem bizonyítja, hogy az új tanúsítvány már aktív.</p>"
       },
       {
         "id": "guide-close",
@@ -24513,7 +24497,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Visszatér az üzemeltetői oldalra. Bezárás előtt használd a megfelelő mentési műveletet, ha meg szeretnéd őrizni a függő konfigurációs módosításokat.</p>"
       }
     ],
     "contextKey": "operator.configuration",
@@ -24522,11 +24506,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.revenue-en-v1",
+    "_id": "community:explanation-operator.revenue-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Revenue",
     "summary": "Review the ledger, settlement state and report delivery. Amounts follow the displayed currency and period.",
@@ -24543,7 +24527,7 @@
         "icon": "help_outline",
         "title": "Revenue",
         "blurb": "",
-        "contentHtml": "<p>Review the ledger, settlement state and report delivery. Amounts follow the displayed currency and period.</p>"
+        "contentHtml": "<p>Compare revenue entries with delivery status and accepted settlements for the displayed period and currency. A locally recorded amount and a Registry-accepted report represent different stages.</p>"
       },
       {
         "id": "guide-operator-synchronize-revenue",
@@ -24551,7 +24535,7 @@
         "icon": "help_outline",
         "title": "Synchronize",
         "blurb": "",
-        "contentHtml": "<p>Send pending revenue reports through the existing delivery queue.</p>"
+        "contentHtml": "<p>Ask the delivery queue to synchronize pending revenue reports. Inspect the resulting state and blocked reports afterwards; starting synchronization does not guarantee that every report is accepted.</p>"
       },
       {
         "id": "guide-close",
@@ -24559,7 +24543,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Return to the operator page. Closing the revenue view leaves recorded entries, settlements and report-delivery state intact.</p>"
       }
     ],
     "contextKey": "operator.revenue",
@@ -24568,11 +24552,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.revenue-hu-v1",
+    "_id": "community:explanation-operator.revenue-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Bevételek",
     "summary": "A főkönyv, elszámolások és jelentésküldés állapota. Az összegek a kijelzett pénznemhez és időszakhoz tartoznak.",
@@ -24589,7 +24573,7 @@
         "icon": "help_outline",
         "title": "Bevételek",
         "blurb": "",
-        "contentHtml": "<p>A főkönyv, elszámolások és jelentésküldés állapota. Az összegek a kijelzett pénznemhez és időszakhoz tartoznak.</p>"
+        "contentHtml": "<p>Hasonlítsd össze a bevételi tételeket, a kézbesítési állapotot és az elfogadott elszámolásokat a kijelzett időszakban és pénznemben. A helyben rögzített összeg és a Registry által elfogadott jelentés külön állomás.</p>"
       },
       {
         "id": "guide-operator-synchronize-revenue",
@@ -24597,7 +24581,7 @@
         "icon": "help_outline",
         "title": "Szinkronizálás",
         "blurb": "",
-        "contentHtml": "<p>A függő bevételi jelentések küldése a kézbesítési soron keresztül.</p>"
+        "contentHtml": "<p>Kéri a kézbesítési sortól a függő bevételi jelentések szinkronizálását. Utána ellenőrizd az állapotot és az elakadt jelentéseket; az indítás nem garantálja minden jelentés elfogadását.</p>"
       },
       {
         "id": "guide-close",
@@ -24605,7 +24589,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Visszatér az üzemeltetői oldalra. A bevételi nézet bezárása megőrzi a rögzített tételeket, az elszámolásokat és a jelentések kézbesítési állapotát.</p>"
       }
     ],
     "contextKey": "operator.revenue",
@@ -24614,11 +24598,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.community-en-v1",
+    "_id": "community:explanation-operator.community-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operator community",
     "summary": "Read the operator community information and available announcements here.",
@@ -24635,7 +24619,7 @@
         "icon": "help_outline",
         "title": "Operator community",
         "blurb": "",
-        "contentHtml": "<p>Read the operator community information and available announcements here.</p>"
+        "contentHtml": "<p>Read announcements shared with operators, including attached links and download-verification information. Check the source and the displayed verification state before using a download.</p>"
       },
       {
         "id": "guide-close",
@@ -24652,11 +24636,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.community-hu-v1",
+    "_id": "community:explanation-operator.community-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operátori közösség",
     "summary": "Itt olvashatod az operátori közösség információit és az elérhető közleményeket.",
@@ -24673,7 +24657,7 @@
         "icon": "help_outline",
         "title": "Operátori közösség",
         "blurb": "",
-        "contentHtml": "<p>Itt olvashatod az operátori közösség információit és az elérhető közleményeket.</p>"
+        "contentHtml": "<p>Olvasd el az üzemeltetőknek szóló közleményeket, a hozzájuk tartozó hivatkozásokat és a letöltések ellenőrzési adatait. Letöltés használata előtt nézd meg a forrást és a jelzett ellenőrzési állapotot.</p>"
       },
       {
         "id": "guide-close",
@@ -24690,11 +24674,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.deployments-en-v1",
+    "_id": "community:explanation-operator.deployments-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operator deployments",
     "summary": "These nodes belong to the selected operator. Inspect their reported status and contribution.",
@@ -24711,7 +24695,7 @@
         "icon": "help_outline",
         "title": "Operator deployments",
         "blurb": "",
-        "contentHtml": "<p>These nodes belong to the selected operator. Inspect their reported status and contribution.</p>"
+        "contentHtml": "<p>Inspect the deployments belonging to the operator you selected in the leaderboard. Compare their reported status and contribution to understand how that operator’s total is composed.</p>"
       },
       {
         "id": "guide-close",
@@ -24728,11 +24712,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.deployments-hu-v1",
+    "_id": "community:explanation-operator.deployments-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operátori telepítések",
     "summary": "Ezek a kiválasztott operátor node-jai. Nézd meg a jelentett állapotukat és hozzájárulásukat.",
@@ -24749,7 +24733,7 @@
         "icon": "help_outline",
         "title": "Operátori telepítések",
         "blurb": "",
-        "contentHtml": "<p>Ezek a kiválasztott operátor node-jai. Nézd meg a jelentett állapotukat és hozzájárulásukat.</p>"
+        "contentHtml": "<p>A ranglistán kiválasztott üzemeltető telepítéseit látod. A jelentett állapot és hozzájárulás összehasonlításával megértheted, mely telepítések adják az üzemeltető összesített eredményét.</p>"
       },
       {
         "id": "guide-close",
@@ -24766,11 +24750,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.home-en-v1",
+    "_id": "community:explanation-admin.home-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Administration",
     "summary": "Open your avatar menu to choose moderation, content, jobs or monitoring. Notification and guide controls are also there.",
@@ -24787,7 +24771,7 @@
         "icon": "help_outline",
         "title": "Administration",
         "blurb": "",
-        "contentHtml": "<p>Open your avatar menu to choose moderation, content, jobs or monitoring. Notification and guide controls are also there.</p>"
+        "contentHtml": "<p>Open the avatar menu to choose a task: content review, user reports, feedback, jobs or monitoring. Each opens its own workspace; personal notifications and guide visibility are controlled from the same menu.</p>"
       }
     ],
     "contextKey": "admin.home",
@@ -24796,11 +24780,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.home-hu-v1",
+    "_id": "community:explanation-admin.home-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Adminisztráció",
     "summary": "Az avatar menüből nyílik a moderálás, tartalom, feladatok és megfigyelés. Az értesítés és guide kapcsolója is ott van.",
@@ -24817,7 +24801,7 @@
         "icon": "help_outline",
         "title": "Adminisztráció",
         "blurb": "",
-        "contentHtml": "<p>Az avatar menüből nyílik a moderálás, tartalom, feladatok és megfigyelés. Az értesítés és guide kapcsolója is ott van.</p>"
+        "contentHtml": "<p>Az avatármenüben válassz feladatot: tartalomellenőrzés, felhasználói bejelentések, visszajelzések, háttérfeladatok vagy monitorozás. Mindegyik saját felületet nyit; ugyanitt éred el a személyes értesítéseket és az útmutatók kapcsolóját.</p>"
       }
     ],
     "contextKey": "admin.home",
@@ -24826,11 +24810,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.content-moderation-en-v1",
+    "_id": "community:explanation-admin.content-moderation-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Content moderation",
     "summary": "Review submitted content and apply a decision within your current workspace.",
@@ -24847,7 +24831,7 @@
         "icon": "help_outline",
         "title": "Content moderation",
         "blurb": "",
-        "contentHtml": "<p>Review submitted content and apply a decision within your current workspace.</p>"
+        "contentHtml": "<p>Open a row to inspect the submitted content, then use its menu to record a review decision. The status and category filters determine which items remain visible after a decision.</p>"
       },
       {
         "id": "guide-status",
@@ -24855,7 +24839,7 @@
         "icon": "help_outline",
         "title": "Status",
         "blurb": "",
-        "contentHtml": "<p>Filter by the current review state.</p>"
+        "contentHtml": "<p>Choose the review state to work on. Counts reflect the selected category; changing this filter only changes the list, while a row’s decision menu changes the item’s state.</p>"
       },
       {
         "id": "guide-category",
@@ -24863,7 +24847,7 @@
         "icon": "help_outline",
         "title": "Content type",
         "blurb": "",
-        "contentHtml": "<p>Choose which content category to review.</p>"
+        "contentHtml": "<p>Limit the queue to a content type, such as posts, events or assets. Combine it with the status filter to find the items that need your review in this workspace.</p>"
       },
       {
         "id": "guide-settings",
@@ -24871,7 +24855,7 @@
         "icon": "help_outline",
         "title": "Moderation settings",
         "blurb": "",
-        "contentHtml": "<p>Configure the moderation rules for this workspace.</p>"
+        "contentHtml": "<p>Set whether moderation is enabled for this workspace, which categories it covers and whether automatic approval is used. Changes are prepared in a separate form and require saving.</p>"
       },
       {
         "id": "guide-close",
@@ -24888,11 +24872,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.content-moderation-hu-v1",
+    "_id": "community:explanation-admin.content-moderation-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Tartalommoderálás",
     "summary": "A beküldött tartalmak áttekintése és elbírálása az aktuális munkaterületen.",
@@ -24909,7 +24893,7 @@
         "icon": "help_outline",
         "title": "Tartalommoderálás",
         "blurb": "",
-        "contentHtml": "<p>A beküldött tartalmak áttekintése és elbírálása az aktuális munkaterületen.</p>"
+        "contentHtml": "<p>A sor megnyitásával ellenőrizd a beküldött tartalmat, majd a sor menüjében rögzíts döntést. Az állapot- és kategóriaszűrő határozza meg, mely elemek maradnak láthatók a döntés után.</p>"
       },
       {
         "id": "guide-status",
@@ -24917,7 +24901,7 @@
         "icon": "help_outline",
         "title": "Állapot",
         "blurb": "",
-        "contentHtml": "<p>Szűrés az elbírálás állapotára.</p>"
+        "contentHtml": "<p>Válaszd ki a feldolgozandó ellenőrzési állapotot. A számlálók a kiválasztott kategóriára vonatkoznak; a szűrő a listát változtatja, az elem állapotát a sor döntési menüje módosítja.</p>"
       },
       {
         "id": "guide-category",
@@ -24925,7 +24909,7 @@
         "icon": "help_outline",
         "title": "Tartalomtípus",
         "blurb": "",
-        "contentHtml": "<p>Válaszd ki az áttekintendő tartalomtípust.</p>"
+        "contentHtml": "<p>Szűkítsd a sort egy tartalomtípusra, például bejegyzésekre, eseményekre vagy eszközökre. Az állapotszűrővel együtt keresheted meg a munkaterület ellenőrzésre váró elemeit.</p>"
       },
       {
         "id": "guide-settings",
@@ -24933,7 +24917,7 @@
         "icon": "help_outline",
         "title": "Moderálási beállítások",
         "blurb": "",
-        "contentHtml": "<p>A munkaterület moderálási szabályainak beállítása.</p>"
+        "contentHtml": "<p>Beállíthatod, aktív-e a moderálás ezen a munkaterületen, mely kategóriákra vonatkozik, és használ-e automatikus jóváhagyást. A külön űrlapon előkészített módosításokat menteni kell.</p>"
       },
       {
         "id": "guide-close",
@@ -24950,11 +24934,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.moderation-settings-en-v1",
+    "_id": "community:explanation-admin.moderation-settings-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Moderation settings",
     "summary": "Configure automatic review and enabled moderation categories, then save.",
@@ -24971,7 +24955,7 @@
         "icon": "help_outline",
         "title": "Moderation settings",
         "blurb": "",
-        "contentHtml": "<p>Configure automatic review and enabled moderation categories, then save.</p>"
+        "contentHtml": "<p>Choose the moderated categories and whether automatic approval is enabled. If you use automatic approval, set its delay; check all selections before saving the workspace settings.</p>"
       },
       {
         "id": "guide-save",
@@ -24979,7 +24963,7 @@
         "icon": "help_outline",
         "title": "Save",
         "blurb": "",
-        "contentHtml": "<p>Apply these moderation settings.</p>"
+        "contentHtml": "<p>Persist the selected moderation settings for this workspace and return to its review queue. If saving fails, the form stays open so you can correct or retry the change.</p>"
       },
       {
         "id": "guide-close",
@@ -24987,7 +24971,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Discard this settings draft and return to the review queue. To apply changed categories or automatic-approval settings, save before closing.</p>"
       }
     ],
     "contextKey": "admin.moderation-settings",
@@ -24996,11 +24980,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.moderation-settings-hu-v1",
+    "_id": "community:explanation-admin.moderation-settings-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Moderálási beállítások",
     "summary": "Állítsd be az automatikus ellenőrzést és a moderált kategóriákat, majd ments.",
@@ -25017,7 +25001,7 @@
         "icon": "help_outline",
         "title": "Moderálási beállítások",
         "blurb": "",
-        "contentHtml": "<p>Állítsd be az automatikus ellenőrzést és a moderált kategóriákat, majd ments.</p>"
+        "contentHtml": "<p>Válaszd ki a moderált kategóriákat és az automatikus jóváhagyás használatát. Automatikus jóváhagyásnál add meg a késleltetést is; mentés előtt ellenőrizd a munkaterület összes beállítását.</p>"
       },
       {
         "id": "guide-save",
@@ -25025,7 +25009,7 @@
         "icon": "help_outline",
         "title": "Mentés",
         "blurb": "",
-        "contentHtml": "<p>A moderálási beállítások alkalmazása.</p>"
+        "contentHtml": "<p>Elmenti a kiválasztott moderálási beállításokat ezen a munkaterületen, majd visszatér az ellenőrzési sorhoz. Sikertelen mentésnél az űrlap nyitva marad a javításhoz vagy az újrapróbáláshoz.</p>"
       },
       {
         "id": "guide-close",
@@ -25033,7 +25017,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Elveti ezt a beállítási piszkozatot, és visszatér az ellenőrzési sorhoz. A módosított kategóriák és automatikus jóváhagyás alkalmazásához bezárás előtt ments.</p>"
       }
     ],
     "contextKey": "admin.moderation-settings",
@@ -25042,11 +25026,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.reports-en-v1",
+    "_id": "community:explanation-admin.reports-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Reports",
     "summary": "Open a report to inspect its evidence and available review actions.",
@@ -25063,7 +25047,7 @@
         "icon": "help_outline",
         "title": "Reports",
         "blurb": "",
-        "contentHtml": "<p>Open a report to inspect its evidence and available review actions.</p>"
+        "contentHtml": "<p>Open a report to read its reason, affected user and source context. Use the user’s action menu for a warning or restriction after reviewing the evidence; opening a report alone does not take that action.</p>"
       },
       {
         "id": "guide-reports-review-status-filter",
@@ -25071,7 +25055,7 @@
         "icon": "help_outline",
         "title": "Filter",
         "blurb": "",
-        "contentHtml": "<p>Choose pending or reviewed reports.</p>"
+        "contentHtml": "<p>Switch between unresolved reports that need attention and resolved reports you want to revisit. This selects the queue; it does not change a report’s review state.</p>"
       },
       {
         "id": "guide-blocked-users",
@@ -25079,7 +25063,7 @@
         "icon": "help_outline",
         "title": "Blocked accounts",
         "blurb": "",
-        "contentHtml": "<p>Inspect blocked accounts and their moderation state.</p>"
+        "contentHtml": "<p>Open the restricted-user list to inspect existing blocks. A user’s menu offers unblocking and, when a support conversation already exists, access to that conversation.</p>"
       },
       {
         "id": "guide-close",
@@ -25096,11 +25080,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.reports-hu-v1",
+    "_id": "community:explanation-admin.reports-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Bejelentések",
     "summary": "Nyiss meg egy bejelentést a bizonyítékok és az elbírálási műveletek megtekintéséhez.",
@@ -25117,7 +25101,7 @@
         "icon": "help_outline",
         "title": "Bejelentések",
         "blurb": "",
-        "contentHtml": "<p>Nyiss meg egy bejelentést a bizonyítékok és az elbírálási műveletek megtekintéséhez.</p>"
+        "contentHtml": "<p>Nyiss meg egy bejelentést az indok, az érintett felhasználó és a forrás ellenőrzéséhez. A bizonyítékok átnézése után a felhasználó menüjében indíthatsz figyelmeztetést vagy korlátozást; a megnyitás ezt nem végzi el.</p>"
       },
       {
         "id": "guide-reports-review-status-filter",
@@ -25125,7 +25109,7 @@
         "icon": "help_outline",
         "title": "Szűrés",
         "blurb": "",
-        "contentHtml": "<p>Függő vagy már elbírált bejelentések kiválasztása.</p>"
+        "contentHtml": "<p>Válts a figyelmet igénylő, megoldatlan bejelentések és az újra áttekintendő lezárt bejelentések között. Ez a sor kiválasztása, nem a bejelentések állapotának módosítása.</p>"
       },
       {
         "id": "guide-blocked-users",
@@ -25133,7 +25117,7 @@
         "icon": "help_outline",
         "title": "Letiltott fiókok",
         "blurb": "",
-        "contentHtml": "<p>A letiltott fiókok és moderálási állapotuk megtekintése.</p>"
+        "contentHtml": "<p>Megnyitja a korlátozott felhasználók listáját a meglévő tiltások áttekintéséhez. A felhasználó menüje feloldást kínál, és meglévő támogatási beszélgetés esetén annak megnyitását is.</p>"
       },
       {
         "id": "guide-close",
@@ -25150,11 +25134,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.report-detail-en-v1",
+    "_id": "community:explanation-admin.report-detail-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Review report",
     "summary": "Read the report and its context before choosing a review action.",
@@ -25171,7 +25155,7 @@
         "icon": "help_outline",
         "title": "Review report",
         "blurb": "",
-        "contentHtml": "<p>Read the report and its context before choosing a review action.</p>"
+        "contentHtml": "<p>Read the report’s reason and linked context alongside the reported user. Review the source before using the available warning or block action; the action applies to that user.</p>"
       },
       {
         "id": "guide-close",
@@ -25188,11 +25172,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.report-detail-hu-v1",
+    "_id": "community:explanation-admin.report-detail-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Bejelentés elbírálása",
     "summary": "Az elbírálás előtt olvasd el a bejelentést és annak körülményeit.",
@@ -25209,7 +25193,7 @@
         "icon": "help_outline",
         "title": "Bejelentés elbírálása",
         "blurb": "",
-        "contentHtml": "<p>Az elbírálás előtt olvasd el a bejelentést és annak körülményeit.</p>"
+        "contentHtml": "<p>A bejelentett felhasználó mellett olvasd el az indokot és a kapcsolódó forrást. Figyelmeztetés vagy tiltás előtt ellenőrizd ezt a tartalmat; a művelet az érintett felhasználóra vonatkozik.</p>"
       },
       {
         "id": "guide-close",
@@ -25226,11 +25210,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.blocked-users-en-v1",
+    "_id": "community:explanation-admin.blocked-users-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Blocked accounts",
     "summary": "Inspect restrictions and use the available account actions.",
@@ -25247,7 +25231,7 @@
         "icon": "help_outline",
         "title": "Blocked accounts",
         "blurb": "",
-        "contentHtml": "<p>Inspect restrictions and use the available account actions.</p>"
+        "contentHtml": "<p>Review who is blocked and when the restriction was recorded. Use the row menu to lift a block after confirmation, or open an existing support conversation to understand its context.</p>"
       },
       {
         "id": "guide-close",
@@ -25264,11 +25248,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.blocked-users-hu-v1",
+    "_id": "community:explanation-admin.blocked-users-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Letiltott fiókok",
     "summary": "A korlátozások áttekintése és az elérhető fiókműveletek használata.",
@@ -25285,7 +25269,7 @@
         "icon": "help_outline",
         "title": "Letiltott fiókok",
         "blurb": "",
-        "contentHtml": "<p>A korlátozások áttekintése és az elérhető fiókműveletek használata.</p>"
+        "contentHtml": "<p>Nézd át, ki van letiltva, és mikor rögzítették a korlátozást. A sor menüjében megerősítés után feloldhatod a tiltást, vagy megnyithatod a meglévő támogatási beszélgetést az előzményekhez.</p>"
       },
       {
         "id": "guide-close",
@@ -25302,11 +25286,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.feedback-en-v1",
+    "_id": "community:explanation-admin.feedback-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Feedback",
     "summary": "Open a feedback item to read it and record its review state.",
@@ -25323,7 +25307,7 @@
         "icon": "help_outline",
         "title": "Feedback",
         "blurb": "",
-        "contentHtml": "<p>Open a feedback item to read it and record its review state.</p>"
+        "contentHtml": "<p>Read submitted bug reports, requests and other feedback. After handling an item, use its row menu to mark it solved; a solved item can be returned to unresolved when further work is needed.</p>"
       },
       {
         "id": "guide-feedback-review-status-filter",
@@ -25331,7 +25315,7 @@
         "icon": "help_outline",
         "title": "Filter",
         "blurb": "",
-        "contentHtml": "<p>Filter feedback by review state.</p>"
+        "contentHtml": "<p>Choose unresolved feedback for current work or solved feedback for follow-up. Marking an item solved changes which queue contains it; it does not delete the submission.</p>"
       },
       {
         "id": "guide-close",
@@ -25348,11 +25332,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.feedback-hu-v1",
+    "_id": "community:explanation-admin.feedback-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Visszajelzések",
     "summary": "Nyiss meg egy visszajelzést az elolvasásához és az elbírálási állapot rögzítéséhez.",
@@ -25369,7 +25353,7 @@
         "icon": "help_outline",
         "title": "Visszajelzések",
         "blurb": "",
-        "contentHtml": "<p>Nyiss meg egy visszajelzést az elolvasásához és az elbírálási állapot rögzítéséhez.</p>"
+        "contentHtml": "<p>Olvasd el a hibajelzéseket, kéréseket és egyéb visszajelzéseket. Feldolgozás után a sor menüjében jelöld megoldottnak; ha további munka szükséges, a megoldott elem visszaállítható megoldatlanra.</p>"
       },
       {
         "id": "guide-feedback-review-status-filter",
@@ -25377,7 +25361,7 @@
         "icon": "help_outline",
         "title": "Szűrés",
         "blurb": "",
-        "contentHtml": "<p>Visszajelzések szűrése az elbírálás állapotára.</p>"
+        "contentHtml": "<p>A folyamatban lévő munkához válaszd a megoldatlan, utánkövetéshez a megoldott visszajelzéseket. A megoldottra jelölés másik sorba helyezi az elemet, nem törli a beküldést.</p>"
       },
       {
         "id": "guide-close",
@@ -25394,11 +25378,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.feedback-detail-en-v1",
+    "_id": "community:explanation-admin.feedback-detail-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Review feedback",
     "summary": "Read the submitted feedback and choose the appropriate review action.",
@@ -25415,7 +25399,7 @@
         "icon": "help_outline",
         "title": "Review feedback",
         "blurb": "",
-        "contentHtml": "<p>Read the submitted feedback and choose the appropriate review action.</p>"
+        "contentHtml": "<p>Read the full submission and its category before deciding whether it has been handled. Return to the feedback list to use the row’s solved or unresolved action.</p>"
       },
       {
         "id": "guide-close",
@@ -25432,11 +25416,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.feedback-detail-hu-v1",
+    "_id": "community:explanation-admin.feedback-detail-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Visszajelzés kezelése",
     "summary": "Olvasd el a beküldött visszajelzést, majd válaszd a megfelelő műveletet.",
@@ -25453,7 +25437,7 @@
         "icon": "help_outline",
         "title": "Visszajelzés kezelése",
         "blurb": "",
-        "contentHtml": "<p>Olvasd el a beküldött visszajelzést, majd válaszd a megfelelő műveletet.</p>"
+        "contentHtml": "<p>A feldolgozottság megítélése előtt olvasd el a teljes visszajelzést és a kategóriáját. A megoldott vagy megoldatlan állapotot a visszajelzési lista sorának menüjében állíthatod.</p>"
       },
       {
         "id": "guide-close",
@@ -25470,11 +25454,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.chat-review-en-v1",
+    "_id": "community:explanation-admin.chat-review-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Chat review",
     "summary": "Inspect the selected report conversation. A warning sends your message to the affected user.",
@@ -25491,7 +25475,7 @@
         "icon": "help_outline",
         "title": "Chat review",
         "blurb": "",
-        "contentHtml": "<p>Inspect the selected report conversation. A warning sends your message to the affected user.</p>"
+        "contentHtml": "<p>Review the selected user and report context before composing a warning. Sending records a moderation warning for that user; it is an action, not a private draft note.</p>"
       },
       {
         "id": "guide-message",
@@ -25499,7 +25483,7 @@
         "icon": "help_outline",
         "title": "Warning text",
         "blurb": "",
-        "contentHtml": "<p>Explain the issue briefly and clearly.</p>"
+        "contentHtml": "<p>Write the warning the selected user will receive: identify the reported conduct and explain what needs to change. Check the recipient and wording before sending.</p>"
       },
       {
         "id": "guide-send-warning",
@@ -25507,7 +25491,7 @@
         "icon": "help_outline",
         "title": "Send warning",
         "blurb": "",
-        "contentHtml": "<p>Send the written warning to the selected user.</p>"
+        "contentHtml": "<p>Send the written warning to the selected user, linked to the selected report when present. Wait for the success message; after a successful send the text field is cleared.</p>"
       },
       {
         "id": "guide-close",
@@ -25524,11 +25508,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.chat-review-hu-v1",
+    "_id": "community:explanation-admin.chat-review-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Beszélgetés ellenőrzése",
     "summary": "A bejelentéshez tartozó beszélgetés. A figyelmeztetés elküldi az üzenetedet az érintett felhasználónak.",
@@ -25545,7 +25529,7 @@
         "icon": "help_outline",
         "title": "Beszélgetés ellenőrzése",
         "blurb": "",
-        "contentHtml": "<p>A bejelentéshez tartozó beszélgetés. A figyelmeztetés elküldi az üzenetedet az érintett felhasználónak.</p>"
+        "contentHtml": "<p>Figyelmeztetés írása előtt ellenőrizd a kiválasztott felhasználót és a bejelentés előzményeit. A küldés moderátori figyelmeztetést rögzít a felhasználónak; ez művelet, nem privát piszkozatjegyzet.</p>"
       },
       {
         "id": "guide-message",
@@ -25553,7 +25537,7 @@
         "icon": "help_outline",
         "title": "Figyelmeztetés szövege",
         "blurb": "",
-        "contentHtml": "<p>Röviden és érthetően írd le a problémát.</p>"
+        "contentHtml": "<p>A kiválasztott felhasználónak szánt figyelmeztetést írd ide: nevezd meg a kifogásolt viselkedést és a szükséges változtatást. Küldés előtt ellenőrizd a címzettet és a megfogalmazást.</p>"
       },
       {
         "id": "guide-send-warning",
@@ -25561,7 +25545,7 @@
         "icon": "help_outline",
         "title": "Figyelmeztetés küldése",
         "blurb": "",
-        "contentHtml": "<p>A megírt figyelmeztetés küldése a kiválasztott felhasználónak.</p>"
+        "contentHtml": "<p>Elküldi a megírt figyelmeztetést a kiválasztott felhasználónak, és ha van kiválasztott bejelentés, ahhoz kapcsolja. Várd meg a sikerjelzést; sikeres küldés után a szövegmező kiürül.</p>"
       },
       {
         "id": "guide-close",
@@ -25578,11 +25562,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.item-preview-en-v1",
+    "_id": "community:explanation-admin.item-preview-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Reported item",
     "summary": "Inspect the reported item before returning to its review.",
@@ -25599,7 +25583,7 @@
         "icon": "help_outline",
         "title": "Reported item",
         "blurb": "",
-        "contentHtml": "<p>Inspect the reported item before returning to its review.</p>"
+        "contentHtml": "<p>Inspect the reported item’s actual content and attachments before making a moderation decision. Close this preview to return to the report and its available actions.</p>"
       },
       {
         "id": "guide-close",
@@ -25616,11 +25600,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.item-preview-hu-v1",
+    "_id": "community:explanation-admin.item-preview-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Bejelentett tartalom",
     "summary": "Tekintsd át a bejelentett tartalmat, majd térj vissza az elbíráláshoz.",
@@ -25637,7 +25621,7 @@
         "icon": "help_outline",
         "title": "Bejelentett tartalom",
         "blurb": "",
-        "contentHtml": "<p>Tekintsd át a bejelentett tartalmat, majd térj vissza az elbíráláshoz.</p>"
+        "contentHtml": "<p>Moderálási döntés előtt ellenőrizd a bejelentett elem tényleges tartalmát és mellékleteit. Az előnézet bezárása visszavisz a bejelentéshez és az ott elérhető műveletekhez.</p>"
       },
       {
         "id": "guide-close",
@@ -25654,11 +25638,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.help-editor-en-v1",
+    "_id": "community:explanation-admin.help-editor-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Content editor",
     "summary": "Manage help, policy and editable guide revisions. System guides are maintained with the application and are hidden here.",
@@ -25675,7 +25659,7 @@
         "icon": "help_outline",
         "title": "Content editor",
         "blurb": "",
-        "contentHtml": "<p>Manage help, policy and editable guide revisions. System guides are maintained with the application and are hidden here.</p>"
+        "contentHtml": "<p>Maintain help and policy documents, and guides that allow editing. Choose a language, save a revision and activate it when ready for users. Application-managed system guides are excluded from this editor.</p>"
       },
       {
         "id": "guide-help-document",
@@ -25683,7 +25667,7 @@
         "icon": "help_outline",
         "title": "Document",
         "blurb": "",
-        "contentHtml": "<p>Choose the document or editable guide to work on.</p>"
+        "contentHtml": "<p>Select the document type or editable guide you intend to maintain. For an explanation, also check its target screen so the saved steps belong to the right part of the app.</p>"
       },
       {
         "id": "guide-help-language",
@@ -25691,7 +25675,7 @@
         "icon": "help_outline",
         "title": "Language",
         "blurb": "",
-        "contentHtml": "<p>Each language has its own revisions.</p>"
+        "contentHtml": "<p>Choose the content language before editing. Each language has separate revisions and an active version, so changing this selection does not translate or publish the other language.</p>"
       },
       {
         "id": "guide-help-new-revision",
@@ -25699,7 +25683,7 @@
         "icon": "help_outline",
         "title": "New revision",
         "blurb": "",
-        "contentHtml": "<p>Create a draft; users see it after activation.</p>"
+        "contentHtml": "<p>Prepare a new revision of the selected document and language. Save it first, then activate the revision when it should replace the version users currently see.</p>"
       },
       {
         "id": "guide-close",
@@ -25716,11 +25700,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.help-editor-hu-v1",
+    "_id": "community:explanation-admin.help-editor-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Tartalomszerkesztő",
     "summary": "Súgó-, szabályzat- és szerkeszthető guide-verziók. A rendszer-guide-ok az alkalmazással frissülnek, itt nem jelennek meg.",
@@ -25737,7 +25721,7 @@
         "icon": "help_outline",
         "title": "Tartalomszerkesztő",
         "blurb": "",
-        "contentHtml": "<p>Súgó-, szabályzat- és szerkeszthető guide-verziók. A rendszer-guide-ok az alkalmazással frissülnek, itt nem jelennek meg.</p>"
+        "contentHtml": "<p>Itt kezelheted a súgókat, szabályzatokat és szerkeszthető útmutatókat. Válassz nyelvet, ments verziót, majd aktiváld, amikor a felhasználóknak szánod. Az alkalmazás által kezelt rendszerútmutatók nem szerepelnek ebben a szerkesztőben.</p>"
       },
       {
         "id": "guide-help-document",
@@ -25745,7 +25729,7 @@
         "icon": "help_outline",
         "title": "Dokumentum",
         "blurb": "",
-        "contentHtml": "<p>Válaszd ki a dokumentumot vagy szerkeszthető guide-ot.</p>"
+        "contentHtml": "<p>Válaszd ki a kezelendő dokumentumtípust vagy szerkeszthető útmutatót. Magyarázatnál ellenőrizd a célképernyőt is, hogy a mentett lépések az alkalmazás megfelelő részéhez tartozzanak.</p>"
       },
       {
         "id": "guide-help-language",
@@ -25753,7 +25737,7 @@
         "icon": "help_outline",
         "title": "Nyelv",
         "blurb": "",
-        "contentHtml": "<p>Minden nyelv saját verziókkal rendelkezik.</p>"
+        "contentHtml": "<p>Szerkesztés előtt válaszd ki a tartalom nyelvét. Minden nyelvhez külön verziók és aktív változat tartozik, ezért a választás nem fordítja le és nem publikálja a másik nyelvű tartalmat.</p>"
       },
       {
         "id": "guide-help-new-revision",
@@ -25761,7 +25745,7 @@
         "icon": "help_outline",
         "title": "Új verzió",
         "blurb": "",
-        "contentHtml": "<p>Hozz létre vázlatot; a felhasználók aktiválás után látják.</p>"
+        "contentHtml": "<p>Készíts új verziót a kiválasztott dokumentumhoz és nyelvhez. Először mentsd el, majd akkor aktiváld, amikor le szeretnéd váltani a felhasználóknak jelenleg látható változatot.</p>"
       },
       {
         "id": "guide-close",
@@ -25778,11 +25762,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.idea-editor-en-v1",
+    "_id": "community:explanation-admin.idea-editor-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Articles",
     "summary": "Manage articles, drafts and published content in the selected language.",
@@ -25799,7 +25783,7 @@
         "icon": "help_outline",
         "title": "Articles",
         "blurb": "",
-        "contentHtml": "<p>Manage articles, drafts and published content in the selected language.</p>"
+        "contentHtml": "<p>Manage article drafts, published articles and trash in the selected language. Editing saves the content; publication and featured placement are separate actions on the article card.</p>"
       },
       {
         "id": "guide-idea-filter",
@@ -25807,7 +25791,7 @@
         "icon": "help_outline",
         "title": "Filter",
         "blurb": "",
-        "contentHtml": "<p>Switch between published items, drafts and trash.</p>"
+        "contentHtml": "<p>Choose drafts for unfinished work, published or featured articles for visible content, or trash to recover a removed article. The filter changes the list without publishing or deleting anything.</p>"
       },
       {
         "id": "guide-idea-language",
@@ -25815,7 +25799,7 @@
         "icon": "help_outline",
         "title": "Language",
         "blurb": "",
-        "contentHtml": "<p>Choose the article language.</p>"
+        "contentHtml": "<p>Select which language’s articles to list and edit. Check this before creating a draft or changing text so the content is saved for the intended readers.</p>"
       },
       {
         "id": "guide-idea-new",
@@ -25823,7 +25807,7 @@
         "icon": "help_outline",
         "title": "New article",
         "blurb": "",
-        "contentHtml": "<p>Create a new article draft.</p>"
+        "contentHtml": "<p>Start a new article in the selected language. Prepare its title, text and images, preview it, then save; publication is a separate action on the saved article.</p>"
       },
       {
         "id": "guide-close",
@@ -25840,11 +25824,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.idea-editor-hu-v1",
+    "_id": "community:explanation-admin.idea-editor-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Cikkek",
     "summary": "Cikkek, vázlatok és közzétett tartalmak kezelése a kiválasztott nyelven.",
@@ -25861,7 +25845,7 @@
         "icon": "help_outline",
         "title": "Cikkek",
         "blurb": "",
-        "contentHtml": "<p>Cikkek, vázlatok és közzétett tartalmak kezelése a kiválasztott nyelven.</p>"
+        "contentHtml": "<p>A kiválasztott nyelven kezelheted a cikkpiszkozatokat, publikált cikkeket és a kukát. A szerkesztő a tartalmat menti; a publikálás és a kiemelés külön művelet a cikk kártyáján.</p>"
       },
       {
         "id": "guide-idea-filter",
@@ -25869,7 +25853,7 @@
         "icon": "help_outline",
         "title": "Szűrés",
         "blurb": "",
-        "contentHtml": "<p>Váltás a közzétett cikkek, vázlatok és a lomtár között.</p>"
+        "contentHtml": "<p>A befejezetlen munkához válaszd a piszkozatokat, a látható tartalomhoz a publikált vagy kiemelt cikkeket, helyreállításhoz a kukát. A szűrő a listát változtatja, nem publikál és nem töröl.</p>"
       },
       {
         "id": "guide-idea-language",
@@ -25877,7 +25861,7 @@
         "icon": "help_outline",
         "title": "Nyelv",
         "blurb": "",
-        "contentHtml": "<p>Válaszd ki a cikkek nyelvét.</p>"
+        "contentHtml": "<p>Válaszd ki, mely nyelv cikkeit listázod és szerkeszted. Piszkozat létrehozása vagy szöveg módosítása előtt ellenőrizd, hogy a tartalom a megfelelő olvasóknak szánt nyelven mentődjön.</p>"
       },
       {
         "id": "guide-idea-new",
@@ -25885,7 +25869,7 @@
         "icon": "help_outline",
         "title": "Új cikk",
         "blurb": "",
-        "contentHtml": "<p>Új cikkvázlat létrehozása.</p>"
+        "contentHtml": "<p>Új cikket kezd a kiválasztott nyelven. Készítsd el a címet, szöveget és képeket, nézd meg az előnézetet, majd ments; a publikálás az elmentett cikk külön művelete.</p>"
       },
       {
         "id": "guide-close",
@@ -25902,11 +25886,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.article-view-en-v1",
+    "_id": "community:explanation-admin.article-view-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Article preview",
     "summary": "Review the article as displayed to readers. Close to return to the editor.",
@@ -25923,7 +25907,7 @@
         "icon": "help_outline",
         "title": "Article preview",
         "blurb": "",
-        "contentHtml": "<p>Review the article as displayed to readers. Close to return to the editor.</p>"
+        "contentHtml": "<p>Check the article’s text, images and layout as a reader would see them. A draft preview lets you review pending edits; opening it does not save or publish them.</p>"
       },
       {
         "id": "guide-close",
@@ -25940,11 +25924,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.article-view-hu-v1",
+    "_id": "community:explanation-admin.article-view-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Cikk előnézete",
     "summary": "A cikk olvasói nézetének ellenőrzése. Bezárás után visszatérsz a szerkesztőhöz.",
@@ -25961,7 +25945,7 @@
         "icon": "help_outline",
         "title": "Cikk előnézete",
         "blurb": "",
-        "contentHtml": "<p>A cikk olvasói nézetének ellenőrzése. Bezárás után visszatérsz a szerkesztőhöz.</p>"
+        "contentHtml": "<p>Olvasói nézetben ellenőrizheted a cikk szövegét, képeit és elrendezését. A piszkozat előnézete a függő módosításokat mutatja; megnyitása nem menti és nem publikálja azokat.</p>"
       },
       {
         "id": "guide-close",
@@ -25978,11 +25962,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.article-edit-en-v1",
+    "_id": "community:explanation-admin.article-edit-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Edit article",
     "summary": "Edit the article and review its preview before saving.",
@@ -25999,7 +25983,7 @@
         "icon": "help_outline",
         "title": "Edit article",
         "blurb": "",
-        "contentHtml": "<p>Edit the article and review its preview before saving.</p>"
+        "contentHtml": "<p>Edit the article for the selected language, including its title, text and images. Preview the result before saving, and use the saved article’s separate publication action when ready.</p>"
       },
       {
         "id": "guide-article-save",
@@ -26007,7 +25991,7 @@
         "icon": "help_outline",
         "title": "Save",
         "blurb": "",
-        "contentHtml": "<p>Save the current article changes.</p>"
+        "contentHtml": "<p>Persist this article’s current text and media, then return to the list. Saving a new draft does not publish it; the article card provides the publication action.</p>"
       },
       {
         "id": "guide-article-preview",
@@ -26015,7 +25999,7 @@
         "icon": "help_outline",
         "title": "Preview",
         "blurb": "",
-        "contentHtml": "<p>Check how the article will appear.</p>"
+        "contentHtml": "<p>Open a reader-style preview of the current draft, including edits not yet saved. Close the preview to continue editing, then save to keep those changes.</p>"
       },
       {
         "id": "guide-close",
@@ -26023,7 +26007,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Close the editor and discard its unsaved draft. Save first if you want to keep the current text and media changes.</p>"
       }
     ],
     "contextKey": "admin.article-edit",
@@ -26032,11 +26016,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.article-edit-hu-v1",
+    "_id": "community:explanation-admin.article-edit-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Cikk szerkesztése",
     "summary": "Szerkeszd a cikket, majd mentés előtt ellenőrizd az előnézetet.",
@@ -26053,7 +26037,7 @@
         "icon": "help_outline",
         "title": "Cikk szerkesztése",
         "blurb": "",
-        "contentHtml": "<p>Szerkeszd a cikket, majd mentés előtt ellenőrizd az előnézetet.</p>"
+        "contentHtml": "<p>A kiválasztott nyelven szerkesztheted a cikk címét, szövegét és képeit. Mentés előtt nézd meg az előnézetet; az elkészült cikk publikálását az elmentett kártya külön műveletével végezheted el.</p>"
       },
       {
         "id": "guide-article-save",
@@ -26061,7 +26045,7 @@
         "icon": "help_outline",
         "title": "Mentés",
         "blurb": "",
-        "contentHtml": "<p>A cikk módosításainak mentése.</p>"
+        "contentHtml": "<p>Elmenti a cikk aktuális szövegét és médiatartalmát, majd visszatér a listához. Az új piszkozat mentése nem publikálja azt; erre a cikk kártyáján külön művelet van.</p>"
       },
       {
         "id": "guide-article-preview",
@@ -26069,7 +26053,7 @@
         "icon": "help_outline",
         "title": "Előnézet",
         "blurb": "",
-        "contentHtml": "<p>Ellenőrizd a cikk megjelenését.</p>"
+        "contentHtml": "<p>Olvasói előnézetet nyit az aktuális piszkozatról, a még nem mentett módosításokkal együtt. Bezárása után folytathatod a szerkesztést; a változtatások megőrzéséhez ments.</p>"
       },
       {
         "id": "guide-close",
@@ -26077,7 +26061,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Bezárja a szerkesztőt, és elveti a nem mentett piszkozatot. Előbb ments, ha meg szeretnéd őrizni az aktuális szöveg- és médiamódosításokat.</p>"
       }
     ],
     "contextKey": "admin.article-edit",
@@ -26086,11 +26070,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.notifications-en-v1",
+    "_id": "community:explanation-admin.notifications-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Jobs and notifications",
     "summary": "Manage delivery rules, schedules and job runs. This is separate from your personal notification inbox.",
@@ -26107,7 +26091,7 @@
         "icon": "help_outline",
         "title": "Jobs and notifications",
         "blurb": "",
-        "contentHtml": "<p>Manage delivery rules, schedules and job runs. This is separate from your personal notification inbox.</p>"
+        "contentHtml": "<p>Inspect automated processes and notification rules, including their state, timing and run history. Open a row for its controls; personal received notifications are in your notification inbox.</p>"
       },
       {
         "id": "guide-process-filter",
@@ -26115,7 +26099,7 @@
         "icon": "help_outline",
         "title": "Filter jobs",
         "blurb": "",
-        "contentHtml": "<p>Choose which jobs and delivery rules to display.</p>"
+        "contentHtml": "<p>Narrow the process list to the category you need to inspect. Filtering helps locate a job or delivery rule; it does not enable, disable or start that process.</p>"
       },
       {
         "id": "guide-close",
@@ -26132,11 +26116,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.notifications-hu-v1",
+    "_id": "community:explanation-admin.notifications-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Feladatok és értesítések",
     "summary": "Kézbesítési szabályok, időzítések és futások kezelése. A saját értesítéseidet az értesítési központban találod.",
@@ -26153,7 +26137,7 @@
         "icon": "help_outline",
         "title": "Feladatok és értesítések",
         "blurb": "",
-        "contentHtml": "<p>Kézbesítési szabályok, időzítések és futások kezelése. A saját értesítéseidet az értesítési központban találod.</p>"
+        "contentHtml": "<p>Itt az automatikus folyamatokat és értesítési szabályokat látod, állapotukkal, időzítésükkel és futási előzményeikkel. A vezérléshez nyiss meg egy sort; a személyesen kapott értesítések az értesítési postaládában vannak.</p>"
       },
       {
         "id": "guide-process-filter",
@@ -26161,7 +26145,7 @@
         "icon": "help_outline",
         "title": "Feladatok szűrése",
         "blurb": "",
-        "contentHtml": "<p>A megjelenített feladatok és kézbesítési szabályok kiválasztása.</p>"
+        "contentHtml": "<p>Szűkítsd a folyamatlistát a vizsgálandó kategóriára. A szűrés segít megtalálni a feladatot vagy kézbesítési szabályt; nem engedélyezi, tiltja le vagy indítja el a folyamatot.</p>"
       },
       {
         "id": "guide-close",
@@ -26178,11 +26162,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.process-detail-en-v1",
+    "_id": "community:explanation-admin.process-detail-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Job details",
     "summary": "Review channels, parameters and recent runs before changing the rule.",
@@ -26199,7 +26183,7 @@
         "icon": "help_outline",
         "title": "Job details",
         "blurb": "",
-        "contentHtml": "<p>Review channels, parameters and recent runs before changing the rule.</p>"
+        "contentHtml": "<p>Check the selected process’s configuration and recent runs before changing it. Timing and parameter controls are available only where that process supports them; run history helps distinguish configuration from execution results.</p>"
       },
       {
         "id": "guide-process-detail-save",
@@ -26207,7 +26191,7 @@
         "icon": "help_outline",
         "title": "Save rule",
         "blurb": "",
-        "contentHtml": "<p>Save the configured delivery rule.</p>"
+        "contentHtml": "<p>Persist the edited process configuration. Check the save result before leaving; saving configuration is separate from a manual run of the process.</p>"
       },
       {
         "id": "guide-close",
@@ -26224,11 +26208,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.process-detail-hu-v1",
+    "_id": "community:explanation-admin.process-detail-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Feladat részletei",
     "summary": "A szabály módosítása előtt ellenőrizd a csatornákat, paramétereket és korábbi futásokat.",
@@ -26245,7 +26229,7 @@
         "icon": "help_outline",
         "title": "Feladat részletei",
         "blurb": "",
-        "contentHtml": "<p>A szabály módosítása előtt ellenőrizd a csatornákat, paramétereket és korábbi futásokat.</p>"
+        "contentHtml": "<p>Módosítás előtt nézd át a kiválasztott folyamat beállításait és futásait. Időzítés és paraméterezés ott érhető el, ahol a folyamat támogatja; az előzmények segítenek elkülöníteni a beállítást a futás eredményétől.</p>"
       },
       {
         "id": "guide-process-detail-save",
@@ -26253,7 +26237,7 @@
         "icon": "help_outline",
         "title": "Szabály mentése",
         "blurb": "",
-        "contentHtml": "<p>A beállított kézbesítési szabály mentése.</p>"
+        "contentHtml": "<p>Elmenti a folyamat módosított konfigurációját. Kilépés előtt ellenőrizd a mentés eredményét; a konfiguráció mentése külön művelet a folyamat kézi futtatásától.</p>"
       },
       {
         "id": "guide-close",
@@ -26270,11 +26254,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.schedule-edit-en-v1",
+    "_id": "community:explanation-admin.schedule-edit-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Schedule",
     "summary": "Set when the selected job runs, including its interval or start time.",
@@ -26291,7 +26275,7 @@
         "icon": "help_outline",
         "title": "Schedule",
         "blurb": "",
-        "contentHtml": "<p>Set when the selected job runs, including its interval or start time.</p>"
+        "contentHtml": "<p>Set the selected process’s supported start time, interval or run windows. Review the resulting timing before saving, because it controls when the scheduled process becomes due.</p>"
       },
       {
         "id": "guide-schedule-save",
@@ -26299,7 +26283,7 @@
         "icon": "help_outline",
         "title": "Save schedule",
         "blurb": "",
-        "contentHtml": "<p>Apply the selected schedule.</p>"
+        "contentHtml": "<p>Save the selected process’s timing and return to its details. This updates its schedule; use the separate run action if you intend to execute it manually.</p>"
       },
       {
         "id": "guide-close",
@@ -26307,7 +26291,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Cancel this timing edit and restore the schedule shown when you opened the editor. Save before closing if the new timing should take effect.</p>"
       }
     ],
     "contextKey": "admin.schedule-edit",
@@ -26316,11 +26300,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.schedule-edit-hu-v1",
+    "_id": "community:explanation-admin.schedule-edit-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Időzítés",
     "summary": "Állítsd be a feladat futását: időközét vagy kezdési időpontját.",
@@ -26337,7 +26321,7 @@
         "icon": "help_outline",
         "title": "Időzítés",
         "blurb": "",
-        "contentHtml": "<p>Állítsd be a feladat futását: időközét vagy kezdési időpontját.</p>"
+        "contentHtml": "<p>Állítsd be a folyamat által támogatott kezdést, időközt vagy futási ablakokat. Mentés előtt nézd át az eredményt, mert ez szabályozza, mikor válik esedékessé az ütemezett folyamat.</p>"
       },
       {
         "id": "guide-schedule-save",
@@ -26345,7 +26329,7 @@
         "icon": "help_outline",
         "title": "Időzítés mentése",
         "blurb": "",
-        "contentHtml": "<p>A kiválasztott időzítés alkalmazása.</p>"
+        "contentHtml": "<p>Elmenti a kiválasztott folyamat időzítését, és visszatér a részletekhez. Ez az ütemezést módosítja; kézi végrehajtáshoz a külön futtatási műveletet használd.</p>"
       },
       {
         "id": "guide-close",
@@ -26353,7 +26337,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Elveti az időzítés szerkesztését, és visszaállítja a megnyitáskor látott ütemezést. Ha az új időzítést szeretnéd érvényesíteni, bezárás előtt ments.</p>"
       }
     ],
     "contextKey": "admin.schedule-edit",
@@ -26362,11 +26346,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.job-parameter-en-v1",
+    "_id": "community:explanation-admin.job-parameter-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Job parameter",
     "summary": "Edit the selected job parameter and save the change.",
@@ -26383,7 +26367,7 @@
         "icon": "help_outline",
         "title": "Job parameter",
         "blurb": "",
-        "contentHtml": "<p>Edit the selected job parameter and save the change.</p>"
+        "contentHtml": "<p>Review the selected process’s parameter names, values and offered choices. Edit the values needed for its operation, then save to persist the configuration.</p>"
       },
       {
         "id": "guide-parameter-save",
@@ -26391,7 +26375,7 @@
         "icon": "help_outline",
         "title": "Save parameter",
         "blurb": "",
-        "contentHtml": "<p>Apply this parameter value.</p>"
+        "contentHtml": "<p>Save the edited job parameters and return to the process. These values configure its operation; saving them does not itself request a manual run.</p>"
       },
       {
         "id": "guide-close",
@@ -26399,7 +26383,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Discard this parameter draft and return to the process. Use Save first to retain the edited values.</p>"
       }
     ],
     "contextKey": "admin.job-parameter",
@@ -26408,11 +26392,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.job-parameter-hu-v1",
+    "_id": "community:explanation-admin.job-parameter-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Feladatparaméter",
     "summary": "Módosítsd a kiválasztott feladatparamétert, majd ments.",
@@ -26429,7 +26413,7 @@
         "icon": "help_outline",
         "title": "Feladatparaméter",
         "blurb": "",
-        "contentHtml": "<p>Módosítsd a kiválasztott feladatparamétert, majd ments.</p>"
+        "contentHtml": "<p>Nézd át a kiválasztott folyamat paraméterneveit, értékeit és választható lehetőségeit. Módosítsd a működéséhez szükséges értékeket, majd mentsd el a konfigurációt.</p>"
       },
       {
         "id": "guide-parameter-save",
@@ -26437,7 +26421,7 @@
         "icon": "help_outline",
         "title": "Paraméter mentése",
         "blurb": "",
-        "contentHtml": "<p>A paraméterérték alkalmazása.</p>"
+        "contentHtml": "<p>Elmenti a háttérfeladat módosított paramétereit, és visszatér a folyamathoz. Ezek az értékek a működést állítják be; a mentés önmagában nem kér kézi futtatást.</p>"
       },
       {
         "id": "guide-close",
@@ -26445,7 +26429,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Elveti a paraméterpiszkozatot, és visszatér a folyamathoz. A módosított értékek megőrzéséhez előbb ments.</p>"
       }
     ],
     "contextKey": "admin.job-parameter",
@@ -26454,11 +26438,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.params-en-v1",
+    "_id": "community:explanation-admin.params-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Application parameters",
     "summary": "Inspect current configuration, edit a parameter or view its history.",
@@ -26475,7 +26459,7 @@
         "icon": "help_outline",
         "title": "Application parameters",
         "blurb": "",
-        "contentHtml": "<p>Inspect current configuration, edit a parameter or view its history.</p>"
+        "contentHtml": "<p>Expand a configuration section to inspect its current values. Edit changes that section; History shows its recorded versions and offers restoration of an earlier version.</p>"
       },
       {
         "id": "guide-close",
@@ -26492,11 +26476,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.params-hu-v1",
+    "_id": "community:explanation-admin.params-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Alkalmazásparaméterek",
     "summary": "Az aktuális beállítások áttekintése, paraméter módosítása vagy előzményeinek megnyitása.",
@@ -26513,7 +26497,7 @@
         "icon": "help_outline",
         "title": "Alkalmazásparaméterek",
         "blurb": "",
-        "contentHtml": "<p>Az aktuális beállítások áttekintése, paraméter módosítása vagy előzményeinek megnyitása.</p>"
+        "contentHtml": "<p>Nyiss ki egy konfigurációs szakaszt az aktuális értékeihez. A szerkesztés ezt a szakaszt módosítja; az előzményekben a rögzített verziókat láthatod, és visszaállíthatsz egy korábbi változatot.</p>"
       },
       {
         "id": "guide-close",
@@ -26530,11 +26514,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.parameter-edit-en-v1",
+    "_id": "community:explanation-admin.parameter-edit-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Edit parameter",
     "summary": "Check the value and its validation before saving.",
@@ -26551,7 +26535,7 @@
         "icon": "help_outline",
         "title": "Edit parameter",
         "blurb": "",
-        "contentHtml": "<p>Check the value and its validation before saving.</p>"
+        "contentHtml": "<p>Edit the selected section’s fields using the displayed values, units and choices. Saving applies the section as a new configuration change; closing without saving discards this draft.</p>"
       },
       {
         "id": "guide-save-edit",
@@ -26559,7 +26543,7 @@
         "icon": "help_outline",
         "title": "Save",
         "blurb": "",
-        "contentHtml": "<p>Save the parameter value.</p>"
+        "contentHtml": "<p>Save all edited fields in this configuration section. The saved state replaces the displayed current values and the editor closes after success.</p>"
       },
       {
         "id": "guide-close",
@@ -26567,7 +26551,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous surface.</p>"
+        "contentHtml": "<p>Cancel the section edit and discard unsaved field changes. Already saved configuration remains in effect.</p>"
       }
     ],
     "contextKey": "admin.parameter-edit",
@@ -26576,11 +26560,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.parameter-edit-hu-v1",
+    "_id": "community:explanation-admin.parameter-edit-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Paraméter módosítása",
     "summary": "Mentés előtt ellenőrizd az értéket és az ellenőrzés eredményét.",
@@ -26597,7 +26581,7 @@
         "icon": "help_outline",
         "title": "Paraméter módosítása",
         "blurb": "",
-        "contentHtml": "<p>Mentés előtt ellenőrizd az értéket és az ellenőrzés eredményét.</p>"
+        "contentHtml": "<p>A kijelzett értékek, mértékegységek és választási lehetőségek alapján szerkeszd a kiválasztott szakaszt. A mentés konfigurációs módosításként rögzíti a szakaszt; mentés nélküli bezárás elveti a piszkozatot.</p>"
       },
       {
         "id": "guide-save-edit",
@@ -26605,7 +26589,7 @@
         "icon": "help_outline",
         "title": "Mentés",
         "blurb": "",
-        "contentHtml": "<p>A paraméterérték mentése.</p>"
+        "contentHtml": "<p>Elmenti a konfigurációs szakasz összes szerkesztett mezőjét. A mentett állapot váltja fel a kijelzett aktuális értékeket; siker esetén a szerkesztő bezárul.</p>"
       },
       {
         "id": "guide-close",
@@ -26613,7 +26597,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+        "contentHtml": "<p>Megszakítja a szakasz szerkesztését, és elveti a nem mentett mezőmódosításokat. A már elmentett konfiguráció marad érvényben.</p>"
       }
     ],
     "contextKey": "admin.parameter-edit",
@@ -26622,11 +26606,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.parameter-history-en-v1",
+    "_id": "community:explanation-admin.parameter-history-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Parameter history",
     "summary": "Review earlier changes and their authors.",
@@ -26643,7 +26627,7 @@
         "icon": "help_outline",
         "title": "Parameter history",
         "blurb": "",
-        "contentHtml": "<p>Review earlier changes and their authors.</p>"
+        "contentHtml": "<p>Expand a version to inspect its saved values and change information. Restoring an earlier version changes the active configuration; inspecting a version alone leaves the current values in effect.</p>"
       },
       {
         "id": "guide-close",
@@ -26660,11 +26644,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.parameter-history-hu-v1",
+    "_id": "community:explanation-admin.parameter-history-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Paraméterelőzmények",
     "summary": "A korábbi változtatások és szerzőik áttekintése.",
@@ -26681,7 +26665,7 @@
         "icon": "help_outline",
         "title": "Paraméterelőzmények",
         "blurb": "",
-        "contentHtml": "<p>A korábbi változtatások és szerzőik áttekintése.</p>"
+        "contentHtml": "<p>Nyiss ki egy verziót a mentett értékek és módosítási adatok ellenőrzéséhez. Egy korábbi verzió visszaállítása megváltoztatja az aktív konfigurációt; a puszta megtekintés megtartja a jelenlegi értékeket.</p>"
       },
       {
         "id": "guide-close",
@@ -26698,11 +26682,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.stats-en-v1",
+    "_id": "community:explanation-admin.stats-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Statistics",
     "summary": "Explore the displayed period and metrics. Use chart help for the selected graph.",
@@ -26719,7 +26703,7 @@
         "icon": "help_outline",
         "title": "Statistics",
         "blurb": "",
-        "contentHtml": "<p>Explore the displayed period and metrics. Use chart help for the selected graph.</p>"
+        "contentHtml": "<p>Read the summary metrics together with their period and segments, then use the timelines to compare changes. The graph help explains network measures so counts and relationships can be interpreted in context.</p>"
       },
       {
         "id": "guide-stats-refresh",
@@ -26727,7 +26711,7 @@
         "icon": "help_outline",
         "title": "Refresh",
         "blurb": "",
-        "contentHtml": "<p>Refresh the displayed statistics.</p>"
+        "contentHtml": "<p>Reload the statistical snapshot for the current view. Check the displayed period and update information before comparing refreshed figures with earlier observations.</p>"
       },
       {
         "id": "guide-close",
@@ -26744,11 +26728,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.stats-hu-v1",
+    "_id": "community:explanation-admin.stats-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Statisztika",
     "summary": "A kijelzett időszak és mutatók áttekintése. A grafikon súgója az adott ábrát magyarázza.",
@@ -26765,7 +26749,7 @@
         "icon": "help_outline",
         "title": "Statisztika",
         "blurb": "",
-        "contentHtml": "<p>A kijelzett időszak és mutatók áttekintése. A grafikon súgója az adott ábrát magyarázza.</p>"
+        "contentHtml": "<p>Az összesített mutatókat az időszakkal és bontásokkal együtt olvasd, majd az idővonalakon hasonlítsd össze a változásokat. A gráfsúgó segít a hálózati mérőszámok és kapcsolatok értelmezésében.</p>"
       },
       {
         "id": "guide-stats-refresh",
@@ -26773,7 +26757,7 @@
         "icon": "help_outline",
         "title": "Frissítés",
         "blurb": "",
-        "contentHtml": "<p>A megjelenített statisztikák frissítése.</p>"
+        "contentHtml": "<p>Újra lekéri az aktuális nézet statisztikai adatait. A friss számok korábbi megfigyelésekkel való összevetése előtt ellenőrizd a kijelzett időszakot és frissítési adatokat.</p>"
       },
       {
         "id": "guide-close",
@@ -26790,11 +26774,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.graph-help-en-v1",
+    "_id": "community:explanation-admin.graph-help-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Chart explanation",
     "summary": "This explanation describes the selected chart and how to read it.",
@@ -26811,7 +26795,7 @@
         "icon": "help_outline",
         "title": "Chart explanation",
         "blurb": "",
-        "contentHtml": "<p>This explanation describes the selected chart and how to read it.</p>"
+        "contentHtml": "<p>Use the explanations of edges, bridges, reach, clustering and recurring connections to interpret the network charts. Return to the chart to compare those definitions with the displayed values.</p>"
       },
       {
         "id": "guide-close",
@@ -26828,11 +26812,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.graph-help-hu-v1",
+    "_id": "community:explanation-admin.graph-help-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Grafikonmagyarázat",
     "summary": "Ez a magyarázat a kiválasztott grafikon értelmezését segíti.",
@@ -26849,7 +26833,7 @@
         "icon": "help_outline",
         "title": "Grafikonmagyarázat",
         "blurb": "",
-        "contentHtml": "<p>Ez a magyarázat a kiválasztott grafikon értelmezését segíti.</p>"
+        "contentHtml": "<p>Az élek, hidak, elérés, klaszterezettség és visszatérő kapcsolatok magyarázata segít a hálózati ábrák értelmezésében. Térj vissza a gráfhoz a fogalmak és a kijelzett értékek összevetéséhez.</p>"
       },
       {
         "id": "guide-close",
@@ -26866,11 +26850,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.affinity-graph-en-v1",
+    "_id": "community:explanation-admin.affinity-graph-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Affinity graph",
     "summary": "Inspect the graph and its displayed relationships.",
@@ -26887,7 +26871,7 @@
         "icon": "help_outline",
         "title": "Affinity graph",
         "blurb": "",
-        "contentHtml": "<p>Inspect the graph and its displayed relationships.</p>"
+        "contentHtml": "<p>Explore the displayed people and their affinity links. Drag with the left mouse button to pan, use the right button to rotate and the wheel to zoom; consult the legend when comparing nodes.</p>"
       },
       {
         "id": "guide-close",
@@ -26904,11 +26888,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.affinity-graph-hu-v1",
+    "_id": "community:explanation-admin.affinity-graph-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Kapcsolódási gráf",
     "summary": "A gráf és a megjelenített kapcsolatok áttekintése.",
@@ -26925,7 +26909,7 @@
         "icon": "help_outline",
         "title": "Kapcsolódási gráf",
         "blurb": "",
-        "contentHtml": "<p>A gráf és a megjelenített kapcsolatok áttekintése.</p>"
+        "contentHtml": "<p>A megjelenített embereket és affinitási kapcsolataikat vizsgálhatod. Bal egérgombbal mozgathatod, jobb gombbal forgathatod, a görgővel nagyíthatod a nézetet; a csomópontok összehasonlításához használd a jelmagyarázatot.</p>"
       },
       {
         "id": "guide-close",
@@ -26942,11 +26926,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.monitoring-en-v1",
+    "_id": "community:explanation-admin.monitoring-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Monitoring",
     "summary": "Review operational measurements and recent application activity.",
@@ -26963,7 +26947,7 @@
         "icon": "help_outline",
         "title": "Monitoring",
         "blurb": "",
-        "contentHtml": "<p>Review operational measurements and recent application activity.</p>"
+        "contentHtml": "<p>Follow the operational flow cards to locate unhealthy components, queued work or delivery problems. Read each stage’s metrics and the volumes between stages together before choosing what to investigate.</p>"
       },
       {
         "id": "guide-monitoring-filter",
@@ -26971,7 +26955,7 @@
         "icon": "help_outline",
         "title": "Filter",
         "blurb": "",
-        "contentHtml": "<p>Choose the monitoring events to display.</p>"
+        "contentHtml": "<p>Focus on items needing attention, domain activity, delivery or workers. The filter selects monitoring categories; it does not alter the monitored processes.</p>"
       },
       {
         "id": "guide-close",
@@ -26988,11 +26972,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.monitoring-hu-v1",
+    "_id": "community:explanation-admin.monitoring-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Megfigyelés",
     "summary": "Működési mérések és az alkalmazás legutóbbi eseményeinek áttekintése.",
@@ -27009,7 +26993,7 @@
         "icon": "help_outline",
         "title": "Megfigyelés",
         "blurb": "",
-        "contentHtml": "<p>Működési mérések és az alkalmazás legutóbbi eseményeinek áttekintése.</p>"
+        "contentHtml": "<p>A működési folyamatábrákon keresd a hibás állapotú összetevőket, a várakozó munkát vagy a kézbesítési problémákat. A vizsgálat kiválasztásához együtt olvasd a szakaszok mutatóit és a köztük jelzett forgalmat.</p>"
       },
       {
         "id": "guide-monitoring-filter",
@@ -27017,7 +27001,7 @@
         "icon": "help_outline",
         "title": "Szűrés",
         "blurb": "",
-        "contentHtml": "<p>A megjelenített megfigyelési események kiválasztása.</p>"
+        "contentHtml": "<p>Szűrj a figyelmet igénylő elemekre, domainműködésre, kézbesítésre vagy feldolgozókra. A szűrő monitorozási kategóriákat választ ki, nem módosítja a megfigyelt folyamatokat.</p>"
       },
       {
         "id": "guide-close",
@@ -27034,11 +27018,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.payment-simulator-en-v1",
+    "_id": "community:explanation-admin.payment-simulator-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Payment simulator",
     "summary": "Inspect simulated payment outcomes and use the provided test controls.",
@@ -27055,7 +27039,7 @@
         "icon": "help_outline",
         "title": "Payment simulator",
         "blurb": "",
-        "contentHtml": "<p>Inspect simulated payment outcomes and use the provided test controls.</p>"
+        "contentHtml": "<p>Open the configured payment simulator’s administration view to inspect and change its test setup. Check the provider and settings in that view before running the payment scenario you want to exercise.</p>"
       },
       {
         "id": "guide-close",
@@ -27072,11 +27056,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.payment-simulator-hu-v1",
+    "_id": "community:explanation-admin.payment-simulator-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Fizetési szimulátor",
     "summary": "Szimulált fizetési eredmények és a rendelkezésre álló tesztvezérlők.",
@@ -27093,7 +27077,7 @@
         "icon": "help_outline",
         "title": "Fizetési szimulátor",
         "blurb": "",
-        "contentHtml": "<p>Szimulált fizetési eredmények és a rendelkezésre álló tesztvezérlők.</p>"
+        "contentHtml": "<p>A beállított fizetési szimulátor adminisztrációs nézetében ellenőrizheted és módosíthatod a tesztbeállításokat. A fizetési forgatókönyv kipróbálása előtt nézd át az ott választott szolgáltatót és beállításokat.</p>"
       },
       {
         "id": "guide-close",
@@ -27110,11 +27094,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.payment-authorizations-en-v1",
+    "_id": "community:explanation-admin.payment-authorizations-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Payment authorizations",
     "summary": "Review pending payment authorizations and decide only after checking their details.",
@@ -27131,7 +27115,7 @@
         "icon": "help_outline",
         "title": "Payment authorizations",
         "blurb": "",
-        "contentHtml": "<p>Review pending payment authorizations and decide only after checking their details.</p>"
+        "contentHtml": "<p>This opens the configured payment simulator’s authorization view. Inspect the displayed payment details before using its decision controls, then check the resulting authorization state.</p>"
       },
       {
         "id": "guide-close",
@@ -27148,11 +27132,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.payment-authorizations-hu-v1",
+    "_id": "community:explanation-admin.payment-authorizations-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Fizetési engedélyezések",
     "summary": "Ellenőrizd a függő fizetési engedélyezések részleteit, mielőtt döntesz.",
@@ -27169,7 +27153,7 @@
         "icon": "help_outline",
         "title": "Fizetési engedélyezések",
         "blurb": "",
-        "contentHtml": "<p>Ellenőrizd a függő fizetési engedélyezések részleteit, mielőtt döntesz.</p>"
+        "contentHtml": "<p>Ez a beállított fizetési szimulátor engedélyezési nézetét nyitja meg. A döntési művelet előtt ellenőrizd a kijelzett fizetés részleteit, majd nézd meg az engedélyezés eredményét.</p>"
       },
       {
         "id": "guide-close",
@@ -27186,11 +27170,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.navigation-en-v1",
+    "_id": "community:explanation-admin.navigation-en-v3",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 3,
     "active": true,
     "title": "Administration menu",
     "summary": "Administration menu",
@@ -27207,15 +27191,7 @@
         "icon": "help_outline",
         "title": "Notifications",
         "blurb": "",
-        "contentHtml": "<p>Open your inbox, mark messages read and manage alert muting.</p>"
-      },
-      {
-        "id": "guide-notification-launcher",
-        "guideStepId": "notification-launcher",
-        "icon": "help_outline",
-        "title": "Notification button",
-        "blurb": "",
-        "contentHtml": "<p>Show or hide the floating notification button. Your inbox and delivery settings remain available.</p>"
+        "contentHtml": "<p>Open notifications directly. Use the existing mute control in the notification popup to hide or restore the floating alert. Notifications and unread counts are kept.</p>"
       },
       {
         "id": "guide-explanations",
@@ -27239,7 +27215,7 @@
         "icon": "help_outline",
         "title": "Moderation",
         "blurb": "",
-        "contentHtml": "<p>Review submitted content.</p>"
+        "contentHtml": "<p>Open the content-review queue to inspect submissions by type and status, then record moderation decisions. Its settings control the categories and automatic approval used in the workspace.</p>"
       },
       {
         "id": "guide-adminreports",
@@ -27247,7 +27223,7 @@
         "icon": "help_outline",
         "title": "Reports",
         "blurb": "",
-        "contentHtml": "<p>Review reported users and their evidence.</p>"
+        "contentHtml": "<p>Review reports about users with their reason and source context. After inspecting the evidence, use the available actions to warn or restrict the affected user.</p>"
       },
       {
         "id": "guide-adminfeedback",
@@ -27255,7 +27231,7 @@
         "icon": "help_outline",
         "title": "Feedback",
         "blurb": "",
-        "contentHtml": "<p>Review user feedback.</p>"
+        "contentHtml": "<p>Read bug reports, feature requests and other feedback. Mark handled submissions solved, or reopen them for further work, without deleting their content.</p>"
       },
       {
         "id": "guide-adminchat",
@@ -27263,7 +27239,7 @@
         "icon": "help_outline",
         "title": "Chat review",
         "blurb": "",
-        "contentHtml": "<p>Inspect reports and send appropriate warnings.</p>"
+        "contentHtml": "<p>Open the moderation conversation view for the selected reported user. Check the report context and recipient before writing and sending a warning.</p>"
       },
       {
         "id": "guide-adminjobs",
@@ -27271,7 +27247,7 @@
         "icon": "help_outline",
         "title": "Jobs",
         "blurb": "",
-        "contentHtml": "<p>Configure delivery rules and scheduled jobs.</p>"
+        "contentHtml": "<p>Inspect background processes, notification rules and recent runs. Open a process to manage its supported timing and parameters or use its execution controls.</p>"
       },
       {
         "id": "guide-adminparams",
@@ -27279,7 +27255,7 @@
         "icon": "help_outline",
         "title": "Parameters",
         "blurb": "",
-        "contentHtml": "<p>Manage application parameters and their history.</p>"
+        "contentHtml": "<p>Inspect and edit application configuration by section. Each section’s history lets you compare recorded versions and restore an earlier configuration when needed.</p>"
       },
       {
         "id": "guide-admincontent",
@@ -27287,7 +27263,7 @@
         "icon": "help_outline",
         "title": "Content",
         "blurb": "",
-        "contentHtml": "<p>Edit help, policies and editable guides; system guides are hidden.</p>"
+        "contentHtml": "<p>Maintain help, policies and editable guides by language and revision. Save prepared content, then activate the version users should see; system-managed guides are excluded.</p>"
       },
       {
         "id": "guide-adminarticle",
@@ -27295,7 +27271,7 @@
         "icon": "help_outline",
         "title": "Articles",
         "blurb": "",
-        "contentHtml": "<p>Manage article drafts and publications.</p>"
+        "contentHtml": "<p>Create and revise articles, preview their content, and manage publication or featured placement from the cards. Drafts and trash remain available through the list filters.</p>"
       },
       {
         "id": "guide-adminstats",
@@ -27303,7 +27279,7 @@
         "icon": "help_outline",
         "title": "Statistics",
         "blurb": "",
-        "contentHtml": "<p>Inspect application statistics.</p>"
+        "contentHtml": "<p>Compare profile and activity statistics across the displayed periods and segments. Use timelines and graph explanations to interpret changes in the figures.</p>"
       },
       {
         "id": "guide-adminmetrics",
@@ -27311,7 +27287,7 @@
         "icon": "help_outline",
         "title": "Monitoring",
         "blurb": "",
-        "contentHtml": "<p>Inspect operational metrics and activity.</p>"
+        "contentHtml": "<p>Inspect operational health, processing stages and delivery volumes. Use the attention filter to focus the view on components that need investigation.</p>"
       },
       {
         "id": "guide-admingraph",
@@ -27319,7 +27295,7 @@
         "icon": "help_outline",
         "title": "Graph",
         "blurb": "",
-        "contentHtml": "<p>Explore the affinity graph.</p>"
+        "contentHtml": "<p>Explore people and affinity links in an interactive graph. Pan, rotate and zoom the view to inspect connections while using the legend to interpret nodes.</p>"
       },
       {
         "id": "guide-adminpaymentsimulator",
@@ -27327,7 +27303,7 @@
         "icon": "help_outline",
         "title": "Payment simulator",
         "blurb": "",
-        "contentHtml": "<p>Open the configured payment test environment.</p>"
+        "contentHtml": "<p>Open the configured payment simulator’s settings to prepare a payment test. The simulator view controls the test setup used by the selected payment provider.</p>"
       },
       {
         "id": "guide-adminpaymentauthorizations",
@@ -27335,7 +27311,7 @@
         "icon": "help_outline",
         "title": "Authorizations",
         "blurb": "",
-        "contentHtml": "<p>Review pending payment authorizations.</p>"
+        "contentHtml": "<p>Open the payment simulator’s authorization view to inspect the payments presented there and use its decision controls. Check payment details before submitting a decision.</p>"
       }
     ],
     "contextKey": "admin.navigation",
@@ -27344,11 +27320,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-admin.navigation-hu-v1",
+    "_id": "community:explanation-admin.navigation-hu-v3",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 3,
     "active": true,
     "title": "Adminisztrációs menü",
     "summary": "Adminisztrációs menü",
@@ -27365,15 +27341,7 @@
         "icon": "help_outline",
         "title": "Értesítések",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg az értesítési központot, jelöld olvasottnak az üzeneteket, és kezeld a némítást.</p>"
-      },
-      {
-        "id": "guide-notification-launcher",
-        "guideStepId": "notification-launcher",
-        "icon": "help_outline",
-        "title": "Értesítési gomb",
-        "blurb": "",
-        "contentHtml": "<p>A lebegő értesítési gomb ki- és bekapcsolása. Az értesítési központ és a kézbesítési beállítások továbbra is elérhetők.</p>"
+        "contentHtml": "<p>Közvetlenül megnyitja az értesítéseket. A popup meglévő némító gombjával rejtheted el vagy kapcsolhatod vissza a lebegő jelzést. Az értesítések és az olvasatlan darabszám megmaradnak.</p>"
       },
       {
         "id": "guide-explanations",
@@ -27397,7 +27365,7 @@
         "icon": "help_outline",
         "title": "Moderálás",
         "blurb": "",
-        "contentHtml": "<p>Beküldött tartalmak elbírálása.</p>"
+        "contentHtml": "<p>Megnyitja a tartalomellenőrzési sort, ahol típus és állapot szerint vizsgálhatod a beküldéseket és rögzíthetsz döntéseket. Beállításai a munkaterület kategóriáit és automatikus jóváhagyását szabályozzák.</p>"
       },
       {
         "id": "guide-adminreports",
@@ -27405,7 +27373,7 @@
         "icon": "help_outline",
         "title": "Bejelentések",
         "blurb": "",
-        "contentHtml": "<p>Bejelentett felhasználók és bizonyítékok áttekintése.</p>"
+        "contentHtml": "<p>Ellenőrizheted a felhasználókról szóló bejelentéseket, az indokot és a forrást. A bizonyítékok átnézése után az elérhető műveletekkel figyelmeztetheted vagy korlátozhatod az érintett felhasználót.</p>"
       },
       {
         "id": "guide-adminfeedback",
@@ -27413,7 +27381,7 @@
         "icon": "help_outline",
         "title": "Visszajelzések",
         "blurb": "",
-        "contentHtml": "<p>Felhasználói visszajelzések kezelése.</p>"
+        "contentHtml": "<p>Elolvashatod a hibajelzéseket, fejlesztési kéréseket és egyéb visszajelzéseket. A feldolgozott beküldéseket megoldottnak jelölheted, vagy további munkához újranyithatod a tartalmuk törlése nélkül.</p>"
       },
       {
         "id": "guide-adminchat",
@@ -27421,7 +27389,7 @@
         "icon": "help_outline",
         "title": "Beszélgetések",
         "blurb": "",
-        "contentHtml": "<p>Bejelentések ellenőrzése és indokolt figyelmeztetések küldése.</p>"
+        "contentHtml": "<p>Megnyitja a kiválasztott bejelentett felhasználó moderálási beszélgetési nézetét. Figyelmeztetés írása és küldése előtt ellenőrizd a bejelentés előzményeit és a címzettet.</p>"
       },
       {
         "id": "guide-adminjobs",
@@ -27429,7 +27397,7 @@
         "icon": "help_outline",
         "title": "Feladatok",
         "blurb": "",
-        "contentHtml": "<p>Kézbesítési szabályok és időzített feladatok kezelése.</p>"
+        "contentHtml": "<p>Áttekintheted a háttérfolyamatokat, értesítési szabályokat és friss futásokat. Egy folyamat megnyitásával kezelheted a támogatott időzítést és paramétereket, illetve a végrehajtási műveleteket.</p>"
       },
       {
         "id": "guide-adminparams",
@@ -27437,7 +27405,7 @@
         "icon": "help_outline",
         "title": "Paraméterek",
         "blurb": "",
-        "contentHtml": "<p>Alkalmazásparaméterek és előzmények kezelése.</p>"
+        "contentHtml": "<p>Szakaszonként áttekintheted és szerkesztheted az alkalmazás konfigurációját. Az előzményekben összevetheted a rögzített verziókat, és szükség esetén visszaállíthatsz korábbi beállítást.</p>"
       },
       {
         "id": "guide-admincontent",
@@ -27445,7 +27413,7 @@
         "icon": "help_outline",
         "title": "Tartalom",
         "blurb": "",
-        "contentHtml": "<p>Súgók, szabályzatok és szerkeszthető guide-ok; a rendszer-guide-ok rejtettek.</p>"
+        "contentHtml": "<p>Nyelv és verzió szerint kezelheted a súgókat, szabályzatokat és szerkeszthető útmutatókat. Mentsd az előkészített tartalmat, majd aktiváld a felhasználóknak szánt változatot; a rendszer által kezelt útmutatók nem szerepelnek itt.</p>"
       },
       {
         "id": "guide-adminarticle",
@@ -27453,7 +27421,7 @@
         "icon": "help_outline",
         "title": "Cikkek",
         "blurb": "",
-        "contentHtml": "<p>Cikkvázlatok és publikációk kezelése.</p>"
+        "contentHtml": "<p>Cikkeket készíthetsz és módosíthatsz, ellenőrizheted az előnézetet, majd a kártyákon kezelheted a publikálást és kiemelést. A piszkozatok és a kuka a listaszűrőkön keresztül érhetők el.</p>"
       },
       {
         "id": "guide-adminstats",
@@ -27461,7 +27429,7 @@
         "icon": "help_outline",
         "title": "Statisztika",
         "blurb": "",
-        "contentHtml": "<p>Alkalmazásstatisztikák áttekintése.</p>"
+        "contentHtml": "<p>Összehasonlíthatod a profil- és aktivitási statisztikákat a kijelzett időszakokban és bontásokban. A számok változásának értelmezéséhez használd az idővonalakat és gráfmagyarázatokat.</p>"
       },
       {
         "id": "guide-adminmetrics",
@@ -27469,7 +27437,7 @@
         "icon": "help_outline",
         "title": "Megfigyelés",
         "blurb": "",
-        "contentHtml": "<p>Működési mutatók és események áttekintése.</p>"
+        "contentHtml": "<p>Ellenőrizheted a működési állapotot, feldolgozási szakaszokat és kézbesítési forgalmat. A figyelmet igénylő elemek szűrőjével a vizsgálandó összetevőkre szűkítheted a nézetet.</p>"
       },
       {
         "id": "guide-admingraph",
@@ -27477,7 +27445,7 @@
         "icon": "help_outline",
         "title": "Gráf",
         "blurb": "",
-        "contentHtml": "<p>A kapcsolódási gráf megtekintése.</p>"
+        "contentHtml": "<p>Interaktív gráfon vizsgálhatod az embereket és affinitási kapcsolataikat. A nézet mozgatásával, forgatásával és nagyításával követheted a kapcsolatokat, a csomópontokat a jelmagyarázat segít értelmezni.</p>"
       },
       {
         "id": "guide-adminpaymentsimulator",
@@ -27485,7 +27453,7 @@
         "icon": "help_outline",
         "title": "Fizetési szimulátor",
         "blurb": "",
-        "contentHtml": "<p>A beállított fizetési tesztkörnyezet megnyitása.</p>"
+        "contentHtml": "<p>Megnyitja a beállított fizetési szimulátor beállításait a fizetési teszt előkészítéséhez. A szimulátor nézetében kezelheted a kiválasztott fizetési szolgáltató tesztbeállításait.</p>"
       },
       {
         "id": "guide-adminpaymentauthorizations",
@@ -27493,7 +27461,7 @@
         "icon": "help_outline",
         "title": "Engedélyezések",
         "blurb": "",
-        "contentHtml": "<p>Függő fizetési engedélyezések kezelése.</p>"
+        "contentHtml": "<p>Megnyitja a fizetési szimulátor engedélyezési nézetét az ott megjelenő fizetések és döntési műveletek kezeléséhez. Döntés beküldése előtt ellenőrizd a fizetés adatait.</p>"
       }
     ],
     "contextKey": "admin.navigation",
@@ -27502,11 +27470,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.navigation-en-v1",
+    "_id": "community:explanation-operator.navigation-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operator menu",
     "summary": "Operator menu",
@@ -27523,15 +27491,7 @@
         "icon": "help_outline",
         "title": "Notifications",
         "blurb": "",
-        "contentHtml": "<p>Open your inbox, mark messages read and manage alert muting.</p>"
-      },
-      {
-        "id": "guide-notification-launcher",
-        "guideStepId": "notification-launcher",
-        "icon": "help_outline",
-        "title": "Notification button",
-        "blurb": "",
-        "contentHtml": "<p>Show or hide the floating notification button. Your inbox and delivery settings remain available.</p>"
+        "contentHtml": "<p>Open notifications directly. Use the existing mute control in the notification popup to hide or restore the floating alert. Notifications and unread counts are kept.</p>"
       },
       {
         "id": "guide-explanations",
@@ -27556,11 +27516,11 @@
     "isSystem": true
   },
   {
-    "_id": "community:explanation-operator.navigation-hu-v1",
+    "_id": "community:explanation-operator.navigation-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Operátori menü",
     "summary": "Operátori menü",
@@ -27577,15 +27537,7 @@
         "icon": "help_outline",
         "title": "Értesítések",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg az értesítési központot, jelöld olvasottnak az üzeneteket, és kezeld a némítást.</p>"
-      },
-      {
-        "id": "guide-notification-launcher",
-        "guideStepId": "notification-launcher",
-        "icon": "help_outline",
-        "title": "Értesítési gomb",
-        "blurb": "",
-        "contentHtml": "<p>A lebegő értesítési gomb ki- és bekapcsolása. Az értesítési központ és a kézbesítési beállítások továbbra is elérhetők.</p>"
+        "contentHtml": "<p>Közvetlenül megnyitja az értesítéseket. A popup meglévő némító gombjával rejtheted el vagy kapcsolhatod vissza a lebegő jelzést. Az értesítések és az olvasatlan darabszám megmaradnak.</p>"
       },
       {
         "id": "guide-explanations",

@@ -222,7 +222,6 @@ type NavigatorSettingsMenuItemId =
 
 type NavigatorHeaderActionMenuItemId =
   | 'notifications'
-  | 'notification-launcher'
   | 'explanations'
   | 'share'
   | 'settings'
@@ -546,7 +545,7 @@ export class SideMenuComponent implements OnDestroy {
     || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
-    this.notificationCenterStore.launcherEnabled() && !this.accountLocationMissing()
+    !this.notificationCenterStore.muted() && !this.accountLocationMissing()
       && (this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
         && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen()))
   );
@@ -726,11 +725,6 @@ export class SideMenuComponent implements OnDestroy {
         }
       );
     }
-    items.push({
-      id: 'notification-launcher', label: 'notification.launcher.toggle', icon: 'notifications_active',
-      kind: 'toggle', checked: this.notificationCenterStore.launcherEnabled(),
-      ariaLabel: 'notification.launcher.toggle'
-    });
     items.push({
       id: 'settings',
       label: 'Settings',
@@ -1497,7 +1491,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected dismissNotificationLauncher(): void {
-    this.notificationCenterStore.setLauncherEnabled(false);
+    this.notificationCenterStore.dismissAttention();
     this.offlineAttentionDismissed.set(true);
   }
 
@@ -1509,10 +1503,6 @@ export class SideMenuComponent implements OnDestroy {
     switch (event.id) {
       case 'notifications':
         this.openNotificationCenter(event.sourceEvent);
-        return;
-      case 'notification-launcher':
-        this.notificationCenterStore.setLauncherEnabled(!this.notificationCenterStore.launcherEnabled());
-        this.offlineAttentionDismissed.set(false);
         return;
       case 'explanations':
         this.onToggleExplanationGuide(event.sourceEvent);

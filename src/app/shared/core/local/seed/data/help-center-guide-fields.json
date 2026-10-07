@@ -6119,13 +6119,6 @@
       "group": "overview",
       "i18nKey": "guide.navigation.menu.services",
       "order": 32
-    },
-    {
-      "id": "notification-launcher",
-      "screenKey": "navigation.menu",
-      "group": "menus",
-      "i18nKey": "guide.navigation.menu.notification-launcher",
-      "order": 33
     }
   ],
   "members": [
@@ -9996,13 +9989,6 @@
       "order": 0
     },
     {
-      "id": "notification-launcher",
-      "screenKey": "admin.navigation",
-      "group": "menus",
-      "i18nKey": "guide.admin.navigation.notification-launcher",
-      "order": 1
-    },
-    {
       "id": "explanations",
       "screenKey": "admin.navigation",
       "group": "menus",
@@ -10115,13 +10101,6 @@
       "group": "menus",
       "i18nKey": "guide.operator.navigation.notifications",
       "order": 0
-    },
-    {
-      "id": "notification-launcher",
-      "screenKey": "operator.navigation",
-      "group": "menus",
-      "i18nKey": "guide.operator.navigation.notification-launcher",
-      "order": 1
     },
     {
       "id": "explanations",

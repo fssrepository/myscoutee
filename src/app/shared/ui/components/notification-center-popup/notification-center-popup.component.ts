@@ -510,6 +510,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
   }
 
   private confirmMutedChange(muted: boolean): void {
+    if (!this.store.activeUserId() || this.store.permissionActionPending()) return;
     this.dialogStore.open({
       title: muted ? 'Mute notification alerts?' : 'Unmute notification alerts?',
       message: muted
