@@ -18250,13 +18250,13 @@
     ]
   },
   {
-    "_id": "work:explanation-work.campaign.editor-en-v7",
+    "_id": "work:explanation-work.campaign.editor-en-v8",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "work.campaign.editor",
     "lang": "en",
     "languageLabel": "English",
-    "version": 7,
+    "version": 8,
     "active": true,
     "presentation": "tour",
     "title": "Campaign details",
@@ -18458,18 +18458,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the campaign form. In edit mode, save with its header tick first to retain changes to the campaign’s content and settings; viewing a campaign does not change it.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-work.campaign.editor-hu-v7",
+    "_id": "work:explanation-work.campaign.editor-hu-v8",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "work.campaign.editor",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 7,
+    "version": 8,
     "active": true,
     "presentation": "tour",
     "title": "Kampány részletei",
@@ -18671,7 +18671,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja a kampány űrlapját. Szerkesztéskor előbb ments a fejléc pipájával a tartalom és beállítások megőrzéséhez; a kampány megtekintése nem módosítja azt.</p>"
       }
     ]
   },
@@ -18984,13 +18984,13 @@
     ]
   },
   {
-    "_id": "work:explanation-work.campaign.history-en-v7",
+    "_id": "work:explanation-work.campaign.history-en-v8",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "work.campaign.history",
     "lang": "en",
     "languageLabel": "English",
-    "version": 7,
+    "version": 8,
     "active": true,
     "presentation": "tour",
     "title": "Campaign interaction history",
@@ -19088,18 +19088,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Return to the previous screen. This campaign detail view is read-only, so there are no form changes to save.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-work.campaign.history-hu-v7",
+    "_id": "work:explanation-work.campaign.history-hu-v8",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "work.campaign.history",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 7,
+    "version": 8,
     "active": true,
     "presentation": "tour",
     "title": "Kampányelőzmények",
@@ -19197,7 +19197,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Visszatér az előző képernyőre. Ez a kampányrészlet csak olvasható, ezért nincs mentendő űrlapmódosítás.</p>"
       }
     ]
   },
@@ -19372,13 +19372,13 @@
     ]
   },
   {
-    "_id": "work:explanation-community.cases-en-v6",
+    "_id": "work:explanation-community.cases-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.cases",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.cases",
@@ -19444,7 +19444,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Open this case’s task board to inspect the work, assignments and progress. Viewing the board leaves the case’s current state unchanged.</p>"
       },
       {
         "id": "guide-card-actions-take-over",
@@ -19452,7 +19452,7 @@
         "icon": "touch_app",
         "title": "Take over",
         "blurb": "",
-        "contentHtml": "<p>Take over the management of this case when this action is offered. Review the confirmation first.</p>"
+        "contentHtml": "<p>Become the manager of this case when takeover is available. Selecting this action sends the change directly, so check that you intend to take responsibility before using it.</p>"
       },
       {
         "id": "guide-card-actions-chat",
@@ -19460,7 +19460,7 @@
         "icon": "touch_app",
         "title": "Conversation",
         "blurb": "",
-        "contentHtml": "<p>Open the conversation belonging to this item. Check the participants before sending a message.</p>"
+        "contentHtml": "<p>Open the conversation linked to this case to coordinate the work. Check its title and participants before sending case-specific information.</p>"
       },
       {
         "id": "guide-card-actions-join",
@@ -19468,7 +19468,7 @@
         "icon": "touch_app",
         "title": "Join case",
         "blurb": "",
-        "contentHtml": "<p>Accept participation in this case after reviewing its purpose and the people involved.</p>"
+        "contentHtml": "<p>Accept your participation in this case. The action records your accepted membership directly; review the case and your intended role before selecting it.</p>"
       },
       {
         "id": "guide-card-actions-decline",
@@ -19476,7 +19476,7 @@
         "icon": "touch_app",
         "title": "Decline invitation",
         "blurb": "",
-        "contentHtml": "<p>Decline participation in this case. Review which invitation you are declining.</p>"
+        "contentHtml": "<p>Decline the invitation to this case. Your participation changes to declined when the action succeeds; use this for an invitation you do not want to accept.</p>"
       },
       {
         "id": "guide-card-actions-leave",
@@ -19484,7 +19484,7 @@
         "icon": "touch_app",
         "title": "Leave case",
         "blurb": "",
-        "contentHtml": "<p>Leave this case after checking your outstanding responsibilities.</p>"
+        "contentHtml": "<p>Leave a case you have joined. If you currently manage it, leaving also gives up ownership; check outstanding responsibilities before selecting this immediate action.</p>"
       },
       {
         "id": "guide-card-actions-members",
@@ -19492,7 +19492,7 @@
         "icon": "touch_app",
         "title": "Members",
         "blurb": "",
-        "contentHtml": "<p>Review the people involved in this case and their current participation states.</p>"
+        "contentHtml": "<p>Inspect the case’s participants and whether they are invited, accepted or have left. If you manage the case, the member view also provides the invitation action.</p>"
       },
       {
         "id": "guide-card-actions-offers",
@@ -19500,7 +19500,7 @@
         "icon": "touch_app",
         "title": "Quotations",
         "blurb": "",
-        "contentHtml": "<p>Open this case’s quotations. Review price, work terms and refund terms before deciding.</p>"
+        "contentHtml": "<p>Compare quotations for this case by provider, amount, currency and terms. Open a quotation’s details before accepting or rejecting it from the quotation list.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -19508,7 +19508,7 @@
         "icon": "touch_app",
         "title": "Edit",
         "blurb": "",
-        "contentHtml": "<p>Open the editor. Changes take effect when you save that form.</p>"
+        "contentHtml": "<p>Edit the case’s title, type, description and audience. Use the editor’s save tick to persist the changes; simply opening or closing the form does not save them.</p>"
       },
       {
         "id": "guide-card-actions-invite-provider",
@@ -19516,7 +19516,7 @@
         "icon": "touch_app",
         "title": "Invite provider",
         "blurb": "",
-        "contentHtml": "<p>Choose a provider for this case through the service selection window.</p>"
+        "contentHtml": "<p>Choose a published service and confirm the selection to invite its provider to this case. Check both the service and provider in the picker before confirming.</p>"
       },
       {
         "id": "guide-card-actions-start",
@@ -19524,7 +19524,7 @@
         "icon": "touch_app",
         "title": "Start work",
         "blurb": "",
-        "contentHtml": "<p>Move the open case into progress after confirming the action.</p>"
+        "contentHtml": "<p>Move this case to in progress. Selecting the action submits the state change directly; use it when work on the case is starting.</p>"
       },
       {
         "id": "guide-card-actions-complete",
@@ -19532,7 +19532,7 @@
         "icon": "touch_app",
         "title": "Complete case",
         "blurb": "",
-        "contentHtml": "<p>Mark the case as completed after reviewing the work and outstanding tasks.</p>"
+        "contentHtml": "<p>Mark this case completed when the work is finished. Completion also schedules service feedback; review the task board before submitting this direct state change.</p>"
       },
       {
         "id": "guide-card-actions-cancel",
@@ -19540,7 +19540,7 @@
         "icon": "touch_app",
         "title": "Cancel",
         "blurb": "",
-        "contentHtml": "<p>Cancel this item using the confirmation dialog. Review the affected item first.</p>"
+        "contentHtml": "<p>Set this case to cancelled so it leaves the active-case view. This sends the change directly; check the case title and intended outcome before selecting it.</p>"
       },
       {
         "id": "guide-card-actions-reopen",
@@ -19548,7 +19548,7 @@
         "icon": "touch_app",
         "title": "Reopen",
         "blurb": "",
-        "contentHtml": "<p>Reopen this case when more work is needed.</p>"
+        "contentHtml": "<p>Return this case to open status so it can be worked on again. The existing case is reused; this does not create a second case.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -19556,7 +19556,7 @@
         "icon": "touch_app",
         "title": "Move to trash",
         "blurb": "",
-        "contentHtml": "<p>Move this item to the trash. Read the confirmation before proceeding.</p>"
+        "contentHtml": "<p>Move this case to the trash view. The action changes its state directly, so check that this is the case you intend to remove from normal work.</p>"
       },
       {
         "id": "guide-close",
@@ -19564,18 +19564,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the case list and return to the previous screen. Already saved case decisions remain in effect.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.cases-hu-v6",
+    "_id": "work:explanation-community.cases-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.cases",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.cases",
@@ -19641,7 +19641,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>Megnyitja az ügy feladattábláját a munka, a hozzárendelések és a haladás áttekintéséhez. A tábla megtekintése nem változtatja meg az ügy állapotát.</p>"
       },
       {
         "id": "guide-card-actions-take-over",
@@ -19649,7 +19649,7 @@
         "icon": "touch_app",
         "title": "Átvétel",
         "blurb": "",
-        "contentHtml": "<p>Vedd át az ügy kezelését, amikor ez a művelet elérhető. Előbb olvasd el a megerősítést.</p>"
+        "contentHtml": "<p>Átveszed az ügy kezelését, ha az átvétel elérhető. A kiválasztás közvetlenül elküldi a módosítást, ezért előtte ellenőrizd, hogy valóban vállalod-e a felelősséget.</p>"
       },
       {
         "id": "guide-card-actions-chat",
@@ -19657,7 +19657,7 @@
         "icon": "touch_app",
         "title": "Beszélgetés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg az elemhez tartozó beszélgetést. Üzenetküldés előtt ellenőrizd a résztvevőket.</p>"
+        "contentHtml": "<p>Megnyitja az ügyhöz tartozó beszélgetést a munka egyeztetéséhez. Ügyspecifikus információ küldése előtt ellenőrizd a címet és a résztvevőket.</p>"
       },
       {
         "id": "guide-card-actions-join",
@@ -19665,7 +19665,7 @@
         "icon": "touch_app",
         "title": "Csatlakozás az ügyhöz",
         "blurb": "",
-        "contentHtml": "<p>Az ügy céljának és érintettjeinek megismerése után fogadd el a részvételt.</p>"
+        "contentHtml": "<p>Elfogadod a részvételedet ebben az ügyben. A művelet közvetlenül rögzíti az elfogadott tagságot; kiválasztás előtt nézd át az ügyet és a vállalt szerepedet.</p>"
       },
       {
         "id": "guide-card-actions-decline",
@@ -19673,7 +19673,7 @@
         "icon": "touch_app",
         "title": "Meghívás elutasítása",
         "blurb": "",
-        "contentHtml": "<p>Utasítsd el az ügyben való részvételt. Ellenőrizd, melyik meghívásról döntesz.</p>"
+        "contentHtml": "<p>Elutasítod az ügyre szóló meghívást. Siker esetén a részvételed elutasított állapotra vált; akkor használd, ha ezt a meghívást nem szeretnéd elfogadni.</p>"
       },
       {
         "id": "guide-card-actions-leave",
@@ -19681,7 +19681,7 @@
         "icon": "touch_app",
         "title": "Kilépés az ügyből",
         "blurb": "",
-        "contentHtml": "<p>A folyamatban lévő vállalásaid áttekintése után lépj ki az ügyből.</p>"
+        "contentHtml": "<p>Kilépsz abból az ügyből, amelyhez csatlakoztál. Ha te kezeled, a kilépés a tulajdonosi szerepet is megszünteti; a közvetlen művelet előtt nézd át a fennmaradó feladataidat.</p>"
       },
       {
         "id": "guide-card-actions-members",
@@ -19689,7 +19689,7 @@
         "icon": "touch_app",
         "title": "Tagok",
         "blurb": "",
-        "contentHtml": "<p>Nézd meg az ügy érintettjeit és a részvételük aktuális állapotát.</p>"
+        "contentHtml": "<p>Áttekintheted az ügy résztvevőit és azt, hogy meghívottak, elfogadták a részvételt vagy kiléptek. Az ügy kezelőjeként a résztvevői nézetből további embereket is meghívhatsz.</p>"
       },
       {
         "id": "guide-card-actions-offers",
@@ -19697,7 +19697,7 @@
         "icon": "touch_app",
         "title": "Ajánlatok",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg az ügy ajánlatait. Döntés előtt nézd át az árat, a munkafeltételeket és a visszatérítési szabályokat.</p>"
+        "contentHtml": "<p>Hasonlítsd össze az ügy ajánlatait szolgáltató, összeg, pénznem és feltételek szerint. Elfogadás vagy elutasítás előtt nyisd meg az ajánlat részleteit az ajánlatlistában.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -19705,7 +19705,7 @@
         "icon": "touch_app",
         "title": "Szerkesztés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szerkesztőt. A módosítások az űrlap mentésekor lépnek életbe.</p>"
+        "contentHtml": "<p>Szerkesztheted az ügy címét, típusát, leírását és érintetti körét. A módosításokat a szerkesztő mentési pipája rögzíti; az űrlap puszta megnyitása vagy bezárása nem ment.</p>"
       },
       {
         "id": "guide-card-actions-invite-provider",
@@ -19713,7 +19713,7 @@
         "icon": "touch_app",
         "title": "Szolgáltató meghívása",
         "blurb": "",
-        "contentHtml": "<p>A szolgáltatásválasztó ablakból válassz szolgáltatót ehhez az ügyhöz.</p>"
+        "contentHtml": "<p>Válassz publikált szolgáltatást, majd erősítsd meg a kiválasztást a szolgáltató ügyhöz hívásához. Megerősítés előtt a szolgáltatást és a szolgáltatót is ellenőrizd a választóban.</p>"
       },
       {
         "id": "guide-card-actions-start",
@@ -19721,7 +19721,7 @@
         "icon": "touch_app",
         "title": "Munka indítása",
         "blurb": "",
-        "contentHtml": "<p>Megerősítés után állítsd a nyitott ügyet folyamatban lévőre.</p>"
+        "contentHtml": "<p>Folyamatban lévőre állítja az ügyet. A kiválasztás közvetlenül elküldi az állapotváltást; akkor használd, amikor elkezdődik a munka.</p>"
       },
       {
         "id": "guide-card-actions-complete",
@@ -19729,7 +19729,7 @@
         "icon": "touch_app",
         "title": "Ügy befejezése",
         "blurb": "",
-        "contentHtml": "<p>A munka és a hátralévő feladatok áttekintése után jelöld az ügyet befejezettnek.</p>"
+        "contentHtml": "<p>Befejezettnek jelöli az ügyet, ha a munka elkészült. A lezárás a szolgáltatási visszajelzést is ütemezi; a közvetlen állapotváltás előtt nézd át a feladattáblát.</p>"
       },
       {
         "id": "guide-card-actions-cancel",
@@ -19737,7 +19737,7 @@
         "icon": "touch_app",
         "title": "Megszakítás",
         "blurb": "",
-        "contentHtml": "<p>A megerősítő ablakban szakítsd meg ezt az elemet. Előbb ellenőrizd, melyik elemről van szó.</p>"
+        "contentHtml": "<p>Visszavontra állítja az ügyet, így az kikerül az aktív ügyek nézetéből. A módosítás közvetlenül indul; előtte ellenőrizd az ügy címét és a kívánt eredményt.</p>"
       },
       {
         "id": "guide-card-actions-reopen",
@@ -19745,7 +19745,7 @@
         "icon": "touch_app",
         "title": "Újranyitás",
         "blurb": "",
-        "contentHtml": "<p>Nyisd újra az ügyet, ha további munkára van szükség.</p>"
+        "contentHtml": "<p>Újra nyitott állapotba helyezi az ügyet a munka folytatásához. A meglévő ügyet használja tovább, nem hoz létre egy másodikat.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -19753,7 +19753,7 @@
         "icon": "touch_app",
         "title": "Törlés",
         "blurb": "",
-        "contentHtml": "<p>Helyezd az elemet a töröltek közé. Előbb olvasd el a megerősítést.</p>"
+        "contentHtml": "<p>A kukába helyezi az ügyet. A művelet közvetlenül módosítja az állapotát, ezért ellenőrizd, hogy ezt az ügyet szeretnéd-e kivenni a szokásos munkából.</p>"
       },
       {
         "id": "guide-close",
@@ -19761,18 +19761,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja az ügylistát, és visszatér az előző képernyőre. A már rögzített ügykezelési döntések érvényben maradnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.tasks-en-v6",
+    "_id": "work:explanation-community.tasks-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.tasks",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.tasks",
@@ -19846,7 +19846,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Inspect this scheduled task’s purpose, audience, start time and recurrence in a read-only form. Use Edit if you need to change its schedule.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -19854,7 +19854,7 @@
         "icon": "touch_app",
         "title": "Edit",
         "blurb": "",
-        "contentHtml": "<p>Open the editor. Changes take effect when you save that form.</p>"
+        "contentHtml": "<p>Change this scheduled task’s description, audience or timing. Review the start time and recurrence, then save the form to apply the schedule changes.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -19862,7 +19862,7 @@
         "icon": "touch_app",
         "title": "Restore",
         "blurb": "",
-        "contentHtml": "<p>Restore this item from the trash. Check its resulting state before publishing or resuming it.</p>"
+        "contentHtml": "<p>Restore this scheduled task from trash to active status. Its stored timing is retained, so check the schedule before restoring work that may become due.</p>"
       },
       {
         "id": "guide-close",
@@ -19870,18 +19870,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Return from scheduled tasks to the case list. Closing this view does not pause active schedules; use the task’s pause action for that.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.tasks-hu-v6",
+    "_id": "work:explanation-community.tasks-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.tasks",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.tasks",
@@ -19955,7 +19955,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>Csak olvasható űrlapon nézheted meg az ütemezett feladat célját, érintettjeit, kezdését és ismétlődését. Az ütemezés módosításához a szerkesztést használd.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -19963,7 +19963,7 @@
         "icon": "touch_app",
         "title": "Szerkesztés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szerkesztőt. A módosítások az űrlap mentésekor lépnek életbe.</p>"
+        "contentHtml": "<p>Módosíthatod az ütemezett feladat leírását, érintettjeit vagy időzítését. Ellenőrizd a kezdést és az ismétlődést, majd az ütemezés alkalmazásához mentsd az űrlapot.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -19971,7 +19971,7 @@
         "icon": "touch_app",
         "title": "Visszaállítás",
         "blurb": "",
-        "contentHtml": "<p>Állítsd vissza a törölt elemet. Közzététel vagy folytatás előtt ellenőrizd az állapotát.</p>"
+        "contentHtml": "<p>Visszaállítja az ütemezett feladatot a kukából aktív állapotba. A tárolt időzítés megmarad, ezért visszaállítás előtt ellenőrizd az esetleg esedékessé váló ütemezést.</p>"
       },
       {
         "id": "guide-close",
@@ -19979,18 +19979,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Visszatér az ütemezett feladatoktól az ügylistához. A nézet bezárása nem szünetelteti az aktív ütemezéseket; arra a feladat szüneteltetési művelete szolgál.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.editor-en-v6",
+    "_id": "work:explanation-community.case.editor-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.editor",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.editor",
@@ -20064,18 +20064,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the case form without saving pending edits. If you changed the case details or audience, use the header tick first to keep them.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.editor-hu-v6",
+    "_id": "work:explanation-community.case.editor-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.editor",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.editor",
@@ -20149,18 +20149,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Mentés nélkül bezárja az ügy űrlapját. Ha módosítottad az ügy adatait vagy érintettjeit, előbb a fejléc pipájával mentsd azokat.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.task.editor-en-v6",
+    "_id": "work:explanation-community.task.editor-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.task.editor",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.task.editor",
@@ -20282,18 +20282,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the scheduled-task form without applying pending edits. Save with the header tick first if you want to keep the new timing, recurrence or audience.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.task.editor-hu-v6",
+    "_id": "work:explanation-community.task.editor-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.task.editor",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.task.editor",
@@ -20415,18 +20415,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>A függő módosítások alkalmazása nélkül bezárja az ütemezett feladat űrlapját. Az új időzítés, ismétlődés vagy érintetti kör megőrzéséhez előbb ments a fejléc pipájával.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.home-en-v6",
+    "_id": "work:explanation-community.home-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.home",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.home",
@@ -20468,7 +20468,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Read the full announcement, its attachments and any voting information. Opening it is read-only and does not cast a vote.</p>"
       },
       {
         "id": "guide-card-actions-feedback",
@@ -20476,7 +20476,7 @@
         "icon": "touch_app",
         "title": "Discuss notice",
         "blurb": "",
-        "contentHtml": "<p>Open the conversation about this notice to ask a question or give feedback.</p>"
+        "contentHtml": "<p>Open the support conversation linked to this announcement to ask the community’s managers a question or give feedback. Your message is separate from a vote.</p>"
       },
       {
         "id": "guide-card-actions-vote",
@@ -20484,7 +20484,7 @@
         "icon": "touch_app",
         "title": "Vote",
         "blurb": "",
-        "contentHtml": "<p>Read the proposal and its attachments before giving your own vote. The window shows the available choices.</p>"
+        "contentHtml": "<p>Open the voting view and read the proposal before choosing. Submitting asks for confirmation; once recorded, your vote cannot be changed.</p>"
       },
       {
         "id": "guide-card-actions-results",
@@ -20492,7 +20492,7 @@
         "icon": "touch_app",
         "title": "Results",
         "blurb": "",
-        "contentHtml": "<p>Open the closed vote’s results.</p>"
+        "contentHtml": "<p>Open this closed vote to inspect the recorded result. The voting round has ended, so this view is for reviewing the outcome rather than submitting another vote.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -20500,7 +20500,7 @@
         "icon": "touch_app",
         "title": "Edit",
         "blurb": "",
-        "contentHtml": "<p>Open the editor. Changes take effect when you save that form.</p>"
+        "contentHtml": "<p>Edit the announcement’s text, attachments and supported voting settings. Save the editor to retain changes; use the list’s publication action when a draft is ready to appear.</p>"
       },
       {
         "id": "guide-card-actions-publish",
@@ -20508,7 +20508,7 @@
         "icon": "touch_app",
         "title": "Publish",
         "blurb": "",
-        "contentHtml": "<p>Publish the prepared item so the intended audience can discover it.</p>"
+        "contentHtml": "<p>Publish this draft announcement in its community. Review the text, attachments and any voting deadline first; selecting the action sends publication directly.</p>"
       },
       {
         "id": "guide-card-actions-unpublish",
@@ -20516,7 +20516,7 @@
         "icon": "touch_app",
         "title": "Return to draft",
         "blurb": "",
-        "contentHtml": "<p>Return the published item to draft from this menu.</p>"
+        "contentHtml": "<p>Withdraw this published announcement back to draft after confirmation. It leaves the published list but remains available to its managers for editing.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -20524,7 +20524,7 @@
         "icon": "touch_app",
         "title": "Restore",
         "blurb": "",
-        "contentHtml": "<p>Restore this item from the trash. Check its resulting state before publishing or resuming it.</p>"
+        "contentHtml": "<p>Restore this announcement from trash as a draft. Review it in the draft list and publish separately when you want it to appear again.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -20532,7 +20532,7 @@
         "icon": "touch_app",
         "title": "Move to trash",
         "blurb": "",
-        "contentHtml": "<p>Move this item to the trash. Read the confirmation before proceeding.</p>"
+        "contentHtml": "<p>Move this announcement to trash after confirming its title. It leaves the current list; use the trash filter if you later need to restore it as a draft.</p>"
       },
       {
         "id": "guide-card-actions-close",
@@ -20540,7 +20540,7 @@
         "icon": "touch_app",
         "title": "Close voting",
         "blurb": "",
-        "contentHtml": "<p>Close this voting round after reviewing the confirmation.</p>"
+        "contentHtml": "<p>End this voting round after confirmation, even if its deadline has not yet arrived. The recorded votes form the closed result and no further votes can be submitted.</p>"
       },
       {
         "id": "guide-create",
@@ -20548,18 +20548,18 @@
         "icon": "help_outline",
         "title": "Create notice or vote",
         "blurb": "",
-        "contentHtml": "<p>Open a new item in the current group. Prepare the text, attachments and voting settings before publishing.</p>"
+        "contentHtml": "<p>Prepare a new announcement for the current community with text, attachments and, when needed, a voting deadline. Save the draft, then publish it from the list when ready.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.home-hu-v6",
+    "_id": "work:explanation-community.home-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.home",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.home",
@@ -20601,7 +20601,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>Elolvashatod a teljes közleményt, mellékleteit és esetleges szavazási adatait. A megnyitás csak olvasás, nem ad le szavazatot.</p>"
       },
       {
         "id": "guide-card-actions-feedback",
@@ -20609,7 +20609,7 @@
         "icon": "touch_app",
         "title": "Hirdetmény megbeszélése",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a hirdetményhez tartozó beszélgetést kérdéshez vagy visszajelzéshez.</p>"
+        "contentHtml": "<p>Megnyitja a közleményhez kapcsolódó támogatási beszélgetést, ahol kérdezhetsz a közösség kezelőitől vagy visszajelezhetsz. Az üzenet a szavazattól különálló művelet.</p>"
       },
       {
         "id": "guide-card-actions-vote",
@@ -20617,7 +20617,7 @@
         "icon": "touch_app",
         "title": "Szavazás",
         "blurb": "",
-        "contentHtml": "<p>Saját szavazatod megadása előtt olvasd el a javaslatot és mellékleteit. Az ablak mutatja a választható lehetőségeket.</p>"
+        "contentHtml": "<p>Nyisd meg a szavazási nézetet, és választás előtt olvasd el a javaslatot. A leadás megerősítést kér; a rögzített szavazatodat utána nem módosíthatod.</p>"
       },
       {
         "id": "guide-card-actions-results",
@@ -20625,7 +20625,7 @@
         "icon": "touch_app",
         "title": "Eredmények",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a lezárt szavazás eredményét.</p>"
+        "contentHtml": "<p>Megnyitja a lezárt szavazás rögzített eredményét. A szavazási kör véget ért, ezért itt az eredményt tekintheted át, új szavazatot nem adhatsz le.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -20633,7 +20633,7 @@
         "icon": "touch_app",
         "title": "Szerkesztés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szerkesztőt. A módosítások az űrlap mentésekor lépnek életbe.</p>"
+        "contentHtml": "<p>Szerkesztheted a közlemény szövegét, mellékleteit és a támogatott szavazási beállításokat. A módosításokat a szerkesztőben mentsd; az elkészült piszkozatot a lista publikálási műveletével teheted láthatóvá.</p>"
       },
       {
         "id": "guide-card-actions-publish",
@@ -20641,7 +20641,7 @@
         "icon": "touch_app",
         "title": "Közzététel",
         "blurb": "",
-        "contentHtml": "<p>Tedd közzé az előkészített elemet, hogy az érintettek megtalálhassák.</p>"
+        "contentHtml": "<p>Publikálja a piszkozat közleményt a közösségében. Előbb nézd át a szöveget, mellékleteket és az esetleges szavazási határidőt; a kiválasztás közvetlenül kéri a közzétételt.</p>"
       },
       {
         "id": "guide-card-actions-unpublish",
@@ -20649,7 +20649,7 @@
         "icon": "touch_app",
         "title": "Vissza piszkozatba",
         "blurb": "",
-        "contentHtml": "<p>Ezzel a művelettel a közzétett elem visszakerül a piszkozatok közé.</p>"
+        "contentHtml": "<p>Megerősítés után visszavonja a publikált közleményt piszkozatra. Kikerül a közzétett listából, de kezelőinek szerkeszthető marad.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -20657,7 +20657,7 @@
         "icon": "touch_app",
         "title": "Visszaállítás",
         "blurb": "",
-        "contentHtml": "<p>Állítsd vissza a törölt elemet. Közzététel vagy folytatás előtt ellenőrizd az állapotát.</p>"
+        "contentHtml": "<p>Piszkozatként visszaállítja a közleményt a kukából. Nézd át a piszkozatok között, majd külön publikáld, amikor újra láthatóvá szeretnéd tenni.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -20665,7 +20665,7 @@
         "icon": "touch_app",
         "title": "Törlés",
         "blurb": "",
-        "contentHtml": "<p>Helyezd az elemet a töröltek közé. Előbb olvasd el a megerősítést.</p>"
+        "contentHtml": "<p>A cím megerősítése után a kukába helyezi a közleményt. Kikerül az aktuális listából; későbbi, piszkozatként történő visszaállításhoz a kukaszűrőt használd.</p>"
       },
       {
         "id": "guide-card-actions-close",
@@ -20673,7 +20673,7 @@
         "icon": "touch_app",
         "title": "Szavazás lezárása",
         "blurb": "",
-        "contentHtml": "<p>A megerősítés áttekintése után zárd le ezt a szavazást.</p>"
+        "contentHtml": "<p>Megerősítés után lezárja a szavazási kört akkor is, ha a határidő még nem telt le. A rögzített szavazatok adják a lezárt eredményt, további szavazat nem küldhető be.</p>"
       },
       {
         "id": "guide-create",
@@ -20681,18 +20681,18 @@
         "icon": "help_outline",
         "title": "Hirdetmény vagy szavazás létrehozása",
         "blurb": "",
-        "contentHtml": "<p>Nyiss új elemet az aktuális csoportban. Közzététel előtt készítsd el a szöveget, a mellékleteket és a szavazási beállításokat.</p>"
+        "contentHtml": "<p>Új közleményt készíthetsz az aktuális közösségnek szöveggel, mellékletekkel és szükség esetén szavazási határidővel. Mentsd a piszkozatot, majd elkészülte után publikáld a listából.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.voting-en-v6",
+    "_id": "work:explanation-community.voting-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.voting",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.voting",
@@ -20734,7 +20734,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Read the full announcement, its attachments and any voting information. Opening it is read-only and does not cast a vote.</p>"
       },
       {
         "id": "guide-card-actions-feedback",
@@ -20742,7 +20742,7 @@
         "icon": "touch_app",
         "title": "Discuss notice",
         "blurb": "",
-        "contentHtml": "<p>Open the conversation about this notice to ask a question or give feedback.</p>"
+        "contentHtml": "<p>Open the support conversation linked to this announcement to ask the community’s managers a question or give feedback. Your message is separate from a vote.</p>"
       },
       {
         "id": "guide-card-actions-vote",
@@ -20750,7 +20750,7 @@
         "icon": "touch_app",
         "title": "Vote",
         "blurb": "",
-        "contentHtml": "<p>Read the proposal and its attachments before giving your own vote. The window shows the available choices.</p>"
+        "contentHtml": "<p>Open the voting view and read the proposal before choosing. Submitting asks for confirmation; once recorded, your vote cannot be changed.</p>"
       },
       {
         "id": "guide-card-actions-results",
@@ -20758,7 +20758,7 @@
         "icon": "touch_app",
         "title": "Results",
         "blurb": "",
-        "contentHtml": "<p>Open the closed vote’s results.</p>"
+        "contentHtml": "<p>Open this closed vote to inspect the recorded result. The voting round has ended, so this view is for reviewing the outcome rather than submitting another vote.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -20766,7 +20766,7 @@
         "icon": "touch_app",
         "title": "Edit",
         "blurb": "",
-        "contentHtml": "<p>Open the editor. Changes take effect when you save that form.</p>"
+        "contentHtml": "<p>Edit the announcement’s text, attachments and supported voting settings. Save the editor to retain changes; use the list’s publication action when a draft is ready to appear.</p>"
       },
       {
         "id": "guide-card-actions-publish",
@@ -20774,7 +20774,7 @@
         "icon": "touch_app",
         "title": "Publish",
         "blurb": "",
-        "contentHtml": "<p>Publish the prepared item so the intended audience can discover it.</p>"
+        "contentHtml": "<p>Publish this draft announcement in its community. Review the text, attachments and any voting deadline first; selecting the action sends publication directly.</p>"
       },
       {
         "id": "guide-card-actions-unpublish",
@@ -20782,7 +20782,7 @@
         "icon": "touch_app",
         "title": "Return to draft",
         "blurb": "",
-        "contentHtml": "<p>Return the published item to draft from this menu.</p>"
+        "contentHtml": "<p>Withdraw this published announcement back to draft after confirmation. It leaves the published list but remains available to its managers for editing.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -20790,7 +20790,7 @@
         "icon": "touch_app",
         "title": "Restore",
         "blurb": "",
-        "contentHtml": "<p>Restore this item from the trash. Check its resulting state before publishing or resuming it.</p>"
+        "contentHtml": "<p>Restore this announcement from trash as a draft. Review it in the draft list and publish separately when you want it to appear again.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -20798,7 +20798,7 @@
         "icon": "touch_app",
         "title": "Move to trash",
         "blurb": "",
-        "contentHtml": "<p>Move this item to the trash. Read the confirmation before proceeding.</p>"
+        "contentHtml": "<p>Move this announcement to trash after confirming its title. It leaves the current list; use the trash filter if you later need to restore it as a draft.</p>"
       },
       {
         "id": "guide-card-actions-close",
@@ -20806,7 +20806,7 @@
         "icon": "touch_app",
         "title": "Close voting",
         "blurb": "",
-        "contentHtml": "<p>Close this voting round after reviewing the confirmation.</p>"
+        "contentHtml": "<p>End this voting round after confirmation, even if its deadline has not yet arrived. The recorded votes form the closed result and no further votes can be submitted.</p>"
       },
       {
         "id": "guide-create",
@@ -20814,7 +20814,7 @@
         "icon": "help_outline",
         "title": "Create notice or vote",
         "blurb": "",
-        "contentHtml": "<p>Open a new item in the current group. Prepare the text, attachments and voting settings before publishing.</p>"
+        "contentHtml": "<p>Prepare a new announcement for the current community with text, attachments and, when needed, a voting deadline. Save the draft, then publish it from the list when ready.</p>"
       },
       {
         "id": "guide-close",
@@ -20822,18 +20822,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the voting list and return to the previous screen. Submitted votes and completed publication or closure actions remain recorded.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.voting-hu-v6",
+    "_id": "work:explanation-community.voting-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.voting",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.voting",
@@ -20875,7 +20875,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>Elolvashatod a teljes közleményt, mellékleteit és esetleges szavazási adatait. A megnyitás csak olvasás, nem ad le szavazatot.</p>"
       },
       {
         "id": "guide-card-actions-feedback",
@@ -20883,7 +20883,7 @@
         "icon": "touch_app",
         "title": "Hirdetmény megbeszélése",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a hirdetményhez tartozó beszélgetést kérdéshez vagy visszajelzéshez.</p>"
+        "contentHtml": "<p>Megnyitja a közleményhez kapcsolódó támogatási beszélgetést, ahol kérdezhetsz a közösség kezelőitől vagy visszajelezhetsz. Az üzenet a szavazattól különálló művelet.</p>"
       },
       {
         "id": "guide-card-actions-vote",
@@ -20891,7 +20891,7 @@
         "icon": "touch_app",
         "title": "Szavazás",
         "blurb": "",
-        "contentHtml": "<p>Saját szavazatod megadása előtt olvasd el a javaslatot és mellékleteit. Az ablak mutatja a választható lehetőségeket.</p>"
+        "contentHtml": "<p>Nyisd meg a szavazási nézetet, és választás előtt olvasd el a javaslatot. A leadás megerősítést kér; a rögzített szavazatodat utána nem módosíthatod.</p>"
       },
       {
         "id": "guide-card-actions-results",
@@ -20899,7 +20899,7 @@
         "icon": "touch_app",
         "title": "Eredmények",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a lezárt szavazás eredményét.</p>"
+        "contentHtml": "<p>Megnyitja a lezárt szavazás rögzített eredményét. A szavazási kör véget ért, ezért itt az eredményt tekintheted át, új szavazatot nem adhatsz le.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -20907,7 +20907,7 @@
         "icon": "touch_app",
         "title": "Szerkesztés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szerkesztőt. A módosítások az űrlap mentésekor lépnek életbe.</p>"
+        "contentHtml": "<p>Szerkesztheted a közlemény szövegét, mellékleteit és a támogatott szavazási beállításokat. A módosításokat a szerkesztőben mentsd; az elkészült piszkozatot a lista publikálási műveletével teheted láthatóvá.</p>"
       },
       {
         "id": "guide-card-actions-publish",
@@ -20915,7 +20915,7 @@
         "icon": "touch_app",
         "title": "Közzététel",
         "blurb": "",
-        "contentHtml": "<p>Tedd közzé az előkészített elemet, hogy az érintettek megtalálhassák.</p>"
+        "contentHtml": "<p>Publikálja a piszkozat közleményt a közösségében. Előbb nézd át a szöveget, mellékleteket és az esetleges szavazási határidőt; a kiválasztás közvetlenül kéri a közzétételt.</p>"
       },
       {
         "id": "guide-card-actions-unpublish",
@@ -20923,7 +20923,7 @@
         "icon": "touch_app",
         "title": "Vissza piszkozatba",
         "blurb": "",
-        "contentHtml": "<p>Ezzel a művelettel a közzétett elem visszakerül a piszkozatok közé.</p>"
+        "contentHtml": "<p>Megerősítés után visszavonja a publikált közleményt piszkozatra. Kikerül a közzétett listából, de kezelőinek szerkeszthető marad.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -20931,7 +20931,7 @@
         "icon": "touch_app",
         "title": "Visszaállítás",
         "blurb": "",
-        "contentHtml": "<p>Állítsd vissza a törölt elemet. Közzététel vagy folytatás előtt ellenőrizd az állapotát.</p>"
+        "contentHtml": "<p>Piszkozatként visszaállítja a közleményt a kukából. Nézd át a piszkozatok között, majd külön publikáld, amikor újra láthatóvá szeretnéd tenni.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -20939,7 +20939,7 @@
         "icon": "touch_app",
         "title": "Törlés",
         "blurb": "",
-        "contentHtml": "<p>Helyezd az elemet a töröltek közé. Előbb olvasd el a megerősítést.</p>"
+        "contentHtml": "<p>A cím megerősítése után a kukába helyezi a közleményt. Kikerül az aktuális listából; későbbi, piszkozatként történő visszaállításhoz a kukaszűrőt használd.</p>"
       },
       {
         "id": "guide-card-actions-close",
@@ -20947,7 +20947,7 @@
         "icon": "touch_app",
         "title": "Szavazás lezárása",
         "blurb": "",
-        "contentHtml": "<p>A megerősítés áttekintése után zárd le ezt a szavazást.</p>"
+        "contentHtml": "<p>Megerősítés után lezárja a szavazási kört akkor is, ha a határidő még nem telt le. A rögzített szavazatok adják a lezárt eredményt, további szavazat nem küldhető be.</p>"
       },
       {
         "id": "guide-create",
@@ -20955,7 +20955,7 @@
         "icon": "help_outline",
         "title": "Hirdetmény vagy szavazás létrehozása",
         "blurb": "",
-        "contentHtml": "<p>Nyiss új elemet az aktuális csoportban. Közzététel előtt készítsd el a szöveget, a mellékleteket és a szavazási beállításokat.</p>"
+        "contentHtml": "<p>Új közleményt készíthetsz az aktuális közösségnek szöveggel, mellékletekkel és szükség esetén szavazási határidővel. Mentsd a piszkozatot, majd elkészülte után publikáld a listából.</p>"
       },
       {
         "id": "guide-close",
@@ -20963,18 +20963,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja a szavazási listát, és visszatér az előző képernyőre. A beküldött szavazatok, valamint a végrehajtott publikálási és lezárási műveletek rögzítve maradnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.announcement.editor-en-v6",
+    "_id": "work:explanation-community.announcement.editor-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.announcement.editor",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.announcement.editor",
@@ -21072,18 +21072,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Return to the announcement list. Save pending text and attachment edits before closing; votes already submitted or other completed actions remain recorded.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.announcement.editor-hu-v6",
+    "_id": "work:explanation-community.announcement.editor-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.announcement.editor",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.announcement.editor",
@@ -21181,18 +21181,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Visszatér a közlemények listájához. Bezárás előtt mentsd a függő szöveg- és mellékletmódosításokat; a már beküldött szavazatok és végrehajtott műveletek rögzítve maradnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.services-en-v6",
+    "_id": "work:explanation-community.services-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.services",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.services",
@@ -21258,7 +21258,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Read the service’s description, price, availability and terms in its detail form. Use these details to decide whether this offering fits the work you need.</p>"
       },
       {
         "id": "guide-card-actions-author",
@@ -21266,7 +21266,7 @@
         "icon": "touch_app",
         "title": "Provider profile",
         "blurb": "",
-        "contentHtml": "<p>Open the provider’s profile to learn who offers the service.</p>"
+        "contentHtml": "<p>Open the profile of the person offering this service. Check who the provider is before selecting the service or starting an arrangement.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -21274,7 +21274,7 @@
         "icon": "touch_app",
         "title": "Edit",
         "blurb": "",
-        "contentHtml": "<p>Open the editor. Changes take effect when you save that form.</p>"
+        "contentHtml": "<p>Open this service’s editable details and terms. Save the form to retain changes; publishing or withdrawing an offering is a separate card action.</p>"
       },
       {
         "id": "guide-card-actions-publish",
@@ -21282,7 +21282,7 @@
         "icon": "touch_app",
         "title": "Publish",
         "blurb": "",
-        "contentHtml": "<p>Publish the prepared item so the intended audience can discover it.</p>"
+        "contentHtml": "<p>Publish this draft service so it can appear among available offerings. Review its description, price and terms first; selecting this action submits publication directly.</p>"
       },
       {
         "id": "guide-card-actions-unpublish",
@@ -21290,7 +21290,7 @@
         "icon": "touch_app",
         "title": "Return to draft",
         "blurb": "",
-        "contentHtml": "<p>Return the published item to draft from this menu.</p>"
+        "contentHtml": "<p>Return this published service to draft so it leaves the published-offerings list. The service is retained for editing and later publication.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -21298,7 +21298,7 @@
         "icon": "touch_app",
         "title": "Restore",
         "blurb": "",
-        "contentHtml": "<p>Restore this item from the trash. Check its resulting state before publishing or resuming it.</p>"
+        "contentHtml": "<p>Restore this service from trash as a draft. Review its details and publish it separately when it should be offered again.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -21306,7 +21306,7 @@
         "icon": "touch_app",
         "title": "Move to trash",
         "blurb": "",
-        "contentHtml": "<p>Move this item to the trash. Read the confirmation before proceeding.</p>"
+        "contentHtml": "<p>Move this service to trash so it leaves the normal offerings list. This action is sent directly; the trash view provides restoration as a draft.</p>"
       },
       {
         "id": "guide-card-badge-end",
@@ -21314,7 +21314,7 @@
         "icon": "help_outline",
         "title": "Select service",
         "blurb": "",
-        "contentHtml": "<p>In a service picker, use the plus to select this service. Review the basket and confirm the selection.</p>"
+        "contentHtml": "<p>In a service picker, use the plus to place one service in the selection basket. Check its title and provider, then use the header tick to confirm that selection.</p>"
       },
       {
         "id": "guide-basket",
@@ -21322,7 +21322,7 @@
         "icon": "help_outline",
         "title": "Selected service",
         "blurb": "",
-        "contentHtml": "<p>Review the selected service; remove it from the basket to choose another.</p>"
+        "contentHtml": "<p>Inspect the one service currently selected and its provider. Remove it here if you want to cancel that selection or choose a different offering.</p>"
       },
       {
         "id": "guide-confirm",
@@ -21330,7 +21330,7 @@
         "icon": "help_outline",
         "title": "Confirm service",
         "blurb": "",
-        "contentHtml": "<p>Return the selected service to the case or task that opened this picker.</p>"
+        "contentHtml": "<p>Confirm the selected service for the workflow that opened this picker. For a case invitation this submits the provider invitation; check the basket before confirming.</p>"
       },
       {
         "id": "guide-close",
@@ -21338,18 +21338,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the service list. In selection mode, an unconfirmed basket is discarded and no service is returned to the calling workflow.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.services-hu-v6",
+    "_id": "work:explanation-community.services-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.services",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.services",
@@ -21415,7 +21415,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>A részletes űrlapon elolvashatod a szolgáltatás leírását, árát, elérhetőségét és feltételeit. Ezek alapján döntsd el, megfelel-e az ajánlat a szükséges munkához.</p>"
       },
       {
         "id": "guide-card-actions-author",
@@ -21423,7 +21423,7 @@
         "icon": "touch_app",
         "title": "A szolgáltató profilja",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szolgáltató profilját, és ismerd meg, ki hirdeti a szolgáltatást.</p>"
+        "contentHtml": "<p>Megnyitja a szolgáltatást kínáló személy profilját. Szolgáltatás kiválasztása vagy egyeztetés kezdése előtt ellenőrizheted, ki a szolgáltató.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -21431,7 +21431,7 @@
         "icon": "touch_app",
         "title": "Szerkesztés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szerkesztőt. A módosítások az űrlap mentésekor lépnek életbe.</p>"
+        "contentHtml": "<p>Megnyitja a szolgáltatás szerkeszthető adatait és feltételeit. A változtatásokat az űrlap mentése őrzi meg; a közzététel és visszavonás külön kártyaművelet.</p>"
       },
       {
         "id": "guide-card-actions-publish",
@@ -21439,7 +21439,7 @@
         "icon": "touch_app",
         "title": "Közzététel",
         "blurb": "",
-        "contentHtml": "<p>Tedd közzé az előkészített elemet, hogy az érintettek megtalálhassák.</p>"
+        "contentHtml": "<p>Publikálja a piszkozatként tárolt szolgáltatást, hogy megjelenhessen az elérhető ajánlatok között. Előbb nézd át a leírást, árat és feltételeket; a kiválasztás közvetlenül kéri a közzétételt.</p>"
       },
       {
         "id": "guide-card-actions-unpublish",
@@ -21447,7 +21447,7 @@
         "icon": "touch_app",
         "title": "Vissza piszkozatba",
         "blurb": "",
-        "contentHtml": "<p>Ezzel a művelettel a közzétett elem visszakerül a piszkozatok közé.</p>"
+        "contentHtml": "<p>Visszaállítja a publikált szolgáltatást piszkozatra, így kikerül a közzétett ajánlatok listájából. A szolgáltatás megmarad szerkesztésre és későbbi publikálásra.</p>"
       },
       {
         "id": "guide-card-actions-restore",
@@ -21455,7 +21455,7 @@
         "icon": "touch_app",
         "title": "Visszaállítás",
         "blurb": "",
-        "contentHtml": "<p>Állítsd vissza a törölt elemet. Közzététel vagy folytatás előtt ellenőrizd az állapotát.</p>"
+        "contentHtml": "<p>Piszkozatként visszaállítja a szolgáltatást a kukából. Nézd át az adatait, majd külön publikáld, amikor ismét kínálni szeretnéd.</p>"
       },
       {
         "id": "guide-card-actions-trash",
@@ -21463,7 +21463,7 @@
         "icon": "touch_app",
         "title": "Törlés",
         "blurb": "",
-        "contentHtml": "<p>Helyezd az elemet a töröltek közé. Előbb olvasd el a megerősítést.</p>"
+        "contentHtml": "<p>A kukába helyezi a szolgáltatást, így kikerül a szokásos ajánlatlistából. A művelet közvetlenül indul; a kuka nézetéből piszkozatként állítható vissza.</p>"
       },
       {
         "id": "guide-card-badge-end",
@@ -21471,7 +21471,7 @@
         "icon": "help_outline",
         "title": "Szolgáltatás kiválasztása",
         "blurb": "",
-        "contentHtml": "<p>A szolgáltatásválasztóban a plusz jelöli ki ezt a szolgáltatást. Nézd át a kosarat, majd erősítsd meg a választást.</p>"
+        "contentHtml": "<p>Szolgáltatásválasztóban a plusszal tehetsz egy szolgáltatást a kiválasztási kosárba. Ellenőrizd a címét és szolgáltatóját, majd a fejléc pipájával erősítsd meg a választást.</p>"
       },
       {
         "id": "guide-basket",
@@ -21479,7 +21479,7 @@
         "icon": "help_outline",
         "title": "Kijelölt szolgáltatás",
         "blurb": "",
-        "contentHtml": "<p>Nézd át a kijelölt szolgáltatást; másik választásához töröld a kosárból.</p>"
+        "contentHtml": "<p>Ellenőrizd a jelenleg kiválasztott egy szolgáltatást és annak szolgáltatóját. Itt törölheted a választást, ha elveted vagy másik ajánlatot szeretnél.</p>"
       },
       {
         "id": "guide-confirm",
@@ -21487,7 +21487,7 @@
         "icon": "help_outline",
         "title": "Szolgáltatás megerősítése",
         "blurb": "",
-        "contentHtml": "<p>Add vissza a kiválasztott szolgáltatást a választót megnyitó ügynek vagy feladatnak.</p>"
+        "contentHtml": "<p>Megerősíti a szolgáltatást a választót megnyitó folyamat számára. Ügyhöz híváskor ez elküldi a szolgáltatói meghívást; megerősítés előtt ellenőrizd a kosarat.</p>"
       },
       {
         "id": "guide-close",
@@ -21495,18 +21495,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja a szolgáltatáslistát. Kiválasztási módban a meg nem erősített kosár elvész, és nem ad át szolgáltatást a választást kérő folyamatnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.service.calendar-en-v6",
+    "_id": "work:explanation-community.service.calendar-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.service.calendar",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.service.calendar",
@@ -21540,7 +21540,7 @@
         "icon": "help_outline",
         "title": "Calendar view",
         "blurb": "",
-        "contentHtml": "<p>Switch between the list, weekly and monthly service calendar.</p>"
+        "contentHtml": "<p>Switch between list, week and month views to inspect the same provider schedule at different scales. Changing the view does not reschedule appointments or assigned tasks.</p>"
       },
       {
         "id": "guide-card-actions-case",
@@ -21548,7 +21548,7 @@
         "icon": "help_outline",
         "title": "Open case",
         "blurb": "",
-        "contentHtml": "<p>Open the case belonging to this appointment or assigned task.</p>"
+        "contentHtml": "<p>Open the case linked to this calendar entry to inspect its work and participants. This takes you from the provider calendar to that case’s task board.</p>"
       },
       {
         "id": "guide-card-actions-cancel",
@@ -21556,7 +21556,7 @@
         "icon": "help_outline",
         "title": "Cancel appointment",
         "blurb": "",
-        "contentHtml": "<p>Cancel this appointment through its confirmation. Check its date and customer before proceeding.</p>"
+        "contentHtml": "<p>Cancel this appointment directly. Check its date and associated case before selecting the action; the cancelled appointment is removed from the calendar view.</p>"
       },
       {
         "id": "guide-close",
@@ -21564,18 +21564,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the provider calendar. Existing appointments and assigned tasks keep their saved dates and states.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.service.calendar-hu-v6",
+    "_id": "work:explanation-community.service.calendar-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.service.calendar",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.service.calendar",
@@ -21609,7 +21609,7 @@
         "icon": "help_outline",
         "title": "Naptárnézet",
         "blurb": "",
-        "contentHtml": "<p>Válts a szolgáltatáslista, a heti és a havi naptár között.</p>"
+        "contentHtml": "<p>Lista-, heti és havi nézet között válthatsz ugyanannak a szolgáltatói időbeosztásnak az áttekintéséhez. A nézetváltás nem ütemezi át az időpontokat vagy hozzárendelt feladatokat.</p>"
       },
       {
         "id": "guide-card-actions-case",
@@ -21617,7 +21617,7 @@
         "icon": "help_outline",
         "title": "Ügy megnyitása",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg az időponthoz vagy hozzád rendelt részfeladathoz tartozó ügyet.</p>"
+        "contentHtml": "<p>Megnyitja a naptárbejegyzéshez tartozó ügyet a munka és résztvevők ellenőrzéséhez. A szolgáltatói naptárból az ügy feladattáblájára visz.</p>"
       },
       {
         "id": "guide-card-actions-cancel",
@@ -21625,7 +21625,7 @@
         "icon": "help_outline",
         "title": "Időpont lemondása",
         "blurb": "",
-        "contentHtml": "<p>A megerősítő ablakban mondd le az időpontot. Előbb ellenőrizd a dátumot és az ügyfelet.</p>"
+        "contentHtml": "<p>Közvetlenül lemondja ezt az időpontot. Kiválasztás előtt ellenőrizd a dátumot és a kapcsolódó ügyet; a lemondott időpont kikerül a naptárnézetből.</p>"
       },
       {
         "id": "guide-close",
@@ -21633,18 +21633,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja a szolgáltatói naptárt. A meglévő időpontok és hozzárendelt feladatok mentett dátumai, állapotai megmaradnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.quotations-en-v6",
+    "_id": "work:explanation-community.case.quotations-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.quotations",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.quotations",
@@ -21702,7 +21702,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Read this provider’s quoted amount, currency, note and work or refund terms. Opening the details does not accept the quotation.</p>"
       },
       {
         "id": "guide-card-actions-chat",
@@ -21710,7 +21710,7 @@
         "icon": "touch_app",
         "title": "Conversation",
         "blurb": "",
-        "contentHtml": "<p>Open the conversation belonging to this item. Check the participants before sending a message.</p>"
+        "contentHtml": "<p>Open the conversation linked to this case and quotation to clarify the offered work. Check the participants before sending information about the quotation.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -21718,7 +21718,7 @@
         "icon": "touch_app",
         "title": "Edit",
         "blurb": "",
-        "contentHtml": "<p>Open the editor. Changes take effect when you save that form.</p>"
+        "contentHtml": "<p>As the case manager, edit the quotation’s amount, currency, note and terms where offered. Save the quotation form to record the agreed changes.</p>"
       },
       {
         "id": "guide-card-actions-accept-offer",
@@ -21726,7 +21726,7 @@
         "icon": "touch_app",
         "title": "Accept quotation",
         "blurb": "",
-        "contentHtml": "<p>Review the price and conditions, then accept the quotation through the confirmation.</p>"
+        "contentHtml": "<p>Record this quotation as accepted. Review its provider, amount and terms first: selecting this action sends the decision directly, without a separate confirmation dialog.</p>"
       },
       {
         "id": "guide-card-actions-reject-offer",
@@ -21734,7 +21734,7 @@
         "icon": "touch_app",
         "title": "Reject quotation",
         "blurb": "",
-        "contentHtml": "<p>Reject this quotation after checking its provider and terms.</p>"
+        "contentHtml": "<p>Record this quotation as rejected. Check that you are acting on the intended provider’s offer; the decision is submitted directly from this menu.</p>"
       },
       {
         "id": "guide-card-actions-pending-offer",
@@ -21742,7 +21742,7 @@
         "icon": "touch_app",
         "title": "Return to pending",
         "blurb": "",
-        "contentHtml": "<p>Return the quotation to pending for a new review.</p>"
+        "contentHtml": "<p>Return this quotation to pending review. This changes the existing offer’s decision state so it can be considered again.</p>"
       },
       {
         "id": "guide-card-actions-invite-chat",
@@ -21750,7 +21750,7 @@
         "icon": "touch_app",
         "title": "Invite to conversation",
         "blurb": "",
-        "contentHtml": "<p>Add this provider to the case conversation when the action is available.</p>"
+        "contentHtml": "<p>Add this provider to the case conversation when the action is available. This grants participation in that conversation; it does not itself accept the quotation.</p>"
       },
       {
         "id": "guide-quotation-provider-help",
@@ -21758,7 +21758,7 @@
         "icon": "help_outline",
         "title": "Provider access",
         "blurb": "",
-        "contentHtml": "<p>This message explains the quotation view available to you. Use the offered controls for your own quotation.</p>"
+        "contentHtml": "<p>Check which quotation actions your role allows here. A provider prepares their own offer, while the case manager records acceptance, rejection or a return to pending.</p>"
       },
       {
         "id": "guide-close",
@@ -21766,18 +21766,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the quotation list and return to the case. Decisions already submitted, such as acceptance or rejection, remain in effect.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.quotations-hu-v6",
+    "_id": "work:explanation-community.case.quotations-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.quotations",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.quotations",
@@ -21835,7 +21835,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>Elolvashatod a szolgáltató ajánlati összegét, pénznemét, megjegyzését, munka- és visszatérítési feltételeit. A részletek megnyitása nem fogadja el az ajánlatot.</p>"
       },
       {
         "id": "guide-card-actions-chat",
@@ -21843,7 +21843,7 @@
         "icon": "touch_app",
         "title": "Beszélgetés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg az elemhez tartozó beszélgetést. Üzenetküldés előtt ellenőrizd a résztvevőket.</p>"
+        "contentHtml": "<p>Megnyitja az ügyhöz és ajánlathoz kapcsolódó beszélgetést a vállalt munka tisztázásához. Ajánlati információ küldése előtt ellenőrizd a résztvevőket.</p>"
       },
       {
         "id": "guide-card-actions-edit",
@@ -21851,7 +21851,7 @@
         "icon": "touch_app",
         "title": "Szerkesztés",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a szerkesztőt. A módosítások az űrlap mentésekor lépnek életbe.</p>"
+        "contentHtml": "<p>Az ügy kezelőjeként módosíthatod az ajánlat összegét, pénznemét, megjegyzését és feltételeit, ahol ez elérhető. Az egyeztetett változtatásokat az ajánlati űrlap mentése rögzíti.</p>"
       },
       {
         "id": "guide-card-actions-accept-offer",
@@ -21859,7 +21859,7 @@
         "icon": "touch_app",
         "title": "Ajánlat elfogadása",
         "blurb": "",
-        "contentHtml": "<p>Nézd át az árat és a feltételeket, majd a megerősítésben fogadd el az ajánlatot.</p>"
+        "contentHtml": "<p>Elfogadottnak rögzíti ezt az ajánlatot. Előbb ellenőrizd a szolgáltatót, összeget és feltételeket: a kiválasztás külön megerősítő ablak nélkül, közvetlenül küldi el a döntést.</p>"
       },
       {
         "id": "guide-card-actions-reject-offer",
@@ -21867,7 +21867,7 @@
         "icon": "touch_app",
         "title": "Ajánlat elutasítása",
         "blurb": "",
-        "contentHtml": "<p>A szolgáltató és a feltételek ellenőrzése után utasítsd el ezt az ajánlatot.</p>"
+        "contentHtml": "<p>Elutasítottnak rögzíti az ajánlatot. Ellenőrizd, hogy a megfelelő szolgáltató ajánlatán dolgozol; a döntést közvetlenül ebből a menüből küldi el.</p>"
       },
       {
         "id": "guide-card-actions-pending-offer",
@@ -21875,7 +21875,7 @@
         "icon": "touch_app",
         "title": "Vissza függőbe",
         "blurb": "",
-        "contentHtml": "<p>Tedd vissza az ajánlatot függő állapotba az újabb áttekintéshez.</p>"
+        "contentHtml": "<p>Visszaállítja az ajánlatot elbírálásra váró állapotba. A meglévő ajánlat döntési állapotát változtatja meg az újbóli mérlegeléshez.</p>"
       },
       {
         "id": "guide-card-actions-invite-chat",
@@ -21883,7 +21883,7 @@
         "icon": "touch_app",
         "title": "Meghívás a beszélgetésbe",
         "blurb": "",
-        "contentHtml": "<p>Vond be ezt a szolgáltatót az ügy beszélgetésébe, amikor a művelet elérhető.</p>"
+        "contentHtml": "<p>Hozzáadja a szolgáltatót az ügy beszélgetéséhez, ha a művelet elérhető. Ez a beszélgetésben való részvételt biztosítja; önmagában nem fogadja el az ajánlatot.</p>"
       },
       {
         "id": "guide-quotation-provider-help",
@@ -21891,7 +21891,7 @@
         "icon": "help_outline",
         "title": "Szolgáltatói hozzáférés",
         "blurb": "",
-        "contentHtml": "<p>Ez a szöveg jelzi, milyen ajánlatnézet érhető el számodra. A megjelenő vezérlőkkel kezelheted a saját ajánlatodat.</p>"
+        "contentHtml": "<p>Ellenőrizd, milyen ajánlati műveleteket enged itt a szereped. A szolgáltató a saját ajánlatát készíti, az ügy kezelője pedig az elfogadást, elutasítást vagy elbírálásra visszaállítást rögzíti.</p>"
       },
       {
         "id": "guide-close",
@@ -21899,18 +21899,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja az ajánlatlistát, és visszatér az ügyhöz. A már elküldött döntések, például az elfogadás vagy elutasítás, érvényben maradnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.board-en-v6",
+    "_id": "work:explanation-community.case.board-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.board",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.board",
@@ -21944,7 +21944,7 @@
         "icon": "help_outline",
         "title": "Add task",
         "blurb": "",
-        "contentHtml": "<p>Create a board task with its own description, assignees, dates, accepted quotations and dependencies.</p>"
+        "contentHtml": "<p>Prepare a task within this case with a title, assignees, dates and any accepted quotations or dependencies. The task is recorded when you save its form with the header tick.</p>"
       },
       {
         "id": "guide-card-actions-task-view",
@@ -21952,7 +21952,7 @@
         "icon": "touch_app",
         "title": "Task details",
         "blurb": "",
-        "contentHtml": "<p>Review or edit this task according to your current permissions.</p>"
+        "contentHtml": "<p>Open this task’s details, including assignees, dates, quotations and dependencies. If editing is available, save your changes with the form’s header tick.</p>"
       },
       {
         "id": "guide-card-actions-task-members",
@@ -21960,7 +21960,7 @@
         "icon": "touch_app",
         "title": "Task members",
         "blurb": "",
-        "contentHtml": "<p>Open the people assigned to this task.</p>"
+        "contentHtml": "<p>Inspect this task’s assignees. When you can manage an active case, confirming a changed selection here saves the task’s assignees immediately.</p>"
       },
       {
         "id": "guide-card-actions-task-progress",
@@ -21968,7 +21968,7 @@
         "icon": "touch_app",
         "title": "Change progress",
         "blurb": "",
-        "contentHtml": "<p>The available action follows the task’s current state: start, complete or reopen. Review dependencies before proceeding.</p>"
+        "contentHtml": "<p>Advance the task from to do to in progress, from in progress to done, or return a done task to to do. The displayed action saves that state change directly.</p>"
       },
       {
         "id": "guide-card-actions-task-delete",
@@ -21976,7 +21976,7 @@
         "icon": "touch_app",
         "title": "Delete task",
         "blurb": "",
-        "contentHtml": "<p>Remove this task after reviewing the confirmation.</p>"
+        "contentHtml": "<p>Remove this task from the board by marking it deleted. The action is sent directly; check the task title and its dependencies before selecting it.</p>"
       },
       {
         "id": "guide-close",
@@ -21984,18 +21984,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the task board and return to the case list or the screen that opened the case. Already saved task changes remain recorded.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.board-hu-v6",
+    "_id": "work:explanation-community.case.board-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.board",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.board",
@@ -22029,7 +22029,7 @@
         "icon": "help_outline",
         "title": "Részfeladat hozzáadása",
         "blurb": "",
-        "contentHtml": "<p>Hozz létre részfeladatot saját leírással, felelősökkel, időpontokkal, elfogadott ajánlatokkal és függőségekkel.</p>"
+        "contentHtml": "<p>Az ügyön belül feladatot készíthetsz címmel, felelősökkel, időpontokkal, elfogadott ajánlatokkal és függőségekkel. A feladatot az űrlap fejlécének pipájával történő mentés rögzíti.</p>"
       },
       {
         "id": "guide-card-actions-task-view",
@@ -22037,7 +22037,7 @@
         "icon": "touch_app",
         "title": "A részfeladat részletei",
         "blurb": "",
-        "contentHtml": "<p>Jogosultságod szerint tekintsd meg vagy szerkeszd ezt a részfeladatot.</p>"
+        "contentHtml": "<p>Megnyitja a feladat részleteit a felelősökkel, időpontokkal, ajánlatokkal és függőségekkel együtt. Ha szerkesztheted, a változtatásokat az űrlap fejlécének pipájával mentsd.</p>"
       },
       {
         "id": "guide-card-actions-task-members",
@@ -22045,7 +22045,7 @@
         "icon": "touch_app",
         "title": "A részfeladat résztvevői",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a részfeladathoz rendelt személyeket.</p>"
+        "contentHtml": "<p>Áttekintheted a feladat felelőseit. Aktív ügy kezelőjeként az itt módosított kiválasztás megerősítése azonnal menti a feladat felelőseit.</p>"
       },
       {
         "id": "guide-card-actions-task-progress",
@@ -22053,7 +22053,7 @@
         "icon": "touch_app",
         "title": "Haladás módosítása",
         "blurb": "",
-        "contentHtml": "<p>A feladat állapota szerint indítás, befejezés vagy újranyitás érhető el. Előbb nézd át a függőségeket.</p>"
+        "contentHtml": "<p>A teendőt folyamatban lévőre, a folyamatban lévőt készre állítja, a kész feladatot pedig visszateszi a teendők közé. A kijelzett művelet közvetlenül menti az állapotváltást.</p>"
       },
       {
         "id": "guide-card-actions-task-delete",
@@ -22061,7 +22061,7 @@
         "icon": "touch_app",
         "title": "Részfeladat törlése",
         "blurb": "",
-        "contentHtml": "<p>A megerősítés áttekintése után töröld ezt a részfeladatot.</p>"
+        "contentHtml": "<p>Töröltnek jelölve eltávolítja a feladatot a tábláról. A művelet közvetlenül indul; kiválasztás előtt ellenőrizd a feladat címét és függőségeit.</p>"
       },
       {
         "id": "guide-close",
@@ -22069,18 +22069,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Bezárja a feladattáblát, és visszatér az ügylistához vagy az ügyet megnyitó képernyőhöz. A már mentett feladatmódosítások megmaradnak.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.service.editor-en-v6",
+    "_id": "work:explanation-community.service.editor-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.service.editor",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.service.editor",
@@ -22266,18 +22266,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the service form without saving pending edits. Use the header tick first to keep changed details, staff or terms; read-only viewing needs no save.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.service.editor-hu-v6",
+    "_id": "work:explanation-community.service.editor-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.service.editor",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.service.editor",
@@ -22463,18 +22463,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Mentés nélkül bezárja a szolgáltatás űrlapját. A módosított adatok, munkatársak és feltételek megőrzéséhez előbb ments a fejléc pipájával; a csak olvasható nézet nem igényel mentést.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-members.select-en-v6",
+    "_id": "work:explanation-members.select-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "members.select",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "Choose members",
@@ -22532,18 +22532,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the member picker without confirming its current selection. Use the confirmation tick if you want to apply the chosen people to the workflow that opened it.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-members.select-hu-v6",
+    "_id": "work:explanation-members.select-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "members.select",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "Tagok kiválasztása",
@@ -22601,18 +22601,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Az aktuális kiválasztás megerősítése nélkül bezárja a résztvevőválasztót. A kiválasztott emberek átadásához használd a megerősítő pipát.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.board.task-en-v6",
+    "_id": "work:explanation-community.case.board.task-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.board.task",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.board.task",
@@ -22694,18 +22694,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close this task form without saving its pending edits. Selections applied to the form, such as quotations and dependencies, still need the task’s save tick to be stored.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.board.task-hu-v6",
+    "_id": "work:explanation-community.case.board.task-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.board.task",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.board.task",
@@ -22787,18 +22787,18 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>A függő módosítások mentése nélkül bezárja a feladat űrlapját. Az űrlapra átvett ajánlatok és függőségek tárolásához is szükséges a feladat mentési pipája.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.quotation.editor-en-v6",
+    "_id": "work:explanation-community.case.quotation.editor-en-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.quotation.editor",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.quotation.editor",
@@ -22872,18 +22872,18 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Return to the previous screen. Save any form changes first if you want to keep them.</p>"
+        "contentHtml": "<p>Close the quotation form without saving pending edits. Save with its header tick first to keep changes to the amount, note or terms.</p>"
       }
     ]
   },
   {
-    "_id": "work:explanation-community.case.quotation.editor-hu-v6",
+    "_id": "work:explanation-community.case.quotation.editor-hu-v7",
     "documentType": "explanation",
     "baseGroupId": "myscoutee-work",
     "contextKey": "community.case.quotation.editor",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "presentation": "tour",
     "title": "community.case.quotation.editor",
@@ -22957,7 +22957,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Térj vissza az előző felületre. A megtartani kívánt űrlapmódosításokat előbb mentsd el.</p>"
+        "contentHtml": "<p>Mentés nélkül bezárja az ajánlati űrlapot. Az összeg, megjegyzés és feltételek módosításának megőrzéséhez előbb ments a fejléc pipájával.</p>"
       }
     ]
   },
@@ -27870,11 +27870,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-profile.mcp-advanced-en-v1",
+    "_id": "work:explanation-profile.mcp-advanced-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Manual MCP clients",
     "summary": "Create and manage credentials for clients that require manual setup.",
@@ -27939,7 +27939,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous screen.</p>"
+        "contentHtml": "<p>Return to API / MCP settings. Generated or revoked credentials have already changed; staged access-pack edits still require the save tick in the parent window.</p>"
       }
     ],
     "contextKey": "profile.mcp-advanced",
@@ -27948,11 +27948,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-profile.mcp-advanced-hu-v1",
+    "_id": "work:explanation-profile.mcp-advanced-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Kézi MCP-kliensek",
     "summary": "Hozz létre és kezelj hitelesítő adatokat a kézi beállítást igénylő kliensekhez.",
@@ -28017,7 +28017,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző felületre.</p>"
+        "contentHtml": "<p>Visszatér az API / MCP beállításaihoz. A létrehozott vagy visszavont kulcsok változása már megtörtént; az előkészített hozzáférési csomag módosításához még menteni kell a szülőablak pipájával.</p>"
       }
     ],
     "contextKey": "profile.mcp-advanced",
@@ -28026,11 +28026,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-profile.mcp-details-en-v1",
+    "_id": "work:explanation-profile.mcp-details-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "MCP connection details",
     "summary": "Inspect this client and its callback address.",
@@ -28079,7 +28079,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous screen.</p>"
+        "contentHtml": "<p>Return from this client’s details without saving the parent API / MCP form. If you staged an access-pack change, use the parent window’s save tick to persist it.</p>"
       }
     ],
     "contextKey": "profile.mcp-details",
@@ -28088,11 +28088,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-profile.mcp-details-hu-v1",
+    "_id": "work:explanation-profile.mcp-details-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Az MCP-kapcsolat részletei",
     "summary": "Ellenőrizd ezt a klienst és a visszahívási címét.",
@@ -28141,7 +28141,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző felületre.</p>"
+        "contentHtml": "<p>Visszatér a kliens részleteitől a szülő API / MCP űrlap mentése nélkül. Ha hozzáférési csomagot módosítottál, azt a szülőablak mentési pipájával rögzítsd.</p>"
       }
     ],
     "contextKey": "profile.mcp-details",
@@ -28150,11 +28150,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-profile.mcp-authorization-en-v1",
+    "_id": "work:explanation-profile.mcp-authorization-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Connect an AI client",
     "summary": "Review the client, active profile and requested access before consenting.",
@@ -28203,7 +28203,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous screen.</p>"
+        "contentHtml": "<p>Close the authorization request without granting access. When a client request is active, closing sends the refusal back to that client.</p>"
       }
     ],
     "contextKey": "profile.mcp-authorization",
@@ -28212,11 +28212,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-profile.mcp-authorization-hu-v1",
+    "_id": "work:explanation-profile.mcp-authorization-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "AI-kliens csatlakoztatása",
     "summary": "Jóváhagyás előtt ellenőrizd a klienst, az aktív profilt és a kért hozzáférést.",
@@ -28265,7 +28265,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző felületre.</p>"
+        "contentHtml": "<p>Hozzáférés megadása nélkül bezárja az engedélykérést. Aktív klienskérés esetén a bezárás az elutasítást küldi vissza a kliensnek.</p>"
       }
     ],
     "contextKey": "profile.mcp-authorization",
@@ -28274,11 +28274,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-community.case.board.dependencies-en-v1",
+    "_id": "work:explanation-community.case.board.dependencies-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Task dependencies",
     "summary": "Choose which tasks must be completed first.",
@@ -28319,7 +28319,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous screen.</p>"
+        "contentHtml": "<p>Cancel this dependency selection and return to the task form. Confirm the chosen predecessors with the picker’s tick, then save the task to retain them.</p>"
       }
     ],
     "contextKey": "community.case.board.dependencies",
@@ -28328,11 +28328,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-community.case.board.dependencies-hu-v1",
+    "_id": "work:explanation-community.case.board.dependencies-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Feladatfüggőségek",
     "summary": "Válaszd ki, mely feladatoknak kell előbb elkészülniük.",
@@ -28373,7 +28373,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző felületre.</p>"
+        "contentHtml": "<p>Elveti ezt a függőségkiválasztást, és visszatér a feladat űrlapjához. A választott előfeltételeket a választó pipájával erősítsd meg, majd megőrzésükhöz mentsd a feladatot.</p>"
       }
     ],
     "contextKey": "community.case.board.dependencies",
@@ -28382,11 +28382,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-community.case.board.offers-en-v1",
+    "_id": "work:explanation-community.case.board.offers-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Link quotations",
     "summary": "Choose accepted quotations for this board task.",
@@ -28427,7 +28427,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous screen.</p>"
+        "contentHtml": "<p>Cancel this quotation selection and return to the task form. Use the picker’s tick to apply a selection, then the task’s tick to save the task.</p>"
       },
       {
         "id": "guide-card-actions-view",
@@ -28435,7 +28435,7 @@
         "icon": "touch_app",
         "title": "Details",
         "blurb": "",
-        "contentHtml": "<p>Open the selected item and review its details.</p>"
+        "contentHtml": "<p>Inspect this accepted quotation’s provider, amount and terms before linking it to the task. Viewing it leaves the picker’s selection unchanged.</p>"
       }
     ],
     "contextKey": "community.case.board.offers",
@@ -28444,11 +28444,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-community.case.board.offers-hu-v1",
+    "_id": "work:explanation-community.case.board.offers-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Ajánlatok hozzárendelése",
     "summary": "Válassz elfogadott ajánlatokat ehhez a részfeladathoz.",
@@ -28489,7 +28489,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző felületre.</p>"
+        "contentHtml": "<p>Elveti ezt az ajánlatkiválasztást, és visszatér a feladat űrlapjához. A kiválasztást a választó pipája veszi át, a feladatot pedig annak saját pipája menti.</p>"
       },
       {
         "id": "guide-card-actions-view",
@@ -28497,7 +28497,7 @@
         "icon": "touch_app",
         "title": "Részletek",
         "blurb": "",
-        "contentHtml": "<p>Nyisd meg a kiválasztott elemet, és nézd át a részleteit.</p>"
+        "contentHtml": "<p>A feladathoz kapcsolás előtt ellenőrizheted az elfogadott ajánlat szolgáltatóját, összegét és feltételeit. A megtekintés nem változtatja meg a választó kiválasztását.</p>"
       }
     ],
     "contextKey": "community.case.board.offers",
@@ -28506,11 +28506,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-policies.list-en-v1",
+    "_id": "work:explanation-policies.list-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Terms",
     "summary": "Read and prepare terms in the existing form.",
@@ -28551,7 +28551,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous form.</p>"
+        "contentHtml": "<p>Return to the owning form after reviewing its terms. Any term changes applied here remain part of that form’s draft and are stored only when the owning form is saved.</p>"
       }
     ],
     "contextKey": "policies.list",
@@ -28560,11 +28560,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-policies.list-hu-v1",
+    "_id": "work:explanation-policies.list-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Feltételek",
     "summary": "Olvasd el vagy készítsd el a feltételeket az űrlapban.",
@@ -28605,7 +28605,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző űrlaphoz.</p>"
+        "contentHtml": "<p>Visszatér a feltételeket tartalmazó űrlaphoz. Az itt átvett feltételmódosítások annak piszkozatához tartoznak, és az egész űrlap mentésekor tárolódnak.</p>"
       }
     ],
     "contextKey": "policies.list",
@@ -28614,11 +28614,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-policies.editor-en-v1",
+    "_id": "work:explanation-policies.editor-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "Term details",
     "summary": "Read and prepare terms in the existing form.",
@@ -28667,7 +28667,7 @@
         "icon": "close",
         "title": "Close",
         "blurb": "",
-        "contentHtml": "<p>Close this window and return to the previous form.</p>"
+        "contentHtml": "<p>Close this term’s editor without applying its pending edits. Use its save tick to apply the term, then save the owning form to persist the complete change.</p>"
       }
     ],
     "contextKey": "policies.editor",
@@ -28676,11 +28676,11 @@
     "isSystem": false
   },
   {
-    "_id": "work:explanation-policies.editor-hu-v1",
+    "_id": "work:explanation-policies.editor-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 1,
+    "version": 2,
     "active": true,
     "title": "A feltétel részletei",
     "summary": "Olvasd el vagy készítsd el a feltételeket az űrlapban.",
@@ -28729,7 +28729,7 @@
         "icon": "close",
         "title": "Bezárás",
         "blurb": "",
-        "contentHtml": "<p>Zárd be ezt az ablakot, és térj vissza az előző űrlaphoz.</p>"
+        "contentHtml": "<p>Az aktuális módosítások átvétele nélkül bezárja a feltétel szerkesztőjét. A feltételt a saját mentési pipájával vedd át, majd a teljes változtatást az azt tartalmazó űrlap mentésével rögzítsd.</p>"
       }
     ],
     "contextKey": "policies.editor",

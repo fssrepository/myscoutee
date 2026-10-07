@@ -54,8 +54,8 @@ for (const group of [null, 'myscoutee-work', 'myscoutee-community']) {
   const closeChild = guide.registerContext('profile.integration-access'); await flush();
   assert.equal(guide.currentContextKey(), 'profile.integration-access', 'Child must be registered as an enabled surface');
   assert.equal(guide.launcherVisible(), true);
-  assert.deepEqual(guide.visibleGuideFields().map(field => field.id), ['integration-access-level', 'integration-access-apply', 'close']);
-  assert.equal(guide.visibleRevision().sections.length, 3);
+  assert.deepEqual(guide.visibleGuideFields().map(field => field.id), ['integration-access-level', 'integration-access-description', 'integration-access-apply', 'close']);
+  assert.equal(guide.visibleRevision().sections.length, 4);
   guide.nextStep(); guide.setStepIndex(0);
   assert.equal(loads.length, 2, 'Walking steps must not reload the parent or child');
   i18n.currentLanguage.set('hu'); await flush();
@@ -70,14 +70,14 @@ for (const group of [null, 'myscoutee-work', 'myscoutee-community']) {
   guide.closePopup(); assert.equal(guide.currentContextKey(), 'profile.integration-access');
   release(); closeParent(); assert.equal(guide.currentContextKey(), null);
   for (const fn of cleanup.reverse()) fn();
-  console.log('PASS enabled parent/child Help, four button/save steps, three child steps, EN/HU and cleanup:', group ?? 'Dating');
+  console.log('PASS enabled parent/child Help, four button/save steps, four child steps, EN/HU and cleanup:', group ?? 'Dating');
 }
 
 for (const rows of [...seeds, ...local]) for (const group of [null, 'myscoutee-work', 'myscoutee-community']) {
   if (!seeds.includes(rows) && group !== (rows === local[0] ? 'myscoutee-work' : 'myscoutee-community')) continue;
   for (const lang of ['en', 'hu']) {
     const active = rows.filter(row => row.active && row.contextKey === 'profile.integration-access' && row.lang === lang && (row.baseGroupId ?? null) === group);
-    assert.equal(active.length, 1); assert.equal(active[0].sections.length, 3);
+    assert.equal(active.length, 1); assert.equal(active[0].sections.length, 4);
     for (const field of fields['profile.integration-access']) {
       assert.equal(active[0].sections.find(section => section.guideStepId === field.id)?.contentHtml,
         '<p>' + messages[lang][field.i18nKey + '.description'] + '</p>');
