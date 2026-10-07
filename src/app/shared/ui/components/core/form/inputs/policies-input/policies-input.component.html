@@ -77,9 +77,9 @@
 }
 
 @if (showPoliciesPopup) {
-<app-popup [model]="policySetupPopupModel()" [zIndex]="policySetupPopupZIndex()">
+<app-popup guideContext="policies.list" [model]="policySetupPopupModel()" [zIndex]="policySetupPopupZIndex()">
   <div class="event-policies-popup-body">
-    <div class="event-policies-list event-policies-list-compact">
+    <div class="event-policies-list event-policies-list-compact" data-guide-field="policy-list">
       @for (policy of workingPolicies; track policy.id; let i = $index) {
       <single-row
         [row]="policySingleRow(policy, i)"

@@ -16,6 +16,7 @@ describe('Local affiliate summary', () => {
     const repo=runInInjectionContext(injector,()=>new LocalIntegrationRepository());
     const api=repo.createToken('owner','API',30),mcp=repo.createMcpClient('owner',{name:'MCP'});
     const foreign=repo.createToken('other','Other',30);
+    expect(repo.mcpSettings('owner','/mcp/private').accessMode).toBe('blocked');
     const request={accessRevision:0,mcpAccess:'full' as const,clients:[{id:api.token.id,accessMode:'blocked' as const},{id:mcp.client.token.id,accessMode:'full' as const}]};
     expect(()=>repo.saveAccess('owner',{...request,clients:[...request.clients,{id:foreign.token.id,accessMode:'full'}]})).toThrow();
     expect(state[USERS_TABLE_NAME].byId.owner.integrationAccess).toBeUndefined();

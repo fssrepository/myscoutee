@@ -45,8 +45,8 @@ export class IntegrationService extends BaseRouteModeService {
     return this.service(admin).loadSettings(admin);
   }
 
-  saveSettings(request: IntegrationSettingsUpdateDto): Promise<IntegrationSettingsDto> {
-    return this.service(false).saveSettings(request);
+  saveSettings(request: IntegrationSettingsUpdateDto, admin = false): Promise<IntegrationSettingsDto> {
+    return this.service(admin).saveSettings(request, admin);
   }
 
   createToken(

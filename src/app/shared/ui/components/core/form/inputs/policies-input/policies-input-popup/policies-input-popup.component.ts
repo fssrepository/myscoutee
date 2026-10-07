@@ -77,7 +77,7 @@ export class PoliciesInputPopupComponent implements OnChanges {
         chrome: 'none',
         controls: [
           {
-            id: 'title',
+            id: 'title', guideFieldId: 'policy-title',
             bind: 'title',
             kind: 'text',
             layout: 'wide',
@@ -86,7 +86,7 @@ export class PoliciesInputPopupComponent implements OnChanges {
             required: true
           },
           {
-            id: 'description',
+            id: 'description', guideFieldId: 'policy-description',
             bind: 'description',
             kind: 'textarea',
             layout: 'wide',
@@ -96,7 +96,7 @@ export class PoliciesInputPopupComponent implements OnChanges {
             required: true
           },
           {
-            id: 'required',
+            id: 'required', guideFieldId: 'policy-required',
             bind: 'required',
             kind: 'checkbox',
             layout: 'wide',

@@ -17,7 +17,7 @@ const ANNOUNCEMENT_STATUS_STYLE:Record<AnnouncementStatus,{icon:string;palette:A
 @Component({ selector: 'app-community-announcements', standalone: true,
   imports: [NgTemplateOutlet, PopupComponent, SmartListComponent, SingleRowComponent, HomeHeaderComponent, I18nPipe, CommunityAnnouncementEditorComponent],
   template: `@if (inline && branding) {
-    <div class="community-home" data-guide-context="community-home">
+    <div class="community-home" data-guide-surface="community.home">
       <app-home-header [branding]="branding" [items]="headerItems()" (itemSelect)="headerAction($event)"></app-home-header>
       @if(store.error() && !store.editor()) {<single-row [row]="{id:'error',title:store.error()|i18n,icon:'error',surfaceTone:'danger'}"></single-row>}
       <ng-container *ngTemplateOutlet="list"></ng-container>

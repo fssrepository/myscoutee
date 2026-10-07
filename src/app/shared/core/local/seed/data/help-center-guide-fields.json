@@ -6976,42 +6976,154 @@
       "screenKey": "community.cases",
       "group": "overview",
       "i18nKey": "guide.community.cases.case-list",
-      "order": 0
+      "order": 1
     },
     {
       "id": "type:trigger",
       "screenKey": "community.cases",
       "group": "overview",
       "i18nKey": "guide.community.cases.type.trigger",
-      "order": 1
+      "order": 2
     },
     {
       "id": "status:trigger",
       "screenKey": "community.cases",
       "group": "overview",
       "i18nKey": "guide.community.cases.status:trigger",
-      "order": 2
+      "order": 3
     },
     {
       "id": "card-actions",
       "screenKey": "community.cases",
       "group": "card",
       "i18nKey": "guide.community.cases.card-actions",
-      "order": 3
+      "order": 4
     },
     {
       "id": "tasks",
       "screenKey": "community.cases",
       "group": "overview",
       "i18nKey": "guide.community.cases.tasks",
-      "order": 4
+      "order": 5
     },
     {
       "id": "create",
       "screenKey": "community.cases",
       "group": "overview",
       "i18nKey": "guide.community.cases.create",
-      "order": 5
+      "order": 6
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.cases",
+      "order": 7,
+      "i18nKey": "guide.community.cases.card-actions:view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:take-over",
+      "screenKey": "community.cases",
+      "order": 8,
+      "i18nKey": "guide.community.cases.card-actions:take-over",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:chat",
+      "screenKey": "community.cases",
+      "order": 9,
+      "i18nKey": "guide.community.cases.card-actions:chat",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:join",
+      "screenKey": "community.cases",
+      "order": 10,
+      "i18nKey": "guide.community.cases.card-actions:join",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:decline",
+      "screenKey": "community.cases",
+      "order": 11,
+      "i18nKey": "guide.community.cases.card-actions:decline",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:leave",
+      "screenKey": "community.cases",
+      "order": 12,
+      "i18nKey": "guide.community.cases.card-actions:leave",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:members",
+      "screenKey": "community.cases",
+      "order": 13,
+      "i18nKey": "guide.community.cases.card-actions:members",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:offers",
+      "screenKey": "community.cases",
+      "order": 14,
+      "i18nKey": "guide.community.cases.card-actions:offers",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.cases",
+      "order": 15,
+      "i18nKey": "guide.community.cases.card-actions:edit",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:invite-provider",
+      "screenKey": "community.cases",
+      "order": 16,
+      "i18nKey": "guide.community.cases.card-actions:invite-provider",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:start",
+      "screenKey": "community.cases",
+      "order": 17,
+      "i18nKey": "guide.community.cases.card-actions:start",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:complete",
+      "screenKey": "community.cases",
+      "order": 18,
+      "i18nKey": "guide.community.cases.card-actions:complete",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:cancel",
+      "screenKey": "community.cases",
+      "order": 19,
+      "i18nKey": "guide.community.cases.card-actions:cancel",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:reopen",
+      "screenKey": "community.cases",
+      "order": 20,
+      "i18nKey": "guide.community.cases.card-actions:reopen",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:trash",
+      "screenKey": "community.cases",
+      "order": 21,
+      "i18nKey": "guide.community.cases.card-actions:trash",
+      "group": "card"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.cases",
+      "order": 22,
+      "i18nKey": "guide.community.cases.close",
+      "group": "popup"
     }
   ],
   "community.tasks": [
@@ -7020,49 +7132,77 @@
       "screenKey": "community.tasks",
       "group": "overview",
       "i18nKey": "guide.community.tasks.task-list",
-      "order": 0
+      "order": 1
     },
     {
       "id": "create-task",
       "screenKey": "community.tasks",
       "group": "overview",
       "i18nKey": "guide.community.tasks.actions.trigger",
-      "order": 1
+      "order": 2
     },
     {
       "id": "status:trigger",
       "screenKey": "community.tasks",
       "group": "overview",
       "i18nKey": "guide.community.tasks.status:trigger",
-      "order": 2
+      "order": 3
     },
     {
       "id": "card-actions",
       "screenKey": "community.tasks",
       "group": "card",
       "i18nKey": "guide.community.tasks.card-actions",
-      "order": 3
+      "order": 4
     },
     {
       "id": "card-actions:pause",
       "screenKey": "community.tasks",
       "group": "card",
       "i18nKey": "guide.community.tasks.card-actions:pause",
-      "order": 4
+      "order": 5
     },
     {
       "id": "card-actions:resume",
       "screenKey": "community.tasks",
       "group": "card",
       "i18nKey": "guide.community.tasks.card-actions:resume",
-      "order": 5
+      "order": 6
     },
     {
       "id": "card-actions:trash",
       "screenKey": "community.tasks",
       "group": "card",
       "i18nKey": "guide.community.tasks.card-actions:trash",
-      "order": 6
+      "order": 7
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.tasks",
+      "order": 8,
+      "i18nKey": "guide.community.tasks.card-actions:view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.tasks",
+      "order": 9,
+      "i18nKey": "guide.community.tasks.card-actions:edit",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "community.tasks",
+      "order": 10,
+      "i18nKey": "guide.community.tasks.card-actions:restore",
+      "group": "card"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.tasks",
+      "order": 11,
+      "i18nKey": "guide.community.tasks.close",
+      "group": "popup"
     }
   ],
   "community.case.editor": [
@@ -7071,49 +7211,56 @@
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.case-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "audience",
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.audience.trigger",
-      "order": 1
+      "order": 2
     },
     {
       "id": "title",
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.title",
-      "order": 2
+      "order": 3
     },
     {
       "id": "type",
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.type",
-      "order": 3
+      "order": 4
     },
     {
       "id": "description",
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.description",
-      "order": 4
+      "order": 5
     },
     {
       "id": "members",
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.members",
-      "order": 5
+      "order": 6
     },
     {
       "id": "save",
       "screenKey": "community.case.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.editor.save",
-      "order": 6
+      "order": 7
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.editor",
+      "order": 8,
+      "i18nKey": "guide.community.case.editor.close",
+      "group": "popup"
     }
   ],
   "community.task.editor": [
@@ -7122,91 +7269,98 @@
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.case-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "audience",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.audience.trigger",
-      "order": 1
+      "order": 2
     },
     {
       "id": "title",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.title",
-      "order": 2
+      "order": 3
     },
     {
       "id": "type",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.type",
-      "order": 3
+      "order": 4
     },
     {
       "id": "description",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.description",
-      "order": 4
+      "order": 5
     },
     {
       "id": "members",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.members",
-      "order": 5
+      "order": 6
     },
     {
       "id": "save",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.save",
-      "order": 6
+      "order": 7
     },
     {
       "id": "startAtIso",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.startAtIso",
-      "order": 7
+      "order": 8
     },
     {
       "id": "schedule-frequency",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.schedule-frequency",
-      "order": 8
+      "order": 9
     },
     {
       "id": "frequency",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.frequency",
-      "order": 9
+      "order": 10
     },
     {
       "id": "startAt",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.startAt",
-      "order": 10
+      "order": 11
     },
     {
       "id": "save-schedule",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.save-schedule",
-      "order": 11
+      "order": 12
     },
     {
       "id": "add-schedule",
       "screenKey": "community.task.editor",
       "group": "overview",
       "i18nKey": "guide.community.task.editor.add-schedule",
-      "order": 12
+      "order": 13
+    },
+    {
+      "id": "close",
+      "screenKey": "community.task.editor",
+      "order": 14,
+      "i18nKey": "guide.community.task.editor.close",
+      "group": "popup"
     }
   ],
   "work.campaigns": [
@@ -7301,161 +7455,168 @@
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.campaign-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "images",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.images",
-      "order": 1
+      "order": 2
     },
     {
       "id": "title",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.title",
-      "order": 2
+      "order": 3
     },
     {
       "id": "description",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.description",
-      "order": 3
+      "order": 4
     },
     {
       "id": "kind",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.kind",
-      "order": 4
+      "order": 5
     },
     {
       "id": "category",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.category",
-      "order": 5
+      "order": 6
     },
     {
       "id": "attachments",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.attachments",
-      "order": 6
+      "order": 7
     },
     {
       "id": "attach",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.attach",
-      "order": 7
+      "order": 8
     },
     {
       "id": "save",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.save",
-      "order": 8
+      "order": 9
     },
     {
       "id": "view:trigger",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.view:trigger",
-      "order": 9
+      "order": 10
     },
     {
       "id": "image-preview",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-preview",
-      "order": 10
+      "order": 11
     },
     {
       "id": "image-upload",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-upload",
-      "order": 11
+      "order": 12
     },
     {
       "id": "image-replace",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-replace",
-      "order": 12
+      "order": 13
     },
     {
       "id": "image-copy",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-copy",
-      "order": 13
+      "order": 14
     },
     {
       "id": "image-remove",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-remove",
-      "order": 14
+      "order": 15
     },
     {
       "id": "image-pages",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-pages",
-      "order": 15
+      "order": 16
     },
     {
       "id": "image-details",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-details",
-      "order": 16
+      "order": 17
     },
     {
       "id": "image-location",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-location",
-      "order": 17
+      "order": 18
     },
     {
       "id": "image-caption",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-caption",
-      "order": 18
+      "order": 19
     },
     {
       "id": "image-details-save",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-details-save",
-      "order": 19
+      "order": 20
     },
     {
       "id": "image-gallery-expand",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-gallery-expand",
-      "order": 20
+      "order": 21
     },
     {
       "id": "image-view",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.image-view",
-      "order": 21
+      "order": 22
     },
     {
       "id": "campaign-ask",
       "screenKey": "work.campaign.editor",
       "group": "overview",
       "i18nKey": "guide.work.campaign.editor.campaign-ask",
-      "order": 22
+      "order": 23
+    },
+    {
+      "id": "close",
+      "screenKey": "work.campaign.editor",
+      "order": 24,
+      "i18nKey": "guide.work.campaign.editor.close",
+      "group": "popup"
     }
   ],
   "community.home": [
@@ -7464,21 +7625,98 @@
       "screenKey": "community.home",
       "group": "overview",
       "i18nKey": "guide.community.home.announcements",
-      "order": 0
+      "order": 1
     },
     {
       "id": "status:trigger",
       "screenKey": "community.home",
       "group": "overview",
       "i18nKey": "guide.community.home.status:trigger",
-      "order": 1
+      "order": 2
     },
     {
       "id": "card-actions",
       "screenKey": "community.home",
       "group": "card",
       "i18nKey": "guide.community.home.card-actions",
-      "order": 2
+      "order": 3
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.home",
+      "order": 4,
+      "i18nKey": "guide.community.home.card-actions:view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:feedback",
+      "screenKey": "community.home",
+      "order": 5,
+      "i18nKey": "guide.community.home.card-actions:feedback",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:vote",
+      "screenKey": "community.home",
+      "order": 6,
+      "i18nKey": "guide.community.home.card-actions:vote",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:results",
+      "screenKey": "community.home",
+      "order": 7,
+      "i18nKey": "guide.community.home.card-actions:results",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.home",
+      "order": 8,
+      "i18nKey": "guide.community.home.card-actions:edit",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "community.home",
+      "order": 9,
+      "i18nKey": "guide.community.home.card-actions:publish",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "community.home",
+      "order": 10,
+      "i18nKey": "guide.community.home.card-actions:unpublish",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "community.home",
+      "order": 11,
+      "i18nKey": "guide.community.home.card-actions:restore",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:trash",
+      "screenKey": "community.home",
+      "order": 12,
+      "i18nKey": "guide.community.home.card-actions:trash",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:close",
+      "screenKey": "community.home",
+      "order": 13,
+      "i18nKey": "guide.community.home.card-actions:close",
+      "group": "card"
+    },
+    {
+      "id": "create",
+      "screenKey": "community.home",
+      "order": 14,
+      "i18nKey": "guide.community.home.create",
+      "group": "form"
     }
   ],
   "community.voting": [
@@ -7487,21 +7725,105 @@
       "screenKey": "community.voting",
       "group": "overview",
       "i18nKey": "guide.community.voting.announcements",
-      "order": 0
+      "order": 1
     },
     {
       "id": "status:trigger",
       "screenKey": "community.voting",
       "group": "overview",
       "i18nKey": "guide.community.voting.status:trigger",
-      "order": 1
+      "order": 2
     },
     {
       "id": "card-actions",
       "screenKey": "community.voting",
       "group": "card",
       "i18nKey": "guide.community.voting.card-actions",
-      "order": 2
+      "order": 3
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.voting",
+      "order": 4,
+      "i18nKey": "guide.community.voting.card-actions:view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:feedback",
+      "screenKey": "community.voting",
+      "order": 5,
+      "i18nKey": "guide.community.voting.card-actions:feedback",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:vote",
+      "screenKey": "community.voting",
+      "order": 6,
+      "i18nKey": "guide.community.voting.card-actions:vote",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:results",
+      "screenKey": "community.voting",
+      "order": 7,
+      "i18nKey": "guide.community.voting.card-actions:results",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.voting",
+      "order": 8,
+      "i18nKey": "guide.community.voting.card-actions:edit",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "community.voting",
+      "order": 9,
+      "i18nKey": "guide.community.voting.card-actions:publish",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "community.voting",
+      "order": 10,
+      "i18nKey": "guide.community.voting.card-actions:unpublish",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "community.voting",
+      "order": 11,
+      "i18nKey": "guide.community.voting.card-actions:restore",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:trash",
+      "screenKey": "community.voting",
+      "order": 12,
+      "i18nKey": "guide.community.voting.card-actions:trash",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:close",
+      "screenKey": "community.voting",
+      "order": 13,
+      "i18nKey": "guide.community.voting.card-actions:close",
+      "group": "card"
+    },
+    {
+      "id": "create",
+      "screenKey": "community.voting",
+      "order": 14,
+      "i18nKey": "guide.community.voting.create",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.voting",
+      "order": 15,
+      "i18nKey": "guide.community.voting.close",
+      "group": "popup"
     }
   ],
   "community.announcement.editor": [
@@ -7510,70 +7832,77 @@
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.announcement-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "attachments",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.attachments",
-      "order": 1
+      "order": 2
     },
     {
       "id": "vote",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.vote",
-      "order": 2
+      "order": 3
     },
     {
       "id": "voting-results",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.voting-results",
-      "order": 3
+      "order": 4
     },
     {
       "id": "title",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.title",
-      "order": 4
+      "order": 5
     },
     {
       "id": "body",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.body",
-      "order": 5
+      "order": 6
     },
     {
       "id": "voting",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.voting",
-      "order": 6
+      "order": 7
     },
     {
       "id": "deadline",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.deadline",
-      "order": 7
+      "order": 8
     },
     {
       "id": "attach",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.attach",
-      "order": 8
+      "order": 9
     },
     {
       "id": "save",
       "screenKey": "community.announcement.editor",
       "group": "overview",
       "i18nKey": "guide.community.announcement.editor.save",
-      "order": 9
+      "order": 10
+    },
+    {
+      "id": "close",
+      "screenKey": "community.announcement.editor",
+      "order": 11,
+      "i18nKey": "guide.community.announcement.editor.close",
+      "group": "popup"
     }
   ],
   "work.home": [
@@ -7647,56 +7976,56 @@
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.service-discovery",
-      "order": 0
+      "order": 1
     },
     {
       "id": "category",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.category",
-      "order": 1
+      "order": 2
     },
     {
       "id": "rates",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.rates",
-      "order": 2
+      "order": 3
     },
     {
       "id": "rating-input",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.rating-input",
-      "order": 3
+      "order": 4
     },
     {
       "id": "rating-details",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.rating-details",
-      "order": 4
+      "order": 5
     },
     {
       "id": "rating-criteria",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.rating-criteria",
-      "order": 5
+      "order": 6
     },
     {
       "id": "rating-save",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.rating-save",
-      "order": 6
+      "order": 7
     },
     {
       "id": "profile",
       "screenKey": "community.services.home",
       "group": "overview",
       "i18nKey": "guide.community.services.home.profile",
-      "order": 7
+      "order": 8
     }
   ],
   "community.services": [
@@ -7705,42 +8034,119 @@
       "screenKey": "community.services",
       "group": "overview",
       "i18nKey": "guide.community.services.service-list",
-      "order": 0
+      "order": 1
     },
     {
       "id": "card-actions",
       "screenKey": "community.services",
       "group": "card",
       "i18nKey": "guide.community.services.card-actions",
-      "order": 1
+      "order": 2
     },
     {
       "id": "status:trigger",
       "screenKey": "community.services",
       "group": "overview",
       "i18nKey": "guide.community.services.status:trigger",
-      "order": 2
+      "order": 3
     },
     {
       "id": "view:trigger",
       "screenKey": "community.services",
       "group": "overview",
       "i18nKey": "guide.community.services.view:trigger",
-      "order": 3
+      "order": 4
     },
     {
       "id": "create",
       "screenKey": "community.services",
       "group": "overview",
       "i18nKey": "guide.community.services.create",
-      "order": 4
+      "order": 5
     },
     {
       "id": "category:trigger",
       "screenKey": "community.services",
       "group": "overview",
       "i18nKey": "guide.community.services.category:trigger",
-      "order": 5
+      "order": 6
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.services",
+      "order": 7,
+      "i18nKey": "guide.community.services.card-actions:view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:author",
+      "screenKey": "community.services",
+      "order": 8,
+      "i18nKey": "guide.community.services.card-actions:author",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.services",
+      "order": 9,
+      "i18nKey": "guide.community.services.card-actions:edit",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:publish",
+      "screenKey": "community.services",
+      "order": 10,
+      "i18nKey": "guide.community.services.card-actions:publish",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:unpublish",
+      "screenKey": "community.services",
+      "order": 11,
+      "i18nKey": "guide.community.services.card-actions:unpublish",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:restore",
+      "screenKey": "community.services",
+      "order": 12,
+      "i18nKey": "guide.community.services.card-actions:restore",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:trash",
+      "screenKey": "community.services",
+      "order": 13,
+      "i18nKey": "guide.community.services.card-actions:trash",
+      "group": "card"
+    },
+    {
+      "id": "card-badge-end",
+      "screenKey": "community.services",
+      "order": 14,
+      "i18nKey": "guide.community.services.card-badge-end",
+      "group": "form"
+    },
+    {
+      "id": "basket",
+      "screenKey": "community.services",
+      "order": 15,
+      "i18nKey": "guide.community.services.basket",
+      "group": "form"
+    },
+    {
+      "id": "confirm",
+      "screenKey": "community.services",
+      "order": 16,
+      "i18nKey": "guide.community.services.confirm",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.services",
+      "order": 17,
+      "i18nKey": "guide.community.services.close",
+      "group": "popup"
     }
   ],
   "community.service.editor": [
@@ -7749,147 +8155,154 @@
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.service-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "staff",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.staff",
-      "order": 1
+      "order": 2
     },
     {
       "id": "choose-staff",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.choose-staff",
-      "order": 2
+      "order": 3
     },
     {
       "id": "imageUrls",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.imageUrls",
-      "order": 3
+      "order": 4
     },
     {
       "id": "title",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.title",
-      "order": 4
+      "order": 5
     },
     {
       "id": "description",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.description",
-      "order": 5
+      "order": 6
     },
     {
       "id": "sourceLink",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.sourceLink",
-      "order": 6
+      "order": 7
     },
     {
       "id": "category",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.category",
-      "order": 7
+      "order": 8
     },
     {
       "id": "save",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.save",
-      "order": 8
+      "order": 9
     },
     {
       "id": "image-preview",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-preview",
-      "order": 9
+      "order": 10
     },
     {
       "id": "image-upload",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-upload",
-      "order": 10
+      "order": 11
     },
     {
       "id": "image-replace",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-replace",
-      "order": 11
+      "order": 12
     },
     {
       "id": "image-copy",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-copy",
-      "order": 12
+      "order": 13
     },
     {
       "id": "image-remove",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-remove",
-      "order": 13
+      "order": 14
     },
     {
       "id": "image-pages",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-pages",
-      "order": 14
+      "order": 15
     },
     {
       "id": "image-details",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-details",
-      "order": 15
+      "order": 16
     },
     {
       "id": "image-location",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-location",
-      "order": 16
+      "order": 17
     },
     {
       "id": "image-caption",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-caption",
-      "order": 17
+      "order": 18
     },
     {
       "id": "image-details-save",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-details-save",
-      "order": 18
+      "order": 19
     },
     {
       "id": "image-gallery-expand",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-gallery-expand",
-      "order": 19
+      "order": 20
     },
     {
       "id": "image-view",
       "screenKey": "community.service.editor",
       "group": "overview",
       "i18nKey": "guide.community.service.editor.image-view",
-      "order": 20
+      "order": 21
+    },
+    {
+      "id": "close",
+      "screenKey": "community.service.editor",
+      "order": 22,
+      "i18nKey": "guide.community.service.editor.close",
+      "group": "popup"
     }
   ],
   "community.service.calendar": [
@@ -7898,14 +8311,42 @@
       "screenKey": "community.service.calendar",
       "group": "overview",
       "i18nKey": "guide.community.service.calendar.provider-calendar",
-      "order": 0
+      "order": 1
     },
     {
       "id": "card-actions",
       "screenKey": "community.service.calendar",
       "group": "card",
       "i18nKey": "guide.community.service.calendar.card-actions",
-      "order": 1
+      "order": 2
+    },
+    {
+      "id": "view:trigger",
+      "screenKey": "community.service.calendar",
+      "order": 3,
+      "i18nKey": "guide.community.service.calendar.view:trigger",
+      "group": "form"
+    },
+    {
+      "id": "card-actions:case",
+      "screenKey": "community.service.calendar",
+      "order": 4,
+      "i18nKey": "guide.community.service.calendar.card-actions:case",
+      "group": "form"
+    },
+    {
+      "id": "card-actions:cancel",
+      "screenKey": "community.service.calendar",
+      "order": 5,
+      "i18nKey": "guide.community.service.calendar.card-actions:cancel",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.service.calendar",
+      "order": 6,
+      "i18nKey": "guide.community.service.calendar.close",
+      "group": "popup"
     }
   ],
   "community.case.appointments": [
@@ -7958,14 +8399,56 @@
       "screenKey": "community.case.board",
       "group": "overview",
       "i18nKey": "guide.community.case.board.case-board-tasks",
-      "order": 0
+      "order": 1
     },
     {
       "id": "card-actions",
       "screenKey": "community.case.board",
       "group": "card",
       "i18nKey": "guide.community.case.board.card-actions",
-      "order": 1
+      "order": 2
+    },
+    {
+      "id": "create",
+      "screenKey": "community.case.board",
+      "order": 3,
+      "i18nKey": "guide.community.case.board.create",
+      "group": "form"
+    },
+    {
+      "id": "card-actions:task-view",
+      "screenKey": "community.case.board",
+      "order": 4,
+      "i18nKey": "guide.community.case.board.card-actions:task-view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:task-members",
+      "screenKey": "community.case.board",
+      "order": 5,
+      "i18nKey": "guide.community.case.board.card-actions:task-members",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:task-progress",
+      "screenKey": "community.case.board",
+      "order": 6,
+      "i18nKey": "guide.community.case.board.card-actions:task-progress",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:task-delete",
+      "screenKey": "community.case.board",
+      "order": 7,
+      "i18nKey": "guide.community.case.board.card-actions:task-delete",
+      "group": "card"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.board",
+      "order": 8,
+      "i18nKey": "guide.community.case.board.close",
+      "group": "popup"
     }
   ],
   "community.case.board.task": [
@@ -7974,56 +8457,63 @@
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.case-board-task-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "title",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.title",
-      "order": 1
+      "order": 2
     },
     {
       "id": "description",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.description",
-      "order": 2
+      "order": 3
     },
     {
       "id": "date-range",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.date-range",
-      "order": 3
+      "order": 4
     },
     {
       "id": "members",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.members",
-      "order": 4
+      "order": 5
     },
     {
       "id": "offers",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.offers",
-      "order": 5
+      "order": 6
     },
     {
       "id": "dependencies",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.dependencies",
-      "order": 6
+      "order": 7
     },
     {
       "id": "save",
       "screenKey": "community.case.board.task",
       "group": "overview",
       "i18nKey": "guide.community.case.board.task.save",
-      "order": 7
+      "order": 8
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.board.task",
+      "order": 9,
+      "i18nKey": "guide.community.case.board.task.close",
+      "group": "popup"
     }
   ],
   "community.case.quotations": [
@@ -8032,35 +8522,98 @@
       "screenKey": "community.case.quotations",
       "group": "overview",
       "i18nKey": "guide.community.case.quotations.case-quotations",
-      "order": 0
+      "order": 1
     },
     {
       "id": "card-actions",
       "screenKey": "community.case.quotations",
       "group": "card",
       "i18nKey": "guide.community.case.quotations.card-actions",
-      "order": 1
+      "order": 2
     },
     {
       "id": "providers",
       "screenKey": "community.case.quotations",
       "group": "overview",
       "i18nKey": "guide.community.case.quotations.providers",
-      "order": 2
+      "order": 3
     },
     {
       "id": "status:trigger",
       "screenKey": "community.case.quotations",
       "group": "overview",
       "i18nKey": "guide.community.case.quotations.status:trigger",
-      "order": 3
+      "order": 4
     },
     {
       "id": "offer",
       "screenKey": "community.case.quotations",
       "group": "overview",
       "i18nKey": "guide.community.case.quotations.offer",
-      "order": 4
+      "order": 5
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.case.quotations",
+      "order": 6,
+      "i18nKey": "guide.community.case.quotations.card-actions:view",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:chat",
+      "screenKey": "community.case.quotations",
+      "order": 7,
+      "i18nKey": "guide.community.case.quotations.card-actions:chat",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:edit",
+      "screenKey": "community.case.quotations",
+      "order": 8,
+      "i18nKey": "guide.community.case.quotations.card-actions:edit",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:accept-offer",
+      "screenKey": "community.case.quotations",
+      "order": 9,
+      "i18nKey": "guide.community.case.quotations.card-actions:accept-offer",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:reject-offer",
+      "screenKey": "community.case.quotations",
+      "order": 10,
+      "i18nKey": "guide.community.case.quotations.card-actions:reject-offer",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:pending-offer",
+      "screenKey": "community.case.quotations",
+      "order": 11,
+      "i18nKey": "guide.community.case.quotations.card-actions:pending-offer",
+      "group": "card"
+    },
+    {
+      "id": "card-actions:invite-chat",
+      "screenKey": "community.case.quotations",
+      "order": 12,
+      "i18nKey": "guide.community.case.quotations.card-actions:invite-chat",
+      "group": "card"
+    },
+    {
+      "id": "quotation-provider-help",
+      "screenKey": "community.case.quotations",
+      "order": 13,
+      "i18nKey": "guide.community.case.quotations.quotation-provider-help",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.quotations",
+      "order": 14,
+      "i18nKey": "guide.community.case.quotations.close",
+      "group": "popup"
     }
   ],
   "community.case.quotation.editor": [
@@ -8069,35 +8622,56 @@
       "screenKey": "community.case.quotation.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.quotation.editor.case-quotation-details",
-      "order": 0
+      "order": 1
     },
     {
       "id": "amount",
       "screenKey": "community.case.quotation.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.quotation.editor.amount",
-      "order": 1
+      "order": 2
     },
     {
       "id": "currency",
       "screenKey": "community.case.quotation.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.quotation.editor.currency",
-      "order": 2
+      "order": 3
     },
     {
       "id": "note",
       "screenKey": "community.case.quotation.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.quotation.editor.note",
-      "order": 3
+      "order": 4
     },
     {
       "id": "save",
       "screenKey": "community.case.quotation.editor",
       "group": "overview",
       "i18nKey": "guide.community.case.quotation.editor.save",
-      "order": 4
+      "order": 5
+    },
+    {
+      "id": "work-policies",
+      "screenKey": "community.case.quotation.editor",
+      "order": 6,
+      "i18nKey": "guide.community.case.quotation.editor.work-policies",
+      "group": "form"
+    },
+    {
+      "id": "refund-policies",
+      "screenKey": "community.case.quotation.editor",
+      "order": 7,
+      "i18nKey": "guide.community.case.quotation.editor.refund-policies",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.quotation.editor",
+      "order": 8,
+      "i18nKey": "guide.community.case.quotation.editor.close",
+      "group": "popup"
     }
   ],
   "work.campaign.select": [
@@ -8143,69 +8717,62 @@
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.history-list",
-      "order": 0
+      "order": 1
     },
     {
       "id": "history-campaign",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.history-campaign",
-      "order": 1
+      "order": 2
     },
     {
       "id": "view:trigger",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.view:trigger",
-      "order": 2
+      "order": 3
     },
     {
       "id": "images",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.images",
-      "order": 3
+      "order": 4
     },
     {
       "id": "title",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.title",
-      "order": 4
+      "order": 5
     },
     {
       "id": "description",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.description",
-      "order": 5
+      "order": 6
     },
     {
       "id": "kind",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.kind",
-      "order": 6
+      "order": 7
     },
     {
       "id": "category",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.category",
-      "order": 7
+      "order": 8
     },
     {
       "id": "attachments",
       "screenKey": "work.campaign.history",
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.attachments",
-      "order": 8
-    },
-    {
-      "id": "attach",
-      "screenKey": "work.campaign.history",
-      "group": "overview",
-      "i18nKey": "guide.work.campaign.history.attach",
       "order": 9
     },
     {
@@ -8214,6 +8781,13 @@
       "group": "overview",
       "i18nKey": "guide.work.campaign.history.campaign-ask",
       "order": 10
+    },
+    {
+      "id": "close",
+      "screenKey": "work.campaign.history",
+      "order": 11,
+      "i18nKey": "guide.work.campaign.history.close",
+      "group": "popup"
     }
   ],
   "members.select": [
@@ -8222,35 +8796,42 @@
       "screenKey": "members.select",
       "group": "overview",
       "i18nKey": "guide.members.select.member-selection",
-      "order": 0
+      "order": 1
     },
     {
       "id": "invite-all",
       "screenKey": "members.select",
       "group": "overview",
       "i18nKey": "guide.members.select.invite-all",
-      "order": 1
+      "order": 2
     },
     {
       "id": "invite-basket",
       "screenKey": "members.select",
       "group": "overview",
       "i18nKey": "guide.members.select.invite-basket",
-      "order": 2
+      "order": 3
     },
     {
       "id": "invite-confirm",
       "screenKey": "members.select",
       "group": "overview",
       "i18nKey": "guide.members.select.invite-confirm",
-      "order": 3
+      "order": 4
     },
     {
       "id": "invite-sort:trigger",
       "screenKey": "members.select",
       "group": "overview",
       "i18nKey": "guide.members.select.invite-sort:trigger",
-      "order": 4
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "members.select",
+      "order": 6,
+      "i18nKey": "guide.members.select.close",
+      "group": "popup"
     }
   ],
   "profile.integration-access": [
@@ -8262,18 +8843,25 @@
       "order": 0
     },
     {
+      "id": "integration-access-description",
+      "screenKey": "profile.integration-access",
+      "group": "fields",
+      "i18nKey": "guide.profile.integration-access.integration-access-description",
+      "order": 1
+    },
+    {
       "id": "integration-access-apply",
       "screenKey": "profile.integration-access",
       "group": "menus",
       "i18nKey": "guide.profile.integration-access.integration-access-apply",
-      "order": 1
+      "order": 2
     },
     {
       "id": "close",
       "screenKey": "profile.integration-access",
       "group": "popup",
       "i18nKey": "guide.profile.integration-access.close",
-      "order": 2
+      "order": 3
     }
   ],
   "community.service-feedback": [
@@ -8282,42 +8870,56 @@
       "screenKey": "community.service-feedback",
       "group": "fields",
       "i18nKey": "guide.community.service-feedback.service-feedback-quality",
-      "order": 0
+      "order": 1
     },
     {
       "id": "service-feedback-reliability",
       "screenKey": "community.service-feedback",
       "group": "fields",
       "i18nKey": "guide.community.service-feedback.service-feedback-reliability",
-      "order": 1
+      "order": 2
     },
     {
       "id": "service-feedback-communication",
       "screenKey": "community.service-feedback",
       "group": "fields",
       "i18nKey": "guide.community.service-feedback.service-feedback-communication",
-      "order": 2
+      "order": 3
     },
     {
       "id": "service-feedback-value",
       "screenKey": "community.service-feedback",
       "group": "fields",
       "i18nKey": "guide.community.service-feedback.service-feedback-value",
-      "order": 3
+      "order": 4
     },
     {
       "id": "form-save",
       "screenKey": "community.service-feedback",
       "group": "fields",
       "i18nKey": "guide.community.service-feedback.form-save",
-      "order": 4
+      "order": 5
     },
     {
       "id": "close",
       "screenKey": "community.service-feedback",
       "group": "popup",
       "i18nKey": "guide.community.service-feedback.close",
-      "order": 5
+      "order": 6
+    },
+    {
+      "id": "form-progress",
+      "screenKey": "community.service-feedback",
+      "order": 7,
+      "i18nKey": "guide.community.service-feedback.form-progress",
+      "group": "form"
+    },
+    {
+      "id": "form-navigation",
+      "screenKey": "community.service-feedback",
+      "order": 8,
+      "i18nKey": "guide.community.service-feedback.form-navigation",
+      "group": "form"
     }
   ],
   "chat.call": [
@@ -9534,6 +10136,309 @@
       "group": "menus",
       "i18nKey": "guide.operator.navigation.settings",
       "order": 3
+    }
+  ],
+  "profile.integration-help": [
+    {
+      "id": "integration-help-setup",
+      "screenKey": "profile.integration-help",
+      "group": "card",
+      "i18nKey": "guide.profile.integration-help.integration-help-setup",
+      "order": 0
+    },
+    {
+      "id": "integration-help-levels",
+      "screenKey": "profile.integration-help",
+      "group": "card",
+      "i18nKey": "guide.profile.integration-help.integration-help-levels",
+      "order": 1
+    },
+    {
+      "id": "integration-help-events",
+      "screenKey": "profile.integration-help",
+      "group": "card",
+      "i18nKey": "guide.profile.integration-help.integration-help-events",
+      "order": 2
+    },
+    {
+      "id": "integration-help-roles",
+      "screenKey": "profile.integration-help",
+      "group": "card",
+      "i18nKey": "guide.profile.integration-help.integration-help-roles",
+      "order": 3
+    },
+    {
+      "id": "integration-help-manual",
+      "screenKey": "profile.integration-help",
+      "group": "card",
+      "i18nKey": "guide.profile.integration-help.integration-help-manual",
+      "order": 4
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.integration-help",
+      "group": "popup",
+      "i18nKey": "guide.profile.integration-help.close",
+      "order": 5
+    }
+  ],
+  "profile.mcp-authorization": [
+    {
+      "id": "mcp-authorize-client",
+      "screenKey": "profile.mcp-authorization",
+      "order": 1,
+      "i18nKey": "guide.profile.mcp-authorization.mcp-authorize-client",
+      "group": "form"
+    },
+    {
+      "id": "mcp-authorize-profile",
+      "screenKey": "profile.mcp-authorization",
+      "order": 2,
+      "i18nKey": "guide.profile.mcp-authorization.mcp-authorize-profile",
+      "group": "form"
+    },
+    {
+      "id": "mcp-authorize-access",
+      "screenKey": "profile.mcp-authorization",
+      "order": 3,
+      "i18nKey": "guide.profile.mcp-authorization.mcp-authorize-access",
+      "group": "form"
+    },
+    {
+      "id": "mcp-authorize-actions",
+      "screenKey": "profile.mcp-authorization",
+      "order": 4,
+      "i18nKey": "guide.profile.mcp-authorization.mcp-authorize-actions",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.mcp-authorization",
+      "order": 5,
+      "i18nKey": "guide.profile.mcp-authorization.close",
+      "group": "popup"
+    }
+  ],
+  "profile.mcp-advanced": [
+    {
+      "id": "mcp-client-id",
+      "screenKey": "profile.mcp-advanced",
+      "order": 1,
+      "i18nKey": "guide.profile.mcp-advanced.mcp-client-id",
+      "group": "form"
+    },
+    {
+      "id": "mcp-client-access",
+      "screenKey": "profile.mcp-advanced",
+      "order": 2,
+      "i18nKey": "guide.profile.mcp-advanced.mcp-client-access",
+      "group": "form"
+    },
+    {
+      "id": "mcp-client-secret",
+      "screenKey": "profile.mcp-advanced",
+      "order": 3,
+      "i18nKey": "guide.profile.mcp-advanced.mcp-client-secret",
+      "group": "form"
+    },
+    {
+      "id": "mcp-manual-keys",
+      "screenKey": "profile.mcp-advanced",
+      "order": 4,
+      "i18nKey": "guide.profile.mcp-advanced.mcp-manual-keys",
+      "group": "form"
+    },
+    {
+      "id": "mcp-generate",
+      "screenKey": "profile.mcp-advanced",
+      "order": 5,
+      "i18nKey": "guide.profile.mcp-advanced.mcp-generate",
+      "group": "form"
+    },
+    {
+      "id": "mcp-client-revoke",
+      "screenKey": "profile.mcp-advanced",
+      "order": 6,
+      "i18nKey": "guide.profile.mcp-advanced.mcp-client-revoke",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.mcp-advanced",
+      "order": 7,
+      "i18nKey": "guide.profile.mcp-advanced.close",
+      "group": "popup"
+    }
+  ],
+  "profile.mcp-details": [
+    {
+      "id": "mcp-client-id",
+      "screenKey": "profile.mcp-details",
+      "order": 1,
+      "i18nKey": "guide.profile.mcp-details.mcp-client-id",
+      "group": "form"
+    },
+    {
+      "id": "mcp-client-access",
+      "screenKey": "profile.mcp-details",
+      "order": 2,
+      "i18nKey": "guide.profile.mcp-details.mcp-client-access",
+      "group": "form"
+    },
+    {
+      "id": "mcp-client-secret",
+      "screenKey": "profile.mcp-details",
+      "order": 3,
+      "i18nKey": "guide.profile.mcp-details.mcp-client-secret",
+      "group": "form"
+    },
+    {
+      "id": "mcp-client-callback",
+      "screenKey": "profile.mcp-details",
+      "order": 4,
+      "i18nKey": "guide.profile.mcp-details.mcp-client-callback",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.mcp-details",
+      "order": 5,
+      "i18nKey": "guide.profile.mcp-details.close",
+      "group": "popup"
+    }
+  ],
+  "community.case.board.offers": [
+    {
+      "id": "board-offer-selection",
+      "screenKey": "community.case.board.offers",
+      "order": 1,
+      "i18nKey": "guide.community.case.board.offers.board-offer-selection",
+      "group": "form"
+    },
+    {
+      "id": "basket",
+      "screenKey": "community.case.board.offers",
+      "order": 2,
+      "i18nKey": "guide.community.case.board.offers.basket",
+      "group": "form"
+    },
+    {
+      "id": "confirm",
+      "screenKey": "community.case.board.offers",
+      "order": 3,
+      "i18nKey": "guide.community.case.board.offers.confirm",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.board.offers",
+      "order": 4,
+      "i18nKey": "guide.community.case.board.offers.close",
+      "group": "popup"
+    },
+    {
+      "id": "card-actions:view",
+      "screenKey": "community.case.board.offers",
+      "order": 5,
+      "i18nKey": "guide.community.case.board.offers.card-actions:view",
+      "group": "card"
+    }
+  ],
+  "community.case.board.dependencies": [
+    {
+      "id": "board-dependency-selection",
+      "screenKey": "community.case.board.dependencies",
+      "order": 1,
+      "i18nKey": "guide.community.case.board.dependencies.board-dependency-selection",
+      "group": "form"
+    },
+    {
+      "id": "basket",
+      "screenKey": "community.case.board.dependencies",
+      "order": 2,
+      "i18nKey": "guide.community.case.board.dependencies.basket",
+      "group": "form"
+    },
+    {
+      "id": "confirm",
+      "screenKey": "community.case.board.dependencies",
+      "order": 3,
+      "i18nKey": "guide.community.case.board.dependencies.confirm",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "community.case.board.dependencies",
+      "order": 4,
+      "i18nKey": "guide.community.case.board.dependencies.close",
+      "group": "popup"
+    }
+  ],
+  "policies.list": [
+    {
+      "id": "policy-list",
+      "screenKey": "policies.list",
+      "order": 1,
+      "i18nKey": "guide.policies.list.policy-list",
+      "group": "form"
+    },
+    {
+      "id": "policy-add",
+      "screenKey": "policies.list",
+      "order": 2,
+      "i18nKey": "guide.policies.list.policy-add",
+      "group": "form"
+    },
+    {
+      "id": "card-actions:delete",
+      "screenKey": "policies.list",
+      "order": 3,
+      "i18nKey": "guide.policies.list.card-actions:delete",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "policies.list",
+      "order": 4,
+      "i18nKey": "guide.policies.list.close",
+      "group": "popup"
+    }
+  ],
+  "policies.editor": [
+    {
+      "id": "policy-title",
+      "screenKey": "policies.editor",
+      "order": 1,
+      "i18nKey": "guide.policies.editor.policy-title",
+      "group": "form"
+    },
+    {
+      "id": "policy-description",
+      "screenKey": "policies.editor",
+      "order": 2,
+      "i18nKey": "guide.policies.editor.policy-description",
+      "group": "form"
+    },
+    {
+      "id": "policy-required",
+      "screenKey": "policies.editor",
+      "order": 3,
+      "i18nKey": "guide.policies.editor.policy-required",
+      "group": "form"
+    },
+    {
+      "id": "policy-save",
+      "screenKey": "policies.editor",
+      "order": 4,
+      "i18nKey": "guide.policies.editor.policy-save",
+      "group": "form"
+    },
+    {
+      "id": "close",
+      "screenKey": "policies.editor",
+      "order": 5,
+      "i18nKey": "guide.policies.editor.close",
+      "group": "popup"
     }
   ]
 }

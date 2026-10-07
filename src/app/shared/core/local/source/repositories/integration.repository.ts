@@ -46,7 +46,7 @@ export class LocalIntegrationRepository {
       maxActiveTokens: LocalIntegrationRepository.MAX_ACTIVE_TOKENS,
       maxBatchSize: LocalIntegrationRepository.MAX_BATCH_SIZE,
       tokens: this.activeTokens(this.requireUser(userId), admin).map(({ value: _value, ...token }) => ({
-        ...token, accessMode: admin ? 'write' : user.integrationAccess?.clients[token.id] ?? 'write'
+        ...token, accessMode: user.integrationAccess?.clients[token.id] ?? 'write'
       })),
       accessRevision: user.integrationAccess?.revision ?? 0
     };
@@ -371,21 +371,21 @@ export class LocalIntegrationRepository {
   mcpSettings(userId: string, resource: string): McpSettingsDto {
     const access = this.requireUser(userId).integrationAccess;
     return {resource, maxClients: LocalIntegrationRepository.MAX_ACTIVE_TOKENS, remoteEnabled: false,
-      accessMode: access?.mcp ?? 'write',
+      accessMode: access?.mcp ?? 'blocked',
       clients: this.activeTokens(this.requireUser(userId), false, 'mcp').map(({value: _secret, redirectUri, ...token}) =>
         ({token: {...token, accessMode: access?.clients[token.id] ?? 'write'}, redirectUri: redirectUri ?? '', manual: true, clientId: token.id}))};
   }
 
-  saveAccess(userId: string, request: IntegrationSettingsUpdateDto): void {
+  saveAccess(userId: string, request: IntegrationSettingsUpdateDto, admin = false): void {
     const user = this.requireUser(userId);
-    const modes = ['blocked', 'write', 'full'];
+    const modes = ['blocked', 'write', 'read', 'full'];
     if (!request || !Number.isInteger(request.accessRevision) || request.accessRevision < 0
       || !modes.includes(request.mcpAccess) || !Array.isArray(request.clients)
       || request.clients.length > 2 * LocalIntegrationRepository.MAX_ACTIVE_TOKENS) throw new Error('integration.access.invalid');
     if (request.accessRevision !== (user.integrationAccess?.revision ?? 0)) throw new Error('integration.access.conflict');
-    const active = [...this.activeTokens(user), ...this.activeTokens(user, false, 'mcp')];
+    const active = [...this.activeTokens(user, admin), ...this.activeTokens(user, false, 'mcp')];
     const ids = new Set(active.map(token => token.id));
-    const clients = Object.fromEntries(active.map(token => [token.id, user.integrationAccess?.clients[token.id] ?? 'write']));
+    const clients = {...user.integrationAccess?.clients, ...Object.fromEntries(active.map(token => [token.id, user.integrationAccess?.clients[token.id] ?? 'write']))};
     const changed = new Set<string>();
     for (const client of request.clients) {
       if (!client || !client.id || !modes.includes(client.accessMode) || changed.has(client.id)) throw new Error('integration.access.invalid');

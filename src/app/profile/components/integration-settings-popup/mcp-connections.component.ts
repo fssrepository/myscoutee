@@ -42,7 +42,7 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
       } @else if (store.busy()) { <p>{{ 'integration.loading' | i18n }}</p> }
     </section>
     @if (advanced()) {
-      <app-popup [model]="advancedModel()" [zIndex]="2510">
+      <app-popup guideContext="profile.mcp-advanced" [model]="advancedModel()" [zIndex]="2510">
         <section class="integration-settings-section" data-guide-field="mcp-manual-keys">
           <div class="integration-section-heading">
             <div>
@@ -59,18 +59,18 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
                 <div class="integration-token-main">
                   <strong>{{ client.token.name }}</strong>
                   <span class="integration-endpoint-label">{{ 'mcp.client.id' | i18n }}</span>
-                  <div class="integration-credential-row"><app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+                  <div class="integration-credential-row"><app-copy-link data-guide-field="mcp-client-id" [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
                     <app-integration-access-button data-guide-field="mcp-client-access" [clientId]="client.token.id" [clientName]="client.token.name" [mcpClient]="true"></app-integration-access-button>
                   </div>
                   <small>{{ 'integration.token.expires' | i18n }} {{ client.token.expiresAt | date:'mediumDate' }}</small>
                   @if (client.token.lastUsedAt) { <small>{{ 'mcp.last.used' | i18n }} {{ client.token.lastUsedAt | date:'short' }}</small> }
                   @if (store.secretClientId() === client.token.id && store.secret()) {
                     <span class="integration-endpoint-label">{{ 'mcp.secret' | i18n }}</span>
-                    <app-copy-link [value]="store.secret()" label="mcp.secret" copyLabel="mcp.copy.secret"></app-copy-link>
+                    <app-copy-link data-guide-field="mcp-client-secret" [value]="store.secret()" label="mcp.secret" copyLabel="mcp.copy.secret"></app-copy-link>
                     <small>{{ 'integration.token.copy.now' | i18n }}</small>
                   }
                 </div>
-                <app-menu kind="inline" [items]="revokeActions(client.token.id)" (itemSelect)="revoke(client.token.id)"></app-menu>
+                <app-menu data-guide-field="mcp-client-revoke" kind="inline" [items]="revokeActions(client.token.id)" (itemSelect)="revoke(client.token.id)"></app-menu>
               </article>
             } @empty { <p class="integration-empty-state">{{ 'integration.token.empty' | i18n }}</p> }
           </div>
@@ -78,23 +78,23 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
       </app-popup>
     }
     @if (details(); as client) {
-      <app-popup [model]="detailsModel()" [zIndex]="2520">
+      <app-popup guideContext="profile.mcp-details" [model]="detailsModel()" [zIndex]="2520">
         <div class="integration-settings-body">
           <div class="integration-section-heading"><h3>{{ client.token.name }}</h3></div>
           <div class="integration-credential-field">
             <span class="integration-endpoint-label">{{ 'mcp.client.id' | i18n }}</span>
-            <div class="integration-credential-row"><app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+            <div class="integration-credential-row"><app-copy-link data-guide-field="mcp-client-id" [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
                     <app-integration-access-button data-guide-field="mcp-client-access" [clientId]="client.token.id" [clientName]="client.token.name" [mcpClient]="true"></app-integration-access-button>
                   </div>
           </div>
           <div class="integration-credential-field">
             <span class="integration-endpoint-label">{{ 'mcp.callback' | i18n }}</span>
-            <app-copy-link [value]="client.redirectUri" label="mcp.callback" copyLabel="mcp.copy.callback"></app-copy-link>
+            <app-copy-link data-guide-field="mcp-client-callback" [value]="client.redirectUri" label="mcp.callback" copyLabel="mcp.copy.callback"></app-copy-link>
           </div>
         @if (store.secretClientId() === client.token.id && store.secret()) {
           <div class="integration-credential-field">
             <span class="integration-endpoint-label">{{ 'mcp.secret' | i18n }}</span>
-            <app-copy-link [value]="store.secret()" label="mcp.secret" copyLabel="mcp.copy.secret"></app-copy-link>
+            <app-copy-link data-guide-field="mcp-client-secret" [value]="store.secret()" label="mcp.secret" copyLabel="mcp.copy.secret"></app-copy-link>
           </div>
           <small>{{ 'integration.token.copy.now' | i18n }}</small>
         }

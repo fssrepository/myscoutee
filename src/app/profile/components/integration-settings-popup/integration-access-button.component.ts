@@ -7,10 +7,11 @@ import { RateComponent } from '../../../shared/ui/components/core/menu/items/rat
 import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 
-const MODES: readonly IntegrationAccessMode[] = ['blocked', 'write', 'full'];
+const MODES: readonly IntegrationAccessMode[] = ['blocked', 'write', 'read', 'full'];
 const STYLE = {
   blocked: {palette: 'danger' as const},
   write: {palette: 'amber' as const},
+  read: {palette: 'blue' as const},
   full: {palette: 'green' as const}
 };
 
@@ -24,7 +25,8 @@ const STYLE = {
       <app-popup [model]="model()" [zIndex]="2550">
         <section class="access-editor" data-guide-field="integration-access-editor">
           <app-menu-rate [config]="rate()" (valueChange)="choose($event)"></app-menu-rate>
-          <p class="access-description" role="status">{{ ('integration.access.' + draft() + '.description') | i18n }}</p>
+          <p class="access-description" role="status" data-guide-field="integration-access-description">{{ ('integration.access.' + draft() + '.description') | i18n }}</p>
+          @if (store.roleReadOnly()) { <small>{{ 'integration.roles.summary' | i18n }}</small> }
           @if (clientId() !== null && mcpClient()) { <small>{{ 'integration.access.mcp.limit' | i18n }}</small> }
           <small>{{ 'integration.access.draft.hint' | i18n }}</small>
         </section>
@@ -37,7 +39,7 @@ export class IntegrationAccessButtonComponent implements OnDestroy {
   readonly clientId = input<string | null>(null);
   readonly clientName = input('');
   readonly mcpClient = input(false);
-  private readonly store = inject(IntegrationSettingsStore);
+  protected readonly store = inject(IntegrationSettingsStore);
   private readonly guide = inject(ExplanationGuideService);
   private unregisterGuide: (() => void) | null = null;
   protected readonly open = signal(false);
@@ -61,9 +63,9 @@ export class IntegrationAccessButtonComponent implements OnDestroy {
     onClose: () => this.close()
   }));
   protected readonly rate = computed<AppMenuRateConfig>(() => ({
-    subjectKey: `${this.clientId() ?? 'mcp'}:${this.open()}`, scale: [1, 2, 3], value: MODES.indexOf(this.draft()) + 1,
+    subjectKey: `${this.clientId() ?? 'mcp'}:${this.open()}`, scale: [1, 2, 3, 4], value: MODES.indexOf(this.draft()) + 1,
     label: 'integration.access.level', valueLabel: `integration.access.${this.draft()}`, showCommit: false,
-    stateColors: [{background: '#c93848', text: '#fff'}, {background: '#d58a16', text: '#172033'}, {background: '#258451', text: '#fff'}],
+    stateColors: [{background: '#c93848', text: '#fff'}, {background: '#d58a16', text: '#172033'}, {background: '#326faf', text: '#fff'}, {background: '#258451', text: '#fff'}],
     animation: 'none', blinkOnSelect: false, guideFields: {slider: 'integration-access-level'}
   }));
   protected edit(): void {

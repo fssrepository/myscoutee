@@ -10,14 +10,14 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   standalone: true, imports: [PopupComponent, AppMenuComponent, I18nPipe, MatIconModule],
   styleUrl: './mcp-authorization.component.scss',
-  template: `<app-popup [model]="model()">
+  template: `<app-popup [model]="model()" guideContext="profile.mcp-authorization">
     <div class="authorization-body">
     @if (context(); as value) {
-      <div class="authorization-client">
+      <div class="authorization-client" data-guide-field="mcp-authorize-client">
         <span class="authorization-client-icon"><mat-icon aria-hidden="true">link</mat-icon></span>
         <strong>{{ value.clientName }}</strong>
       </div>
-      <section class="authorization-profile">
+      <section class="authorization-profile" data-guide-field="mcp-authorize-profile">
         <mat-icon aria-hidden="true">account_circle</mat-icon>
         <div><span class="authorization-label">{{ 'mcp.profile' | i18n }}</span>
           <strong>{{ value.profileName }}</strong>
@@ -25,9 +25,9 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       </section>
       <p class="authorization-message">{{ 'mcp.consent.message' | i18n }}</p>
-      <p class="authorization-message"><strong>{{ ('integration.access.' + value.accessMode) | i18n }}</strong><br>
+      <p class="authorization-message" data-guide-field="mcp-authorize-access"><strong>{{ ('integration.access.' + value.accessMode) | i18n }}</strong><br>
         {{ ('integration.access.' + value.accessMode + '.description') | i18n }}</p>
-      <app-menu class="authorization-actions" kind="inline" layout="row" [items]="actions()" (itemSelect)="decide($event.id === 'approve')"></app-menu>
+      <app-menu class="authorization-actions" data-guide-field="mcp-authorize-actions" kind="inline" layout="row" [items]="actions()" (itemSelect)="decide($event.id === 'approve')"></app-menu>
     } @else if (!error()) { <p class="authorization-message">{{ 'integration.loading' | i18n }}</p> }
     @if (error()) { <p class="authorization-error" role="alert">{{ error() | i18n }}</p> }
     </div>

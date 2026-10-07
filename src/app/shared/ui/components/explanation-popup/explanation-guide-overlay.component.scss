@@ -25,6 +25,8 @@
 :host ::ng-deep .explanation-guide-overlay__step-picker .app-menu__trigger-label { flex: 1 1 0; min-width: 0; }
 @include popupClose.styles('.explanation-guide-overlay__close');
 .explanation-guide-overlay__card h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 1.22em; max-height: 2.44em; overflow: hidden; margin: 8px 0 4px; font-size: 18px; line-height: 1.22; }
+.explanation-guide-overlay__header h3 { flex: 1; min-width: 0; margin: 0; }
+.explanation-guide-overlay__card--center .explanation-guide-overlay__header { margin-bottom: 8px; }
 .explanation-guide-overlay__card p { margin: 0; font-size: 14px; line-height: 1.45; }
 .explanation-guide-overlay__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; font-size: 14px; line-height: 1.45; }
 :host ::ng-deep .explanation-guide-overlay__body p { margin: 0; }

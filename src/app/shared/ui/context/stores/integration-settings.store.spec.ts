@@ -47,7 +47,7 @@ describe('Integration settings draft and connection mutations', () => {
     expect(api.loadSettings).toHaveBeenCalledTimes(1);
     api.saveSettings.mockResolvedValue({...config,accessRevision:1,mcp:{...config.mcp,accessMode:'full',clients:[{...client,token:{...client.token,accessMode:'full'}}]}});
     expect(await store.save()).toBe(true);
-    expect(api.saveSettings).toHaveBeenCalledWith({accessRevision:0,mcpAccess:'full',clients:[{id:'one',accessMode:'full'}]});
+    expect(api.saveSettings).toHaveBeenCalledWith({accessRevision:0,mcpAccess:'full',clients:[{id:'one',accessMode:'full'}]}, false);
     expect(store.dirty()).toBe(false);
   });
   it('discards unsaved permissions on close and keeps failed saves as a retryable draft', async () => {

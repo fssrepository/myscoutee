@@ -40,7 +40,7 @@
                   ></app-form-flow>
                 </div>
               </div>
-              <app-integration-settings-popup [adminMode]="activeUserIsAdmin()"></app-integration-settings-popup>
+              <app-integration-settings-popup [adminMode]="activeUserIsAdmin()" [roleReadOnly]="activeUserIsAdmin() || activeUserIsOperator()"></app-integration-settings-popup>
             </div>
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
       </div>

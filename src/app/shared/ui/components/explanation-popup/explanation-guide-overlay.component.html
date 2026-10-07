@@ -4,14 +4,12 @@
     <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
     <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" [class.explanation-guide-overlay__card--message]="guide.noGuide()" (pointerdown)="$event.stopPropagation()">
       <header class="explanation-guide-overlay__header">
-        <span class="explanation-guide-overlay__progress"></span>
+        <h3>{{ (guide.noGuide() ? 'explanations' : 'guide.load.error.title') | i18n }}</h3>
         <button type="button" class="explanation-guide-overlay__close" (click)="guide.closePopup()" [attr.aria-label]="'close' | i18n"><mat-icon>close</mat-icon></button>
       </header>
       @if (guide.noGuide()) {
-        <h3>{{ 'explanations' | i18n }}</h3>
         <p>{{ 'guide.empty.body' | i18n: 'There is no guide for this screen.' }}</p>
       } @else {
-        <h3>{{ 'guide.load.error.title' | i18n: 'Guide unavailable' }}</h3>
         <p>{{ 'guide.load.error.body' | i18n: 'The guide could not be loaded. Close this message and try again.' }}</p>
       }
     </section>
