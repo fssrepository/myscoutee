@@ -5,6 +5,7 @@
   [class.rate--fullscreen]="resolvedPresentation === 'fullscreen'"
   [class.rate--blink]="resolvedAnimation === 'blink'"
   [class.rate--readonly]="resolvedReadonly"
+  [class.rate--states]="config?.stateColors?.length"
   [ngStyle]="sliderStyle(displayValue)"
   >
   @if (resolvedLabel) {
@@ -21,7 +22,7 @@
             <mat-icon>chevron_right</mat-icon>
           </button>
         } @else {
-          <span class="rate__value" aria-live="polite">{{ displayValue | number:'1.0-2' }}</span>
+          <span class="rate__value" [class.rate__value--label]="config?.valueLabel" aria-live="polite">@if (config?.valueLabel) { {{ config!.valueLabel! | i18n }} } @else { {{ displayValue | number:'1.0-2' }} }</span>
         }
       @if (shouldShowCommitButton) {
         <button
@@ -77,6 +78,7 @@
       (input)="criterionIndex === undefined ? onSliderInput($event) : changeCriterion(criterionIndex, $event)"
       (click)="$event.stopPropagation()"
       [attr.aria-label]="label | i18n"
+      [attr.aria-valuetext]="criterionIndex === undefined && config?.valueLabel ? (config!.valueLabel! | i18n) : null"
     />
   </div>
 </ng-template>

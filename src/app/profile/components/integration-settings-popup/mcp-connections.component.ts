@@ -1,7 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { McpConnectionsStore } from '../../../shared/ui/context/stores/mcp-connections.store';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
+import { IntegrationAccessButtonComponent } from './integration-access-button.component';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/copy-link.component';
 import { AppMenuComponent, type AppMenuItem } from '../../../shared/ui/components/core/menu';
@@ -9,8 +10,8 @@ import { PopupComponent, type PopupModel } from '../../../shared/ui/components/c
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 
 @Component({
-  selector: 'app-mcp-connections', standalone: true, providers: [McpConnectionsStore],
-  imports: [CommonModule, CopyLinkComponent, AppMenuComponent, PopupComponent, I18nPipe],
+  selector: 'app-mcp-connections', standalone: true,
+  imports: [IntegrationAccessButtonComponent, CommonModule, CopyLinkComponent, AppMenuComponent, PopupComponent, I18nPipe],
   styleUrl: './integration-settings-popup.component.scss',
   template: `
     <section class="integration-settings-section">
@@ -19,9 +20,11 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
         <app-menu data-guide-field="mcp-advanced" kind="inline" layout="row" [items]="advancedActions()" (itemSelect)="advanced.set(true)"></app-menu>
       </div>
       @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
-      @if (store.settings(); as config) {
+      @if (store.mcp(); as config) {
         <span class="integration-endpoint-label">{{ 'mcp.url' | i18n }}</span>
-        <app-copy-link data-guide-field="mcp-url" [value]="config.resource" label="mcp.url" copyLabel="mcp.copy.url"></app-copy-link>
+        <div class="integration-credential-row"><app-copy-link data-guide-field="mcp-url" [value]="config.resource" label="mcp.url" copyLabel="mcp.copy.url"></app-copy-link>
+          <app-integration-access-button data-guide-field="mcp-main-access"></app-integration-access-button>
+        </div>
         <h4 class="integration-endpoint-label">{{ 'mcp.oauth.permissions' | i18n }}</h4>
         <div class="integration-token-list" data-guide-field="mcp-permissions">
           @for (client of oauthClients(); track client.token.id) {
@@ -31,6 +34,7 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
                 <small>{{ 'integration.token.expires' | i18n }} {{ client.token.expiresAt | date:'mediumDate' }}</small>
                 @if (client.token.lastUsedAt) { <small>{{ 'mcp.last.used' | i18n }} {{ client.token.lastUsedAt | date:'short' }}</small> }
               </div>
+              <app-integration-access-button data-guide-field="mcp-client-access" [clientId]="client.token.id" [clientName]="client.token.name" [mcpClient]="true"></app-integration-access-button>
               <app-menu data-guide-field="mcp-connection-actions" kind="inline" [items]="connectionActions(client.token.id)" (itemSelect)="$event.id === 'details' ? detailsId.set(client.token.id) : revoke(client.token.id)"></app-menu>
             </article>
           } @empty { <p>{{ 'mcp.empty' | i18n }}</p> }
@@ -43,7 +47,7 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
           <div class="integration-section-heading">
             <div>
               <h3>{{ 'integration.client.keys' | i18n }}</h3>
-              <small>{{ manualClients().length }} / {{ store.settings()?.maxClients }} {{ 'integration.token.active' | i18n }}</small>
+              <small>{{ manualClients().length }} / {{ store.mcp()?.maxClients }} {{ 'integration.token.active' | i18n }}</small>
             </div>
             <app-menu data-guide-field="mcp-generate" class="integration-generate-action" kind="inline" layout="row"
               [items]="createActions()" (itemSelect)="generate()"></app-menu>
@@ -55,7 +59,9 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
                 <div class="integration-token-main">
                   <strong>{{ client.token.name }}</strong>
                   <span class="integration-endpoint-label">{{ 'mcp.client.id' | i18n }}</span>
-                  <app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+                  <div class="integration-credential-row"><app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+                    <app-integration-access-button data-guide-field="mcp-client-access" [clientId]="client.token.id" [clientName]="client.token.name" [mcpClient]="true"></app-integration-access-button>
+                  </div>
                   <small>{{ 'integration.token.expires' | i18n }} {{ client.token.expiresAt | date:'mediumDate' }}</small>
                   @if (client.token.lastUsedAt) { <small>{{ 'mcp.last.used' | i18n }} {{ client.token.lastUsedAt | date:'short' }}</small> }
                   @if (store.secretClientId() === client.token.id && store.secret()) {
@@ -77,7 +83,9 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
           <div class="integration-section-heading"><h3>{{ client.token.name }}</h3></div>
           <div class="integration-credential-field">
             <span class="integration-endpoint-label">{{ 'mcp.client.id' | i18n }}</span>
-            <app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+            <div class="integration-credential-row"><app-copy-link [value]="client.clientId || client.token.id" label="mcp.client.id" copyLabel="mcp.copy.client"></app-copy-link>
+                    <app-integration-access-button data-guide-field="mcp-client-access" [clientId]="client.token.id" [clientName]="client.token.name" [mcpClient]="true"></app-integration-access-button>
+                  </div>
           </div>
           <div class="integration-credential-field">
             <span class="integration-endpoint-label">{{ 'mcp.callback' | i18n }}</span>
@@ -96,25 +104,25 @@ import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
   `
 })
 export class McpConnectionsComponent {
-  protected readonly store = inject(McpConnectionsStore);
+  protected readonly store = inject(IntegrationSettingsStore);
   private readonly dialogs = inject(DialogStore);
   protected readonly advanced = signal(false);
   private readonly i18n = inject(I18nService);
-  protected readonly manualClients = computed(() => this.store.settings()?.clients.filter(client => client.manual !== false) ?? []);
-  protected readonly oauthClients = computed(() => this.store.settings()?.clients.filter(client => client.manual === false) ?? []);
+  protected readonly manualClients = computed(() => this.store.mcp()?.clients.filter(client => client.manual !== false) ?? []);
+  protected readonly oauthClients = computed(() => this.store.mcp()?.clients.filter(client => client.manual === false) ?? []);
   protected readonly advancedActions = computed<AppMenuItem[]>(() => [{id: 'advanced', icon: 'settings', label: 'mcp.advanced',
     layout: 'pill', palette: 'neutral', compactOnMobile: true, counter: this.manualClients().length}]);
   protected advancedModel(): PopupModel { return {title: 'mcp.advanced', size: 'small', height: 'auto', mobilePresentation: 'fullscreen',
     backdropTone: 'dim', onClose: () => this.advanced.set(false)}; }
   protected async generate(): Promise<void> {
     const name = this.i18n.translateParams('integration.token.client.name', {index: this.manualClients().length + 1});
-    await this.store.create({name});
+    try { await this.store.create({name}); } catch { /* The shared store exposes the failure for retry. */ }
   }
   protected createActions(): AppMenuItem[] { return [{id: 'create', icon: 'vpn_key', label: 'integration.token.generate', layout: 'pill', palette: 'purple',
-    disabled: this.store.busy() || !this.store.settings() || this.store.settings()!.clients.length >= this.store.settings()!.maxClients}]; }
+    disabled: this.store.busy() || !this.store.mcp() || this.store.mcp()!.clients.length >= this.store.mcp()!.maxClients}]; }
   protected revokeActions(id: string): AppMenuItem[] { return this.connectionActions(id).filter(action => action.id !== 'details'); }
   protected readonly detailsId = signal<string | null>(null);
-  protected details() { return this.store.settings()?.clients.find(client => client.token.id === this.detailsId()) ?? null; }
+  protected details() { return this.store.mcp()?.clients.find(client => client.token.id === this.detailsId()) ?? null; }
   protected detailsModel(): PopupModel { return {title: 'mcp.technical.details', size: 'small', height: 'auto',
     backdropTone: 'dim', onClose: () => this.detailsId.set(null)}; }
   protected connectionActions(id: string): AppMenuItem[] { return [

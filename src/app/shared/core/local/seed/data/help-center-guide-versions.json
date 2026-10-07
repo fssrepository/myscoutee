@@ -26,5 +26,8 @@
   "work.campaign.history": 6,
   "work.campaign.select": 5,
   "work.campaigns": 5,
-  "work.home": 5
+  "work.home": 5,
+  "profile.integrations": 6,
+  "profile.integration-access": 1,
+  "community.service-feedback": 1
 }

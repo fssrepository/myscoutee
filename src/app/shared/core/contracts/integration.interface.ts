@@ -1,3 +1,11 @@
+export type IntegrationAccessMode = 'blocked' | 'write' | 'full';
+
+export interface IntegrationSettingsUpdateDto {
+  accessRevision: number;
+  mcpAccess: IntegrationAccessMode;
+  clients: { id: string; accessMode: IntegrationAccessMode }[];
+}
+
 export interface IntegrationTokenDto {
   id: string;
   name: string;
@@ -7,6 +15,7 @@ export interface IntegrationTokenDto {
   claimedAt: string | null;
   claimedAddress: string | null;
   lastUsedAt: string | null;
+  accessMode?: IntegrationAccessMode;
 }
 
 export interface AffiliateRevenueDto {
@@ -23,6 +32,8 @@ export interface IntegrationSettingsDto {
   tokens: IntegrationTokenDto[];
   affiliate: { url: string; registered: number; revenue?: AffiliateRevenueDto };
   participants: { registered: number; imported: number };
+  mcp?: McpSettingsDto | null;
+  accessRevision?: number;
 }
 
 export interface IntegrationTokenCreatedDto {
@@ -36,11 +47,11 @@ export interface ExternalInviteLinkRequest {
 }
 
 export interface McpClientDto { manual?: boolean; clientId?: string; token: IntegrationTokenDto; redirectUri: string; }
-export interface McpSettingsDto { resource: string; maxClients: number; remoteEnabled: boolean; clients: McpClientDto[]; }
+export interface McpSettingsDto { resource: string; maxClients: number; remoteEnabled: boolean; clients: McpClientDto[]; accessMode?: IntegrationAccessMode; }
 export interface McpClientRequest { name: string; redirectUri?: string; }
 export interface McpClientCreatedDto { client: McpClientDto; secret: string; }
 export interface McpAuthorizationRequest {
   clientId: string; redirectUri: string; resource: string; scope: string;
   responseType: string; codeChallenge: string; codeChallengeMethod: string; state: string | null;
 }
-export interface McpAuthorizationContext { profileId: string; clientName: string; profileName: string; groupName: string | null; redirectUri: string; }
+export interface McpAuthorizationContext { profileId: string; clientName: string; profileName: string; groupName: string | null; redirectUri: string; accessMode: IntegrationAccessMode; }

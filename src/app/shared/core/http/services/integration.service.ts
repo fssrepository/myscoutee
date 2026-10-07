@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type {
   IntegrationSettingsDto,
+  IntegrationSettingsUpdateDto,
   IntegrationTokenCreatedDto
 } from '../../contracts/integration.interface';
 
@@ -38,6 +39,10 @@ export class HttpIntegrationService {
 
   loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     return firstValueFrom(this.http.get<IntegrationSettingsDto>(`${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/settings`));
+  }
+
+  saveSettings(request: IntegrationSettingsUpdateDto): Promise<IntegrationSettingsDto> {
+    return firstValueFrom(this.http.put<IntegrationSettingsDto>(`${this.apiBaseUrl}/integrations/settings`, request));
   }
 
   createToken(name: string, expiresInDays: number, admin = false): Promise<IntegrationTokenCreatedDto> {

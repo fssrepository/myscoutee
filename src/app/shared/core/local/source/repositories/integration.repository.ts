@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type {
   IntegrationSettingsDto,
+  IntegrationSettingsUpdateDto,
   IntegrationTokenCreatedDto
 } from '../../../contracts/integration.interface';
 import type { LocalIntegrationTokenRecord } from '../entity/integration.entity';
@@ -44,7 +45,10 @@ export class LocalIntegrationRepository {
       participants: { registered: 0, imported: 0 },
       maxActiveTokens: LocalIntegrationRepository.MAX_ACTIVE_TOKENS,
       maxBatchSize: LocalIntegrationRepository.MAX_BATCH_SIZE,
-      tokens: this.activeTokens(this.requireUser(userId), admin).map(({ value: _value, ...token }) => token)
+      tokens: this.activeTokens(this.requireUser(userId), admin).map(({ value: _value, ...token }) => ({
+        ...token, accessMode: admin ? 'write' : user.integrationAccess?.clients[token.id] ?? 'write'
+      })),
+      accessRevision: user.integrationAccess?.revision ?? 0
     };
   }
 
@@ -365,9 +369,36 @@ export class LocalIntegrationRepository {
   }
 
   mcpSettings(userId: string, resource: string): McpSettingsDto {
+    const access = this.requireUser(userId).integrationAccess;
     return {resource, maxClients: LocalIntegrationRepository.MAX_ACTIVE_TOKENS, remoteEnabled: false,
+      accessMode: access?.mcp ?? 'write',
       clients: this.activeTokens(this.requireUser(userId), false, 'mcp').map(({value: _secret, redirectUri, ...token}) =>
-        ({token, redirectUri: redirectUri ?? '', manual: true, clientId: token.id}))};
+        ({token: {...token, accessMode: access?.clients[token.id] ?? 'write'}, redirectUri: redirectUri ?? '', manual: true, clientId: token.id}))};
+  }
+
+  saveAccess(userId: string, request: IntegrationSettingsUpdateDto): void {
+    const user = this.requireUser(userId);
+    const modes = ['blocked', 'write', 'full'];
+    if (!request || !Number.isInteger(request.accessRevision) || request.accessRevision < 0
+      || !modes.includes(request.mcpAccess) || !Array.isArray(request.clients)
+      || request.clients.length > 2 * LocalIntegrationRepository.MAX_ACTIVE_TOKENS) throw new Error('integration.access.invalid');
+    if (request.accessRevision !== (user.integrationAccess?.revision ?? 0)) throw new Error('integration.access.conflict');
+    const active = [...this.activeTokens(user), ...this.activeTokens(user, false, 'mcp')];
+    const ids = new Set(active.map(token => token.id));
+    const clients = Object.fromEntries(active.map(token => [token.id, user.integrationAccess?.clients[token.id] ?? 'write']));
+    const changed = new Set<string>();
+    for (const client of request.clients) {
+      if (!client || !client.id || !modes.includes(client.accessMode) || changed.has(client.id)) throw new Error('integration.access.invalid');
+      if (!ids.has(client.id)) throw new Error('integration.access.conflict');
+      changed.add(client.id);
+      clients[client.id] = client.accessMode;
+    }
+    this.memoryDb.write(state => ({...state, [USERS_TABLE_NAME]: {...state[USERS_TABLE_NAME], byId: {
+      ...state[USERS_TABLE_NAME].byId,
+      [userId]: {...state[USERS_TABLE_NAME].byId[userId], integrationAccess: {
+        revision: request.accessRevision + 1, mcp: request.mcpAccess, clients
+      }}
+    }}}));
   }
   createMcpClient(userId: string, input: McpClientRequest): McpClientCreatedDto {
     if (!input.name.trim() || input.name.length > 80) throw new Error('mcp.failed');

@@ -103,6 +103,11 @@ export interface UserRecord {
   feedCounters?: import('../../../contracts/photo-feed.interface').PhotoFeedCounters;
   externalInvites?: {ownerType: 'event' | 'community'; entityId: string; token: string; createdAtIso: string}[];
   integrationTokens?: LocalIntegrationTokenRecord[];
+  integrationAccess?: {
+    revision: number;
+    mcp: import('../../../contracts/integration.interface').IntegrationAccessMode;
+    clients: Record<string, import('../../../contracts/integration.interface').IntegrationAccessMode>;
+  };
   affiliateCode?: string;
   affiliateRegistrations?: { userId: string; registeredAtIso: string }[];
   affiliateReferrerUserId?: string;

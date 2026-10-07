@@ -1,0 +1,14 @@
+@use '../../../shared/ui/styles/contextual-colors' as colors;
+
+:host { display: contents; }
+.access-editor { padding: .8rem; display: grid; gap: .65rem; }
+.access-editor p, .access-editor small { margin: 0; line-height: 1.45; }
+.access-editor small { color: var(--text-muted); }
+
+.access-description {
+  padding: .65rem .8rem;
+  border: 1px solid colors.$blue-border;
+  border-radius: .5rem;
+  background: colors.$blue-background;
+  color: var(--text-main);
+}

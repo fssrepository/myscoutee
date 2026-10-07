@@ -20,9 +20,9 @@
 
 @mixin surface {
   min-width: 0;
-  height: 25px;
+  height: 30px;
   border-radius: 999px;
-  padding: 0 0.32rem;
+  padding: 0 0.5rem;
   background: rgba(26, 45, 71, 0.82);
   color: #fff;
   font-size: 0.7rem;

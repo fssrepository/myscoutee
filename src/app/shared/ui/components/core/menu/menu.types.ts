@@ -113,6 +113,12 @@ export interface AppMenuRateConfig {
   readonly?: boolean;
   label?: string | null;
   actionLabel?: string | null;
+  /** Optional translated state name for discrete non-numeric scales. */
+  valueLabel?: string | null;
+  /** A containing editor may own confirmation instead of the inline button. */
+  showCommit?: boolean;
+  /** One contextual colour per position for a discrete state selector. */
+  stateColors?: readonly {background: string; text: string}[];
   guideFields?: {
     slider?: string | null;
     action?: string | null;

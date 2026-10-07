@@ -3,6 +3,7 @@ import { LocalCommunityCasesRepository } from '../repositories/community-cases.r
 import { LocalCommunityAccessService } from './community-access.service';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalServiceOfferingsRepository } from '../repositories/service-offerings.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 import { activeCaseParticipantIds, type CommunityCaseRecord } from '../entity/community-case.entity';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
@@ -16,6 +17,7 @@ export class LocalServiceFeedbackService extends LocalRouteDelayService implemen
   private readonly access=inject(LocalCommunityAccessService);
   private readonly users=inject(LocalUsersRepository);
   private readonly notifications=inject(LocalNotificationsRepository);
+  private readonly offerings=inject(LocalServiceOfferingsRepository);
   private running=false;
   /** Wake the existing local job loop; the saved request is also drained after reload. */
   wake():void { queueMicrotask(()=>{void this.drain().catch(error=>console.error('Service feedback worker failed',error));}); }
@@ -51,7 +53,12 @@ export class LocalServiceFeedbackService extends LocalRouteDelayService implemen
     const all=this.rows(),matches=(r:ServiceFeedback,b:string)=>b==='received'?r.providerAccountId===actor&&r.status==='feedbacked':r.viewerAccountId===actor&&r.status===b;
     const rows=all.filter(r=>matches(r,bucket)).sort((a,b)=>b.createdAtIso.localeCompare(a.createdAtIso)||a.id.localeCompare(b.id));
     const page=Number(query.cursor??0),size=Math.max(1,Math.min(50,query.pageSize));if(!Number.isSafeInteger(page)||page<0)throw new Error('Invalid cursor');
-    const items=rows.slice(page*size,(page+1)*size).map(feedback=>({feedback:structuredClone(feedback),providerName:this.users.queryUserById(feedback.providerAccountId)?.name??'',reviewerName:this.users.queryUserById(feedback.viewerAccountId)?.name??''}));
+    const items=rows.slice(page*size,(page+1)*size).map(feedback=>{
+      const offering=feedback.serviceId?this.offerings.find(feedback.serviceId):null;
+      const visible=offering?.baseGroupId===COMMUNITY_BASE_GROUP_ID && (offering.status==='published'||offering.ownerAccountId===actor||offering.staffAccountIds.includes(actor));
+      return {feedback:structuredClone(feedback),providerName:this.users.queryUserById(feedback.providerAccountId)?.name??'',reviewerName:this.users.queryUserById(feedback.viewerAccountId)?.name??'',
+        serviceTitle:visible?offering.title:null,serviceImageUrl:visible?offering.imageUrls[0]??null:null};
+    });
     return {items,total:rows.length,nextCursor:(page+1)*size<rows.length?String(page+1):null,context:Object.fromEntries(['pending','feedbacked','removed','received'].map(b=>[b,all.filter(r=>matches(r,b)).length]))};
   }
   async action(id:string,command:ServiceFeedbackCommand):Promise<void> {

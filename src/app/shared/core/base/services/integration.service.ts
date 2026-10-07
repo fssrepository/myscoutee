@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   IntegrationSettingsDto,
+  IntegrationSettingsUpdateDto,
   IntegrationTokenCreatedDto
 } from '../../contracts/integration.interface';
 import { HttpIntegrationService } from '../../http/services/integration.service';
@@ -42,6 +43,10 @@ export class IntegrationService extends BaseRouteModeService {
 
   loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     return this.service(admin).loadSettings(admin);
+  }
+
+  saveSettings(request: IntegrationSettingsUpdateDto): Promise<IntegrationSettingsDto> {
+    return this.service(false).saveSettings(request);
   }
 
   createToken(

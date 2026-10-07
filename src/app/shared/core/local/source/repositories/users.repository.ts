@@ -165,6 +165,7 @@ export class LocalUsersRepository {
           byId: {
             ...usersTable.byId,
             [user.id]: { ...user,
+              integrationAccess: usersTable.byId[user.id]?.integrationAccess ?? user.integrationAccess,
               activeWorkspaceGroupId: usersTable.byId[user.id]?.activeWorkspaceGroupId,
               workspaceGroupId: usersTable.byId[user.id]?.workspaceGroupId ?? user.workspaceGroupId,
               accountUserId: usersTable.byId[user.id]?.accountUserId ?? user.accountUserId, devices: usersTable.byId[user.id]?.devices,
