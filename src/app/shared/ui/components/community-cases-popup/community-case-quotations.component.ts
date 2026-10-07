@@ -76,8 +76,8 @@ export class CommunityCaseQuotationsComponent {
    if(e.id==='view'||e.id==='edit'){
      if(e.id==='edit'&&!c.canManage)return;this.openOffer(offer,e.id==='view');
    } else if(e.id==='chat') void this.store.openChat(c, offer.id);
-   else if(e.id==='invite-chat') void this.store.command(c,{action:'invite-chat',memberAccountIds:[offer.providerAccountId]});
-   else if(c.canManage&&(e.id==='accept-offer'||e.id==='reject-offer'||e.id==='pending-offer')) void this.store.command(c,{action:e.id,offerId:offer.id});
+   else if(e.id==='invite-chat') void this.store.command(c,{action:'invite-chat',memberAccountIds:[offer.providerAccountId]},e.item);
+   else if(c.canManage&&(e.id==='accept-offer'||e.id==='reject-offer'||e.id==='pending-offer')) void this.store.command(c,{action:e.id,offerId:offer.id},e.item);
  }
  private openOffer(offer:CaseOffer,readOnly:boolean):void {
    this.offer.set(CommunityCaseConverter.offerForm(offer,k=>this.i18n.translate(k)));this.editingId.set(offer.id);this.readOnly.set(readOnly);this.editing.set(true);

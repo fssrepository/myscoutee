@@ -21,6 +21,7 @@ import { DialogStore } from './dialog.store';
 import { AppUtils } from '../../../app-utils';
 import type { ChatMessageAttachment } from '../../../core/contracts/chat.interface';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
+import type { AppMenuItem } from '../../components/core/menu';
 
 export type CaseEditorState = { kind: 'case'; value: CommunityCase | null; readOnly: boolean } | { kind: 'task'; value: CommunityScheduledTask | null; readOnly: boolean };
 @Injectable({ providedIn: 'root' })
@@ -172,25 +173,56 @@ export class CommunityCasesStore {
     });
     this.taskChanged.set(value);
   }
-  taskAction(value: CommunityScheduledTask, action: ScheduledTaskAction): void {
-    if(!value.canManage)return;
-    const apply=()=>this.mutate(async()=>{
-      const session=this.session(); if(!session)return()=>{};
-      const updated=await this.service.taskAction(session.userId,value.id,action,value.version);
-      return()=>this.publishTask(updated,value);
+  taskAction(value: CommunityScheduledTask, action: ScheduledTaskAction, menuItem: AppMenuItem): void {
+    const session = this.session();
+    if (!value.canManage || !session || this.busy()) return;
+    let generation = this.generation;
+    const label = (typeof menuItem.label === 'function' ? menuItem.label() : menuItem.label) ?? 'confirm';
+    this.dialogs.open({
+      title: label, message: value.title,
+      warningMessage: `case.task.confirm.${action}`, cancelLabel: 'cancel',
+      confirmLabel: label, confirmPalette: menuItem.palette,
+      busyConfirmLabel: 'saving', failureMessage: 'case.save.failed',
+      onConfirm: async () => {
+        if (session !== this.session() || generation !== this.generation || this.busy()
+          || session.userId !== this.workspace.accountId(this.profile.activeUserId()) || !this.workspace.isCommunity()) {
+          throw new Error('case.changed');
+        }
+        generation++;
+        await this.mutate(async () => {
+          const updated = await this.service.taskAction(session.userId, value.id, action, value.version);
+          return () => this.publishTask(updated, value);
+        }, true);
+      }
     });
-    if(action==='trash'||action==='pause')this.dialogs.open({
-      title:action==='trash'?'case.task.delete':'case.task.pause',message:value.title,
-      confirmLabel:action==='trash'?'delete':'case.task.pause',confirmTone:action==='trash'?'danger':'warning',
-      confirmPalette:action==='trash'?'danger':'amber',onConfirm:apply
-    });
-    else void apply();
   }
-  async command(c: CommunityCase, command: Omit<CaseCommand, 'userId' | 'version'>): Promise<void> {
-    const s = this.session(); if (!s) return;
-    await this.mutate(async () => {
-      const result = await this.service.action(c.id, { ...command, userId: s.userId, version: c.version });
-      return () => { this.publish(result); if (this.editor()?.kind === 'case') this.editor.set({ kind: 'case', value: result, readOnly: true }); };
+  async command(c: CommunityCase, command: Omit<CaseCommand, 'userId' | 'version'>, menuItem?: AppMenuItem): Promise<void> {
+    const session = this.session(); if (!session || this.busy()) return;
+    let generation = this.generation;
+    const request = structuredClone({ ...command, userId: session.userId, version: c.version });
+    const apply = async () => {
+      if (session !== this.session() || generation !== this.generation || this.busy()
+        || session.userId !== this.workspace.accountId(this.profile.activeUserId()) || !this.workspace.isCommunity()) {
+        throw new Error('case.changed');
+      }
+      generation++;
+      await this.mutate(async () => {
+        const result = await this.service.action(c.id, request);
+        return () => { this.publish(result); if (this.editor()?.kind === 'case') this.editor.set({ kind: 'case', value: result, readOnly: true }); };
+      }, !!menuItem);
+    };
+    if (!menuItem) { await apply(); return; }
+    const offer = c.offers.find(item => item.id === request.offerId);
+    const task = request.task ?? c.boardTasks.find(item => item.id === request.taskId);
+    const target = task?.title ?? (offer ? [c.members.find(member => member.accountId === offer.providerAccountId)?.name,
+      `${offer.amount} ${offer.currency}`].filter(Boolean).join(' · ')
+      : request.memberAccountIds?.map(id => c.members.find(member => member.accountId === id)?.name).filter(Boolean).join(', '));
+    const label = (typeof menuItem.label === 'function' ? menuItem.label() : menuItem.label) ?? 'confirm';
+    this.dialogs.open({
+      title: label, message: [c.title, target].filter(Boolean).join(' · '),
+      warningMessage: request.action === 'save-board-task' ? `case.board.confirm.${request.task?.status}` : `case.confirm.${request.action}`,
+      cancelLabel: 'cancel', confirmLabel: label, confirmPalette: menuItem.palette,
+      busyConfirmLabel: 'saving', failureMessage: 'case.save.failed', onConfirm: apply
     });
   }
   async openChat(c: CommunityCase, caseOfferId?: string): Promise<void> {
@@ -329,7 +361,7 @@ export class CommunityCasesStore {
     if (this.quotations()?.id === c.id) this.quotations.set(c);
     this.changed.set(c);
   }
-  private async mutate(work: () => Promise<() => void>): Promise<void> {
+  private async mutate(work: () => Promise<() => void>, rethrow = false): Promise<void> {
     if (this.busy()) return; const generation = ++this.generation;
     this.busy.set(true); this.error.set('');
     try { const apply = await work(); if (generation === this.generation) apply(); }
@@ -338,6 +370,7 @@ export class CommunityCasesStore {
         const status=(error as {status?:number})?.status, message=error instanceof Error?error.message:'';
         this.error.set(status===403||message==='Forbidden'?'case.save.forbidden':status===409||message==='case.changed'?'case.changed':message==='case.task.dependencies.cycle'?message:'case.save.failed');
       }
+      if (rethrow) throw new Error(this.error() || 'case.save.failed');
     }
     finally { if (generation === this.generation) this.busy.set(false); }
   }

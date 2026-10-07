@@ -8,6 +8,9 @@ import { ActivityMembersService } from '../../../core/base/services/activity-mem
 import { ActivityInvitePopupStore } from './activity-invite-popup.store';
 import { UserProfileStore } from './user-profile.store';
 import { ProfileStore } from './profile.store';
+import { DialogStore } from './dialog.store';
+import type { AppMenuItem } from '../../components/core/menu';
+import type { CaseAppointmentCalendarEntry } from '../../../core/contracts/case-appointment.interface';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../core/contracts/group-type';
 import type { ServiceOfferingItem, ServiceOfferingFilters, SaveServiceOffering, ServiceAction } from '../../../core/contracts/service-offering.interface';
 import type { ListQuery } from '../../../core/contracts/list.interface';
@@ -23,6 +26,7 @@ export class ServiceOfferingsStore {
   private readonly game=inject(GameService);
   private readonly members=inject(ActivityMembersService);
   private readonly picker=inject(ActivityInvitePopupStore);
+  private readonly dialogs=inject(DialogStore);
   readonly accountId=computed(()=>this.workspace.accountId(this.profile.activeUserId()));
   readonly profileId=computed(()=>`group:${COMMUNITY_BASE_GROUP_ID}:${this.accountId()}`);
   readonly session=signal<{pick:((item:ServiceOfferingItem)=>void)|null;providers?:{title:string;ids:string[]}}|null>(null);
@@ -64,7 +68,13 @@ export class ServiceOfferingsStore {
   edit(value:ServiceOfferingItem|null=null,readOnly=false):void{this.error.set('');this.clearStaffMembers();const editor={value,readOnly};this.editor.set(editor);
     void this.loadStaffMembers().catch(()=>{if(this.editor()===editor)this.error.set('service.failed');});}
   async save(value:SaveServiceOffering):Promise<void>{await this.mutate(async()=>{const result=await this.service.save({...value,userId:this.profileId()});return()=>{this.changed.set(result);this.editor.set(null);};});}
-  async action(item:ServiceOfferingItem,action:ServiceAction):Promise<void>{await this.mutate(async()=>{const result=await this.service.action(this.profileId(),item.service.id,action,item.service.version);return()=>this.changed.set(result);});}
+  async action(item:ServiceOfferingItem,action:ServiceAction,menuItem:AppMenuItem):Promise<void>{
+    const actor = this.profileId(), id = item.service.id, version = item.service.version;
+    this.confirmMutation(menuItem, item.service.title, `service.confirm.${action}`, async () => {
+      const result = await this.service.action(actor, id, action, version);
+      return () => this.changed.set(result);
+    });
+  }
   async chooseStaff(selected:readonly string[],apply:(ids:string[])=>void):Promise<void>{const gen=this.generation;
     const rows=await this.loadStaffMembers();
     await this.picker.ensureAssetMemberPickerPopupLoaded();if(gen!==this.generation)return;
@@ -83,9 +93,33 @@ export class ServiceOfferingsStore {
     this.staffMembersRequest=request;return request;
   }
   calendar(rangeStart:string,rangeEnd:string){return this.appointments.calendar(this.profileId(),rangeStart,rangeEnd);}
-  async cancelAppointment(caseId:string,providerAccountId:string,appointmentId:string):Promise<void>{await this.mutate(async()=>{
-    await this.appointments.cancel(this.profileId(),caseId,providerAccountId,appointmentId);return()=>this.calendarCancelled.set(appointmentId);
-  });}
-  private async mutate(work:()=>Promise<()=>void>):Promise<void>{if(this.busy())return;const gen=++this.generation;this.busy.set(true);this.error.set('');
-    try{const apply=await work();if(gen===this.generation)apply();}catch{if(gen===this.generation)this.error.set('service.failed');}finally{if(gen===this.generation)this.busy.set(false);}}
+  async cancelAppointment(entry:CaseAppointmentCalendarEntry,menuItem:AppMenuItem):Promise<void>{
+    const appointment = entry.appointment;
+    if (!appointment) return;
+    const actor = this.profileId(), {caseId, providerAccountId, id, startAtIso} = appointment;
+    const message = [entry.caseTitle, entry.serviceTitle, entry.customerName, new Date(startAtIso).toLocaleString()].filter(Boolean).join(' · ');
+    this.confirmMutation(menuItem, message, 'case.appointments.cancel.confirm', async () => {
+      await this.appointments.cancel(actor, caseId, providerAccountId, id);
+      return () => this.calendarCancelled.set(id);
+    });
+  }
+  private confirmMutation(menuItem:AppMenuItem,message:string,warningMessage:string,work:()=>Promise<()=>void>):void{
+    if (this.busy()) return;
+    const actor = this.profileId(), session = this.session();
+    let generation = this.generation;
+    const label = (typeof menuItem.label === 'function' ? menuItem.label() : menuItem.label) ?? 'confirm';
+    this.dialogs.open({
+      title: label, message, warningMessage,
+      cancelLabel: 'cancel', confirmLabel: label, confirmPalette: menuItem.palette,
+      busyConfirmLabel: 'saving', failureMessage: 'service.failed',
+      onConfirm: async () => {
+        if (actor !== this.profileId() || session !== this.session() || generation !== this.generation
+          || this.busy() || !this.workspace.isCommunity()) throw new Error('service.changed');
+        generation++;
+        await this.mutate(work, true);
+      }
+    });
+  }
+  private async mutate(work:()=>Promise<()=>void>,rethrow=false):Promise<void>{if(this.busy())return;const gen=++this.generation;this.busy.set(true);this.error.set('');
+    try{const apply=await work();if(gen===this.generation)apply();}catch{if(gen===this.generation)this.error.set('service.failed');if(rethrow)throw new Error('service.failed');}finally{if(gen===this.generation)this.busy.set(false);}}
 }

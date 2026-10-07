@@ -115,17 +115,20 @@ console.log('PASS list-specific error, successful recovery and stale counter res
 
 const DialogStore = await compiled.symbol('DialogStore'), dialogs = new DialogStore();
 let mutations = 0;
-Object.assign(store, { dialogs, generation: 0, busy: signal(false), service: { taskAction: async (_user, id, command) => {
+Object.assign(store, { dialogs, generation: 0, busy: signal(false),
+  profile: { activeUserId: () => store.session().userId }, workspace: { accountId: id => id, isCommunity: () => true },
+  service: { taskAction: async (_user, id, command) => {
   mutations++; return { id, status: command === 'pause' ? 'paused' : 'trash' };
 } } });
 for (const [command, palette] of [['pause', 'amber'], ['trash', 'danger']]) {
   const task = { id: 'confirm', title: 'Confirm scheduled task', canManage: true, status: 'active', version: 0 };
   const before = mutations;
-  store.taskAction(task, command);
+  const menuItem = { id: command, label: command, palette };
+  store.taskAction(task, command, menuItem);
   assert.equal(dialogs.dialog().confirmPalette, palette);
   assert.equal(mutations, before, 'Opening confirmation must not mutate');
   dialogs.cancel(); assert.equal(mutations, before, 'Cancel must not mutate');
-  store.taskAction(task, command); await dialogs.confirm();
+  store.taskAction(task, command, menuItem); await dialogs.confirm();
   assert.equal(mutations, before + 1); assert.equal(dialogs.dialog(), null);
 }
 console.log('PASS suspend/delete confirmations, matching amber/danger buttons and cancellation without mutation');

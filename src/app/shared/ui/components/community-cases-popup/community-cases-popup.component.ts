@@ -113,12 +113,12 @@ export class CommunityCasesPopupComponent {
     else if (event.id === 'members') void this.store.openMembers(c);
     else if (event.id === 'edit') void this.store.edit(c);
     else if (event.id === 'recommend' || event.id === 'invite-provider') void this.store.chooseProvider(c, event.id === 'recommend');
-    else void this.store.command(c, { action: event.id as CaseAction });
+    else void this.store.command(c, { action: event.id as CaseAction }, event.item);
   }
   protected taskAction(event: AppMenuItemSelectEvent): void {
     const task=event.context as CommunityScheduledTask;
     if(event.id==='view'||event.id==='edit')this.store.editTask(task,event.id==='view');
-    else this.store.taskAction(task,event.id as ScheduledTaskAction);
+    else this.store.taskAction(task,event.id as ScheduledTaskAction,event.item);
   }
   protected readonly referenceErrorModel = computed<PopupModel>(() => ({
     title: 'case.action.view', errorMessage: this.store.error(), size: 'wide', onClose: () => this.store.close()
