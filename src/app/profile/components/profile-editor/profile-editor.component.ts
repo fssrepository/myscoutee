@@ -158,12 +158,12 @@ export class ProfileEditorComponent implements OnDestroy {
   }] : []), {
     id: 'profile-api-integration',
     kind: 'action',
-    icon: this.activeUserIsAdmin() ? 'api' : 'group_add',
-    label: this.activeUserIsAdmin() ? 'admin.api.title' : 'affiliate.title',
-    ariaLabel: this.activeUserIsAdmin() ? 'admin.api.title' : 'affiliate.open',
+    icon: this.activeUserIsAdmin() || this.activeUserIsOperator() ? 'api' : 'group_add',
+    label: this.activeUserIsAdmin() || this.activeUserIsOperator() ? 'integration.roles.title' : 'affiliate.title',
+    ariaLabel: this.activeUserIsAdmin() || this.activeUserIsOperator() ? 'integration.roles.title' : 'affiliate.open',
     layout: 'action',
     compactOnMobile: true,
-    palette: this.activeUserIsAdmin() ? 'blue' : 'pink'
+    palette: this.activeUserIsAdmin() || this.activeUserIsOperator() ? 'blue' : 'pink'
   }]);
 
   protected panel: ProfileEditorPanel = 'profile';

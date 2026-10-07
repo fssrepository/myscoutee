@@ -151,12 +151,12 @@
                   <h3 id="form-flow-step-{{ step.id }}">{{ step.title }}</h3>
                   @if (step.headerControl; as control) {
                     @if (control.kind === 'toggle') {
-                      <app-on-off-toggle class="form-flow__group-header-menu" [enabled]="controlValue(control) === true"
+                      <app-on-off-toggle class="form-flow__group-header-menu" [attr.data-guide-field]="control.guideFieldId ?? null" [enabled]="controlValue(control) === true"
                         [disabled]="isControlDisabled(control)" [label]="control.label || ''"
                         (enabledChange)="updateControlValue(control, $event)"></app-on-off-toggle>
                     } @else {
                     @if (control.bind !== undefined) {
-                    <app-menu class="form-flow__group-header-menu"
+                    <app-menu class="form-flow__group-header-menu" [attr.data-guide-field]="control.guideFieldId ?? null"
                       [title]="menuTitle(control)"
                       [kind]="menuKind(control)" [layout]="menuLayout(control)"
                       [trigger]="menuTrigger(control)" [items]="menuItems(control)" [model]="menuModel(control)"
@@ -165,7 +165,7 @@
                       (itemSelect)="emitControlAction(control, $event)"
                       [closeOnSelect]="menuCloseOnSelect(control)"></app-menu>
                     } @else {
-                    <app-menu class="form-flow__group-header-menu"
+                    <app-menu class="form-flow__group-header-menu" [attr.data-guide-field]="control.guideFieldId ?? null"
                       [title]="menuTitle(control)"
                       [kind]="menuKind(control)" [layout]="menuLayout(control)"
                       [trigger]="menuTrigger(control)" [items]="menuItems(control)" [model]="menuModel(control)"

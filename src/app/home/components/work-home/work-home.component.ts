@@ -16,7 +16,7 @@ import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../shared/ui/com
 
 @Component({ selector: 'app-work-home', standalone: true,
   imports: [HomeHeaderComponent, SmartListComponent, SingleCardComponent],
-  template: `<div class="game-page">
+  template: `<div class="game-page" data-guide-surface="work.home">
     <app-home-header [branding]="branding" [items]="headerItems()" (itemSelect)="headerAction($event)"></app-home-header>
     <section class="game-layout-single"><div class="game-card-deck">
       <app-smart-list class="home-smart-list" data-guide-field="work-campaigns" [config]="config" [query]="store.query()" [loadPage]="loadPage" [fullscreenItemTemplate]="cardTemplate"

@@ -16,7 +16,7 @@ import type { DeploymentBrandingDto } from '../../../shared/core/contracts/deplo
 import type { AppMenuItem,AppMenuItemSelectEvent } from '../../../shared/ui/components/core/menu';
 type ServiceHomeCard = SingleCardData & { id: string; eagerDetail: ServiceOfferingItem };
 @Component({selector:'app-community-services-home',standalone:true,imports:[HomeHeaderComponent,SmartListComponent,SingleCardComponent,ServiceOfferingEditorComponent],
- template:`<div class="game-page" data-guide-context="community-services-home">
+ template:`<div class="game-page" data-guide-surface="community.services.home">
    <app-home-header [branding]="branding" [items]="items()" (itemSelect)="headerAction($event)"></app-home-header>
    <section class="game-layout-single"><div class="game-card-deck">
    <app-smart-list class="home-smart-list" data-guide-field="service-discovery" [config]="config" [query]="query()" [loadPage]="loadPage" presentation="fullscreen" [fullscreenItemTemplate]="card" ></app-smart-list>
