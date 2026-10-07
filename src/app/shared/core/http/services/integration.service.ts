@@ -41,8 +41,8 @@ export class HttpIntegrationService {
     return firstValueFrom(this.http.get<IntegrationSettingsDto>(`${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/settings`));
   }
 
-  saveSettings(request: IntegrationSettingsUpdateDto): Promise<IntegrationSettingsDto> {
-    return firstValueFrom(this.http.put<IntegrationSettingsDto>(`${this.apiBaseUrl}/integrations/settings`, request));
+  saveSettings(request: IntegrationSettingsUpdateDto, admin = false): Promise<IntegrationSettingsDto> {
+    return firstValueFrom(this.http.put<IntegrationSettingsDto>(`${this.apiBaseUrl}/${admin ? 'admin/client-api' : 'integrations'}/settings`, request));
   }
 
   createToken(name: string, expiresInDays: number, admin = false): Promise<IntegrationTokenCreatedDto> {

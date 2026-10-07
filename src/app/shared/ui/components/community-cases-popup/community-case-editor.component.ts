@@ -72,7 +72,7 @@ export class CommunityCaseEditorComponent implements OnChanges, OnDestroy {
     const model: FormFlowModel = { title: '', layout: 'grouped', header: false, save: null, summary: { enabled: false }, allowMenuOverflow: true,
       steps: [
         ...(form.communityId && !(this.editor().kind==='task'&&this.editor().readOnly) ? [{ id: 'audience', title: t('case.audience'), icon: 'groups', palette: 'teal' as const,
-        headerControl: this.canSelectMembers() ? {id:'audience',kind:'menu' as const,config:{kind:'inline' as const,items:[
+        headerControl: this.canSelectMembers() ? {id:'audience',guideFieldId:'members',kind:'menu' as const,config:{kind:'inline' as const,items:[
           {id:'members',icon:'add',ariaLabel:'case.select.members',palette:'green' as const,disabled:this.store.busy()}]}} : null,
         controls: selected.length ? [{id:'audience-list',guideFieldId:'audience',kind:'menu' as const,layout:'wide' as const,config:{kind:'inline' as const,items:selected.map(m=>({id:m.userId,label:m.name,imageUrl:m.avatarUrl,imageFallback:m.initials||AppUtils.initialsFromText(m.name),imageAlt:m.name,imageShape:"circle" as const,trailingIcon:'chevron_right',layout:'pill' as const,kind:'action' as const,palette:'teal' as const}))}}]
           : [{id:'audience-empty',guideFieldId:'audience',kind:'static' as const,summary:{value:()=>t(this.store.audienceLoading() ? 'loading' : 'case.audience.empty')}}]

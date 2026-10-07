@@ -1,4 +1,4 @@
-export type IntegrationAccessMode = 'blocked' | 'write' | 'full';
+export type IntegrationAccessMode = 'blocked' | 'write' | 'read' | 'full';
 
 export interface IntegrationSettingsUpdateDto {
   accessRevision: number;

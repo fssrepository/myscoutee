@@ -28,8 +28,12 @@ function flush() {
   }
   for (const [file, value] of staged) {
     if (file.endsWith('/helpCenterRevisions.json') && fs.existsSync(file)) {
-      const order = new Map(JSON.parse(fs.readFileSync(file, 'utf8')).map((row,index) => [row._id,index]));
-      value.sort((a,b) => (order.get(a._id) ?? Infinity) - (order.get(b._id) ?? Infinity) || a._id.localeCompare(b._id));
+      const previous = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const order = new Map(previous.map((row,index) => [row._id,index]));
+      const family = row => JSON.stringify([row.baseGroupId, row.documentType, row.lang, row.contextKey]);
+      const groupOrder = new Map(previous.filter(row => row.baseGroupId).map(row => [family(row), order.get(row._id)]));
+      const position = row => order.get(row._id) ?? (row.baseGroupId ? groupOrder.get(family(row)) : undefined) ?? Infinity;
+      value.sort((a,b) => position(a) - position(b) || a._id.localeCompare(b._id));
     }
     const content = JSON.stringify(value, null, 2) + '\n';
     if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === content) continue;
@@ -38,6 +42,51 @@ function flush() {
   }
 }
 const escapeHtml = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+// A guide update must reach local group seeds and Mongo through this same owner.
+// Previously only the unscoped Mongo revision was regenerated, leaving group guides stale.
+const guideVersions = read(path.join(data, 'help-center-guide-versions.json'));
+const guideCatalog = read(path.join(data, 'help-center-guide-fields.json'));
+const guideBundles = Object.fromEntries(['en','hu'].map(lang => [lang, read(path.join(root, `src/assets/i18n/${lang}.json`)).messages]));
+function guideRevision(source, context, lang, version, baseGroupId, id) {
+  const messages = guideBundles[lang];
+  const text = key => {
+    if (!messages[key]) throw new Error(`Missing guide translation: ${lang}/${key}`);
+    return messages[key];
+  };
+  const sections = guideCatalog[context].map(field => ({
+    id:`guide-${field.id.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`, guideStepId:field.id,
+    icon:field.group==='card'?'touch_app':field.group==='popup'?'close':'help_outline',
+    title:text(field.i18nKey+'.label'), blurb:'', contentHtml:`<p>${escapeHtml(text(field.i18nKey+'.description'))}</p>`
+  }));
+  return {...source, _id:id, documentType:'explanation', baseGroupId, contextKey:context,
+    lang, languageLabel:lang==='hu'?'Magyar':'English', version, active:true, presentation:'tour',
+    title:messages[`guide.context.${context}.title`] ?? source.title,
+    summary:messages[`guide.context.${context}.summary`] ?? source.summary,
+    description:messages[`guide.context.${context}.description`] ?? source.description,
+    sections, updatedDate:'2026-10-07T00:00:00.000Z', updatedUser:'system'};
+}
+for (const groupType of ['work', 'community']) {
+  const file = path.join(data, `${groupType}-help-center.json`);
+  let rows = read(file);
+  for (const [context, version] of Object.entries(guideVersions)) for (const lang of ['en','hu']) {
+    const matches = rows.filter(row => row.documentType === 'explanation' && row.contextKey === context && row.lang === lang);
+    const source = matches.sort((a,b) => b.version-a.version)[0];
+    if (source && source.version > version) throw new Error(`Guide version would regress: ${groupType}/${context}/${lang}`);
+    const template = source ?? {...rows.find(row => row.contextKey === 'profile.integrations' && row.lang === lang),
+      isSystem:false, createdDate:'2026-10-07T00:00:00.000Z', createdUser:'system'};
+    const next = guideRevision(template, context, lang, version, `myscoutee-${groupType}`,
+      `${groupType}:explanation-${context}-${lang}-v${version}`);
+    // Keep one current canonical group revision at its old position. Runtime user revisions are not touched.
+    let inserted = false;
+    rows = rows.flatMap(row => {
+      if (!matches.includes(row)) return [row];
+      if (inserted) return [];
+      inserted = true; return [next];
+    });
+    if (!inserted) rows.push(next);
+  }
+  write(file, rows);
+}
 const articles = read(path.join(data, 'work-articles.json')).map(({ id, ...post }) => ({
   ...post, _id: id, contentKey: id.replace(/-hu$/, ''), languageLabel: post.lang === 'hu' ? 'Magyar' : 'English',
   contentHtml: `${post.contentHtml}\n<figure><img src="${post.imageUrl}" alt="${escapeHtml(post.title)}"></figure>`,
@@ -333,11 +382,7 @@ for (const database of ['demo_db', 'e2e_db']) {
     _id: id, ...service, baseGroupId: community.id, ownerAccountId: account(ownerName), staffAccountIds: staffNames.map(account) })));
 }
 
-// Guide field definitions are shared by local and HTTP; content revisions remain base-group scoped.
-// The same per-context revision map is used by the local guide builder.
-const guideVersions = read(path.join(data, 'help-center-guide-versions.json'));
-const guideCatalog = read(path.join(data, 'help-center-guide-fields.json'));
-const guideBundles = Object.fromEntries(['en','hu'].map(lang => [lang, read(path.join(root, `src/assets/i18n/${lang}.json`)).messages]));
+// Base guides use the same fields, text and versions as the group catalogs above.
 for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
   const file = path.join(mongo, database, 'helpCenterRevisions.json');
   const rows = read(file);
@@ -347,12 +392,8 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
     const source = previous ?? read(path.join(data,'work-help-center.json')).find(row => row.contextKey === context && row.lang === lang);
     if (!source) throw new Error(`Missing guide source: ${context}/${lang}`);
     const id = `explanation-${context.replaceAll('.','-')}-default-${lang}-v${version}`;
-    const messages = guideBundles[lang];
-    const sections = guideCatalog[context].map(field => ({id:`guide-${field.id.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`,
-      guideStepId:field.id,icon:field.group==='card'?'touch_app':field.group==='popup'?'close':'help_outline',
-      title:messages[field.i18nKey+'.label'],blurb:'',contentHtml:`<p>${escapeHtml(messages[field.i18nKey+'.description'])}</p>`}));
     for (const row of rows) if (!row.baseGroupId && row.contextKey === context && row.lang === lang) row.active=false;
-    const next={...source,title:messages[`guide.context.${context}.title`]??source.title,_id:id,baseGroupId:null,contextKey:context,version,active:true,presentation:'tour',sections,updatedDate:'2026-10-06T00:00:00.000Z',updatedUser:'system'};
+    const next = guideRevision(source, context, lang, version, null, id);
     const index=rows.findIndex(row=>row._id===id); if(index<0) rows.push(next); else rows[index]=next;
   }
   write(file,rows);

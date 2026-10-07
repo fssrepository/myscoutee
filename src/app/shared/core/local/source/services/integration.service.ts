@@ -145,7 +145,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
 
   private async settingsSnapshot(owner: string, admin = false): Promise<IntegrationSettingsDto> {
     const settings = this.repository.settings(owner, admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
-    if (!admin) settings.mcp = this.repository.mcpSettings(owner, new URL('/mcp/private', settings.baseUrl).toString());
+    settings.mcp = this.repository.mcpSettings(owner, new URL('/mcp/private', await this.publicBaseUrl()).toString());
     if (settings.affiliate?.revenue) {
       const revenue = settings.affiliate.revenue;
       revenue.euroSummary = LocalPaymentSummaryMapper.build(owner,
@@ -154,12 +154,12 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     return settings;
   }
 
-  async saveSettings(request: IntegrationSettingsUpdateDto): Promise<IntegrationSettingsDto> {
-    const owner = this.requireUserId();
+  async saveSettings(request: IntegrationSettingsUpdateDto, admin = false): Promise<IntegrationSettingsDto> {
+    const owner = this.requireUserId(admin);
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
-    this.repository.saveAccess(owner, request);
-    const settings = await this.settingsSnapshot(owner);
+    this.repository.saveAccess(owner, request, admin);
+    const settings = await this.settingsSnapshot(owner, admin);
     await this.repository.flushToIndexedDb();
     return settings;
   }

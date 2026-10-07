@@ -68,8 +68,8 @@
                       <app-copy-link [value]="revealedTokenId() === token.id ? revealedToken() : token.prefix + '…'"
                         [disabled]="revealedTokenId() !== token.id || !revealedToken()"
                         label="integration.client.keys" copyLabel="integration.token.copy.aria"></app-copy-link>
-                      @if (!adminMode) { <app-integration-access-button data-guide-field="integration-token-access"
-                        [clientId]="token.id" [clientName]="token.name"></app-integration-access-button> }
+                      <app-integration-access-button data-guide-field="integration-token-access"
+                        [clientId]="token.id" [clientName]="token.name"></app-integration-access-button>
                     </div>
                     @if (revealedTokenId() === token.id && revealedToken()) {
                       <small>{{ 'integration.token.copy.now' | i18n }}</small>
@@ -101,7 +101,7 @@
             <p class="integration-empty-state">{{ 'integration.token.empty' | i18n }}</p>
           }
         </section>
-        @if (!adminMode) { <app-mcp-connections></app-mcp-connections> }
+        <app-mcp-connections></app-mcp-connections>
       }
     </div>
   </app-popup>
@@ -127,26 +127,44 @@
     <app-popup [model]="helpPopupModel()" [zIndex]="2510">
       <section class="integration-help-body">
         <div>
-          @if (adminMode) { <p>{{ 'admin.api.help' | i18n }}</p> } @else {
+          @if (adminMode) { <p>{{ 'admin.api.help' | i18n }}</p> }
+          @if (!adminMode && !roleReadOnly) {
             <h3>{{ 'affiliate.personal.link' | i18n }}</h3>
-            <ul>
-              <li>{{ 'affiliate.help' | i18n }}</li>
-              <li>{{ 'affiliate.help.participants' | i18n }}</li>
-            </ul>
+            <ul><li>{{ 'affiliate.help' | i18n }}</li><li>{{ 'affiliate.help.participants' | i18n }}</li></ul>
+          }
+          <section data-guide-field="integration-help-setup">
             <h3>{{ 'mcp.connections' | i18n }}</h3>
             <ol>
+              <li>{{ 'mcp.setup.enable' | i18n }}</li>
               <li>{{ 'mcp.setup' | i18n }}</li>
               <li>{{ 'mcp.setup.approve' | i18n }}</li>
               <li>{{ 'mcp.setup.return' | i18n }}</li>
               <li>{{ 'mcp.setup.revoke' | i18n }}</li>
             </ol>
-            <h3>{{ 'mcp.advanced' | i18n }}</h3>
+          </section>
+          <section data-guide-field="integration-help-levels">
+            <h3>{{ 'integration.access.level' | i18n }}</h3>
             <ul>
-              <li>{{ 'mcp.manual.help' | i18n }}</li>
-              <li>{{ 'mcp.manual.help.badge' | i18n }}</li>
+              @for (mode of ['blocked', 'write', 'read', 'full']; track mode) {
+                <li><strong>{{ ('integration.access.' + mode) | i18n }}:</strong> {{ ('integration.access.' + mode + '.description') | i18n }}</li>
+              }
             </ul>
+            <p>{{ 'integration.access.mcp.limit' | i18n }}</p>
+          </section>
+          <section data-guide-field="integration-help-events">
+            <h3>{{ 'mcp.events.title' | i18n }}</h3>
+            <p>{{ 'mcp.events.help' | i18n }}</p>
+            <p>{{ 'mcp.events.availability' | i18n }}</p>
+          </section>
+          <section data-guide-field="integration-help-roles">
+            <h3>{{ 'integration.roles.title' | i18n }}</h3>
+            <p>{{ 'integration.roles.help' | i18n }}</p>
+          </section>
+          <section data-guide-field="integration-help-manual">
+            <h3>{{ 'mcp.advanced' | i18n }}</h3>
+            <ul><li>{{ 'mcp.manual.help' | i18n }}</li><li>{{ 'mcp.manual.help.badge' | i18n }}</li></ul>
             <p>{{ 'mcp.local.only' | i18n }}</p>
-          }
+          </section>
           <a
             [href]="integrationDocumentationUrl"
             target="_blank"

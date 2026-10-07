@@ -21,7 +21,7 @@ const emptyOffer = () => ({amount:0,currency:'EUR',note:'',workPolicies:[] as Ev
    @if (store.quotations()?.canReviewOffers) {
      <app-smart-list data-guide-field="case-quotations" #list [config]="config" [query]="query()" [loadPage]="loadPage" [itemTemplate]="rowTemplate" (menuItemSelect)="action($event)"></app-smart-list>
      <ng-template #rowTemplate let-row let-openMenu="openMenu"><single-row [row]="row" [useSharedMenu]="true" (menuRequest)="openMenu($event)"></single-row></ng-template>
-   } @else { <p>{{ 'case.offers.provider-help' | i18n }}</p> }
+   } @else { <p data-guide-field="quotation-provider-help">{{ 'case.offers.provider-help' | i18n }}</p> }
  </app-popup>
  @if (editing()) {
    <app-popup [model]="editorModel()" [zIndex]="15300" data-guide-context="community-case-quotation-editor">
@@ -108,7 +108,7 @@ export class CommunityCaseQuotationsComponent {
        {id:'currency',guideFieldId:'currency',bind:'currency',kind:'text',label:t('case.offer.currency'),maxLength:3,required:true,disabled},
        {id:'note',guideFieldId:'note',bind:'note',kind:'textarea',label:t('description'),maxLength:4000,rows:3,layout:'wide',disabled}]},
      ...(['work','refund'] as const).map(kind=>({id:`${kind}-policies`,title:'',chrome:'none' as const,controls:[
-       {id:`${kind}-policies`,bind:`${kind}Policies`,kind:'policies' as const,layout:'wide' as const,disabled,
+       {id:`${kind}-policies`,guideFieldId:`${kind}-policies`,bind:`${kind}Policies`,kind:'policies' as const,layout:'wide' as const,disabled,
          config:{model:{title:`case.offer.${kind}-policy`,subtitle:kind==='work'?'case.offer.work-policy.help':'',toggleable:false,
            popupSubtitle:`case.offer.${kind}-policy`,editorSubtitle:`case.offer.${kind}-policy`}}}]}))
    ]};

@@ -52,6 +52,8 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
   private readonly explanationGuide = inject(ExplanationGuideService);
   private unregisterExplanationContext: (() => void) | null = null;
   @Input() adminMode = false;
+  @Input() roleReadOnly = false;
+  private unregisterHelpContext: (() => void) | null = null;
   private readonly integrationService = inject(IntegrationService);
   private readonly i18nService = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
@@ -131,8 +133,8 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
   protected readonly popupModel = computed<PopupModel>(() => {
     return {
       errorMessage: this.errorMessage(),
-      title: this.adminMode ? 'admin.api.title' : 'affiliate.title',
-      subtitle: this.adminMode ? 'admin.api.subtitle' : 'affiliate.subtitle',
+      title: this.adminMode || this.roleReadOnly ? 'integration.roles.title' : 'affiliate.title',
+      subtitle: this.adminMode || this.roleReadOnly ? 'integration.roles.summary' : 'affiliate.subtitle',
       ariaLabel: this.adminMode ? 'admin.api.title' : 'affiliate.open',
       closeAriaLabel: 'close',
       size: 'small',
@@ -145,7 +147,7 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
           ariaLabel: 'affiliate.revenue.open', palette: 'green', layout: 'pill', action: 'custom' }
       }],
       onMenuSelect: () => { if (!this.adminMode) this.revenueOpen.set(true); },
-      headerActions: [...(!this.adminMode && this.store.dirty() ? [{
+      headerActions: [...(this.store.dirty() ? [{
         id: 'integration-save', icon: 'check', ariaLabel: 'save', palette: 'green' as const,
         disabled: this.mutating() || this.loading(), guideFieldId: 'integration-access-save'
       }] : []), {
@@ -162,7 +164,7 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
   protected helpPopupModel(): PopupModel {
     return {
       title: 'integration.help.title',
-      subtitle: this.adminMode ? 'admin.api.title' : 'affiliate.title',
+      subtitle: this.adminMode || this.roleReadOnly ? 'integration.roles.title' : 'affiliate.title',
       ariaLabel: 'integration.help.aria',
       closeAriaLabel: 'close',
       size: 'small',
@@ -170,7 +172,7 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
       mobilePresentation: 'compact',
       backdropTone: 'dim',
       headerPalette: 'blue',
-      onClose: () => this.helpOpen.set(false)
+      onClose: () => this.closeHelp()
     };
   }
 
@@ -181,11 +183,12 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     this.revealedToken.set('');
     this.revealedTokenId.set('');
     this.errorMessage.set('');
-    void this.store.open(this.adminMode);
+    void this.store.open(this.adminMode, this.adminMode || this.roleReadOnly);
   }
 
   ngOnDestroy(): void {
     this.store.close();
+    this.closeHelp();
     this.unregisterExplanationContext?.();
     this.unregisterExplanationContext = null;
   }
@@ -194,6 +197,7 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     if (this.mutating()) return;
     this.open.set(false);
     this.store.close();
+    this.closeHelp();
     this.unregisterExplanationContext?.();
     this.unregisterExplanationContext = null;
     this.helpOpen.set(false);
@@ -203,10 +207,17 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     this.copiedValue.set('');
   }
 
+  private closeHelp(): void {
+    this.helpOpen.set(false);
+    this.unregisterHelpContext?.();
+    this.unregisterHelpContext = null;
+  }
+
   private onPopupAction(event: PopupActionEvent): void {
     event.sourceEvent.stopPropagation();
     if (event.action.id === 'integration-help') {
       this.helpOpen.set(true);
+      this.unregisterHelpContext ??= this.explanationGuide.registerContext('profile.integration-help');
     } else if (event.action.id === 'integration-save') {
       void this.store.save().then(saved => { if (saved) this.closePopup(); });
     }

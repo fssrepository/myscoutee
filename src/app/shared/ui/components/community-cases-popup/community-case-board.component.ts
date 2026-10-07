@@ -43,8 +43,8 @@ interface TaskRow { id: string; icon:string; task: CaseBoardTask; title: string;
       </app-popup>
     }
     @if (offerSelection(); as selection) {
-      <app-popup [model]="offerSelectionModel()" [zIndex]="15400">
-        <app-smart-list [config]="offerConfig" [loadPage]="loadOffers" [itemTemplate]="offerTemplate" (menuItemSelect)="offerAction($event)"></app-smart-list>
+      <app-popup guideContext="community.case.board.offers" [model]="offerSelectionModel()" [zIndex]="15400">
+        <app-smart-list data-guide-field="board-offer-selection" [config]="offerConfig" [loadPage]="loadOffers" [itemTemplate]="offerTemplate" (menuItemSelect)="offerAction($event)"></app-smart-list>
         <ng-template #offerTemplate let-row>
           <app-text-card [title]="row.subtitle" [detail]="row.detail" icon="request_quote" tone="gold"
             [badge]="row.title" badgeTone="price" badgePosition="end"
@@ -54,8 +54,8 @@ interface TaskRow { id: string; icon:string; task: CaseBoardTask; title: string;
       </app-popup>
     }
     @if (dependencySelection(); as selection) {
-      <app-popup [model]="dependencyModel()" [zIndex]="15400">
-        <app-smart-list [config]="dependencyConfig" [loadPage]="loadDependencies" [itemTemplate]="dependencyTemplate"></app-smart-list>
+      <app-popup guideContext="community.case.board.dependencies" [model]="dependencyModel()" [zIndex]="15400">
+        <app-smart-list data-guide-field="board-dependency-selection" [config]="dependencyConfig" [loadPage]="loadDependencies" [itemTemplate]="dependencyTemplate"></app-smart-list>
         <ng-template #dependencyTemplate let-row>
           <app-text-card [title]="row.title" [subtitle]="row.description" tone="blue" [selectable]="true" [selected]="selection.includes(row.id)" selectPalette="picker" (selectionToggle)="toggleDependency(row.id)"></app-text-card>
         </ng-template>
@@ -168,9 +168,9 @@ export class CommunityCaseBoardComponent {
     const members=new Map(c.members.map(member=>[member.accountId,member])),tasks=new Map(c.boardTasks.map(task=>[task.id,task]));
     return { title: '', header: false, layout: 'grouped', summary: { enabled: false }, save: null, steps: [
       {id:'members',title:t('case.board.members'),icon:'groups',palette:'teal',
-        headerControl:editable?{id:'members',kind:'menu',config:{kind:'inline',items:[{id:'members',icon:'add',ariaLabel:'case.board.members',palette:'green',disabled:this.store.busy()}]}}:null,
-        controls:task.assigneeAccountIds.length?[{id:'member-list',kind:'menu',layout:'wide',config:{kind:'inline',items:task.assigneeAccountIds.flatMap(id=>{const member=members.get(id);return member?[{id,label:member.name,icon:'person',trailingIcon:'chevron_right',layout:'pill' as const,kind:'action' as const,palette:'teal' as const}]:[];})}}]
-          :[{id:'members-empty',kind:'static',summary:{value:()=>t('case.board.members.none')}}]},
+        headerControl:editable?{id:'members',guideFieldId:'members',kind:'menu',config:{kind:'inline',items:[{id:'members',icon:'add',ariaLabel:'case.board.members',palette:'green',disabled:this.store.busy()}]}}:null,
+        controls:task.assigneeAccountIds.length?[{id:'member-list',guideFieldId:'members',kind:'menu',layout:'wide',config:{kind:'inline',items:task.assigneeAccountIds.flatMap(id=>{const member=members.get(id);return member?[{id,label:member.name,icon:'person',trailingIcon:'chevron_right',layout:'pill' as const,kind:'action' as const,palette:'teal' as const}]:[];})}}]
+          :[{id:'members-empty',guideFieldId:'members',kind:'static',summary:{value:()=>t('case.board.members.none')}}]},
       { id: 'task', title: '', controls: [
       { id: 'title', guideFieldId:'title',bind: 'title', kind: 'text', label: t('name'), required: true, maxLength: 120, disabled: !editable },
       { id: 'description', guideFieldId:'description',bind: 'description', kind: 'textarea', label: t('description'), rows: 4, maxLength: 4000, disabled: !editable }
@@ -179,18 +179,18 @@ export class CommunityCaseBoardComponent {
         range:{start:{label:'case.board.start'},end:{label:'case.board.end'}}}}}
     ]},
       {id:'offers',title:t('case.action.offers'),icon:'request_quote',palette:'gold',
-        headerControl:editable?{id:'offers',kind:'menu',config:{kind:'inline',items:[{id:'offers',icon:'add',ariaLabel:'case.board.offers.select',palette:'green',disabled:this.store.busy()}]}}:null,
-        controls:(task.offerIds?.length??0)>0?[{id:'offer-list',kind:'text-cards',layout:'wide',config:{columns:3,items:(task.offerIds??[]).flatMap(id=>{
+        headerControl:editable?{id:'offers',guideFieldId:'offers',kind:'menu',config:{kind:'inline',items:[{id:'offers',icon:'add',ariaLabel:'case.board.offers.select',palette:'green',disabled:this.store.busy()}]}}:null,
+        controls:(task.offerIds?.length??0)>0?[{id:'offer-list',guideFieldId:'offers',kind:'text-cards',layout:'wide',config:{columns:3,items:(task.offerIds??[]).flatMap(id=>{
           const offer=c.offers.find(o=>o.id===id);return offer?[{id,title:members.get(offer.providerAccountId)?.name??t('case.offer.view'),detail:offer.note,
             icon:'request_quote',tone:'gold' as const,price:`${offer.amount} ${offer.currency}`,menuItems:[
               {id:'view',label:'case.offer.view',icon:'article',palette:'blue' as const,surface:'tinted' as const,context:id},
               ...(editable?[{id:'remove',label:'remove',icon:'link_off',palette:'danger' as const,surface:'tinted' as const,context:id}]:[])
             ]}]:[];})}}]
-          :[{id:'offers-empty',kind:'static',summary:{value:()=>t('case.board.offers.none')}}]},
+          :[{id:'offers-empty',guideFieldId:'offers',kind:'static',summary:{value:()=>t('case.board.offers.none')}}]},
       {id:'dependencies',title:t('case.board.dependencies'),icon:'account_tree',palette:'violet',
-        headerControl:editable?{id:'dependencies',kind:'menu',config:{kind:'inline',items:[{id:'dependencies',icon:'add',ariaLabel:'case.board.dependencies',palette:'green',disabled:this.store.busy()}]}}:null,
-        controls:task.dependsOnIds.length?[{id:'dependency-list',kind:'table',layout:'wide',config:{rows:task.dependsOnIds.flatMap(id=>{const dependency=tasks.get(id);return dependency?[{label:dependency.title,value:t('case.board.'+dependency.status),icon:dependency.status==='deleted'?'delete':STAGES.find(stage=>stage.id===dependency.status)!.icon}]:[];})}}]
-          :[{id:'dependencies-empty',kind:'static',summary:{value:()=>t('case.board.dependencies.none')}}]},
+        headerControl:editable?{id:'dependencies',guideFieldId:'dependencies',kind:'menu',config:{kind:'inline',items:[{id:'dependencies',icon:'add',ariaLabel:'case.board.dependencies',palette:'green',disabled:this.store.busy()}]}}:null,
+        controls:task.dependsOnIds.length?[{id:'dependency-list',guideFieldId:'dependencies',kind:'table',layout:'wide',config:{rows:task.dependsOnIds.flatMap(id=>{const dependency=tasks.get(id);return dependency?[{label:dependency.title,value:t('case.board.'+dependency.status),icon:dependency.status==='deleted'?'delete':STAGES.find(stage=>stage.id===dependency.status)!.icon}]:[];})}}]
+          :[{id:'dependencies-empty',guideFieldId:'dependencies',kind:'static',summary:{value:()=>t('case.board.dependencies.none')}}]},
 ] };
   });
   protected readonly offerRows=computed(()=>{

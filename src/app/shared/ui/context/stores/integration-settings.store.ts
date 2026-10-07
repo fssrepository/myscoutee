@@ -12,6 +12,7 @@ export class IntegrationSettingsStore {
   private readonly session = inject(SessionService);
   private generation = 0;
   readonly contextVersion = signal(0);
+  readonly roleReadOnly = signal(false);
   private loadSequence = 0;
   private opened = false;
   private admin = false;
@@ -33,13 +34,13 @@ export class IntegrationSettingsStore {
     effect(() => {
       const profile = this.profile.activeUserId(), account = this.session.activeUserId();
       untracked(() => {
-        if (this.opened && (this.admin ? account : profile) !== this.owner) void this.open(this.admin);
+        if (this.opened && (this.admin ? account : profile) !== this.owner) void this.open(this.admin, this.roleReadOnly());
       });
     });
   }
 
-  async open(admin = false): Promise<void> {
-    this.close(); this.opened = true; this.admin = admin;
+  async open(admin = false, roleReadOnly = false): Promise<void> {
+    this.close(); this.roleReadOnly.set(roleReadOnly); this.opened = true; this.admin = admin;
     this.owner = this.currentOwner();
     await this.reload();
   }
@@ -63,22 +64,22 @@ export class IntegrationSettingsStore {
 
   access(id: string | null): IntegrationAccessMode {
     const draft = this.draft();
-    return id === null ? draft?.mcpAccess ?? 'write' : draft?.clients.find(client => client.id === id)?.accessMode ?? 'write';
+    return id === null ? draft?.mcpAccess ?? 'blocked' : draft?.clients.find(client => client.id === id)?.accessMode ?? 'write';
   }
 
   changeAccess(id: string | null, accessMode: IntegrationAccessMode): void {
-    if (this.admin || this.busy() || this.loading()) return;
+    if (this.busy() || this.loading()) return;
     this.draft.update(draft => draft ? id === null ? {...draft, mcpAccess: accessMode}
       : {...draft, clients: draft.clients.map(client => client.id === id ? {...client, accessMode} : client)} : draft);
   }
 
   async save(): Promise<boolean> {
     const draft = this.draft();
-    if (this.admin || !draft || this.busy() || this.loading() || !this.dirty()) return false;
+    if (!draft || this.busy() || this.loading() || !this.dirty()) return false;
     const generation = this.generation, owner = this.owner;
     this.busy.set(true); this.error.set('');
     try {
-      const settings = await this.api.saveSettings(structuredClone(draft));
+      const settings = await this.api.saveSettings(structuredClone(draft), this.admin);
       if (!this.current(generation, owner)) return false;
       this.settings.set(settings); this.draft.set(this.fromSettings(settings));
       return true;
@@ -153,7 +154,7 @@ export class IntegrationSettingsStore {
       clients: next.clients.map(client => previous.clients.find(value => value.id === client.id) ?? client)} : next);
   }
   private fromSettings(settings: IntegrationSettingsDto): IntegrationSettingsUpdateDto {
-    return {accessRevision: settings.accessRevision ?? 0, mcpAccess: settings.mcp?.accessMode ?? 'write',
+    return {accessRevision: settings.accessRevision ?? 0, mcpAccess: settings.mcp?.accessMode ?? 'blocked',
       clients: [...settings.tokens, ...(settings.mcp?.clients.map(client => client.token) ?? [])]
         .map(token => ({id: token.id, accessMode: token.accessMode ?? 'write'})).sort((a, b) => a.id.localeCompare(b.id))};
   }
